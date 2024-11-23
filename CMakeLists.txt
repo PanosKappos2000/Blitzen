@@ -9,7 +9,11 @@ set (CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(BlitzenEngine
                 src/mainEngine.cpp
-                src/mainEngine.h)
+                src/mainEngine.h
+                
+                src/Core/blitLogger.h
+                src/Core/blitzenLogger.cpp
+                src/Core/blitAssert.h)
 
 target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")

@@ -1,11 +1,12 @@
 #include "mainEngine.h"
 
-void PrintTest(uint8_t test)
-{
-    printf("%i\n" , test);
-}
-
 int main()
 {
-    PrintTest(1);
+    FATAL_MESSAGE("A test message: %f", 3.14)
+    ERROR_MESSAGE("A test message: %f", 3.14)
+    WARNING_MESSAGE("A test message: %f", 3.14)
+    DEBUG_MESSAGE("A test message: %f", 3.14)
+    TRACE_MESSAGE("A test message: %f", 3.14)
+
+    BLIT_ASSERT_DEBUG(0)
 }
