@@ -1,5 +1,6 @@
 #include "blitLogger.h"
 #include "blitAssert.h"
+#include "Platform/platform.h"
 #include <stdarg.h>
 
 namespace BlitzenCore
@@ -17,6 +18,7 @@ namespace BlitzenCore
     void Log(LogLevel level, const char* message, ...)
     {
         const char* logLevels[5] = {"{Fatal}: ", "{Error}: ", "{Warning}: ", "{Debug}: ", "{Trace}: "};
+        uint8_t isError = level < LogLevel::WARN;
 
         //Temporary to avoid dynamic arrays for now
         char outMessage[3200];
@@ -34,7 +36,14 @@ namespace BlitzenCore
         char outMessage2[3200];
         sprintf(outMessage2, "%s%s\n", logLevels[static_cast<uint8_t>(level)], outMessage);
 
-        printf("%s", outMessage2);
+        if (isError) 
+        {
+            BlitzenPlatform::PlatformConsoleError(outMessage2, static_cast<uint8_t>(level));
+        } 
+        else 
+        {
+            BlitzenPlatform::PlatformConsoleWrite(outMessage2, static_cast<uint8_t>(level));
+        }
     }
 
 

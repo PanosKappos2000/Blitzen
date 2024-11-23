@@ -13,7 +13,14 @@ add_executable(BlitzenEngine
                 
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
-                src/Core/blitAssert.h)
+                src/Core/blitAssert.h
+                
+                src/Platform/platform.h
+                src/Platform/platform.cpp)
+
+target_include_directories(BlitzenEngine PUBLIC
+                        "${PROJECT_SOURCE_DIR}/src"
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include")
 
 target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")
