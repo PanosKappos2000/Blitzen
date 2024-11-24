@@ -4,6 +4,10 @@
 
 namespace BlitzenPlatform
 {
+    /*----------------
+        WINDOWS   !
+    -----------------*/
+
     #if _MSC_VER
         #include <windows.h>
         #include <windowsx.h>
@@ -31,6 +35,7 @@ namespace BlitzenPlatform
             tagWNDCLASSA wc;
             memset(&wc, 0, sizeof(wc));
             wc.style = CS_DBLCLKS;
+            // Pass the function that will get called when events get triggered
             wc.lpfnWndProc = Win32ProcessMessage;
             wc.cbClsExtra = 0;
             wc.cbWndExtra = 0;
@@ -38,6 +43,7 @@ namespace BlitzenPlatform
             wc.hIcon = icon;
             wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
             wc.hbrBackground = nullptr;
+            // !This must be the exact same as the 2nd parameter of CreateWindowExA
             wc.lpszClassName = "BlitzenWindowClass";
 
             if(!RegisterClassA(&wc))
@@ -46,11 +52,13 @@ namespace BlitzenPlatform
                 return 0;
             }
 
+            // Set the window's client size
             uint32_t clientX = x;
             uint32_t clientY = y;
             uint32_t clientWidth = width;
             uint32_t clientHeight = height;
 
+            // Set the size of the window to be the same as the client momentarily
             uint32_t windowX = clientX;
             uint32_t windowY = clientY;
             uint32_t windowWidth = clientWidth;
@@ -66,14 +74,17 @@ namespace BlitzenPlatform
             RECT borderRect = {0, 0, 0, 0};
             AdjustWindowRectEx(&borderRect, windowStyle, 0, windowExStyle);
 
+            // Set the true size of the window
             windowX += borderRect.left;
             windowY += borderRect.top;
             windowWidth += borderRect.right - borderRect.left;
             windowHeight -= borderRect.top - borderRect.bottom;
 
+            //Create the window
             HWND handle = CreateWindowExA(windowExStyle, "BlitzenWindowClass", appName, windowStyle, windowX, windowY, windowWidth, windowHeight, 0, 0,
             pInternalState->winInstance, 0);
 
+            // Only assign the handle if it was actually created, otherwise the application should fail
             if(!handle)
             {
                 MessageBoxA(nullptr, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -85,14 +96,15 @@ namespace BlitzenPlatform
                 pInternalState->winWindow = handle;
             }
 
+            //Tell the window to show
             uint8_t shouldActivate = 1;
             int32_t show = shouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
             ShowWindow(pInternalState->winWindow, show);
 
-            //Clock setup
+            // Clock setup, similar thing to glfwGetTime
             LARGE_INTEGER frequency;
             QueryPerformanceCounter(&frequency);
-            clockFrequency = 1.0 / static_cast<double>(frequency.QuadPart);//The quad part is just a 64 bit integer
+            clockFrequency = 1.0 / static_cast<double>(frequency.QuadPart);// The quad part is just a 64 bit integer
             QueryPerformanceCounter(&startTime);
 
             return 1;
@@ -122,13 +134,13 @@ namespace BlitzenPlatform
 
         void* BlitMalloc(uint64_t size, uint8_t aligned)
         {
-            //temporary
+            // temporary
             return malloc(size);
         }
 
         void BlitFree(void* pBlock, uint8_t aligned)
         {
-            //temporary
+            // temporary
             free(pBlock);
         }
 
@@ -190,13 +202,13 @@ namespace BlitzenPlatform
             {
                 case WM_ERASEBKGND:
                 {
-                    //Notify the OS that erasing will be handled by the application to prevent flicker
+                    // Notify the OS that erasing will be handled by the application to prevent flicker
                     return 1;
                 }
 
                 case WM_CLOSE:
                 {
-                    //TODO: Fire an event for window closing like glfw
+                    // TODO: Fire an event for window closing like glfw
                     return 0;
                 }
 
@@ -221,15 +233,15 @@ namespace BlitzenPlatform
                 case WM_SYSKEYUP: 
                 {
                     // Key pressed/released
-                    //b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+                    // b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
                     // TODO: input processing
                     break;
                 } 
                 case WM_MOUSEMOVE: 
                 {
                     // Mouse move
-                    //i32 x_position = GET_X_LPARAM(l_param);
-                    //i32 y_position = GET_Y_LPARAM(l_param);
+                    // i32 x_position = GET_X_LPARAM(l_param);
+                    // i32 y_position = GET_Y_LPARAM(l_param);
                     // TODO: input processing.
                     break;
                 } 
@@ -250,13 +262,53 @@ namespace BlitzenPlatform
                 case WM_MBUTTONUP:
                 case WM_RBUTTONUP: 
                 {
-                    //b8 pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
+                    // b8 pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
                     // TODO: input processing.
                     break;
                 } 
             }
-            //For any events that were not included above, windows can go ahead and handle them like it normally would
+            // For any events that were not included above, windows can go ahead and handle them like it normally would
             return DefWindowProcA(winWindow, msg, w_param, l_param); 
         }
+    #endif
+
+
+            /*--------------
+                LINUX  ! 
+            ---------------*/
+
+
+
+    #ifdef linux
+
+        #include <xcb/xcb.h>
+        #include <X11/keysym.h>
+        #include <X11/XKBlib.h>  // sudo apt-get install libx11-dev
+        #include <X11/Xlib.h>
+        #include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev
+        #include <sys/time.h>
+
+        #if _POSIX_C_SOURCE >= 199309L
+        #include <time.h>  // nanosleep
+        #else
+        #include <unistd.h>  // usleep
+        #endif
+
+        struct InternalState
+        {
+            Display* pDisplay;
+            xcb_connection_t* pConnection;
+            xcb_window_t window;
+            xcb_screen_t* pScreen;
+            xcb_atom_t wm_protocols;
+            xcb_atom_t wm_delete_win;
+        };
+
+        uint8_t PlatformStartup(PlatformState* pState, const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
+        {
+            pState->internalState = malloc(sizeof(InternalState));
+            InternalState* pInternalState = reinterpret_cast<InternalState*>(pState->internalState);
+        }
+
     #endif
 }

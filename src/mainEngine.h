@@ -1,20 +1,42 @@
 #include "Core/blitAssert.h"
 #include "Platform/platform.h"
 
+#define BLITZEN_VERSION                 "Blitzen Engine 1.0.C"
+
+#define BLITZEN_WINDOW_STARTING_X       100
+#define BLITZEN_WINDOW_STARTING_Y       100
+#define BLITZEN_WINDOW_WIDTH            1280
+#define BLITZEN_WINDOW_HEIGHT           720
+
 namespace BlitzenEngine
 {
-    class BlitzenEngine
+    struct PlatformStateData
+    {
+        uint32_t windowWidth = BLITZEN_WINDOW_WIDTH;
+        uint32_t windowHeight = BLITZEN_WINDOW_HEIGHT;
+    };
+
+    class Engine
     {
     public:
-        BlitzenEngine();
+        Engine();
 
         void Run();
 
-        ~BlitzenEngine();
+        ~Engine();
+
+        inline static Engine* GetEngineInstancePointer() {return pEngineInstance;}
 
     private:
 
-        //Used to create the window and other platform specific part of the engine
+        // Makes sure that the engine is only created once and gives access subparts of the engine through static getter
+        static Engine* pEngineInstance;
+
+        uint8_t isRunning = 0;
+        uint8_t isSupended = 0;
+
+        // Used to create the window and other platform specific part of the engine
         BlitzenPlatform::PlatformState m_platformState;
+        PlatformStateData m_platformData;
     };
 }

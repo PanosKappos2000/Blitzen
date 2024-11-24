@@ -25,8 +25,11 @@ target_include_directories(BlitzenEngine PUBLIC
 target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")
 
-target_link_libraries(BlitzenEngine PUBLIC  
+IF(WIN32)
+    target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1)
+ELSEIF(UNIX)
+ENDIF(WIN32)
 
 
 #---------------------------------------------------------------------------------------------------

@@ -33,7 +33,7 @@ namespace BlitzenCore
                                     }                                                                                   \
                                 }
 
-        #ifdef _DEBUG
+        #ifndef NDEBUG
             #define BLIT_ASSERT_DEBUG(expr)                                                                     \
                                 {                                                                               \
                                     if(expr){}                                                                  \
@@ -44,7 +44,7 @@ namespace BlitzenCore
                                     }                                                                           \
                                 }
         #else
-            #define BLIT_ASSET_DEBUG(expr)
+            #define BLIT_ASSERT_DEBUG(expr)
         #endif
     #else
         #define BLIT_ASSERT(expr)

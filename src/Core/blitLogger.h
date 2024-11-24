@@ -7,7 +7,7 @@ namespace BlitzenCore
     #define LOGGER_LEVEL_FATAL 1
     #define LOGGER_LEVEL_ERROR 1
 
-    #ifdef _DEBUG
+    #ifndef NDEBUG
         #define LOGGER_LEVEL_WARN 1
         #define LOGGER_LEVEL_DEBUG 1
         #define LOGGER_LEVEL_TRACE 1

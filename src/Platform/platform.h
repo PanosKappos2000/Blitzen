@@ -6,7 +6,7 @@ namespace BlitzenPlatform
 {
     struct PlatformState
     {
-        //This will be cast to the instance of each platform
+        // This will be cast to the instance of each platform
         void* internalState;
     };
 
@@ -24,7 +24,7 @@ namespace BlitzenPlatform
     void PlatformConsoleWrite(const char* message, uint8_t color);
     void PlatformConsoleError(const char* message, uint8_t color);
 
-    //This is basically like glfwGetTime()
+    // This is basically like glfwGetTime()
     double PlatformGetAbsoluteTime();
 
     void PlatformSleep(uint64_t ms);

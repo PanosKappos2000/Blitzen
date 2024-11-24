@@ -3,21 +3,40 @@
 
 namespace BlitzenEngine
 {
-    BlitzenEngine::BlitzenEngine()
+    // Static member variable needs to be declared
+    Engine* Engine::pEngineInstance;
+
+    Engine::Engine()
     {
-        WARNING_MESSAGE("Blitzen Engine Booting")
-        BLIT_ASSERT(BlitzenPlatform::PlatformStartup(&m_platformState, "Blitzen Engine 1.0.C", 100, 100, 1280, 720))
+        if(GetEngineInstancePointer())
+        {
+            ERROR_MESSAGE("Blitzen is already active")
+        }
+        else
+        {
+            pEngineInstance = this;
+
+            WARNING_MESSAGE("Blitzen Engine Booting")
+
+            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(&m_platformState, BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
+            BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
+
+            BLIT_ASSERT(BlitzenCore::InitLogging())
+
+            isRunning = 1;
+            isSupended = 0;
+        }
     }
 
-    void BlitzenEngine::Run()
+    void Engine::Run()
     {
-        while(true)
+        while(isRunning)
         {
             BlitzenPlatform::PlatformPumpMessages(&m_platformState);
         }
     }
 
-    BlitzenEngine::~BlitzenEngine()
+    Engine::~Engine()
     {
         BlitzenPlatform::PlatformShutdown(&m_platformState);
     }
@@ -25,10 +44,7 @@ namespace BlitzenEngine
 
 int main()
 {
-    
-    BlitzenEngine::BlitzenEngine blitzen;
+    BlitzenEngine::Engine blitzen;
 
     blitzen.Run();
-
-    BLIT_ASSERT_DEBUG(0)
 }
