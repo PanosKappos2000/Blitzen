@@ -1,15 +1,17 @@
 #include "blitMemory.h"
 #include "Platform/platform.h"
+#include "mainEngine.h"
 
 namespace BlitzenCore
 {
-    MemoryManager::MemoryManager()
+    static AllocationStats globalAllocationStats;
+
+    void MemoryManagementInit()
     {
-        // Zero out the memory held by allocation types
-        BlitzenPlatform::PlatformMemZero(&(m_typeAllocations), sizeof(size_t) * static_cast<size_t>(AllocationType::MaxTypes));
+        BlitzenPlatform::PlatformMemZero(&globalAllocationStats, sizeof(AllocationStats));
     }
 
-    void* MemoryManager::BlitAlloc(AllocationType alloc, size_t size)
+    void* BlitAlloc(AllocationType alloc, size_t size)
     {
         // This might need to be an assertion so that the application fails, when memory is mihandled
         if(alloc == AllocationType::Unkown || alloc == AllocationType::MaxTypes)
@@ -17,13 +19,13 @@ namespace BlitzenCore
             FATAL_MESSAGE("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))
         }
 
-        m_totalAllocated += size;
-        m_typeAllocations[static_cast<size_t>(alloc)] += size;
+        globalAllocationStats.totalAllocated += size;
+        globalAllocationStats.typeAllocations[static_cast<size_t>(alloc)] += size;
 
         return BlitzenPlatform::PlatformMalloc(size, false);
     }
 
-    void MemoryManager::BlitFree(AllocationType alloc, void* pBlock, size_t size)
+    void BlitFree(AllocationType alloc, void* pBlock, size_t size)
     {
         // This might need to be an assertion so that the application fails, when memory is mihandled
         if(alloc == AllocationType::Unkown || alloc == AllocationType::MaxTypes)
@@ -31,34 +33,30 @@ namespace BlitzenCore
             FATAL_MESSAGE("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))
         }
 
-        m_totalAllocated -= size;
-        m_typeAllocations[static_cast<size_t>(alloc)] -= size;
+        globalAllocationStats.totalAllocated -= size;
+        globalAllocationStats.typeAllocations[static_cast<size_t>(alloc)] -= size;
 
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
 
-    void MemoryManager::BlitMemCopy(void* pDst, void* pSrc, size_t size)
+    void BlitMemCopy(void* pDst, void* pSrc, size_t size)
     {
         BlitzenPlatform::PlatformMemCopy(pDst, pSrc, size);
     }
 
-    void MemoryManager::BlitMemSet(void* pDst, int32_t value, size_t size)
+    void BlitMemSet(void* pDst, int32_t value, size_t size)
     {
         BlitzenPlatform::PlatformMemSet(pDst, value, size);
     }
     
-    void MemoryManager::BlitZeroMemory(void* pBlock, size_t size)
+    void BlitZeroMemory(void* pBlock, size_t size)
     {
         BlitzenPlatform::PlatformMemZero(pBlock, size);
     }
 
-
-
-    MemoryManager::~MemoryManager()
+    void MemoryManagementShutdown()
     {
-        if(m_totalAllocated > 0)
-        {
-            ERROR_MESSAGE("Some allocation were not freed, allocated memory size: %i", m_totalAllocated)
-        }
+        BLIT_ASSERT_MESSAGE(!(BlitzenEngine::Engine::GetEngineInstancePointer()), "Blitzen is still active, memory management cannot be shutdown")
+        BLIT_ASSERT_MESSAGE(!globalAllocationStats.totalAllocated, "There is still unallocated memory")
     }
 }

@@ -2,7 +2,7 @@
 
 #include "Core/blitAssert.h"
 #include "Platform/platform.h"
-#include "Core/blitMemory.h"
+#include "Core/blitzenContainerLibrary.h"
 
 #define BLITZEN_VERSION                 "Blitzen Engine 1.0.C"
 
@@ -22,7 +22,7 @@ namespace BlitzenEngine
     class Engine
     {
     public:
-        Engine(BlitzenCore::MemoryManager& manager);
+        Engine();
 
         void Run();
 
@@ -35,8 +35,6 @@ namespace BlitzenEngine
 
         // Makes sure that the engine is only created once and gives access subparts of the engine through static getter
         static Engine* pEngineInstance;
-
-        BlitzenCore::MemoryManager& m_blitzenMemory;
 
         uint8_t isRunning = 0;
         uint8_t isSupended = 0;

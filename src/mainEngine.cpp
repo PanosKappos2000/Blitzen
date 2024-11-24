@@ -6,8 +6,7 @@ namespace BlitzenEngine
     // Static member variable needs to be declared
     Engine* Engine::pEngineInstance;
 
-    Engine::Engine(BlitzenCore::MemoryManager& manager)
-        :m_blitzenMemory(manager)
+    Engine::Engine()
     {
         // There should not be a 2nd instance of Blitzen Engine
         if(GetEngineInstancePointer())
@@ -38,8 +37,21 @@ namespace BlitzenEngine
 
     void Engine::Run()
     {
-        m_blitzenMemory.BlitAlloc(BlitzenCore::AllocationType::Unkown, 0);
-        m_blitzenMemory.BlitAlloc(BlitzenCore::AllocationType::MaxTypes, 50);
+        //Testing allocator, will be removed
+        BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::Unkown, 0);
+        BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::MaxTypes, 50);
+
+        /* Checking my dynamic array class, will be removed */
+        BlitCL::DynamicArray<int> array1;
+        BlitCL::DynamicArray<int> array2(10);
+        uint32_t size = array1.GetSize();
+        uint32_t size1 = array2.GetSize();
+        array1.Resize(20);
+        uint32_t size3 = array1.GetSize();
+        array2.Resize(3);
+        int var = 10;
+        array2.PushBack(var);
+        /* Test Dynamic array */
 
         while(isRunning)
         {
@@ -49,20 +61,24 @@ namespace BlitzenEngine
 
     Engine::~Engine()
     {
+        WARNING_MESSAGE("Blitzen is shutting down")
         BlitzenCore::ShutdownLogging();
 
         BlitzenPlatform::PlatformShutdown(&m_platformState);
+
+        pEngineInstance = nullptr;
     }
 }
 
 int main()
 {
-    // The memory manager is initialized outside of the engine, as it might need to allocate some subsystems before the engine
-    BlitzenCore::MemoryManager blitMemory;
+    BlitzenCore::MemoryManagementInit();
 
-    BlitzenEngine::Engine blitzen(blitMemory);
+    BlitzenEngine::Engine blitzen;
 
-    BlitzenEngine::Engine shouldNotBeAllowed(blitMemory);
+    BlitzenEngine::Engine shouldNotBeAllowed;
+
+    BlitzenCore::MemoryManagementShutdown();
 
     blitzen.Run();
 }
