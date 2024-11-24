@@ -11,6 +11,8 @@ add_executable(BlitzenEngine
                 src/mainEngine.cpp
                 src/mainEngine.h
                 
+                src/Core/blitMemory.h
+                src/Core/blitzenMemory.cpp
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
                 src/Core/blitAssert.h

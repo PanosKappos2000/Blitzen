@@ -15,11 +15,15 @@ namespace BlitzenPlatform
 
     uint8_t PlatformPumpMessages(PlatformState* pState);
 
-    void* BlitMalloc(uint64_t size, uint8_t aligned);
-    void BlitFree(void* pBlock, uint8_t aligned);
-    void* BlitMemZero(void* pBlock, uint64_t size);
-    void* BlitMemCopy(void* pDst, void* pSrc, uint64_t size);
-    void* BlitMemSet(void* pDst, int32_t value, uint64_t size);
+    /* -------------------------------------------------------------------------------------------------------
+        These will not be called by systems directly, they're meant to aid the custom allocation functions, 
+        since some memory functionality might be platform specific
+    --------------------------------------------------------------------------------------------------------  */
+    void* PlatformMalloc(size_t size, uint8_t aligned);
+    void PlatformFree(void* pBlock, uint8_t aligned);
+    void* PlatformMemZero(void* pBlock, size_t size);
+    void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
+    void* PlatformMemSet(void* pDst, int32_t value, size_t size);
 
     void PlatformConsoleWrite(const char* message, uint8_t color);
     void PlatformConsoleError(const char* message, uint8_t color);

@@ -4,26 +4,28 @@
 
 namespace BlitzenCore
 {
-    #define LOGGER_LEVEL_FATAL 1
-    #define LOGGER_LEVEL_ERROR 1
+    #define LOGGER_LEVEL_FATAL      1
+    #define LOGGER_LEVEL_ERROR      1
 
     #ifndef NDEBUG
-        #define LOGGER_LEVEL_WARN 1
-        #define LOGGER_LEVEL_DEBUG 1
-        #define LOGGER_LEVEL_TRACE 1
+        #define LOGGER_LEVEL_INFO       1
+        #define LOGGER_LEVEL_WARN       1
+        #define LOGGER_LEVEL_DEBUG      1
+        #define LOGGER_LEVEL_TRACE      1
     #else
-        #define LOGGER_LEVEL_WARN 0
-        #define LOGGER_LEVEL_DEBUG 0
-        #define LOGGER_LEVEL_TRACE 0
+        #define LOGGER_LEVEL_WARN       0
+        #define LOGGER_LEVEL_DEBUG      0
+        #define LOGGER_LEVEL_TRACE      0
     #endif
 
     enum class LogLevel : uint8_t
     {
         FATAL = 0,
         ERROR = 1,
-        WARN = 2,
-        DEBUG = 3,
-        TRACE = 4,
+        INFO = 2,
+        WARN = 3,
+        DEBUG = 4,
+        TRACE = 5,
     };
 
     uint8_t InitLogging();
@@ -31,19 +33,25 @@ namespace BlitzenCore
     void Log(LogLevel level, const char* message, ...);
 
     #if LOGGER_LEVEL_FATAL
-        #define FATAL_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::FATAL, message, __VA_ARGS__);
+        #define FATAL_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::FATAL, message, ##__VA_ARGS__);
     #else
         #define FATAL_MESSAGE(message, ...)
     #endif
 
     #if LOGGER_LEVEL_ERROR
-        #define ERROR_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::ERROR, message, __VA_ARGS__);
+        #define ERROR_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::ERROR, message, ##__VA_ARGS__);
     #else
         #define ERROR_MESSAGE(message, ...)
     #endif
 
+    #if LOGGER_LEVEL_INFO
+        #define INFO_MESSAGE(message, ...)      Log(BlitzenCore::LogLevel::INFO, message, ##__VA_ARGS__);
+    #else
+        #define INFO_MESSAGE(message, ...)
+    #endif
+
     #if LOGGER_LEVEL_WARN
-        #define WARNING_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::WARN, message, __VA_ARGS__);
+        #define WARNING_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::WARN, message, ##__VA_ARGS__);
     #else
         #define WARNING_MESSAGE(message, ...)
     #endif

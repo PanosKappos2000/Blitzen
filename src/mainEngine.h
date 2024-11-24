@@ -1,5 +1,8 @@
+#pragma once
+
 #include "Core/blitAssert.h"
 #include "Platform/platform.h"
+#include "Core/blitMemory.h"
 
 #define BLITZEN_VERSION                 "Blitzen Engine 1.0.C"
 
@@ -19,10 +22,11 @@ namespace BlitzenEngine
     class Engine
     {
     public:
-        Engine();
+        Engine(BlitzenCore::MemoryManager& manager);
 
         void Run();
 
+        // I might want to explicitly shutdown the engine, as there are some systems that are initalized outside of it
         ~Engine();
 
         inline static Engine* GetEngineInstancePointer() {return pEngineInstance;}
@@ -31,6 +35,8 @@ namespace BlitzenEngine
 
         // Makes sure that the engine is only created once and gives access subparts of the engine through static getter
         static Engine* pEngineInstance;
+
+        BlitzenCore::MemoryManager& m_blitzenMemory;
 
         uint8_t isRunning = 0;
         uint8_t isSupended = 0;

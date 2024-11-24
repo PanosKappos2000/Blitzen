@@ -132,29 +132,29 @@ namespace BlitzenPlatform
             return 1;
         }
 
-        void* BlitMalloc(uint64_t size, uint8_t aligned)
+        void* PlatformMalloc(size_t size, uint8_t aligned)
         {
             // temporary
             return malloc(size);
         }
 
-        void BlitFree(void* pBlock, uint8_t aligned)
+        void PlatformFree(void* pBlock, uint8_t aligned)
         {
             // temporary
             free(pBlock);
         }
 
-        void* BlitMemZero(void* pBlock, uint64_t size)
+        void* PlatformMemZero(void* pBlock, size_t size)
         {
             return memset(pBlock, 0, size);
         }
 
-        void* BlitMemCopy(void* pDst, void* pSrc, uint64_t size)
+        void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
         {
             return memcpy(pDst, pSrc, size);
         }
 
-        void* BlitMemSet(void* pDst, int32_t value, uint64_t size)
+        void* PlatformMemSet(void* pDst, int32_t value, size_t size)
         {
             return memset(pDst, value, size);
         }
