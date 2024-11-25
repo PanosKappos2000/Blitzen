@@ -30,6 +30,7 @@ namespace BlitzenCore
                                     else                                                                                \
                                     {                                                                                   \
                                         BlitzenCore::ReportAssertionFailure(#expr, message, __FILE__, __LINE__);        \
+                                        BDB_BREAK                                                                       \
                                     }                                                                                   \
                                 }
 

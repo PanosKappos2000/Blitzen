@@ -88,7 +88,7 @@ namespace BlitzenPlatform
             if(!handle)
             {
                 MessageBoxA(nullptr, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-                FATAL_MESSAGE("Window creation failed!")
+                BLIT_FATAL("Window creation failed!")
                 return 0;
             }
             else

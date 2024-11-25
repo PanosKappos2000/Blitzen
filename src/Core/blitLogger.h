@@ -33,38 +33,38 @@ namespace BlitzenCore
     void Log(LogLevel level, const char* message, ...);
 
     #if LOGGER_LEVEL_FATAL
-        #define FATAL_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::FATAL, message, ##__VA_ARGS__);
+        #define BLIT_FATAL(message, ...)     Log(BlitzenCore::LogLevel::FATAL, message, ##__VA_ARGS__);
     #else
-        #define FATAL_MESSAGE(message, ...)
+        #define BLIT_FATAL(message, ...)
     #endif
 
     #if LOGGER_LEVEL_ERROR
-        #define ERROR_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::ERROR, message, ##__VA_ARGS__);
+        #define BLIT_ERROR(message, ...)     Log(BlitzenCore::LogLevel::ERROR, message, ##__VA_ARGS__);
     #else
-        #define ERROR_MESSAGE(message, ...)
+        #define BLIT_ERROR(message, ...)
     #endif
 
     #if LOGGER_LEVEL_INFO
-        #define INFO_MESSAGE(message, ...)      Log(BlitzenCore::LogLevel::INFO, message, ##__VA_ARGS__);
+        #define BLIT_INFO(message, ...)      Log(BlitzenCore::LogLevel::INFO, message, ##__VA_ARGS__);
     #else
-        #define INFO_MESSAGE(message, ...)
+        #define BLIT_INFO(message, ...)
     #endif
 
     #if LOGGER_LEVEL_WARN
-        #define WARNING_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::WARN, message, ##__VA_ARGS__);
+        #define BLIT_WARN(message, ...)     Log(BlitzenCore::LogLevel::WARN, message, ##__VA_ARGS__);
     #else
-        #define WARNING_MESSAGE(message, ...)
+        #define BLIT_WARN(message, ...)
     #endif
 
     #if LOGGER_LEVEL_DEBUG
-        #define DEBUG_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::DEBUG, message, __VA_ARGS__);
+        #define BLIT_DBLOG(message, ...)     Log(BlitzenCore::LogLevel::DEBUG, message, __VA_ARGS__);
     #else
-        #define DEBUG_MESSAGE(message, ...)
+        #define BLIT_DBLOG(message, ...)
     #endif
 
     #if LOGGER_LEVEL_TRACE
-        #define TRACE_MESSAGE(message, ...)     Log(BlitzenCore::LogLevel::TRACE, message, __VA_ARGS__);
+        #define BLIT_TRACE(message, ...)     Log(BlitzenCore::LogLevel::TRACE, message, __VA_ARGS__);
     #else
-        #define TRACE_MESSAGE(message, ...)
+        #define BLIT_TRACE(message, ...)
     #endif
 }

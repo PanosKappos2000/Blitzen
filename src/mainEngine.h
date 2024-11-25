@@ -3,6 +3,7 @@
 #include "Core/blitAssert.h"
 #include "Platform/platform.h"
 #include "Core/blitzenContainerLibrary.h"
+#include "Core/blitEvents.h"
 
 #define BLITZEN_VERSION                 "Blitzen Engine 1.0.C"
 
@@ -19,6 +20,13 @@ namespace BlitzenEngine
         uint32_t windowHeight = BLITZEN_WINDOW_HEIGHT;
     };
 
+    struct EngineSystems
+    {
+        uint8_t eventSystem = 0;
+        uint8_t inputSystem = 0;
+        uint8_t logSystem = 0;
+    };
+
     class Engine
     {
     public:
@@ -29,7 +37,9 @@ namespace BlitzenEngine
         // I might want to explicitly shutdown the engine, as there are some systems that are initalized outside of it
         ~Engine();
 
-        inline static Engine* GetEngineInstancePointer() {return pEngineInstance;}
+        inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }
+
+        inline const EngineSystems& GetEngineSystems() { return m_systems; }
 
     private:
 
@@ -42,5 +52,7 @@ namespace BlitzenEngine
         // Used to create the window and other platform specific part of the engine
         BlitzenPlatform::PlatformState m_platformState;
         PlatformStateData m_platformData;
+
+        EngineSystems m_systems;
     };
 }

@@ -1,6 +1,9 @@
 #include "blitLogger.h"
 #include "blitAssert.h"
 #include "Platform/platform.h"
+
+#include "mainEngine.h"
+
 #include <stdarg.h>
 
 namespace BlitzenCore
@@ -12,7 +15,11 @@ namespace BlitzenCore
 
     void ShutdownLogging()
     {
-
+        if(BlitzenEngine::Engine::GetEngineInstancePointer()->GetEngineSystems().logSystem)
+        {
+            BLIT_ERROR("Blitzen has not given permission for logging to shutdown")
+            return;
+        }
     }
 
     void Log(LogLevel level, const char* message, ...)
