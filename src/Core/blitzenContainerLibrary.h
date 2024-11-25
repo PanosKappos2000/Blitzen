@@ -11,13 +11,13 @@ namespace BlitCL
     {
     public:
 
-        DynamicArray(size_t initialSize =0)
-            :m_size{sizeof(T) * initialSize}, m_capacity(sizeof(T) * initialSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+        DynamicArray(size_t initialSize = 0)
+            :m_size{initialSize}, m_capacity(initialSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
         {
-            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity));
+            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
         }
 
-        inline size_t GetSize() { return m_size / sizeof(T); }
+        inline size_t GetSize() { return m_size; }
 
         inline T& operator [] (size_t index) { return m_pBlock[index]; }
         inline T& Front() { return m_pBlock[0]; }
@@ -38,7 +38,7 @@ namespace BlitCL
                 RearrangeCapacity(newSize);
             }
 
-            m_size = newSize * sizeof(T);
+            m_size = newSize;
         }
 
         void Reserve(size_t size)
@@ -50,13 +50,12 @@ namespace BlitCL
         {
             WARNING_MESSAGE("DynamicArray::PushBack called: This is not the best function for performance.\nConsider using Reserve() or Resize()")
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
-            if(m_size + sizeof(T) > m_capacity)
+            if(m_size + 1 > m_capacity)
             {
-                RearrangeCapacity(m_size + sizeof(T));
+                RearrangeCapacity(m_size + 1);
             }
 
-            m_size += sizeof(T);
-            m_pBlock[m_size] = newElement;
+            m_pBlock[m_size++] = newElement;
         }
 
         ~DynamicArray()
@@ -78,11 +77,11 @@ namespace BlitCL
         void RearrangeCapacity(size_t newSize)
         {
             size_t temp = m_capacity;
-            m_capacity = sizeof(T) * newSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER;
+            m_capacity = newSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER;
             T* pTemp = m_pBlock;
-            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity));
-            BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_capacity);
-            BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp);
+            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(int)));
+            BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_capacity * sizeof(int));
+            BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(int));
 
             WARNING_MESSAGE("DynamicArray rearranged, this means that a memory allocation has taken place")
         }

@@ -46,11 +46,15 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<int> array2(10);
         uint32_t size = array1.GetSize();
         uint32_t size1 = array2.GetSize();
+        int x = array2[3];
+        array2[19] = 10;
+        int y = array2[19];
         array1.Resize(20);
         uint32_t size3 = array1.GetSize();
         array2.Resize(3);
         int var = 10;
         array2.PushBack(var);
+        int z = array2[10];
         /* Test Dynamic array */
 
         while(isRunning)
