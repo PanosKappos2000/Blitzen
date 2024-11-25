@@ -90,7 +90,10 @@ namespace BlitCL
             m_capacity = newSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER;
             T* pTemp = m_pBlock;
             m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(int)));
-            BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_capacity * sizeof(int));
+            if (m_size != 0)
+            {
+                BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_capacity * sizeof(int));
+            }
             BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(int));
 
             BLIT_WARN("DynamicArray rearranged, this means that a memory allocation has taken place")

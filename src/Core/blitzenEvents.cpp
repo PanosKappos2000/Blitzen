@@ -103,6 +103,7 @@ namespace BlitzenCore
         // Not found
         return 0;
     }
+    
     uint8_t FireEvent(BlitEventType type, void* pSender, EventContext context)
     {
         EventTypeEntry& events = eventState.eventTypes[static_cast<size_t>(type)];
@@ -115,7 +116,7 @@ namespace BlitzenCore
         
         for(size_t i = 0; i < events.GetSize(); ++i) {
             RegisteredEvent& event = events[i];
-            if(event.callback && event.callback(static_cast<size_t>(type), pSender, event.pListener, context)) 
+            if(event.callback && event.callback(type, pSender, event.pListener, context)) 
             {
                 // Event handled
                 return 1;
@@ -168,34 +169,36 @@ namespace BlitzenCore
 
     void UpdateInput(double delta_time) 
     {
-        // Copy current states to previous states.
+        // Copy current states to previous states
         BlitzenCore::BlitMemCopy(&inputState.previousKeyboard, &inputState.currentKeyboard, sizeof(KeyboardState));
         BlitzenCore::BlitMemCopy(&inputState.previousMouse, &inputState.currentMouse, sizeof(MouseState));
     }
 
-    void InputProcessKey(BlitKey key, uint8_t pressed) {
-        
-        if (inputState.currentKeyboard.keys[static_cast<size_t>(key)] != pressed) 
+    void InputProcessKey(BlitKey key, uint8_t bPressed) 
+    {
+        // Check If the key has not already been flagged as pressed
+        if (inputState.currentKeyboard.keys[static_cast<size_t>(key)] != bPressed) 
         {
-            inputState.currentKeyboard.keys[static_cast<size_t>(key)] = pressed;
+            // Change the state to pressed
+            inputState.currentKeyboard.keys[static_cast<size_t>(key)] = bPressed;
 
-            // Fire off an event for immediate processing.
+            // Fire off an event for immediate processing
             EventContext context;
             context.data.ui16[0] = static_cast<uint16_t>(key);
-            FireEvent(pressed ? BlitEventType::KeyPressed : BlitEventType::KeyReleased, nullptr, context);
+            FireEvent(bPressed ? BlitEventType::KeyPressed : BlitEventType::KeyReleased, nullptr, context);
         }
     }
 
-    void InputProcessButton(MouseButton button, uint8_t pressed) 
+    void InputProcessButton(MouseButton button, uint8_t bPressed) 
     {
         // If the state changed, fire an event.
-        if (inputState.currentMouse.buttons[static_cast<size_t>(button)] != pressed) 
+        if (inputState.currentMouse.buttons[static_cast<size_t>(button)] != bPressed) 
         {
-            inputState.currentMouse.buttons[static_cast<size_t>(button)] = pressed;
+            inputState.currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
             // Fire the event.
             EventContext context;
             context.data.ui16[0] = static_cast<uint16_t>(button);
-            FireEvent(pressed ? BlitEventType::MouseButtonPressed : BlitEventType::MouseButtonPressed, nullptr, context);
+            FireEvent(bPressed ? BlitEventType::MouseButtonPressed : BlitEventType::MouseButtonPressed, nullptr, context);
         }
     }
 
@@ -204,7 +207,7 @@ namespace BlitzenCore
         // Only process if actually different
         if (inputState.currentMouse.x != x || inputState.currentMouse.y != y) {
             
-            BLIT_DBLOG("Mouse moved-> x: %i, y: %i", inputState.currentMouse.x - x, inputState.currentMouse.y - y)
+            BLIT_DBLOG("Mouse moved by-> x: %i, y: %i.\nNew x: %i, New y: %i", inputState.currentMouse.x - x, inputState.currentMouse.y - y, x, y)
             
             inputState.currentMouse.x = x;
             inputState.currentMouse.y = y;
@@ -216,11 +219,11 @@ namespace BlitzenCore
             FireEvent(BlitEventType::MouseMoved, nullptr, context);
         }
     }
-    void InputProcessMouseWheel(int8_t z_delta) 
+    void InputProcessMouseWheel(int8_t zDelta) 
     {
         //No internal state to update, simply fires an event
         EventContext context;
-        context.data.ui8[0] = z_delta;
+        context.data.ui8[0] = zDelta;
         FireEvent(BlitEventType::MouseWheel, nullptr, context);
     }
 

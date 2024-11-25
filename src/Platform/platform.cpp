@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform.h"
+#include "Core/blitEvents.h"
 
 namespace BlitzenPlatform
 {
@@ -233,27 +234,29 @@ namespace BlitzenPlatform
                 case WM_SYSKEYUP: 
                 {
                     // Key pressed/released
-                    // b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
-                    // TODO: input processing
+                    uint8_t pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+                    BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(w_param);
+                    BlitzenCore::InputProcessKey(key, pressed);
                     break;
                 } 
                 case WM_MOUSEMOVE: 
                 {
                     // Mouse move
-                    // i32 x_position = GET_X_LPARAM(l_param);
-                    // i32 y_position = GET_Y_LPARAM(l_param);
-                    // TODO: input processing.
+                    int32_t mouseX = GET_X_LPARAM(l_param);
+                    int32_t mouseY = GET_Y_LPARAM(l_param);
+                    BlitzenCore::InputProcessMouseMove(mouseX, mouseY);
                     break;
                 } 
                 case WM_MOUSEWHEEL: 
                 {
-                    // i32 z_delta = GET_WHEEL_DELTA_WPARAM(w_param);
-                    // if (z_delta != 0) {
-                    //     // Flatten the input to an OS-independent (-1, 1)
-                    //     z_delta = (z_delta < 0) ? -1 : 1;
-                    //     // TODO: input processing.
-                    // }
-                    break;
+                    int32_t zDelta = GET_WHEEL_DELTA_WPARAM(w_param);
+                    if (zDelta != 0) 
+                    {
+                        // Flatten the input to an OS-independent (-1, 1)
+                        zDelta = (zDelta < 0) ? -1 : 1;
+                        BlitzenCore::InputProcessMouseWheel(zDelta);
+                        break;
+                    }
                 }
                 case WM_LBUTTONDOWN:
                 case WM_MBUTTONDOWN:
@@ -262,8 +265,31 @@ namespace BlitzenPlatform
                 case WM_MBUTTONUP:
                 case WM_RBUTTONUP: 
                 {
-                    // b8 pressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
-                    // TODO: input processing.
+                    uint8_t bPressed = (msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN);
+                    BlitzenCore::MouseButton button = BlitzenCore::MouseButton::MaxButtons;
+                    switch(msg)
+                    {
+                        case WM_LBUTTONDOWN:
+                        case WM_LBUTTONUP:
+                        {
+                            button = BlitzenCore::MouseButton::Left;
+                            break;
+                        }
+                        case WM_RBUTTONDOWN:
+                        case WM_RBUTTONUP:
+                        {
+                            button = BlitzenCore::MouseButton::Right;
+                            break;
+                        }
+                        case WM_MBUTTONDOWN:
+                        case WM_MBUTTONUP:
+                        {
+                            button = BlitzenCore::MouseButton::Middle;
+                            break;
+                        }
+                    }
+                    if(button != BlitzenCore::MouseButton::MaxButtons)
+                        BlitzenCore::InputProcessButton(button, bPressed);
                     break;
                 } 
             }

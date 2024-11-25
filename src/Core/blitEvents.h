@@ -1,9 +1,11 @@
 #pragma once
 
 #include "blitzenContainerLibrary.h"
+#include <functional>
 
 namespace BlitzenCore
 {
+    // When an event needs to pass some data, this struct will be used to hide the data inside the union. The listener should know how to uncover the data
     struct EventContext {
         // 128 bytes
         union 
@@ -22,14 +24,6 @@ namespace BlitzenCore
         } data;
     };
 
-    typedef uint8_t (*pfnOnEvent)(uint16_t code, void* pSender, void* pListener, EventContext data);
-
-    struct RegisteredEvent 
-    {
-        void* pListener;
-        pfnOnEvent callback;
-    };
-
     enum class BlitEventType : uint16_t
     {
         // Shuts the application down on the next frame.
@@ -44,13 +38,23 @@ namespace BlitzenCore
         MaxTypes = 0xFF
     };
 
+    typedef uint8_t (*pfnOnEvent)(BlitEventType type, void* pSender, void* pListener, EventContext data);
+
+    struct RegisteredEvent 
+    {
+        void* pListener;
+        pfnOnEvent callback;
+    };
+
     uint8_t EventsInit();
     void EventsShutdown();
 
+    // Adds a new RegisteredEvent to the eventState event types array
     uint8_t RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback);
 
     uint8_t UnregisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback);
 
+    // When an event has been processed, this will get called automatically to go through all the listeners and call their callbacks for a specific event
     uint8_t FireEvent(BlitEventType type, void* pSender, EventContext context);
 
 
@@ -199,14 +203,16 @@ namespace BlitzenCore
     // Keyboard input
     uint8_t GetCurrentKeyState(BlitKey key);
     uint8_t GetPreviousKeyState(BlitKey key);
-    void InputProcessKey(BlitKey key, uint8_t pressed);
+
+    // Process a key input and fires an event for the specific key to notify all listeners
+    void InputProcessKey(BlitKey key, uint8_t bPressed);
 
     // mouse input
     uint8_t GetCurrentMouseButtonState(MouseButton button);
     uint8_t GetPreviousMouseButtonState(MouseButton button);
     void GetMousePosition(int32_t* x, int32_t* y);
     void GetPreviousMousePosition(int32_t* x, int32_t* y);
-    void InputProcessButton(MouseButton button, uint8_t pressed);
+    void InputProcessButton(MouseButton button, uint8_t bPressed);
     void InputProcessMouseMove(int16_t x, int16_t y);
     void InputProcessMouseWheel(int8_t zDelta);
 }

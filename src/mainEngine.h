@@ -36,10 +36,13 @@ namespace BlitzenEngine
 
         // I might want to explicitly shutdown the engine, as there are some systems that are initalized outside of it
         ~Engine();
+        inline void RequestShutdown() { isRunning = 0; }
 
         inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }
 
         inline const EngineSystems& GetEngineSystems() { return m_systems; }
+
+    private:
 
     private:
 
@@ -55,4 +58,9 @@ namespace BlitzenEngine
 
         EngineSystems m_systems;
     };
+
+    // Will be registered to the event system on initalization
+    uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
+    uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
+
 }
