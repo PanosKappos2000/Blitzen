@@ -17,6 +17,7 @@ namespace BlitCL
             if (m_size)
             {
                 m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+                BlitzenCore::BlitZeroMemory(m_pBlock, m_capacity * sizeof(T));
             }
         }
 
@@ -32,13 +33,14 @@ namespace BlitCL
             // A different function will be used for downsizing
             if(newSize < m_size)
             {
-                DEBUG_MESSAGE("DynamicArray::Resize(): New size %i is smaller than %i: \nUse Downsize(size_t) if this was intended", newSize, m_size)
+                BLIT_DBLOG("DynamicArray::Resize(): New size %i is smaller than %i: \nUse Downsize(size_t) if this was intended", newSize, m_size)
                 return;
             }
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
             if(newSize > m_capacity)
             {
                 RearrangeCapacity(newSize);
+                BlitzenCore::BlitZeroMemory(m_pBlock, (m_capacity * sizeof(T)) - (m_size * sizeof(T)));
             }
 
             m_size = newSize;
@@ -63,12 +65,24 @@ namespace BlitCL
 
         void RemoveAtIndex(size_t index)
         {
-            T* pTempBlock = m_pBlock;
-            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
-            BlitzenCore::BlitMemCopy(m_pBlock, pTempBlock, (index) * sizeof(T));
-            BlitzenCore::BlitMemCopy(m_pBlock + index, pTempBlock + index + 1, (m_size - index) * sizeof(T));
-            BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTempBlock, m_size);
-            m_size--;
+            if(index < m_size && index >= 0)
+            {
+                T* pTempBlock = m_pBlock;
+                m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+                BlitzenCore::BlitMemCopy(m_pBlock, pTempBlock, (index) * sizeof(T));
+                BlitzenCore::BlitMemCopy(m_pBlock + index, pTempBlock + index + 1, (m_size - index) * sizeof(T));
+                BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTempBlock, m_size * sizeof(T));
+                m_size--;
+            }
+        }
+
+        void Clear()
+        {
+            if(m_size)
+            {
+                BlitzenCore::BlitZeroMemory(m_pBlock, m_size * sizeof(T));
+                m_size = 0;
+            }
         }
 
         ~DynamicArray()

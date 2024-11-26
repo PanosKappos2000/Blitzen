@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "Core/blitLogger.h"
+#include "vulkan/vulkan.h"
 
 
 #if _MSC_VER
@@ -40,4 +41,6 @@ namespace BlitzenPlatform
     double PlatformGetAbsoluteTime();
 
     void PlatformSleep(uint64_t ms);
+
+    void CreateVulkanSurface(PlatformState* pState, VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator);
 }

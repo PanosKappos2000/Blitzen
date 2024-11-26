@@ -8,8 +8,17 @@ namespace BlitzenVulkan
     {
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
+
         VkSurfaceKHR surface;
+
         VkPhysicalDevice chosenGpu;
+    };
+
+    struct Queue
+    {
+        uint32_t index;
+        VkQueue handle;
+        uint8_t hasIndex = 0;
     };
 
     // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
@@ -21,7 +30,7 @@ namespace BlitzenVulkan
     class VulkanRenderer
     {
     public:
-        void Init();
+        void Init(void* pPlatformState);
 
         /*-----------------------------------------------------------------------------------------------
             Renders the world each frame. 
@@ -41,6 +50,10 @@ namespace BlitzenVulkan
 
         InitializationHandles m_initHandles;
 
+        Queue m_graphicsQueue;
+        Queue m_presentQueue;
+        Queue m_computeQueue;
+
         /*AllocatedImage m_colorAttachment;
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;*/
@@ -48,5 +61,8 @@ namespace BlitzenVulkan
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
 
         size_t m_currentFrame = 0;
+
+        // Holds stats that give information about how the vulkanRenderer is operating
+        VulkanStats m_stats;
     };
 }

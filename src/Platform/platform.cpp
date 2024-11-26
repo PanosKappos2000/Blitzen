@@ -13,6 +13,8 @@ namespace BlitzenPlatform
         #include <windows.h>
         #include <windowsx.h>
         #include <WinUser.h>
+        #include "windowsx.h"
+        #include "vulkan/vulkan_win32.h"    
 
         struct InternalState
         {
@@ -192,6 +194,16 @@ namespace BlitzenPlatform
         void PlatformSleep(uint64_t ms)
         {
             Sleep(ms);
+        }
+
+        void CreateVulkanSurface(PlatformState* pState, VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
+        {
+            InternalState* pInternalState = reinterpret_cast<InternalState*>(pState->internalState);
+
+            VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
+            info.hinstance = pInternalState->winInstance;
+            info.hwnd = pInternalState->winWindow;
+            vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
         }
 
 
