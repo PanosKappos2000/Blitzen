@@ -11,8 +11,10 @@
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  1
+    #define VK_CHECK(expr)                                          expr;
 #else
     #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  2
+    #define VALIDATION_LAYER_NAME                                   "VK_LAYER_KHRONOS_validation"
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 

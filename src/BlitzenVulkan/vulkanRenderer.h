@@ -7,6 +7,7 @@ namespace BlitzenVulkan
     struct InitializationHandles
     {
         VkInstance instance;
+        VkDebugUtilsMessengerEXT debugMessenger;
         VkSurfaceKHR surface;
         VkPhysicalDevice chosenGpu;
     };
