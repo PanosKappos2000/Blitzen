@@ -27,15 +27,15 @@ namespace BlitzenCore
     enum class BlitEventType : uint16_t
     {
         // Shuts the application down on the next frame.
-        EngineShutdown = 0x01,
-        KeyPressed = 0x02,
-        KeyReleased = 0x03,
-        MouseButtonPressed = 0x04,
-        MouseButtonReleased = 0x05,
-        MouseMoved = 0x06,
-        MouseWheel = 0x07,
-        WindowResize = 0x08,
-        MaxTypes = 0xFF
+        EngineShutdown = 0,
+        KeyPressed = 1,
+        KeyReleased = 2,
+        MouseButtonPressed = 3,
+        MouseButtonReleased = 4,
+        MouseMoved = 5,
+        MouseWheel = 6,
+        WindowResize = 7,
+        MaxTypes = 8
     };
 
     typedef uint8_t (*pfnOnEvent)(BlitEventType type, void* pSender, void* pListener, EventContext data);
@@ -44,6 +44,13 @@ namespace BlitzenCore
     {
         void* pListener;
         pfnOnEvent callback;
+    };
+    
+    #define MAX_MESSAGE_CODES 16384
+
+    struct EventSystemState 
+    {
+        BlitCL::DynamicArray<RegisteredEvent> eventTypes[MAX_MESSAGE_CODES];
     };
 
     uint8_t EventsInit();

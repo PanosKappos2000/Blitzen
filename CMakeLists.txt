@@ -19,6 +19,10 @@ add_executable(BlitzenEngine
                 src/Core/blitAssert.h
                 src/Core/blitEvents.h
                 src/Core/blitzenEvents.cpp
+
+                src/BlitzenVulkan/vulkanRenderer.h
+                src/BlitzenVulkan/vulkanRenderer.cpp
+                src/BlitzenVulkan/vulkanData.h
                 
                 src/Platform/platform.h
                 src/Platform/platform.cpp)

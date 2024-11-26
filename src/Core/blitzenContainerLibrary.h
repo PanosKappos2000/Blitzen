@@ -14,7 +14,10 @@ namespace BlitCL
         DynamicArray(size_t initialSize = 0)
             :m_size{initialSize}, m_capacity(initialSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
         {
-            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+            if (m_size)
+            {
+                m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+            }
         }
 
         inline size_t GetSize() { return m_size; }
@@ -70,9 +73,9 @@ namespace BlitCL
 
         ~DynamicArray()
         {
-            if(m_pBlock && m_size > sizeof(T))
+            if(m_pBlock && m_capacity > 0)
             {
-                BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_size);
+                BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity * sizeof(T));
             }
         }
 
@@ -89,12 +92,13 @@ namespace BlitCL
             size_t temp = m_capacity;
             m_capacity = newSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER;
             T* pTemp = m_pBlock;
-            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(int)));
+            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
             if (m_size != 0)
             {
-                BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_capacity * sizeof(int));
+                BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_capacity * sizeof(T));
             }
-            BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(int));
+            if(temp != 0)
+                BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(T));
 
             BLIT_WARN("DynamicArray rearranged, this means that a memory allocation has taken place")
         }

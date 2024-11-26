@@ -25,22 +25,19 @@ namespace BlitzenCore
         BLIT_WINDOW_RESIZE_EXPECTED_EVENTS
     };
 
-    // Because this will be placed in an array and arrays of arrays look ugly to me, I decided to use this
-    // Also this should somehow be implemented with a hashmap at some point but I do not have a custom hashtable yet
-    using EventTypeEntry =  BlitCL::DynamicArray<RegisteredEvent>;
-    
-    #define MAX_MESSAGE_CODES 16384
-
-    struct EventSystemState 
-    {
-        EventTypeEntry eventTypes[MAX_MESSAGE_CODES];
-    };
-
-    static EventSystemState eventState;
+    static EventSystemState* pEventState = nullptr;
 
     uint8_t EventsInit() 
     {
-        BlitZeroMemory(&eventState, sizeof(eventState));
+        if(!BlitzenEngine::Engine::GetEngineInstancePointer())
+        {
+            BLIT_ERROR("The event system cannot be initialized before Blitzen")
+            return 0;
+        }
+
+        // Get a pointer to the event state, so that it can be accessed statically by functions in this file
+        pEventState = &(BlitzenEngine::Engine::GetEngineInstancePointer()->GetEngineSystems().eventState);
+
         return 1;
     }
 
@@ -56,7 +53,7 @@ namespace BlitzenCore
 
     uint8_t RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback) 
     {
-        EventTypeEntry& events = eventState.eventTypes[static_cast<size_t>(type)];
+        BlitCL::DynamicArray<RegisteredEvent>& events = pEventState->eventTypes[static_cast<size_t>(type)];
         // If no event of this type has been created before, reserve the maximum expected space for events of this type
         if(events.GetSize() == 0) 
         {
@@ -82,7 +79,7 @@ namespace BlitzenCore
 
     uint8_t UnregisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback) 
     {
-        EventTypeEntry& events = eventState.eventTypes[static_cast<size_t>(type)];
+        BlitCL::DynamicArray<RegisteredEvent>& events = pEventState->eventTypes[static_cast<size_t>(type)];
         // On nothing is registered for the code, boot out.
         if(events.GetSize() == 0) 
         {
@@ -106,7 +103,7 @@ namespace BlitzenCore
     
     uint8_t FireEvent(BlitEventType type, void* pSender, EventContext context)
     {
-        EventTypeEntry& events = eventState.eventTypes[static_cast<size_t>(type)];
+        BlitCL::DynamicArray<RegisteredEvent>& events = pEventState->eventTypes[static_cast<size_t>(type)];
         // If nothing is registered for the code, boot out.
         if(events.GetSize() == 0) 
         {
@@ -206,8 +203,6 @@ namespace BlitzenCore
     {
         // Only process if actually different
         if (inputState.currentMouse.x != x || inputState.currentMouse.y != y) {
-            
-            BLIT_DBLOG("Mouse moved by-> x: %i, y: %i.\nNew x: %i, New y: %i", inputState.currentMouse.x - x, inputState.currentMouse.y - y, x, y)
             
             inputState.currentMouse.x = x;
             inputState.currentMouse.y = y;

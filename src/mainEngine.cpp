@@ -14,6 +14,8 @@ namespace BlitzenEngine
             BLIT_ERROR("Blitzen is already active")
             return;
         }
+
+        // Initialize the engine if no other instance seems to exist
         else
         {
             // The instance is the first thing that gets initalized
@@ -34,26 +36,68 @@ namespace BlitzenEngine
             else
                 BLIT_FATAL("Event system initialization failed!")
 
+            // Assert if platform specific code is initialized, the engine cannot continue without it
+            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(&m_platformState, BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
+            BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
+
+            // Register some default events, like window closing on escape
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, OnEvent);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyPressed, nullptr, OnKeyPress);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
 
-            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(&m_platformState, BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
-            BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
+            BLIT_ASSERT_MESSAGE(RendererInit(), "Blitzen cannot continue without a renderer")
 
             isRunning = 1;
             isSupended = 0;
         }
     }
 
+    uint8_t Engine::RendererInit()
+    {
+        uint8_t hasRenderer = 0;
+
+        #if BLITZEN_VULKAN
+            m_systems.vulkanRenderer.Init();
+            m_systems.vulkan = 1;
+            hasRenderer = 1;
+        #endif
+
+        return hasRenderer;
+    }
+
     void Engine::Run()
     {
+        // Should be called right before the main loop starts
+        StartClock();
+        double previousTime = m_clock.elapsedTime;
+        // Main Loop starts
         while(isRunning)
         {
-            BlitzenCore::UpdateInput(0);
             // This does nothing for now
             BlitzenPlatform::PlatformPumpMessages(&m_platformState);
+
+            if(!isSupended)
+            {
+                // Update the clock and deltaTime
+                m_clock.elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clock.startTime;
+                double deltaTime = m_clock.elapsedTime - previousTime;
+                previousTime = m_clock.elapsedTime;
+                BlitzenCore::UpdateInput(deltaTime);
+            }
         }
+        // Main loop ends
+        StopClock();
+    }
+
+    void Engine::StartClock()
+    {
+        m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
+        m_clock.elapsedTime = 0;
+    }
+
+    void Engine::StopClock()
+    {
+        m_clock.elapsedTime = 0;
     }
 
     Engine::~Engine()
@@ -116,14 +160,15 @@ int main()
 {
     BlitzenCore::MemoryManagementInit();
 
-    BlitzenEngine::Engine blitzen;
+    // Blitzen needs to be destroyed before memory management can shutdown, otherwise the memory system will complain
+    {
+        BlitzenEngine::Engine blitzen;
 
-    // This will fail the application, so it will mostly be commented out, and will be removed later
-    //BlitzenEngine::Engine shouldNotBeAllowed;
+        // This will fail the application, so it will mostly be commented out, and will be removed later
+        //BlitzenEngine::Engine shouldNotBeAllowed;
 
-    BlitzenCore::MemoryManagementShutdown();
-
-    blitzen.Run();
+        blitzen.Run();
+    }
 
     BlitzenCore::MemoryManagementShutdown();
 }
