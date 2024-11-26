@@ -30,7 +30,7 @@ namespace BlitzenVulkan
         void DrawFrame(void* pRenderData);
 
         // Kills the renderer and cleans up allocated handles and resources
-        ~VulkanRenderer();
+        void Shutdown();
 
     private:
 

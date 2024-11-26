@@ -1,4 +1,5 @@
 #include "vulkanRenderer.h"
+#include "Platform/platform.h"
 
 namespace BlitzenVulkan
 {
@@ -28,22 +29,37 @@ namespace BlitzenVulkan
             instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
             instanceInfo.pNext = nullptr; // Not using this
             instanceInfo.flags = 0; // Not using this 
-            /* 
-            TODO : specify the enabled extensions needed and validation layers
-            instanceInfo.enabledExtensionCount = ? 
-            instanceInfo.enabledLayerCount = ? 
-            */ 
+
+            uint32_t extensionsCount = 0;
+            vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr);
+            BLIT_ASSERT(50 > extensionsCount)
+            VkExtensionProperties availableExtensions[50];
+            vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, availableExtensions);
+
+            // Creating an array of required extension names to pass to ppEnabledExtensionNames
+            const char* requiredExtensionNames [BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT];
+            requiredExtensionNames[0] =  VULKAN_SURFACE_KHR_EXTENSION_NAME;         
+            instanceInfo.enabledExtensionCount = BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT;
+            //If this is a debug build, the validation layer extension is also needed
+            #ifndef NDEBUG
+                requiredExtensionNames[1] = "VK_EXT_debug_utils";
+            #endif
+            instanceInfo.ppEnabledExtensionNames = requiredExtensionNames;
+
+            /*TODO: enable validation layers
+            instanceInfo.enabledLayerCount = ? */
+             
             instanceInfo.pApplicationInfo = &applicationInfo;
 
-            //Finally Creation the instance
-            vkCreateInstance(&instanceInfo, m_pCustomAllocator, &(m_initHandles.instance));
+            VkResult res = vkCreateInstance(&instanceInfo, m_pCustomAllocator, &(m_initHandles.instance));
+            VK_CHECK(vkCreateInstance(&instanceInfo, m_pCustomAllocator, &(m_initHandles.instance)));
         }
         /*--------------------------------------------------
             VkInstance created and stored in m_initHandles
         ----------------------------------------------------*/
     }
 
-    VulkanRenderer::~VulkanRenderer()
+    void VulkanRenderer::Shutdown()
     {
         vkDestroyInstance(m_initHandles.instance, m_pCustomAllocator);
     }

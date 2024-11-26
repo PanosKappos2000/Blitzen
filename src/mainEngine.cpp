@@ -20,6 +20,7 @@ namespace BlitzenEngine
         {
             // The instance is the first thing that gets initalized
             pEngineInstance = this;
+            m_systems.engine = 1;
             BLIT_INFO("%s Booting", BLITZEN_VERSION)
 
             if(BlitzenCore::InitLogging())
@@ -65,6 +66,8 @@ namespace BlitzenEngine
         return hasRenderer;
     }
 
+
+
     void Engine::Run()
     {
         // Should be called right before the main loop starts
@@ -100,23 +103,49 @@ namespace BlitzenEngine
         m_clock.elapsedTime = 0;
     }
 
+
+
     Engine::~Engine()
     {
-        BLIT_WARN("Blitzen is shutting down")
+        if (m_systems.engine)
+        {
+            BLIT_WARN("Blitzen is shutting down")
 
-        m_systems.logSystem = 0;
-        BlitzenCore::ShutdownLogging();
+            m_systems.logSystem = 0;
+            BlitzenCore::ShutdownLogging();
 
-        m_systems.eventSystem = 0;
-        BlitzenCore::EventsShutdown();
+            m_systems.eventSystem = 0;
+            BlitzenCore::EventsShutdown();
 
-        m_systems.inputSystem = 0;
-        BlitzenCore::InputShutdown();
+            m_systems.inputSystem = 0;
+            BlitzenCore::InputShutdown();
 
-        BlitzenPlatform::PlatformShutdown(&m_platformState);
+            pRenderer = nullptr;
+            RendererShutdown();
 
-        pEngineInstance = nullptr;
+            BlitzenPlatform::PlatformShutdown(&m_platformState);
+
+            m_systems.engine = 0;
+            pEngineInstance = nullptr;
+        }
+
+        // The destructor should not be calle more than once as it will crush the application
+        else
+        {
+            BLIT_ERROR("Any uninitialized instances of Blitzen will not be explicitly cleaned up")
+        }
     }
+
+    void Engine::RendererShutdown()
+    {
+        #if BLITZEN_VULKAN
+            m_systems.vulkan = 0;
+            m_systems.vulkanRenderer.Shutdown();
+        #endif
+    }
+
+
+
 
     uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
     {
@@ -156,6 +185,12 @@ namespace BlitzenEngine
     }
 }
 
+
+
+
+
+
+
 int main()
 {
     BlitzenCore::MemoryManagementInit();
@@ -164,8 +199,8 @@ int main()
     {
         BlitzenEngine::Engine blitzen;
 
-        // This will fail the application, so it will mostly be commented out, and will be removed later
-        //BlitzenEngine::Engine shouldNotBeAllowed;
+        // This should not work and will cause an error message
+        BlitzenEngine::Engine shouldNotBeAllowed;
 
         blitzen.Run();
     }

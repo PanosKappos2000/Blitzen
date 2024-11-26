@@ -31,6 +31,8 @@ namespace BlitzenEngine
 
     struct EngineSystems
     {
+        uint8_t engine = 0;
+
         uint8_t eventSystem = 0;
         // The event state is owned by the engine so that the dynamic array inside it, get freed before memory management is shutdown
         BlitzenCore::EventSystemState eventState;
@@ -72,6 +74,7 @@ namespace BlitzenEngine
             and which one will draw the frame.
         -------------------------------------------------------*/
         uint8_t RendererInit();
+        void RendererShutdown();
 
     private:
 

@@ -2,6 +2,14 @@
 
 #include "Core/blitLogger.h"
 
+
+#if _MSC_VER
+    #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_win32_surface"
+#elif linux
+    #define VULKAN_SURFACE_KHR_EXTENSION_NAME       //I don't know yet, I will look it up later
+#endif
+
+
 namespace BlitzenPlatform
 {
     struct PlatformState
