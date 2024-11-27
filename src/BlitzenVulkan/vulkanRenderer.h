@@ -12,6 +12,12 @@ namespace BlitzenVulkan
         VkSurfaceKHR surface;
 
         VkPhysicalDevice chosenGpu;
+
+        VkSwapchainKHR swapchain;
+        VkExtent2D swapchainExtent;
+        VkFormat swapchainFormat;
+        BlitCL::DynamicArray<VkImage> swapchainImages;
+        BlitCL::DynamicArray<VkImageView> swapchainImageViews;
     };
 
     struct Queue
@@ -30,7 +36,7 @@ namespace BlitzenVulkan
     class VulkanRenderer
     {
     public:
-        void Init(void* pPlatformState);
+        void Init(void* pPlatformState, uint32_t windowWidth, uint32_t windowHeight);
 
         /*-----------------------------------------------------------------------------------------------
             Renders the world each frame. 

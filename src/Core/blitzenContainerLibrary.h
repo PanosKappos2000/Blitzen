@@ -6,6 +6,15 @@
 
 namespace BlitCL
 {
+
+    inline uint32_t Clamp(uint32_t initial, uint32_t upper, uint32_t lower) { 
+        return (initial >= upper) ? upper /* return upper if the value is above it */ 
+        : (initial <= lower) ? lower /* Else return lower if the value is below it*/ 
+        : initial; /* Else just return the initial value */
+    }
+
+
+
     template<typename T>
     class DynamicArray
     {

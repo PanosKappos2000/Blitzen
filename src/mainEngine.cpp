@@ -58,7 +58,7 @@ namespace BlitzenEngine
         uint8_t hasRenderer = 0;
 
         #if BLITZEN_VULKAN
-            m_systems.vulkanRenderer.Init(&m_platformState);
+            m_systems.vulkanRenderer.Init(&m_platformState, m_platformData.windowWidth, m_platformData.windowHeight);
             m_systems.vulkan = 1;
             hasRenderer = 1;
         #endif
