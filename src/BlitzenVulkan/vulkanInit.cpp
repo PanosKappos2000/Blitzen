@@ -384,167 +384,7 @@ namespace BlitzenVulkan
         /*
              Swapchain creation
         */
-        {
-
-            // This will be needed to find some details about swapchain support
-            VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
-            surfaceInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
-            surfaceInfo.surface = m_initHandles.surface;
-
-            VkSwapchainCreateInfoKHR swapchainInfo{};
-            swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            swapchainInfo.pNext = nullptr;
-            swapchainInfo.flags = 0;
-            swapchainInfo.imageArrayLayers = 1;
-            swapchainInfo.clipped = VK_TRUE;// Don't present things renderer out of bounds
-            swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-            swapchainInfo.surface = m_initHandles.surface;
-            swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
-
-            /* Image format and color space */
-            {
-                // Retrieve surface format to check for desired swapchain format and color space
-                uint32_t surfaceFormatsCount = 0; 
-                VK_CHECK(vkGetPhysicalDeviceSurfaceFormats2KHR(m_initHandles.chosenGpu, &surfaceInfo, &surfaceFormatsCount, nullptr))
-                BlitCL::DynamicArray<VkSurfaceFormat2KHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
-                VK_CHECK(vkGetPhysicalDeviceSurfaceFormats2KHR(m_initHandles.chosenGpu, &surfaceInfo, &surfaceFormatsCount, surfaceFormats.Data()))
-                // Look for the desired image format
-                uint8_t found = 0;
-                for(size_t i = 0; i < surfaceFormats.GetSize(); ++i)
-                {
-                    // If the desire image format is found assign it to the swapchain info and break out of the loop
-                    if(surfaceFormats[i].surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM && 
-                    surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-                    {
-                        swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-                        swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                        // Save the format to init handles
-                        m_initHandles.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
-                        found = 1;
-                        break;
-                    }
-                }
-
-                // If the desired format is not found (unlikely), assign the first one that is supported and hope for the best ( I'm just a chill guy )
-                if(!found)
-                {
-                    swapchainInfo.imageFormat = surfaceFormats[0].surfaceFormat.format;
-                    // Save the image format
-                    m_initHandles.swapchainFormat = swapchainInfo.imageFormat;
-                    swapchainInfo.imageColorSpace = surfaceFormats[0].surfaceFormat.colorSpace;
-                }
-            }
-
-            /* Present mode */
-            {
-                // Retrieve the presentation modes supported, to look for the desired one
-                uint32_t presentModeCount = 0;
-                VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(m_initHandles.chosenGpu, m_initHandles.surface, &presentModeCount, nullptr));
-                BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
-                VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(m_initHandles.chosenGpu, m_initHandles.surface, &presentModeCount, presentModes.Data()))
-                // Look for the desired presentation mode
-                uint8_t found = 0;
-                for(size_t i = 0; i < presentModes.GetSize(); ++i)
-                {
-                    // If the desired presentation mode is found, set the swapchain info to that
-                    if(presentModes[i] == DESIRED_SWAPCHAIN_PRESENTATION_MODE)
-                    {
-                        swapchainInfo.presentMode = DESIRED_SWAPCHAIN_PRESENTATION_MODE;
-                        found = 1;
-                        break;
-                    }
-                }
-                
-                // If it was not found, set it to this random smuck ( Don't worry, I'm a proffesional )
-                if(!found)
-                {
-                    swapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
-                }
-            }
-
-            //Set the swapchain extent to the window's width and height
-            m_initHandles.swapchainExtent = {windowWidth, windowHeight};
-            // Retrieve surface capabilities to properly configure some swapchain values
-            VkSurfaceCapabilities2KHR surfaceCapabilities{};
-            surfaceCapabilities.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
-            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilities2KHR(m_initHandles.chosenGpu, &surfaceInfo, &surfaceCapabilities));
-
-            /* Swapchain extent */
-            {
-                // Get the swapchain extent from the surface capabilities, if it is not some weird value
-                if(surfaceCapabilities.surfaceCapabilities.currentExtent.width != UINT32_MAX)
-                {
-                    m_initHandles.swapchainExtent = surfaceCapabilities.surfaceCapabilities.currentExtent;
-                }
-
-                // Get the min extent and max extent allowed by the GPU,  to clamp the initial value
-                VkExtent2D minExtent = surfaceCapabilities.surfaceCapabilities.minImageExtent;
-                VkExtent2D maxExtent = surfaceCapabilities.surfaceCapabilities.maxImageExtent;
-                m_initHandles.swapchainExtent.width = BlitCL::Clamp(m_initHandles.swapchainExtent.width, maxExtent.width, minExtent.width);
-                m_initHandles.swapchainExtent.height = BlitCL::Clamp(m_initHandles.swapchainExtent.height, maxExtent.width, minExtent.height);
-
-                // Swapchain extent fully checked and ready to pass to the swapchain info
-                swapchainInfo.imageExtent = m_initHandles.swapchainExtent;
-            }
-
-            /* Min image count */
-            {
-                uint32_t imageCount = surfaceCapabilities.surfaceCapabilities.minImageCount + 1;
-                // Check that image count did not supass max image count
-                if(surfaceCapabilities.surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.surfaceCapabilities.maxImageCount < imageCount )
-                {
-                    imageCount = surfaceCapabilities.surfaceCapabilities.maxImageCount;
-                }
-
-                // Swapchain image count fully check and ready to be pass to the swapchain info
-                swapchainInfo.minImageCount = imageCount;
-            }
-
-            swapchainInfo.preTransform = surfaceCapabilities.surfaceCapabilities.currentTransform;
-
-            if (m_graphicsQueue.index != m_presentQueue.index)
-            {
-                uint32_t queueFamilyIndices[] = {m_graphicsQueue.index, m_presentQueue.index};
-                swapchainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-                swapchainInfo.queueFamilyIndexCount = 2;
-                swapchainInfo.pQueueFamilyIndices = queueFamilyIndices;
-            } 
-            else 
-            {
-                swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-                swapchainInfo.queueFamilyIndexCount = 0;// Unnecessary if the indices are the same
-            }
-
-            // Create the swapchain
-            VK_CHECK(vkCreateSwapchainKHR(m_device, &swapchainInfo, m_pCustomAllocator, &m_initHandles.swapchain));
-
-            // Retrieve the swapchain images
-            uint32_t swapchainImageCount = 0;
-            vkGetSwapchainImagesKHR(m_device, m_initHandles.swapchain, &swapchainImageCount, nullptr);
-            m_initHandles.swapchainImages.Resize(swapchainImageCount);
-            vkGetSwapchainImagesKHR(m_device, m_initHandles.swapchain, &swapchainImageCount, m_initHandles.swapchainImages.Data());
-
-            // Create image view for each swapchain image
-            m_initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
-            for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
-            {
-                VkImageViewCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                info.pNext = nullptr;
-                info.flags = 0;
-                info.image = m_initHandles.swapchainImages[i];
-                info.format = m_initHandles.swapchainFormat;
-                info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-                info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Not sure if this is needed, as a seperate color attachment will be used 
-                info.subresourceRange.baseMipLevel = 1;
-                info.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-                info.subresourceRange.baseArrayLayer = 1;
-                info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-
-                VK_CHECK(vkCreateImageView(m_device, &info, m_pCustomAllocator, &(m_initHandles.swapchainImageViews[i])))
-            }
-        }
+       CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator);
 
 
         /* Create the vma allocator for vulkan resource allocation */
@@ -580,6 +420,169 @@ namespace BlitzenVulkan
 
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {windowWidth, windowHeight};
+    }
+
+    void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
+    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator)
+    {
+         // This will be needed to find some details about swapchain support
+            VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
+            surfaceInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
+            surfaceInfo.surface = initHandles.surface;
+
+            VkSwapchainCreateInfoKHR swapchainInfo{};
+            swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            swapchainInfo.pNext = nullptr;
+            swapchainInfo.flags = 0;
+            swapchainInfo.imageArrayLayers = 1;
+            swapchainInfo.clipped = VK_TRUE;// Don't present things renderer out of bounds
+            swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            swapchainInfo.surface = initHandles.surface;
+            swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
+
+            /* Image format and color space */
+            {
+                // Retrieve surface format to check for desired swapchain format and color space
+                uint32_t surfaceFormatsCount = 0; 
+                VK_CHECK(vkGetPhysicalDeviceSurfaceFormats2KHR(initHandles.chosenGpu, &surfaceInfo, &surfaceFormatsCount, nullptr))
+                BlitCL::DynamicArray<VkSurfaceFormat2KHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
+                VK_CHECK(vkGetPhysicalDeviceSurfaceFormats2KHR(initHandles.chosenGpu, &surfaceInfo, &surfaceFormatsCount, surfaceFormats.Data()))
+                // Look for the desired image format
+                uint8_t found = 0;
+                for(size_t i = 0; i < surfaceFormats.GetSize(); ++i)
+                {
+                    // If the desire image format is found assign it to the swapchain info and break out of the loop
+                    if(surfaceFormats[i].surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM && 
+                    surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                    {
+                        swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                        swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                        // Save the format to init handles
+                        initHandles.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                        found = 1;
+                        break;
+                    }
+                }
+
+                // If the desired format is not found (unlikely), assign the first one that is supported and hope for the best ( I'm just a chill guy )
+                if(!found)
+                {
+                    swapchainInfo.imageFormat = surfaceFormats[0].surfaceFormat.format;
+                    // Save the image format
+                    initHandles.swapchainFormat = swapchainInfo.imageFormat;
+                    swapchainInfo.imageColorSpace = surfaceFormats[0].surfaceFormat.colorSpace;
+                }
+            }
+
+            /* Present mode */
+            {
+                // Retrieve the presentation modes supported, to look for the desired one
+                uint32_t presentModeCount = 0;
+                VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, &presentModeCount, nullptr));
+                BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
+                VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, &presentModeCount, presentModes.Data()))
+                // Look for the desired presentation mode
+                uint8_t found = 0;
+                for(size_t i = 0; i < presentModes.GetSize(); ++i)
+                {
+                    // If the desired presentation mode is found, set the swapchain info to that
+                    if(presentModes[i] == DESIRED_SWAPCHAIN_PRESENTATION_MODE)
+                    {
+                        swapchainInfo.presentMode = DESIRED_SWAPCHAIN_PRESENTATION_MODE;
+                        found = 1;
+                        break;
+                    }
+                }
+                
+                // If it was not found, set it to this random smuck ( Don't worry, I'm a proffesional )
+                if(!found)
+                {
+                    swapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+                }
+            }
+
+            //Set the swapchain extent to the window's width and height
+            initHandles.swapchainExtent = {windowWidth, windowHeight};
+            // Retrieve surface capabilities to properly configure some swapchain values
+            VkSurfaceCapabilities2KHR surfaceCapabilities{};
+            surfaceCapabilities.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilities2KHR(initHandles.chosenGpu, &surfaceInfo, &surfaceCapabilities));
+
+            /* Swapchain extent */
+            {
+                // Get the swapchain extent from the surface capabilities, if it is not some weird value
+                if(surfaceCapabilities.surfaceCapabilities.currentExtent.width != UINT32_MAX)
+                {
+                    initHandles.swapchainExtent = surfaceCapabilities.surfaceCapabilities.currentExtent;
+                }
+
+                // Get the min extent and max extent allowed by the GPU,  to clamp the initial value
+                VkExtent2D minExtent = surfaceCapabilities.surfaceCapabilities.minImageExtent;
+                VkExtent2D maxExtent = surfaceCapabilities.surfaceCapabilities.maxImageExtent;
+                initHandles.swapchainExtent.width = BlitCL::Clamp(initHandles.swapchainExtent.width, maxExtent.width, minExtent.width);
+                initHandles.swapchainExtent.height = BlitCL::Clamp(initHandles.swapchainExtent.height, maxExtent.width, minExtent.height);
+
+                // Swapchain extent fully checked and ready to pass to the swapchain info
+                swapchainInfo.imageExtent = initHandles.swapchainExtent;
+            }
+
+            /* Min image count */
+            {
+                uint32_t imageCount = surfaceCapabilities.surfaceCapabilities.minImageCount + 1;
+                // Check that image count did not supass max image count
+                if(surfaceCapabilities.surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.surfaceCapabilities.maxImageCount < imageCount )
+                {
+                    imageCount = surfaceCapabilities.surfaceCapabilities.maxImageCount;
+                }
+
+                // Swapchain image count fully check and ready to be pass to the swapchain info
+                swapchainInfo.minImageCount = imageCount;
+            }
+
+            swapchainInfo.preTransform = surfaceCapabilities.surfaceCapabilities.currentTransform;
+
+            if (graphicsQueue.index != presentQueue.index)
+            {
+                uint32_t queueFamilyIndices[] = {graphicsQueue.index, presentQueue.index};
+                swapchainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                swapchainInfo.queueFamilyIndexCount = 2;
+                swapchainInfo.pQueueFamilyIndices = queueFamilyIndices;
+            } 
+            else 
+            {
+                swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                swapchainInfo.queueFamilyIndexCount = 0;// Unnecessary if the indices are the same
+            }
+
+            // Create the swapchain
+            VK_CHECK(vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &initHandles.swapchain));
+
+            // Retrieve the swapchain images
+            uint32_t swapchainImageCount = 0;
+            vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, nullptr);
+            initHandles.swapchainImages.Resize(swapchainImageCount);
+            vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, initHandles.swapchainImages.Data());
+
+            // Create image view for each swapchain image
+            initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
+            for(size_t i = 0; i < initHandles.swapchainImageViews.GetSize(); ++i)
+            {
+                VkImageViewCreateInfo info{};
+                info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                info.pNext = nullptr;
+                info.flags = 0;
+                info.image = initHandles.swapchainImages[i];
+                info.format = initHandles.swapchainFormat;
+                info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Not sure if this is needed, as a seperate color attachment will be used 
+                info.subresourceRange.baseMipLevel = 1;
+                info.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+                info.subresourceRange.baseArrayLayer = 1;
+                info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+                VK_CHECK(vkCreateImageView(device, &info, pCustomAllocator, &(initHandles.swapchainImageViews[i])))
+            }
     }
 
 

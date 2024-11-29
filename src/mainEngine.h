@@ -4,6 +4,8 @@
 #include "Platform/platform.h"
 #include "Core/blitzenContainerLibrary.h"
 #include "Core/blitEvents.h"
+
+// At some point in the future, I would like to remove this from here and only include in the .cpp file
 #include "BlitzenVulkan/vulkanRenderer.h"
 
 #define BLITZEN_VERSION                 "Blitzen Engine 1.0.C"
@@ -21,6 +23,7 @@ namespace BlitzenEngine
     {
         uint32_t windowWidth = BLITZEN_WINDOW_WIDTH;
         uint32_t windowHeight = BLITZEN_WINDOW_HEIGHT;
+        uint8_t windowResize = 0;
     };
 
     struct Clock
@@ -69,6 +72,12 @@ namespace BlitzenEngine
 
         inline EngineSystems& GetEngineSystems() { return m_systems; }
 
+        inline void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight) {
+            m_platformData.windowWidth = newWidth; 
+            m_platformData.windowHeight = newHeight;
+            m_platformData.windowResize = 1;
+        }
+
     private:
 
         void StartClock();
@@ -107,5 +116,6 @@ namespace BlitzenEngine
     // Will be registered to the event system on initalization
     uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
+    uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
 
 }

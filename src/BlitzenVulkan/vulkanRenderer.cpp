@@ -51,8 +51,13 @@ namespace BlitzenVulkan
     /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         Every operation needed for drawing a single frame is put here
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
-    void VulkanRenderer::DrawFrame(void* pRenderData)
+    void VulkanRenderer::DrawFrame(RenderContext& context)
     {
+        if(context.windowResize)
+        {
+            RecreateSwapchain(context.windowWidth, context.windowHeight);
+        }
+
         // Gets a ref to the frame tools of the current frame, so that it doesn't index into the array every time
         FrameTools& fTools = m_frameToolsList[m_currentFrame];
 
@@ -214,5 +219,27 @@ namespace BlitzenVulkan
         submitInfo.signalSemaphoreInfoCount = 1;
         submitInfo.pSignalSemaphoreInfos = &signalSemaphoreInfo;
         vkQueueSubmit2(queue, 1, &submitInfo, fence);
+    }
+
+    void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)
+    {
+        //Wait for the current frame to be done with the swapchain
+        vkDeviceWaitIdle(m_device);
+
+        //Destroy the current swapchain
+        for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
+        {
+            vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], nullptr);
+        }
+        vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, nullptr);
+
+        CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, 
+        m_presentQueue, m_computeQueue, m_pCustomAllocator);
+
+        //The draw extent should also be updated depending on if the swapchain got bigger or smaller
+        m_drawExtent.width = std::min(static_cast<uint32_t>(windowWidth), 
+        static_cast<uint32_t>(m_colorAttachment.extent.width));
+        m_drawExtent.height = std::min(static_cast<uint32_t>(windowHeight), 
+        static_cast<uint32_t>(m_colorAttachment.extent.height));
     }
 }

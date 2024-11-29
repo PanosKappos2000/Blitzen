@@ -45,6 +45,7 @@ namespace BlitzenEngine
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, OnEvent);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyPressed, nullptr, OnKeyPress);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
+            BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, OnResize);
 
             BLIT_ASSERT_MESSAGE(RendererInit(), "Blitzen cannot continue without a renderer")
 
@@ -92,6 +93,9 @@ namespace BlitzenEngine
 
                 DrawFrame();
 
+                // Make sure that the window resize is set to false after the renderer is notified
+                m_platformData.windowResize = 0;
+
                 BlitzenCore::UpdateInput(deltaTime);
             }
         }
@@ -124,7 +128,13 @@ namespace BlitzenEngine
             case ActiveRenderer::Vulkan:
             {
                 if(m_systems.vulkan)
-                    m_systems.vulkanRenderer.DrawFrame(nullptr);
+                {
+                    BlitzenVulkan::RenderContext renderContext;
+                    renderContext.windowResize = m_platformData.windowResize;
+                    renderContext.windowWidth = m_platformData.windowWidth;
+                    renderContext.windowHeight = m_platformData.windowHeight;
+                    m_systems.vulkanRenderer.DrawFrame(renderContext);
+                }
                 break;
             }
             default:
@@ -213,6 +223,15 @@ namespace BlitzenEngine
             }
         }
         return 0;
+    }
+
+    uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
+    {
+        uint32_t newWidth = data.data.ui32[0];
+        uint32_t newHeight = data.data.ui32[1];
+
+        Engine::GetEngineInstancePointer()->UpdateWindowSize(newWidth, newHeight);
+        return 1;
     }
 }
 

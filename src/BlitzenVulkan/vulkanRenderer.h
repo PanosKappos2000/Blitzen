@@ -53,7 +53,7 @@ namespace BlitzenVulkan
             If blitzen ever supports other graphics APIs, 
             they will have the same drawFrame function and will define their own render data structs
         -------------------------------------------------------------------------------------------------*/
-        void DrawFrame(void* pRenderData);
+        void DrawFrame(RenderContext& pRenderData);
 
         // Kills the renderer and cleans up allocated handles and resources
         void Shutdown();
@@ -61,6 +61,8 @@ namespace BlitzenVulkan
     private:
 
         void FrameToolsInit();
+
+        void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
     private:
 
@@ -91,6 +93,16 @@ namespace BlitzenVulkan
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
     };
+
+
+
+
+    /* --------------------------------------------
+        Initialization stage 1 helper functions
+    -----------------------------------------------*/
+
+    void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
+    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator);
 
 
 

@@ -33,6 +33,14 @@ namespace BlitzenVulkan
         uint8_t drawIndirect = 0;
     };
 
+    // Passed to the renderer every time draw frame is called, to handle special events and update shader data
+    struct RenderContext
+    {
+        uint8_t windowResize = 0;
+        uint32_t windowWidth;
+        uint32_t windowHeight;
+    };
+
     struct AllocatedImage
     {
         VkImage image;

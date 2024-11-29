@@ -234,11 +234,14 @@ namespace BlitzenPlatform
                 case WM_SIZE:
                 {
                     // Get the updated size.
-                    // RECT r;
-                    // GetClientRect(hwnd, &r);
-                    // u32 width = r.right - r.left;
-                    // u32 height = r.bottom - r.top;
-                    // TODO: Fire an event for window resize.
+                    RECT rect;
+                    GetClientRect(winWindow, &rect);
+                    uint32_t width = rect.right - rect.left;
+                    uint32_t height = rect.bottom - rect.top;
+                    BlitzenCore::EventContext context;
+                    context.data.ui32[0] = width;
+                    context.data.ui32[1] = height;
+                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
                     break;
                 }
                 case WM_KEYDOWN:
