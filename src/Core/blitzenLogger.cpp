@@ -25,7 +25,7 @@ namespace BlitzenCore
     void Log(LogLevel level, const char* message, ...)
     {
         const char* logLevels[6] = {"{FATAL}: ", "{ERROR}: ", "{Info}: ", "{Warning}: ", "{Debug}: ", "{Trace}: "};
-        uint8_t isError = level < LogLevel::WARN;
+        uint8_t isError = level < LogLevel::INFO;
 
         //Temporary to avoid dynamic arrays for now
         char outMessage[3200];
@@ -36,6 +36,7 @@ namespace BlitzenCore
         #else
             __builtin_va_list argPtr;
         #endif
+        
         va_start(argPtr, message);
         vsnprintf(outMessage, 3200, message, argPtr);
         va_end(argPtr);

@@ -15,7 +15,6 @@ namespace BlitzenCore
 
     void* BlitAlloc(AllocationType alloc, size_t size)
     {
-        // This might need to be an assertion so that the application fails, when memory is mihandled
         if(alloc == AllocationType::Unkown || alloc == AllocationType::MaxTypes)
         {
             BLIT_FATAL("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))
@@ -29,7 +28,6 @@ namespace BlitzenCore
 
     void BlitFree(AllocationType alloc, void* pBlock, size_t size)
     {
-        // This might need to be an assertion so that the application fails, when memory is mihandled
         if(alloc == AllocationType::Unkown || alloc == AllocationType::MaxTypes)
         {
             BLIT_FATAL("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))

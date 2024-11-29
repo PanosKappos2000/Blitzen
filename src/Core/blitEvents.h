@@ -1,7 +1,6 @@
 #pragma once
 
 #include "blitzenContainerLibrary.h"
-#include <functional>
 
 namespace BlitzenCore
 {
@@ -48,6 +47,7 @@ namespace BlitzenCore
     
     #define MAX_MESSAGE_CODES 16384
 
+    // Holds an array of dynamic arrays. Each dynamic array holds all the events registered for a single event type
     struct EventSystemState 
     {
         BlitCL::DynamicArray<RegisteredEvent> eventTypes[MAX_MESSAGE_CODES];

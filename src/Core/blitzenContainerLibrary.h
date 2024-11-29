@@ -23,18 +23,21 @@ namespace BlitCL
         DynamicArray(size_t initialSize = 0)
             :m_size{initialSize}, m_capacity(initialSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
         {
-            if (m_size)
+            if (m_size > 0)
             {
                 m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
                 BlitzenCore::BlitZeroMemory(m_pBlock, m_capacity * sizeof(T));
+                return;
             }
+
+            m_capacity = 0;
         }
 
         inline size_t GetSize() { return m_size; }
 
-        inline T& operator [] (size_t index) { return m_pBlock[index]; }
-        inline T& Front() { return m_pBlock[0]; }
-        inline T& Back() { return m_pBlock[m_size - 1]; }
+        inline T& operator [] (size_t index) { BLIT_ASSERT_DEBUG(index >= 0 && index < m_size) return m_pBlock[index]; }
+        inline T& Front() { BLIT_ASSERT_DEBUG(m_size) m_pBlock[0]; }
+        inline T& Back() { BLIT_ASSERT_DEBUG(m_size) return m_pBlock[m_size - 1]; }
         inline T* Data() {return m_pBlock; }
 
         void Resize(size_t newSize)
@@ -57,6 +60,7 @@ namespace BlitCL
 
         void Reserve(size_t size)
         {
+            BLIT_ASSERT_DEBUG(size)
             RearrangeCapacity(size / BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER);
         }
 

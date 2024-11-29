@@ -30,13 +30,23 @@ namespace BlitzenVulkan
     // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
     struct FrameTools
     {
+        VkCommandPool mainCommandPool;
+        VkCommandBuffer commandBuffer;
 
+        VkFence inFlightFence;
+        VkSemaphore imageAcquiredSemaphore;
+        VkSemaphore readyToPresentSemaphore;
     };
 
     class VulkanRenderer
     {
     public:
         void Init(void* pPlatformState, uint32_t windowWidth, uint32_t windowHeight);
+
+        /* ---------------------------------------------------------------------------------------------------------
+            2nd part of Vulkan initialization. Gives scene data in arrays and vulkan uploads the data to the GPU
+        ------------------------------------------------------------------------------------------------------------ */
+        void UploadDataToGPUAndSetupForRendering();
 
         /*-----------------------------------------------------------------------------------------------
             Renders the world each frame. 
@@ -50,7 +60,13 @@ namespace BlitzenVulkan
 
     private:
 
+        void FrameToolsInit();
+
+    private:
+
         VkDevice m_device;
+
+        VmaAllocator m_allocator;
 
         VkAllocationCallbacks* m_pCustomAllocator = nullptr;
 
@@ -60,10 +76,14 @@ namespace BlitzenVulkan
         Queue m_presentQueue;
         Queue m_computeQueue;
 
-        /*AllocatedImage m_colorAttachment;
-        AllocatedImage m_depthAttachment;
-        VkExtent2D m_drawExtent;*/
+        VkCommandPool m_placeholderCommandPool;
+        VkCommandBuffer m_placeholderCommands;
 
+        AllocatedImage m_colorAttachment;
+        AllocatedImage m_depthAttachment;
+        VkExtent2D m_drawExtent;
+
+        // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
 
         size_t m_currentFrame = 0;
@@ -71,4 +91,14 @@ namespace BlitzenVulkan
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
     };
+
+
+    /* ----------------------
+        Vulkan Resources 
+    ------------------------- */
+
+    void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
+    VmaAllocationCreateFlags allocationFlags);
+
+    void CreateImage(AllocatedImage& imageToALlocate);
 }

@@ -221,8 +221,9 @@ namespace BlitzenPlatform
 
                 case WM_CLOSE:
                 {
-                    // TODO: Fire an event for window closing like glfw
-                    return 0;
+                    BlitzenCore::EventContext context{};
+                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
+                    return 1;
                 }
 
                 case WM_DESTROY:

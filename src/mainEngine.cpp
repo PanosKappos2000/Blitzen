@@ -70,6 +70,9 @@ namespace BlitzenEngine
 
     void Engine::Run()
     {
+        // Before starting the clock, the engine will put its renderer on the ready state
+        SetupForRenderering();
+
         // Should be called right before the main loop starts
         StartClock();
         double previousTime = m_clock.elapsedTime;
@@ -90,6 +93,13 @@ namespace BlitzenEngine
         }
         // Main loop ends
         StopClock();
+    }
+
+    void Engine::SetupForRenderering()
+    {
+        #if BLITZEN_VULKAN
+            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering();
+        #endif
     }
 
     void Engine::StartClock()

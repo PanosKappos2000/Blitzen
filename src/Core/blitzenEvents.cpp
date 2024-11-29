@@ -120,7 +120,6 @@ namespace BlitzenCore
             }
         }
 
-        // Not found
         return 0;
     }
 
@@ -173,13 +172,13 @@ namespace BlitzenCore
 
     void InputProcessKey(BlitKey key, uint8_t bPressed) 
     {
-        // Check If the key has not already been flagged as pressed
+        // Check If the key has not already been flagged as the value of bPressed
         if (inputState.currentKeyboard.keys[static_cast<size_t>(key)] != bPressed) 
         {
-            // Change the state to pressed
+            // Change the state to bPressed
             inputState.currentKeyboard.keys[static_cast<size_t>(key)] = bPressed;
 
-            // Fire off an event for immediate processing
+            // Fire off an event for immediate processing after saving the data of the input to the event context
             EventContext context;
             context.data.ui16[0] = static_cast<uint16_t>(key);
             FireEvent(bPressed ? BlitEventType::KeyPressed : BlitEventType::KeyReleased, nullptr, context);
@@ -214,6 +213,7 @@ namespace BlitzenCore
             FireEvent(BlitEventType::MouseMoved, nullptr, context);
         }
     }
+    
     void InputProcessMouseWheel(int8_t zDelta) 
     {
         //No internal state to update, simply fires an event

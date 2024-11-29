@@ -1,3 +1,6 @@
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+
 #include "vulkanRenderer.h"
 #include "Platform/platform.h"
 
@@ -121,6 +124,7 @@ namespace BlitzenVulkan
                 instanceInfo.pNext = &debugMessengerInfo;
 
             #endif
+
             instanceInfo.ppEnabledExtensionNames = requiredExtensionNames;
             instanceInfo.enabledLayerCount = 0;
              
@@ -192,6 +196,7 @@ namespace BlitzenVulkan
                     --i;
                     continue;
                 }
+                // Store the queue family properties to query for their indices
                 BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(static_cast<size_t>(queueFamilyPropertyCount));
                 for(size_t i = 0; i < queueFamilyProperties.GetSize(); ++i)
                 {
@@ -237,7 +242,7 @@ namespace BlitzenVulkan
             {
                 VkPhysicalDevice& pdv = physicalDevices[i];
 
-                //Retrieve queue families from device
+                // Retrieve properties from device
                 VkPhysicalDeviceProperties2 props{};
                 props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
                 vkGetPhysicalDeviceProperties2(pdv, &props);
@@ -540,16 +545,66 @@ namespace BlitzenVulkan
                 VK_CHECK(vkCreateImageView(m_device, &info, m_pCustomAllocator, &(m_initHandles.swapchainImageViews[i])))
             }
         }
+
+
+        /* Create the vma allocator for vulkan resource allocation */
+        {
+            VmaAllocatorCreateInfo allocatorInfo{};
+            allocatorInfo.device = m_device;
+            allocatorInfo.instance = m_initHandles.instance;
+            allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
+            allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+            VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
+        }
+
+
+
+        /* Allocating temporary command buffer, since some commands will be needed outside of the draw loop*/
+        {
+            VkCommandPoolCreateInfo commandPoolCreateInfo{};
+            commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            // This will allow each command buffer created by this pool to be inidividually reset
+            commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            commandPoolCreateInfo.pNext = nullptr;
+            commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueue.index;
+            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_placeholderCommandPool));
+
+            VkCommandBufferAllocateInfo commandBufferInfo{};
+            commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            commandBufferInfo.pNext = nullptr;
+            commandBufferInfo.commandPool = m_placeholderCommandPool;
+            commandBufferInfo.commandBufferCount = 1;
+            commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferInfo, &m_placeholderCommands))
+        }
+
+        // This will be referred to by rendering attachments and will be updated when the window is resized
+        m_drawExtent = {windowWidth, windowHeight};
     }
 
 
     void VulkanRenderer::Shutdown()
     {
+        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            FrameTools& frameTools = m_frameToolsList[i];
+            vkDestroyCommandPool(m_device, frameTools.mainCommandPool, m_pCustomAllocator);
+
+            vkDestroyFence(m_device, frameTools.inFlightFence, m_pCustomAllocator);
+            vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
+            vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
+        }
+
+        vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);
+
         for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
         {
             vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], m_pCustomAllocator);
         }
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
+
+        vmaDestroyAllocator(m_allocator);
+
         vkDestroyDevice(m_device, m_pCustomAllocator);
         vkDestroySurfaceKHR(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator);
         DestroyDebugUtilsMessengerEXT(m_initHandles.instance, m_initHandles.debugMessenger, m_pCustomAllocator);

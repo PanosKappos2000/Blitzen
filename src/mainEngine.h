@@ -74,6 +74,7 @@ namespace BlitzenEngine
             and which one will draw the frame.
         -------------------------------------------------------*/
         uint8_t RendererInit();
+        void SetupForRenderering();
         void RendererShutdown();
 
     private:
