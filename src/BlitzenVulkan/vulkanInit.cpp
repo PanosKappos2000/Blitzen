@@ -208,22 +208,22 @@ namespace BlitzenVulkan
                     // Checks for a graphics queue index, if one has not already been found 
                     if(queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && !m_graphicsQueue.hasIndex)
                     {
-                        m_graphicsQueue.index = i;
+                        m_graphicsQueue.index = static_cast<uint32_t>(i);
                         m_graphicsQueue.hasIndex = 1;
                     }
 
                     // Checks for a compute queue index, if one has not already been found 
                     if(queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT && !m_computeQueue.hasIndex)
                     {
-                        m_computeQueue.index = i;
+                        m_computeQueue.index = static_cast<uint32_t>(i);
                         m_computeQueue.hasIndex = 1;
                     }
 
                     VkBool32 supportsPresent = VK_FALSE;
-                    VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, i, m_initHandles.surface, &supportsPresent))
+                    VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, static_cast<uint32_t>(i), m_initHandles.surface, &supportsPresent))
                     if(supportsPresent == VK_TRUE && !m_presentQueue.hasIndex)
                     {
-                        m_presentQueue.index = i;
+                        m_presentQueue.index = static_cast<uint32_t>(i);
                         m_presentQueue.hasIndex = 1;
                     }
                 }
@@ -585,6 +585,8 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::Shutdown()
     {
+        m_colorAttachment.CleanupResources(m_allocator, m_device);
+
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];

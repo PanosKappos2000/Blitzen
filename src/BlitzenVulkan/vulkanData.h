@@ -42,6 +42,9 @@ namespace BlitzenVulkan
         VkFormat format;
 
         VmaAllocation allocation;
+
+        // Implemented in vulkanResoures.cpp
+        void CleanupResources(VmaAllocator allocator, VkDevice device);
     };
 
     struct AllocatedBuffer

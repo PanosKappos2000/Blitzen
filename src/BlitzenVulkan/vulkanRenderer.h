@@ -93,6 +93,8 @@ namespace BlitzenVulkan
     };
 
 
+
+
     /* ----------------------
         Vulkan Resources 
     ------------------------- */
@@ -100,5 +102,33 @@ namespace BlitzenVulkan
     void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
     VmaAllocationCreateFlags allocationFlags);
 
-    void CreateImage(AllocatedImage& imageToALlocate);
+    void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags, 
+    uint8_t loadMipmaps = 0);
+
+    void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
+    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL);
+
+
+
+
+    /*--------------------------------------
+        Command Buffer helper functions
+    ---------------------------------------*/
+
+    void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
+
+    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags2 waitPipelineStage,
+    VkSemaphore signalSemaphore, VkPipelineStageFlags2 signalPipelineStage, VkFence fence = VK_NULL_HANDLE);
+
+
+    /*--------------------------------------------------------------
+        Pipeline barriers (implemented in vulkanResources.cpp)
+    --------------------------------------------------------------*/
+
+    void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount, VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount, 
+    VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount, VkImageMemoryBarrier2* pImageBarriers);
+
+    void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, 
+    VkImageSubresourceRange& imageSR);
 }

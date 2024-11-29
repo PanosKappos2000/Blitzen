@@ -47,6 +47,13 @@ namespace BlitzenEngine
         #endif
     };
 
+    enum class ActiveRenderer : uint8_t
+    {
+        Vulkan = 0,
+
+        MaxRenderers = 1
+    };
+
     class Engine
     {
     public:
@@ -75,6 +82,7 @@ namespace BlitzenEngine
         -------------------------------------------------------*/
         uint8_t RendererInit();
         void SetupForRenderering();
+        void DrawFrame();
         void RendererShutdown();
 
     private:
@@ -91,7 +99,7 @@ namespace BlitzenEngine
 
         Clock m_clock;
 
-        void* pRenderer = nullptr;
+        ActiveRenderer m_renderer;
 
         EngineSystems m_systems;
     };

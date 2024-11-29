@@ -61,6 +61,7 @@ namespace BlitzenEngine
             m_systems.vulkanRenderer.Init(&m_platformState, m_platformData.windowWidth, m_platformData.windowHeight);
             m_systems.vulkan = 1;
             hasRenderer = 1;
+            m_renderer = ActiveRenderer::Vulkan;
         #endif
 
         return hasRenderer;
@@ -88,6 +89,9 @@ namespace BlitzenEngine
                 m_clock.elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clock.startTime;
                 double deltaTime = m_clock.elapsedTime - previousTime;
                 previousTime = m_clock.elapsedTime;
+
+                DrawFrame();
+
                 BlitzenCore::UpdateInput(deltaTime);
             }
         }
@@ -113,6 +117,23 @@ namespace BlitzenEngine
         m_clock.elapsedTime = 0;
     }
 
+    void Engine::DrawFrame()
+    {
+        switch(m_renderer)
+        {
+            case ActiveRenderer::Vulkan:
+            {
+                if(m_systems.vulkan)
+                    m_systems.vulkanRenderer.DrawFrame(nullptr);
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+    }
+
 
 
     Engine::~Engine()
@@ -130,7 +151,7 @@ namespace BlitzenEngine
             m_systems.inputSystem = 0;
             BlitzenCore::InputShutdown();
 
-            pRenderer = nullptr;
+            m_renderer = ActiveRenderer::MaxRenderers;
             RendererShutdown();
 
             BlitzenPlatform::PlatformShutdown(&m_platformState);
