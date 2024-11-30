@@ -81,8 +81,10 @@ namespace BlitzenEngine
         // Main Loop starts
         while(isRunning)
         {
-            // This does nothing for now
-            BlitzenPlatform::PlatformPumpMessages(&m_platformState);
+            if(!BlitzenPlatform::PlatformPumpMessages(&m_platformState))
+            {
+                isRunning = 0;
+            }
 
             if(!isSupended)
             {
@@ -231,7 +233,20 @@ namespace BlitzenEngine
         uint32_t newHeight = data.data.ui32[1];
 
         Engine::GetEngineInstancePointer()->UpdateWindowSize(newWidth, newHeight);
+
         return 1;
+    }
+
+    void Engine::UpdateWindowSize(uint32_t newWidth, uint32_t newHeight) 
+    {
+        m_platformData.windowWidth = newWidth; 
+        m_platformData.windowHeight = newHeight;
+        m_platformData.windowResize = 1;
+        if(newWidth == 0 || newHeight == 0)
+        {
+            isSupended = 1;
+        }
+        isSupended = 0;
     }
 }
 

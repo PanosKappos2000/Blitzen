@@ -67,7 +67,7 @@ namespace BlitzenVulkan
 
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
         uint32_t swapchainIdx;
-        vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, fTools.inFlightFence, &swapchainIdx);
+        vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
 
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
@@ -101,7 +101,7 @@ namespace BlitzenVulkan
             clearColorSubresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
             clearColorSubresourceRange.baseArrayLayer = 0;
             clearColorSubresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            vkCmdClearColorImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, &clearColorAttachment, 1, &clearColorSubresourceRange);
+            vkCmdClearColorImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_GENERAL, &clearColorAttachment, 1, &clearColorSubresourceRange);
         }
 
         // Copying the color attachment to the swapchain image and transitioning the image to present

@@ -33,7 +33,7 @@ namespace BlitzenVulkan
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) 
     {
-        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+        BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage) 
         return VK_FALSE;
     }
     // Validation layers function pointers
@@ -69,6 +69,7 @@ namespace BlitzenVulkan
             instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
             instanceInfo.pNext = nullptr; // Will be used if validation layers are activated later in this function
             instanceInfo.flags = 0; // Not using this 
+            instanceInfo.pApplicationInfo = &applicationInfo;
 
             // TODO: Use what is stored in the dynamic arrays below to check if all extensions are supported
             uint32_t extensionsCount = 0;
@@ -81,10 +82,12 @@ namespace BlitzenVulkan
             requiredExtensionNames[0] =  VULKAN_SURFACE_KHR_EXTENSION_NAME;
             requiredExtensionNames[1] = "VK_KHR_surface";        
             instanceInfo.enabledExtensionCount = BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT;
+            instanceInfo.enabledLayerCount = 0; // Validation layers inactive at first, but will be activated if it's a debug build
+
             //If this is a debug build, the validation layer extension is also needed
             #ifndef NDEBUG
 
-                requiredExtensionNames[2] = "VK_EXT_debug_utils";
+                requiredExtensionNames[2] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 
                 // Getting all supported validation layers
                 uint32_t availableLayerCount = 0;
@@ -126,9 +129,6 @@ namespace BlitzenVulkan
             #endif
 
             instanceInfo.ppEnabledExtensionNames = requiredExtensionNames;
-            instanceInfo.enabledLayerCount = 0;
-             
-            instanceInfo.pApplicationInfo = &applicationInfo;
 
             VK_CHECK(vkCreateInstance(&instanceInfo, m_pCustomAllocator, &(m_initHandles.instance)));
         }
@@ -243,12 +243,11 @@ namespace BlitzenVulkan
                 VkPhysicalDevice& pdv = physicalDevices[i];
 
                 // Retrieve properties from device
-                VkPhysicalDeviceProperties2 props{};
-                props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-                vkGetPhysicalDeviceProperties2(pdv, &props);
+                VkPhysicalDeviceProperties props{};
+                vkGetPhysicalDeviceProperties(pdv, &props);
 
                 // Prefer discrete gpu if there is one
-                if(props.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
                 {
                     m_initHandles.chosenGpu = pdv;
                     m_stats.hasDiscreteGPU = 1;
@@ -285,7 +284,7 @@ namespace BlitzenVulkan
             #if BLITZEN_VULKAN_INDIRECT_DRAW
                 deviceFeatures.multiDrawIndirect = true;
             #endif
-            deviceInfo.pEnabledFeatures = &deviceFeatures;
+            deviceInfo.pEnabledFeatures = nullptr;
 
             // Extended device features
             VkPhysicalDeviceVulkan11Features vulkan11Features{};
@@ -309,8 +308,14 @@ namespace BlitzenVulkan
             vulkan13Features.dynamicRendering = true;
             vulkan13Features.synchronization2 = true;
 
-            void* pNextChain [3] = {&vulkan11Features, &vulkan12Features, &vulkan13Features};
-            deviceInfo.pNext = *pNextChain;
+            VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
+            vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            vulkanExtendedFeatures.features = deviceFeatures;
+
+            deviceInfo.pNext = &vulkanExtendedFeatures;
+            vulkanExtendedFeatures.pNext = &vulkan11Features;
+            vulkan11Features.pNext = &vulkan12Features;
+            vulkan12Features.pNext = &vulkan13Features;
 
             BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
             queueInfos[0].queueFamilyIndex = m_graphicsQueue.index;
@@ -576,10 +581,10 @@ namespace BlitzenVulkan
                 info.format = initHandles.swapchainFormat;
                 info.viewType = VK_IMAGE_VIEW_TYPE_2D;
                 info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Not sure if this is needed, as a seperate color attachment will be used 
-                info.subresourceRange.baseMipLevel = 1;
-                info.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-                info.subresourceRange.baseArrayLayer = 1;
-                info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+                info.subresourceRange.baseMipLevel = 0;
+                info.subresourceRange.levelCount = 1;
+                info.subresourceRange.baseArrayLayer = 0;
+                info.subresourceRange.layerCount = 1;
 
                 VK_CHECK(vkCreateImageView(device, &info, pCustomAllocator, &(initHandles.swapchainImageViews[i])))
             }
@@ -588,6 +593,8 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::Shutdown()
     {
+        vkDeviceWaitIdle(m_device);
+
         m_colorAttachment.CleanupResources(m_allocator, m_device);
 
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)

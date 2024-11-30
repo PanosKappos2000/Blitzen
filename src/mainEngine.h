@@ -72,11 +72,7 @@ namespace BlitzenEngine
 
         inline EngineSystems& GetEngineSystems() { return m_systems; }
 
-        inline void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight) {
-            m_platformData.windowWidth = newWidth; 
-            m_platformData.windowHeight = newHeight;
-            m_platformData.windowResize = 1;
-        }
+        void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 
     private:
 
