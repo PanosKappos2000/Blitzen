@@ -4,6 +4,7 @@
 #include <vma/vk_mem_alloc.h>
 
 #include "Core/blitzenContainerLibrary.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 // These macros will be used to initalize VkApplicationInfo which will be passed to VkInstanceCreateInfo
 #define BLITZEN_VULKAN_USER_APPLICATION                         "Blitzen Game"

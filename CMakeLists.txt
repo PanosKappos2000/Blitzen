@@ -20,6 +20,9 @@ add_executable(BlitzenEngine
                 src/Core/blitEvents.h
                 src/Core/blitzenEvents.cpp
 
+                src/BlitzenMathLibrary/blitML.h
+                src/BlitzenMathLibrary/blitMLTypes.h
+
                 src/BlitzenVulkan/vulkanRenderer.h
                 src/BlitzenVulkan/vulkanRenderer.cpp
                 src/BlitzenVulkan/vulkanInit.cpp
