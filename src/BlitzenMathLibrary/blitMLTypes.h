@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "Core/blitMemory.h"
+
 namespace BlitML
 {
 
@@ -64,7 +66,7 @@ namespace BlitML
 
     union vec4 
     {
-        alignas(16) float elements[4];
+        float elements[4];
         struct
         {
             union
@@ -101,5 +103,47 @@ namespace BlitML
 
     inline vec4 operator / (vec4& v1, vec4& v2) { return vec4(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z, v1.w / v2.w); }
 
+
+
+    // Quaternion
     typedef vec4 quat;
+
+
+    // 4x4 matrix
+    union mat4
+    {
+        float data [16];
+
+        // Creates and identity matrix if identity is defaulted or any value other than 1. Creates a matrix filled with zeroes otherwise
+        inline mat4(uint8_t identity = 1)
+        {
+            BlitzenCore::BlitZeroMemory(this, sizeof(mat4));
+
+            if(identity)
+            {
+                data[0] = 1.f;
+                data[5] = 1.f;
+                data[10] = 1.f;
+                data[15] = 1.f;
+            }
+        }
+    };
+
+    inline mat4 operator * (mat4& mat1, mat4& mat2) 
+    {
+        mat4 res;
+        const float* pMat1 = mat1.data;
+        const float* pMat2 = mat2.data;
+        float* pRes = res.data;
+        for (int32_t i = 0; i < 4; ++i) 
+        {
+            for (int32_t j = 0; j < 4; ++j) 
+            {
+                *pRes = pMat1[0] * pMat2[0 + j] + pMat1[1] * pMat2[4 + j] + pMat1[2] * pMat2[8 + j] + pMat1[3] * pMat2[12 + j];
+                pRes++;
+            }
+            pMat1 += 4;
+        }
+        return res;
+    }
 }
