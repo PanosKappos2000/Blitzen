@@ -31,7 +31,9 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanPipelines.cpp
                 
                 src/Platform/platform.h
-                src/Platform/platform.cpp)
+                src/Platform/platform.cpp
+                src/Platform/filesystem.h
+                src/Platform/filesystem.cpp)
 
 target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src"
@@ -54,3 +56,33 @@ ENDIF(WIN32)
 find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
 
 set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/glslangValidator.exe")
+  
+  
+  file(GLOB_RECURSE GLSL_SOURCE_FILES
+      "VulkanShaders/*.glsl"
+      )
+  
+  foreach(GLSL ${GLSL_SOURCE_FILES})
+    get_filename_component(FILE_NAME ${GLSL} NAME)
+    set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/${FILE_NAME}.spv")
+    add_custom_command(
+      OUTPUT ${SPIRV}
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/"
+      COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
+      DEPENDS ${GLSL})
+    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+  endforeach(GLSL)
+  
+  add_custom_target(
+      VulkanShaders 
+      DEPENDS ${SPIRV_BINARY_FILES}
+      )
+  
+  add_dependencies(BlitzenEngine VulkanShaders)
+  
+  add_custom_command(TARGET BlitzenEngine POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders/"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+          "${PROJECT_BINARY_DIR}/VulkanShaders"
+          "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders"
+          )

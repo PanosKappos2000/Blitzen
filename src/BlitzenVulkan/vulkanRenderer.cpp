@@ -8,6 +8,11 @@ namespace BlitzenVulkan
 
         CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+        VkShaderModule vertexShaderModule;
+        VkPipelineShaderStageCreateInfo shaderStages[2];
+        CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule, 
+        shaderStages[0], nullptr);
     }
 
     void VulkanRenderer::FrameToolsInit()

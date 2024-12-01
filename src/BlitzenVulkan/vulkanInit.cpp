@@ -430,11 +430,6 @@ namespace BlitzenVulkan
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
     Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator)
     {
-         // This will be needed to find some details about swapchain support
-            VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
-            surfaceInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
-            surfaceInfo.surface = initHandles.surface;
-
             VkSwapchainCreateInfoKHR swapchainInfo{};
             swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
             swapchainInfo.pNext = nullptr;
@@ -450,16 +445,16 @@ namespace BlitzenVulkan
             {
                 // Retrieve surface format to check for desired swapchain format and color space
                 uint32_t surfaceFormatsCount = 0; 
-                VK_CHECK(vkGetPhysicalDeviceSurfaceFormats2KHR(initHandles.chosenGpu, &surfaceInfo, &surfaceFormatsCount, nullptr))
-                BlitCL::DynamicArray<VkSurfaceFormat2KHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
-                VK_CHECK(vkGetPhysicalDeviceSurfaceFormats2KHR(initHandles.chosenGpu, &surfaceInfo, &surfaceFormatsCount, surfaceFormats.Data()))
+                VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, &surfaceFormatsCount, nullptr))
+                BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
+                VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, &surfaceFormatsCount, surfaceFormats.Data()))
                 // Look for the desired image format
                 uint8_t found = 0;
                 for(size_t i = 0; i < surfaceFormats.GetSize(); ++i)
                 {
                     // If the desire image format is found assign it to the swapchain info and break out of the loop
-                    if(surfaceFormats[i].surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM && 
-                    surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                    if(surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM && 
+                    surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
                     {
                         swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
                         swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -473,10 +468,10 @@ namespace BlitzenVulkan
                 // If the desired format is not found (unlikely), assign the first one that is supported and hope for the best ( I'm just a chill guy )
                 if(!found)
                 {
-                    swapchainInfo.imageFormat = surfaceFormats[0].surfaceFormat.format;
+                    swapchainInfo.imageFormat = surfaceFormats[0].format;
                     // Save the image format
                     initHandles.swapchainFormat = swapchainInfo.imageFormat;
-                    swapchainInfo.imageColorSpace = surfaceFormats[0].surfaceFormat.colorSpace;
+                    swapchainInfo.imageColorSpace = surfaceFormats[0].colorSpace;
                 }
             }
 
@@ -510,21 +505,20 @@ namespace BlitzenVulkan
             //Set the swapchain extent to the window's width and height
             initHandles.swapchainExtent = {windowWidth, windowHeight};
             // Retrieve surface capabilities to properly configure some swapchain values
-            VkSurfaceCapabilities2KHR surfaceCapabilities{};
-            surfaceCapabilities.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
-            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilities2KHR(initHandles.chosenGpu, &surfaceInfo, &surfaceCapabilities));
+            VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(initHandles.chosenGpu, initHandles.surface, &surfaceCapabilities));
 
             /* Swapchain extent */
             {
                 // Get the swapchain extent from the surface capabilities, if it is not some weird value
-                if(surfaceCapabilities.surfaceCapabilities.currentExtent.width != UINT32_MAX)
+                if(surfaceCapabilities.currentExtent.width != UINT32_MAX)
                 {
-                    initHandles.swapchainExtent = surfaceCapabilities.surfaceCapabilities.currentExtent;
+                    initHandles.swapchainExtent = surfaceCapabilities.currentExtent;
                 }
 
                 // Get the min extent and max extent allowed by the GPU,  to clamp the initial value
-                VkExtent2D minExtent = surfaceCapabilities.surfaceCapabilities.minImageExtent;
-                VkExtent2D maxExtent = surfaceCapabilities.surfaceCapabilities.maxImageExtent;
+                VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
+                VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
                 initHandles.swapchainExtent.width = BlitCL::Clamp(initHandles.swapchainExtent.width, maxExtent.width, minExtent.width);
                 initHandles.swapchainExtent.height = BlitCL::Clamp(initHandles.swapchainExtent.height, maxExtent.width, minExtent.height);
 
@@ -534,18 +528,18 @@ namespace BlitzenVulkan
 
             /* Min image count */
             {
-                uint32_t imageCount = surfaceCapabilities.surfaceCapabilities.minImageCount + 1;
+                uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
                 // Check that image count did not supass max image count
-                if(surfaceCapabilities.surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.surfaceCapabilities.maxImageCount < imageCount )
+                if(surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.maxImageCount < imageCount )
                 {
-                    imageCount = surfaceCapabilities.surfaceCapabilities.maxImageCount;
+                    imageCount = surfaceCapabilities.maxImageCount;
                 }
 
                 // Swapchain image count fully check and ready to be pass to the swapchain info
                 swapchainInfo.minImageCount = imageCount;
             }
 
-            swapchainInfo.preTransform = surfaceCapabilities.surfaceCapabilities.currentTransform;
+            swapchainInfo.preTransform = surfaceCapabilities.currentTransform;
 
             if (graphicsQueue.index != presentQueue.index)
             {

@@ -2,27 +2,26 @@
 // Temporary, I will like to handle this myself
 #include <fstream>
 
+#include "Platform/filesystem.h"
+
 namespace BlitzenVulkan
 {
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, BlitCL::DynamicArray<char>& shaderCode)
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, BlitCL::DynamicArray<char>* shaderCode)
     {
-        std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+        BlitzenPlatform::FileHandle handle;
         // If the file did not open, something might be wrong with the filepath, so it needs to be checked
-        BLIT_ASSERT(file.is_open())
-        size_t filesize = static_cast<size_t>(file.tellg());
-        shaderCode.Resize(filesize);
-        // put the file cursor at the beginning
-        file.seekg(0);
-        // load the entire file into the array
-        file.read(shaderCode.Data(), filesize);
-        file.close();
+        BLIT_ASSERT(BlitzenPlatform::OpenFile(filepath, BlitzenPlatform::FileModes::Read, 1, handle))
+        size_t filesize = 0;
+        uint8_t* pBytes = nullptr;
+        BLIT_ASSERT(BlitzenPlatform::FilesystemReadAllBytes(handle, &pBytes, &filesize))
+        BlitzenPlatform::CloseFile(handle);
 
         //Wrap the code in a shader module object
         VkShaderModuleCreateInfo shaderModuleInfo{};
         shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        shaderModuleInfo.codeSize = static_cast<uint32_t>(shaderCode.GetSize());
-        shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(shaderCode.Data());
+        shaderModuleInfo.codeSize = static_cast<uint32_t>(filesize);
+        shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(pBytes);
         vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule);
 
         //Adds a new shader stage based on that shader module

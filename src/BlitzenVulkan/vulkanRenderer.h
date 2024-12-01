@@ -151,7 +151,8 @@ namespace BlitzenVulkan
 
     //Helper function that compiles spir-v and adds it to shader stage. Will aid in the creation of graphics and compute pipelines
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, BlitCL::DynamicArray<char>& shaderCode);
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, 
+    /* I will keep this in case I need to go back to the classic way of doing it */ BlitCL::DynamicArray<char>* shaderCode);
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
 
