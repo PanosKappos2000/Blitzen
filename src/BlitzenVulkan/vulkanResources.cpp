@@ -92,6 +92,26 @@ namespace BlitzenVulkan
         vkCmdBlitImage2(commandBuffer, &blitImage);
     }
 
+    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, 
+    VkDeviceSize dstOffset)
+    {
+        VkBufferCopy2 copyRegion{};
+        copyRegion.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2;
+        copyRegion.size = copySize;
+        copyRegion.srcOffset = srcOffset;
+        copyRegion.dstOffset = dstOffset;
+
+        VkCopyBufferInfo2 copyInfo{};
+        copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2;
+        copyInfo.pNext = nullptr;
+        copyInfo.srcBuffer = srcBuffer;
+        copyInfo.dstBuffer = dstBuffer;
+        copyInfo.regionCount = 1; // Hardcoded, I don't see why I would ever need 2 copy regions
+        copyInfo.pRegions = &copyRegion;
+
+        vkCmdCopyBuffer2(commandBuffer, &copyInfo);
+    }
+
     void AllocatedImage::CleanupResources(VmaAllocator allocator, VkDevice device)
     {
         vmaDestroyImage(allocator, image, allocation);

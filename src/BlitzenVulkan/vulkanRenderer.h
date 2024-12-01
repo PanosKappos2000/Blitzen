@@ -36,6 +36,10 @@ namespace BlitzenVulkan
         VkFence inFlightFence;
         VkSemaphore imageAcquiredSemaphore;
         VkSemaphore readyToPresentSemaphore;
+
+        // Any buffers that will be getting their data update every frame, need to be inside the frame tools struct
+        VkDescriptorPool globalShaderDataDescriptorPool;
+        AllocatedBuffer globalShaderDataBuffer;
     };
 
     class VulkanRenderer
@@ -62,32 +66,54 @@ namespace BlitzenVulkan
 
         void FrameToolsInit();
 
+        void UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
     private:
 
+        // Handle to the logical device
         VkDevice m_device;
 
+        // Used to allocate vulkan resources like buffers and images
         VmaAllocator m_allocator;
 
+        // Custom allocator, don't need it right now
         VkAllocationCallbacks* m_pCustomAllocator = nullptr;
 
+        // Holds objects crucial to the renderer that are initalized on the 1st init stage but will not be mentioned that often
         InitializationHandles m_initHandles;
 
+        // All the queue handles and indices retrieved from the device on initialization
         Queue m_graphicsQueue;
         Queue m_presentQueue;
         Queue m_computeQueue;
 
+        // Temporary command buffer and its command pool, used before the game loop starts
         VkCommandPool m_placeholderCommandPool;
         VkCommandBuffer m_placeholderCommands;
 
+        // Data for the rendering attachments
         AllocatedImage m_colorAttachment;
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;
 
+        // Buffers that will be passed only once during loading and will hold data that will be accessed by shaders
+        AllocatedBuffer m_globalVertexBuffer;
+        AllocatedBuffer m_globalIndexBuffer;
+
+        // Structures needed to pass the global shader data
+        VkDescriptorSetLayout m_globalShaderDataLayout;
+        GlobalShaderData m_globalShaderData;
+
+        // Pipeline used to draw opaque objects
+        VkPipeline m_opaqueGraphicsPipeline;
+        VkPipelineLayout m_opaqueGraphicsPipelineLayout;
+
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
 
+        // Used to access the right frame tools depending on which ones are already being used
         size_t m_currentFrame = 0;
 
         // Holds stats that give information about how the vulkanRenderer is operating
@@ -120,6 +146,9 @@ namespace BlitzenVulkan
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
     VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL);
 
+    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, 
+    VkDeviceSize dstOffset);
+
 
 
 
@@ -129,8 +158,9 @@ namespace BlitzenVulkan
 
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
 
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags2 waitPipelineStage,
-    VkSemaphore signalSemaphore, VkPipelineStageFlags2 signalPipelineStage, VkFence fence = VK_NULL_HANDLE);
+    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint8_t waitSemaphoreCount = 0, 
+    VkSemaphore waitSemaphore = VK_NULL_HANDLE, VkPipelineStageFlags2 waitPipelineStage = VK_PIPELINE_STAGE_2_NONE, uint8_t signalSemaphoreCount = 0,
+    VkSemaphore signalSemaphore = VK_NULL_HANDLE, VkPipelineStageFlags2 signalPipelineStage = VK_PIPELINE_STAGE_2_NONE, VkFence fence = VK_NULL_HANDLE);
 
 
     /*--------------------------------------------------------------
@@ -156,7 +186,7 @@ namespace BlitzenVulkan
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
 
-    void SetDynamicStateViewport(VkDynamicState* pStates, VkPipelineViewportStateCreateInfo& viewportState);
+    void SetDynamicStateViewport(VkDynamicState* pStates, VkPipelineViewportStateCreateInfo& viewportState, VkPipelineDynamicStateCreateInfo& dynamicState);
 
     void SetRasterizationState(VkPipelineRasterizationStateCreateInfo& rasterization, VkPolygonMode polygonMode, VkCullModeFlags cullMode, 
     VkFrontFace frontFace, VkBool32 depthClampEnable = VK_FALSE, VkBool32 depthBiasEnable = VK_FALSE);
@@ -165,7 +195,8 @@ namespace BlitzenVulkan
     float minSampleShading, VkSampleMask* pSampleMask, VkBool32 alphaToCoverageEnable, VkBool32 alphaToOneEnable);
 
     void SetupDepthTest(VkPipelineDepthStencilStateCreateInfo& depthState, VkBool32 depthTestEnable, VkCompareOp depthCompareOp, VkBool32 depthWriteEnable, 
-    VkBool32 depthBoundsTestEnable, float maxDepthBounds, float minDepthBounds, VkBool32 stencilTestEnable, VkStencilOpState front, VkStencilOpState back);
+    VkBool32 depthBoundsTestEnable, float maxDepthBounds, float minDepthBounds, VkBool32 stencilTestEnable, 
+    VkStencilOpState* front, VkStencilOpState* back);
 
     void CreateColorBlendAttachment(VkPipelineColorBlendAttachmentState& colorBlendAttachment, VkColorComponentFlags colorWriteMask, VkBool32 blendEnable, 
     VkBlendOp colorBlendOp, VkBlendOp alphaBlendOp, VkBlendFactor dstAlphaBlendFactor, VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstColorBlendFactor, 

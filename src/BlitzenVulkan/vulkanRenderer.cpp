@@ -1,3 +1,6 @@
+#define VMA_IMPLEMENTATION
+#include "vma/vk_mem_alloc.h"
+
 #include "vulkanRenderer.h"
 
 namespace BlitzenVulkan
@@ -8,11 +11,84 @@ namespace BlitzenVulkan
 
         CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-        VkShaderModule vertexShaderModule;
-        VkPipelineShaderStageCreateInfo shaderStages[2];
-        CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule, 
-        shaderStages[0], nullptr);
+        /* Main opaque object graphics pipeline */
+        {
+            VkGraphicsPipelineCreateInfo pipelineInfo{};
+            pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            pipelineInfo.flags = 0;
+            pipelineInfo.renderPass = VK_NULL_HANDLE; // Using dynamic rendering
+
+            VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
+            dynamicRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+            VkFormat colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+            dynamicRenderingInfo.colorAttachmentCount = 1;
+            dynamicRenderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+            dynamicRenderingInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+            pipelineInfo.pNext = &dynamicRenderingInfo;
+
+            VkShaderModule vertexShaderModule;
+            VkPipelineShaderStageCreateInfo shaderStages[2] = {};
+            CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule, 
+            shaderStages[0], nullptr);
+            VkShaderModule fragShaderModule;
+            CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
+            shaderStages[1], nullptr);
+            pipelineInfo.stageCount = 2; // Hardcode for default pipeline since I know what I want
+            pipelineInfo.pStages = shaderStages;
+
+            VkPipelineInputAssemblyStateCreateInfo inputAssembly = SetTriangleListInputAssembly();
+            pipelineInfo.pInputAssemblyState = &inputAssembly;
+
+            VkDynamicState dynamicStates[2];
+            VkPipelineViewportStateCreateInfo viewport{};
+            VkPipelineDynamicStateCreateInfo dynamicState{};
+            SetDynamicStateViewport(dynamicStates, viewport, dynamicState);
+            pipelineInfo.pViewportState = &viewport;
+            pipelineInfo.pDynamicState = &dynamicState;
+
+            VkPipelineRasterizationStateCreateInfo rasterization{};
+            SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+            pipelineInfo.pRasterizationState = &rasterization;
+
+            VkPipelineMultisampleStateCreateInfo multisampling{};
+            SetupMulitsampling(multisampling, VK_FALSE, VK_SAMPLE_COUNT_1_BIT, 1.f, nullptr, VK_FALSE, VK_FALSE);
+            pipelineInfo.pMultisampleState = &multisampling;
+
+            VkPipelineDepthStencilStateCreateInfo depthState{};
+            SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 1.f, VK_FALSE, 
+            nullptr, nullptr);
+            pipelineInfo.pDepthStencilState = &depthState;
+
+            VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+            CreateColorBlendAttachment(colorBlendAttachment, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_OP_ADD, VK_BLEND_OP_ADD, VK_BLEND_FACTOR_CONSTANT_ALPHA, 
+            VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA);
+            VkPipelineColorBlendStateCreateInfo colorBlendState{};
+            CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
+            pipelineInfo.pColorBlendState = &colorBlendState;
+
+            VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
+            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 1, &shaderDataLayoutBinding);
+            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 1, &m_globalShaderDataLayout, 0, nullptr);
+            pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;
+
+            VkPipelineVertexInputStateCreateInfo vertexInput{};
+            vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            pipelineInfo.pVertexInputState = &vertexInput;
+
+            VK_CHECK(vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGraphicsPipeline))
+
+            vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
+            vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
+        }
+
+        BlitCL::DynamicArray<BlitML::Vertex> vertices(1);
+        BlitCL::DynamicArray<uint32_t> indices(1);
+        UploadBuffersToGPU(vertices, indices);
     }
 
     void VulkanRenderer::FrameToolsInit()
@@ -38,6 +114,16 @@ namespace BlitzenVulkan
         semaphoresInfo.flags = 0;
         semaphoresInfo.pNext = nullptr;
 
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = 1;
+        VkDescriptorPoolCreateInfo descriptorPoolInfo{};
+        descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        descriptorPoolInfo.flags = 0;
+        descriptorPoolInfo.maxSets = 1;
+        descriptorPoolInfo.poolSizeCount = 1;
+        descriptorPoolInfo.pPoolSizes = &poolSize;
+
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];
@@ -48,7 +134,47 @@ namespace BlitzenVulkan
             VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
             VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
             VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
+
+            CreateBuffer(m_allocator, frameTools.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(frameTools.globalShaderDataDescriptorPool)))
         }
+    }
+
+    void VulkanRenderer::UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices)
+    {
+        // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
+        VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
+        CreateBuffer(m_allocator, m_globalVertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        VkBufferDeviceAddressInfo vertexBufferAddressInfo{};
+        vertexBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        vertexBufferAddressInfo.pNext = nullptr;
+        vertexBufferAddressInfo.buffer = m_globalVertexBuffer.buffer;
+        m_globalShaderData.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &vertexBufferAddressInfo);
+
+        // Create an index buffer that will all the loaded indices
+        VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
+        CreateBuffer(m_allocator, m_globalIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, indexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+
+        AllocatedBuffer stagingBuffer;
+        CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, vertexBufferSize + indexBufferSize, 
+        VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        void* pData = stagingBuffer.allocation->GetMappedData();
+        BlitzenCore::BlitMemCopy(pData, vertices.Data(), vertexBufferSize);
+        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize, indices.Data(), indexBufferSize);
+
+        BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_globalVertexBuffer.buffer, vertexBufferSize, 0, 0);
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_globalIndexBuffer.buffer, indexBufferSize, vertexBufferSize, 0);
+
+        SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
+
+        vkQueueWaitIdle(m_graphicsQueue.handle);
+
+        vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
 
@@ -170,8 +296,8 @@ namespace BlitzenVulkan
         }
         // Swapchain image ready to be presented
 
-        SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, fTools.imageAcquiredSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-        fTools.readyToPresentSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence);
+        SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 1, fTools.imageAcquiredSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
+        1, fTools.readyToPresentSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence);
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -196,8 +322,9 @@ namespace BlitzenVulkan
         VK_CHECK(vkBeginCommandBuffer(commandBuffer, &commandBufferInfo));
     }
 
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags2 waitPipelineStage,
-    VkSemaphore signalSemaphore, VkPipelineStageFlags2 signalPipelineStage, VkFence fence /*= VK_NULL_HANDLE*/)
+    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint8_t waitSemaphoreCount /* =0 */, 
+    VkSemaphore waitSemaphore /* =VK_NULL_HANDLE */, VkPipelineStageFlags2 waitPipelineStage /*=VK_PIPELINE_STAGE_2_NONE*/, uint8_t signalSemaphoreCount /* =0 */,
+    VkSemaphore signalSemaphore /* =VK_NULL_HANDLE */, VkPipelineStageFlags2 signalPipelineStage /*=VK_PIPELINE_STAGE_2_NONE*/, VkFence fence /* =VK_NULL_HANDLE */)
     {
         VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
@@ -219,9 +346,9 @@ namespace BlitzenVulkan
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
         submitInfo.commandBufferInfoCount = 1;
         submitInfo.pCommandBufferInfos = &commandBufferInfo;
-        submitInfo.waitSemaphoreInfoCount = 1;
+        submitInfo.waitSemaphoreInfoCount = waitSemaphoreCount;
         submitInfo.pWaitSemaphoreInfos = &waitSemaphoreInfo;
-        submitInfo.signalSemaphoreInfoCount = 1;
+        submitInfo.signalSemaphoreInfoCount = signalSemaphoreCount;
         submitInfo.pSignalSemaphoreInfos = &signalSemaphoreInfo;
         vkQueueSubmit2(queue, 1, &submitInfo, fence);
     }

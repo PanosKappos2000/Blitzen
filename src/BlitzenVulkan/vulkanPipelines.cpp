@@ -22,7 +22,7 @@ namespace BlitzenVulkan
         shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         shaderModuleInfo.codeSize = static_cast<uint32_t>(filesize);
         shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(pBytes);
-        vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule);
+        VK_CHECK(vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule));
 
         //Adds a new shader stage based on that shader module
         pipelineShaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -43,7 +43,7 @@ namespace BlitzenVulkan
         return res;
     }
 
-    void SetDynamicStateViewport(VkDynamicState* pStates, VkPipelineViewportStateCreateInfo& viewportState)
+    void SetDynamicStateViewport(VkDynamicState* pStates, VkPipelineViewportStateCreateInfo& viewportState, VkPipelineDynamicStateCreateInfo& dynamicState)
     {
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewportState.scissorCount = 1;
@@ -51,6 +51,12 @@ namespace BlitzenVulkan
 
         pStates[0] = VK_DYNAMIC_STATE_VIEWPORT;
         pStates[1] = VK_DYNAMIC_STATE_SCISSOR;
+
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.flags = 0;
+        dynamicState.pNext = nullptr;
+        dynamicState.dynamicStateCount = 2;
+        dynamicState.pDynamicStates = pStates;
     }
 
     void SetRasterizationState(VkPipelineRasterizationStateCreateInfo& rasterization, VkPolygonMode polygonMode, VkCullModeFlags cullMode, 
@@ -84,7 +90,7 @@ namespace BlitzenVulkan
     }
 
     void SetupDepthTest(VkPipelineDepthStencilStateCreateInfo& depthState, VkBool32 depthTestEnable, VkCompareOp depthCompareOp, VkBool32 depthWriteEnable, 
-    VkBool32 depthBoundsTestEnable, float maxDepthBounds, float minDepthBounds, VkBool32 stencilTestEnable, VkStencilOpState front, VkStencilOpState back)
+    VkBool32 depthBoundsTestEnable, float maxDepthBounds, float minDepthBounds, VkBool32 stencilTestEnable, VkStencilOpState* front, VkStencilOpState* back)
     {
         depthState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         depthState.flags = 0;
@@ -96,8 +102,10 @@ namespace BlitzenVulkan
         depthState.maxDepthBounds = maxDepthBounds;
         depthState.minDepthBounds = minDepthBounds;
         depthState.stencilTestEnable = stencilTestEnable;
-        depthState.front = front;
-        depthState.back = back;
+        if(front)
+            depthState.front = *front;
+        if(back)
+            depthState.back = *back;
     }
 
     void CreateColorBlendAttachment(VkPipelineColorBlendAttachmentState& colorBlendAttachment, VkColorComponentFlags colorWriteMask, VkBool32 blendEnable, 
@@ -135,7 +143,7 @@ namespace BlitzenVulkan
         layoutInfo.pSetLayouts = pDescriptorSetLayouts;
         layoutInfo.pushConstantRangeCount = pushConstantRangeCount;
         layoutInfo.pPushConstantRanges = pPushConstantRanges;
-        vkCreatePipelineLayout(device, &layoutInfo, nullptr, pLayout);
+        VK_CHECK(vkCreatePipelineLayout(device, &layoutInfo, nullptr, pLayout));
     }
 
     void CreateDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding& bindingInfo, uint32_t binding, uint32_t descriptorCount, 
@@ -156,7 +164,7 @@ namespace BlitzenVulkan
         info.pBindings = pBindings;
 
         VkDescriptorSetLayout setLayout;
-        vkCreateDescriptorSetLayout(device, &info, nullptr, &setLayout);
+        VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &setLayout));
         return setLayout;
     }
 

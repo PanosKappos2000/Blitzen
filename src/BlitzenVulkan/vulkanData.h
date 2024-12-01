@@ -62,4 +62,10 @@ namespace BlitzenVulkan
         VmaAllocation allocation;
         VmaAllocationInfo allocationInfo;
     };
+
+    // Holds universal, constant shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
+    struct GlobalShaderData
+    {
+        VkDeviceAddress vertexBufferAddress;
+    };
 }

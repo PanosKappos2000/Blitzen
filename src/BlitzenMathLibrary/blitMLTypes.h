@@ -146,4 +146,13 @@ namespace BlitML
         }
         return res;
     }
+
+
+
+
+
+    struct alignas(16) Vertex
+    {
+        vec3 position;
+    };
 }

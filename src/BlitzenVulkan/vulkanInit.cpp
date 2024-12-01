@@ -1,6 +1,3 @@
-#define VMA_IMPLEMENTATION
-#include <vma/vk_mem_alloc.h>
-
 #include "vulkanRenderer.h"
 #include "Platform/platform.h"
 
@@ -589,6 +586,15 @@ namespace BlitzenVulkan
     {
         vkDeviceWaitIdle(m_device);
 
+        vmaDestroyBuffer(m_allocator, m_globalVertexBuffer.buffer, m_globalVertexBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, m_globalIndexBuffer.buffer, m_globalIndexBuffer.allocation);
+
+        vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
+
+        vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);
+
+        m_depthAttachment.CleanupResources(m_allocator, m_device);
         m_colorAttachment.CleanupResources(m_allocator, m_device);
 
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
@@ -599,6 +605,9 @@ namespace BlitzenVulkan
             vkDestroyFence(m_device, frameTools.inFlightFence, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
+
+            vkDestroyDescriptorPool(m_device, frameTools.globalShaderDataDescriptorPool, m_pCustomAllocator);
+            vmaDestroyBuffer(m_allocator, frameTools.globalShaderDataBuffer.buffer, frameTools.globalShaderDataBuffer.allocation);
         }
 
         vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);
