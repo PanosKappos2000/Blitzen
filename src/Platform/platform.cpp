@@ -188,7 +188,7 @@ namespace BlitzenPlatform
         {
             LARGE_INTEGER nowTime;
             QueryPerformanceCounter(&nowTime);
-            return static_cast<double>(nowTime.QuadPart * clockFrequency);
+            return static_cast<double>(nowTime.QuadPart) * clockFrequency;
         }
 
         void PlatformSleep(uint64_t ms)

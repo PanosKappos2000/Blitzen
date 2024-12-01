@@ -1,5 +1,9 @@
 #pragma once 
 #include "blitMLTypes.h"
+#include "Platform/platform.h"
+
+#include <math.h>
+#include <stdlib.h>
 
 #define BLIT_PI                         3.14159265358979323846f
 #define BLIT_PI_2                       2.0f * BLIT_PI
@@ -25,20 +29,38 @@ namespace BlitML
     /* ------------------------------------------
         General math functions
     ------------------------------------------ */
-    float Sin(float x);
-    float Cos(float x);
-    float Tan(float x);
-    float Acos(float x);
-    float Sqrt(float x);
-    float Abs(float x);
+    inline float Sin(float x) {return sinf(x);}
+    inline float Cos(float x) {return cosf(x);}
+    inline float Tan(float x) {return tanf(x);}
+    inline float Acos(float x) {return acosf(x);}
+    inline float Sqrt(float x) {return sqrtf(x);}
+    inline float Abs(float x) {return fabsf(x);}
 
     inline uint8_t IsPowerOf2(uint64_t value) { return (value != 0) && ((value & (value - 1)) == 0); }
 
-    int32_t Rand();
-    int32_t RandInRange(int32_t min, int32_t max);
+    static uint8_t sRandSeeded = 0;
 
-    float FRand();
-    float FRandInRange(float min, float max);
+    inline int32_t Rand() 
+    {
+        if(!sRandSeeded)
+        {
+            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime()));
+            sRandSeeded = 1;
+        }
+        return rand();
+    }
+    inline int32_t RandInRange(int32_t min, int32_t max)
+    {
+        if (!sRandSeeded) 
+        {
+            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime()));
+            sRandSeeded = 1;
+        }
+        return (rand() % (max - min + 1)) + min;
+    }
+
+    inline float FRand();
+    inline float FRandInRange(float min, float max);
 
 
     /*-----------------------
