@@ -109,12 +109,16 @@ namespace BlitzenEngine
     {
         #if BLITZEN_VULKAN
             // Temporary shader data for tests on vulkan rendering
-            BlitCL::DynamicArray<BlitML::Vertex> vertices(4);
-            BlitCL::DynamicArray<uint32_t> indices(6);
+            BlitCL::DynamicArray<BlitML::Vertex> vertices(8);
+            BlitCL::DynamicArray<uint32_t> indices(32);
             vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
             vertices[1].position = BlitML::vec3(-0.5f, -0.5f, 0.f);
             vertices[2].position = BlitML::vec3(0.5f, -0.5f, 0.f);
             vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
+            vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
+            vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
+            vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
+            vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
 
             indices[0] = 0;
             indices[1] = 1;
@@ -122,6 +126,24 @@ namespace BlitzenEngine
             indices[3] = 2;
             indices[4] = 3;
             indices[5] = 0;
+            indices[6] = 4;
+            indices[7] = 5;
+            indices[8] = 6;
+            indices[9] = 6;
+            indices[10] = 7;
+            indices[11] = 4;
+            indices[12] = 4;
+            indices[13] = 5;
+            indices[14] = 1;
+            indices[15] = 1;
+            indices[16] = 0;
+            indices[17] = 4;
+            indices[18] = 7;
+            indices[19] = 6;
+            indices[20] = 2;
+            indices[21] = 2;
+            indices[22] = 3;
+            indices[23] = 7;
 
             m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering(vertices, indices);
         #endif

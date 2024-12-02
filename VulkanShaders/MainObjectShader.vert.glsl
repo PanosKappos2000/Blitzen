@@ -16,10 +16,12 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer
 
 layout(set = 0, binding = 0) uniform ShaderData
 {
+    mat4 projection;
+    mat4 view;
     VertexBuffer vertexBuffer;
 }shaderData;
 
 void main()
 {
-    gl_Position = vec4(shaderData.vertexBuffer.vertices[gl_VertexIndex].position, 1);
+    gl_Position = shaderData.projection * shaderData.view * vec4(shaderData.vertexBuffer.vertices[gl_VertexIndex].position, 1);
 }

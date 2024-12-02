@@ -205,9 +205,9 @@ namespace BlitML
         mat4 res(0);
         res.data[0] = 1.0f / (aspectRatio * halfTanFov);
         res.data[5] = 1.0f / halfTanFov;
-        res.data[10] = -((far + near) / (near - far));
+        res.data[10] = far / (near - far);
         res.data[11] = -1.0f;
-        res.data[14] = -((2.0f * far * near) / (far - near));
+        res.data[14] = -((far * near) / (far - near));
         return res;
     }
 
@@ -266,7 +266,7 @@ namespace BlitML
 
 
     // Creates and returns an inverse of the provided matrix.
-    inline mat4 mat4_inverse(mat4 matrix) 
+    inline mat4 Mat4Inverse(mat4 matrix) 
     {
         const float* m = matrix.data;
         float t0 = m[10] * m[15];
@@ -392,7 +392,7 @@ namespace BlitML
     }
 
     // Derives a backward vector from a derived matrix
-    inline vec3 mat4_backward(mat4& matrix) 
+    inline vec3 Mat4Backward(mat4& matrix) 
     {
         vec3 backward;
         backward.x = matrix.data[2];
@@ -426,22 +426,22 @@ namespace BlitML
 
     inline vec3 Mat4Left(mat4& matrix) 
     {
-        vec3 right;
-        right.x = -matrix.data[0];
-        right.y = -matrix.data[4];
-        right.z = -matrix.data[8];
-        Normalize(right);
-        return right;
+        vec3 left;
+        left.x = -matrix.data[0];
+        left.y = -matrix.data[4];
+        left.z = -matrix.data[8];
+        Normalize(left);
+        return left;
     }
 
     inline vec3 Mat4Right(mat4& matrix) 
     {
-        vec3 left;
-        left.x = matrix.data[0];
-        left.y = matrix.data[4];
-        left.z = matrix.data[8];
-        Normalize(left);
-        return left;
+        vec3 right;
+        right.x = matrix.data[0];
+        right.y = matrix.data[4];
+        right.z = matrix.data[8];
+        Normalize(right);
+        return right;
     }
 
 

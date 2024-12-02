@@ -58,7 +58,7 @@ namespace BlitzenVulkan
             pipelineInfo.pMultisampleState = &multisampling;
 
             VkPipelineDepthStencilStateCreateInfo depthState{};
-            SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 1.f, VK_FALSE, 
+            SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
             nullptr, nullptr);
             pipelineInfo.pDepthStencilState = &depthState;
 
@@ -194,6 +194,27 @@ namespace BlitzenVulkan
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
+        m_globalShaderData.projection = BlitML::Perspective(BlitML::Radians(45.f),
+        static_cast<float>(context.windowWidth) / static_cast<float>(context.windowHeight),
+        10000.f, 0.1f);
+        //m_globalShaderData.projection[1][1] *= -1;
+        m_globalShaderData.view = BlitML::Mat4Inverse(BlitML::Translate(BlitML::vec3(0.f, 0.f, 5.f)));
+
+        // Declaring it outside the below scope, as it needs to be bound later
+        VkDescriptorSet globalShaderDataSet;
+        /* Allocating and updating the descriptor set used for global shader data*/
+        {
+            vkResetDescriptorPool(m_device, fTools.globalShaderDataDescriptorPool, 0);
+            GlobalShaderData* pGlobalShaderDataBufferData = reinterpret_cast<GlobalShaderData*>(fTools.globalShaderDataBuffer.allocation->GetMappedData());
+            *pGlobalShaderDataBufferData = m_globalShaderData;
+            AllocateDescriptorSets(m_device, fTools.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
+            VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
+            VkWriteDescriptorSet globalShaderDataWrite{};
+            WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                globalShaderDataSet, 1, fTools.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+            vkUpdateDescriptorSets(m_device, 1, &globalShaderDataWrite, 0, nullptr);
+        }/* Commands for global shader data descriptor set recorded */
+
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
@@ -259,7 +280,8 @@ namespace BlitzenVulkan
             depthAttachmentSR.levelCount = VK_REMAINING_MIP_LEVELS;
             depthAttachmentSR.baseArrayLayer = 0;
             depthAttachmentSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+            ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT |
+                VK_ACCESS_2_MEMORY_WRITE_BIT,
             VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, depthAttachmentSR);
@@ -300,27 +322,6 @@ namespace BlitzenVulkan
 
 
 
-        // Declaring it outside the below scope, as it needs to be bound later
-        VkDescriptorSet globalShaderDataSet;
-        /* Allocating and updating the descriptor set used for global shader data*/
-        {
-            vkResetDescriptorPool(m_device, fTools.globalShaderDataDescriptorPool, 0);
-            GlobalShaderData* pGlobalShaderDataBufferData = reinterpret_cast<GlobalShaderData*>(fTools.globalShaderDataBuffer.allocation->GetMappedData());
-            *pGlobalShaderDataBufferData = m_globalShaderData;
-            AllocateDescriptorSets(m_device, fTools.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
-            VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
-            VkWriteDescriptorSet globalShaderDataWrite{};
-            WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-            globalShaderDataSet, 1, fTools.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
-            vkUpdateDescriptorSets(m_device, 1, &globalShaderDataWrite, 0, nullptr);
-
-            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 0, 
-            1, &globalShaderDataSet, 0, nullptr);
-            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
-            vkCmdBindIndexBuffer(fTools.commandBuffer, m_globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-        }/* Commands for global shader data descriptor set recorded */
-
-
 
         // Dynamic viewport so I have to do this right here
         {
@@ -340,7 +341,12 @@ namespace BlitzenVulkan
             vkCmdSetScissor(fTools.commandBuffer, 0, 1, &scissor);
         }
 
-        vkCmdDrawIndexed(fTools.commandBuffer, 6, 1, 0, 0, 0);
+        vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 0,
+        1, &globalShaderDataSet, 0, nullptr);
+        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
+        vkCmdBindIndexBuffer(fTools.commandBuffer, m_globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdDrawIndexed(fTools.commandBuffer, 24, 1, 0, 0, 0);
 
         vkCmdEndRendering(fTools.commandBuffer);
 

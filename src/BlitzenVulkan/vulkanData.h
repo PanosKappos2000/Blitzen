@@ -6,6 +6,15 @@
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
 
+// Temporary to debug my math library
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
+#include "glm/gtx/transform.hpp"
+#include "glm/gtx/quaternion.hpp"
+
 // These macros will be used to initalize VkApplicationInfo which will be passed to VkInstanceCreateInfo
 #define BLITZEN_VULKAN_USER_APPLICATION                         "Blitzen Game"
 #define BLITZEN_VULKAN_USER_APPLICATION_VERSION                 VK_MAKE_VERSION (1, 0, 0)
@@ -64,8 +73,10 @@ namespace BlitzenVulkan
     };
 
     // Holds universal, constant shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
-    struct GlobalShaderData
+    struct alignas(16) GlobalShaderData
     {
+        BlitML::mat4 projection;
+        BlitML::mat4 view;
         VkDeviceAddress vertexBufferAddress;
     };
 }
