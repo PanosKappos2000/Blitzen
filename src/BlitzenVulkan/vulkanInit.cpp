@@ -586,6 +586,7 @@ namespace BlitzenVulkan
     {
         vkDeviceWaitIdle(m_device);
 
+        vmaDestroyBuffer(m_allocator, m_staticRenderObjectBuffer.buffer, m_staticRenderObjectBuffer.allocation);
         vmaDestroyBuffer(m_allocator, m_globalVertexBuffer.buffer, m_globalVertexBuffer.allocation);
         vmaDestroyBuffer(m_allocator, m_globalIndexBuffer.buffer, m_globalIndexBuffer.allocation);
 

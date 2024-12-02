@@ -51,7 +51,8 @@ namespace BlitzenVulkan
         /* ---------------------------------------------------------------------------------------------------------
             2nd part of Vulkan initialization. Gives scene data in arrays and vulkan uploads the data to the GPU
         ------------------------------------------------------------------------------------------------------------ */
-        void UploadDataToGPUAndSetupForRendering(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+        void UploadDataToGPUAndSetupForRendering(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+        BlitCL::DynamicArray<StaticRenderObject>& staticObjects);
 
         /*-----------------------------------------------------------------------------------------------
             Renders the world each frame. 
@@ -67,7 +68,8 @@ namespace BlitzenVulkan
 
         void FrameToolsInit();
 
-        void UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+        void UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+        BlitCL::DynamicArray<StaticRenderObject>& staticObjects);
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -102,6 +104,7 @@ namespace BlitzenVulkan
         // Buffers that will be passed only once during loading and will hold data that will be accessed by shaders
         AllocatedBuffer m_globalVertexBuffer;
         AllocatedBuffer m_globalIndexBuffer;
+        AllocatedBuffer m_staticRenderObjectBuffer;
 
         // Structures needed to pass the global shader data
         VkDescriptorSetLayout m_globalShaderDataLayout;

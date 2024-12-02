@@ -5,7 +5,8 @@
 
 namespace BlitzenVulkan
 {
-    void VulkanRenderer::UploadDataToGPUAndSetupForRendering(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices)
+    void VulkanRenderer::UploadDataToGPUAndSetupForRendering(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+    BlitCL::DynamicArray<StaticRenderObject>& staticObjects)
     {
         FrameToolsInit();
 
@@ -73,7 +74,9 @@ namespace BlitzenVulkan
             VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
             CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
             m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 1, &shaderDataLayoutBinding);
-            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 1, &m_globalShaderDataLayout, 0, nullptr);
+            VkPushConstantRange pushConstant{};
+            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(ShaderPushConstant), 0);
+            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 1, &m_globalShaderDataLayout, 1, &pushConstant);
             pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;
 
             VkPipelineVertexInputStateCreateInfo vertexInput{};
@@ -86,7 +89,7 @@ namespace BlitzenVulkan
             vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
         }
 
-        UploadBuffersToGPU(vertices, indices);
+        UploadBuffersToGPU(vertices, indices, staticObjects);
     }
 
     void VulkanRenderer::FrameToolsInit()
@@ -139,7 +142,8 @@ namespace BlitzenVulkan
         }
     }
 
-    void VulkanRenderer::UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices)
+    void VulkanRenderer::UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+    BlitCL::DynamicArray<StaticRenderObject>& staticObjects)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
@@ -156,17 +160,30 @@ namespace BlitzenVulkan
         CreateBuffer(m_allocator, m_globalIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, indexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
+        VkDeviceSize renderObjectBufferSize = sizeof(StaticRenderObject) * staticObjects.GetSize();
+        CreateBuffer(m_allocator, m_staticRenderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        VkBufferDeviceAddressInfo renderObjectBufferAddressInfo{};
+        renderObjectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        renderObjectBufferAddressInfo.pNext = nullptr;
+        renderObjectBufferAddressInfo.buffer = m_staticRenderObjectBuffer.buffer;
+        m_globalShaderData.renderObjectBufferAddress = vkGetBufferDeviceAddress(m_device, &renderObjectBufferAddressInfo);
+
         AllocatedBuffer stagingBuffer;
-        CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, vertexBufferSize + indexBufferSize, 
-        VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+        vertexBufferSize + indexBufferSize + renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         void* pData = stagingBuffer.allocation->GetMappedData();
         BlitzenCore::BlitMemCopy(pData, vertices.Data(), vertexBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize, indices.Data(), indexBufferSize);
+        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize, staticObjects.Data(), 
+        renderObjectBufferSize);
 
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_globalVertexBuffer.buffer, vertexBufferSize, 0, 0);
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_globalIndexBuffer.buffer, indexBufferSize, vertexBufferSize, 0);
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_staticRenderObjectBuffer.buffer, renderObjectBufferSize, 
+        vertexBufferSize + indexBufferSize, 0);
 
         SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
 
@@ -346,6 +363,10 @@ namespace BlitzenVulkan
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
+        ShaderPushConstant index;
+        index.drawTag = 0; // Only one object currently so I am hardcoding the index to test it
+        vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
+        sizeof(ShaderPushConstant), &index);
         vkCmdDrawIndexed(fTools.commandBuffer, 24, 1, 0, 0, 0);
 
         vkCmdEndRendering(fTools.commandBuffer);

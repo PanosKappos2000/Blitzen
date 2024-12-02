@@ -119,7 +119,6 @@ namespace BlitzenEngine
             vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
             vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
             vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
-
             indices[0] = 0;
             indices[1] = 1;
             indices[2] = 2;
@@ -144,8 +143,10 @@ namespace BlitzenEngine
             indices[21] = 2;
             indices[22] = 3;
             indices[23] = 7;
+            BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders(1);
+            renders[0].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
 
-            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering(vertices, indices);
+            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering(vertices, indices, renders);
         #endif
     }
 

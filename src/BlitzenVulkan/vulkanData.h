@@ -78,5 +78,18 @@ namespace BlitzenVulkan
         BlitML::mat4 projection;
         BlitML::mat4 view;
         VkDeviceAddress vertexBufferAddress;
+        VkDeviceAddress renderObjectBufferAddress;
+    };
+
+    // Pushed every frame for the non indirect version to access per object data
+    struct alignas(16) ShaderPushConstant
+    {
+        uint32_t drawTag;
+    };
+
+    // Holds the data of a static object. Will be passed to the shader only once during loading and will be indexed in the shaders
+    struct alignas (16) StaticRenderObject
+    {
+        BlitML::mat4 modelMatrix;
     };
 }
