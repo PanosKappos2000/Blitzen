@@ -45,6 +45,7 @@ namespace BlitzenVulkan
     class VulkanRenderer
     {
     public:
+
         void Init(void* pPlatformState, uint32_t windowWidth, uint32_t windowHeight);
 
         /* ---------------------------------------------------------------------------------------------------------
@@ -149,6 +150,10 @@ namespace BlitzenVulkan
     void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, 
     VkDeviceSize dstOffset);
 
+    void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets);
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
+    uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+
 
 
 
@@ -218,4 +223,14 @@ namespace BlitzenVulkan
 
     //Helper function for pipeline layout creation, takes care of a single push constant creation
     void CreatePushConstantRange(VkPushConstantRange& pushConstant, VkShaderStageFlags shaderStage, uint32_t size, uint32_t offset = 0);
+
+
+
+    /*
+        Other helper functions
+    */
+
+    // Defined in vulkanRenderer.cpp
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 
+    VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor = {0, 0, 0, 0}, VkClearDepthStencilValue clearValueDepth = {0, 0});
 }

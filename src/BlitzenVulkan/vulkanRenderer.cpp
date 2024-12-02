@@ -202,7 +202,9 @@ namespace BlitzenVulkan
 
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
-        // Pipeline barrier to transtion the layout of the color attachment from undefined to optimal
+
+
+        // Pipeline barrier to transtion the layout of the color attachment from undefined to general
         {
             VkImageMemoryBarrier2 colorAttachmentBarrier{};
             VkImageSubresourceRange colorAttachmentSubresource{};
@@ -217,6 +219,8 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &colorAttachmentBarrier);
         }
         // Command for color attachment transition recorded
+
+
 
         // Clearing the color attachment
         {
@@ -235,6 +239,114 @@ namespace BlitzenVulkan
             vkCmdClearColorImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_GENERAL, &clearColorAttachment, 1, &clearColorSubresourceRange);
         }
 
+
+
+        // Transition the layout of the depth attachment and color attachment to be used as rendering attachments
+        {
+            VkImageMemoryBarrier2 colorAttachmentBarrier{};
+            VkImageSubresourceRange colorAttachmentSubresource{};
+            colorAttachmentSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            colorAttachmentSubresource.baseMipLevel = 0;
+            colorAttachmentSubresource.levelCount = VK_REMAINING_MIP_LEVELS;
+            colorAttachmentSubresource.baseArrayLayer = 0;
+            colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
+            ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | 
+            VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | 
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAttachmentSubresource);
+
+            VkImageMemoryBarrier2 depthAttachmentBarrier{};
+            VkImageSubresourceRange depthAttachmentSR{};
+            depthAttachmentSR.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            depthAttachmentSR.baseMipLevel = 0;
+            depthAttachmentSR.levelCount = VK_REMAINING_MIP_LEVELS;
+            depthAttachmentSR.baseArrayLayer = 0;
+            depthAttachmentSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
+            ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
+            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, depthAttachmentSR);
+
+            VkImageMemoryBarrier2 memoryBarriers[2] = {colorAttachmentBarrier, depthAttachmentBarrier};
+
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, memoryBarriers);
+        }
+        // Attachments ready for rendering
+
+
+
+
+        // Define the attachments and begin rendering
+        {
+            VkRenderingAttachmentInfo colorAttachment{};
+            CreateRenderingAttachmentInfo(colorAttachment, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+            VkRenderingAttachmentInfo depthAttachment{};
+            CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
+            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, {0.f, 0});
+
+            VkRenderingInfo renderingInfo{};
+            renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+            renderingInfo.flags = 0;
+            renderingInfo.pNext = nullptr;
+            renderingInfo.viewMask = 0;
+            renderingInfo.layerCount = 1;
+            renderingInfo.renderArea.offset = {0, 0};
+            renderingInfo.renderArea.extent = {m_drawExtent};
+            renderingInfo.colorAttachmentCount = 1;
+            renderingInfo.pColorAttachments = &colorAttachment;
+            renderingInfo.pDepthAttachment = &depthAttachment;
+            renderingInfo.pStencilAttachment = nullptr;
+            vkCmdBeginRendering(fTools.commandBuffer, &renderingInfo);
+        }
+        // Begin rendering command recorded
+
+
+
+        // Declaring it outside the below scope, as it needs to be bound later
+        VkDescriptorSet globalShaderDataSet;
+        /* Allocating and updating the descriptor set used for global shader data*/
+        {
+            vkResetDescriptorPool(m_device, fTools.globalShaderDataDescriptorPool, 0);
+            GlobalShaderData* pGlobalShaderDataBufferData = reinterpret_cast<GlobalShaderData*>(fTools.globalShaderDataBuffer.allocation->GetMappedData());
+            *pGlobalShaderDataBufferData = m_globalShaderData;
+            AllocateDescriptorSets(m_device, fTools.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
+            VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
+            VkWriteDescriptorSet globalShaderDataWrite{};
+            WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            globalShaderDataSet, 1, fTools.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+            vkUpdateDescriptorSets(m_device, 1, &globalShaderDataWrite, 0, nullptr);
+
+            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 0, 
+            1, &globalShaderDataSet, 0, nullptr);
+            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
+            vkCmdBindIndexBuffer(fTools.commandBuffer, m_globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        }/* Commands for global shader data descriptor set recorded */
+
+
+
+        // Dynamic viewport so I have to do this right here
+        {
+            VkViewport viewport{};
+            viewport.x = 0;
+            viewport.y = 0;
+            viewport.width = static_cast<float>(m_drawExtent.width);
+            viewport.height = static_cast<float>(m_drawExtent.height);
+            viewport.minDepth = 0.f;
+            viewport.maxDepth = 1.f;
+            vkCmdSetViewport(fTools.commandBuffer, 0, 1, &viewport);
+            VkRect2D scissor{};
+            scissor.extent.width = m_drawExtent.width;
+            scissor.extent.height = m_drawExtent.height;
+            scissor.offset.x = 0;
+            scissor.offset.y = 0;
+            vkCmdSetScissor(fTools.commandBuffer, 0, 1, &scissor);
+        }
+
+        //vkCmdDrawIndexed(fTools.commandBuffer, 6, 1, 0, 0, 0);
+
+        vkCmdEndRendering(fTools.commandBuffer);
+
+
         // Copying the color attachment to the swapchain image and transitioning the image to present
         {
             // color attachment barrier
@@ -246,7 +358,7 @@ namespace BlitzenVulkan
             colorAttachmentSubresource.baseArrayLayer = 0;
             colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | 
-            VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, 
+            VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, colorAttachmentSubresource);
 
             //swapchain image barrier
@@ -257,8 +369,8 @@ namespace BlitzenVulkan
             swapchainImageSR.levelCount = VK_REMAINING_MIP_LEVELS;
             swapchainImageSR.baseArrayLayer = 0;
             swapchainImageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            ImageMemoryBarrier(m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], swapchainImageBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-            VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
+            ImageMemoryBarrier(m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], swapchainImageBarrier, VK_PIPELINE_STAGE_2_NONE, 
+            VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, swapchainImageSR);
 
             VkImageMemoryBarrier2 firstTransferMemoryBarriers[2] = {colorAttachmentBarrier, swapchainImageBarrier};
@@ -351,6 +463,19 @@ namespace BlitzenVulkan
         submitInfo.signalSemaphoreInfoCount = signalSemaphoreCount;
         submitInfo.pSignalSemaphoreInfos = &signalSemaphoreInfo;
         vkQueueSubmit2(queue, 1, &submitInfo, fence);
+    }
+
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 
+    VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor, VkClearDepthStencilValue clearValueDepth)
+    {
+        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachmentInfo.pNext = nullptr;
+        attachmentInfo.imageView = imageView;
+        attachmentInfo.imageLayout = imageLayout;
+        attachmentInfo.loadOp = loadOp;
+        attachmentInfo.storeOp = storeOp;
+        attachmentInfo.clearValue.color = clearValueColor;
+        attachmentInfo.clearValue.depthStencil = clearValueDepth;
     }
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)

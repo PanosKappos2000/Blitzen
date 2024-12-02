@@ -118,6 +118,33 @@ namespace BlitzenVulkan
         vkDestroyImageView(device, imageView, nullptr);
     }
 
+    void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets)
+    {
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.pNext = nullptr;
+        allocInfo.descriptorPool = pool;
+        allocInfo.pSetLayouts = pLayouts;
+        allocInfo.descriptorSetCount = descriptorSetCount;
+        vkAllocateDescriptorSets(device, &allocInfo, pSets);
+    }
+
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
+    uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range)
+    {
+        bufferInfo.buffer = buffer;
+        bufferInfo.offset = offset;
+        bufferInfo.range = range;
+
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = nullptr;
+        write.descriptorType = descriptorType;
+        write.dstSet = dstSet;
+        write.dstBinding = 0;
+        write.descriptorCount = descriptorCount;
+        write.pBufferInfo = &bufferInfo;
+    }
+
     void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount, VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount, 
     VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount, VkImageMemoryBarrier2* pImageBarriers)
     {
