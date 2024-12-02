@@ -517,7 +517,7 @@ namespace BlitzenVulkan
                 VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
                 VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
                 initHandles.swapchainExtent.width = BlitCL::Clamp(initHandles.swapchainExtent.width, maxExtent.width, minExtent.width);
-                initHandles.swapchainExtent.height = BlitCL::Clamp(initHandles.swapchainExtent.height, maxExtent.width, minExtent.height);
+                initHandles.swapchainExtent.height = BlitCL::Clamp(initHandles.swapchainExtent.height, maxExtent.height, minExtent.height);
 
                 // Swapchain extent fully checked and ready to pass to the swapchain info
                 swapchainInfo.imageExtent = initHandles.swapchainExtent;

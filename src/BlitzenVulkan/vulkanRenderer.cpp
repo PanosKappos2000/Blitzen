@@ -5,7 +5,7 @@
 
 namespace BlitzenVulkan
 {
-    void VulkanRenderer::UploadDataToGPUAndSetupForRendering()
+    void VulkanRenderer::UploadDataToGPUAndSetupForRendering(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices)
     {
         FrameToolsInit();
 
@@ -86,8 +86,6 @@ namespace BlitzenVulkan
             vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
         }
 
-        BlitCL::DynamicArray<BlitML::Vertex> vertices(1);
-        BlitCL::DynamicArray<uint32_t> indices(1);
         UploadBuffersToGPU(vertices, indices);
     }
 
@@ -342,7 +340,7 @@ namespace BlitzenVulkan
             vkCmdSetScissor(fTools.commandBuffer, 0, 1, &scissor);
         }
 
-        //vkCmdDrawIndexed(fTools.commandBuffer, 6, 1, 0, 0, 0);
+        vkCmdDrawIndexed(fTools.commandBuffer, 6, 1, 0, 0, 0);
 
         vkCmdEndRendering(fTools.commandBuffer);
 
@@ -494,9 +492,7 @@ namespace BlitzenVulkan
         m_presentQueue, m_computeQueue, m_pCustomAllocator);
 
         //The draw extent should also be updated depending on if the swapchain got bigger or smaller
-        m_drawExtent.width = std::min(static_cast<uint32_t>(windowWidth), 
-        static_cast<uint32_t>(m_colorAttachment.extent.width));
-        m_drawExtent.height = std::min(static_cast<uint32_t>(windowHeight), 
-        static_cast<uint32_t>(m_colorAttachment.extent.height));
+        m_drawExtent.width = std::min(windowWidth, m_drawExtent.width);
+        m_drawExtent.height = std::min(windowHeight, m_drawExtent.height);
     }
 }

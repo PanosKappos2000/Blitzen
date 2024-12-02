@@ -108,7 +108,22 @@ namespace BlitzenEngine
     void Engine::SetupForRenderering()
     {
         #if BLITZEN_VULKAN
-            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering();
+            // Temporary shader data for tests on vulkan rendering
+            BlitCL::DynamicArray<BlitML::Vertex> vertices(4);
+            BlitCL::DynamicArray<uint32_t> indices(6);
+            vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
+            vertices[1].position = BlitML::vec3(-0.5f, -0.5f, 0.f);
+            vertices[2].position = BlitML::vec3(0.5f, -0.5f, 0.f);
+            vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
+
+            indices[0] = 0;
+            indices[1] = 1;
+            indices[2] = 2;
+            indices[3] = 2;
+            indices[4] = 3;
+            indices[5] = 0;
+
+            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering(vertices, indices);
         #endif
     }
 

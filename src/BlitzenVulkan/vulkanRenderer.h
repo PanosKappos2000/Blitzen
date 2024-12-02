@@ -51,7 +51,7 @@ namespace BlitzenVulkan
         /* ---------------------------------------------------------------------------------------------------------
             2nd part of Vulkan initialization. Gives scene data in arrays and vulkan uploads the data to the GPU
         ------------------------------------------------------------------------------------------------------------ */
-        void UploadDataToGPUAndSetupForRendering();
+        void UploadDataToGPUAndSetupForRendering(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
 
         /*-----------------------------------------------------------------------------------------------
             Renders the world each frame. 

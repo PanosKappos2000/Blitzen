@@ -21,5 +21,5 @@ layout(set = 0, binding = 0) uniform ShaderData
 
 void main()
 {
-    
+    gl_Position = vec4(shaderData.vertexBuffer.vertices[gl_VertexIndex].position, 1);
 }
