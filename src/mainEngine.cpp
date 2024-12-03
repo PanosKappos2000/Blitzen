@@ -72,6 +72,11 @@ namespace BlitzenEngine
 
     void Engine::Run()
     {
+        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
+        m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(BlitML::vec3(0.f, 0.f, 5.f)));
+        m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
+
         // Before starting the clock, the engine will put its renderer on the ready state
         SetupForRenderering();
 
@@ -92,6 +97,8 @@ namespace BlitzenEngine
                 m_clock.elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clock.startTime;
                 double deltaTime = m_clock.elapsedTime - previousTime;
                 previousTime = m_clock.elapsedTime;
+
+                UpdateCamera(m_camera, (float)deltaTime);
 
                 DrawFrame();
 
@@ -161,6 +168,20 @@ namespace BlitzenEngine
         m_clock.elapsedTime = 0;
     }
 
+    // This will move from here once I add a camera system
+    void UpdateCamera(Camera& camera, float deltaTime)
+    {
+        if (camera.cameraDirty)
+        {
+            // I haven't overloaded the += operator
+            camera.position = camera.position + camera.velocity * deltaTime * 95.f; // Needs this 95.f stabilizer, otherwise deltaTime teleports it
+
+            BlitML::mat4 translation = BlitML::Mat4Inverse(BlitML::Translate(camera.position));
+
+            camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
+        }
+    }
+
     void Engine::DrawFrame()
     {
         switch(m_renderer)
@@ -173,6 +194,9 @@ namespace BlitzenEngine
                     renderContext.windowResize = m_platformData.windowResize;
                     renderContext.windowWidth = m_platformData.windowWidth;
                     renderContext.windowHeight = m_platformData.windowHeight;
+                    renderContext.projectionMatrix = m_camera.projectionMatrix;
+                    renderContext.viewMatrix = m_camera.viewMatrix;
+                    renderContext.projectionView = m_camera.projectionViewMatrix;
                     m_systems.vulkanRenderer.DrawFrame(renderContext);
                 }
                 break;
@@ -255,10 +279,66 @@ namespace BlitzenEngine
                     BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, newContext);
                     return 1;
                 }
+                case BlitzenCore::BlitKey::__W:
+                {
+                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+                    camera.cameraDirty = 1;
+                    camera.velocity = BlitML::vec3(0.f, 0.f, -1.f);
+                    break;
+                }
+                case BlitzenCore::BlitKey::__S:
+                {
+                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+                    camera.cameraDirty = 1;
+                    camera.velocity = BlitML::vec3(0.f, 0.f, 1.f);
+                    break;
+                }
+                case BlitzenCore::BlitKey::__A:
+                {
+                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+                    camera.cameraDirty = 1;
+                    camera.velocity = BlitML::vec3(-1.f, 0.f, 0.f);
+                    break;
+                }
+                case BlitzenCore::BlitKey::__D:
+                {
+                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+                    camera.cameraDirty = 1;
+                    camera.velocity = BlitML::vec3(1.f, 0.f, 0.f);
+                    break;
+                }
                 default:
                 {
                     BLIT_DBLOG("Key pressed %i", key)
                     return 1;
+                }
+            }
+        }
+        else if (eventType == BlitzenCore::BlitEventType::KeyReleased)
+        {
+            switch (key)
+            {
+                case BlitzenCore::BlitKey::__W:
+                case BlitzenCore::BlitKey::__S:
+                {
+                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+                    camera.velocity.z = 0.f;
+                    if(camera.velocity.y == 0.f && camera.velocity.x == 0.f)
+                    {
+                        camera.cameraDirty = 0;
+                    }
+                    break;
+                }
+                case BlitzenCore::BlitKey::__A:
+                case BlitzenCore::BlitKey::__D:
+                {
+                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+                    camera.velocity.x = 0.f;
+                    if (camera.velocity.y == 0.f && camera.velocity.z == 0.f)
+                    {
+                        camera.cameraDirty = 0;
+                    }
+                    break;
                 }
             }
         }
@@ -283,8 +363,14 @@ namespace BlitzenEngine
         if(newWidth == 0 || newHeight == 0)
         {
             isSupended = 1;
+            return;
         }
         isSupended = 0;
+
+        // Since window width was updated, the perspective matrix needs to be updated as well
+        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) /
+        static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
+        m_camera.projectionViewMatrix = m_camera.viewMatrix * m_camera.projectionMatrix;
     }
 }
 

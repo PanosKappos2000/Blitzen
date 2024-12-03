@@ -129,6 +129,7 @@ namespace BlitML
         }
     };
 
+    // This does not seem to work 
     inline mat4 operator * (mat4& mat1, mat4& mat2) 
     {
         mat4 res;

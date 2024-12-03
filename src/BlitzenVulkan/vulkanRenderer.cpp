@@ -211,11 +211,11 @@ namespace BlitzenVulkan
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
-        m_globalShaderData.projection = BlitML::Perspective(BlitML::Radians(45.f),
-        static_cast<float>(context.windowWidth) / static_cast<float>(context.windowHeight),
-        10000.f, 0.1f);
-        //m_globalShaderData.projection[1][1] *= -1;
-        m_globalShaderData.view = BlitML::Mat4Inverse(BlitML::Translate(BlitML::vec3(0.f, 0.f, 5.f)));
+        // The calculation will be moved to the camera / engine soon 
+        m_globalShaderData.projection = context.projectionMatrix;
+        m_globalShaderData.projection.data[5] *= -1;
+        m_globalShaderData.view = context.viewMatrix;
+        m_globalShaderData.projectionView = context.projectionView;
 
         // Declaring it outside the below scope, as it needs to be bound later
         VkDescriptorSet globalShaderDataSet;

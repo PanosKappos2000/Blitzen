@@ -50,6 +50,21 @@ namespace BlitzenEngine
         #endif
     };
 
+    // Temporary camera struct, this will have its own file and will be a robust system
+    struct Camera
+    {
+        uint8_t cameraDirty = 0;
+
+        BlitML::mat4 viewMatrix;
+        BlitML::mat4 projectionMatrix;
+        BlitML::mat4 projectionViewMatrix;
+
+        BlitML::vec3 position;
+        BlitML::vec3 eulerAngles;
+
+        BlitML::vec3 velocity = BlitML::vec3(0.f);
+    };
+
     enum class ActiveRenderer : uint8_t
     {
         Vulkan = 0,
@@ -73,6 +88,8 @@ namespace BlitzenEngine
         inline EngineSystems& GetEngineSystems() { return m_systems; }
 
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
+
+        inline Camera& GetCamera() { return m_camera; }
 
     private:
 
@@ -107,6 +124,8 @@ namespace BlitzenEngine
         ActiveRenderer m_renderer;
 
         EngineSystems m_systems;
+
+        Camera m_camera;
     };
 
     // Will be registered to the event system on initalization
@@ -114,4 +133,6 @@ namespace BlitzenEngine
     uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
 
+    // This will be moved somewhere else once I have a good camera system
+    void UpdateCamera(Camera& camera, float deltaTime);
 }

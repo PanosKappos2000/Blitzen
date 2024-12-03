@@ -106,7 +106,7 @@ namespace BlitzenPlatform
 
             // Clock setup, similar thing to glfwGetTime
             LARGE_INTEGER frequency;
-            QueryPerformanceCounter(&frequency);
+            QueryPerformanceFrequency(&frequency);
             clockFrequency = 1.0 / static_cast<double>(frequency.QuadPart);// The quad part is just a 64 bit integer
             QueryPerformanceCounter(&startTime);
 

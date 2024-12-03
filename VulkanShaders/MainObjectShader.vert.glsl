@@ -28,6 +28,8 @@ layout(set = 0, binding = 0) uniform ShaderData
 {
     mat4 projection;
     mat4 view;
+    mat4 projectionView;
+
     VertexBuffer vertexBuffer;
     RenderObjectBuffer renderObjects;
 }shaderData;

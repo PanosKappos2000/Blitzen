@@ -21,7 +21,7 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
+#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  2
@@ -49,6 +49,10 @@ namespace BlitzenVulkan
         uint8_t windowResize = 0;
         uint32_t windowWidth;
         uint32_t windowHeight;
+
+        BlitML::mat4 projectionMatrix;
+        BlitML::mat4 viewMatrix;
+        BlitML::mat4 projectionView;
     };
 
     struct AllocatedImage
@@ -77,6 +81,8 @@ namespace BlitzenVulkan
     {
         BlitML::mat4 projection;
         BlitML::mat4 view;
+        BlitML::mat4 projectionView;
+
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;
     };
