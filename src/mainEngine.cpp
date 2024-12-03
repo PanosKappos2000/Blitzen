@@ -179,6 +179,7 @@ namespace BlitzenEngine
             BlitML::mat4 translation = BlitML::Mat4Inverse(BlitML::Translate(camera.position));
 
             camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
+            camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
         }
     }
 
@@ -367,10 +368,9 @@ namespace BlitzenEngine
         }
         isSupended = 0;
 
-        // Since window width was updated, the perspective matrix needs to be updated as well
-        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) /
-        static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
-        m_camera.projectionViewMatrix = m_camera.viewMatrix * m_camera.projectionMatrix;
+        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
+        10000.f, 0.1f);
+        m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
     }
 }
 

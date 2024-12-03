@@ -127,23 +127,19 @@ namespace BlitML
                 data[15] = 1.f;
             }
         }
+
+        inline float& operator [] (size_t index) { return this->data[index]; }
     };
 
-    // This does not seem to work 
+    // Still doesn't work
     inline mat4 operator * (mat4& mat1, mat4& mat2) 
     {
         mat4 res;
-        const float* pMat1 = mat1.data;
-        const float* pMat2 = mat2.data;
-        float* pRes = res.data;
-        for (int32_t i = 0; i < 4; ++i) 
-        {
-            for (int32_t j = 0; j < 4; ++j) 
+        for (uint8_t i = 0; i < 4; ++i) {
+            for (uint8_t j = 0; j < 4; ++j) 
             {
-                *pRes = pMat1[0] * pMat2[0 + j] + pMat1[1] * pMat2[4 + j] + pMat1[2] * pMat2[8 + j] + pMat1[3] * pMat2[12 + j];
-                pRes++;
+                res[j + i * 4] = mat1[0 + j] * mat2[0 + i * 4] + mat1[4 + j] * mat2[1 + i * 4] + mat1[8 + j] * mat2[2 + i * 4] + mat1[12 + j] * mat2[3 + i * 4];
             }
-            pMat1 += 4;
         }
         return res;
     }

@@ -41,6 +41,6 @@ layout(push_constant) uniform constants
 
 void main()
 {
-    gl_Position = shaderData.projection * shaderData.view * shaderData.renderObjects.renderObjects[PushConstants.drawTag].worldMatrix *
+    gl_Position = shaderData.projectionView * shaderData.renderObjects.renderObjects[PushConstants.drawTag].worldMatrix *
     vec4(shaderData.vertexBuffer.vertices[gl_VertexIndex].position, 1);
 }
