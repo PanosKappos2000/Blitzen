@@ -90,6 +90,22 @@ namespace BlitzenVulkan
         }
 
         UploadBuffersToGPU(vertices, indices, staticObjects);
+
+        // Placeholder code to test textures
+        uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
+        uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+	    uint32_t pixels[16 * 16]; 
+	    for (int x = 0; x < 16; x++) 
+        {
+	    	for (int y = 0; y < 16; y++) 
+            {
+	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+	    	}
+	    }
+        AllocatedImage textureImage;
+        CreateTextureImage(reinterpret_cast<void*>(pixels), m_device, m_allocator, textureImage, {1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
+        VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
+        textureImage.CleanupResources(m_allocator, m_device);
     }
 
     void VulkanRenderer::FrameToolsInit()

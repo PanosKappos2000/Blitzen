@@ -98,4 +98,11 @@ namespace BlitzenVulkan
     {
         BlitML::mat4 modelMatrix;
     };
+
+    // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once
+    struct TextureData
+    {
+        AllocatedImage image;
+        VkSampler sampler;
+    };
 }

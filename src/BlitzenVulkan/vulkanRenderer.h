@@ -71,6 +71,8 @@ namespace BlitzenVulkan
         void UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects);
 
+        void UploadTexturesToGPU(BlitCL::DynamicArray<TextureData>& texture);
+
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
     private:
@@ -110,6 +112,11 @@ namespace BlitzenVulkan
         VkDescriptorSetLayout m_globalShaderDataLayout;
         GlobalShaderData m_globalShaderData;
 
+        // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
+        VkDescriptorPool m_textureDescriptorAllocator;
+        VkDescriptorSetLayout m_textureDescriptorSetLayout;
+        TextureData m_placeholderData;
+
         // Pipeline used to draw opaque objects
         VkPipeline m_opaqueGraphicsPipeline;
         VkPipelineLayout m_opaqueGraphicsPipelineLayout;
@@ -144,14 +151,19 @@ namespace BlitzenVulkan
     void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
     VmaAllocationCreateFlags allocationFlags);
 
-    void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags, 
+    void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
     uint8_t loadMipmaps = 0);
+
+    void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
+    VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
 
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
     VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL);
 
     void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, 
     VkDeviceSize dstOffset);
+
+    void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage image, VkImageLayout imageLayout, VkExtent3D extent);
 
     void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets);
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
