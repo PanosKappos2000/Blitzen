@@ -7,6 +7,7 @@
 struct Vertex
 {
     vec3 position;
+    vec2 uvMap;
 };
 
 layout(buffer_reference, std430) readonly buffer VertexBuffer
@@ -17,6 +18,7 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer
 struct RenderObject
 {
     mat4 worldMatrix;
+    uint textureTag;
 };
 
 layout(buffer_reference, std430) readonly buffer RenderObjectBuffer
@@ -39,8 +41,16 @@ layout(push_constant) uniform constants
     uint drawTag;
 }PushConstants;
 
+layout(location = 0) out vec2 outUv;
+layout(location = 1) out uint outTextureTag;
+
 void main()
 {
-    gl_Position = shaderData.projectionView * shaderData.renderObjects.renderObjects[PushConstants.drawTag].worldMatrix *
-    vec4(shaderData.vertexBuffer.vertices[gl_VertexIndex].position, 1);
+    Vertex currentVertex = shaderData.vertexBuffer.vertices[gl_VertexIndex];
+    RenderObject renderObject = shaderData.renderObjects.renderObjects[PushConstants.drawTag];
+
+    gl_Position = shaderData.projectionView * renderObject.worldMatrix * vec4(currentVertex.position, 1);
+
+    outUv = currentVertex.uvMap;
+    outTextureTag = renderObject.textureTag;
 }

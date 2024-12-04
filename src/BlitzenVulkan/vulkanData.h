@@ -97,6 +97,7 @@ namespace BlitzenVulkan
     struct alignas (16) StaticRenderObject
     {
         BlitML::mat4 modelMatrix;
+        uint32_t textureTag;
     };
 
     // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once

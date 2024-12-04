@@ -586,6 +586,16 @@ namespace BlitzenVulkan
     {
         vkDeviceWaitIdle(m_device);
 
+        for(size_t i = 0; i < m_loadedTextures.GetSize(); ++i)
+        {
+            m_loadedTextures[i].image.CleanupResources(m_allocator, m_device);
+
+            vkDestroySampler(m_device, m_loadedTextures[i].sampler, m_pCustomAllocator);
+        }
+
+        vkDestroyDescriptorPool(m_device, m_textureDescriptorAllocator, m_pCustomAllocator);
+        vkDestroyDescriptorSetLayout(m_device, m_textureDescriptorSetLayout, m_pCustomAllocator);
+
         vmaDestroyBuffer(m_allocator, m_staticRenderObjectBuffer.buffer, m_staticRenderObjectBuffer.allocation);
         vmaDestroyBuffer(m_allocator, m_globalVertexBuffer.buffer, m_globalVertexBuffer.allocation);
         vmaDestroyBuffer(m_allocator, m_globalIndexBuffer.buffer, m_globalIndexBuffer.allocation);

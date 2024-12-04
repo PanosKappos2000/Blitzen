@@ -76,9 +76,9 @@ namespace BlitzenVulkan
         VkImageMemoryBarrier2 imageMemoryBarrier{};
         VkImageSubresourceRange imageSR{};
         imageSR.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageSR.baseArrayLayer = 1;
+        imageSR.baseArrayLayer = 0;
         imageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
-        imageSR.baseMipLevel = 1;
+        imageSR.baseMipLevel = 0;
         imageSR.levelCount = VK_REMAINING_MIP_LEVELS;
         ImageMemoryBarrier(image.image, imageMemoryBarrier, VK_PIPELINE_STAGE_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
         VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageSR);
@@ -86,10 +86,40 @@ namespace BlitzenVulkan
 
         CopyBufferToImage(commandBuffer, stagingBuffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, extent);
 
+        VkImageMemoryBarrier2 secondTransitionBarrier{};
+        ImageMemoryBarrier(image.image, secondTransitionBarrier, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
+        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
+        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageSR);
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &secondTransitionBarrier);
+
         SubmitCommandBuffer(queue, commandBuffer);
         vkQueueWaitIdle(queue);
 
         vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    void CreateTextureSampler(VkDevice device, VkSampler& sampler)
+    {
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.flags = 0;
+        samplerInfo.pNext = nullptr;
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.anisotropyEnable = VK_FALSE;
+        samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias = 0.f;
+        samplerInfo.maxLod = 0.f;
+        samplerInfo.minLod = 0.f;
+
+        VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
     }
 
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
@@ -160,7 +190,7 @@ namespace BlitzenVulkan
         copyRegion.bufferRowLength = 0;
 
         VkCopyBufferToImageInfo2 copyInfo{};
-        copyInfo.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2;
+        copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2;
         copyInfo.pNext = nullptr;
         copyInfo.srcBuffer = srcBuffer;
         copyInfo.dstImage = image;
@@ -201,6 +231,18 @@ namespace BlitzenVulkan
         write.dstBinding = 0;
         write.descriptorCount = descriptorCount;
         write.pBufferInfo = &bufferInfo;
+    }
+
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
+    uint32_t descriptorCount, uint32_t binding)
+    {
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = nullptr;
+        write.dstSet = dstSet;
+        write.dstBinding = binding;
+        write.descriptorType = descriptorType;
+        write.descriptorCount = descriptorCount;
+        write.pImageInfo = pImageInfos;
     }
 
     void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount, VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount, 

@@ -71,7 +71,7 @@ namespace BlitzenVulkan
         void UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects);
 
-        void UploadTexturesToGPU(BlitCL::DynamicArray<TextureData>& texture);
+        void UploadTexturesToGPU();
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -115,7 +115,7 @@ namespace BlitzenVulkan
         // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
         VkDescriptorPool m_textureDescriptorAllocator;
         VkDescriptorSetLayout m_textureDescriptorSetLayout;
-        TextureData m_placeholderData;
+        VkDescriptorSet m_textureDescriptorSet;
 
         // Pipeline used to draw opaque objects
         VkPipeline m_opaqueGraphicsPipeline;
@@ -129,6 +129,9 @@ namespace BlitzenVulkan
 
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
+
+        // Holds all vulkan texture data for each texture loaded to the GPU
+        BlitCL::DynamicArray<TextureData> m_loadedTextures;
     };
 
 
@@ -157,6 +160,8 @@ namespace BlitzenVulkan
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
     VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
 
+    void CreateTextureSampler(VkDevice device, VkSampler& sampler);
+
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
     VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL);
 
@@ -168,6 +173,8 @@ namespace BlitzenVulkan
     void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets);
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
     uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
+    uint32_t descriptorCount, uint32_t binding);
 
 
 
@@ -241,9 +248,9 @@ namespace BlitzenVulkan
 
 
 
-    /*
+    /*----------------------------
         Other helper functions
-    */
+    -----------------------------*/
 
     // Defined in vulkanRenderer.cpp
     void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 

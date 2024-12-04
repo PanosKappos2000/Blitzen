@@ -15,6 +15,8 @@ namespace BlitzenVulkan
         CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
+        m_loadedTextures.PushBack(TextureData());
+
         /* Main opaque object graphics pipeline */
         {
             VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -71,12 +73,22 @@ namespace BlitzenVulkan
             CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
             pipelineInfo.pColorBlendState = &colorBlendState;
 
+            // Descriptor set layout for global shader data
             VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
             CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
             m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 1, &shaderDataLayoutBinding);
+
+            // Descriptor set layout for textures
+            VkDescriptorSetLayoutBinding texturesLayoutBinding{};
+            CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(m_loadedTextures.GetSize()), 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+            m_textureDescriptorSetLayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
+
+            VkDescriptorSetLayout layouts [2] = {m_globalShaderDataLayout, m_textureDescriptorSetLayout};
+
             VkPushConstantRange pushConstant{};
             CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(ShaderPushConstant), 0);
-            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 1, &m_globalShaderDataLayout, 1, &pushConstant);
+            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 1, &pushConstant);
             pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;
 
             VkPipelineVertexInputStateCreateInfo vertexInput{};
@@ -92,20 +104,26 @@ namespace BlitzenVulkan
         UploadBuffersToGPU(vertices, indices, staticObjects);
 
         // Placeholder code to test textures
-        uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
+        uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
         uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
 	    uint32_t pixels[16 * 16]; 
 	    for (int x = 0; x < 16; x++) 
         {
 	    	for (int y = 0; y < 16; y++) 
             {
-	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : white;
 	    	}
 	    }
-        AllocatedImage textureImage;
-        CreateTextureImage(reinterpret_cast<void*>(pixels), m_device, m_allocator, textureImage, {1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
-        VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
-        textureImage.CleanupResources(m_allocator, m_device);
+
+        for(size_t i = 0; i < m_loadedTextures.GetSize(); ++i)
+        {
+            CreateTextureImage(reinterpret_cast<void*>(pixels), m_device, m_allocator, m_loadedTextures[i].image, {1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
+            VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
+
+            CreateTextureSampler(m_device , m_loadedTextures[i].sampler);
+        }
+
+        UploadTexturesToGPU();
     }
 
     void VulkanRenderer::FrameToolsInit()
@@ -206,6 +224,36 @@ namespace BlitzenVulkan
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
         vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    void VulkanRenderer::UploadTexturesToGPU()
+    {
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSize.descriptorCount = 1;
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.pNext = nullptr;
+        poolInfo.maxSets = 1;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, m_pCustomAllocator, &m_textureDescriptorAllocator))
+ 
+        AllocateDescriptorSets(m_device, m_textureDescriptorAllocator, &m_textureDescriptorSetLayout, 
+        1, &m_textureDescriptorSet);
+
+        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(m_loadedTextures.GetSize());
+        for(size_t i = 0; i < imageInfos.GetSize(); ++i)
+        {
+            imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfos[i].imageView = m_loadedTextures[i].image.imageView;
+            imageInfos[i].sampler = m_loadedTextures[i].sampler;
+        }
+
+        VkWriteDescriptorSet write{};
+        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_textureDescriptorSet, 
+        static_cast<uint32_t>(imageInfos.GetSize()), 0);
+        vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
     }
 
 
@@ -374,8 +422,9 @@ namespace BlitzenVulkan
             vkCmdSetScissor(fTools.commandBuffer, 0, 1, &scissor);
         }
 
+        VkDescriptorSet descriptorSets [2] = {globalShaderDataSet, m_textureDescriptorSet};
         vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 0,
-        1, &globalShaderDataSet, 0, nullptr);
+        2, descriptorSets, 0, nullptr);
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 

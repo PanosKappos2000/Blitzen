@@ -151,5 +151,6 @@ namespace BlitML
     struct alignas(16) Vertex
     {
         vec3 position;
+        vec2 uvMap;
     };
 }
