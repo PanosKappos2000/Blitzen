@@ -19,10 +19,6 @@
 #define BLITZEN_WINDOW_WIDTH            1280
 #define BLITZEN_WINDOW_HEIGHT           720
 
-// Resource macros
-#define BLIT_MAX_TEXTURE_COUNT      5000
-#define BLIT_DEFAULT_TEXTURE_NAME   "blit_default_tex"
-
 namespace BlitzenEngine
 {
     struct PlatformStateData
@@ -61,6 +57,9 @@ namespace BlitzenEngine
     {
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
         BlitCL::PointerTable<TextureStats> textureTable;
+
+        MaterialStats materials[BLIT_MAX_MATERIAL_COUNT];
+        BlitCL::PointerTable<MaterialStats> materialTable;
     };
 
     // Temporary camera struct, this will have its own file and will be a robust system

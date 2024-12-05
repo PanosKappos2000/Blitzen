@@ -24,7 +24,7 @@ namespace BlitzenPlatform
     void CloseFile(FileHandle& handle);
 
     // Read a single line from a file and saves it into a line buffer, return 1/true if successful
-    uint8_t FilesystemReadLine(FileHandle& handle, char** lineBuffer);
+    uint8_t FilesystemReadLine(FileHandle& handle, size_t maxLength, char** lineBuffer, size_t* pLength);
     uint8_t FilesystemWriteLine(FileHandle& handle, const char* text);
 
     // Takes a file handle and the size of the data to read and saves the data read to a buffer and the size to an integer pointer

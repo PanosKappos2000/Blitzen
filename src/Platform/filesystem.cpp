@@ -10,8 +10,13 @@ namespace BlitzenPlatform
 {
     uint8_t FilepathExists(const char* path)
     {
-        struct stat buffer;
-        return stat(path, &buffer) == 0;
+        #if _MSC_VER
+            struct _stat buffer;
+            return _stat(path, &buffer) == 0;
+        #else
+            struct stat buffer;
+            return stat(path, &buffer) == 0;
+        #endif
     }
 
     uint8_t OpenFile(const char* path, FileModes mode, uint8_t binary, FileHandle& outHandle)
@@ -65,17 +70,14 @@ namespace BlitzenPlatform
         }
     }
 
-    uint8_t FilesystemReadLine(FileHandle& handle, char** lineBuffer)
+    uint8_t FilesystemReadLine(FileHandle& handle, size_t maxLength, char** lineBuffer, size_t* pLength)
     {
-        if (handle.pHandle) 
+        if (handle.pHandle && lineBuffer && pLength && maxLength > 0) 
         {
-            // Since we are reading a single line, it should be safe to assume this is enough characters.
-            char buffer[32000];
-            if (fgets(buffer, 32000, reinterpret_cast<FILE*>(handle.pHandle))) 
+            char* buffer = *lineBuffer;
+            if (fgets(buffer, maxLength, (FILE*)handle.pHandle) != 0) 
             {
-                uint64_t length = strlen(buffer);
-                *lineBuffer = reinterpret_cast<char*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::String, sizeof(char) * length + 1));
-                strcpy(*lineBuffer, buffer);
+                *pLength = strlen(*lineBuffer);
                 return 1;
             }
         }

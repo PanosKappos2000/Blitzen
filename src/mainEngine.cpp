@@ -52,7 +52,7 @@ namespace BlitzenEngine
             else
                 BLIT_FATAL("Event system initialization failed!")
 
-            if(!BlitzenEngine::LoadResourceSystem(m_resources.textures))
+            if(!BlitzenEngine::LoadResourceSystem(m_resources.textures, m_resources.materials))
             {
                 BLIT_FATAL("Resource system initalization failed")
             }
@@ -458,9 +458,12 @@ int main()
             BlitzenEngine::s_renderers.pVulkan = &vulkan;
         #endif
 
-        BlitzenEngine::Engine blitzen;
+        // Got to the point of stack overflow, use of new is temporary till I get off my ass and find a workaround
+        BlitzenEngine::Engine* Blitzen = new BlitzenEngine::Engine();
 
-        blitzen.Run();
+        Blitzen->Run();
+
+        delete Blitzen;
     }
 
     BlitzenCore::MemoryManagementShutdown();
