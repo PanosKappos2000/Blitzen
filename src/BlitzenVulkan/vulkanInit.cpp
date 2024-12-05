@@ -556,9 +556,9 @@ namespace BlitzenVulkan
 
             // Retrieve the swapchain images
             uint32_t swapchainImageCount = 0;
-            vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, nullptr);
+            VK_CHECK(vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, nullptr));
             initHandles.swapchainImages.Resize(swapchainImageCount);
-            vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, initHandles.swapchainImages.Data());
+            VK_CHECK(vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
 
             // Create image view for each swapchain image
             initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
@@ -576,6 +576,10 @@ namespace BlitzenVulkan
                 info.subresourceRange.levelCount = 1;
                 info.subresourceRange.baseArrayLayer = 0;
                 info.subresourceRange.layerCount = 1;
+                info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+                info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+                info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+                info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
                 VK_CHECK(vkCreateImageView(device, &info, pCustomAllocator, &(initHandles.swapchainImageViews[i])))
             }

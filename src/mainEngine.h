@@ -5,9 +5,8 @@
 #include "Core/blitzenContainerLibrary.h"
 #include "Core/blitEvents.h"
 #include "Application/textures.h"
+#include "BlitzenMathLibrary/blitMLTypes.h"
 
-// At some point in the future, I would like to remove this from here and only include in the .cpp file
-#include "BlitzenVulkan/vulkanRenderer.h"
 
 #define BLITZEN_VERSION                 "Blitzen Engine 0.C"
 
@@ -46,7 +45,6 @@ namespace BlitzenEngine
         uint8_t logSystem = 0;
 
         #if BLITZEN_VULKAN
-            BlitzenVulkan::VulkanRenderer vulkanRenderer;
             uint8_t vulkan = 0;
         #endif
     };

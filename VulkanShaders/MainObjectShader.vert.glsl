@@ -7,7 +7,10 @@
 struct Vertex
 {
     vec3 position;
-    vec2 uvMap;
+    float uvX;
+    vec3 normal;
+    float uvY;
+    vec4 color;
 };
 
 layout(buffer_reference, std430) readonly buffer VertexBuffer
@@ -51,6 +54,6 @@ void main()
 
     gl_Position = shaderData.projectionView * renderObject.worldMatrix * vec4(currentVertex.position, 1);
 
-    outUv = currentVertex.uvMap;
+    outUv = vec2(currentVertex.uvX, currentVertex.uvY);
     outTextureTag = renderObject.textureTag;
 }

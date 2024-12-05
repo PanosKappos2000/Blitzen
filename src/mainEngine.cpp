@@ -1,5 +1,10 @@
 #include "mainEngine.h"
 #include "Platform/platform.h"
+#include "BlitzenVulkan/vulkanRenderer.h"
+
+#if BLITZEN_VULKAN
+    static BlitzenVulkan::VulkanRenderer vulkan;
+#endif
 
 namespace BlitzenEngine
 {
@@ -59,7 +64,7 @@ namespace BlitzenEngine
         uint8_t hasRenderer = 0;
 
         #if BLITZEN_VULKAN
-            m_systems.vulkanRenderer.Init(&m_platformState, m_platformData.windowWidth, m_platformData.windowHeight);
+            vulkan.Init(&m_platformState, m_platformData.windowWidth, m_platformData.windowHeight);
             m_systems.vulkan = 1;
             hasRenderer = 1;
             m_renderer = ActiveRenderer::Vulkan;
@@ -78,7 +83,7 @@ namespace BlitzenEngine
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
 
         // This is an assertion for now, but failing a load should not fail the application, only warn
-        BLIT_ASSERT(LoadTextureFromFile("Assets/texture.jpg", m_textures[0]))
+        BLIT_ASSERT(LoadTextureFromFile("Assets/cobblestone.png", m_textures[0]))
 
         // Before starting the clock, the engine will put its renderer on the ready state
         SetupForRenderering();
@@ -122,21 +127,25 @@ namespace BlitzenEngine
             BlitCL::DynamicArray<BlitML::Vertex> vertices(8);
             BlitCL::DynamicArray<uint32_t> indices(32);
             vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
-            vertices[0].uvMap = BlitML::vec2(0.f, 0.f);
+            vertices[0].uvX = 0.f; 
+            vertices[0].uvY = 0.f;
             vertices[1].position = BlitML::vec3(-0.5f, -0.5f, 0.f);
-            vertices[1].uvMap = BlitML::vec2(0.f, 1.f);
+            vertices[1].uvX = 0.f; 
+            vertices[1].uvY = 1.f;
             vertices[2].position = BlitML::vec3(0.5f, -0.5f, 0.f);
-            vertices[2].uvMap = BlitML::vec2(1.f, 1.f);
+            vertices[2].uvX = 1.f;
+            vertices[2].uvY = 1.f;
             vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
-            vertices[3].uvMap = BlitML::vec2(1.f, 0.f);
+            vertices[3].uvX = 1.f;
+            vertices[3].uvY = 0.f;
             vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
-            vertices[4].uvMap = BlitML::vec2(0.f, 0.f);
+            
             vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
-            vertices[5].uvMap = BlitML::vec2(0.f, 1.f);
+            
             vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
-            vertices[6].uvMap = BlitML::vec2(1.f, 1.f);
+            
             vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
-            vertices[7].uvMap = BlitML::vec2(1.f, 0.f);
+            
             indices[0] = 0;
             indices[1] = 1;
             indices[2] = 2;
@@ -165,7 +174,7 @@ namespace BlitzenEngine
             renders[0].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
             renders[0].textureTag = 1;
 
-            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_textures, 1);
+            vulkan.UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_textures, 1);
         #endif
     }
 
@@ -210,7 +219,8 @@ namespace BlitzenEngine
                     renderContext.projectionMatrix = m_camera.projectionMatrix;
                     renderContext.viewMatrix = m_camera.viewMatrix;
                     renderContext.projectionView = m_camera.projectionViewMatrix;
-                    m_systems.vulkanRenderer.DrawFrame(renderContext);
+
+                    vulkan.DrawFrame(renderContext);
                 }
                 break;
             }
@@ -258,7 +268,7 @@ namespace BlitzenEngine
     {
         #if BLITZEN_VULKAN
             m_systems.vulkan = 0;
-            m_systems.vulkanRenderer.Shutdown();
+            vulkan.Shutdown();
         #endif
     }
 
