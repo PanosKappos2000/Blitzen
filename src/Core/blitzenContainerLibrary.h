@@ -3,6 +3,7 @@
 #include "blitMemory.h"
 
 #define BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER   2
+#define BLIT_POINTER_TABLE_INITIAL_CAPACITY      5000
 
 namespace BlitCL
 {
@@ -128,6 +129,77 @@ namespace BlitCL
                 BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(T));
 
             BLIT_WARN("DynamicArray rearranged, this means that a memory allocation has taken place")
+        }
+    };
+
+
+
+    /*------------------------------------------------------------------------------------------
+        This structure is a very simple hash table that only takes pointers.
+        It can never own any memory, so the objects it point to should be managed outside.
+        It also only accepts names for keys. Better hash tables will be created at a later time
+    ---------------------------------------------------------------------------------------------*/
+    template<typename T>
+    class PointerTable
+    {
+    public:
+
+        PointerTable()
+            :m_capacity(BLIT_POINTER_TABLE_INITIAL_CAPACITY)
+        {
+            if(m_capacity > 0)
+            {
+                m_pBlock = reinterpret_cast<T**>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::Hashmap, sizeof(T*) * m_capacity));
+                BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T*) * m_capacity);
+            }
+        }
+
+        void Set(const char* name, T* pValue)
+        {
+            size_t hash = Hash(name);
+
+            m_pBlock[hash] = pValue ? pValue : nullptr;
+        }
+
+        T* Get(const char* name, T* pDefault)
+        {
+            size_t  hash = Hash(name);
+            
+            return m_pBlock[hash] ? m_pBlock[hash] : pDefault;
+        }
+
+        ~PointerTable()
+        {
+            if(m_capacity > 0)
+            {
+                BlitzenCore::BlitFree(BlitzenCore::AllocationType::Hashmap, m_pBlock, sizeof(T**) * m_capacity);
+            }
+        }
+
+    private:
+
+        size_t m_capacity;
+        // Since this can only take pointers, the memory block will be a pointer to pointers
+        T** m_pBlock;
+
+    private:
+
+        size_t Hash(const char* name)
+        {
+            // A multipler to use when generating a hash. Prime to hopefully avoid collisions
+            static const size_t multiplier = 97;
+            unsigned const char* us;
+
+            size_t hash = 0;
+            for (us = (unsigned const char*)name; *us; us++) 
+            {
+                hash = hash * multiplier + *us;
+            }
+
+            // Mod it against the size of the table.
+            hash %= m_capacity;
+
+            return hash;
         }
     };
 }

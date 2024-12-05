@@ -61,6 +61,14 @@ namespace BlitzenCore
             BLIT_ERROR("Blitzen is still active, memory management cannot be shutdown")
             return;
         }
-        //BLIT_ASSERT_MESSAGE(!globalAllocationStats.totalAllocated, "There is still unallocated memory")
+        if (globalAllocationStats.totalAllocated)
+        {
+            BLIT_WARN("There is still unallocated memory. Total Unallocated Memory: %i \n \
+            Unallocated Array Memory: %i \n Unallocated Dynamic Array memory: %i \n Unallocated Hashmap memory: %i \n Unallocated Queue memory: %i \n       \
+            Unallocated BST memory: %i \n Unallocated String memory: %i \n Unallocated Engine memory: %i \n Uncallocated Renderer memory: %i \n", \
+            globalAllocationStats.totalAllocated, globalAllocationStats.typeAllocations[1], globalAllocationStats.typeAllocations[2], globalAllocationStats.typeAllocations[3], \
+            globalAllocationStats.typeAllocations[4], globalAllocationStats.typeAllocations[5], globalAllocationStats.typeAllocations[6], globalAllocationStats.typeAllocations[7], \
+            globalAllocationStats.typeAllocations[8])
+        }
     }
 }

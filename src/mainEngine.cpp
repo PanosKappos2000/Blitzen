@@ -3,6 +3,7 @@
 #include "BlitzenVulkan/vulkanRenderer.h"
 
 #if BLITZEN_VULKAN
+    // Global variables should not contain any dynamic array as member variables. I should either not have this as global static or it should not contain dynamic Arrays
     static BlitzenVulkan::VulkanRenderer vulkan;
 #endif
 
@@ -408,10 +409,15 @@ int main()
 
     // Blitzen needs to be destroyed before memory management can shutdown, otherwise the memory system will complain
     {
-        BlitzenEngine::Engine blitzen;
+        BlitCL::PointerTable<BlitzenEngine::TextureStats> table;
+        BlitzenEngine::TextureStats placeHolder;
+        placeHolder.textureHeight = 3;
+        BlitzenEngine::TextureStats default;
+        table.Set("Human", &placeHolder);
+        BlitzenEngine::TextureStats* s = table.Get("Human", &default);
+        BlitzenEngine::TextureStats* d = table.Get("Man", &default);
 
-        // This should not work and will cause an error message
-        BlitzenEngine::Engine shouldNotBeAllowed;
+        BlitzenEngine::Engine blitzen;
 
         blitzen.Run();
     }
