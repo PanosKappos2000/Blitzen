@@ -1,6 +1,8 @@
 #pragma once
 #include "Core/blitLogger.h"
 
+#define BLIT_MAX_TEXTURE_COUNT      5000
+
 namespace BlitzenEngine
 {
     struct TextureStats
@@ -11,5 +13,9 @@ namespace BlitzenEngine
         uint8_t* pTextureData;
     };
 
-    uint8_t LoadTextureFromFile(const char* filename, TextureStats& stats);
+    uint8_t LoadResourceSystem(TextureStats* pTextures);
+
+    uint8_t LoadTextureFromFile(const char* filename);
+
+    size_t GetTotalLoadedTexturesCount();
 }

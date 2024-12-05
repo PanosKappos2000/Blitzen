@@ -19,7 +19,7 @@ namespace BlitzenVulkan
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
         // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
-        m_loadedTextures.Resize(textureCount + 1); // The texture array size is 1 above textureCount, to leave space for a default
+        m_loadedTextures.Resize(textureCount); // The texture array size is 1 above textureCount, to leave space for a default
 
         /* Main opaque object graphics pipeline */
         {
@@ -107,34 +107,24 @@ namespace BlitzenVulkan
 
         UploadBuffersToGPU(vertices, indices, staticObjects);
 
-        // Placeholder code to test textures
-        uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
-        uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
-	    uint32_t pixels[16 * 16]; 
-	    for (int x = 0; x < 16; x++) 
-        {
-	    	for (int y = 0; y < 16; y++) 
-            {
-	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : white;
-	    	}
-	    }
+        
 
         // Texture sampler
         CreateTextureSampler(m_device, m_placeholderSampler);
 
         // The first element in m_loadedTextures is reserved for a default texture
-        CreateTextureImage(reinterpret_cast<void*>(pixels), m_device, m_allocator, m_loadedTextures[0].image, 
+        /*CreateTextureImage(reinterpret_cast<void*>(pixels), m_device, m_allocator, m_loadedTextures[0].image, 
         {1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
-        m_loadedTextures[0].sampler = m_placeholderSampler;
+        m_loadedTextures[0].sampler = m_placeholderSampler;*/
 
         for(size_t i = 0; i < textureCount; ++i)
         {
             
-            CreateTextureImage(reinterpret_cast<void*>(pLoadedTextures[i].pTextureData), m_device, m_allocator, m_loadedTextures[i + 1].image, 
+            CreateTextureImage(reinterpret_cast<void*>(pLoadedTextures[i].pTextureData), m_device, m_allocator, m_loadedTextures[i].image, 
             {(uint32_t)pLoadedTextures[i].textureWidth, (uint32_t)pLoadedTextures[i].textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
             VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
 
-            m_loadedTextures[i + 1].sampler = m_placeholderSampler;
+            m_loadedTextures[i].sampler = m_placeholderSampler;
         }
 
         UploadTexturesToGPU();

@@ -10,12 +10,18 @@
 
 #define BLITZEN_VERSION                 "Blitzen Engine 0.C"
 
+// Should graphics API implementation be loaded
 #define BLITZEN_VULKAN                  1
 
+// Window macros
 #define BLITZEN_WINDOW_STARTING_X       100
 #define BLITZEN_WINDOW_STARTING_Y       100
 #define BLITZEN_WINDOW_WIDTH            1280
 #define BLITZEN_WINDOW_HEIGHT           720
+
+// Resource macros
+#define BLIT_MAX_TEXTURE_COUNT      5000
+#define BLIT_DEFAULT_TEXTURE_NAME   "blit_default_tex"
 
 namespace BlitzenEngine
 {
@@ -47,6 +53,12 @@ namespace BlitzenEngine
         #if BLITZEN_VULKAN
             uint8_t vulkan = 0;
         #endif
+    };
+
+    struct EngineResources
+    {
+        TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
+        BlitCL::PointerTable<TextureStats> textureTable;
     };
 
     // Temporary camera struct, this will have its own file and will be a robust system
@@ -85,6 +97,7 @@ namespace BlitzenEngine
         inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }
 
         inline EngineSystems& GetEngineSystems() { return m_systems; }
+        inline EngineResources& GetEngineResources() { return m_resources; }
 
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 
@@ -106,6 +119,8 @@ namespace BlitzenEngine
         void DrawFrame();
         void RendererShutdown();
 
+        void LoadTextures();
+
     private:
 
         // Makes sure that the engine is only created once and gives access subparts of the engine through static getter
@@ -125,9 +140,8 @@ namespace BlitzenEngine
         EngineSystems m_systems;
 
         Camera m_camera;
-
-        // Temporary to ready my renderer and then I will add more robust systems
-        TextureStats m_textures[1000];
+        
+        EngineResources m_resources;
     };
 
     // Will be registered to the event system on initalization

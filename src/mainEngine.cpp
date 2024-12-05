@@ -43,6 +43,11 @@ namespace BlitzenEngine
             else
                 BLIT_FATAL("Event system initialization failed!")
 
+            if(!BlitzenEngine::LoadResourceSystem(m_resources.textures))
+            {
+                BLIT_FATAL("Resource system initalization failed")
+            }
+
             // Assert if platform specific code is initialized, the engine cannot continue without it
             BLIT_ASSERT(BlitzenPlatform::PlatformStartup(&m_platformState, BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
             BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
@@ -83,8 +88,8 @@ namespace BlitzenEngine
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(BlitML::vec3(0.f, 0.f, 5.f)));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
 
-        // This is an assertion for now, but failing a load should not fail the application, only warn
-        BLIT_ASSERT(LoadTextureFromFile("Assets/cobblestone.png", m_textures[0]))
+        // Loads textures that were requested
+        LoadTextures();
 
         // Before starting the clock, the engine will put its renderer on the ready state
         SetupForRenderering();
@@ -119,6 +124,31 @@ namespace BlitzenEngine
         }
         // Main loop ends
         StopClock();
+    }
+
+    void Engine::LoadTextures()
+    {
+        // Default texture at index 0
+        uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
+        uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+	    uint32_t pixels[16 * 16]; 
+	    for (int x = 0; x < 16; x++) 
+        {
+	    	for (int y = 0; y < 16; y++) 
+            {
+	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : white;
+	    	}
+	    }
+        m_resources.textures[0].pTextureData = reinterpret_cast<uint8_t*>(pixels);
+        m_resources.textures[0].textureHeight = 1;
+        m_resources.textures[0].textureWidth = 1;
+        m_resources.textures[0].textureChannels = 4;
+        m_resources.textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(m_resources.textures[0]));
+        
+
+        if(LoadTextureFromFile("Assets/cobblestone.png"));
+            // The last texture loaded should always be added to the texture hashmap (temporary code, there will be an actual system that automatically does this)
+            m_resources.textureTable.Set("Loaded texture", &(m_resources.textures[GetTotalLoadedTexturesCount() - 1]));
     }
 
     void Engine::SetupForRenderering()
@@ -175,7 +205,7 @@ namespace BlitzenEngine
             renders[0].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
             renders[0].textureTag = 1;
 
-            vulkan.UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_textures, 1);
+            vulkan.UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_resources.textures, GetTotalLoadedTexturesCount());
         #endif
     }
 
@@ -409,14 +439,6 @@ int main()
 
     // Blitzen needs to be destroyed before memory management can shutdown, otherwise the memory system will complain
     {
-        BlitCL::PointerTable<BlitzenEngine::TextureStats> table;
-        BlitzenEngine::TextureStats placeHolder;
-        placeHolder.textureHeight = 3;
-        BlitzenEngine::TextureStats default;
-        table.Set("Human", &placeHolder);
-        BlitzenEngine::TextureStats* s = table.Get("Human", &default);
-        BlitzenEngine::TextureStats* d = table.Get("Man", &default);
-
         BlitzenEngine::Engine blitzen;
 
         blitzen.Run();
