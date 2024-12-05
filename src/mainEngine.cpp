@@ -2,13 +2,22 @@
 #include "Platform/platform.h"
 #include "BlitzenVulkan/vulkanRenderer.h"
 
-#if BLITZEN_VULKAN
-    // Global variables should not contain any dynamic array as member variables. I should either not have this as global static or it should not contain dynamic Arrays
-    static BlitzenVulkan::VulkanRenderer vulkan;
-#endif
+
 
 namespace BlitzenEngine
 {
+    /*-----------------------------------------------------------------------------------------
+        Since having the huge renderer up here as a static variable might cause problems, 
+        I will create it ouside of the engine and the engine will access it through a pointer
+        given to this static variable
+    ---------------------------------------------------------------------------------------------*/
+    struct BlitzenRenderers
+    {
+        BlitzenVulkan::VulkanRenderer* pVulkan = nullptr;
+    };
+
+    static BlitzenRenderers s_renderers;
+
     // Static member variable needs to be declared
     Engine* Engine::pEngineInstance;
 
@@ -38,7 +47,7 @@ namespace BlitzenEngine
             if(BlitzenCore::EventsInit())
             {
                 BLIT_INFO("Event system active")
-                BlitzenCore::InputInit();
+                BlitzenCore::InputInit(&m_systems.inputState);
             }
             else
                 BLIT_FATAL("Event system initialization failed!")
@@ -70,10 +79,13 @@ namespace BlitzenEngine
         uint8_t hasRenderer = 0;
 
         #if BLITZEN_VULKAN
-            vulkan.Init(&m_platformState, m_platformData.windowWidth, m_platformData.windowHeight);
-            m_systems.vulkan = 1;
-            hasRenderer = 1;
-            m_renderer = ActiveRenderer::Vulkan;
+            if(s_renderers.pVulkan)
+            {
+                s_renderers.pVulkan->Init(&m_platformState, m_platformData.windowWidth, m_platformData.windowHeight);
+                m_systems.vulkan = 1;
+                hasRenderer = 1;
+                m_renderer = ActiveRenderer::Vulkan;
+            }
         #endif
 
         return hasRenderer;
@@ -146,7 +158,7 @@ namespace BlitzenEngine
         m_resources.textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(m_resources.textures[0]));
         
 
-        if(LoadTextureFromFile("Assets/cobblestone.png"));
+        if(LoadTextureFromFile("Assets/cobblestone.png"))
             // The last texture loaded should always be added to the texture hashmap (temporary code, there will be an actual system that automatically does this)
             m_resources.textureTable.Set("Loaded texture", &(m_resources.textures[GetTotalLoadedTexturesCount() - 1]));
     }
@@ -205,7 +217,7 @@ namespace BlitzenEngine
             renders[0].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
             renders[0].textureTag = 1;
 
-            vulkan.UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_resources.textures, GetTotalLoadedTexturesCount());
+            s_renderers.pVulkan->UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_resources.textures, GetTotalLoadedTexturesCount());
         #endif
     }
 
@@ -239,6 +251,7 @@ namespace BlitzenEngine
     {
         switch(m_renderer)
         {
+            #if BLITZEN_VULKAN
             case ActiveRenderer::Vulkan:
             {
                 if(m_systems.vulkan)
@@ -251,10 +264,11 @@ namespace BlitzenEngine
                     renderContext.viewMatrix = m_camera.viewMatrix;
                     renderContext.projectionView = m_camera.projectionViewMatrix;
 
-                    vulkan.DrawFrame(renderContext);
+                    s_renderers.pVulkan->DrawFrame(renderContext);
                 }
                 break;
             }
+            #endif
             default:
             {
                 break;
@@ -299,7 +313,7 @@ namespace BlitzenEngine
     {
         #if BLITZEN_VULKAN
             m_systems.vulkan = 0;
-            vulkan.Shutdown();
+            s_renderers.pVulkan->Shutdown();
         #endif
     }
 
@@ -439,6 +453,11 @@ int main()
 
     // Blitzen needs to be destroyed before memory management can shutdown, otherwise the memory system will complain
     {
+        #if BLITZEN_VULKAN
+            BlitzenVulkan::VulkanRenderer vulkan;
+            BlitzenEngine::s_renderers.pVulkan = &vulkan;
+        #endif
+
         BlitzenEngine::Engine blitzen;
 
         blitzen.Run();

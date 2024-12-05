@@ -203,7 +203,27 @@ namespace BlitzenCore
         KEYS_MAX_KEYS
     };
 
-    void InputInit();
+    struct KeyboardState 
+    {
+        uint8_t keys[256];
+    };
+
+    struct MouseState 
+    {
+        int16_t x;
+        int16_t y;
+        uint8_t buttons[static_cast<size_t>(MouseButton::MaxButtons)];
+    };
+
+    struct InputState 
+    {
+        KeyboardState currentKeyboard;
+        KeyboardState previousKeyboard;
+        MouseState currentMouse;
+        MouseState previousMouse;
+    };
+
+    void InputInit(InputState* pInputState);
     void InputShutdown();
     void UpdateInput(double deltaTime);
 

@@ -126,31 +126,17 @@ namespace BlitzenCore
 
 
 
-    struct KeyboardState 
-    {
-        uint8_t keys[256];
-    };
 
-    struct MouseState 
-    {
-        int16_t x;
-        int16_t y;
-        uint8_t buttons[static_cast<size_t>(MouseButton::MaxButtons)];
-    };
+    
+    static InputState* s_pInputState = nullptr;
 
-    struct InputState 
+    void InputInit(InputState* pInputState) 
     {
-        KeyboardState currentKeyboard;
-        KeyboardState previousKeyboard;
-        MouseState currentMouse;
-        MouseState previousMouse;
-    };
-
-    static InputState inputState = {};
-
-    void InputInit() 
-    {
-        BLIT_INFO("Input system initialized.")
+        s_pInputState = pInputState;
+        if(s_pInputState)
+            BLIT_INFO("Input system initialized.")
+        else
+            BLIT_FATAL("Input system initialization failed")
     }
 
     void InputShutdown() 
@@ -166,17 +152,17 @@ namespace BlitzenCore
     void UpdateInput(double delta_time) 
     {
         // Copy current states to previous states
-        BlitzenCore::BlitMemCopy(&inputState.previousKeyboard, &inputState.currentKeyboard, sizeof(KeyboardState));
-        BlitzenCore::BlitMemCopy(&inputState.previousMouse, &inputState.currentMouse, sizeof(MouseState));
+        BlitzenCore::BlitMemCopy(&s_pInputState->previousKeyboard, &s_pInputState->currentKeyboard, sizeof(KeyboardState));
+        BlitzenCore::BlitMemCopy(&s_pInputState->previousMouse, &s_pInputState->currentMouse, sizeof(MouseState));
     }
 
     void InputProcessKey(BlitKey key, uint8_t bPressed) 
     {
         // Check If the key has not already been flagged as the value of bPressed
-        if (inputState.currentKeyboard.keys[static_cast<size_t>(key)] != bPressed) 
+        if (s_pInputState->currentKeyboard.keys[static_cast<size_t>(key)] != bPressed) 
         {
             // Change the state to bPressed
-            inputState.currentKeyboard.keys[static_cast<size_t>(key)] = bPressed;
+            s_pInputState->currentKeyboard.keys[static_cast<size_t>(key)] = bPressed;
 
             // Fire off an event for immediate processing after saving the data of the input to the event context
             EventContext context;
@@ -188,9 +174,9 @@ namespace BlitzenCore
     void InputProcessButton(MouseButton button, uint8_t bPressed) 
     {
         // If the state changed, fire an event.
-        if (inputState.currentMouse.buttons[static_cast<size_t>(button)] != bPressed) 
+        if (s_pInputState->currentMouse.buttons[static_cast<size_t>(button)] != bPressed) 
         {
-            inputState.currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
+            s_pInputState->currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
             // Fire the event.
             EventContext context;
             context.data.ui16[0] = static_cast<uint16_t>(button);
@@ -201,10 +187,10 @@ namespace BlitzenCore
     void InputProcessMouseMove(int16_t x, int16_t y) 
     {
         // Only process if actually different
-        if (inputState.currentMouse.x != x || inputState.currentMouse.y != y) {
+        if (s_pInputState->currentMouse.x != x || s_pInputState->currentMouse.y != y) {
             
-            inputState.currentMouse.x = x;
-            inputState.currentMouse.y = y;
+            s_pInputState->currentMouse.x = x;
+            s_pInputState->currentMouse.y = y;
 
             // Fire the event
             EventContext context;
@@ -224,34 +210,34 @@ namespace BlitzenCore
 
     uint8_t GetCurrentKeyState(BlitKey key) 
     {
-        return inputState.currentKeyboard.keys[static_cast<size_t>(key)];
+        return s_pInputState->currentKeyboard.keys[static_cast<size_t>(key)];
     }
 
     uint8_t GetPreviousKeyState(BlitKey key) 
     {
-        return inputState.currentKeyboard.keys[static_cast<size_t>(key)];
+        return s_pInputState->currentKeyboard.keys[static_cast<size_t>(key)];
     }
 
     
     uint8_t GetCurrentMouseButtonState(MouseButton button) 
     {
-        return inputState.currentMouse.buttons[static_cast<size_t>(button)];
+        return s_pInputState->currentMouse.buttons[static_cast<size_t>(button)];
     }
 
 
     uint8_t GetPreviousMouseButtonState(MouseButton button)
     {
-        return inputState.previousMouse.buttons[static_cast<size_t>(button)];
+        return s_pInputState->previousMouse.buttons[static_cast<size_t>(button)];
     }
 
     void GetMousePosition(int32_t* x, int32_t* y) 
     {
-        *x = inputState.previousMouse.x;
-        *y = inputState.currentMouse.y;
+        *x = s_pInputState->previousMouse.x;
+        *y = s_pInputState->currentMouse.y;
     }
     void GetPreviousMousePosition(int32_t* x, int32_t* y)
     {
-        *x = inputState.previousMouse.x;
-        *y = inputState.previousMouse.y;
+        *x = s_pInputState->previousMouse.x;
+        *y = s_pInputState->previousMouse.y;
     }
 }

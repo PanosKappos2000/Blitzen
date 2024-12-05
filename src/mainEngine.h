@@ -47,6 +47,8 @@ namespace BlitzenEngine
         BlitzenCore::EventSystemState eventState;
 
         uint8_t inputSystem = 0;
+        // The input state is placed here, so that its memory can be managed by the engine
+        BlitzenCore::InputState inputState;
 
         uint8_t logSystem = 0;
 
