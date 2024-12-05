@@ -77,6 +77,9 @@ namespace BlitzenEngine
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(BlitML::vec3(0.f, 0.f, 5.f)));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
 
+        // This is an assertion for now, but failing a load should not fail the application, only warn
+        BLIT_ASSERT(LoadTextureFromFile("Assets/texture.jpg", m_textures[0]))
+
         // Before starting the clock, the engine will put its renderer on the ready state
         SetupForRenderering();
 
@@ -127,9 +130,13 @@ namespace BlitzenEngine
             vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
             vertices[3].uvMap = BlitML::vec2(1.f, 0.f);
             vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
+            vertices[4].uvMap = BlitML::vec2(0.f, 0.f);
             vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
+            vertices[5].uvMap = BlitML::vec2(0.f, 1.f);
             vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
+            vertices[6].uvMap = BlitML::vec2(1.f, 1.f);
             vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
+            vertices[7].uvMap = BlitML::vec2(1.f, 0.f);
             indices[0] = 0;
             indices[1] = 1;
             indices[2] = 2;
@@ -156,9 +163,9 @@ namespace BlitzenEngine
             indices[23] = 7;
             BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders(1);
             renders[0].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
-            renders[0].textureTag = 0;
+            renders[0].textureTag = 1;
 
-            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering(vertices, indices, renders);
+            m_systems.vulkanRenderer.UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_textures, 1);
         #endif
     }
 

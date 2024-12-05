@@ -52,7 +52,7 @@ namespace BlitzenVulkan
             2nd part of Vulkan initialization. Gives scene data in arrays and vulkan uploads the data to the GPU
         ------------------------------------------------------------------------------------------------------------ */
         void UploadDataToGPUAndSetupForRendering(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-        BlitCL::DynamicArray<StaticRenderObject>& staticObjects);
+        BlitCL::DynamicArray<StaticRenderObject>& staticObjects, void* pTextures, size_t textureCount);
 
         /*-----------------------------------------------------------------------------------------------
             Renders the world each frame. 
@@ -132,6 +132,9 @@ namespace BlitzenVulkan
 
         // Holds all vulkan texture data for each texture loaded to the GPU
         BlitCL::DynamicArray<TextureData> m_loadedTextures;
+
+        // I do not need a sampler for each texture and there is a limit for each device, so I'll need to create only a few samlplers
+        VkSampler m_placeholderSampler;
     };
 
 

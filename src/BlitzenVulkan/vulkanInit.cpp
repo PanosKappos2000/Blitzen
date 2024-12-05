@@ -589,9 +589,9 @@ namespace BlitzenVulkan
         for(size_t i = 0; i < m_loadedTextures.GetSize(); ++i)
         {
             m_loadedTextures[i].image.CleanupResources(m_allocator, m_device);
-
-            vkDestroySampler(m_device, m_loadedTextures[i].sampler, m_pCustomAllocator);
         }
+
+        vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
 
         vkDestroyDescriptorPool(m_device, m_textureDescriptorAllocator, m_pCustomAllocator);
         vkDestroyDescriptorSetLayout(m_device, m_textureDescriptorSetLayout, m_pCustomAllocator);

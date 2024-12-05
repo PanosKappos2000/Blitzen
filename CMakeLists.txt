@@ -10,6 +10,8 @@ set (CMAKE_CXX_STANDARD_REQUIRED True)
 add_executable(BlitzenEngine
                 src/mainEngine.cpp
                 src/mainEngine.h
+                src/Application/textures.h
+                src/Application/resourceLoading.cpp
                 
                 src/Core/blitMemory.h
                 src/Core/blitzenMemory.cpp
@@ -33,7 +35,9 @@ add_executable(BlitzenEngine
                 src/Platform/platform.h
                 src/Platform/platform.cpp
                 src/Platform/filesystem.h
-                src/Platform/filesystem.cpp)
+                src/Platform/filesystem.cpp
+                
+                src/VendorCode/stb_image.h)
 
 target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src"
@@ -47,6 +51,14 @@ IF(WIN32)
                         vulkan-1)
 ELSEIF(UNIX)
 ENDIF(WIN32)
+
+
+
+#Copy assets folder
+add_custom_target(copy_assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets
+)
+add_dependencies(BlitzenEngine copy_assets)
 
 
 #---------------------------------------------------------------------------------------------------

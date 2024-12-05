@@ -4,11 +4,12 @@
 #include "Platform/platform.h"
 #include "Core/blitzenContainerLibrary.h"
 #include "Core/blitEvents.h"
+#include "Application/textures.h"
 
 // At some point in the future, I would like to remove this from here and only include in the .cpp file
 #include "BlitzenVulkan/vulkanRenderer.h"
 
-#define BLITZEN_VERSION                 "Blitzen Engine 1.0.C"
+#define BLITZEN_VERSION                 "Blitzen Engine 0.C"
 
 #define BLITZEN_VULKAN                  1
 
@@ -126,6 +127,9 @@ namespace BlitzenEngine
         EngineSystems m_systems;
 
         Camera m_camera;
+
+        // Temporary to ready my renderer and then I will add more robust systems
+        TextureStats m_textures[1000];
     };
 
     // Will be registered to the event system on initalization
