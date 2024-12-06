@@ -1,0 +1,5 @@
+#material file
+version=0.1
+name=testMat
+diffuse_colour=1.0 1.0 1.0 1.0
+diffuse_map_name=loaded_texture

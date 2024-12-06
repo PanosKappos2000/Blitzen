@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/blitLogger.h"
 #include "BlitzenMathLibrary/blitMLTypes.h"
+#include "Core/blitzenContainerLibrary.h"
 
 #define BLIT_MAX_TEXTURE_COUNT      5000
 #define BLIT_DEFAULT_TEXTURE_NAME   "blit_default_tex"
@@ -9,7 +10,7 @@
 
 #define BLIT_MAX_MATERIAL_COUNT     10000
 #define BLIT_DEFAULT_MATERIAL_NAME  "blit_default_material"
-#define BLIT_DEFAULT_TEXTURE_COUNT  1
+#define BLIT_DEFAULT_MATERIAL_COUNT  1
 
 namespace BlitzenEngine
 {
@@ -37,13 +38,15 @@ namespace BlitzenEngine
         uint32_t materialTag;
     };
 
-    uint8_t LoadResourceSystem(TextureStats* pTextures, MaterialStats* s_pMaterials);
+    uint8_t LoadResourceSystem(TextureStats* pTextures, static BlitCL::PointerTable<TextureStats>* pTextureTable,
+    MaterialStats* pMaterials, static BlitCL::PointerTable<MaterialStats>* pMaterialTable);
 
 
 
-    uint8_t LoadTextureFromFile(const char* filename);
+    uint8_t LoadTextureFromFile(const char* filename, const char* texName);
     size_t GetTotalLoadedTexturesCount();
 
 
+    void DefineMaterial(BlitML::vec4& diffuseColor, const char* diffuseMapName);
     size_t GetTotalLoadedMaterialCount();
 }

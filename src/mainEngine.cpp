@@ -52,7 +52,8 @@ namespace BlitzenEngine
             else
                 BLIT_FATAL("Event system initialization failed!")
 
-            if(!BlitzenEngine::LoadResourceSystem(m_resources.textures, m_resources.materials))
+            if(!BlitzenEngine::LoadResourceSystem(m_resources.textures, &m_resources.textureTable,
+            m_resources.materials, &m_resources.materialTable))
             {
                 BLIT_FATAL("Resource system initalization failed")
             }
@@ -157,11 +158,14 @@ namespace BlitzenEngine
         m_resources.textures[0].textureWidth = 1;
         m_resources.textures[0].textureChannels = 4;
         m_resources.textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(m_resources.textures[0]));
+        // Default texture set
         
 
-        if(LoadTextureFromFile("Assets/Textures/cobblestone.png"))
-            // The last texture loaded should always be added to the texture hashmap (temporary code, there will be an actual system that automatically does this)
-            m_resources.textureTable.Set("loaded_texture", &(m_resources.textures[GetTotalLoadedTexturesCount() - 1]));
+        // This is hardcoded now, but this is how all textures will be loaded
+        if(!LoadTextureFromFile("Assets/Textures/cobblestone.png", "loaded_texture"))
+        {
+            BLIT_WARN("Texture loading failed, loading default")
+        }
     }
 
     void Engine::LoadMaterials()
@@ -174,10 +178,7 @@ namespace BlitzenEngine
         m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
 
         // Test code
-        m_resources.materials[1].diffuseColor = BlitML::vec4(0.2f);
-        m_resources.materials[1].diffuseMapName = "loaded_texture";
-        m_resources.materials[1].diffuseMapTag = m_resources.textureTable.Get("loaded_texture", &m_resources.textures[1])->textureTag;
-        m_resources.materials[1].materialTag = 1;
+        DefineMaterial(BlitML::vec4(0.2f), "loaded_texture");
     }
 
     void Engine::SetupForRenderering()
@@ -238,7 +239,7 @@ namespace BlitzenEngine
             vulkanData.pTextures = m_resources.textures;
             vulkanData.textureCount = GetTotalLoadedTexturesCount();
             vulkanData.pMaterials = m_resources.materials;
-            vulkanData.materialCount = 2; // Needs to be replaced with GetTotalLoadedMaterialsCount()
+            vulkanData.materialCount = GetTotalLoadedMaterialCount(); 
 
             s_renderers.pVulkan->UploadDataToGPUAndSetupForRendering(vulkanData);
         #endif
