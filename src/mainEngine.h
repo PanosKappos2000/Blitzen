@@ -4,7 +4,7 @@
 #include "Platform/platform.h"
 #include "Core/blitzenContainerLibrary.h"
 #include "Core/blitEvents.h"
-#include "Application/textures.h"
+#include "Application/resourceLoading.h"
 #include "BlitzenMathLibrary/blitMLTypes.h"
 
 
@@ -121,6 +121,7 @@ namespace BlitzenEngine
         void RendererShutdown();
 
         void LoadTextures();
+        void LoadMaterials();
 
     private:
 

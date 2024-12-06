@@ -1,4 +1,4 @@
-#include "textures.h"
+#include "resourceLoading.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"
 
@@ -36,6 +36,7 @@ namespace BlitzenEngine
         // Go to the next element in the container, only if the texture was loaded successfully
         if(load)
         {
+            s_pTextures[s_currentTextureIndex].textureTag = s_currentTextureIndex;
             s_currentTextureIndex++;
         }
 

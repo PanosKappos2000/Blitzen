@@ -10,7 +10,7 @@ set (CMAKE_CXX_STANDARD_REQUIRED True)
 add_executable(BlitzenEngine
                 src/mainEngine.cpp
                 src/mainEngine.h
-                src/Application/textures.h
+                src/Application/resourceLoading.h
                 src/Application/resourceLoading.cpp
                 
                 src/Core/blitMemory.h

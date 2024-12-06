@@ -85,6 +85,7 @@ namespace BlitzenVulkan
 
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;
+        VkDeviceAddress materialBufferAddress;
     };
 
     // Pushed every frame for the non indirect version to access per object data
@@ -97,7 +98,14 @@ namespace BlitzenVulkan
     struct alignas (16) StaticRenderObject
     {
         BlitML::mat4 modelMatrix;
-        uint32_t textureTag;
+        uint32_t materialTag;
+    };
+
+    // Passed to the shaders through a storage buffer that contains all of these
+    struct alignas(16) MaterialConstants
+    {
+        BlitML::vec4 diffuseColor;
+        uint32_t diffuseTextureTag;
     };
 
     // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once
@@ -105,5 +113,25 @@ namespace BlitzenVulkan
     {
         AllocatedImage image;
         VkSampler sampler;
+    };
+
+    // Holds everything that needs to be passed to the UploadDataToGPUAndSetupForRendering function
+    struct GPUData
+    {
+        BlitCL::DynamicArray<BlitML::Vertex>& vertices;
+
+        BlitCL::DynamicArray<uint32_t>& indices;
+
+        BlitCL::DynamicArray<StaticRenderObject>& staticObjects;
+
+        void* pTextures; 
+        size_t textureCount;
+
+        void* pMaterials;
+        size_t materialCount;
+
+        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o)
+            :vertices(v), indices(i), staticObjects(o)
+        {}
     };
 }

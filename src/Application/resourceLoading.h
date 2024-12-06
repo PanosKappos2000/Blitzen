@@ -19,12 +19,22 @@ namespace BlitzenEngine
         int32_t textureHeight = 0;
         int32_t textureChannels = 0;
         uint8_t* pTextureData;
+
+        // This tag is for the shaders to know which image memory to access, when a render object uses this texture
+        uint32_t textureTag;
     };
 
     struct MaterialStats
     {
+        // Specify the diffuse color used on the shaders
         BlitML::vec4 diffuseColor;
-        char diffuseMapName[BLIT_TEXTURE_NAME_MAX_SIZE];
+        // Access the texture this material uses
+        const char* diffuseMapName;
+        // Allows shaders to access the saved data of the texture used by the diffuse map
+        uint32_t diffuseMapTag;
+
+        // This tag is for the shaders to know where in the material buffer this material can be accessed
+        uint32_t materialTag;
     };
 
     uint8_t LoadResourceSystem(TextureStats* pTextures, MaterialStats* s_pMaterials);

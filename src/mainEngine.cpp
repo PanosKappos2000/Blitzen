@@ -102,6 +102,7 @@ namespace BlitzenEngine
 
         // Loads textures that were requested
         LoadTextures();
+        LoadMaterials();
 
         // Before starting the clock, the engine will put its renderer on the ready state
         SetupForRenderering();
@@ -158,9 +159,25 @@ namespace BlitzenEngine
         m_resources.textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(m_resources.textures[0]));
         
 
-        if(LoadTextureFromFile("Assets/cobblestone.png"))
+        if(LoadTextureFromFile("Assets/Textures/cobblestone.png"))
             // The last texture loaded should always be added to the texture hashmap (temporary code, there will be an actual system that automatically does this)
-            m_resources.textureTable.Set("Loaded texture", &(m_resources.textures[GetTotalLoadedTexturesCount() - 1]));
+            m_resources.textureTable.Set("loaded_texture", &(m_resources.textures[GetTotalLoadedTexturesCount() - 1]));
+    }
+
+    void Engine::LoadMaterials()
+    {
+        // Manually load a default material at index 0
+        m_resources.materials[0].diffuseColor = BlitML::vec4(1.f);
+        m_resources.materials[0].diffuseMapName = BLIT_DEFAULT_TEXTURE_NAME;
+        m_resources.materials[0].diffuseMapTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
+        m_resources.materials[0].materialTag = 0;
+        m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
+
+        // Test code
+        m_resources.materials[1].diffuseColor = BlitML::vec4(0.2f);
+        m_resources.materials[1].diffuseMapName = "loaded_texture";
+        m_resources.materials[1].diffuseMapTag = m_resources.textureTable.Get("loaded_texture", &m_resources.textures[1])->textureTag;
+        m_resources.materials[1].materialTag = 1;
     }
 
     void Engine::SetupForRenderering()
@@ -215,9 +232,15 @@ namespace BlitzenEngine
             indices[23] = 7;
             BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders(1);
             renders[0].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
-            renders[0].textureTag = 1;
+            renders[0].materialTag = m_resources.textureTable.Get("loaded_texture", &m_resources.textures[0])->textureTag;
 
-            s_renderers.pVulkan->UploadDataToGPUAndSetupForRendering(vertices, indices, renders, m_resources.textures, GetTotalLoadedTexturesCount());
+            BlitzenVulkan::GPUData vulkanData(vertices, indices, renders);
+            vulkanData.pTextures = m_resources.textures;
+            vulkanData.textureCount = GetTotalLoadedTexturesCount();
+            vulkanData.pMaterials = m_resources.materials;
+            vulkanData.materialCount = 2; // Needs to be replaced with GetTotalLoadedMaterialsCount()
+
+            s_renderers.pVulkan->UploadDataToGPUAndSetupForRendering(vulkanData);
         #endif
     }
 

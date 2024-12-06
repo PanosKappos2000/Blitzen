@@ -281,7 +281,7 @@ namespace BlitzenVulkan
             #if BLITZEN_VULKAN_INDIRECT_DRAW
                 deviceFeatures.multiDrawIndirect = true;
             #endif
-            deviceInfo.pEnabledFeatures = nullptr;
+            deviceInfo.pEnabledFeatures = nullptr;// Enabled features will be given to VkPhysicalDeviceFeatures2
 
             // Extended device features
             VkPhysicalDeviceVulkan11Features vulkan11Features{};
@@ -600,6 +600,7 @@ namespace BlitzenVulkan
         vkDestroyDescriptorPool(m_device, m_textureDescriptorAllocator, m_pCustomAllocator);
         vkDestroyDescriptorSetLayout(m_device, m_textureDescriptorSetLayout, m_pCustomAllocator);
 
+        vmaDestroyBuffer(m_allocator, m_materialBuffer.buffer, m_materialBuffer.allocation);
         vmaDestroyBuffer(m_allocator, m_staticRenderObjectBuffer.buffer, m_staticRenderObjectBuffer.allocation);
         vmaDestroyBuffer(m_allocator, m_globalVertexBuffer.buffer, m_globalVertexBuffer.allocation);
         vmaDestroyBuffer(m_allocator, m_globalIndexBuffer.buffer, m_globalIndexBuffer.allocation);
