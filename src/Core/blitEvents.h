@@ -5,7 +5,8 @@
 namespace BlitzenCore
 {
     // When an event needs to pass some data, this struct will be used to hide the data inside the union. The listener should know how to uncover the data
-    struct EventContext {
+    struct EventContext 
+    {
         // 128 bytes
         union 
         {

@@ -119,9 +119,7 @@ namespace BlitzenEngine
 
         uint8_t isRunning = 0;
         uint8_t isSupended = 0;
-
-        // Used to create the window and other platform specific part of the engine
-        BlitzenPlatform::PlatformState m_platformState;
+        
         PlatformStateData m_platformData;
 
         Clock m_clock;

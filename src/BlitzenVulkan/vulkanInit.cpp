@@ -1,6 +1,13 @@
 #include "vulkanRenderer.h"
 #include "Platform/platform.h"
 
+#if _MSC_VER
+    #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_win32_surface"
+#elif linux
+    #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_xcb_surface"
+    #define VK_USE_PLATFORM_XCB_KHR
+#endif
+
 namespace BlitzenVulkan
 {
     /*
@@ -38,7 +45,7 @@ namespace BlitzenVulkan
 
 
 
-    void VulkanRenderer::Init(void* pPlatformState, uint32_t windowWidth, uint32_t windowHeight)
+    void VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
         /*
             If Blitzen ever uses a custom allocator it should be initalized here
@@ -158,11 +165,9 @@ namespace BlitzenVulkan
         ----------------------------------------------------------*/
         #endif
 
-
-        {
-            BlitzenPlatform::PlatformState* pTrueState = reinterpret_cast<BlitzenPlatform::PlatformState*>(pPlatformState);
-            BlitzenPlatform::CreateVulkanSurface(pTrueState, m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator);
-        }
+        
+        // Create the surface depending on the implementation on Platform.cpp
+        BlitzenPlatform::CreateVulkanSurface(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator);
 
 
 

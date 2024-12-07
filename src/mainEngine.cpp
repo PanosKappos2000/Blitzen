@@ -6,6 +6,8 @@
 
 namespace BlitzenEngine
 {
+    static void* s_pPlatformState;
+
     /*-----------------------------------------------------------------------------------------
         Since having the huge renderer up here as a static variable might cause problems, 
         I will create it ouside of the engine and the engine will access it through a pointer
@@ -58,7 +60,7 @@ namespace BlitzenEngine
             }
 
             // Assert if platform specific code is initialized, the engine cannot continue without it
-            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(&m_platformState, BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
+            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(s_pPlatformState, BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
             BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
 
             // Register some default events, like window closing on escape
@@ -81,7 +83,7 @@ namespace BlitzenEngine
         #if BLITZEN_VULKAN
             if(s_renderers.pVulkan)
             {
-                s_renderers.pVulkan->Init(&m_platformState, m_platformData.windowWidth, m_platformData.windowHeight);
+                s_renderers.pVulkan->Init(m_platformData.windowWidth, m_platformData.windowHeight);
                 m_systems.vulkan = 1;
                 hasRenderer = 1;
                 m_renderer = ActiveRenderer::Vulkan;
@@ -151,7 +153,7 @@ namespace BlitzenEngine
         // Main Loop starts
         while(isRunning)
         {
-            if(!BlitzenPlatform::PlatformPumpMessages(&m_platformState))
+            if(!BlitzenPlatform::PlatformPumpMessages())
             {
                 isRunning = 0;
             }
@@ -296,7 +298,7 @@ namespace BlitzenEngine
             m_renderer = ActiveRenderer::MaxRenderers;
             RendererShutdown();
 
-            BlitzenPlatform::PlatformShutdown(&m_platformState);
+            BlitzenPlatform::PlatformShutdown();
 
             m_systems.engine = 0;
             pEngineInstance = nullptr;
@@ -451,6 +453,10 @@ int main()
 {
     BlitzenCore::MemoryManagementInit();
 
+    // Temporary solution will try something different. I will probaly just make this just a part of platform
+    BlitzenEngine::s_pPlatformState = BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::Engine, sizeof(
+    BlitzenPlatform::GetPlatformMemoryRequirements()));
+
     // Blitzen needs to be destroyed before memory management can shutdown, otherwise the memory system will complain
     {
         #if BLITZEN_VULKAN
@@ -465,6 +471,8 @@ int main()
 
         delete Blitzen;
     }
+
+    //Note: I am not freeing the platform state memory, as it will actually fail the application
 
     BlitzenCore::MemoryManagementShutdown();
 }
