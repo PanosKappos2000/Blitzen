@@ -38,8 +38,37 @@ namespace BlitzenEngine
         uint32_t materialTag;
     };
 
-    uint8_t LoadResourceSystem(TextureStats* pTextures, static BlitCL::PointerTable<TextureStats>* pTextureTable,
-    MaterialStats* pMaterials, static BlitCL::PointerTable<MaterialStats>* pMaterialTable);
+    // This is basically what a shader will draw, with each draw call
+    struct PrimitiveSurface
+    {
+        uint32_t indexCount;
+        uint32_t firstIndex;
+
+        MaterialStats* pMaterial;
+    };
+
+    struct MeshAssets
+    {
+        BlitCL::DynamicArray<PrimitiveSurface> surfaces;
+    };
+
+    // This struct holds all loaded resources and is held by the engine and referenced by the loading system
+    struct EngineResources
+    {
+        TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
+        BlitCL::PointerTable<TextureStats> textureTable;
+
+        MaterialStats materials[BLIT_MAX_MATERIAL_COUNT];
+        BlitCL::PointerTable<MaterialStats> materialTable;
+
+        BlitCL::DynamicArray<BlitML::Vertex> vertices;
+        BlitCL::DynamicArray<uint32_t> indices;
+
+        // Probably should have Mesh assets here instead of surfaces
+        BlitCL::DynamicArray<MeshAssets> meshes;
+    };
+
+    uint8_t LoadResourceSystem(EngineResources* pResources);
 
 
 
@@ -47,6 +76,10 @@ namespace BlitzenEngine
     size_t GetTotalLoadedTexturesCount();
 
 
-    void DefineMaterial(BlitML::vec4& diffuseColor, const char* diffuseMapName);
+    void DefineMaterial(BlitML::vec4& diffuseColor, const char* diffuseMapName, const char* materialName);
     size_t GetTotalLoadedMaterialCount();
+
+
+    // Placeholder to load some default resources while testing the systems
+    void LoadDefaultData();
 }

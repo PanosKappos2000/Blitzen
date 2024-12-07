@@ -52,8 +52,7 @@ namespace BlitzenEngine
             else
                 BLIT_FATAL("Event system initialization failed!")
 
-            if(!BlitzenEngine::LoadResourceSystem(m_resources.textures, &m_resources.textureTable,
-            m_resources.materials, &m_resources.materialTable))
+            if(!BlitzenEngine::LoadResourceSystem(&m_resources))
             {
                 BLIT_FATAL("Resource system initalization failed")
             }
@@ -104,9 +103,47 @@ namespace BlitzenEngine
         // Loads textures that were requested
         LoadTextures();
         LoadMaterials();
+        LoadDefaultData();
 
-        // Before starting the clock, the engine will put its renderer on the ready state
-        SetupForRenderering();
+        // This is declared outide the setup for rendering braces, as it will be passed to render context during the loop
+        BlitzenVulkan::DrawObject draws[100];// Only 100 objects for now, I am going to need that linear allocator soon
+        uint32_t drawCount;
+        // Setup for rendering vulkan
+        #if BLITZEN_VULKAN
+        {
+            BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders;
+            // Combine all the surfaces of all the meshes into the render object array
+            for(size_t i = 0; i < m_resources.meshes.GetSize(); ++i)
+            {
+                // Hold on to the previous size of the array
+                size_t previousSize = renders.GetSize();
+                // Combine the previous size with the size of the current surfaces array
+                renders.Resize(previousSize + m_resources.meshes[i].surfaces.GetSize());
+                // Add surface data to the render object
+                for(size_t s = previousSize; s < renders.GetSize(); ++s )
+                {
+                    PrimitiveSurface& currentSurface = m_resources.meshes[i].surfaces[s - previousSize];
+                    // This is hardcoded but later there will be entities that use the mesh and have their own position
+                    renders[s].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
+                    // Give the material index to the render object
+                    renders[s].materialTag = currentSurface.pMaterial->materialTag;
+
+                    draws[s].firstIndex = currentSurface.firstIndex;
+                    draws[s].indexCount = currentSurface.indexCount;
+                    draws[s].objectTag = s;
+                }
+            }
+            drawCount = renders.GetSize();
+
+            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, renders);
+            vulkanData.pTextures = m_resources.textures;
+            vulkanData.textureCount = GetTotalLoadedTexturesCount();
+            vulkanData.pMaterials = m_resources.materials;
+            vulkanData.materialCount = GetTotalLoadedMaterialCount(); 
+
+            s_renderers.pVulkan->UploadDataToGPUAndSetupForRendering(vulkanData);
+        }// Vulkan renderer ready
+        #endif
 
         // Should be called right before the main loop starts
         StartClock();
@@ -128,7 +165,40 @@ namespace BlitzenEngine
 
                 UpdateCamera(m_camera, (float)deltaTime);
 
-                DrawFrame();
+
+                // Setting up draw frame for active renderere and calling it
+                switch(m_renderer)
+                {
+                    #if BLITZEN_VULKAN
+                    case ActiveRenderer::Vulkan:
+                    {
+                        if(m_systems.vulkan)
+                        {
+                            BlitzenVulkan::RenderContext renderContext;
+                            renderContext.windowResize = m_platformData.windowResize;
+                            renderContext.windowWidth = m_platformData.windowWidth;
+                            renderContext.windowHeight = m_platformData.windowHeight;
+
+                            renderContext.projectionMatrix = m_camera.projectionMatrix;
+                            renderContext.viewMatrix = m_camera.viewMatrix;
+                            renderContext.projectionView = m_camera.projectionViewMatrix;
+
+                            renderContext.pDraws = draws;
+                            renderContext.drawCount = drawCount;
+
+                            s_renderers.pVulkan->DrawFrame(renderContext);
+                        }
+                        break;
+                    }
+                    #endif
+                    default:
+                    {
+                        break;
+                    }
+                }
+
+
+
 
                 // Make sure that the window resize is set to false after the renderer is notified
                 m_platformData.windowResize = 0;
@@ -162,10 +232,8 @@ namespace BlitzenEngine
         
 
         // This is hardcoded now, but this is how all textures will be loaded
-        if(!LoadTextureFromFile("Assets/Textures/cobblestone.png", "loaded_texture"))
-        {
-            BLIT_WARN("Texture loading failed, loading default")
-        }
+        LoadTextureFromFile("Assets/Textures/cobblestone.png", "loaded_texture");
+        LoadTextureFromFile("Assets/Textures/texture.jpg", "loaded_texture2");
     }
 
     void Engine::LoadMaterials()
@@ -178,71 +246,8 @@ namespace BlitzenEngine
         m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
 
         // Test code
-        DefineMaterial(BlitML::vec4(0.2f), "loaded_texture");
-    }
-
-    void Engine::SetupForRenderering()
-    {
-        #if BLITZEN_VULKAN
-            // Temporary shader data for tests on vulkan rendering
-            BlitCL::DynamicArray<BlitML::Vertex> vertices(8);
-            BlitCL::DynamicArray<uint32_t> indices(32);
-            vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
-            vertices[0].uvX = 0.f; 
-            vertices[0].uvY = 0.f;
-            vertices[1].position = BlitML::vec3(-0.5f, -0.5f, 0.f);
-            vertices[1].uvX = 0.f; 
-            vertices[1].uvY = 1.f;
-            vertices[2].position = BlitML::vec3(0.5f, -0.5f, 0.f);
-            vertices[2].uvX = 1.f;
-            vertices[2].uvY = 1.f;
-            vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
-            vertices[3].uvX = 1.f;
-            vertices[3].uvY = 0.f;
-            vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
-            
-            vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
-            
-            vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
-            
-            vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
-            
-            indices[0] = 0;
-            indices[1] = 1;
-            indices[2] = 2;
-            indices[3] = 2;
-            indices[4] = 3;
-            indices[5] = 0;
-            indices[6] = 4;
-            indices[7] = 5;
-            indices[8] = 6;
-            indices[9] = 6;
-            indices[10] = 7;
-            indices[11] = 4;
-            indices[12] = 4;
-            indices[13] = 5;
-            indices[14] = 1;
-            indices[15] = 1;
-            indices[16] = 0;
-            indices[17] = 4;
-            indices[18] = 7;
-            indices[19] = 6;
-            indices[20] = 2;
-            indices[21] = 2;
-            indices[22] = 3;
-            indices[23] = 7;
-            BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders(1);
-            renders[0].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
-            renders[0].materialTag = m_resources.textureTable.Get("loaded_texture", &m_resources.textures[0])->textureTag;
-
-            BlitzenVulkan::GPUData vulkanData(vertices, indices, renders);
-            vulkanData.pTextures = m_resources.textures;
-            vulkanData.textureCount = GetTotalLoadedTexturesCount();
-            vulkanData.pMaterials = m_resources.materials;
-            vulkanData.materialCount = GetTotalLoadedMaterialCount(); 
-
-            s_renderers.pVulkan->UploadDataToGPUAndSetupForRendering(vulkanData);
-        #endif
+        DefineMaterial(BlitML::vec4(0.3f), "loaded_texture", "loaded_material");
+        DefineMaterial(BlitML::vec4(0.8f), "loaded_texture2", "loaded_material2");
     }
 
     void Engine::StartClock()
@@ -268,35 +273,6 @@ namespace BlitzenEngine
 
             camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
             camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
-        }
-    }
-
-    void Engine::DrawFrame()
-    {
-        switch(m_renderer)
-        {
-            #if BLITZEN_VULKAN
-            case ActiveRenderer::Vulkan:
-            {
-                if(m_systems.vulkan)
-                {
-                    BlitzenVulkan::RenderContext renderContext;
-                    renderContext.windowResize = m_platformData.windowResize;
-                    renderContext.windowWidth = m_platformData.windowWidth;
-                    renderContext.windowHeight = m_platformData.windowHeight;
-                    renderContext.projectionMatrix = m_camera.projectionMatrix;
-                    renderContext.viewMatrix = m_camera.viewMatrix;
-                    renderContext.projectionView = m_camera.projectionViewMatrix;
-
-                    s_renderers.pVulkan->DrawFrame(renderContext);
-                }
-                break;
-            }
-            #endif
-            default:
-            {
-                break;
-            }
         }
     }
 

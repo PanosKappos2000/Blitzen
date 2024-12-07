@@ -33,7 +33,9 @@
 #endif
 
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 
-#define BLITZEN_VULKAN_INDIRECT_DRAW            1      
+#define BLITZEN_VULKAN_INDIRECT_DRAW            1 
+
+#define BLITZEN_VULKAN_MAX_DRAW_CALLS           1000000
 
 namespace BlitzenVulkan
 {
@@ -41,6 +43,44 @@ namespace BlitzenVulkan
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
         uint8_t drawIndirect = 0;
+    };
+
+    // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
+    struct alignas (16) StaticRenderObject
+    {
+        BlitML::mat4 modelMatrix;
+        uint32_t materialTag;
+    };
+
+    // Holds everything that needs to be passed to the UploadDataToGPUAndSetupForRendering function
+    struct GPUData
+    {
+        BlitCL::DynamicArray<BlitML::Vertex>& vertices;
+
+        BlitCL::DynamicArray<uint32_t>& indices;
+
+        BlitCL::DynamicArray<StaticRenderObject>& staticObjects;
+
+        void* pTextures; 
+        size_t textureCount;
+
+        void* pMaterials;
+        size_t materialCount;
+
+        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o)
+            :vertices(v), indices(i), staticObjects(o)
+        {}
+    };
+
+    // This is setup before a call to draw frame, and is given to the render context in its member array
+    struct DrawObject
+    {
+        // Data used to call draw indexed
+        uint32_t firstIndex;
+        uint32_t indexCount;
+
+        // References a render object in the global buffer
+        uint32_t objectTag;
     };
 
     // Passed to the renderer every time draw frame is called, to handle special events and update shader data
@@ -53,6 +93,9 @@ namespace BlitzenVulkan
         BlitML::mat4 projectionMatrix;
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionView;
+
+        DrawObject* pDraws;
+        size_t drawCount;
     };
 
     struct AllocatedImage
@@ -94,13 +137,6 @@ namespace BlitzenVulkan
         uint32_t drawTag;
     };
 
-    // Holds the data of a static object. Will be passed to the shader only once during loading and will be indexed in the shaders
-    struct alignas (16) StaticRenderObject
-    {
-        BlitML::mat4 modelMatrix;
-        uint32_t materialTag;
-    };
-
     // Passed to the shaders through a storage buffer that contains all of these
     struct alignas(16) MaterialConstants
     {
@@ -115,23 +151,4 @@ namespace BlitzenVulkan
         VkSampler sampler;
     };
 
-    // Holds everything that needs to be passed to the UploadDataToGPUAndSetupForRendering function
-    struct GPUData
-    {
-        BlitCL::DynamicArray<BlitML::Vertex>& vertices;
-
-        BlitCL::DynamicArray<uint32_t>& indices;
-
-        BlitCL::DynamicArray<StaticRenderObject>& staticObjects;
-
-        void* pTextures; 
-        size_t textureCount;
-
-        void* pMaterials;
-        size_t materialCount;
-
-        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o)
-            :vertices(v), indices(i), staticObjects(o)
-        {}
-    };
 }

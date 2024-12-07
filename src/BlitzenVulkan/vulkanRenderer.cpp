@@ -117,13 +117,8 @@ namespace BlitzenVulkan
 
         
 
-        // Texture sampler
+        // Texture sampler, for now all textures will use one
         CreateTextureSampler(m_device, m_placeholderSampler);
-
-        // The first element in m_loadedTextures is reserved for a default texture
-        /*CreateTextureImage(reinterpret_cast<void*>(pixels), m_device, m_allocator, m_loadedTextures[0].image, 
-        {1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
-        m_loadedTextures[0].sampler = m_placeholderSampler;*/
 
         for(size_t i = 0; i < gpuData.textureCount; ++i)
         {
@@ -453,11 +448,15 @@ namespace BlitzenVulkan
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        ShaderPushConstant index;
-        index.drawTag = 0; // Only one object currently so I am hardcoding the index to test it
-        vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
-        sizeof(ShaderPushConstant), &index);
-        vkCmdDrawIndexed(fTools.commandBuffer, 24, 1, 0, 0, 0);
+        // Draw calls (the 4 is hardcoded but it will be the size of the draw context)
+        for(uint32_t i = 0; i < context.drawCount; ++i)
+        {
+            ShaderPushConstant index;
+            index.drawTag = context.pDraws[i].objectTag; // Only one object currently so I am hardcoding the index to test it
+            vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
+            sizeof(ShaderPushConstant), &index);
+            vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);
+        }
 
         vkCmdEndRendering(fTools.commandBuffer);
 

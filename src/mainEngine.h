@@ -53,15 +53,6 @@ namespace BlitzenEngine
         #endif
     };
 
-    struct EngineResources
-    {
-        TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
-        BlitCL::PointerTable<TextureStats> textureTable;
-
-        MaterialStats materials[BLIT_MAX_MATERIAL_COUNT];
-        BlitCL::PointerTable<MaterialStats> materialTable;
-    };
-
     // Temporary camera struct, this will have its own file and will be a robust system
     struct Camera
     {
@@ -116,8 +107,6 @@ namespace BlitzenEngine
             and which one will draw the frame.
         -------------------------------------------------------*/
         uint8_t RendererInit();
-        void SetupForRenderering();
-        void DrawFrame();
         void RendererShutdown();
 
         void LoadTextures();
