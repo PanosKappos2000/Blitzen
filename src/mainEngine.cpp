@@ -83,9 +83,8 @@ namespace BlitzenEngine
         #if BLITZEN_VULKAN
             if(s_renderers.pVulkan)
             {
-                s_renderers.pVulkan->Init(m_platformData.windowWidth, m_platformData.windowHeight);
-                m_systems.vulkan = 1;
-                hasRenderer = 1;
+                m_systems.vulkan = s_renderers.pVulkan->Init(m_platformData.windowWidth, m_platformData.windowHeight);
+                hasRenderer = m_systems.vulkan;
                 m_renderer = ActiveRenderer::Vulkan;
             }
         #endif

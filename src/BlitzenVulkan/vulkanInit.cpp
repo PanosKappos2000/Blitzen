@@ -45,7 +45,7 @@ namespace BlitzenVulkan
 
 
 
-    void VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
+    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
         /*
             If Blitzen ever uses a custom allocator it should be initalized here
@@ -188,6 +188,37 @@ namespace BlitzenVulkan
             {
                 VkPhysicalDevice& pdv = physicalDevices[i];
 
+                VkPhysicalDeviceFeatures features{};
+                vkGetPhysicalDeviceFeatures(pdv, &features);
+                VkPhysicalDeviceFeatures2 features2{};
+                VkPhysicalDeviceVulkan11Features features11{};
+                features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+                features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features2.pNext = &features11;
+                VkPhysicalDeviceVulkan12Features features12{};
+                features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                features11.pNext = &features12;
+                VkPhysicalDeviceVulkan13Features features13{};
+                features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                features12.pNext = &features13;
+                vkGetPhysicalDeviceFeatures2(pdv, &features2);
+
+                #if BLITZEN_VULKAN_INDIRECT_DRAW
+                    if(!features.multiDrawIndirect || !features11.shaderDrawParameters)
+                    {
+                        physicalDevices.RemoveAtIndex(i);
+                        --i;
+                        continue;
+                    }
+                #endif
+                if(!features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray || 
+                !features13.dynamicRendering || !features13.synchronization2)
+                {
+                    physicalDevices.RemoveAtIndex(i);
+                    --i;
+                    continue;
+                }
+
                 //Retrieve queue families from device
                 uint32_t queueFamilyPropertyCount = 0;
                 vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, nullptr);
@@ -238,6 +269,13 @@ namespace BlitzenVulkan
                 }
 
                 // TODO: Query for feature support
+            }
+
+            if(!physicalDevices.GetSize())
+            {
+                BLIT_WARN("Your machine has no physical device that supports vulkan the way Blitzen wants it. \n \
+                Try another graphics specification or disable some features")
+                return 0;
             }
 
             for(size_t i = 0; i < physicalDevices.GetSize(); ++i)
@@ -299,8 +337,6 @@ namespace BlitzenVulkan
             vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
             vulkan12Features.bufferDeviceAddress = true;
             vulkan12Features.descriptorIndexing = true;
-            //Allows vulkan to reset queries
-            vulkan12Features.hostQueryReset = true;
             //Allows spir-v shaders to use descriptor arrays
             vulkan12Features.runtimeDescriptorArray = true;
 
@@ -427,6 +463,8 @@ namespace BlitzenVulkan
 
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {windowWidth, windowHeight};
+
+        return 1;
     }
 
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 

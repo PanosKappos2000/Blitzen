@@ -46,7 +46,7 @@ namespace BlitzenVulkan
     {
     public:
 
-        void Init(uint32_t windowWidth, uint32_t windowHeight);
+        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
         /* ---------------------------------------------------------------------------------------------------------
             2nd part of Vulkan initialization. Gives scene data in arrays and vulkan uploads the data to the GPU
