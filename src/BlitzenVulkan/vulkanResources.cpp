@@ -215,7 +215,7 @@ namespace BlitzenVulkan
         allocInfo.descriptorPool = pool;
         allocInfo.pSetLayouts = pLayouts;
         allocInfo.descriptorSetCount = descriptorSetCount;
-        vkAllocateDescriptorSets(device, &allocInfo, pSets);
+        VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, pSets));
     }
 
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 

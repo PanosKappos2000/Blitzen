@@ -2,6 +2,8 @@
 
 #include "Core/blitAssert.h"
 
+#define BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE         UINT32_MAX
+
 namespace BlitzenCore
 {
     enum class AllocationType : uint8_t
@@ -19,7 +21,9 @@ namespace BlitzenCore
         EntityNode = 10,
         Scene = 11,
 
-        MaxTypes = 12
+        LinearAlloc = 12,
+
+        MaxTypes = 13
     };
 
     struct AllocationStats
@@ -38,5 +42,14 @@ namespace BlitzenCore
     void BlitMemSet(void* pDst, int32_t value, size_t size);
     void BlitZeroMemory(void* pBlock, size_t size);
 
-    void MemoryManagementShutdown();  
+    void MemoryManagementShutdown();
+
+    struct LinearAllocator
+    {
+        size_t totalAllocated = 0;
+        void* pBlock;
+        size_t blockSize;
+    };
+
+    void* BlitAllocLinear(AllocationType alloc, size_t size);
 }

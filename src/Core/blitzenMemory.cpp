@@ -8,9 +8,17 @@ namespace BlitzenCore
     // When the memory management system shuts down, every allocation should have been freed
     static AllocationStats globalAllocationStats;
 
+    static LinearAllocator s_linearAlloc;
+
+    /* 
+        Main memory management functions
+    */
     void MemoryManagementInit()
     {
         BlitzenPlatform::PlatformMemZero(&globalAllocationStats, sizeof(AllocationStats));
+
+        s_linearAlloc.blockSize = BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE;
+        s_linearAlloc.pBlock = BlitAlloc(BlitzenCore::AllocationType::LinearAlloc, BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE);
     }
 
     void* BlitAlloc(AllocationType alloc, size_t size)
@@ -56,6 +64,8 @@ namespace BlitzenCore
 
     void MemoryManagementShutdown()
     {
+        BlitFree(BlitzenCore::AllocationType::LinearAlloc, s_linearAlloc.pBlock, s_linearAlloc.blockSize);
+
         if (BlitzenEngine::Engine::GetEngineInstancePointer())
         {
             BLIT_ERROR("Blitzen is still active, memory management cannot be shutdown")
@@ -70,5 +80,21 @@ namespace BlitzenCore
             globalAllocationStats.typeAllocations[4], globalAllocationStats.typeAllocations[5], globalAllocationStats.typeAllocations[6], globalAllocationStats.typeAllocations[7], \
             globalAllocationStats.typeAllocations[8])
         }
+    }
+
+
+
+
+    void* BlitAllocLinear(AllocationType alloc, size_t size)
+    {
+        if(s_linearAlloc.totalAllocated + size > s_linearAlloc.blockSize)
+        {
+            BLIT_WARN("Linear allocator depleted, memory not allocated")
+            return nullptr;
+        }
+
+        void* pBlock = reinterpret_cast<uint8_t*>(s_linearAlloc.pBlock) + s_linearAlloc.totalAllocated;
+        s_linearAlloc.totalAllocated += size;
+        return pBlock;
     }
 }

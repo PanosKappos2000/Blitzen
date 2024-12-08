@@ -101,7 +101,7 @@ namespace BlitCL
 
         ~DynamicArray()
         {
-            if(m_pBlock && m_capacity > 0)
+            if(m_capacity > 0)
             {
                 BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity * sizeof(T));
             }
@@ -149,7 +149,7 @@ namespace BlitCL
         {
             if(m_capacity > 0)
             {
-                m_pBlock = reinterpret_cast<T**>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::Hashmap, sizeof(T*) * m_capacity));
+                m_pBlock = reinterpret_cast<T**>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::Hashmap, sizeof(T*) * m_capacity));
                 BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T*) * m_capacity);
             }
         }
@@ -172,7 +172,7 @@ namespace BlitCL
         {
             if(m_capacity > 0)
             {
-                BlitzenCore::BlitFree(BlitzenCore::AllocationType::Hashmap, m_pBlock, sizeof(T**) * m_capacity);
+                BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T**) * m_capacity);
             }
         }
 
