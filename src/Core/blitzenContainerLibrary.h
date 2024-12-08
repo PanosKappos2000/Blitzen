@@ -3,7 +3,6 @@
 #include "blitMemory.h"
 
 #define BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER   2
-#define BLIT_POINTER_TABLE_INITIAL_CAPACITY      5000
 
 namespace BlitCL
 {
@@ -103,7 +102,8 @@ namespace BlitCL
         {
             if(m_capacity > 0)
             {
-                BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity * sizeof(T));
+                delete m_pBlock;
+                BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T));
             }
         }
 
@@ -144,28 +144,53 @@ namespace BlitCL
     {
     public:
 
-        PointerTable()
-            :m_capacity(BLIT_POINTER_TABLE_INITIAL_CAPACITY)
+        PointerTable(size_t fixedCapacity = 0)
+            :m_capacity(fixedCapacity)
         {
             if(m_capacity > 0)
             {
                 m_pBlock = reinterpret_cast<T**>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::Hashmap, sizeof(T*) * m_capacity));
                 BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T*) * m_capacity);
+                m_hasMemory = 1;
+            }
+        }
+
+        void SetCapacity(size_t capacity)
+        {
+            if(capacity > 0 && !m_hasMemory)
+            {
+                m_capacity = capacity;
+                m_pBlock = reinterpret_cast<T**>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::Hashmap, sizeof(T*) * m_capacity));
+                BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T*) * m_capacity);
+                m_hasMemory = 1;
             }
         }
 
         void Set(const char* name, T* pValue)
         {
-            size_t hash = Hash(name);
-
-            m_pBlock[hash] = pValue ? pValue : nullptr;
+            if(m_hasMemory)
+            {
+                size_t hash = Hash(name);
+                m_pBlock[hash] = pValue ? pValue : nullptr;
+            }
+            else
+            {
+                BLIT_WARN("Tried to set an element on a pointer table with 0 capacity")
+            }
         }
 
         T* Get(const char* name, T* pDefault)
         {
-            size_t  hash = Hash(name);
-            
-            return m_pBlock[hash] ? m_pBlock[hash] : pDefault;
+            if(m_hasMemory)
+            {
+                size_t  hash = Hash(name);
+                return m_pBlock[hash] ? m_pBlock[hash] : pDefault;
+            }
+            else
+            {
+                BLIT_WARN("Tried to get an element from a pointer table with 0 capacity")
+                return pDefault;
+            }
         }
 
         ~PointerTable()
@@ -181,6 +206,7 @@ namespace BlitCL
         size_t m_capacity;
         // Since this can only take pointers, the memory block will be a pointer to pointers
         T** m_pBlock;
+        uint8_t m_hasMemory = 0;
 
     private:
 

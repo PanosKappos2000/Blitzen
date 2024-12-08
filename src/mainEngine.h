@@ -78,12 +78,17 @@ namespace BlitzenEngine
     class Engine
     {
     public:
-        Engine();
+
+        
+        Engine(); //At first I used the constructor for initialization, but because I stupidly used malloc for memory management, I cannot do that for now
+        void Init();
 
         void Run();
 
-        // I might want to explicitly shutdown the engine, as there are some systems that are initalized outside of it
-        ~Engine();
+        //~Engine(); Same thing for constructor also goes for destructor
+        void Shutdown();
+
+
         inline void RequestShutdown() { isRunning = 0; }
 
         inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }

@@ -131,10 +131,10 @@ namespace BlitzenEngine
 
                     draws[s].firstIndex = currentSurface.firstIndex;
                     draws[s].indexCount = currentSurface.indexCount;
-                    draws[s].objectTag = s;
+                    draws[s].objectTag = static_cast<uint32_t>(s);
                 }
             }
-            drawCount = renders.GetSize();
+            drawCount = static_cast<uint32_t>(renders.GetSize());
 
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, renders);
             vulkanData.pTextures = m_resources.textures;
@@ -209,6 +209,9 @@ namespace BlitzenEngine
         }
         // Main loop ends
         StopClock();
+
+        // With the main loop done, Blitzen shuts down on its own
+        Shutdown();
     }
 
     void Engine::LoadTextures()
@@ -279,7 +282,7 @@ namespace BlitzenEngine
 
 
 
-    Engine::~Engine()
+    void Engine::Shutdown()
     {
         if (m_systems.engine)
         {
@@ -463,12 +466,13 @@ int main()
             BlitzenEngine::s_renderers.pVulkan = &vulkan;
         #endif
 
-        // Got to the point of stack overflow, use of new is temporary till I get off my ass and find a workaround
-        BlitzenEngine::Engine* Blitzen = new BlitzenEngine::Engine();
+        // Got to the point of stack overflow, created a c++ version of BlitAlloc as I need the constructor
+        BlitzenEngine::Engine* Blitzen = BlitzenCore::BlitConstructAlloc<BlitzenEngine::Engine>(BlitzenCore::AllocationType::Engine);
 
         Blitzen->Run();
 
-        delete Blitzen;
+        // This is not necessary, but the memory manager will complain if I don't do it
+        BlitzenCore::BlitDestroyAlloc<BlitzenEngine::Engine>(BlitzenCore::AllocationType::Engine, Blitzen);
     }
 
     //Note: I am not freeing the platform state memory, as it will actually fail the application

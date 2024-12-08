@@ -62,6 +62,18 @@ namespace BlitzenCore
         BlitzenPlatform::PlatformMemZero(pBlock, size);
     }
 
+    void LogAllocation(AllocationType alloc, size_t size)
+    {
+        globalAllocationStats.totalAllocated += size;
+        globalAllocationStats.typeAllocations[static_cast<size_t>(alloc)] += size;
+    }
+
+    void LogFree(AllocationType alloc, size_t size)
+    {
+        globalAllocationStats.totalAllocated -= size;
+        globalAllocationStats.typeAllocations[static_cast<size_t>(alloc)] -= size;
+    }
+
     void MemoryManagementShutdown()
     {
         BlitFree(BlitzenCore::AllocationType::LinearAlloc, s_linearAlloc.pBlock, s_linearAlloc.blockSize);

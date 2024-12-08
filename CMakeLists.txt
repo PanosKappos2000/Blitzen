@@ -50,6 +50,7 @@ IF(WIN32)
     target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1)
 ELSEIF(UNIX)
+    #link the linux version of the library
 ENDIF(WIN32)
 
 
@@ -65,9 +66,12 @@ add_dependencies(BlitzenEngine copy_assets)
 #Compiling Shaders
 #
 
-find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
-
-set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/glslangValidator.exe")
+IF(WIN32)
+    find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
+    set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/glslangValidator.exe")
+ELSEIF(UNIX)
+    #Have to use a different executable for linux and possibly a different folder
+ENDIF(WIN32)
   
   
   file(GLOB_RECURSE GLSL_SOURCE_FILES

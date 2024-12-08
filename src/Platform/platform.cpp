@@ -198,7 +198,7 @@ namespace BlitzenPlatform
 
         void PlatformSleep(uint64_t ms)
         {
-            Sleep(ms);
+            Sleep(static_cast<DWORD>(ms));
         }
 
         void CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)

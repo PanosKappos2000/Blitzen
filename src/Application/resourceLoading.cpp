@@ -15,6 +15,9 @@ namespace BlitzenEngine
     {
         s_pResources = pResources;
 
+        s_pResources->textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
+        s_pResources->materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
+
         return s_pResources != nullptr;
     }
 
@@ -39,7 +42,7 @@ namespace BlitzenEngine
         // Go to the next element in the container, only if the texture was loaded successfully
         if(load)
         {
-            current.textureTag = s_currentTextureIndex;
+            current.textureTag = static_cast<uint32_t>(s_currentTextureIndex);
             s_pResources->textureTable.Set(texName, &current);
             s_currentTextureIndex++;
         }
@@ -70,7 +73,7 @@ namespace BlitzenEngine
         current.diffuseColor = diffuseColor;
         current.diffuseMapName = diffuseMapName;
         current.diffuseMapTag = s_pResources->textureTable.Get(diffuseMapName, &s_pResources->textures[0])->textureTag;
-        current.materialTag = s_currentMaterialIndex;
+        current.materialTag = static_cast<uint32_t>(s_currentMaterialIndex);
         s_pResources->materialTable.Set(materialName, &current);
         s_currentMaterialIndex++;
     }
