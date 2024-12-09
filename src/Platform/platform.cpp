@@ -629,9 +629,9 @@ namespace BlitzenPlatform
             switch (x_keycode)
             {
                 case XK_BackSpace:
-                    return KEY_BACKSPACE;
+                    return BlitzenCore::BlitKey::__BACKSPACE;
                 case XK_Return:
-                    return KEY_ENTER;
+                    return BlitzenCore::BlitKey__ENTER;
                 case XK_Tab:
                     return KEY_TAB;
                     //case XK_Shift: return KEY_SHIFT;

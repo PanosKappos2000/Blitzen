@@ -42,6 +42,9 @@ layout(set = 0, binding = 0) uniform ShaderData
     mat4 view;
     mat4 projectionView;
 
+    vec3 sunDir;
+    vec4 sunColor;
+
     VertexBuffer vertexBuffer;
     RenderObjectBuffer renderObjects;
     MaterialBuffer materialBuffer;

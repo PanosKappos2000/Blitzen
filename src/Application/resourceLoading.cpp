@@ -4,21 +4,12 @@
 
 namespace BlitzenEngine
 {
-    EngineResources* s_pResources;
-
-    // Resource system expects the engine to create a fixed amount of default textures when it boots
-    static size_t s_currentTextureIndex = BLIT_DEFAULT_TEXTURE_COUNT;
-
-    static size_t s_currentMaterialIndex = BLIT_DEFAULT_MATERIAL_COUNT;
-
-    uint8_t LoadResourceSystem(EngineResources* pResources)
+    uint8_t LoadResourceSystem(EngineResources& resources)
     {
-        s_pResources = pResources;
+        resources.textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
+        resources.materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
 
-        s_pResources->textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
-        s_pResources->materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
-
-        return s_pResources != nullptr;
+        return 1;
     }
 
 
@@ -27,24 +18,21 @@ namespace BlitzenEngine
         Texture specific functions
     ----------------------------------*/
 
-    uint8_t LoadTextureFromFile(const char* filename, const char* texName)
+    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName)
     {
-        TextureStats& current = s_pResources->textures[s_currentTextureIndex];
+        TextureStats& current = resources.textures[resources.currentTextureIndex];
 
         stbi_set_flip_vertically_on_load(1);
-        current.pTextureData = stbi_load(filename, 
-        &(current.textureWidth), 
-        &(current.textureHeight), 
-        &(current.textureChannels), 4);
+        current.pTextureData = stbi_load(filename, &(current.textureWidth), &(current.textureHeight), &(current.textureChannels), 4);
 
         uint8_t load = current.pTextureData != nullptr;
 
         // Go to the next element in the container, only if the texture was loaded successfully
         if(load)
         {
-            current.textureTag = static_cast<uint32_t>(s_currentTextureIndex);
-            s_pResources->textureTable.Set(texName, &current);
-            s_currentTextureIndex++;
+            current.textureTag = static_cast<uint32_t>(resources.currentTextureIndex);
+            resources.textureTable.Set(texName, &current);
+            resources.currentTextureIndex++;
         }
         // If the load failed give the default texture
         else
@@ -55,109 +43,114 @@ namespace BlitzenEngine
         return load;
     }
 
-    size_t GetTotalLoadedTexturesCount()
-    {
-        return s_currentTextureIndex;
-    }
-
 
 
     /*----------------------------------
         Material specific functions
     -----------------------------------*/
 
-    void DefineMaterial(BlitML::vec4& diffuseColor, const char* diffuseMapName, const char* materialName)
+    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, const char* diffuseMapName, const char* materialName)
     {
-        MaterialStats& current = s_pResources->materials[s_currentMaterialIndex];
+        MaterialStats& current = resources.materials[resources.currentMaterialIndex];
 
         current.diffuseColor = diffuseColor;
         current.diffuseMapName = diffuseMapName;
-        current.diffuseMapTag = s_pResources->textureTable.Get(diffuseMapName, &s_pResources->textures[0])->textureTag;
-        current.materialTag = static_cast<uint32_t>(s_currentMaterialIndex);
-        s_pResources->materialTable.Set(materialName, &current);
-        s_currentMaterialIndex++;
-    }
-
-    size_t GetTotalLoadedMaterialCount()
-    {
-        return s_currentMaterialIndex;
+        current.diffuseMapTag = resources.textureTable.Get(diffuseMapName, &resources.textures[0])->textureTag;
+        current.materialTag = static_cast<uint32_t>(resources.currentMaterialIndex);
+        resources.materialTable.Set(materialName, &current);
+        resources.currentMaterialIndex++;
     }
 
 
 
-    void LoadDefaultData()
+    void LoadDefaultData(EngineResources& resources)
     {
         // Temporary shader data for tests on vulkan rendering
-            s_pResources->vertices.Resize(8);
-            s_pResources->indices.Resize(32);
+            resources.vertices.Resize(8);
+            resources.indices.Resize(32);
 
-            s_pResources->vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
-            s_pResources->vertices[0].uvX = 0.f; 
-            s_pResources->vertices[0].uvY = 0.f;
-            s_pResources->vertices[1].position = BlitML::vec3(-0.5f, -0.5f, 0.f);
-            s_pResources->vertices[1].uvX = 0.f; 
-            s_pResources->vertices[1].uvY = 1.f;
-            s_pResources->vertices[2].position = BlitML::vec3(0.5f, -0.5f, 0.f);
-            s_pResources->vertices[2].uvX = 1.f;
-            s_pResources->vertices[2].uvY = 1.f;
-            s_pResources->vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
-            s_pResources->vertices[3].uvX = 1.f;
-            s_pResources->vertices[3].uvY = 0.f;
-            s_pResources->vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
-            s_pResources->vertices[4].uvX = 1.f; 
-            s_pResources->vertices[4].uvY = 0.f;
-            s_pResources->vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
-            s_pResources->vertices[5].uvX = 1.f; 
-            s_pResources->vertices[5].uvY = 1.f;
-            s_pResources->vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
-            s_pResources->vertices[6].uvX = 0.f; 
-            s_pResources->vertices[6].uvY = 1.f;
-            s_pResources->vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
-            s_pResources->vertices[7].uvX = 0.f; 
-            s_pResources->vertices[7].uvY = 0.f;
+            resources.vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
+            resources.vertices[0].uvX = 0.f; 
+            resources.vertices[0].uvY = 0.f;
+            resources.vertices[0].normal = BlitML::vec3(0.f, 0.f, -1.f);
 
-            s_pResources->indices[0] = 0;
-            s_pResources->indices[1] = 1;
-            s_pResources->indices[2] = 2;
-            s_pResources->indices[3] = 2;
-            s_pResources->indices[4] = 3;
-            s_pResources->indices[5] = 0;
-            s_pResources->indices[6] = 4;
-            s_pResources->indices[7] = 5;
-            s_pResources->indices[8] = 6;
-            s_pResources->indices[9] = 6;
-            s_pResources->indices[10] = 7;
-            s_pResources->indices[11] = 4;
-            s_pResources->indices[12] = 4;
-            s_pResources->indices[13] = 5;
-            s_pResources->indices[14] = 1;
-            s_pResources->indices[15] = 1;
-            s_pResources->indices[16] = 0;
-            s_pResources->indices[17] = 4;
-            s_pResources->indices[18] = 7;
-            s_pResources->indices[19] = 6;
-            s_pResources->indices[20] = 2;
-            s_pResources->indices[21] = 2;
-            s_pResources->indices[22] = 3;
-            s_pResources->indices[23] = 7;
+            resources.vertices[1].position = BlitML::vec3(-0.5f, -0.5f, 0.f);
+            resources.vertices[1].uvX = 0.f; 
+            resources.vertices[1].uvY = 1.f;
+            resources.vertices[1].normal = BlitML::vec3(0.f, 0.f, -1.f);
 
-            s_pResources->meshes.Resize(1);
-            s_pResources->meshes[0].surfaces.Resize(4);
+            resources.vertices[2].position = BlitML::vec3(0.5f, -0.5f, 0.f);
+            resources.vertices[2].uvX = 1.f;
+            resources.vertices[2].uvY = 1.f;
+            resources.vertices[2].normal = BlitML::vec3(0.f, 0.f, -1.f);
 
-            s_pResources->meshes[0].surfaces[0].firstIndex = 0;
-            s_pResources->meshes[0].surfaces[0].indexCount = 6;
-            s_pResources->meshes[0].surfaces[0].pMaterial = s_pResources->materialTable.Get("loaded_material", &s_pResources->materials[0]);
+            resources.vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
+            resources.vertices[3].uvX = 1.f;
+            resources.vertices[3].uvY = 0.f;
+            resources.vertices[3].normal = BlitML::vec3(0.f, 0.f, -1.f);
 
-            s_pResources->meshes[0].surfaces[1].firstIndex = 6;
-            s_pResources->meshes[0].surfaces[1].indexCount = 6;
-            s_pResources->meshes[0].surfaces[1].pMaterial = s_pResources->materialTable.Get("loaded_material", &s_pResources->materials[0]);
+            resources.vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
+            resources.vertices[4].uvX = 1.f; 
+            resources.vertices[4].uvY = 0.f;
+            resources.vertices[4].normal = BlitML::vec3(0.f, 0.f, -1.f);
 
-            s_pResources->meshes[0].surfaces[2].firstIndex = 12;
-            s_pResources->meshes[0].surfaces[2].indexCount = 6;
-            s_pResources->meshes[0].surfaces[2].pMaterial = s_pResources->materialTable.Get("loaded_material2", &s_pResources->materials[0]);
+            resources.vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
+            resources.vertices[5].uvX = 1.f; 
+            resources.vertices[5].uvY = 1.f;
+            resources.vertices[5].normal = BlitML::vec3(0.f, 0.f, -1.f);
 
-            s_pResources->meshes[0].surfaces[3].firstIndex = 18;
-            s_pResources->meshes[0].surfaces[3].indexCount = 6;
-            s_pResources->meshes[0].surfaces[3].pMaterial = s_pResources->materialTable.Get("loaded_material", &s_pResources->materials[0]);
+            resources.vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
+            resources.vertices[6].uvX = 0.f; 
+            resources.vertices[6].uvY = 1.f;
+            resources.vertices[6].normal = BlitML::vec3(0.f, 0.f, -1.f);
+
+            resources.vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
+            resources.vertices[7].uvX = 0.f; 
+            resources.vertices[7].uvY = 0.f;
+            resources.vertices[7].normal = BlitML::vec3(0.f, 0.f, -1.f);
+
+            resources.indices[0] = 0;
+            resources.indices[1] = 1;
+            resources.indices[2] = 2;
+            resources.indices[3] = 2;
+            resources.indices[4] = 3;
+            resources.indices[5] = 0;
+            resources.indices[6] = 4;
+            resources.indices[7] = 5;
+            resources.indices[8] = 6;
+            resources.indices[9] = 6;
+            resources.indices[10] = 7;
+            resources.indices[11] = 4;
+            resources.indices[12] = 4;
+            resources.indices[13] = 5;
+            resources.indices[14] = 1;
+            resources.indices[15] = 1;
+            resources.indices[16] = 0;
+            resources.indices[17] = 4;
+            resources.indices[18] = 7;
+            resources.indices[19] = 6;
+            resources.indices[20] = 2;
+            resources.indices[21] = 2;
+            resources.indices[22] = 3;
+            resources.indices[23] = 7;
+
+            resources.meshes.Resize(1);
+            resources.meshes[0].surfaces.Resize(4);
+
+            resources.meshes[0].surfaces[0].firstIndex = 0;
+            resources.meshes[0].surfaces[0].indexCount = 6;
+            resources.meshes[0].surfaces[0].pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
+
+            resources.meshes[0].surfaces[1].firstIndex = 6;
+            resources.meshes[0].surfaces[1].indexCount = 6;
+            resources.meshes[0].surfaces[1].pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
+
+            resources.meshes[0].surfaces[2].firstIndex = 12;
+            resources.meshes[0].surfaces[2].indexCount = 6;
+            resources.meshes[0].surfaces[2].pMaterial = resources.materialTable.Get("loaded_material2", &resources.materials[0]);
+
+            resources.meshes[0].surfaces[3].firstIndex = 18;
+            resources.meshes[0].surfaces[3].indexCount = 6;
+            resources.meshes[0].surfaces[3].pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
     }
 }

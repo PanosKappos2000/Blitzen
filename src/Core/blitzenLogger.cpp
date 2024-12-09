@@ -28,7 +28,7 @@ namespace BlitzenCore
         uint8_t isError = level < LogLevel::INFO;
 
         //Temporary to avoid dynamic arrays for now
-        char outMessage[3200];
+        char outMessage[1500];
         memset(outMessage, 0, sizeof(outMessage));
 
         #if _MSC_VER
@@ -38,10 +38,10 @@ namespace BlitzenCore
         #endif
         
         va_start(argPtr, message);
-        vsnprintf(outMessage, 3200, message, argPtr);
+        vsnprintf(outMessage, 1500, message, argPtr);
         va_end(argPtr);
 
-        char outMessage2[3200];
+        char outMessage2[1500];
         sprintf(outMessage2, "%s%s\n", logLevels[static_cast<uint8_t>(level)], outMessage);
 
         // The way error messages are handled varies from platform to platform

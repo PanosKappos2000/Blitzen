@@ -46,7 +46,7 @@ namespace BlitzenEngine
             else
                 BLIT_FATAL("Event system initialization failed!")
 
-            if(!BlitzenEngine::LoadResourceSystem(&m_resources))
+            if(!BlitzenEngine::LoadResourceSystem(m_resources))
             {
                 BLIT_FATAL("Resource system initalization failed")
             }
@@ -101,7 +101,7 @@ namespace BlitzenEngine
         // Loads textures that were requested
         LoadTextures();
         LoadMaterials();
-        LoadDefaultData();
+        LoadDefaultData(m_resources);
 
 
 
@@ -140,9 +140,9 @@ namespace BlitzenEngine
 
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, renders);
             vulkanData.pTextures = m_resources.textures;
-            vulkanData.textureCount = GetTotalLoadedTexturesCount();
+            vulkanData.textureCount = m_resources.currentTextureIndex;
             vulkanData.pMaterials = m_resources.materials;
-            vulkanData.materialCount = GetTotalLoadedMaterialCount(); 
+            vulkanData.materialCount = m_resources.currentMaterialIndex; 
 
             pVulkan.Data()->UploadDataToGPUAndSetupForRendering(vulkanData);
         }// Vulkan renderer ready
@@ -190,6 +190,10 @@ namespace BlitzenEngine
 
                             renderContext.pDraws = draws;
                             renderContext.drawCount = drawCount;
+
+                            // Hardcoding the sun for now
+                            renderContext.sunlightDirection = BlitML::vec3(-0.57735, -0.57735, 0.57735);
+                            renderContext.sunlightColor = BlitML::vec4(0.8, 0.8, 0.8, 1.0);
 
                             pVulkan.Data()->DrawFrame(renderContext);
                         }
@@ -253,8 +257,8 @@ namespace BlitzenEngine
         
 
         // This is hardcoded now, but this is how all textures will be loaded
-        LoadTextureFromFile("Assets/Textures/cobblestone.png", "loaded_texture");
-        LoadTextureFromFile("Assets/Textures/texture.jpg", "loaded_texture2");
+        LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone.png", "loaded_texture");
+        LoadTextureFromFile(m_resources, "Assets/Textures/texture.jpg", "loaded_texture2");
     }
 
     void Engine::LoadMaterials()
@@ -267,8 +271,8 @@ namespace BlitzenEngine
         m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
 
         // Test code
-        DefineMaterial(BlitML::vec4(0.3f), "loaded_texture", "loaded_material");
-        DefineMaterial(BlitML::vec4(0.8f), "loaded_texture2", "loaded_material2");
+        DefineMaterial(m_resources, BlitML::vec4(0.5f), "loaded_texture", "loaded_material");
+        DefineMaterial(m_resources, BlitML::vec4(0.2f), "loaded_texture2", "loaded_material2");
     }
 
     void Engine::StartClock()

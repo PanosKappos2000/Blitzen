@@ -96,6 +96,9 @@ namespace BlitzenVulkan
 
         DrawObject* pDraws;
         size_t drawCount;
+
+        BlitML::vec3 sunlightDirection;
+        BlitML::vec4 sunlightColor;
     };
 
     struct AllocatedImage
@@ -125,6 +128,9 @@ namespace BlitzenVulkan
         BlitML::mat4 projection;
         BlitML::mat4 view;
         BlitML::mat4 projectionView;
+
+        BlitML::vec3 sunlightDir;// directional light direction vector
+        BlitML::vec4 sunlightColor;
 
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;

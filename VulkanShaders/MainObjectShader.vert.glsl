@@ -12,6 +12,7 @@ layout(push_constant) uniform constants
 
 layout(location = 0) out vec2 outUv;
 layout(location = 1) out uint outMaterialTag;
+layout(location = 2) out vec3 outNormal;
 
 void main()
 {
@@ -22,4 +23,5 @@ void main()
 
     outUv = vec2(currentVertex.uvX, currentVertex.uvY);
     outMaterialTag = renderObject.materialTag;
+    outNormal =  vec3(shaderData.view * renderObject.worldMatrix * vec4(currentVertex.normal, 0));
 }

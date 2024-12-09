@@ -57,9 +57,11 @@ namespace BlitzenEngine
     {
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
         BlitCL::PointerTable<TextureStats> textureTable;
+        size_t currentTextureIndex = BLIT_DEFAULT_TEXTURE_COUNT;
 
         MaterialStats materials[BLIT_MAX_MATERIAL_COUNT];
         BlitCL::PointerTable<MaterialStats> materialTable;
+        size_t currentMaterialIndex = BLIT_DEFAULT_MATERIAL_COUNT;
 
         BlitCL::DynamicArray<BlitML::Vertex> vertices;
         BlitCL::DynamicArray<uint32_t> indices;
@@ -68,18 +70,16 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<MeshAssets> meshes;
     };
 
-    uint8_t LoadResourceSystem(EngineResources* pResources);
+    uint8_t LoadResourceSystem(EngineResources& resources);
 
 
 
-    uint8_t LoadTextureFromFile(const char* filename, const char* texName);
-    size_t GetTotalLoadedTexturesCount();
+    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName);
 
 
-    void DefineMaterial(BlitML::vec4& diffuseColor, const char* diffuseMapName, const char* materialName);
-    size_t GetTotalLoadedMaterialCount();
+    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, const char* diffuseMapName, const char* materialName);
 
 
     // Placeholder to load some default resources while testing the systems
-    void LoadDefaultData();
+    void LoadDefaultData(EngineResources& resources);
 }

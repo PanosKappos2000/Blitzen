@@ -7,6 +7,7 @@
 
 layout (location = 0) in vec2 uvMap;
 layout (location = 1) in flat uint materialTag;
+layout (location = 2) in vec3 normal;
 
 layout (location = 0) out vec4 finalColor;
 
@@ -16,6 +17,9 @@ void main()
 {
     Material currentMaterial = shaderData.materialBuffer.materials[materialTag];
 
-    vec3 color = currentMaterial.diffuseColor.xyz * texture(textures[currentMaterial.diffuseMapIndex], uvMap).xyz;
-    finalColor = vec4(color, 1.0);
+    float diffuseFactor = max(dot(normal, -shaderData.sunDir), 0.0);
+    vec4 diffuseSampler = texture(textures[currentMaterial.diffuseMapIndex], uvMap);
+    vec4 diffuse = vec4(vec3(shaderData.sunColor * diffuseFactor), diffuseSampler.a);
+    diffuse *= diffuseSampler;
+    finalColor = diffuse + currentMaterial.diffuseColor;
 }

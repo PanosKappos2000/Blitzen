@@ -250,7 +250,8 @@ namespace BlitzenVulkan
     {
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSize.descriptorCount = 1;
+        // This would normally be 1, but an old machine that I tested this on, failed because of this. I will look at the documentation for an explanation
+        poolSize.descriptorCount = 5;
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.pNext = nullptr;
@@ -300,6 +301,8 @@ namespace BlitzenVulkan
         m_globalShaderData.projection.data[5] *= -1;
         m_globalShaderData.view = context.viewMatrix;
         m_globalShaderData.projectionView = context.projectionView;
+        m_globalShaderData.sunlightDir = context.sunlightDirection;
+        m_globalShaderData.sunlightColor = context.sunlightColor;
 
         // Declaring it outside the below scope, as it needs to be bound later
         VkDescriptorSet globalShaderDataSet;
