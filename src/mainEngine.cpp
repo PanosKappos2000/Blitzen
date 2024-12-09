@@ -6,19 +6,11 @@
 
 namespace BlitzenEngine
 {
-    static void* s_pPlatformState;
-
-    /*-----------------------------------------------------------------------------------------
-        Since having the huge renderer up here as a static variable might cause problems, 
-        I will create it ouside of the engine and the engine will access it through a pointer
-        given to this static variable
-    ---------------------------------------------------------------------------------------------*/
+    // This will hold pointer to all the renderers (not really necessary but whatever)
     struct BlitzenRenderers
     {
         BlitzenVulkan::VulkanRenderer* pVulkan = nullptr;
     };
-
-    static BlitzenRenderers s_renderers;
 
     // Static member variable needs to be declared
     Engine* Engine::pEngineInstance;
@@ -60,7 +52,7 @@ namespace BlitzenEngine
             }
 
             // Assert if platform specific code is initialized, the engine cannot continue without it
-            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(s_pPlatformState, BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
+            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
             BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
 
             // Register some default events, like window closing on escape
@@ -68,34 +60,39 @@ namespace BlitzenEngine
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyPressed, nullptr, OnKeyPress);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, OnResize);
-
-            BLIT_ASSERT_MESSAGE(RendererInit(), "Blitzen cannot continue without a renderer")
-
-            isRunning = 1;
-            isSupended = 0;
         }
     }
 
-    uint8_t Engine::RendererInit()
-    {
-        uint8_t hasRenderer = 0;
-
-        #if BLITZEN_VULKAN
-            if(s_renderers.pVulkan)
-            {
-                m_systems.vulkan = s_renderers.pVulkan->Init(m_platformData.windowWidth, m_platformData.windowHeight);
-                hasRenderer = m_systems.vulkan;
-                m_renderer = ActiveRenderer::Vulkan;
-            }
-        #endif
-
-        return hasRenderer;
-    }
 
 
-
+    /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        This function currently holds the majority of the functionality called during runtime.
+        Its scope owns the memory used by each renderer(only Vulkan for the forseeable future.
+        It calls every function needed to draw a frame and other functionality the engine has
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     void Engine::Run()
     {
+        #if BLITZEN_VULKAN
+            BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
+        #endif
+        {
+            uint8_t hasRenderer = 0;
+
+            #if BLITZEN_VULKAN
+                if(pVulkan.Data())
+                {
+                    m_systems.vulkan = pVulkan.Data()->Init(m_platformData.windowWidth, m_platformData.windowHeight);
+                    hasRenderer = m_systems.vulkan;
+                    m_renderer = ActiveRenderer::Vulkan;
+                }
+            #endif
+
+            BLIT_ASSERT(hasRenderer, "Blitzen cannot continue without a renderer")
+        }
+
+        isRunning = 1;
+        isSupended = 0;
+
         m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(BlitML::vec3(0.f, 0.f, 5.f)));
@@ -106,10 +103,15 @@ namespace BlitzenEngine
         LoadMaterials();
         LoadDefaultData();
 
+
+
+        /*----------------------------------
+            Setup for Vulkan rendering
+        ------------------------------------*/
+
         // This is declared outide the setup for rendering braces, as it will be passed to render context during the loop
         BlitzenVulkan::DrawObject draws[100];// Only 100 objects for now, I am going to need that linear allocator soon
         uint32_t drawCount;
-        // Setup for rendering vulkan
         #if BLITZEN_VULKAN
         {
             BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders;
@@ -142,9 +144,11 @@ namespace BlitzenEngine
             vulkanData.pMaterials = m_resources.materials;
             vulkanData.materialCount = GetTotalLoadedMaterialCount(); 
 
-            s_renderers.pVulkan->UploadDataToGPUAndSetupForRendering(vulkanData);
+            pVulkan.Data()->UploadDataToGPUAndSetupForRendering(vulkanData);
         }// Vulkan renderer ready
         #endif
+
+
 
         // Should be called right before the main loop starts
         StartClock();
@@ -167,7 +171,7 @@ namespace BlitzenEngine
                 UpdateCamera(m_camera, (float)deltaTime);
 
 
-                // Setting up draw frame for active renderere and calling it
+                // Setting up draw frame for active renderer and calling it
                 switch(m_renderer)
                 {
                     #if BLITZEN_VULKAN
@@ -187,7 +191,7 @@ namespace BlitzenEngine
                             renderContext.pDraws = draws;
                             renderContext.drawCount = drawCount;
 
-                            s_renderers.pVulkan->DrawFrame(renderContext);
+                            pVulkan.Data()->DrawFrame(renderContext);
                         }
                         break;
                     }
@@ -210,9 +214,22 @@ namespace BlitzenEngine
         // Main loop ends
         StopClock();
 
-        // With the main loop done, Blitzen shuts down on its own
+        // The renderer is shutdown here as its memory scope it this Run function
+        m_renderer = ActiveRenderer::MaxRenderers;
+        #if BLITZEN_VULKAN
+            m_systems.vulkan = 0;
+            pVulkan.Data()->Shutdown();
+        #endif
+
+        // With the main loop done, Blitzen calls Shutdown on itself
         Shutdown();
     }
+
+
+
+
+
+
 
     void Engine::LoadTextures()
     {
@@ -297,9 +314,6 @@ namespace BlitzenEngine
             m_systems.inputSystem = 0;
             BlitzenCore::InputShutdown();
 
-            m_renderer = ActiveRenderer::MaxRenderers;
-            RendererShutdown();
-
             BlitzenPlatform::PlatformShutdown();
 
             m_systems.engine = 0;
@@ -311,14 +325,6 @@ namespace BlitzenEngine
         {
             BLIT_ERROR("Any uninitialized instances of Blitzen will not be explicitly cleaned up")
         }
-    }
-
-    void Engine::RendererShutdown()
-    {
-        #if BLITZEN_VULKAN
-            m_systems.vulkan = 0;
-            s_renderers.pVulkan->Shutdown();
-        #endif
     }
 
 
@@ -455,27 +461,14 @@ int main()
 {
     BlitzenCore::MemoryManagementInit();
 
-    // Temporary solution will try something different. I will probaly just make this just a part of platform
-    BlitzenEngine::s_pPlatformState = BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::Engine, sizeof(
-    BlitzenPlatform::GetPlatformMemoryRequirements()));
-
-    // Blitzen needs to be destroyed before memory management can shutdown, otherwise the memory system will complain
+    // Blitzen engine created and destroyed inside this scope (this used to be necessary when it was allocated on the stack)
     {
-        #if BLITZEN_VULKAN
-            BlitzenVulkan::VulkanRenderer vulkan;
-            BlitzenEngine::s_renderers.pVulkan = &vulkan;
-        #endif
+        // Blitzen engine allocated with smart pointer, it will cause stack overflow otherwise
+        BlitCL::SmartPointer<BlitzenEngine::Engine, BlitzenCore::AllocationType::Engine> Blitzen;
 
-        // Got to the point of stack overflow, created a c++ version of BlitAlloc as I need the constructor
-        BlitzenEngine::Engine* Blitzen = BlitzenCore::BlitConstructAlloc<BlitzenEngine::Engine>(BlitzenCore::AllocationType::Engine);
-
-        Blitzen->Run();
-
-        // This is not necessary, but the memory manager will complain if I don't do it
-        BlitzenCore::BlitDestroyAlloc<BlitzenEngine::Engine>(BlitzenCore::AllocationType::Engine, Blitzen);
+        // This is basically the true main function
+        Blitzen.Data()->Run();
     }
-
-    //Note: I am not freeing the platform state memory, as it will actually fail the application
 
     BlitzenCore::MemoryManagementShutdown();
 }

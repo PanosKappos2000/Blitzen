@@ -2,7 +2,7 @@
 
 #include "Core/blitAssert.h"
 
-#define BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE         UINT32_MAX
+#define BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE         UINT32_MAX * 4
 
 namespace BlitzenCore
 {
@@ -20,10 +20,11 @@ namespace BlitzenCore
         Entity = 9,
         EntityNode = 10,
         Scene = 11,
+        SmartPointer = 12,
 
-        LinearAlloc = 12,
+        LinearAlloc = 13,
 
-        MaxTypes = 13
+        MaxTypes = 14
     };
 
     struct AllocationStats

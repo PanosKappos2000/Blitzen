@@ -23,7 +23,7 @@ namespace BlitzenPlatform
             HWND winWindow;
         };    
 
-        static PlatformState* s_pPlatformState;
+        static PlatformState s_pPlatformState;
 
         static double clockFrequency;
         static LARGE_INTEGER startTime;
@@ -35,13 +35,11 @@ namespace BlitzenPlatform
             return sizeof(PlatformState);
         }
 
-        uint8_t PlatformStartup(void* pState, const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
+        uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
         {
-            s_pPlatformState = reinterpret_cast<PlatformState*>(pState);
+            s_pPlatformState.winInstance = GetModuleHandleA(0);
 
-            s_pPlatformState->winInstance = GetModuleHandleA(0);
-
-            HICON icon = LoadIcon(s_pPlatformState->winInstance, IDI_APPLICATION);
+            HICON icon = LoadIcon(s_pPlatformState.winInstance, IDI_APPLICATION);
             tagWNDCLASSA wc;
             memset(&wc, 0, sizeof(wc));
             wc.style = CS_DBLCLKS;
@@ -49,7 +47,7 @@ namespace BlitzenPlatform
             wc.lpfnWndProc = Win32ProcessMessage;
             wc.cbClsExtra = 0;
             wc.cbWndExtra = 0;
-            wc.hInstance = s_pPlatformState->winInstance;
+            wc.hInstance = s_pPlatformState.winInstance;
             wc.hIcon = icon;
             wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
             wc.hbrBackground = nullptr;
@@ -58,7 +56,7 @@ namespace BlitzenPlatform
 
             if(!RegisterClassA(&wc))
             {
-                MessageBoxA(s_pPlatformState->winWindow, "Window registration failed", "Error", MB_ICONEXCLAMATION | MB_OK);
+                MessageBoxA(s_pPlatformState.winWindow, "Window registration failed", "Error", MB_ICONEXCLAMATION | MB_OK);
                 return 0;
             }
 
@@ -92,7 +90,7 @@ namespace BlitzenPlatform
 
             //Create the window
             HWND handle = CreateWindowExA(windowExStyle, "BlitzenWindowClass", appName, windowStyle, windowX, windowY, windowWidth, windowHeight, 0, 0,
-            s_pPlatformState->winInstance, 0);
+            s_pPlatformState.winInstance, 0);
 
             // Only assign the handle if it was actually created, otherwise the application should fail
             if(!handle)
@@ -103,13 +101,13 @@ namespace BlitzenPlatform
             }
             else
             {
-                s_pPlatformState->winWindow = handle;
+                s_pPlatformState.winWindow = handle;
             }
 
             //Tell the window to show
             uint8_t shouldActivate = 1;
             int32_t show = shouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
-            ShowWindow(s_pPlatformState->winWindow, show);
+            ShowWindow(s_pPlatformState.winWindow, show);
 
             // Clock setup, similar thing to glfwGetTime
             LARGE_INTEGER frequency;
@@ -122,9 +120,9 @@ namespace BlitzenPlatform
 
         void PlatformShutdown()
         {
-            if(s_pPlatformState->winWindow)
+            if(s_pPlatformState.winWindow)
             {
-                DestroyWindow(s_pPlatformState->winWindow);
+                DestroyWindow(s_pPlatformState.winWindow);
             }
         }
 
@@ -204,8 +202,8 @@ namespace BlitzenPlatform
         void CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
         {
             VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-            info.hinstance = s_pPlatformState->winInstance;
-            info.hwnd = s_pPlatformState->winWindow;
+            info.hinstance = s_pPlatformState.winInstance;
+            info.hwnd = s_pPlatformState.winWindow;
             vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
         }
 
@@ -353,16 +351,14 @@ namespace BlitzenPlatform
             xcb_atom_t wm_delete_win;
         };
 
-        static PlatformState* s_pState;
+        static PlatformState s_pState;
 
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);
 
-        uint8_t PlatformStartup(void* pState, const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
+        uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
         {
-            s_pState = reinterpret_cast<PlatformState*>(pState);
-
-            pState->pDisplay = XOpenDisplay(nullptr);
+            pState.pDisplay = XOpenDisplay(nullptr);
 
             // Turn off key repeats.
             XAutoRepeatOff(s_pState->pDisplay);

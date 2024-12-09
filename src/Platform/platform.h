@@ -6,7 +6,7 @@
 namespace BlitzenPlatform
 {
     size_t GetPlatformMemoryRequirements();
-    uint8_t PlatformStartup(void* pState, const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height);
+    uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height);
     void PlatformShutdown();
 
     uint8_t PlatformPumpMessages();

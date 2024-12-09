@@ -228,4 +228,26 @@ namespace BlitCL
             return hash;
         }
     };
+
+    
+
+    template<typename T, BlitzenCore::AllocationType A>
+    class SmartPointer
+    {
+    public:
+
+        SmartPointer()
+        {
+            m_pData = BlitzenCore::BlitConstructAlloc<T>(A);
+        }
+
+        inline T* Data() { return m_pData; }
+
+        ~SmartPointer()
+        {
+            BlitzenCore::BlitDestroyAlloc(A, m_pData);
+        }
+    private:
+        T* m_pData;
+    };
 }

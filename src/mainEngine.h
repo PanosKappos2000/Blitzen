@@ -105,15 +105,6 @@ namespace BlitzenEngine
         void StartClock();
         void StopClock();
 
-        /* ---------------------------------------------------
-            Dedicated function for the renderers. 
-            If Blitzen gets more than one renderer, 
-            this will decide which ones will be initialized 
-            and which one will draw the frame.
-        -------------------------------------------------------*/
-        uint8_t RendererInit();
-        void RendererShutdown();
-
         void LoadTextures();
         void LoadMaterials();
 
