@@ -43,6 +43,9 @@ namespace BlitzenCore
     void BlitMemSet(void* pDst, int32_t value, size_t size);
     void BlitZeroMemory(void* pBlock, size_t size);
 
+    // Helper for the above functions since they are templated and need to be defined here and have no access to the static memory stats
+    void LogAllocation(AllocationType alloc, size_t size);
+    void LogFree(AllocationType alloc, size_t size);
     // This allocation actually calls the constructor of the object that gets allocated(the constructor must have no parameters)
     template<typename T> 
     T* BlitConstructAlloc(AllocationType alloc)
@@ -57,9 +60,6 @@ namespace BlitzenCore
         LogFree(alloc, sizeof(T));
         delete pToDestroy;
     }
-    // Helper for the above functions since they are templated and need to be defined here and have no access to the static memory stats
-    void LogAllocation(AllocationType alloc, size_t size);
-    void LogFree(AllocationType alloc, size_t size);
 
     void MemoryManagementShutdown();
 

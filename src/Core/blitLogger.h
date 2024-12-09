@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>// Apparently we need this for some compilers, to use size_t 
 
 namespace BlitzenCore
 {
@@ -58,13 +59,13 @@ namespace BlitzenCore
     #endif
 
     #if LOGGER_LEVEL_DEBUG
-        #define BLIT_DBLOG(message, ...)     Log(BlitzenCore::LogLevel::DEBUG, message, __VA_ARGS__);
+        #define BLIT_DBLOG(message, ...)     Log(BlitzenCore::LogLevel::DEBUG, message, ##__VA_ARGS__);
     #else
         #define BLIT_DBLOG(message, ...)    ;
     #endif
 
     #if LOGGER_LEVEL_TRACE
-        #define BLIT_TRACE(message, ...)     Log(BlitzenCore::LogLevel::TRACE, message, __VA_ARGS__);
+        #define BLIT_TRACE(message, ...)     Log(BlitzenCore::LogLevel::TRACE, message, ##__VA_ARGS__);
     #else
         #define BLIT_TRACE(message, ...)    ;
     #endif

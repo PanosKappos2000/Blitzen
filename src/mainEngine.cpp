@@ -87,7 +87,7 @@ namespace BlitzenEngine
                 }
             #endif
 
-            BLIT_ASSERT(hasRenderer, "Blitzen cannot continue without a renderer")
+            BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
         }
 
         isRunning = 1;
@@ -95,7 +95,8 @@ namespace BlitzenEngine
 
         m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
-        m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(BlitML::vec3(0.f, 0.f, 5.f)));
+        BlitML::vec3 initialCameraPosition(0.f, 0.f, 5.f);
+        m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
 
         // Loads textures that were requested
@@ -127,7 +128,8 @@ namespace BlitzenEngine
                 {
                     PrimitiveSurface& currentSurface = m_resources.meshes[i].surfaces[s - previousSize];
                     // This is hardcoded but later there will be entities that use the mesh and have their own position
-                    renders[s].modelMatrix = BlitML::Translate(BlitML::vec3(0.f, 0.f, 4.f));
+                    BlitML::vec3 modelPosition(0.f, 0.f, 4.f);
+                    renders[s].modelMatrix = BlitML::Translate(modelPosition);
                     // Give the material index to the render object
                     renders[s].materialTag = currentSurface.pMaterial->materialTag;
 
@@ -271,8 +273,10 @@ namespace BlitzenEngine
         m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
 
         // Test code
-        DefineMaterial(m_resources, BlitML::vec4(0.5f), "loaded_texture", "loaded_material");
-        DefineMaterial(m_resources, BlitML::vec4(0.2f), "loaded_texture2", "loaded_material2");
+        BlitML::vec4 color1(0.5f);
+        BlitML::vec4 color2(0.2f);
+        DefineMaterial(m_resources, color1, "loaded_texture", "loaded_material");
+        DefineMaterial(m_resources, color2, "loaded_texture2", "loaded_material2");
     }
 
     void Engine::StartClock()

@@ -220,7 +220,8 @@ namespace BlitML
         zAxis.y = target.y - position.y;
         zAxis.z = target.z - position.z;
         zAxis = GetNormalized(zAxis);
-        vec3 xAxis = GetNormalized(Cross(zAxis, up));
+        vec3 cross = Cross(zAxis, up);
+        vec3 xAxis = GetNormalized(cross);
         vec3 yAxis = Cross(xAxis, zAxis);
         res.data[0] = xAxis.x;
         res.data[1] = yAxis.x;
@@ -453,7 +454,7 @@ namespace BlitML
 
     inline float QuatNormal(quat& q){ return Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w); }
 
-    inline quat NormalizeQuat(quat& q) {
+    inline quat NormalizeQuat(quat q) {
         float normal = QuatNormal(q);
         return quat(q.x / normal, q.y / normal , q.z / normal, q.w / normal);
     }

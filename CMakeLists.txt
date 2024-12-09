@@ -41,7 +41,8 @@ add_executable(BlitzenEngine
 
 target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src"
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include")
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies")
 
 target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")

@@ -201,7 +201,7 @@ namespace BlitzenCore
         DEFINE_KEY(PERIOD, 0xBE),
         DEFINE_KEY(SLASH, 0xBF),
         DEFINE_KEY(GRAVE, 0xC0),
-        KEYS_MAX_KEYS
+        MAX_KEYS
     };
 
     struct KeyboardState 

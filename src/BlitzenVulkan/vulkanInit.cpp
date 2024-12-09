@@ -1,5 +1,6 @@
 #include "vulkanRenderer.h"
 #include "Platform/platform.h"
+#include <cstring> // For strcmp
 
 #if _MSC_VER
     #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_win32_surface"
@@ -357,22 +358,23 @@ namespace BlitzenVulkan
 
             BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
             queueInfos[0].queueFamilyIndex = m_graphicsQueue.index;
+            VkDeviceQueueCreateInfo deviceQueueInfo{};
             // If compute has a different index from present, add a new info for it
             if(m_graphicsQueue.index != m_computeQueue.index)
             {
-                queueInfos.PushBack(VkDeviceQueueCreateInfo());
+                queueInfos.PushBack(deviceQueueInfo);
                 queueInfos[1].queueFamilyIndex = m_computeQueue.index;
             }
             // If an info was created for compute and present is not equal to compute or graphics, create a new one for present as well
             if(queueInfos.GetSize() == 2 && queueInfos[0].queueFamilyIndex != m_presentQueue.index && queueInfos[1].queueFamilyIndex != m_presentQueue.index)
             {
-                queueInfos.PushBack(VkDeviceQueueCreateInfo());
+                queueInfos.PushBack(deviceQueueInfo);
                 queueInfos[2].queueFamilyIndex = m_presentQueue.index;
             }
             // If an info was not created for compute but present has a different index from the other 2, create a new info for it
             if(queueInfos.GetSize() == 1 && queueInfos[0].queueFamilyIndex != m_presentQueue.index)
             {
-                queueInfos.PushBack(VkDeviceQueueCreateInfo());
+                queueInfos.PushBack(deviceQueueInfo);
                 queueInfos[1].queueFamilyIndex = m_presentQueue.index;
             }
             // With the count of the queue infos found and the indices passed, the rest is standard

@@ -5,6 +5,7 @@
 #include "mainEngine.h"
 
 #include <stdarg.h>
+#include <cstring>
 
 namespace BlitzenCore
 {
