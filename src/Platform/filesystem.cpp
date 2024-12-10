@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 
 #include "filesystem.h"
-#include "Core/blitmemory.h"
+#include "Core/blitMemory.h"
 
 namespace BlitzenPlatform
 {

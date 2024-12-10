@@ -44,14 +44,19 @@ target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies")
 
-target_link_directories(BlitzenEngine PUBLIC
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")
-
 IF(WIN32)
+    target_link_directories(BlitzenEngine PUBLIC
+    "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")
     target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1)
 ELSEIF(UNIX)
-    #link the linux version of the library
+    target_link_directories(BlitzenEngine PUBLIC
+    "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixLib")
+    target_link_libraries(BlitzenEngine PUBLIC
+                        libvulkan.so.1
+                        X11.so
+                        xcb.so
+                        libX11-xcb.so)
 ENDIF(WIN32)
 
 
@@ -71,7 +76,8 @@ IF(WIN32)
     find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
     set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/glslangValidator.exe")
 ELSEIF(UNIX)
-    #Have to use a different executable for linux and possibly a different folder
+    find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixBin")
+    set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixBin/glslangValidator")
 ENDIF(WIN32)
   
   

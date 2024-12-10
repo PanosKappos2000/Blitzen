@@ -28,7 +28,6 @@
     #define VK_CHECK(expr)                                          expr;
 #else
     #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  3
-    #define VALIDATION_LAYER_NAME                                   "VK_LAYER_KHRONOS_validation"
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 

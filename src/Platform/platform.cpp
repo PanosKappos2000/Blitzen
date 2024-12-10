@@ -13,8 +13,8 @@ namespace BlitzenPlatform
         #include <windows.h>
         #include <windowsx.h>
         #include <WinUser.h>
-        #include "windowsx.h"
-        #include "vulkan/vulkan_win32.h"
+        #include <windowsx.h>
+        #include <vulkan/vulkan_win32.h>
 
         struct PlatformState
         {
@@ -340,6 +340,8 @@ namespace BlitzenPlatform
         #include <stdio.h>
         #include <string.h>
 
+        #include <vulkan/vulkan_xcb.h>
+
         struct PlatformState
         {
             Display* pDisplay;
@@ -434,7 +436,7 @@ namespace BlitzenPlatform
             return 1;
         }
 
-        void platform_system_shutdown() 
+        void PlatformShutdown() 
         {
             // Turn key repeats back on since this is global for the OS... just... wow.
             XAutoRepeatOn(s_state.pDisplay);
@@ -614,7 +616,7 @@ namespace BlitzenPlatform
         }
 
 
-        BlitzenCore::BlitKey TranslateKeyCode(uint32_t x_keycode)
+        BlitzenCore::BlitKey TranslateKeycode(uint32_t x_keycode)
         {
             switch (x_keycode)
             {

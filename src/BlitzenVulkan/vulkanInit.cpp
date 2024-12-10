@@ -4,8 +4,10 @@
 
 #if _MSC_VER
     #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_win32_surface"
+    #define VALIDATION_LAYER_NAME                   "VK_LAYER_KHRONOS_validation"
 #elif linux
     #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_xcb_surface"
+    #define VALIDATION_LAYER_NAME                   "VK_LAYER_NV_optimus"
     #define VK_USE_PLATFORM_XCB_KHR
 #endif
 
@@ -59,6 +61,8 @@ namespace BlitzenVulkan
             VkInstance Creation
         -------------------------*/
         {
+            BLIT_INFO(VULKAN_SURFACE_KHR_EXTENSION_NAME)
+
             //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
             VkApplicationInfo applicationInfo{};
             applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -109,7 +113,7 @@ namespace BlitzenVulkan
                        layersFound = 1;
                        break;
                    }
-                }
+                }// TODO: check does not seem to work got to fix it
 
                 BLIT_ASSERT_MESSAGE(layersFound, "The vulkan renderer will not be used in debug mode without validation layers")
 
@@ -135,7 +139,7 @@ namespace BlitzenVulkan
 
             instanceInfo.ppEnabledExtensionNames = requiredExtensionNames;
 
-            VK_CHECK(vkCreateInstance(&instanceInfo, m_pCustomAllocator, &(m_initHandles.instance)));
+            VK_CHECK(vkCreateInstance(&instanceInfo, m_pCustomAllocator, &(m_initHandles.instance)))
         }
         /*--------------------------------------------------
             VkInstance created and stored in m_initHandles
