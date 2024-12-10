@@ -88,7 +88,11 @@ namespace BlitzenVulkan
             VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
             CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 1, &shaderDataLayoutBinding);
+            VkDescriptorSetLayoutBinding bufferAddressBinding{};
+            CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+            VkDescriptorSetLayoutBinding shaderDataBindings[2] = {shaderDataLayoutBinding, bufferAddressBinding};
+            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 2, shaderDataBindings);
 
             // Descriptor set layout for textures
             VkDescriptorSetLayoutBinding texturesLayoutBinding{};
@@ -179,6 +183,8 @@ namespace BlitzenVulkan
 
             CreateBuffer(m_allocator, frameTools.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            CreateBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
             VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(frameTools.globalShaderDataDescriptorPool)))
         }
     }
@@ -194,7 +200,7 @@ namespace BlitzenVulkan
         vertexBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         vertexBufferAddressInfo.pNext = nullptr;
         vertexBufferAddressInfo.buffer = m_globalVertexBuffer.buffer;
-        m_globalShaderData.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &vertexBufferAddressInfo);
+        m_bufferAddrs.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &vertexBufferAddressInfo);
 
         // Create an index buffer that will all the loaded indices
         VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
@@ -208,7 +214,7 @@ namespace BlitzenVulkan
         renderObjectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         renderObjectBufferAddressInfo.pNext = nullptr;
         renderObjectBufferAddressInfo.buffer = m_staticRenderObjectBuffer.buffer;
-        m_globalShaderData.renderObjectBufferAddress = vkGetBufferDeviceAddress(m_device, &renderObjectBufferAddressInfo);
+        m_bufferAddrs.renderObjectBufferAddress = vkGetBufferDeviceAddress(m_device, &renderObjectBufferAddressInfo);
 
         VkDeviceSize materialBufferSize = sizeof(MaterialConstants) * materials.GetSize();
         CreateBuffer(m_allocator, m_materialBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
@@ -217,7 +223,7 @@ namespace BlitzenVulkan
         materialBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         materialBufferAddressInfo.pNext = nullptr;
         materialBufferAddressInfo.buffer = m_materialBuffer.buffer;
-        m_globalShaderData.materialBufferAddress = vkGetBufferDeviceAddress(m_device, &materialBufferAddressInfo);
+        m_bufferAddrs.materialBufferAddress = vkGetBufferDeviceAddress(m_device, &materialBufferAddressInfo);
 
         AllocatedBuffer stagingBuffer;
         CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
@@ -301,6 +307,7 @@ namespace BlitzenVulkan
         m_globalShaderData.projection.data[5] *= -1;
         m_globalShaderData.view = context.viewMatrix;
         m_globalShaderData.projectionView = context.projectionView;
+        m_globalShaderData.viewPosition = context.viewPosition;
         m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;
 
@@ -311,12 +318,19 @@ namespace BlitzenVulkan
             vkResetDescriptorPool(m_device, fTools.globalShaderDataDescriptorPool, 0);
             GlobalShaderData* pGlobalShaderDataBufferData = reinterpret_cast<GlobalShaderData*>(fTools.globalShaderDataBuffer.allocation->GetMappedData());
             *pGlobalShaderDataBufferData = m_globalShaderData;
+            BufferDeviceAddresses* pAddressBufferPointer = reinterpret_cast<BufferDeviceAddresses*>(fTools.bufferDeviceAddrsBuffer.allocation->GetMappedData());
+            *pAddressBufferPointer = m_bufferAddrs;
             AllocateDescriptorSets(m_device, fTools.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
             VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
             VkWriteDescriptorSet globalShaderDataWrite{};
             WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                globalShaderDataSet, 1, fTools.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
-            vkUpdateDescriptorSets(m_device, 1, &globalShaderDataWrite, 0, nullptr);
+            globalShaderDataSet, 0, 1, fTools.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+            VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
+            VkWriteDescriptorSet bufferAddressDescriptorWrite{};
+            WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
+            1, 1, fTools.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
+            VkWriteDescriptorSet writes[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
+            vkUpdateDescriptorSets(m_device, 2, writes, 0, nullptr);
         }/* Commands for global shader data descriptor set recorded */
 
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx

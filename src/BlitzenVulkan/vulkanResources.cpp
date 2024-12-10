@@ -219,7 +219,7 @@ namespace BlitzenVulkan
     }
 
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
-    uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range)
+    uint32_t dstBinding, uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range)
     {
         bufferInfo.buffer = buffer;
         bufferInfo.offset = offset;
@@ -229,7 +229,7 @@ namespace BlitzenVulkan
         write.pNext = nullptr;
         write.descriptorType = descriptorType;
         write.dstSet = dstSet;
-        write.dstBinding = 0;
+        write.dstBinding = dstBinding;
         write.descriptorCount = descriptorCount;
         write.pBufferInfo = &bufferInfo;
     }

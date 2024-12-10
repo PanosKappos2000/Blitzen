@@ -17,6 +17,7 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer
 struct RenderObject
 {
     mat4 worldMatrix;
+
     uint materialTag;
 };
 
@@ -28,7 +29,10 @@ layout(buffer_reference, std430) readonly buffer RenderObjectBuffer
 struct Material
 {
     vec4 diffuseColor;
+    float shininess;
+
     uint diffuseMapIndex;
+    uint specularMapIndex;
 };
 
 layout (buffer_reference, std430) readonly buffer MaterialBuffer
@@ -42,10 +46,15 @@ layout(set = 0, binding = 0) uniform ShaderData
     mat4 view;
     mat4 projectionView;
 
-    vec3 sunDir;
     vec4 sunColor;
+    vec3 sunDir;
 
+    vec3 viewPosition;// Needed for lighting calculations
+}shaderData;
+
+layout(set = 0, binding = 1) uniform BufferAddrs
+{
     VertexBuffer vertexBuffer;
     RenderObjectBuffer renderObjects;
     MaterialBuffer materialBuffer;
-}shaderData;
+}bufferAddrs;

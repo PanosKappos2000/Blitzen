@@ -27,12 +27,17 @@ namespace BlitzenEngine
 
     struct MaterialStats
     {
-        // Specify the diffuse color used on the shaders
+        // Specify the material constants
         BlitML::vec4 diffuseColor;
-        // Access the texture this material uses
+        float shininess;
+
+        // Access the textures this material uses
         const char* diffuseMapName;
-        // Allows shaders to access the saved data of the texture used by the diffuse map
+        const char* specularMapName;
+
+        // Allows shaders to access the saved data of the textures used by the material
         uint32_t diffuseMapTag;
+        uint32_t specularMapTag;
 
         // This tag is for the shaders to know where in the material buffer this material can be accessed
         uint32_t materialTag;
@@ -77,7 +82,8 @@ namespace BlitzenEngine
     uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName);
 
 
-    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, const char* diffuseMapName, const char* materialName);
+    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
+    const char* specularMapName, const char* materialName);
 
 
     // Placeholder to load some default resources while testing the systems

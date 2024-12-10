@@ -11,17 +11,22 @@ layout(push_constant) uniform constants
 }PushConstants;
 
 layout(location = 0) out vec2 outUv;
-layout(location = 1) out uint outMaterialTag;
-layout(location = 2) out vec3 outNormal;
+layout(location = 1) out vec3 outNormal;
+layout(location = 2) out uint outMaterialTag;
+layout(location = 3) out vec3 outView;
+layout(location = 4) out vec3 outModel;
 
 void main()
 {
-    Vertex currentVertex = shaderData.vertexBuffer.vertices[gl_VertexIndex];
-    RenderObject renderObject = shaderData.renderObjects.renderObjects[PushConstants.drawTag];
+    Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
+    RenderObject renderObject = bufferAddrs.renderObjects.renderObjects[PushConstants.drawTag];
 
-    gl_Position = shaderData.projectionView * renderObject.worldMatrix * vec4(currentVertex.position, 1);
+    vec4 modelPosition = renderObject.worldMatrix * vec4(currentVertex.position, 1);
+    gl_Position = shaderData.projectionView * modelPosition;
 
     outUv = vec2(currentVertex.uvX, currentVertex.uvY);
     outMaterialTag = renderObject.materialTag;
-    outNormal =  vec3(shaderData.view * renderObject.worldMatrix * vec4(currentVertex.normal, 0));
+    outNormal =  currentVertex.normal;
+    outView = shaderData.viewPosition;
+    outModel = modelPosition.xyz;
 }

@@ -49,13 +49,17 @@ namespace BlitzenEngine
         Material specific functions
     -----------------------------------*/
 
-    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, const char* diffuseMapName, const char* materialName)
+    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
+    const char* specularMapName, const char* materialName)
     {
         MaterialStats& current = resources.materials[resources.currentMaterialIndex];
 
         current.diffuseColor = diffuseColor;
+        current.shininess = shininess;
         current.diffuseMapName = diffuseMapName;
         current.diffuseMapTag = resources.textureTable.Get(diffuseMapName, &resources.textures[0])->textureTag;
+        current.specularMapName = specularMapName;
+        current.specularMapTag = resources.textureTable.Get(specularMapName, &resources.textures[0])->textureTag;
         current.materialTag = static_cast<uint32_t>(resources.currentMaterialIndex);
         resources.materialTable.Set(materialName, &current);
         resources.currentMaterialIndex++;

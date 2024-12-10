@@ -673,6 +673,7 @@ namespace BlitzenVulkan
 
             vkDestroyDescriptorPool(m_device, frameTools.globalShaderDataDescriptorPool, m_pCustomAllocator);
             vmaDestroyBuffer(m_allocator, frameTools.globalShaderDataBuffer.buffer, frameTools.globalShaderDataBuffer.allocation);
+            vmaDestroyBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer.buffer, frameTools.bufferDeviceAddrsBuffer.allocation);
         }
 
         vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);

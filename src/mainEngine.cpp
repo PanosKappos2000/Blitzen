@@ -95,7 +95,7 @@ namespace BlitzenEngine
 
         m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
-        BlitML::vec3 initialCameraPosition(0.f, 0.f, 5.f);
+        BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
 
@@ -128,7 +128,7 @@ namespace BlitzenEngine
                 {
                     PrimitiveSurface& currentSurface = m_resources.meshes[i].surfaces[s - previousSize];
                     // This is hardcoded but later there will be entities that use the mesh and have their own position
-                    BlitML::vec3 modelPosition(0.f, 0.f, 4.f);
+                    BlitML::vec3 modelPosition(0.f, 0.f, -4.f);
                     renders[s].modelMatrix = BlitML::Translate(modelPosition);
                     // Give the material index to the render object
                     renders[s].materialTag = currentSurface.pMaterial->materialTag;
@@ -189,13 +189,14 @@ namespace BlitzenEngine
                             renderContext.projectionMatrix = m_camera.projectionMatrix;
                             renderContext.viewMatrix = m_camera.viewMatrix;
                             renderContext.projectionView = m_camera.projectionViewMatrix;
+                            renderContext.viewPosition = m_camera.position;
 
                             renderContext.pDraws = draws;
                             renderContext.drawCount = drawCount;
 
                             // Hardcoding the sun for now
-                            renderContext.sunlightDirection = BlitML::vec3(-0.57735, -0.57735, 0.57735);
-                            renderContext.sunlightColor = BlitML::vec4(0.8, 0.8, 0.8, 1.0);
+                            renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
+                            renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
 
                             pVulkan.Data()->DrawFrame(renderContext);
                         }
@@ -261,6 +262,7 @@ namespace BlitzenEngine
         // This is hardcoded now, but this is how all textures will be loaded
         LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone.png", "loaded_texture");
         LoadTextureFromFile(m_resources, "Assets/Textures/texture.jpg", "loaded_texture2");
+        LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture");
     }
 
     void Engine::LoadMaterials()
@@ -273,10 +275,10 @@ namespace BlitzenEngine
         m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
 
         // Test code
-        BlitML::vec4 color1(0.5f);
+        BlitML::vec4 color1(0.1f);
         BlitML::vec4 color2(0.2f);
-        DefineMaterial(m_resources, color1, "loaded_texture", "loaded_material");
-        DefineMaterial(m_resources, color2, "loaded_texture2", "loaded_material2");
+        DefineMaterial(m_resources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
+        DefineMaterial(m_resources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
     }
 
     void Engine::StartClock()
@@ -296,7 +298,7 @@ namespace BlitzenEngine
         if (camera.cameraDirty)
         {
             // I haven't overloaded the += operator
-            camera.position = camera.position + camera.velocity * deltaTime * 95.f; // Needs this 95.f stabilizer, otherwise deltaTime teleports it
+            camera.position = camera.position + camera.velocity * deltaTime * 10.f; // Needs this 95.f stabilizer, otherwise deltaTime teleports it
 
             BlitML::mat4 translation = BlitML::Mat4Inverse(BlitML::Translate(camera.position));
 

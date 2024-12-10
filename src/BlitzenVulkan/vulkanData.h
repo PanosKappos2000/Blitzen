@@ -48,6 +48,7 @@ namespace BlitzenVulkan
     struct alignas (16) StaticRenderObject
     {
         BlitML::mat4 modelMatrix;
+
         uint32_t materialTag;
     };
 
@@ -92,6 +93,7 @@ namespace BlitzenVulkan
         BlitML::mat4 projectionMatrix;
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionView;
+        BlitML::vec3 viewPosition;
 
         DrawObject* pDraws;
         size_t drawCount;
@@ -128,9 +130,14 @@ namespace BlitzenVulkan
         BlitML::mat4 view;
         BlitML::mat4 projectionView;
 
-        BlitML::vec3 sunlightDir;// directional light direction vector
         BlitML::vec4 sunlightColor;
+        BlitML::vec3 sunlightDir;// directional light direction vector
 
+        BlitML::vec3 viewPosition;
+    };
+
+    struct alignas(16) BufferDeviceAddresses
+    {
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;
         VkDeviceAddress materialBufferAddress;
@@ -146,7 +153,10 @@ namespace BlitzenVulkan
     struct alignas(16) MaterialConstants
     {
         BlitML::vec4 diffuseColor;
+        float shininess;
+
         uint32_t diffuseTextureTag;
+        uint32_t specularTextureTag;
     };
 
     // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once

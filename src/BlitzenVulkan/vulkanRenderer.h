@@ -40,6 +40,7 @@ namespace BlitzenVulkan
         // Any buffers that will be getting their data update every frame, need to be inside the frame tools struct
         VkDescriptorPool globalShaderDataDescriptorPool;
         AllocatedBuffer globalShaderDataBuffer;
+        AllocatedBuffer bufferDeviceAddrsBuffer;
     };
 
     class VulkanRenderer
@@ -111,6 +112,7 @@ namespace BlitzenVulkan
         // Structures needed to pass the global shader data
         VkDescriptorSetLayout m_globalShaderDataLayout;
         GlobalShaderData m_globalShaderData;
+        BufferDeviceAddresses m_bufferAddrs;
 
         // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
         VkDescriptorPool m_textureDescriptorAllocator;
@@ -175,7 +177,7 @@ namespace BlitzenVulkan
 
     void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets);
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
-    uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+    uint32_t dstBinding, uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
     uint32_t descriptorCount, uint32_t binding);
 
