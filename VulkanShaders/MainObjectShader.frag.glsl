@@ -26,10 +26,10 @@ void main()
 
     vec3 viewDirection = normalize(viewPosition - modelPosition);
     vec3 halfDirection = normalize(viewDirection - shaderData.sunDir);
-    float specularFactor = pow(max(dot(halfDirection, normal), 0), currentMaterial.shininess);
+    float specularFactor = pow(max(dot(halfDirection, normal), 0.0), currentMaterial.shininess);
     vec4 specularSampler = texture(textures[currentMaterial.specularMapIndex], uvMap);
     vec4 specular = vec4(vec3(shaderData.sunColor * specularFactor), specularSampler.a);
     specular *= specularSampler;
 
-    finalColor = vec4(1.0, 0.0, 0.0, 0.0);
+    finalColor = diffuse + specular + currentMaterial.diffuseColor;
 }

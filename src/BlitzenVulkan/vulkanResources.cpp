@@ -134,7 +134,7 @@ namespace BlitzenVulkan
         imageRegion.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
         imageRegion.pNext = nullptr;
         imageRegion.srcOffsets[1].x = srcImageSize.width;
-        imageRegion.srcOffsets[1].y = dstImageSize.height;
+        imageRegion.srcOffsets[1].y = srcImageSize.height;
         imageRegion.srcOffsets[1].z = 1;
         imageRegion.srcSubresource = srcImageSL;
         imageRegion.dstOffsets[1].x = dstImageSize.width;

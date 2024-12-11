@@ -70,7 +70,7 @@ namespace BlitzenEngine
     void LoadDefaultData(EngineResources& resources)
     {
         // Temporary shader data for tests on vulkan rendering
-            resources.vertices.Resize(8);
+            resources.vertices.Resize(24);
             resources.indices.Resize(32);
 
             resources.vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
@@ -96,22 +96,22 @@ namespace BlitzenEngine
             resources.vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
             resources.vertices[4].uvX = 1.f; 
             resources.vertices[4].uvY = 0.f;
-            resources.vertices[4].normal = BlitML::vec3(0.f, 0.f, -1.f);
+            resources.vertices[4].normal = BlitML::vec3(0.f, 0.f, 1.f);
 
             resources.vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
             resources.vertices[5].uvX = 1.f; 
             resources.vertices[5].uvY = 1.f;
-            resources.vertices[5].normal = BlitML::vec3(0.f, 0.f, -1.f);
+            resources.vertices[5].normal = BlitML::vec3(0.f, 0.f, 1.f);
 
             resources.vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
             resources.vertices[6].uvX = 0.f; 
             resources.vertices[6].uvY = 1.f;
-            resources.vertices[6].normal = BlitML::vec3(0.f, 0.f, -1.f);
+            resources.vertices[6].normal = BlitML::vec3(0.f, 0.f, 1.f);
 
             resources.vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
             resources.vertices[7].uvX = 0.f; 
             resources.vertices[7].uvY = 0.f;
-            resources.vertices[7].normal = BlitML::vec3(0.f, 0.f, -1.f);
+            resources.vertices[7].normal = BlitML::vec3(0.f, 0.f, 1.f);
 
             resources.indices[0] = 0;
             resources.indices[1] = 1;

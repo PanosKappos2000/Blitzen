@@ -26,7 +26,7 @@ void main()
 
     outUv = vec2(currentVertex.uvX, currentVertex.uvY);
     outMaterialTag = renderObject.materialTag;
-    outNormal =  currentVertex.normal;
+    outNormal =  currentVertex.normal * mat3(renderObject.worldMatrix);
     outView = shaderData.viewPosition;
     outModel = modelPosition.xyz;
 }

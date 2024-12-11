@@ -128,7 +128,7 @@ namespace BlitzenEngine
                 {
                     PrimitiveSurface& currentSurface = m_resources.meshes[i].surfaces[s - previousSize];
                     // This is hardcoded but later there will be entities that use the mesh and have their own position
-                    BlitML::vec3 modelPosition(0.f, 0.f, -4.f);
+                    BlitML::vec3 modelPosition(0.f, 0.f, 0.f);
                     renders[s].modelMatrix = BlitML::Translate(modelPosition);
                     // Give the material index to the render object
                     renders[s].materialTag = currentSurface.pMaterial->materialTag;
