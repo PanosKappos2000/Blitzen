@@ -32,7 +32,8 @@
 #endif
 
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 
-#define BLITZEN_VULKAN_INDIRECT_DRAW            1 
+#define BLITZEN_VULKAN_INDIRECT_DRAW            1
+#define BLITZEN_VULKAN_MESH_SHADER              0 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           1000000
 

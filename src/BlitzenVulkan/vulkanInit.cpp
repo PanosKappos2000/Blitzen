@@ -61,7 +61,7 @@ namespace BlitzenVulkan
             VkInstance Creation
         -------------------------*/
         {
-            BLIT_INFO(VULKAN_SURFACE_KHR_EXTENSION_NAME)
+            BLIT_ASSERT_MESSAGE(BLITZEN_VULKAN_INDIRECT_DRAW, "Blitzen will not support Vulkan without draw indirect going forward.If you want to use Vulkan enable the BLITZEN_VULKAN_INDIRECT_DRAW on vulkanData.h")
 
             //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
             VkApplicationInfo applicationInfo{};
@@ -548,7 +548,7 @@ namespace BlitzenVulkan
                 }
             }
 
-            //Set the swapchain extent to the window's width and height
+            // Set the swapchain extent to the window's width and height
             initHandles.swapchainExtent = {windowWidth, windowHeight};
             // Retrieve surface capabilities to properly configure some swapchain values
             VkSurfaceCapabilitiesKHR surfaceCapabilities{};
@@ -609,8 +609,8 @@ namespace BlitzenVulkan
             initHandles.swapchainImages.Resize(swapchainImageCount);
             VK_CHECK(vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
 
-            // Create image view for each swapchain image
-            initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
+            // Create image view for each swapchain image (Apparently this might not be needed, but I am keeping it commented out)
+            /*initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
             for(size_t i = 0; i < initHandles.swapchainImageViews.GetSize(); ++i)
             {
                 VkImageViewCreateInfo info{};
@@ -631,7 +631,7 @@ namespace BlitzenVulkan
                 info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
                 VK_CHECK(vkCreateImageView(device, &info, pCustomAllocator, &(initHandles.swapchainImageViews[i])))
-            }
+            }*/
     }
 
 
@@ -678,10 +678,10 @@ namespace BlitzenVulkan
 
         vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);
 
-        for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
+        /*for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
         {
             vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], m_pCustomAllocator);
-        }
+        }I am not creating these anymore but I am keeping them to check the state of the application */
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
 
         vmaDestroyAllocator(m_allocator);

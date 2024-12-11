@@ -1,3 +1,5 @@
+// This file contains the main funciton at the bottom
+
 #include "mainEngine.h"
 #include "Platform/platform.h"
 #include "BlitzenVulkan/vulkanRenderer.h"
