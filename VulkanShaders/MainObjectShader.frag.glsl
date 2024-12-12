@@ -31,5 +31,5 @@ void main()
     vec4 specular = vec4(vec3(shaderData.sunColor * specularFactor), specularSampler.a);
     specular *= specularSampler;
 
-    finalColor = vec4(1.0, 0.0, 0.0, 0.0);
+    finalColor = diffuseSampler;
 }

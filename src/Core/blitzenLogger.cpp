@@ -43,7 +43,7 @@ namespace BlitzenCore
         va_end(argPtr);
 
         char outMessage2[1500];
-        sprintf(outMessage2, "%s%s\n", logLevels[static_cast<uint8_t>(level)], outMessage);
+        snprintf(outMessage2, 1500, "%s%s\n", logLevels[static_cast<uint8_t>(level)], outMessage);
 
         // The way error messages are handled varies from platform to platform
         if (isError) 

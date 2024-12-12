@@ -128,7 +128,7 @@ namespace BlitCL
             if(temp != 0)
                 BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(T));
 
-            BLIT_WARN("DynamicArray rearranged, this means that a memory allocation has taken place")
+            BLIT_INFO("DynamicArray reserved %i", m_capacity * sizeof(T))
         }
     };
 

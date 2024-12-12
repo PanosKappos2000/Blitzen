@@ -22,10 +22,10 @@ namespace BlitzenPlatform
             HWND winWindow;
         };    
 
-        static PlatformState s_pPlatformState;
+        inline PlatformState s_pPlatformState;
 
-        static double clockFrequency;
-        static LARGE_INTEGER startTime;
+        inline double clockFrequency;
+        inline LARGE_INTEGER startTime;
 
         LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param);
 
@@ -352,7 +352,7 @@ namespace BlitzenPlatform
             xcb_atom_t wm_delete_win;
         };
 
-        static PlatformState s_state;
+        inline PlatformState s_state;
 
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);

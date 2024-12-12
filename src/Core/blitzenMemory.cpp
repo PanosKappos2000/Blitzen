@@ -6,9 +6,9 @@ namespace BlitzenCore
 {
     // The global allocation stats have access to every allocation size that has occured
     // When the memory management system shuts down, every allocation should have been freed
-    static AllocationStats globalAllocationStats;
+    inline AllocationStats globalAllocationStats;
 
-    static LinearAllocator s_linearAlloc;
+    inline LinearAllocator s_linearAlloc;
 
     /* 
         Main memory management functions

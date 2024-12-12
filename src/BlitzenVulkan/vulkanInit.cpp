@@ -61,7 +61,12 @@ namespace BlitzenVulkan
             VkInstance Creation
         -------------------------*/
         {
+            // Like the assertion message below says, Blitzen will not use Vulkan without indirect
             BLIT_ASSERT_MESSAGE(BLITZEN_VULKAN_INDIRECT_DRAW, "Blitzen will not support Vulkan without draw indirect going forward.If you want to use Vulkan enable the BLITZEN_VULKAN_INDIRECT_DRAW on vulkanData.h")
+
+            uint32_t apiVersion = 0;
+            VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
+            //BLIT_ASSERT(apiVersion) TODO: find out how to query for vulkan 1.3 support
 
             //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
             VkApplicationInfo applicationInfo{};
@@ -342,12 +347,12 @@ namespace BlitzenVulkan
             vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
             vulkan12Features.bufferDeviceAddress = true;
             vulkan12Features.descriptorIndexing = true;
-            //Allows spir-v shaders to use descriptor arrays
+            // Allows shaders to use array with undefined size for descriptors, needed for textures
             vulkan12Features.runtimeDescriptorArray = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            //Using dynamic rendering since the engine will not benefit from the VkRenderPass
+            // Using dynamic rendering to make things slightly easier
             vulkan13Features.dynamicRendering = true;
             vulkan13Features.synchronization2 = true;
 
@@ -482,7 +487,7 @@ namespace BlitzenVulkan
             swapchainInfo.flags = 0;
             swapchainInfo.imageArrayLayers = 1;
             swapchainInfo.clipped = VK_TRUE;// Don't present things renderer out of bounds
-            swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;// Might not be supported in some cases, so I might want to guard against this
             swapchainInfo.surface = initHandles.surface;
             swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
             swapchainInfo.oldSwapchain = VK_NULL_HANDLE;

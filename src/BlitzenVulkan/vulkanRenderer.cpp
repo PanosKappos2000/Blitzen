@@ -304,7 +304,6 @@ namespace BlitzenVulkan
 
         // The calculation will be moved to the camera / engine soon 
         m_globalShaderData.projection = context.projectionMatrix;
-        m_globalShaderData.projection.data[5] *= -1;
         m_globalShaderData.view = context.viewMatrix;
         m_globalShaderData.projectionView = context.projectionView;
         m_globalShaderData.viewPosition = context.viewPosition;
@@ -341,43 +340,6 @@ namespace BlitzenVulkan
 
 
 
-        // Pipeline barrier to transtion the layout of the color attachment from undefined to general
-        {
-            VkImageMemoryBarrier2 colorAttachmentBarrier{};
-            VkImageSubresourceRange colorAttachmentSubresource{};
-            colorAttachmentSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            colorAttachmentSubresource.baseMipLevel = 0;
-            colorAttachmentSubresource.levelCount = VK_REMAINING_MIP_LEVELS;
-            colorAttachmentSubresource.baseArrayLayer = 0;
-            colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-            VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 
-            colorAttachmentSubresource);
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &colorAttachmentBarrier);
-        }
-        // Command for color attachment transition recorded
-
-
-
-        // Clearing the color attachment
-        {
-            // Hard coding the color of the screen for now. At some there will be a skybox and it will be calculated with compute shaders
-            VkClearColorValue clearColorAttachment{};
-            clearColorAttachment.float32[0] = 0.f;
-            clearColorAttachment.float32[1] = 0.f;
-            clearColorAttachment.float32[2] = 0.f;
-            clearColorAttachment.float32[3] = 0.f;
-            VkImageSubresourceRange clearColorSubresourceRange{};
-            clearColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            clearColorSubresourceRange.baseMipLevel = 0;
-            clearColorSubresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-            clearColorSubresourceRange.baseArrayLayer = 0;
-            clearColorSubresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            vkCmdClearColorImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_GENERAL, &clearColorAttachment, 1, &clearColorSubresourceRange);
-        }
-
-
-
         // Transition the layout of the depth attachment and color attachment to be used as rendering attachments
         {
             VkImageMemoryBarrier2 colorAttachmentBarrier{};
@@ -389,7 +351,7 @@ namespace BlitzenVulkan
             colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | 
             VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | 
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAttachmentSubresource);
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAttachmentSubresource);
 
             VkImageMemoryBarrier2 depthAttachmentBarrier{};
             VkImageSubresourceRange depthAttachmentSR{};
@@ -417,7 +379,7 @@ namespace BlitzenVulkan
         {
             VkRenderingAttachmentInfo colorAttachment{};
             CreateRenderingAttachmentInfo(colorAttachment, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
             VkRenderingAttachmentInfo depthAttachment{};
             CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
             VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, {0.f, 0});
@@ -445,9 +407,9 @@ namespace BlitzenVulkan
         {
             VkViewport viewport{};
             viewport.x = 0;
-            viewport.y = 0;
+            viewport.y = static_cast<float>(m_drawExtent.height); // Start from full height (flips y axis)
             viewport.width = static_cast<float>(m_drawExtent.width);
-            viewport.height = static_cast<float>(m_drawExtent.height);
+            viewport.height = -static_cast<float>(m_drawExtent.height);// Move a negative amount of full height (flips y axis)
             viewport.minDepth = 0.f;
             viewport.maxDepth = 1.f;
             vkCmdSetViewport(fTools.commandBuffer, 0, 1, &viewport);
@@ -532,8 +494,8 @@ namespace BlitzenVulkan
             presentImageSR.baseArrayLayer = 0;
             presentImageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], presentImageBarrier, VK_PIPELINE_STAGE_2_BLIT_BIT, 
-            VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, presentImageSR);
+            VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, presentImageSR);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
 
         }

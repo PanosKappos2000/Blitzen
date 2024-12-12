@@ -46,7 +46,8 @@ namespace BlitzenPlatform
         }
 
         // If the previous check is done tries to read the file
-        FILE* file = fopen(path, modeStr);
+        FILE* file;
+        fopen_s(&file, path, modeStr);
         // If the file cannot be read, write an error message and exit
         if (!file) 
         {
@@ -75,7 +76,7 @@ namespace BlitzenPlatform
         if (handle.pHandle && lineBuffer && pLength && maxLength > 0) 
         {
             char* buffer = *lineBuffer;
-            if (fgets(buffer, maxLength, (FILE*)handle.pHandle) != 0) 
+            if (fgets(buffer, static_cast<int32_t>(maxLength), (FILE*)handle.pHandle) != 0) 
             {
                 *pLength = strlen(*lineBuffer);
                 return 1;

@@ -22,7 +22,6 @@ namespace BlitzenEngine
     {
         TextureStats& current = resources.textures[resources.currentTextureIndex];
 
-        stbi_set_flip_vertically_on_load(1);
         current.pTextureData = stbi_load(filename, &(current.textureWidth), &(current.textureHeight), &(current.textureChannels), 4);
 
         uint8_t load = current.pTextureData != nullptr;
