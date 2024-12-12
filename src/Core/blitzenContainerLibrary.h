@@ -52,7 +52,7 @@ namespace BlitCL
             if(newSize > m_capacity)
             {
                 RearrangeCapacity(newSize);
-                BlitzenCore::BlitZeroMemory(m_pBlock, (m_capacity * sizeof(T)) - (m_size * sizeof(T)));
+                // TODO: Maybe I would want to zero out the memory after m_size and up to capacity
             }
 
             m_size = newSize;
@@ -123,7 +123,7 @@ namespace BlitCL
             m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
             if (m_size != 0)
             {
-                BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_capacity * sizeof(T));
+                BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_size * sizeof(T));
             }
             if(temp != 0)
                 BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(T));

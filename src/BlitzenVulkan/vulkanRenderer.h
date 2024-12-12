@@ -147,7 +147,8 @@ namespace BlitzenVulkan
     -----------------------------------------------*/
 
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
-    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator);
+    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
+    VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 
 
 

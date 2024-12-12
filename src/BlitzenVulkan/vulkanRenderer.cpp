@@ -1,8 +1,8 @@
-#define VMA_IMPLEMENTATION
-#include "vma/vk_mem_alloc.h"
-
 #include "vulkanRenderer.h"
 #include "Application/resourceLoading.h"
+
+#define VMA_IMPLEMENTATION
+#include "vma/vk_mem_alloc.h"
 
 namespace BlitzenVulkan
 {
@@ -573,21 +573,23 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)
     {
-        //Wait for the current frame to be done with the swapchain
-        vkDeviceWaitIdle(m_device);
-
         //Destroy the current swapchain
-        for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
+        /*for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
         {
             vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], nullptr);
-        }
-        vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, nullptr);
+        }*/
 
+        VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
         CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, 
-        m_presentQueue, m_computeQueue, m_pCustomAllocator);
+        m_presentQueue, m_computeQueue, m_pCustomAllocator, newSwapchain, m_initHandles.swapchain);
 
-        //The draw extent should also be updated depending on if the swapchain got bigger or smaller
+        // The draw extent should also be updated depending on if the swapchain got bigger or smaller
         m_drawExtent.width = std::min(windowWidth, m_drawExtent.width);
         m_drawExtent.height = std::min(windowHeight, m_drawExtent.height);
+
+        // Wait for the GPU to be done with the swapchain and destroy the swapchain
+        vkDeviceWaitIdle(m_device);
+        vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, nullptr);
+        m_initHandles.swapchain = newSwapchain;
     }
 }

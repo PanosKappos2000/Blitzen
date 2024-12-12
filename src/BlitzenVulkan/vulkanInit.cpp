@@ -438,7 +438,8 @@ namespace BlitzenVulkan
         /*
              Swapchain creation
         */
-       CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator);
+       CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
+       m_initHandles.swapchain);
 
 
         /* Create the vma allocator for vulkan resource allocation */
@@ -448,6 +449,7 @@ namespace BlitzenVulkan
             allocatorInfo.instance = m_initHandles.instance;
             allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
             allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        
             VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
         }
 
@@ -479,7 +481,8 @@ namespace BlitzenVulkan
     }
 
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
-    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator)
+    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
+    VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
     {
             VkSwapchainCreateInfoKHR swapchainInfo{};
             swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -490,7 +493,8 @@ namespace BlitzenVulkan
             swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;// Might not be supported in some cases, so I might want to guard against this
             swapchainInfo.surface = initHandles.surface;
             swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
+            // Used when the swapchain is recreated
+            swapchainInfo.oldSwapchain = oldSwapchain;
 
             /* Image format and color space */
             {
@@ -606,13 +610,13 @@ namespace BlitzenVulkan
             }
 
             // Create the swapchain
-            VK_CHECK(vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &initHandles.swapchain));
+            VK_CHECK(vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &newSwapchain));
 
             // Retrieve the swapchain images
             uint32_t swapchainImageCount = 0;
-            VK_CHECK(vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, nullptr));
+            VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, nullptr));
             initHandles.swapchainImages.Resize(swapchainImageCount);
-            VK_CHECK(vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
+            VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
 
             // Create image view for each swapchain image (Apparently this might not be needed, but I am keeping it commented out)
             /*initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));

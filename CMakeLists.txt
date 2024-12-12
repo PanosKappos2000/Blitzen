@@ -2,12 +2,19 @@ cmake_minimum_required(VERSION 3.10)
 
 project (BlitzenEngine VERSION 1.0)
 
-find_package (Vulkan REQUIRED COMPONENTS glslc)
+#find_package (Vulkan REQUIRED COMPONENTS glslc)
 
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(BlitzenEngine
+                src/BlitzenVulkan/vulkanData.h
+                src/BlitzenVulkan/vulkanRenderer.h
+                src/BlitzenVulkan/vulkanRenderer.cpp
+                src/BlitzenVulkan/vulkanInit.cpp
+                src/BlitzenVulkan/vulkanResources.cpp
+                src/BlitzenVulkan/vulkanPipelines.cpp
+
                 src/mainEngine.cpp
                 src/mainEngine.h
                 src/Application/resourceLoading.h
@@ -24,25 +31,24 @@ add_executable(BlitzenEngine
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
-
-                src/BlitzenVulkan/vulkanRenderer.h
-                src/BlitzenVulkan/vulkanRenderer.cpp
-                src/BlitzenVulkan/vulkanInit.cpp
-                src/BlitzenVulkan/vulkanData.h
-                src/BlitzenVulkan/vulkanResources.cpp
-                src/BlitzenVulkan/vulkanPipelines.cpp
                 
                 src/Platform/platform.h
                 src/Platform/platform.cpp
                 src/Platform/filesystem.h
                 src/Platform/filesystem.cpp
                 
-                src/VendorCode/stb_image.h)
+                src/VendorCode/stb_image.h
+                src/VendorCode/fast_obj.h
+                src/VendorCode/objparser.cpp
+                src/VendorCode/Meshoptimizer/indexgenerator.cpp
+                #src/VendorCode/volk/volk.c
+                )
 
 target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies")
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies"
+                        "${PROJECT_SOURCE_DIR}/src/VendorCode")
 
 IF(WIN32)
     target_link_directories(BlitzenEngine PUBLIC

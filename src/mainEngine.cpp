@@ -1,8 +1,9 @@
 // This file contains the main funciton at the bottom
+ 
+#include "BlitzenVulkan/vulkanRenderer.h"
 
 #include "mainEngine.h"
 #include "Platform/platform.h"
-#include "BlitzenVulkan/vulkanRenderer.h"
 
 
 
@@ -113,13 +114,14 @@ namespace BlitzenEngine
         ------------------------------------*/
 
         // This is declared outide the setup for rendering braces, as it will be passed to render context during the loop
-        BlitzenVulkan::DrawObject draws[100];// Only 100 objects for now, I am going to need that linear allocator soon
+        BlitzenVulkan::DrawObject* draws = reinterpret_cast<BlitzenVulkan::DrawObject*>(
+        BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::LinearAlloc, 10000 * sizeof(BlitzenVulkan::DrawObject)));
         uint32_t drawCount;
         #if BLITZEN_VULKAN
         {
             BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders;
             // Combine all the surfaces of all the meshes into the render object array
-            for(size_t i = 0; i < m_resources.meshes.GetSize(); ++i)
+            for(size_t i = 0; i < m_resources.currentMeshIndex; ++i)
             {
                 // Hold on to the previous size of the array
                 size_t previousSize = renders.GetSize();
@@ -140,6 +142,10 @@ namespace BlitzenEngine
                     draws[s].objectTag = static_cast<uint32_t>(s);
                 }
             }
+            BlitML::vec3 tempTrans(0.f, -10.f, -50.f);
+            renders[0].modelMatrix = BlitML::Translate(tempTrans);
+
+
             drawCount = static_cast<uint32_t>(renders.GetSize());
 
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, renders);
@@ -243,14 +249,14 @@ namespace BlitzenEngine
     void Engine::LoadTextures()
     {
         // Default texture at index 0
-        uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
+        uint32_t blitTexCol = glm::packUnorm4x8(glm::vec4(0.3, 0, 0.6, 1));
         uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
 	    uint32_t pixels[16 * 16]; 
 	    for (int x = 0; x < 16; x++) 
         {
 	    	for (int y = 0; y < 16; y++) 
             {
-	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : white;
+	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : blitTexCol;
 	    	}
 	    }
         m_resources.textures[0].pTextureData = reinterpret_cast<uint8_t*>(pixels);
@@ -273,6 +279,7 @@ namespace BlitzenEngine
         m_resources.materials[0].diffuseColor = BlitML::vec4(1.f);
         m_resources.materials[0].diffuseMapName = BLIT_DEFAULT_TEXTURE_NAME;
         m_resources.materials[0].diffuseMapTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
+        m_resources.materials[0].specularMapTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
         m_resources.materials[0].materialTag = 0;
         m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
 
@@ -300,7 +307,7 @@ namespace BlitzenEngine
         if (camera.cameraDirty)
         {
             // I haven't overloaded the += operator
-            camera.position = camera.position + camera.velocity * deltaTime * 10.f; // Needs this 95.f stabilizer, otherwise deltaTime teleports it
+            camera.position = camera.position + camera.velocity * deltaTime * 40.f; // Needs this 95.f stabilizer, otherwise deltaTime teleports it
 
             BlitML::mat4 translation = BlitML::Mat4Inverse(BlitML::Translate(camera.position));
 
@@ -473,7 +480,7 @@ int main()
 {
     BlitzenCore::MemoryManagementInit();
 
-    // Blitzen engine created and destroyed inside this scope (this used to be necessary when it was allocated on the stack)
+    // Blitzen engine Allocated and freed inside this scope
     {
         // Blitzen engine allocated with smart pointer, it will cause stack overflow otherwise
         BlitCL::SmartPointer<BlitzenEngine::Engine, BlitzenCore::AllocationType::Engine> Blitzen;
