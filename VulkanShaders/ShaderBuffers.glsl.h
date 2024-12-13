@@ -14,6 +14,19 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer
     Vertex vertices[];
 };
 
+struct Meshlet
+{
+    uint vertices[64];
+	uint indices[126]; // up to 42 triangles
+	uint indexCount;
+	uint vertexCount;
+};
+
+layout(buffer_reference, std430) readonly buffer MeshBuffer
+{
+    Meshlet meshlets[];
+};
+
 struct RenderObject
 {
     mat4 worldMatrix;
@@ -57,4 +70,5 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     VertexBuffer vertexBuffer;
     RenderObjectBuffer renderObjects;
     MaterialBuffer materialBuffer;
+    MeshBuffer meshBuffer;
 }bufferAddrs;

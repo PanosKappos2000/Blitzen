@@ -8,8 +8,7 @@
 layout (location = 0) in vec2 uvMap;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in flat uint materialTag;
-layout (location = 3) in vec3 viewPosition;
-layout (location = 4) in vec3 modelPosition;
+layout (location = 3) in vec3 modelPosition;
 
 layout (location = 0) out vec4 finalColor;
 
@@ -24,12 +23,12 @@ void main()
     vec4 diffuse = vec4(vec3(shaderData.sunColor * diffuseFactor), diffuseSampler.a);
     diffuse *= diffuseSampler;
 
-    vec3 viewDirection = normalize(viewPosition - modelPosition);
+    vec3 viewDirection = normalize(shaderData.viewPosition - modelPosition);
     vec3 halfDirection = normalize(viewDirection - shaderData.sunDir);
     float specularFactor = pow(max(dot(halfDirection, normal), 0), currentMaterial.shininess);
     vec4 specularSampler = texture(textures[currentMaterial.specularMapIndex], uvMap);
     vec4 specular = vec4(vec3(shaderData.sunColor * specularFactor), specularSampler.a);
     specular *= specularSampler;
 
-    finalColor = diffuseSampler;
+    finalColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

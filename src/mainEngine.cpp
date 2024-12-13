@@ -139,6 +139,8 @@ namespace BlitzenEngine
 
                     draws[s].firstIndex = currentSurface.firstIndex;
                     draws[s].indexCount = currentSurface.indexCount;
+                    draws[s].firstMeshlet = currentSurface.firstMeshlet;
+                    draws[s].meshletCount = currentSurface.meshletCount;
                     draws[s].objectTag = static_cast<uint32_t>(s);
                 }
             }
@@ -152,7 +154,7 @@ namespace BlitzenEngine
             vulkanData.pTextures = m_resources.textures;
             vulkanData.textureCount = m_resources.currentTextureIndex;
             vulkanData.pMaterials = m_resources.materials;
-            vulkanData.materialCount = m_resources.currentMaterialIndex; 
+            vulkanData.materialCount = m_resources.currentMaterialIndex;
 
             pVulkan.Data()->UploadDataToGPUAndSetupForRendering(vulkanData);
         }// Vulkan renderer ready

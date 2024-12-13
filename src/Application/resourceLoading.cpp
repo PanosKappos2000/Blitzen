@@ -132,8 +132,8 @@ namespace BlitzenEngine
         {
             BlitML::Meshlet meshlet = {};
 
-            BlitCL::DynamicArray<uint8_t> meshletVertices(resources.vertices.GetSize() - previousVertexBufferSize);
-            meshletVertices.Fill(0xff);
+            BlitCL::DynamicArray<uint32_t> meshletVertices(resources.vertices.GetSize() - previousVertexBufferSize);
+            meshletVertices.Fill(UINT32_MAX);
 
             newSurface.firstMeshlet = resources.meshlets.GetSize();
 
@@ -143,34 +143,34 @@ namespace BlitzenEngine
                 uint32_t vtxIndexB = resources.indices[i + 1];
                 uint32_t vtxIndexC = resources.indices[i + 2];
 
-                uint8_t& vtxA = meshletVertices[vtxIndexA];
-                uint8_t& vtxB = meshletVertices[vtxIndexB];
-                uint8_t vtxC = meshletVertices[vtxIndexC];
+                uint32_t& vtxA = meshletVertices[vtxIndexA];
+                uint32_t& vtxB = meshletVertices[vtxIndexB];
+                uint32_t& vtxC = meshletVertices[vtxIndexC];
 
                 // If the current meshlet's vertex count + the vertices that are going to be added next is over the meshlet vertex limit, 
                 // It gets added to the dynamic array and a new entry is created
-                if (meshlet.vertexCount + (vtxA == 0xff) + (vtxB == 0xff) + (vtxC == 0xff) > 64 || meshlet.indexCount + 3 > 126)
+                if (meshlet.vertexCount + (vtxA == UINT32_MAX) + (vtxB == UINT32_MAX) + (vtxC == UINT32_MAX) > 64 || meshlet.indexCount + 3 > 126)
 		        {
                     newSurface.meshletCount++;
 			        resources.meshlets.PushBack(meshlet);
 
 			        for (size_t j = 0; j < meshlet.vertexCount; ++j)
-				        meshletVertices[meshlet.vertices[j]] = 0xff;
+				        meshletVertices[meshlet.vertices[j]] = UINT32_MAX;
 			        
                     meshlet = {};
 		        }
 
-                if (vtxA == 0xff)
+                if (vtxA == UINT32_MAX)
 		        {
 		        	vtxA = meshlet.vertexCount;
 		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexA;
 		        }
-		        if (vtxB == 0xff)
+		        if (vtxB == UINT32_MAX)
 		        {
 		        	vtxB = meshlet.vertexCount;
 		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexB;
 		        }
-		        if (vtxC == 0xff)
+		        if (vtxC == UINT32_MAX)
 		        {
 		        	vtxC = meshlet.vertexCount;
 		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexC;

@@ -13,8 +13,8 @@ layout(push_constant) uniform constants
 layout(location = 0) out vec2 outUv;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out uint outMaterialTag;
-layout(location = 3) out vec3 outView;
-layout(location = 4) out vec3 outModel;
+layout(location = 3) out vec3 outModel;
+
 
 void main()
 {
@@ -27,6 +27,5 @@ void main()
     outUv = vec2(currentVertex.uvX, currentVertex.uvY);
     outMaterialTag = renderObject.materialTag;
     outNormal =  currentVertex.normal;
-    outView = shaderData.viewPosition;
     outModel = modelPosition.xyz;
 }

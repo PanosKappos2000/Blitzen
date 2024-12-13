@@ -48,7 +48,6 @@ namespace BlitzenVulkan
     struct VulkanStats
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
-        uint8_t drawIndirect = 0;
     };
 
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
@@ -88,6 +87,9 @@ namespace BlitzenVulkan
         // Data used to call draw indexed
         uint32_t firstIndex;
         uint32_t indexCount;
+
+        uint32_t firstMeshlet;
+        uint32_t meshletCount;
 
         // References a render object in the global buffer
         uint32_t objectTag;
@@ -151,6 +153,7 @@ namespace BlitzenVulkan
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;
         VkDeviceAddress materialBufferAddress;
+        VkDeviceAddress meshBufferAddress;
     };
 
     // Pushed every frame for the non indirect version to access per object data
