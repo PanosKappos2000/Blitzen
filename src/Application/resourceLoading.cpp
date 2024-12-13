@@ -1,6 +1,12 @@
 #include "resourceLoading.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"
+
+#define FAST_OBJ_IMPLEMENTATION
+#include "fast_obj.h"
+#include "objparser.h"// Using some help from Arseny Kapoulnike
+#include "Meshoptimizer/meshoptimizer.h"
 
 namespace BlitzenEngine
 {
@@ -22,7 +28,6 @@ namespace BlitzenEngine
     {
         TextureStats& current = resources.textures[resources.currentTextureIndex];
 
-        stbi_set_flip_vertically_on_load(1);
         current.pTextureData = stbi_load(filename, &(current.textureWidth), &(current.textureHeight), &(current.textureChannels), 4);
 
         uint8_t load = current.pTextureData != nullptr;
@@ -67,94 +72,126 @@ namespace BlitzenEngine
 
 
 
+    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets /*= 0*/)
+    {
+        if(resources.currentMeshIndex > BLIT_MAX_MESH_COUNT)
+        {
+            BLIT_ERROR("Max mesh count: ( %i ) reached!", BLIT_MAX_MESH_COUNT)
+            BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
+            return 0;
+        }
+
+        ObjFile file;
+        if(!objParseFile(file, filename))
+            return 0;
+
+        size_t indexCount = file.f_size / 3;
+
+        /*!
+            The below code can load a single mesh but it breaks if I try to load more than one
+        */
+
+        BlitCL::DynamicArray<BlitML::Vertex> vertices(indexCount);
+
+        for(size_t i = 0; i < indexCount; ++i)
+        {
+            BlitML::Vertex& vtx = vertices[i];
+
+            int32_t vertexIndex = file.f[i * 3 + 0];
+		    int32_t vertexTextureIndex = file.f[i * 3 + 1];
+		    int32_t vertexNormalIndex = file.f[i * 3 + 2];
+
+            vtx.position.x = file.v[vertexIndex * 3 + 0];
+		    vtx.position.y = file.v[vertexIndex * 3 + 1];
+		    vtx.position.z = file.v[vertexIndex * 3 + 2];
+		    vtx.normal.x = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 0];
+		    vtx.normal.y = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 1];
+		    vtx.normal.z = vertexNormalIndex < 0 ? 1.f : file.vn[vertexNormalIndex * 3 + 2];
+		    vtx.uvX = vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0];
+		    vtx.uvY = vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1];
+        }
+
+        BlitCL::DynamicArray<uint32_t> remap(indexCount);
+		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, vertices.Data(), indexCount, sizeof(BlitML::Vertex));
+
+        size_t previousIndexBufferSize = resources.indices.GetSize();
+        size_t previousVertexBufferSize = resources.vertices.GetSize();
+        resources.indices.Resize(previousIndexBufferSize + indexCount);
+        resources.vertices.Resize(previousVertexBufferSize + vertexCount);
+
+        meshopt_remapVertexBuffer(resources.vertices.Data() + previousVertexBufferSize, 
+        vertices.Data(), indexCount, sizeof(BlitML::Vertex), remap.Data());
+		meshopt_remapIndexBuffer(resources.indices.Data() + previousIndexBufferSize, 0, indexCount, remap.Data());
+
+        PrimitiveSurface newSurface;
+        newSurface.indexCount = static_cast<uint32_t>(indexCount);
+        newSurface.firstIndex = static_cast<uint32_t>(previousIndexBufferSize);
+        newSurface.pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
+
+        if(buildMeshlets)
+        {
+            BlitML::Meshlet meshlet = {};
+
+            BlitCL::DynamicArray<uint32_t> meshletVertices(resources.vertices.GetSize() - previousVertexBufferSize);
+            meshletVertices.Fill(UINT32_MAX);
+
+            newSurface.firstMeshlet = resources.meshlets.GetSize();
+
+            for (size_t i = previousIndexBufferSize; i < resources.indices.GetSize(); i += 3)
+            {
+                uint32_t vtxIndexA = resources.indices[i + 0];
+                uint32_t vtxIndexB = resources.indices[i + 1];
+                uint32_t vtxIndexC = resources.indices[i + 2];
+
+                uint32_t& vtxA = meshletVertices[vtxIndexA];
+                uint32_t& vtxB = meshletVertices[vtxIndexB];
+                uint32_t& vtxC = meshletVertices[vtxIndexC];
+
+                // If the current meshlet's vertex count + the vertices that are going to be added next is over the meshlet vertex limit, 
+                // It gets added to the dynamic array and a new entry is created
+                if (meshlet.vertexCount + (vtxA == UINT32_MAX) + (vtxB == UINT32_MAX) + (vtxC == UINT32_MAX) > 64 || meshlet.indexCount + 3 > 126)
+                {
+                    newSurface.meshletCount++;
+                    resources.meshlets.PushBack(meshlet);
+
+                    for (size_t j = 0; j < meshlet.vertexCount; ++j)
+                        meshletVertices[meshlet.vertices[j]] = UINT32_MAX;
+
+                    meshlet = {};
+                }
+
+                if (vtxA == UINT32_MAX)
+                {
+                    vtxA = meshlet.vertexCount;
+                    meshlet.vertices[meshlet.vertexCount++] = vtxIndexA;
+                }
+                if (vtxB == UINT32_MAX)
+                {
+                    vtxB = meshlet.vertexCount;
+                    meshlet.vertices[meshlet.vertexCount++] = vtxIndexB;
+                }
+                if (vtxC == UINT32_MAX)
+                {
+                    vtxC = meshlet.vertexCount;
+                    meshlet.vertices[meshlet.vertexCount++] = vtxIndexC;
+                }
+
+                meshlet.indices[meshlet.indexCount++] = vtxA;
+                meshlet.indices[meshlet.indexCount++] = vtxB;
+                meshlet.indices[meshlet.indexCount++] = vtxC;
+            }
+        }
+
+        resources.meshes[resources.currentMeshIndex].surfaces.PushBack(newSurface);
+        ++resources.currentMeshIndex;
+
+        return 1;
+    }
+
+
+
     void LoadDefaultData(EngineResources& resources)
     {
-        // Temporary shader data for tests on vulkan rendering
-            resources.vertices.Resize(24);
-            resources.indices.Resize(32);
-
-            resources.vertices[0].position = BlitML::vec3(-0.5f, 0.5f, 0.f);
-            resources.vertices[0].uvX = 0.f; 
-            resources.vertices[0].uvY = 0.f;
-            resources.vertices[0].normal = BlitML::vec3(0.f, 0.f, -1.f);
-
-            resources.vertices[1].position = BlitML::vec3(-0.5f, -0.5f, 0.f);
-            resources.vertices[1].uvX = 0.f; 
-            resources.vertices[1].uvY = 1.f;
-            resources.vertices[1].normal = BlitML::vec3(0.f, 0.f, -1.f);
-
-            resources.vertices[2].position = BlitML::vec3(0.5f, -0.5f, 0.f);
-            resources.vertices[2].uvX = 1.f;
-            resources.vertices[2].uvY = 1.f;
-            resources.vertices[2].normal = BlitML::vec3(0.f, 0.f, -1.f);
-
-            resources.vertices[3].position = BlitML::vec3(0.5f, 0.5f, 0.f);
-            resources.vertices[3].uvX = 1.f;
-            resources.vertices[3].uvY = 0.f;
-            resources.vertices[3].normal = BlitML::vec3(0.f, 0.f, -1.f);
-
-            resources.vertices[4].position = BlitML::vec3(-0.5f, 0.5f, -0.5f);
-            resources.vertices[4].uvX = 1.f; 
-            resources.vertices[4].uvY = 0.f;
-            resources.vertices[4].normal = BlitML::vec3(0.f, 0.f, 1.f);
-
-            resources.vertices[5].position = BlitML::vec3(-0.5f, -0.5f, -0.5f);
-            resources.vertices[5].uvX = 1.f; 
-            resources.vertices[5].uvY = 1.f;
-            resources.vertices[5].normal = BlitML::vec3(0.f, 0.f, 1.f);
-
-            resources.vertices[6].position = BlitML::vec3(0.5f, -0.5f, -0.5f);
-            resources.vertices[6].uvX = 0.f; 
-            resources.vertices[6].uvY = 1.f;
-            resources.vertices[6].normal = BlitML::vec3(0.f, 0.f, 1.f);
-
-            resources.vertices[7].position = BlitML::vec3(0.5f, 0.5f, -0.5f);
-            resources.vertices[7].uvX = 0.f; 
-            resources.vertices[7].uvY = 0.f;
-            resources.vertices[7].normal = BlitML::vec3(0.f, 0.f, 1.f);
-
-            resources.indices[0] = 0;
-            resources.indices[1] = 1;
-            resources.indices[2] = 2;
-            resources.indices[3] = 2;
-            resources.indices[4] = 3;
-            resources.indices[5] = 0;
-            resources.indices[6] = 4;
-            resources.indices[7] = 5;
-            resources.indices[8] = 6;
-            resources.indices[9] = 6;
-            resources.indices[10] = 7;
-            resources.indices[11] = 4;
-            resources.indices[12] = 4;
-            resources.indices[13] = 5;
-            resources.indices[14] = 1;
-            resources.indices[15] = 1;
-            resources.indices[16] = 0;
-            resources.indices[17] = 4;
-            resources.indices[18] = 7;
-            resources.indices[19] = 6;
-            resources.indices[20] = 2;
-            resources.indices[21] = 2;
-            resources.indices[22] = 3;
-            resources.indices[23] = 7;
-
-            resources.meshes.Resize(1);
-            resources.meshes[0].surfaces.Resize(4);
-
-            resources.meshes[0].surfaces[0].firstIndex = 0;
-            resources.meshes[0].surfaces[0].indexCount = 6;
-            resources.meshes[0].surfaces[0].pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
-
-            resources.meshes[0].surfaces[1].firstIndex = 6;
-            resources.meshes[0].surfaces[1].indexCount = 6;
-            resources.meshes[0].surfaces[1].pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
-
-            resources.meshes[0].surfaces[2].firstIndex = 12;
-            resources.meshes[0].surfaces[2].indexCount = 6;
-            resources.meshes[0].surfaces[2].pMaterial = resources.materialTable.Get("loaded_material2", &resources.materials[0]);
-
-            resources.meshes[0].surfaces[3].firstIndex = 18;
-            resources.meshes[0].surfaces[3].indexCount = 6;
-            resources.meshes[0].surfaces[3].pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
+        LoadMeshFromObj(resources, "Assets/Meshes/well.obj", 1);
     }
 }

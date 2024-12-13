@@ -61,7 +61,12 @@ namespace BlitzenVulkan
             VkInstance Creation
         -------------------------*/
         {
-            BLIT_INFO(VULKAN_SURFACE_KHR_EXTENSION_NAME)
+            // Like the assertion message below says, Blitzen will not use Vulkan without indirect
+            BLIT_ASSERT_MESSAGE(BLITZEN_VULKAN_INDIRECT_DRAW, "Blitzen will not support Vulkan without draw indirect going forward.If you want to use Vulkan enable the BLITZEN_VULKAN_INDIRECT_DRAW on vulkanData.h")
+
+            uint32_t apiVersion = 0;
+            VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
+            BLIT_ASSERT_MESSAGE(apiVersion > VK_API_VERSION_1_3, "Blitzen need to use Vulkan API_VERSION 1.3")
 
             //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
             VkApplicationInfo applicationInfo{};
@@ -80,11 +85,34 @@ namespace BlitzenVulkan
             instanceInfo.flags = 0; // Not using this 
             instanceInfo.pApplicationInfo = &applicationInfo;
 
-            // TODO: Use what is stored in the dynamic arrays below to check if all extensions are supported
+            // Checking that all required extensions are supported
             uint32_t extensionsCount = 0;
             vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr);
             BlitCL::DynamicArray<VkExtensionProperties> availableExtensions(static_cast<size_t>(extensionsCount));
             vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, availableExtensions.Data());
+            uint8_t extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT] = {0};
+            for(size_t i = 0; i < availableExtensions.GetSize(); ++i)
+            {
+                if(!strcmp(availableExtensions[i].extensionName,VULKAN_SURFACE_KHR_EXTENSION_NAME) && !extensionSupport[0])
+                {
+                    extensionSupport[0] = 1;
+                }
+                if(!strcmp(availableExtensions[i].extensionName, "VK_KHR_surface") && !extensionSupport[1])
+                {
+                    extensionSupport[1] = 1;
+                }
+
+                #if BLITZEN_VULKAN_VALIDATION_LAYERS
+                    if(!strcmp(availableExtensions[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) && !extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1])
+                        extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] = 1;
+                #endif
+            }
+            uint8_t allExtensions = 0;
+            for(uint8_t i = 0; i < BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT; ++i)
+            {
+                allExtensions += extensionSupport[i];
+            }
+            BLIT_ASSERT_MESSAGE(allExtensions == BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT, "Not all extensions are supported")
 
             // Creating an array of required extension names to pass to ppEnabledExtensionNames
             const char* requiredExtensionNames [BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT];
@@ -94,9 +122,9 @@ namespace BlitzenVulkan
             instanceInfo.enabledLayerCount = 0; // Validation layers inactive at first, but will be activated if it's a debug build
 
             //If this is a debug build, the validation layer extension is also needed
-            #ifndef NDEBUG
+            #if BLITZEN_VULKAN_VALIDATION_LAYERS
 
-                requiredExtensionNames[2] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+                requiredExtensionNames[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 
                 // Getting all supported validation layers
                 uint32_t availableLayerCount = 0;
@@ -108,12 +136,12 @@ namespace BlitzenVulkan
                 uint8_t layersFound = 0;
                 for(size_t i = 0; i < availableLayers.GetSize(); i++)
                 {
-                   if(strcmp(availableLayers[i].layerName,VALIDATION_LAYER_NAME))
+                   if(!strcmp(availableLayers[i].layerName,VALIDATION_LAYER_NAME))
                    {
                        layersFound = 1;
                        break;
                    }
-                }// TODO: check does not seem to work got to fix it
+                }
 
                 BLIT_ASSERT_MESSAGE(layersFound, "The vulkan renderer will not be used in debug mode without validation layers")
 
@@ -206,6 +234,9 @@ namespace BlitzenVulkan
                 VkPhysicalDeviceVulkan13Features features13{};
                 features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
                 features12.pNext = &features13;
+                VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh{};
+                featuresMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+                features13.pNext = &featuresMesh;
                 vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
                 #if BLITZEN_VULKAN_INDIRECT_DRAW
@@ -216,8 +247,60 @@ namespace BlitzenVulkan
                         continue;
                     }
                 #endif
+                #if BLITZEN_VULKAN_MESH_SHADER
+                    if(!featuresMesh.meshShader)
+                    {
+                        physicalDevices.RemoveAtIndex(i);
+                        --i;
+                        continue;
+                    }
+                #endif
                 if(!features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray || 
                 !features13.dynamicRendering || !features13.synchronization2)
+                {
+                    physicalDevices.RemoveAtIndex(i);
+                    --i;
+                    continue;
+                }
+
+                // Checking if the device supports all extensions that will be requested from Vulkan
+                uint32_t dvExtensionCount = 0;
+                vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, nullptr);
+                BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
+                vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
+                // The device will always need one extension(the swapchain) + the mesh shader extension if mesh shaders are active
+                uint8_t extensionSupport [1 + BLITZEN_VULKAN_MESH_SHADER] = {0};
+                // Check for every extension with strcmp and switch the according element in the array to 1 if it is supported
+                for(size_t j = 0; j < dvExtensionsProps.GetSize(); ++j)
+                {
+                    if(!strcmp(dvExtensionsProps[j].extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
+                        extensionSupport[0] = 1;
+
+                    #if BLITZEN_VULKAN_MESH_SHADER
+                        if(!strcmp(dvExtensionsProps[j].extensionName, VK_NV_MESH_SHADER_EXTENSION_NAME))
+                            extensionSupport[1] = 1;
+                    #endif  
+                }
+                // Check that no elements in the extension support array are 0
+                uint8_t missingExtension = 0;
+                for(uint8_t j = 0; j < 1 + BLITZEN_VULKAN_MESH_SHADER; ++j)
+                {
+                    if(!extensionSupport[j])
+                    {
+                        missingExtension = 1;
+                    }
+
+                }
+                if (missingExtension)
+                {
+                    physicalDevices.RemoveAtIndex(i);
+                    --i;
+                    continue;
+                }
+
+                VkPhysicalDeviceProperties props{};
+                vkGetPhysicalDeviceProperties(pdv, &props);
+                if (props.apiVersion < VK_API_VERSION_1_3)
                 {
                     physicalDevices.RemoveAtIndex(i);
                     --i;
@@ -236,32 +319,32 @@ namespace BlitzenVulkan
                 }
                 // Store the queue family properties to query for their indices
                 BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(static_cast<size_t>(queueFamilyPropertyCount));
-                for(size_t i = 0; i < queueFamilyProperties.GetSize(); ++i)
+                for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
                 {
-                    queueFamilyProperties[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
+                    queueFamilyProperties[j].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
                 }
-                vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevices[i], &queueFamilyPropertyCount, queueFamilyProperties.Data());
-                for(size_t i = 0; i < queueFamilyProperties.GetSize(); ++i)
+                vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
+                for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
                 {
                     // Checks for a graphics queue index, if one has not already been found 
-                    if(queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && !m_graphicsQueue.hasIndex)
+                    if(queueFamilyProperties[j].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && !m_graphicsQueue.hasIndex)
                     {
-                        m_graphicsQueue.index = static_cast<uint32_t>(i);
+                        m_graphicsQueue.index = static_cast<uint32_t>(j);
                         m_graphicsQueue.hasIndex = 1;
                     }
 
                     // Checks for a compute queue index, if one has not already been found 
-                    if(queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT && !m_computeQueue.hasIndex)
+                    if(queueFamilyProperties[j].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT && !m_computeQueue.hasIndex)
                     {
-                        m_computeQueue.index = static_cast<uint32_t>(i);
+                        m_computeQueue.index = static_cast<uint32_t>(j);
                         m_computeQueue.hasIndex = 1;
                     }
 
                     VkBool32 supportsPresent = VK_FALSE;
-                    VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, static_cast<uint32_t>(i), m_initHandles.surface, &supportsPresent))
+                    VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, static_cast<uint32_t>(j), m_initHandles.surface, &supportsPresent))
                     if(supportsPresent == VK_TRUE && !m_presentQueue.hasIndex)
                     {
-                        m_presentQueue.index = static_cast<uint32_t>(i);
+                        m_presentQueue.index = static_cast<uint32_t>(j);
                         m_presentQueue.hasIndex = 1;
                     }
                 }
@@ -320,9 +403,13 @@ namespace BlitzenVulkan
             deviceInfo.enabledLayerCount = 0;//Deprecated
 
             // Only using the swapchain extension for now
-            deviceInfo.enabledExtensionCount = 1;
-            const char* extensionsNames = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
-            deviceInfo.ppEnabledExtensionNames = &extensionsNames;
+            deviceInfo.enabledExtensionCount = 1 + BLITZEN_VULKAN_MESH_SHADER;
+            const char* extensionsNames[1 + BLITZEN_VULKAN_MESH_SHADER];
+            extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+            #if BLITZEN_VULKAN_MESH_SHADER
+                extensionsNames[1] = VK_NV_MESH_SHADER_EXTENSION_NAME;
+            #endif
+            deviceInfo.ppEnabledExtensionNames = extensionsNames;
 
             // Standard device features
             VkPhysicalDeviceFeatures deviceFeatures{};
@@ -342,14 +429,20 @@ namespace BlitzenVulkan
             vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
             vulkan12Features.bufferDeviceAddress = true;
             vulkan12Features.descriptorIndexing = true;
-            //Allows spir-v shaders to use descriptor arrays
+            // Allows shaders to use array with undefined size for descriptors, needed for textures
             vulkan12Features.runtimeDescriptorArray = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            //Using dynamic rendering since the engine will not benefit from the VkRenderPass
+            // Using dynamic rendering to make things slightly easier
             vulkan13Features.dynamicRendering = true;
             vulkan13Features.synchronization2 = true;
+
+            VkPhysicalDeviceMeshShaderFeaturesNV vulkanFeaturesMesh{};
+            vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+            #if BLITZEN_VULKAN_MESH_SHADER
+                vulkanFeaturesMesh.meshShader = true;
+            #endif
 
             VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
             vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -359,6 +452,7 @@ namespace BlitzenVulkan
             vulkanExtendedFeatures.pNext = &vulkan11Features;
             vulkan11Features.pNext = &vulkan12Features;
             vulkan12Features.pNext = &vulkan13Features;
+            vulkan13Features.pNext = &vulkanFeaturesMesh;
 
             BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
             queueInfos[0].queueFamilyIndex = m_graphicsQueue.index;
@@ -433,7 +527,8 @@ namespace BlitzenVulkan
         /*
              Swapchain creation
         */
-       CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator);
+       CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
+       m_initHandles.swapchain);
 
 
         /* Create the vma allocator for vulkan resource allocation */
@@ -443,6 +538,7 @@ namespace BlitzenVulkan
             allocatorInfo.instance = m_initHandles.instance;
             allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
             allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        
             VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
         }
 
@@ -467,14 +563,23 @@ namespace BlitzenVulkan
             VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferInfo, &m_placeholderCommands))
         }
 
+        FrameToolsInit();
+
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {windowWidth, windowHeight};
+
+        // Initlize the rendering attachments
+        CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
         return 1;
     }
 
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
-    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator)
+    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
+    VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
     {
             VkSwapchainCreateInfoKHR swapchainInfo{};
             swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -482,10 +587,11 @@ namespace BlitzenVulkan
             swapchainInfo.flags = 0;
             swapchainInfo.imageArrayLayers = 1;
             swapchainInfo.clipped = VK_TRUE;// Don't present things renderer out of bounds
-            swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;// Might not be supported in some cases, so I might want to guard against this
             swapchainInfo.surface = initHandles.surface;
             swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
+            // Used when the swapchain is recreated
+            swapchainInfo.oldSwapchain = oldSwapchain;
 
             /* Image format and color space */
             {
@@ -548,7 +654,7 @@ namespace BlitzenVulkan
                 }
             }
 
-            //Set the swapchain extent to the window's width and height
+            // Set the swapchain extent to the window's width and height
             initHandles.swapchainExtent = {windowWidth, windowHeight};
             // Retrieve surface capabilities to properly configure some swapchain values
             VkSurfaceCapabilitiesKHR surfaceCapabilities{};
@@ -601,16 +707,16 @@ namespace BlitzenVulkan
             }
 
             // Create the swapchain
-            VK_CHECK(vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &initHandles.swapchain));
+            VK_CHECK(vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &newSwapchain));
 
             // Retrieve the swapchain images
             uint32_t swapchainImageCount = 0;
-            VK_CHECK(vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, nullptr));
+            VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, nullptr));
             initHandles.swapchainImages.Resize(swapchainImageCount);
-            VK_CHECK(vkGetSwapchainImagesKHR(device, initHandles.swapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
+            VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
 
-            // Create image view for each swapchain image
-            initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
+            // Create image view for each swapchain image (Apparently this might not be needed, but I am keeping it commented out)
+            /*initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
             for(size_t i = 0; i < initHandles.swapchainImageViews.GetSize(); ++i)
             {
                 VkImageViewCreateInfo info{};
@@ -631,7 +737,59 @@ namespace BlitzenVulkan
                 info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
                 VK_CHECK(vkCreateImageView(device, &info, pCustomAllocator, &(initHandles.swapchainImageViews[i])))
-            }
+            }*/
+    }
+
+    void VulkanRenderer::FrameToolsInit()
+    {
+        VkCommandPoolCreateInfo commandPoolsInfo {};
+        commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allow each individual command buffer to be reset
+        commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
+
+        VkCommandBufferAllocateInfo commandBuffersInfo{};
+        commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBuffersInfo.pNext = nullptr;
+        commandBuffersInfo.commandBufferCount = 1;
+        commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        fenceInfo.pNext = nullptr;
+
+        VkSemaphoreCreateInfo semaphoresInfo{};
+        semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoresInfo.flags = 0;
+        semaphoresInfo.pNext = nullptr;
+
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = 1;
+        VkDescriptorPoolCreateInfo descriptorPoolInfo{};
+        descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        descriptorPoolInfo.flags = 0;
+        descriptorPoolInfo.maxSets = 1;
+        descriptorPoolInfo.poolSizeCount = 1;
+        descriptorPoolInfo.pPoolSizes = &poolSize;
+
+        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            FrameTools& frameTools = m_frameToolsList[i];
+            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool)));
+            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
+            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer)));
+
+            VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
+            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
+            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
+
+            CreateBuffer(m_allocator, frameTools.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            CreateBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(frameTools.globalShaderDataDescriptorPool)))
+        }
     }
 
 
@@ -639,20 +797,9 @@ namespace BlitzenVulkan
     {
         vkDeviceWaitIdle(m_device);
 
-        for(size_t i = 0; i < m_loadedTextures.GetSize(); ++i)
-        {
-            m_loadedTextures[i].image.CleanupResources(m_allocator, m_device);
-        }
-
         vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
 
-        vkDestroyDescriptorPool(m_device, m_textureDescriptorAllocator, m_pCustomAllocator);
-        vkDestroyDescriptorSetLayout(m_device, m_textureDescriptorSetLayout, m_pCustomAllocator);
-
-        vmaDestroyBuffer(m_allocator, m_materialBuffer.buffer, m_materialBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, m_staticRenderObjectBuffer.buffer, m_staticRenderObjectBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, m_globalVertexBuffer.buffer, m_globalVertexBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, m_globalIndexBuffer.buffer, m_globalIndexBuffer.allocation);
+        m_currentStaticBuffers.Cleanup(m_allocator, m_device);
 
         vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
 
@@ -678,10 +825,10 @@ namespace BlitzenVulkan
 
         vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);
 
-        for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
+        /*for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
         {
             vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], m_pCustomAllocator);
-        }
+        }I am not creating these anymore but I am keeping them to check the state of the application */
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
 
         vmaDestroyAllocator(m_allocator);

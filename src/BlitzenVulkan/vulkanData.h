@@ -1,12 +1,15 @@
 #pragma once
 
+/*#define VK_NO_PROTOTYPES
+#include <Volk/volk.h>*/
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
+#include "Application/resourceLoading.h"
 
-// Temporary to debug my math library
+// Right now I don't know if I should rely on this or my own math library
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
@@ -21,27 +24,30 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
+#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
 
 #ifdef NDEBUG
-    #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  2
+    #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
     #define VK_CHECK(expr)                                          expr;
 #else
-    #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  3
+    #define BLITZEN_VULKAN_VALIDATION_LAYERS                        1
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 
-#define BLITZEN_VULKAN_INDIRECT_DRAW            1 
+
+#define BLITZEN_VULKAN_INDIRECT_DRAW            1
+#define BLITZEN_VULKAN_MESH_SHADER              1 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           1000000
+
+#define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
 namespace BlitzenVulkan
 {
     struct VulkanStats
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
-        uint8_t drawIndirect = 0;
     };
 
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
@@ -52,23 +58,26 @@ namespace BlitzenVulkan
         uint32_t materialTag;
     };
 
-    // Holds everything that needs to be passed to the UploadDataToGPUAndSetupForRendering function
+    // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
     struct GPUData
     {
         BlitCL::DynamicArray<BlitML::Vertex>& vertices;
 
         BlitCL::DynamicArray<uint32_t>& indices;
 
+        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets;
+
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects;
 
-        void* pTextures; 
+        BlitzenEngine::TextureStats* pTextures; 
         size_t textureCount;
 
-        void* pMaterials;
+        BlitzenEngine::MaterialStats* pMaterials;
         size_t materialCount;
 
-        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o)
-            :vertices(v), indices(i), staticObjects(o)
+        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o, 
+        BlitCL::DynamicArray<BlitML::Meshlet>& m)
+            :vertices(v), indices(i), staticObjects(o), meshlets(m)
         {}
     };
 
@@ -78,6 +87,9 @@ namespace BlitzenVulkan
         // Data used to call draw indexed
         uint32_t firstIndex;
         uint32_t indexCount;
+
+        uint32_t firstMeshlet;
+        uint32_t meshletCount;
 
         // References a render object in the global buffer
         uint32_t objectTag;
@@ -141,6 +153,7 @@ namespace BlitzenVulkan
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;
         VkDeviceAddress materialBufferAddress;
+        VkDeviceAddress meshBufferAddress;
     };
 
     // Pushed every frame for the non indirect version to access per object data

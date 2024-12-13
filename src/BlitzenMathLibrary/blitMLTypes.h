@@ -1,6 +1,6 @@
 #pragma once
 
-#include <iostream>
+#include <cstdint>
 
 #include "Core/blitMemory.h"
 
@@ -155,5 +155,13 @@ namespace BlitML
         vec3 normal;
         float uvY;
         vec4 color;
+    };
+
+    struct alignas(16) Meshlet
+    {
+	    uint32_t vertices[64]; // index into the original index buffer
+	    uint32_t indices[126]; // up to 42 triangles, index into the above array of vertices
+	    uint32_t indexCount; // The number of used elements in indices
+	    uint32_t vertexCount; // The number of used elements in vertices
     };
 }

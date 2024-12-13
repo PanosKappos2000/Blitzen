@@ -13,7 +13,7 @@ namespace BlitzenCore
     #define BLIT_MOUSE_WHEEL_EXPECTED_EVENTS  10
     #define BLIT_WINDOW_RESIZE_EXPECTED_EVENTS  10
 
-    static uint32_t maxExpectedEvents[static_cast<size_t>(BlitEventType::MaxTypes)] = 
+    inline uint32_t maxExpectedEvents[static_cast<size_t>(BlitEventType::MaxTypes)] = 
     {
         BLIT_ENGINE_SHUTDOWN_EXPECTED_EVENTS, 
         BLIT_KEY_PRESSED_EXPECTED_EVENTS, 
@@ -25,7 +25,7 @@ namespace BlitzenCore
         BLIT_WINDOW_RESIZE_EXPECTED_EVENTS
     };
 
-    static EventSystemState* pEventState = nullptr;
+    inline EventSystemState* pEventState = nullptr;
 
     uint8_t EventsInit() 
     {
@@ -63,8 +63,8 @@ namespace BlitzenCore
         for(size_t i = 0; i < events.GetSize(); ++i) 
         {
             // A listener should not have multiple event callbacks for the same type of event
-            if(events[i].pListener == pListener) {
-                // TODO: warn
+            if(events[i].pListener == pListener) 
+            {
                 return 0;
             }
         }
@@ -111,7 +111,8 @@ namespace BlitzenCore
             return 0;
         }
         
-        for(size_t i = 0; i < events.GetSize(); ++i) {
+        for(size_t i = 0; i < events.GetSize(); ++i) 
+        {
             RegisteredEvent& event = events[i];
             if(event.callback && event.callback(type, pSender, event.pListener, context)) 
             {
@@ -128,7 +129,7 @@ namespace BlitzenCore
 
 
     
-    static InputState* s_pInputState = nullptr;
+    inline InputState* s_pInputState = nullptr;
 
     void InputInit(InputState* pInputState) 
     {

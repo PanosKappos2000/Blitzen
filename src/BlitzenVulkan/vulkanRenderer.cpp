@@ -1,32 +1,84 @@
+#include "vulkanRenderer.h"
+
 #define VMA_IMPLEMENTATION
 #include "vma/vk_mem_alloc.h"
 
-#include "vulkanRenderer.h"
-#include "Application/resourceLoading.h"
+void DrawMeshTastsNv(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t taskCount, uint32_t firstTask) 
+{
+    auto func = (PFN_vkCmdDrawMeshTasksNV) vkGetInstanceProcAddr(instance, "vkCmdDrawMeshTasksNV");
+    if (func != nullptr) 
+    {
+        func(commandBuffer, taskCount, firstTask);
+    } 
+}
 
 namespace BlitzenVulkan
 {
     void VulkanRenderer::UploadDataToGPUAndSetupForRendering(GPUData& gpuData)
     {
-        BlitzenEngine::TextureStats* pLoadedTextures = reinterpret_cast<BlitzenEngine::TextureStats*>(gpuData.pTextures);
-        BlitzenEngine::MaterialStats* pLoadedMaterials = reinterpret_cast<BlitzenEngine::MaterialStats*>(gpuData.pMaterials);
+        // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
+        m_currentStaticBuffers.loadedTextures.Resize(gpuData.textureCount);
 
+        // Creating the layout here so that any descriptor sets that are created know about it
+        {
+            // Descriptor set layout for global shader data
+            VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
+            VkDescriptorSetLayoutBinding bufferAddressBinding{};
+            #if BLITZEN_VULKAN_MESH_SHADER
+                CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+                VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT);
+                CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+                VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT);
+            #else
+                CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+                CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+            #endif
+            VkDescriptorSetLayoutBinding shaderDataBindings[2] = {shaderDataLayoutBinding, bufferAddressBinding};
+            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 2, shaderDataBindings);
+
+            // Descriptor set layout for textures
+            VkDescriptorSetLayoutBinding texturesLayoutBinding{};
+            CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(m_currentStaticBuffers.loadedTextures.GetSize()), 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+            m_currentStaticBuffers.textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
+
+            VkDescriptorSetLayout layouts [2] = {m_globalShaderDataLayout, m_currentStaticBuffers.textureDescriptorSetlayout};
+
+            VkPushConstantRange pushConstant{};
+            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(ShaderPushConstant), 0);
+            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 1, &pushConstant);
+        }
+
+        // Texture sampler, for now all textures will use the same one
+        CreateTextureSampler(m_device, m_placeholderSampler);
+
+        // Allocating an image for each texture and telling it to use the one sampler the renderer creates (for now)
+        for(size_t i = 0; i < gpuData.textureCount; ++i)
+        {
+            
+            CreateTextureImage(reinterpret_cast<void*>(gpuData.pTextures[i].pTextureData), m_device, m_allocator, 
+            m_currentStaticBuffers.loadedTextures[i].image, 
+            {(uint32_t)gpuData.pTextures[i].textureWidth, (uint32_t)gpuData.pTextures[i].textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
+            VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
+
+            m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
+        }
+
+        // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
         for(size_t i = 0; i < gpuData.materialCount; ++i)
         {
-            materials[i].diffuseColor = pLoadedMaterials[i].diffuseColor;
-            materials[i].diffuseTextureTag = pLoadedMaterials[i].diffuseMapTag;
+            materials[i].diffuseColor = gpuData.pMaterials[i].diffuseColor;
+            materials[i].diffuseTextureTag = gpuData.pMaterials[i].diffuseMapTag;
         }
 
-        FrameToolsInit();
-
-        CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-        CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-
-        // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
-        m_loadedTextures.Resize(gpuData.textureCount); // The texture array size is 1 above textureCount, to leave space for a default
+        #if BLITZEN_VULKAN_MESH_SHADER
+            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials, gpuData.meshlets);
+        #else
+            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials);
+        #endif
 
         /* Main opaque object graphics pipeline */
         {
@@ -45,8 +97,13 @@ namespace BlitzenVulkan
 
             VkShaderModule vertexShaderModule;
             VkPipelineShaderStageCreateInfo shaderStages[2] = {};
-            CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule, 
-            shaderStages[0], nullptr);
+            #if BLITZEN_VULKAN_MESH_SHADER
+                CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_NV, "main", vertexShaderModule, 
+                shaderStages[0], nullptr);
+            #else
+                CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
+                shaderStages[0], nullptr);
+            #endif 
             VkShaderModule fragShaderModule;
             CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
             shaderStages[1], nullptr);
@@ -84,150 +141,72 @@ namespace BlitzenVulkan
             CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
             pipelineInfo.pColorBlendState = &colorBlendState;
 
-            // Descriptor set layout for global shader data
-            VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
-            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-            VkDescriptorSetLayoutBinding bufferAddressBinding{};
-            CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-            VkDescriptorSetLayoutBinding shaderDataBindings[2] = {shaderDataLayoutBinding, bufferAddressBinding};
-            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 2, shaderDataBindings);
-
-            // Descriptor set layout for textures
-            VkDescriptorSetLayoutBinding texturesLayoutBinding{};
-            CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(m_loadedTextures.GetSize()), 
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-            m_textureDescriptorSetLayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
-
-            VkDescriptorSetLayout layouts [2] = {m_globalShaderDataLayout, m_textureDescriptorSetLayout};
-
-            VkPushConstantRange pushConstant{};
-            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(ShaderPushConstant), 0);
-            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 1, &pushConstant);
-            pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;
-
             VkPipelineVertexInputStateCreateInfo vertexInput{};
             vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
             pipelineInfo.pVertexInputState = &vertexInput;
+            pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;
 
             VK_CHECK(vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGraphicsPipeline))
 
             vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
             vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
         }
-
-        UploadBuffersToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials);
-
-        
-
-        // Texture sampler, for now all textures will use one
-        CreateTextureSampler(m_device, m_placeholderSampler);
-
-        for(size_t i = 0; i < gpuData.textureCount; ++i)
-        {
-            
-            CreateTextureImage(reinterpret_cast<void*>(pLoadedTextures[i].pTextureData), m_device, m_allocator, m_loadedTextures[i].image, 
-            {(uint32_t)pLoadedTextures[i].textureWidth, (uint32_t)pLoadedTextures[i].textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
-            VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
-
-            m_loadedTextures[i].sampler = m_placeholderSampler;
-        }
-
-        UploadTexturesToGPU();
     }
 
-    void VulkanRenderer::FrameToolsInit()
-    {
-        VkCommandPoolCreateInfo commandPoolsInfo {};
-        commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allow each individual command buffer to be reset
-        commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
-
-        VkCommandBufferAllocateInfo commandBuffersInfo{};
-        commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        commandBuffersInfo.pNext = nullptr;
-        commandBuffersInfo.commandBufferCount = 1;
-        commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        fenceInfo.pNext = nullptr;
-
-        VkSemaphoreCreateInfo semaphoresInfo{};
-        semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoresInfo.flags = 0;
-        semaphoresInfo.pNext = nullptr;
-
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = 1;
-        VkDescriptorPoolCreateInfo descriptorPoolInfo{};
-        descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        descriptorPoolInfo.flags = 0;
-        descriptorPoolInfo.maxSets = 1;
-        descriptorPoolInfo.poolSizeCount = 1;
-        descriptorPoolInfo.pPoolSizes = &poolSize;
-
-        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
-        {
-            FrameTools& frameTools = m_frameToolsList[i];
-            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool)));
-            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
-            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer)));
-
-            VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
-            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
-            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
-
-            CreateBuffer(m_allocator, frameTools.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            CreateBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(frameTools.globalShaderDataDescriptorPool)))
-        }
-    }
-
-    void VulkanRenderer::UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-    BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials)
+    void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+    BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
+    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
-        CreateBuffer(m_allocator, m_globalVertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        CreateBuffer(m_allocator, m_currentStaticBuffers.globalVertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         VkBufferDeviceAddressInfo vertexBufferAddressInfo{};
         vertexBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         vertexBufferAddressInfo.pNext = nullptr;
-        vertexBufferAddressInfo.buffer = m_globalVertexBuffer.buffer;
-        m_bufferAddrs.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &vertexBufferAddressInfo);
+        vertexBufferAddressInfo.buffer = m_currentStaticBuffers.globalVertexBuffer.buffer;
+        m_currentStaticBuffers.bufferAddresses.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &vertexBufferAddressInfo);
 
         // Create an index buffer that will all the loaded indices
         VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
-        CreateBuffer(m_allocator, m_globalIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        CreateBuffer(m_allocator, m_currentStaticBuffers.globalIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, indexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
         VkDeviceSize renderObjectBufferSize = sizeof(StaticRenderObject) * staticObjects.GetSize();
-        CreateBuffer(m_allocator, m_staticRenderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         VkBufferDeviceAddressInfo renderObjectBufferAddressInfo{};
         renderObjectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         renderObjectBufferAddressInfo.pNext = nullptr;
-        renderObjectBufferAddressInfo.buffer = m_staticRenderObjectBuffer.buffer;
-        m_bufferAddrs.renderObjectBufferAddress = vkGetBufferDeviceAddress(m_device, &renderObjectBufferAddressInfo);
+        renderObjectBufferAddressInfo.buffer = m_currentStaticBuffers.renderObjectBuffer.buffer;
+        m_currentStaticBuffers.bufferAddresses.renderObjectBufferAddress = vkGetBufferDeviceAddress(m_device, &renderObjectBufferAddressInfo);
 
         VkDeviceSize materialBufferSize = sizeof(MaterialConstants) * materials.GetSize();
-        CreateBuffer(m_allocator, m_materialBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        CreateBuffer(m_allocator, m_currentStaticBuffers.globalMaterialBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, materialBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         VkBufferDeviceAddressInfo materialBufferAddressInfo{};
         materialBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         materialBufferAddressInfo.pNext = nullptr;
-        materialBufferAddressInfo.buffer = m_materialBuffer.buffer;
-        m_bufferAddrs.materialBufferAddress = vkGetBufferDeviceAddress(m_device, &materialBufferAddressInfo);
+        materialBufferAddressInfo.buffer = m_currentStaticBuffers.globalMaterialBuffer.buffer;
+        m_currentStaticBuffers.bufferAddresses.materialBufferAddress = vkGetBufferDeviceAddress(m_device, &materialBufferAddressInfo);
+
+        VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize;
+
+        #if BLITZEN_VULKAN_MESH_SHADER
+            VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();
+            CreateBuffer(m_allocator, m_currentStaticBuffers.globalMeshBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, meshBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            VkBufferDeviceAddressInfo meshBufferAddressInfo{};
+            meshBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+            meshBufferAddressInfo.pNext = nullptr;
+            meshBufferAddressInfo.buffer = m_currentStaticBuffers.globalMeshBuffer.buffer;
+            m_currentStaticBuffers.bufferAddresses.meshBufferAddress = vkGetBufferDeviceAddress(m_device, &meshBufferAddressInfo);
+            stagingBufferSize += meshBufferSize;
+        #endif
 
         AllocatedBuffer stagingBuffer;
         CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-        vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        stagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         void* pData = stagingBuffer.allocation->GetMappedData();
         BlitzenCore::BlitMemCopy(pData, vertices.Data(), vertexBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize, indices.Data(), indexBufferSize);
@@ -236,24 +215,41 @@ namespace BlitzenVulkan
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize, 
         materials.Data(), materialBufferSize);
 
+        #if BLITZEN_VULKAN_MESH_SHADER
+            BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize,
+            meshlets.Data(), meshBufferSize);
+        #endif
+
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_globalVertexBuffer.buffer, vertexBufferSize, 0, 0);
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_globalIndexBuffer.buffer, indexBufferSize, vertexBufferSize, 0);
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_staticRenderObjectBuffer.buffer, renderObjectBufferSize, 
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        m_currentStaticBuffers.globalVertexBuffer.buffer, vertexBufferSize, 
+        0, 0);
+
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        m_currentStaticBuffers.globalIndexBuffer.buffer, indexBufferSize, 
+        vertexBufferSize, 0);
+
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        m_currentStaticBuffers.renderObjectBuffer.buffer, renderObjectBufferSize, 
         vertexBufferSize + indexBufferSize, 0);
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, m_materialBuffer.buffer, materialBufferSize, 
+
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        m_currentStaticBuffers.globalMaterialBuffer.buffer, materialBufferSize, 
         vertexBufferSize + indexBufferSize + renderObjectBufferSize, 0);
+
+        #if BLITZEN_VULKAN_MESH_SHADER
+            CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+            m_currentStaticBuffers.globalMeshBuffer.buffer, meshBufferSize, 
+            vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);
+        #endif
 
         SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
 
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
         vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
-    }
 
-    void VulkanRenderer::UploadTexturesToGPU()
-    {
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         // This would normally be 1, but an old machine that I tested this on, failed because of this. I will look at the documentation for an explanation
@@ -264,21 +260,21 @@ namespace BlitzenVulkan
         poolInfo.maxSets = 1;
         poolInfo.poolSizeCount = 1;
         poolInfo.pPoolSizes = &poolSize;
-        VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, m_pCustomAllocator, &m_textureDescriptorAllocator))
+        VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, m_pCustomAllocator, &m_currentStaticBuffers.textureDescriptorPool))
  
-        AllocateDescriptorSets(m_device, m_textureDescriptorAllocator, &m_textureDescriptorSetLayout, 
-        1, &m_textureDescriptorSet);
+        AllocateDescriptorSets(m_device, m_currentStaticBuffers.textureDescriptorPool, &m_currentStaticBuffers.textureDescriptorSetlayout, 
+        1, &m_currentStaticBuffers.textureDescriptorSet);
 
-        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(m_loadedTextures.GetSize());
+        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(m_currentStaticBuffers.loadedTextures.GetSize());
         for(size_t i = 0; i < imageInfos.GetSize(); ++i)
         {
             imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfos[i].imageView = m_loadedTextures[i].image.imageView;
-            imageInfos[i].sampler = m_loadedTextures[i].sampler;
+            imageInfos[i].imageView = m_currentStaticBuffers.loadedTextures[i].image.imageView;
+            imageInfos[i].sampler = m_currentStaticBuffers.loadedTextures[i].sampler;
         }
 
         VkWriteDescriptorSet write{};
-        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_textureDescriptorSet, 
+        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_currentStaticBuffers.textureDescriptorSet, 
         static_cast<uint32_t>(imageInfos.GetSize()), 0);
         vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
     }
@@ -304,7 +300,6 @@ namespace BlitzenVulkan
 
         // The calculation will be moved to the camera / engine soon 
         m_globalShaderData.projection = context.projectionMatrix;
-        m_globalShaderData.projection.data[5] *= -1;
         m_globalShaderData.view = context.viewMatrix;
         m_globalShaderData.projectionView = context.projectionView;
         m_globalShaderData.viewPosition = context.viewPosition;
@@ -319,7 +314,7 @@ namespace BlitzenVulkan
             GlobalShaderData* pGlobalShaderDataBufferData = reinterpret_cast<GlobalShaderData*>(fTools.globalShaderDataBuffer.allocation->GetMappedData());
             *pGlobalShaderDataBufferData = m_globalShaderData;
             BufferDeviceAddresses* pAddressBufferPointer = reinterpret_cast<BufferDeviceAddresses*>(fTools.bufferDeviceAddrsBuffer.allocation->GetMappedData());
-            *pAddressBufferPointer = m_bufferAddrs;
+            *pAddressBufferPointer = m_currentStaticBuffers.bufferAddresses;
             AllocateDescriptorSets(m_device, fTools.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
             VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
             VkWriteDescriptorSet globalShaderDataWrite{};
@@ -341,43 +336,6 @@ namespace BlitzenVulkan
 
 
 
-        // Pipeline barrier to transtion the layout of the color attachment from undefined to general
-        {
-            VkImageMemoryBarrier2 colorAttachmentBarrier{};
-            VkImageSubresourceRange colorAttachmentSubresource{};
-            colorAttachmentSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            colorAttachmentSubresource.baseMipLevel = 0;
-            colorAttachmentSubresource.levelCount = VK_REMAINING_MIP_LEVELS;
-            colorAttachmentSubresource.baseArrayLayer = 0;
-            colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-            VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 
-            colorAttachmentSubresource);
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &colorAttachmentBarrier);
-        }
-        // Command for color attachment transition recorded
-
-
-
-        // Clearing the color attachment
-        {
-            // Hard coding the color of the screen for now. At some there will be a skybox and it will be calculated with compute shaders
-            VkClearColorValue clearColorAttachment{};
-            clearColorAttachment.float32[0] = 0.f;
-            clearColorAttachment.float32[1] = 0.f;
-            clearColorAttachment.float32[2] = 0.f;
-            clearColorAttachment.float32[3] = 0.f;
-            VkImageSubresourceRange clearColorSubresourceRange{};
-            clearColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            clearColorSubresourceRange.baseMipLevel = 0;
-            clearColorSubresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-            clearColorSubresourceRange.baseArrayLayer = 0;
-            clearColorSubresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-            vkCmdClearColorImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_GENERAL, &clearColorAttachment, 1, &clearColorSubresourceRange);
-        }
-
-
-
         // Transition the layout of the depth attachment and color attachment to be used as rendering attachments
         {
             VkImageMemoryBarrier2 colorAttachmentBarrier{};
@@ -389,7 +347,7 @@ namespace BlitzenVulkan
             colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | 
             VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | 
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAttachmentSubresource);
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAttachmentSubresource);
 
             VkImageMemoryBarrier2 depthAttachmentBarrier{};
             VkImageSubresourceRange depthAttachmentSR{};
@@ -417,7 +375,7 @@ namespace BlitzenVulkan
         {
             VkRenderingAttachmentInfo colorAttachment{};
             CreateRenderingAttachmentInfo(colorAttachment, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
             VkRenderingAttachmentInfo depthAttachment{};
             CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
             VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, {0.f, 0});
@@ -445,9 +403,9 @@ namespace BlitzenVulkan
         {
             VkViewport viewport{};
             viewport.x = 0;
-            viewport.y = 0;
+            viewport.y = static_cast<float>(m_drawExtent.height); // Start from full height (flips y axis)
             viewport.width = static_cast<float>(m_drawExtent.width);
-            viewport.height = static_cast<float>(m_drawExtent.height);
+            viewport.height = -static_cast<float>(m_drawExtent.height);// Move a negative amount of full height (flips y axis)
             viewport.minDepth = 0.f;
             viewport.maxDepth = 1.f;
             vkCmdSetViewport(fTools.commandBuffer, 0, 1, &viewport);
@@ -459,20 +417,24 @@ namespace BlitzenVulkan
             vkCmdSetScissor(fTools.commandBuffer, 0, 1, &scissor);
         }
 
-        VkDescriptorSet descriptorSets [2] = {globalShaderDataSet, m_textureDescriptorSet};
+        VkDescriptorSet descriptorSets [2] = {globalShaderDataSet, m_currentStaticBuffers.textureDescriptorSet};
         vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 0,
         2, descriptorSets, 0, nullptr);
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
-        vkCmdBindIndexBuffer(fTools.commandBuffer, m_globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         // Draw calls (the 4 is hardcoded but it will be the size of the draw context)
         for(uint32_t i = 0; i < context.drawCount; ++i)
         {
-            ShaderPushConstant index;
-            index.drawTag = context.pDraws[i].objectTag; // Only one object currently so I am hardcoding the index to test it
-            vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
-            sizeof(ShaderPushConstant), &index);
-            vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);
+            #if BLITZEN_VULKAN_MESH_SHADER
+                DrawMeshTastsNv(m_initHandles.instance, fTools.commandBuffer, context.pDraws[i].meshletCount, context.pDraws[i].firstMeshlet);
+            #else
+                ShaderPushConstant index;
+                index.drawTag = context.pDraws[i].objectTag; // Only one object currently so I am hardcoding the index to test it
+                vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
+                sizeof(ShaderPushConstant), &index);
+                vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);
+            #endif
         }
 
         vkCmdEndRendering(fTools.commandBuffer);
@@ -532,8 +494,8 @@ namespace BlitzenVulkan
             presentImageSR.baseArrayLayer = 0;
             presentImageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], presentImageBarrier, VK_PIPELINE_STAGE_2_BLIT_BIT, 
-            VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, presentImageSR);
+            VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, presentImageSR);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
 
         }
@@ -611,21 +573,23 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)
     {
-        //Wait for the current frame to be done with the swapchain
-        vkDeviceWaitIdle(m_device);
-
         //Destroy the current swapchain
-        for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
+        /*for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
         {
             vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], nullptr);
-        }
-        vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, nullptr);
+        }*/
 
+        VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
         CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, 
-        m_presentQueue, m_computeQueue, m_pCustomAllocator);
+        m_presentQueue, m_computeQueue, m_pCustomAllocator, newSwapchain, m_initHandles.swapchain);
 
-        //The draw extent should also be updated depending on if the swapchain got bigger or smaller
+        // The draw extent should also be updated depending on if the swapchain got bigger or smaller
         m_drawExtent.width = std::min(windowWidth, m_drawExtent.width);
         m_drawExtent.height = std::min(windowHeight, m_drawExtent.height);
+
+        // Wait for the GPU to be done with the swapchain and destroy the swapchain
+        vkDeviceWaitIdle(m_device);
+        vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, nullptr);
+        m_initHandles.swapchain = newSwapchain;
     }
 }

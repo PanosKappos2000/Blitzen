@@ -12,6 +12,8 @@
 #define BLIT_DEFAULT_MATERIAL_NAME  "blit_default_material"
 #define BLIT_DEFAULT_MATERIAL_COUNT  1
 
+#define BLIT_MAX_MESH_COUNT         10000
+
 namespace BlitzenEngine
 {
     struct TextureStats
@@ -49,6 +51,9 @@ namespace BlitzenEngine
         uint32_t indexCount;
         uint32_t firstIndex;
 
+        uint32_t meshletCount = 0;
+        uint32_t firstMeshlet;
+
         MaterialStats* pMaterial;
     };
 
@@ -70,9 +75,11 @@ namespace BlitzenEngine
 
         BlitCL::DynamicArray<BlitML::Vertex> vertices;
         BlitCL::DynamicArray<uint32_t> indices;
+        BlitCL::DynamicArray<BlitML::Meshlet> meshlets;
 
         // Probably should have Mesh assets here instead of surfaces
-        BlitCL::DynamicArray<MeshAssets> meshes;
+        MeshAssets meshes[BLIT_MAX_MESH_COUNT];
+        size_t currentMeshIndex = 0;
     };
 
     uint8_t LoadResourceSystem(EngineResources& resources);
@@ -84,6 +91,9 @@ namespace BlitzenEngine
 
     void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName);
+
+
+    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets = 0);
 
 
     // Placeholder to load some default resources while testing the systems
