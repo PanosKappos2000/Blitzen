@@ -26,11 +26,9 @@ namespace BlitCL
             if (m_size > 0)
             {
                 m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
-                BlitzenCore::BlitZeroMemory(m_pBlock, m_capacity * sizeof(T));
+                BlitzenCore::BlitZeroMemory(m_pBlock, m_size * sizeof(T));
                 return;
             }
-
-            m_capacity = 0;
         }
 
         inline size_t GetSize() { return m_size; }
@@ -39,6 +37,12 @@ namespace BlitCL
         inline T& Front() { BLIT_ASSERT_DEBUG(m_size) m_pBlock[0]; }
         inline T& Back() { BLIT_ASSERT_DEBUG(m_size) return m_pBlock[m_size - 1]; }
         inline T* Data() {return m_pBlock; }
+
+        void Fill(T value)
+        {
+            if(m_size > 0)
+                BlitzenCore::BlitMemSet(m_pBlock, value, m_size * sizeof(T));
+        }
 
         void Resize(size_t newSize)
         {

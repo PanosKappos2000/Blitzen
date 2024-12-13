@@ -51,6 +51,9 @@ namespace BlitzenEngine
         uint32_t indexCount;
         uint32_t firstIndex;
 
+        uint32_t meshletCount;
+        uint32_t firstMeshlet;
+
         MaterialStats* pMaterial;
     };
 
@@ -72,6 +75,7 @@ namespace BlitzenEngine
 
         BlitCL::DynamicArray<BlitML::Vertex> vertices;
         BlitCL::DynamicArray<uint32_t> indices;
+        BlitCL::DynamicArray<BlitML::Meshlet> meshlets;
 
         // Probably should have Mesh assets here instead of surfaces
         MeshAssets meshes[BLIT_MAX_MESH_COUNT];
@@ -89,7 +93,7 @@ namespace BlitzenEngine
     const char* specularMapName, const char* materialName);
 
 
-    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename);
+    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets = 0);
 
 
     // Placeholder to load some default resources while testing the systems

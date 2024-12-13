@@ -72,8 +72,15 @@ namespace BlitzenEngine
 
 
 
-    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename)
+    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets /*= 0*/)
     {
+        if(resources.currentMeshIndex > BLIT_MAX_MESH_COUNT)
+        {
+            BLIT_ERROR("Max mesh count: ( %i ) reached!", BLIT_MAX_MESH_COUNT)
+            BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
+            return 0;
+        }
+
         ObjFile file;
         if(!objParseFile(file, filename))
             return 0;
@@ -117,17 +124,36 @@ namespace BlitzenEngine
 		meshopt_remapIndexBuffer(resources.indices.Data() + previousIndexBufferSize, 0, indexCount, remap.Data());
 
         PrimitiveSurface newSurface;
-        newSurface.indexCount = indexCount;
-        newSurface.firstIndex = previousIndexBufferSize;
+        newSurface.indexCount = static_cast<uint32_t>(indexCount);
+        newSurface.firstIndex = static_cast<uint32_t>(previousIndexBufferSize);
         newSurface.pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
         resources.meshes[resources.currentMeshIndex].surfaces.PushBack(newSurface);
         ++resources.currentMeshIndex;
+
+        if(buildMeshlets)
+        {
+            BlitCL::DynamicArray<uint8_t> meshletVertices(resources.vertices.GetSize());
+            meshletVertices.Fill(0xff);
+
+            for (size_t i = 0; i < resources.indices.GetSize(); i += 3)
+            {
+                size_t vtxIndexA = static_cast<size_t>(resources.indices[i + 0]);
+                size_t vtxIndexB = static_cast<size_t>(resources.indices[i + 1]);
+                size_t vtxIndexC = static_cast<size_t>(resources.indices[i + 2]);
+
+                uint8_t& vtxA = meshletVertices[vtxIndexA];
+                uint8_t& vtxB = meshletVertices[vtxIndexB];
+                uint8_t vtxC = meshletVertices[vtxIndexC];
+            }
+        }
+
+        return 1;
     }
 
 
 
     void LoadDefaultData(EngineResources& resources)
     {
-        LoadMeshFromObj(resources, "Assets/Meshes/well.obj");
+        LoadMeshFromObj(resources, "Assets/Meshes/well.obj", 1);
     }
 }

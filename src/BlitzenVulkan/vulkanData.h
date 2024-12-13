@@ -8,7 +8,7 @@
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
 
-// Temporary to debug my math library
+// Right now I don't know if I should rely on this or my own math library
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
@@ -26,18 +26,21 @@
 #define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
 
 #ifdef NDEBUG
-    #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  2
+    #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
     #define VK_CHECK(expr)                                          expr;
 #else
-    #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT                  3
+    #define BLITZEN_VULKAN_VALIDATION_LAYERS                        1
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 
+
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0 
+#define BLITZEN_VULKAN_MESH_SHADER              1 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           1000000
+
+#define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
 namespace BlitzenVulkan
 {
