@@ -148,7 +148,7 @@ namespace BlitzenEngine
 
             drawCount = static_cast<uint32_t>(renders.GetSize());
 
-            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, renders);
+            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, renders, m_resources.meshlets);
             vulkanData.pTextures = m_resources.textures;
             vulkanData.textureCount = m_resources.currentTextureIndex;
             vulkanData.pMaterials = m_resources.materials;

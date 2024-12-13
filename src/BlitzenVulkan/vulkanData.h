@@ -7,6 +7,7 @@
 
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
+#include "Application/resourceLoading.h"
 
 // Right now I don't know if I should rely on this or my own math library
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -58,23 +59,26 @@ namespace BlitzenVulkan
         uint32_t materialTag;
     };
 
-    // Holds everything that needs to be passed to the UploadDataToGPUAndSetupForRendering function
+    // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
     struct GPUData
     {
         BlitCL::DynamicArray<BlitML::Vertex>& vertices;
 
         BlitCL::DynamicArray<uint32_t>& indices;
 
+        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets;
+
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects;
 
-        void* pTextures; 
+        BlitzenEngine::TextureStats* pTextures; 
         size_t textureCount;
 
-        void* pMaterials;
+        BlitzenEngine::MaterialStats* pMaterials;
         size_t materialCount;
 
-        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o)
-            :vertices(v), indices(i), staticObjects(o)
+        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o, 
+        BlitCL::DynamicArray<BlitML::Meshlet>& m)
+            :vertices(v), indices(i), staticObjects(o), meshlets(m)
         {}
     };
 

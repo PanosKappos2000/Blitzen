@@ -563,8 +563,16 @@ namespace BlitzenVulkan
             VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferInfo, &m_placeholderCommands))
         }
 
+        FrameToolsInit();
+
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {windowWidth, windowHeight};
+
+        // Initlize the rendering attachments
+        CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
         return 1;
     }
@@ -737,20 +745,9 @@ namespace BlitzenVulkan
     {
         vkDeviceWaitIdle(m_device);
 
-        for(size_t i = 0; i < m_loadedTextures.GetSize(); ++i)
-        {
-            m_loadedTextures[i].image.CleanupResources(m_allocator, m_device);
-        }
-
         vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
 
-        vkDestroyDescriptorPool(m_device, m_textureDescriptorAllocator, m_pCustomAllocator);
-        vkDestroyDescriptorSetLayout(m_device, m_textureDescriptorSetLayout, m_pCustomAllocator);
-
-        vmaDestroyBuffer(m_allocator, m_materialBuffer.buffer, m_materialBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, m_staticRenderObjectBuffer.buffer, m_staticRenderObjectBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, m_globalVertexBuffer.buffer, m_globalVertexBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, m_globalIndexBuffer.buffer, m_globalIndexBuffer.allocation);
+        m_currentStaticBuffers.Cleanup(m_allocator, m_device);
 
         vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
 

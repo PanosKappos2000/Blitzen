@@ -38,9 +38,52 @@ namespace BlitzenVulkan
         VkSemaphore readyToPresentSemaphore;
 
         // Any buffers that will be getting their data update every frame, need to be inside the frame tools struct
+        // Actually the above is kind of naive, the buffers will be separated into their own struct, so that they can be reloaded separately if necessary
+        // TODO: See above
         VkDescriptorPool globalShaderDataDescriptorPool;
         AllocatedBuffer globalShaderDataBuffer;
         AllocatedBuffer bufferDeviceAddrsBuffer;
+    };
+
+    // Holds data for buffers that will be loaded once and will be used for every object
+    struct StaticBuffers
+    {
+        AllocatedBuffer globalVertexBuffer;
+
+        AllocatedBuffer globalIndexBuffer;
+
+        AllocatedBuffer globalMeshBuffer;
+
+        AllocatedBuffer globalMaterialBuffer;
+
+        AllocatedBuffer renderObjectBuffer;
+
+        // Holds the addresses of each one of the above buffers(except global shader data buffer)
+        BufferDeviceAddresses bufferAddresses;
+
+        // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
+        VkDescriptorPool textureDescriptorPool;
+        VkDescriptorSetLayout textureDescriptorSetlayout;
+        VkDescriptorSet textureDescriptorSet;
+
+        // Holds all vulkan texture data for each texture loaded to the GPU
+        BlitCL::DynamicArray<TextureData> loadedTextures;
+
+        inline void Cleanup(VmaAllocator allocator, VkDevice device){
+            vmaDestroyBuffer(allocator, renderObjectBuffer.buffer, renderObjectBuffer.allocation);
+            vmaDestroyBuffer(allocator, globalMaterialBuffer.buffer, globalMaterialBuffer.allocation);
+            //vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
+            vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
+            vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
+
+            // Destroy the texture image descriptor set resources
+            vkDestroyDescriptorPool(device, textureDescriptorPool, nullptr);
+            vkDestroyDescriptorSetLayout(device, textureDescriptorSetlayout, nullptr);
+            for(size_t i = 0; i < loadedTextures.GetSize(); ++i)
+            {
+                loadedTextures[i].image.CleanupResources(allocator, device);
+            }
+        }
     };
 
     class VulkanRenderer
@@ -68,10 +111,8 @@ namespace BlitzenVulkan
 
         void FrameToolsInit();
 
-        void UploadBuffersToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+        void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials);
-
-        void UploadTexturesToGPU();
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -103,21 +144,11 @@ namespace BlitzenVulkan
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;
 
-        // Buffers that will be passed only once during loading and will hold data that will be accessed by shaders
-        AllocatedBuffer m_globalVertexBuffer;
-        AllocatedBuffer m_globalIndexBuffer;
-        AllocatedBuffer m_materialBuffer;
-        AllocatedBuffer m_staticRenderObjectBuffer;
+        StaticBuffers m_currentStaticBuffers;
 
         // Structures needed to pass the global shader data
         VkDescriptorSetLayout m_globalShaderDataLayout;
         GlobalShaderData m_globalShaderData;
-        BufferDeviceAddresses m_bufferAddrs;
-
-        // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
-        VkDescriptorPool m_textureDescriptorAllocator;
-        VkDescriptorSetLayout m_textureDescriptorSetLayout;
-        VkDescriptorSet m_textureDescriptorSet;
 
         // Pipeline used to draw opaque objects
         VkPipeline m_opaqueGraphicsPipeline;
@@ -131,9 +162,6 @@ namespace BlitzenVulkan
 
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
-
-        // Holds all vulkan texture data for each texture loaded to the GPU
-        BlitCL::DynamicArray<TextureData> m_loadedTextures;
 
         // I do not need a sampler for each texture and there is a limit for each device, so I'll need to create only a few samlplers
         VkSampler m_placeholderSampler;

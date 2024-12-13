@@ -127,25 +127,63 @@ namespace BlitzenEngine
         newSurface.indexCount = static_cast<uint32_t>(indexCount);
         newSurface.firstIndex = static_cast<uint32_t>(previousIndexBufferSize);
         newSurface.pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
-        resources.meshes[resources.currentMeshIndex].surfaces.PushBack(newSurface);
-        ++resources.currentMeshIndex;
 
         if(buildMeshlets)
         {
-            BlitCL::DynamicArray<uint8_t> meshletVertices(resources.vertices.GetSize());
+            BlitML::Meshlet meshlet = {};
+
+            BlitCL::DynamicArray<uint8_t> meshletVertices(resources.vertices.GetSize() - previousVertexBufferSize);
             meshletVertices.Fill(0xff);
 
-            for (size_t i = 0; i < resources.indices.GetSize(); i += 3)
+            newSurface.firstMeshlet = resources.meshlets.GetSize();
+
+            for (size_t i = previousIndexBufferSize; i < resources.indices.GetSize(); i += 3)
             {
-                size_t vtxIndexA = static_cast<size_t>(resources.indices[i + 0]);
-                size_t vtxIndexB = static_cast<size_t>(resources.indices[i + 1]);
-                size_t vtxIndexC = static_cast<size_t>(resources.indices[i + 2]);
+                uint32_t vtxIndexA = resources.indices[i + 0];
+                uint32_t vtxIndexB = resources.indices[i + 1];
+                uint32_t vtxIndexC = resources.indices[i + 2];
 
                 uint8_t& vtxA = meshletVertices[vtxIndexA];
                 uint8_t& vtxB = meshletVertices[vtxIndexB];
                 uint8_t vtxC = meshletVertices[vtxIndexC];
+
+                // If the current meshlet's vertex count + the vertices that are going to be added next is over the meshlet vertex limit, 
+                // It gets added to the dynamic array and a new entry is created
+                if (meshlet.vertexCount + (vtxA == 0xff) + (vtxB == 0xff) + (vtxC == 0xff) > 64 || meshlet.indexCount + 3 > 126)
+		        {
+                    newSurface.meshletCount++;
+			        resources.meshlets.PushBack(meshlet);
+
+			        for (size_t j = 0; j < meshlet.vertexCount; ++j)
+				        meshletVertices[meshlet.vertices[j]] = 0xff;
+			        
+                    meshlet = {};
+		        }
+
+                if (vtxA == 0xff)
+		        {
+		        	vtxA = meshlet.vertexCount;
+		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexA;
+		        }
+		        if (vtxB == 0xff)
+		        {
+		        	vtxB = meshlet.vertexCount;
+		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexB;
+		        }
+		        if (vtxC == 0xff)
+		        {
+		        	vtxC = meshlet.vertexCount;
+		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexC;
+		        }
+
+                meshlet.indices[meshlet.indexCount++] = vtxA;
+		        meshlet.indices[meshlet.indexCount++] = vtxB;
+		        meshlet.indices[meshlet.indexCount++] = vtxC;
             }
         }
+
+        resources.meshes[resources.currentMeshIndex].surfaces.PushBack(newSurface);
+        ++resources.currentMeshIndex;
 
         return 1;
     }
