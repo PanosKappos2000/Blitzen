@@ -5,7 +5,7 @@
 
 #define FAST_OBJ_IMPLEMENTATION
 #include "fast_obj.h"
-#include "objparser.h"// Using some help from Arseny Kapoulnike
+#include "objparser.h"// Using some help from Arseny Kapoulkine
 #include "Meshoptimizer/meshoptimizer.h"
 
 namespace BlitzenEngine
@@ -107,8 +107,8 @@ namespace BlitzenEngine
 		    vtx.normal.x = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 0];
 		    vtx.normal.y = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 1];
 		    vtx.normal.z = vertexNormalIndex < 0 ? 1.f : file.vn[vertexNormalIndex * 3 + 2];
-		    vtx.uvX = vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0];
-		    vtx.uvY = vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1];
+		    vtx.uvX = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0]);
+		    vtx.uvY = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1]);
         }
 
         BlitCL::DynamicArray<uint32_t> remap(indexCount);
@@ -122,6 +122,12 @@ namespace BlitzenEngine
         meshopt_remapVertexBuffer(resources.vertices.Data() + previousVertexBufferSize, 
         vertices.Data(), indexCount, sizeof(BlitML::Vertex), remap.Data());
 		meshopt_remapIndexBuffer(resources.indices.Data() + previousIndexBufferSize, 0, indexCount, remap.Data());
+
+        // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a mesh
+        meshopt_optimizeVertexCache(resources.indices.Data() + previousIndexBufferSize, resources.indices.Data() + previousIndexBufferSize, 
+        indexCount, vertexCount);
+	    meshopt_optimizeVertexFetch(resources.vertices.Data() + previousVertexBufferSize, resources.indices.Data() + previousIndexBufferSize, 
+        indexCount, resources.vertices.Data() + previousVertexBufferSize, vertexCount, sizeof(BlitML::Vertex));
 
         PrimitiveSurface newSurface;
         newSurface.indexCount = static_cast<uint32_t>(indexCount);
@@ -149,7 +155,7 @@ namespace BlitzenEngine
 
                 // If the current meshlet's vertex count + the vertices that are going to be added next is over the meshlet vertex limit, 
                 // It gets added to the dynamic array and a new entry is created
-                if (meshlet.vertexCount + (vtxA == UINT32_MAX) + (vtxB == UINT32_MAX) + (vtxC == UINT32_MAX) > 64 || meshlet.indexCount + 3 > 126)
+                if (meshlet.vertexCount + (vtxA == UINT32_MAX) + (vtxB == UINT32_MAX) + (vtxC == UINT32_MAX) > 64 || meshlet.triangleCount >= 126)
 		        {
                     newSurface.meshletCount++;
 			        resources.meshlets.PushBack(meshlet);
@@ -176,9 +182,15 @@ namespace BlitzenEngine
 		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexC;
 		        }
 
-                meshlet.indices[meshlet.indexCount++] = vtxA;
-		        meshlet.indices[meshlet.indexCount++] = vtxB;
-		        meshlet.indices[meshlet.indexCount++] = vtxC;
+                meshlet.indices[meshlet.triangleCount * 3 + 0] = vtxA;
+		        meshlet.indices[meshlet.triangleCount * 3 + 1] = vtxB;
+		        meshlet.indices[meshlet.triangleCount * 3 + 2] = vtxC;
+                meshlet.triangleCount++;
+            }
+            if(meshlet.triangleCount)
+            {
+                resources.meshlets.PushBack(meshlet);
+                newSurface.meshletCount++;
             }
         }
 

@@ -15,7 +15,6 @@ layout(location = 1) out vec3 outNormal;
 layout(location = 2) out uint outMaterialTag;
 layout(location = 3) out vec3 outModel;
 
-
 void main()
 {
     Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
@@ -24,7 +23,7 @@ void main()
     vec4 modelPosition = renderObject.worldMatrix * vec4(currentVertex.position, 1);
     gl_Position = shaderData.projectionView * modelPosition;
 
-    outUv = vec2(currentVertex.uvX, currentVertex.uvY);
+    outUv = vec2(float(currentVertex.uvX), float(currentVertex.uvY));
     outMaterialTag = renderObject.materialTag;
     outNormal =  currentVertex.normal;
     outModel = modelPosition.xyz;
