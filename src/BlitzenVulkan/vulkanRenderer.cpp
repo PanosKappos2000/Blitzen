@@ -77,7 +77,7 @@ namespace BlitzenVulkan
         #if BLITZEN_VULKAN_MESH_SHADER
             UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials, gpuData.meshlets);
         #else
-            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials);
+            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials, gpuData.meshlets);
         #endif
 
         /* Main opaque object graphics pipeline */

@@ -1,6 +1,6 @@
 #include "platform.h"
 #include "Core/blitEvents.h"
-#include <vulkan/vulkan.h>
+#include "BlitzenVulkan/vulkanData.h"
 #include <cstring>
 
 namespace BlitzenPlatform
