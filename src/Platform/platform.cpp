@@ -517,8 +517,8 @@ namespace BlitzenPlatform
                         // Fire the event. The application layer should pick this up, but not handle it
                         // as it shouldn be visible to other parts of the application.
                         BlitzenCore::EventContext context;
-                        context.data.ui16[0] = configureEvent->width;
-                        context.data.ui16[1] = configureEvent->height;
+                        context.data.ui32[0] = configureEvent->width;
+                        context.data.ui32[1] = configureEvent->height;
                         BlitzenCore::FireEvent(BlitzenCore::BlitEventType::WindowResize, 0, context);
                         break;
                     }
