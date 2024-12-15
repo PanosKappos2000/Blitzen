@@ -77,7 +77,7 @@ namespace BlitzenVulkan
             #if BLITZEN_VULKAN_MESH_SHADER
                 vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
             #endif
-            //vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
+            vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
             vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
             vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
 
@@ -118,7 +118,7 @@ namespace BlitzenVulkan
 
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets);
+        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<VkDrawIndexedIndirectCommand>& indirectDraws);
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 

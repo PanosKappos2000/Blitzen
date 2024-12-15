@@ -96,8 +96,10 @@ namespace BlitzenEngine
         isRunning = 1;
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
-        static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
+        //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        //static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        static_cast<float>(m_platformData.windowHeight), 0.1f);
         BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
@@ -458,8 +460,10 @@ namespace BlitzenEngine
         }
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
-        10000.f, 0.1f);
+        //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
+        //10000.f, 0.1f);
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        static_cast<float>(m_platformData.windowHeight), 0.1f);
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
     }
 }

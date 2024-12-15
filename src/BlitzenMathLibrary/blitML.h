@@ -211,6 +211,22 @@ namespace BlitML
         return res;
     }
 
+    inline mat4 InfiniteZPerspective(float fov, float aspectRatio, float near)
+    {
+	    float halfTanFov = 1.0f / tanf(fov / 2.0f);
+        mat4 res(0);
+        res.data[0] = halfTanFov / aspectRatio;
+        res.data[5] = halfTanFov;
+        res.data[11] = -1.0f;
+        res.data[14] = near;
+        return res;
+	    /*return glm::mat4(
+		f / aspectRatio, 0.0f, 0.0f, 0.0f,
+		0.0f, f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, zNear, 0.0f);*/
+    }
+
     // Creates and returns a look-at matrix, or a matrix looking at target from the perspective of position.
     inline mat4 LookAt(vec3& position, vec3& target, vec3& up)
     {
