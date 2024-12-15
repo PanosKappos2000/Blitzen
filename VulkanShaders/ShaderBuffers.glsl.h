@@ -27,6 +27,16 @@ layout(buffer_reference, std430) readonly buffer MeshBuffer
     Meshlet meshlets[];
 };
 
+struct IndirectDraw
+{
+    uint indirectData[5];
+};
+
+layout(buffer_reference, std430) readonly buffer IndirectBuffer
+{
+    IndirectDraw indirectDraws[];
+};
+
 struct RenderObject
 {
     mat4 worldMatrix;

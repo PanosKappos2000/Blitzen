@@ -44,6 +44,7 @@ add_executable(BlitzenEngine
                 src/VendorCode/Meshoptimizer/quantization.cpp
                 src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp
                 src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
+                src/VendorCode/Meshoptimizer/clusterizer.cpp
                 #src/VendorCode/volk/volk.c
                 )
 

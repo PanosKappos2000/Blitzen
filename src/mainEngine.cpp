@@ -144,6 +144,7 @@ namespace BlitzenEngine
                     draws[s].objectTag = static_cast<uint32_t>(s);
                 }
             }
+            // This is only accessible from the pipeline with the vertex shader
             BlitML::vec3 tempTrans(0.f, -10.f, -50.f);
             renders[0].modelMatrix = BlitML::Translate(tempTrans);
 

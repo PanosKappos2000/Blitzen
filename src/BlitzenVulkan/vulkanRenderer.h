@@ -58,6 +58,8 @@ namespace BlitzenVulkan
 
         AllocatedBuffer renderObjectBuffer;
 
+        AllocatedBuffer drawIndirectBuffer;
+
         // Holds the addresses of each one of the above buffers(except global shader data buffer)
         BufferDeviceAddresses bufferAddresses;
 
@@ -75,6 +77,7 @@ namespace BlitzenVulkan
             #if BLITZEN_VULKAN_MESH_SHADER
                 vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
             #endif
+            //vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
             vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
             vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
 

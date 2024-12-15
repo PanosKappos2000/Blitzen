@@ -436,6 +436,7 @@ namespace BlitzenVulkan
             // Allows shaders to use array with undefined size for descriptors, needed for textures
             vulkan12Features.runtimeDescriptorArray = true;
             vulkan12Features.shaderFloat16 = true;
+            vulkan12Features.storageBuffer8BitAccess = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
