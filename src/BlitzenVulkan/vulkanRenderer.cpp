@@ -66,6 +66,43 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
         }
 
+        // This will hold all the data needed to record all the draw commands indirectly, using a GPU buffer
+        BlitCL::DynamicArray<VkDrawIndexedIndirectCommand> indirectDraws;
+        // This holds data that maps to one draw call for one surface 
+        // It will be the same size as the above array and it will be indexed into for each object using some logic in the shaders
+        BlitCL::DynamicArray<StaticRenderObject> renderObjects;
+
+        for(size_t i = 0; i < gpuData.meshCount; ++i)
+        {
+            // Since there will only be one array that holds all the data for each surfaces array
+            // The indirect draw array needs to be resized and write to the parts after the previous last element
+            size_t previousIndirectDrawSize = indirectDraws.GetSize();
+            indirectDraws.Resize(gpuData.pMeshes[i].surfaces.GetSize() + previousIndirectDrawSize);
+
+            // This one works the same as the above
+            size_t previousRenderObjectsSize = renderObjects.GetSize();
+            renderObjects.Resize(indirectDraws.GetSize());
+
+            for(size_t s = 0; s < gpuData.pMeshes[i].surfaces.GetSize(); ++i)
+            {
+                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[i].surfaces[s];
+                VkDrawIndexedIndirectCommand& currentIDraw = indirectDraws[previousIndirectDrawSize + s];
+                StaticRenderObject& currentObject = renderObjects[previousRenderObjectsSize + s];
+
+                // A VkDrawIndexedIndirectCommand holds all the data needed for one vkCmdDrawIndexed command
+                // This data can be retrieved from each surface that a mesh has and needs to be drawn
+                currentIDraw.firstIndex = currentSurface.firstIndex;
+                currentIDraw.indexCount = currentSurface.indexCount;
+                currentIDraw.instanceCount = 1;
+                currentIDraw.firstInstance = 0;
+                currentIDraw.vertexOffset = 0;
+
+                currentObject.materialTag = currentSurface.pMaterial->materialTag;
+                BlitML::vec3 transform(0.f, -10.f, -50.f);
+                currentObject.modelMatrix = BlitML::Translate(transform);
+            }
+        }
+
         // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
         for(size_t i = 0; i < gpuData.materialCount; ++i)
@@ -75,9 +112,9 @@ namespace BlitzenVulkan
         }
 
         #if BLITZEN_VULKAN_MESH_SHADER
-            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials, gpuData.meshlets);
+            UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets);
         #else
-            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials, gpuData.meshlets);
+            UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets);
         #endif
 
         /* Main opaque object graphics pipeline */

@@ -67,7 +67,8 @@ namespace BlitzenVulkan
 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets;
 
-        BlitCL::DynamicArray<StaticRenderObject>& staticObjects;
+        BlitzenEngine::MeshAssets* pMeshes;
+        size_t meshCount;
 
         BlitzenEngine::TextureStats* pTextures; 
         size_t textureCount;
@@ -75,9 +76,8 @@ namespace BlitzenVulkan
         BlitzenEngine::MaterialStats* pMaterials;
         size_t materialCount;
 
-        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<StaticRenderObject>& o, 
-        BlitCL::DynamicArray<BlitML::Meshlet>& m)
-            :vertices(v), indices(i), staticObjects(o), meshlets(m)
+        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<BlitML::Meshlet>& m)
+            :vertices(v), indices(i), meshlets(m)
         {}
     };
 
