@@ -470,20 +470,22 @@ namespace BlitzenVulkan
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
+        #if BLITZEN_VULKAN_MESH_SHADER
         // Draw calls (the 4 is hardcoded but it will be the size of the draw context)
-        for(uint32_t i = 0; i < context.drawCount; ++i)
-        {
-            #if BLITZEN_VULKAN_MESH_SHADER
+            for(uint32_t i = 0; i < context.drawCount; ++i)
+            {
+            
                 DrawMeshTastsNv(m_initHandles.instance, fTools.commandBuffer, context.pDraws[i].meshletCount, context.pDraws[i].firstMeshlet);
-            #else
                 /*ShaderPushConstant index;
                 index.drawTag = context.pDraws[i].objectTag; // Only one object currently so I am hardcoding the index to test it
                 vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
                 sizeof(ShaderPushConstant), &index);
                 vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);*/
-            #endif
-        }
-        vkCmdDrawIndexedIndirect(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 0, context.drawCount, sizeof(VkDrawIndexedIndirectCommand));
+            }
+        #else
+            vkCmdDrawIndexedIndirect(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+            0, context.drawCount, sizeof(VkDrawIndexedIndirectCommand));// Ah, the beauty of draw indirect
+        #endif
 
         vkCmdEndRendering(fTools.commandBuffer);
 
