@@ -41,6 +41,10 @@ add_executable(BlitzenEngine
                 src/VendorCode/fast_obj.h
                 src/VendorCode/objparser.cpp
                 src/VendorCode/Meshoptimizer/indexgenerator.cpp
+                src/VendorCode/Meshoptimizer/quantization.cpp
+                src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp
+                src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
+                src/VendorCode/Meshoptimizer/clusterizer.cpp
                 #src/VendorCode/volk/volk.c
                 )
 

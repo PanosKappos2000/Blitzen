@@ -96,8 +96,10 @@ namespace BlitzenEngine
         isRunning = 1;
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
-        static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
+        //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        //static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        static_cast<float>(m_platformData.windowHeight), 0.1f);
         BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
@@ -116,45 +118,37 @@ namespace BlitzenEngine
         // This is declared outide the setup for rendering braces, as it will be passed to render context during the loop
         BlitzenVulkan::DrawObject* draws = reinterpret_cast<BlitzenVulkan::DrawObject*>(
         BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::LinearAlloc, 10000 * sizeof(BlitzenVulkan::DrawObject)));
-        uint32_t drawCount;
+        uint32_t drawCount = 0;
         #if BLITZEN_VULKAN
         {
-            BlitCL::DynamicArray<BlitzenVulkan::StaticRenderObject> renders;
-            // Combine all the surfaces of all the meshes into the render object array
+            // Combine all the surfaces from every mesh, into the draw objects (this will not be needed once I switch to indirect drawing)
             for(size_t i = 0; i < m_resources.currentMeshIndex; ++i)
             {
                 // Hold on to the previous size of the array
-                size_t previousSize = renders.GetSize();
-                // Combine the previous size with the size of the current surfaces array
-                renders.Resize(previousSize + m_resources.meshes[i].surfaces.GetSize());
-                // Add surface data to the render object
-                for(size_t s = previousSize; s < renders.GetSize(); ++s )
+                size_t previousSize = drawCount;
+                // Add surface data to the draw object
+                for(size_t s = 0; s < m_resources.meshes[i].surfaces.GetSize(); ++s)
                 {
-                    PrimitiveSurface& currentSurface = m_resources.meshes[i].surfaces[s - previousSize];
-                    // This is hardcoded but later there will be entities that use the mesh and have their own position
-                    BlitML::vec3 modelPosition(0.f, 0.f, 0.f);
-                    renders[s].modelMatrix = BlitML::Translate(modelPosition);
-                    // Give the material index to the render object
-                    renders[s].materialTag = currentSurface.pMaterial->materialTag;
+                    PrimitiveSurface& currentSurface = m_resources.meshes[i].surfaces[s];
+                    BlitzenVulkan::DrawObject& currentDraw = draws[previousSize + s];
 
-                    draws[s].firstIndex = currentSurface.firstIndex;
-                    draws[s].indexCount = currentSurface.indexCount;
-                    draws[s].firstMeshlet = currentSurface.firstMeshlet;
-                    draws[s].meshletCount = currentSurface.meshletCount;
-                    draws[s].objectTag = static_cast<uint32_t>(s);
+                    currentDraw.firstIndex = currentSurface.firstIndex;
+                    currentDraw.indexCount = currentSurface.indexCount;
+                    currentDraw.firstMeshlet = currentSurface.firstMeshlet;
+                    currentDraw.meshletCount = currentSurface.meshletCount;
+                    currentDraw.objectTag = drawCount;
+                    drawCount++;
                 }
             }
-            BlitML::vec3 tempTrans(0.f, -10.f, -50.f);
-            renders[0].modelMatrix = BlitML::Translate(tempTrans);
 
-
-            drawCount = static_cast<uint32_t>(renders.GetSize());
-
-            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, renders, m_resources.meshlets);
+            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);
             vulkanData.pTextures = m_resources.textures;
+            // The index where the resource system stopped when loading is the amount of mesh assets that were added to the array
             vulkanData.textureCount = m_resources.currentTextureIndex;
             vulkanData.pMaterials = m_resources.materials;
             vulkanData.materialCount = m_resources.currentMaterialIndex;
+            vulkanData.pMeshes = m_resources.meshes;
+            vulkanData.meshCount = m_resources.currentMeshIndex;
 
             pVulkan.Data()->UploadDataToGPUAndSetupForRendering(vulkanData);
         }// Vulkan renderer ready
@@ -466,8 +460,10 @@ namespace BlitzenEngine
         }
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
-        10000.f, 0.1f);
+        //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
+        //10000.f, 0.1f);
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        static_cast<float>(m_platformData.windowHeight), 0.1f);
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
     }
 }

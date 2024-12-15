@@ -66,6 +66,43 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
         }
 
+        // This will hold all the data needed to record all the draw commands indirectly, using a GPU buffer
+        BlitCL::DynamicArray<VkDrawIndexedIndirectCommand> indirectDraws;
+        // This holds data that maps to one draw call for one surface 
+        // It will be the same size as the above array and it will be indexed into for each object using some logic in the shaders
+        BlitCL::DynamicArray<StaticRenderObject> renderObjects;
+
+        for(size_t i = 0; i < gpuData.meshCount; ++i)
+        {
+            // Since there will only be one array that holds all the data for each surfaces array
+            // The indirect draw array needs to be resized and write to the parts after the previous last element
+            size_t previousIndirectDrawSize = indirectDraws.GetSize();
+            indirectDraws.Resize(gpuData.pMeshes[i].surfaces.GetSize() + previousIndirectDrawSize);
+
+            // This one works the same as the above
+            size_t previousRenderObjectsSize = renderObjects.GetSize();
+            renderObjects.Resize(indirectDraws.GetSize());
+
+            for(size_t s = 0; s < gpuData.pMeshes[i].surfaces.GetSize(); ++i)
+            {
+                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[i].surfaces[s];
+                VkDrawIndexedIndirectCommand& currentIDraw = indirectDraws[previousIndirectDrawSize + s];
+                StaticRenderObject& currentObject = renderObjects[previousRenderObjectsSize + s];
+
+                // A VkDrawIndexedIndirectCommand holds all the data needed for one vkCmdDrawIndexed command
+                // This data can be retrieved from each surface that a mesh has and needs to be drawn
+                currentIDraw.firstIndex = currentSurface.firstIndex;
+                currentIDraw.indexCount = currentSurface.indexCount;
+                currentIDraw.instanceCount = 1;
+                currentIDraw.firstInstance = 0;
+                currentIDraw.vertexOffset = 0;
+
+                currentObject.materialTag = currentSurface.pMaterial->materialTag;
+                BlitML::vec3 transform(0.f, -10.f, -50.f);
+                currentObject.modelMatrix = BlitML::Translate(transform);
+            }
+        }
+
         // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
         for(size_t i = 0; i < gpuData.materialCount; ++i)
@@ -75,9 +112,9 @@ namespace BlitzenVulkan
         }
 
         #if BLITZEN_VULKAN_MESH_SHADER
-            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials, gpuData.meshlets);
+            UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
         #else
-            UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.staticObjects, materials);
+            UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
         #endif
 
         /* Main opaque object graphics pipeline */
@@ -155,7 +192,7 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
     BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets)
+    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<VkDrawIndexedIndirectCommand>& indirectDraws)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
@@ -190,7 +227,11 @@ namespace BlitzenVulkan
         materialBufferAddressInfo.buffer = m_currentStaticBuffers.globalMaterialBuffer.buffer;
         m_currentStaticBuffers.bufferAddresses.materialBufferAddress = vkGetBufferDeviceAddress(m_device, &materialBufferAddressInfo);
 
-        VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize;
+        VkDeviceSize indirectBufferSize = sizeof(VkDrawIndexedIndirectCommand) * indirectDraws.GetSize();
+        CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+
+        VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize;
 
         #if BLITZEN_VULKAN_MESH_SHADER
             VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();
@@ -214,10 +255,12 @@ namespace BlitzenVulkan
         renderObjectBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize, 
         materials.Data(), materialBufferSize);
+        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 
+        indirectDraws.Data(), indirectBufferSize);
 
         #if BLITZEN_VULKAN_MESH_SHADER
-            BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize,
-            meshlets.Data(), meshBufferSize);
+            BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
+            + indirectBufferSize, meshlets.Data(), meshBufferSize);
         #endif
 
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -238,10 +281,14 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.globalMaterialBuffer.buffer, materialBufferSize, 
         vertexBufferSize + indexBufferSize + renderObjectBufferSize, 0);
 
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        m_currentStaticBuffers.drawIndirectBuffer.buffer, indirectBufferSize, 
+        vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);
+
         #if BLITZEN_VULKAN_MESH_SHADER
             CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
             m_currentStaticBuffers.globalMeshBuffer.buffer, meshBufferSize, 
-            vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);
+            vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize, 0);
         #endif
 
         SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
@@ -423,19 +470,22 @@ namespace BlitzenVulkan
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
+        #if BLITZEN_VULKAN_MESH_SHADER
         // Draw calls (the 4 is hardcoded but it will be the size of the draw context)
-        for(uint32_t i = 0; i < context.drawCount; ++i)
-        {
-            #if BLITZEN_VULKAN_MESH_SHADER
+            for(uint32_t i = 0; i < context.drawCount; ++i)
+            {
+            
                 DrawMeshTastsNv(m_initHandles.instance, fTools.commandBuffer, context.pDraws[i].meshletCount, context.pDraws[i].firstMeshlet);
-            #else
-                ShaderPushConstant index;
+                /*ShaderPushConstant index;
                 index.drawTag = context.pDraws[i].objectTag; // Only one object currently so I am hardcoding the index to test it
                 vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
                 sizeof(ShaderPushConstant), &index);
-                vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);
-            #endif
-        }
+                vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);*/
+            }
+        #else
+            vkCmdDrawIndexedIndirect(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+            0, context.drawCount, sizeof(VkDrawIndexedIndirectCommand));// Ah, the beauty of draw indirect
+        #endif
 
         vkCmdEndRendering(fTools.commandBuffer);
 

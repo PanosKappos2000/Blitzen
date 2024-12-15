@@ -1,12 +1,12 @@
 #extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
 
 struct Vertex
 {
     vec3 position;
-    float uvX;
+    float16_t uvX;
     vec3 normal;
-    float uvY;
-    vec4 color;
+    float16_t uvY;
 };
 
 layout(buffer_reference, std430) readonly buffer VertexBuffer
@@ -17,14 +17,24 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer
 struct Meshlet
 {
     uint vertices[64];
-	uint indices[126]; // up to 42 triangles
-	uint indexCount;
+	uint indices[126 * 3]; // up to 42 triangles
+	uint triangleCount;
 	uint vertexCount;
 };
 
 layout(buffer_reference, std430) readonly buffer MeshBuffer
 {
     Meshlet meshlets[];
+};
+
+struct IndirectDraw
+{
+    uint indirectData[5];
+};
+
+layout(buffer_reference, std430) readonly buffer IndirectBuffer
+{
+    IndirectDraw indirectDraws[];
 };
 
 struct RenderObject
@@ -72,3 +82,11 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     MaterialBuffer materialBuffer;
     MeshBuffer meshBuffer;
 }bufferAddrs;
+
+struct VertToFragData
+{
+    vec2 uv;
+    vec3 normal;
+    uint materialTag;
+    vec3 modelPos;
+};

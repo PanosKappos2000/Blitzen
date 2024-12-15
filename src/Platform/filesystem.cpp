@@ -46,8 +46,7 @@ namespace BlitzenPlatform
         }
 
         // If the previous check is done tries to read the file
-        FILE* file;
-        fopen_s(&file, path, modeStr);
+        FILE* file = fopen(path, modeStr);
         // If the file cannot be read, write an error message and exit
         if (!file) 
         {

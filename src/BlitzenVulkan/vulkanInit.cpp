@@ -255,8 +255,9 @@ namespace BlitzenVulkan
                         continue;
                     }
                 #endif
-                if(!features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray || 
-                !features13.dynamicRendering || !features13.synchronization2)
+                if(!features11.storageBuffer16BitAccess ||
+                !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray || 
+                !features13.dynamicRendering || !features13.synchronization2 || !features12.shaderFloat16)
                 {
                     physicalDevices.RemoveAtIndex(i);
                     --i;
@@ -385,6 +386,8 @@ namespace BlitzenVulkan
             // If a discrete GPU is not found, the renderer chooses the 1st device. This will change the way the renderer goes forward
             if(!m_stats.hasDiscreteGPU)
                 m_initHandles.chosenGpu = physicalDevices[0];
+            else
+                BLIT_INFO("Discrete GPU found")
 
         }
         /*
@@ -424,6 +427,7 @@ namespace BlitzenVulkan
             #if BLITZEN_VULKAN_INDIRECT_DRAW
                 vulkan11Features.shaderDrawParameters = true;
             #endif
+            vulkan11Features.storageBuffer16BitAccess = true;
 
             VkPhysicalDeviceVulkan12Features vulkan12Features{};
             vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -431,6 +435,8 @@ namespace BlitzenVulkan
             vulkan12Features.descriptorIndexing = true;
             // Allows shaders to use array with undefined size for descriptors, needed for textures
             vulkan12Features.runtimeDescriptorArray = true;
+            vulkan12Features.shaderFloat16 = true;
+            vulkan12Features.storageBuffer8BitAccess = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -765,7 +771,7 @@ namespace BlitzenVulkan
 
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = 1;
+        poolSize.descriptorCount = 1;// Some device might need this to be higher than 1
         VkDescriptorPoolCreateInfo descriptorPoolInfo{};
         descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptorPoolInfo.flags = 0;
