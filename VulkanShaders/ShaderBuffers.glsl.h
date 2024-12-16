@@ -39,7 +39,9 @@ layout(buffer_reference, std430) readonly buffer IndirectBuffer
 
 struct RenderObject
 {
-    mat4 worldMatrix;
+    vec3 pos;
+    float scale;
+    vec4 orientation;
 
     uint materialTag;
 };
@@ -90,3 +92,8 @@ struct VertToFragData
     uint materialTag;
     vec3 modelPos;
 };
+
+vec3 RotateQuat(vec3 v, vec4 quat)
+{
+	return v + 2.0 * cross(quat.xyz, cross(quat.xyz, v) + quat.w * v);
+}

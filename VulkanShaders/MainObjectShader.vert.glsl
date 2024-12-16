@@ -20,10 +20,12 @@ void main()
     Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
     RenderObject renderObject = bufferAddrs.renderObjects.renderObjects[gl_DrawIDARB];
 
-    vec4 modelPosition = renderObject.worldMatrix * vec4(currentVertex.position, 1);
+    // Rotating the model inside the shader seems like a waste but we'll see
+    vec4 modelPosition = vec4(RotateQuat(currentVertex.position, renderObject.orientation) * renderObject.scale + renderObject.pos, 1.0);
     gl_Position = shaderData.projectionView * modelPosition;
 
     outUv = vec2(float(currentVertex.uvX), float(currentVertex.uvY));
+
     outMaterialTag = renderObject.materialTag;
     outNormal =  currentVertex.normal;
     outModel = modelPosition.xyz;

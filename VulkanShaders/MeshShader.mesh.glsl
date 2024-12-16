@@ -33,7 +33,8 @@ void main()
 		vec3 normal = vec3(bufferAddrs.vertexBuffer.vertices[vi].normal);
 		vec2 texcoord = vec2(bufferAddrs.vertexBuffer.vertices[vi].uvX, bufferAddrs.vertexBuffer.vertices[vi].uvY);
 
-		gl_MeshVerticesNV[i].gl_Position = shaderData.projectionView * vec4(position, 1.0);
+		gl_MeshVerticesNV[i].gl_Position = shaderData.projectionView * vec4(position * 20.0, 1.0);
+		
 	}
 
 	for (uint i = triangleIndex; i < indexCount; i += 32)

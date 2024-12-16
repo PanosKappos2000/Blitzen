@@ -126,23 +126,17 @@ namespace BlitzenEngine
         #if BLITZEN_VULKAN
         {
             // Combine all the surfaces from every mesh, into the draw objects (this will not be needed once I switch to indirect drawing)
-            for(size_t i = 0; i < m_resources.currentMeshIndex; ++i)
+            for(size_t i = 0; i < 10000; ++i)
             {
-                // Hold on to the previous size of the array
-                size_t previousSize = drawCount;
-                // Add surface data to the draw object
-                for(size_t s = 0; s < m_resources.meshes[i].surfaces.GetSize(); ++s)
-                {
-                    PrimitiveSurface& currentSurface = m_resources.meshes[i].surfaces[s];
-                    BlitzenVulkan::DrawObject& currentDraw = draws[previousSize + s];
+                PrimitiveSurface& currentSurface = m_resources.meshes[0].surfaces[0];
+                BlitzenVulkan::DrawObject& currentDraw = draws[i];
 
-                    currentDraw.firstIndex = currentSurface.firstIndex;
-                    currentDraw.indexCount = currentSurface.indexCount;
-                    currentDraw.firstMeshlet = currentSurface.firstMeshlet;
-                    currentDraw.meshletCount = currentSurface.meshletCount;
-                    currentDraw.objectTag = drawCount;
-                    drawCount++;
-                }
+                currentDraw.firstIndex = currentSurface.firstIndex;
+                currentDraw.indexCount = currentSurface.indexCount;
+                currentDraw.firstMeshlet = currentSurface.firstMeshlet;
+                currentDraw.meshletCount = currentSurface.meshletCount;
+                currentDraw.objectTag = drawCount;
+                drawCount++;  
             }
 
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);

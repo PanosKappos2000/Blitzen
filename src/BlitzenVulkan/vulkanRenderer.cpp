@@ -66,12 +66,39 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
         }
 
-        // This will hold all the data needed to record all the draw commands indirectly, using a GPU buffer
-        BlitCL::DynamicArray<VkDrawIndexedIndirectCommand> indirectDraws;
         // This holds data that maps to one draw call for one surface 
-        // It will be the same size as the above array and it will be indexed into for each object using some logic in the shaders
-        BlitCL::DynamicArray<StaticRenderObject> renderObjects;
+        // For now it will be used to render many instances of the same mesh
+        BlitCL::DynamicArray<StaticRenderObject> renderObjects(10000);
+        BlitCL::DynamicArray<VkDrawIndexedIndirectCommand> indirectDraws(10000);
+        for(size_t i = 0; i < 10000; ++i)
+        {
+            BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
+            VkDrawIndexedIndirectCommand& currentIDraw = indirectDraws[i];
+            StaticRenderObject& currentObject = renderObjects[i];
 
+            currentObject.materialTag = currentSurface.pMaterial->materialTag;
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 40 - 20,//x 
+            (float(rand()) / RAND_MAX) * 40 - 20,//y
+            (float(rand()) / RAND_MAX) * 40 - 20);//z
+            currentObject.pos = translation;
+            currentObject.scale = 5.0f;
+
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            currentObject.orientation = orientation;
+
+            currentIDraw.firstIndex = currentSurface.firstIndex;
+            currentIDraw.indexCount = currentSurface.indexCount;
+            currentIDraw.instanceCount = 1;
+            currentIDraw.firstInstance = 0;
+            currentIDraw.vertexOffset = 0;
+        }
+
+        // This will hold all the data needed to record all the draw commands indirectly, using a GPU buffer
+        /*BlitCL::DynamicArray<VkDrawIndexedIndirectCommand> indirectDraws;
         for(size_t i = 0; i < gpuData.meshCount; ++i)
         {
             // Since there will only be one array that holds all the data for each surfaces array
@@ -79,29 +106,20 @@ namespace BlitzenVulkan
             size_t previousIndirectDrawSize = indirectDraws.GetSize();
             indirectDraws.Resize(gpuData.pMeshes[i].surfaces.GetSize() + previousIndirectDrawSize);
 
-            // This one works the same as the above
-            size_t previousRenderObjectsSize = renderObjects.GetSize();
-            renderObjects.Resize(indirectDraws.GetSize());
-
-            for(size_t s = 0; s < gpuData.pMeshes[i].surfaces.GetSize(); ++i)
+            for(size_t s = 0; s < gpuData.pMeshes[i].surfaces.GetSize(); ++s)
             {
                 BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[i].surfaces[s];
                 VkDrawIndexedIndirectCommand& currentIDraw = indirectDraws[previousIndirectDrawSize + s];
-                StaticRenderObject& currentObject = renderObjects[previousRenderObjectsSize + s];
 
                 // A VkDrawIndexedIndirectCommand holds all the data needed for one vkCmdDrawIndexed command
                 // This data can be retrieved from each surface that a mesh has and needs to be drawn
                 currentIDraw.firstIndex = currentSurface.firstIndex;
                 currentIDraw.indexCount = currentSurface.indexCount;
-                currentIDraw.instanceCount = 1;
+                currentIDraw.instanceCount = 1000;
                 currentIDraw.firstInstance = 0;
                 currentIDraw.vertexOffset = 0;
-
-                currentObject.materialTag = currentSurface.pMaterial->materialTag;
-                BlitML::vec3 transform(0.f, -10.f, 50.f);
-                currentObject.modelMatrix = BlitML::Translate(transform);
             }
-        }
+        } This is the correct code compared to the hardcoded one above, I will restore it later*/
 
         // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);

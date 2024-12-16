@@ -124,7 +124,7 @@ namespace BlitzenEngine
 		meshopt_remapIndexBuffer(resources.indices.Data() + previousIndexBufferSize, 0, indexCount, remap.Data());
 
         // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a mesh
-        meshopt_optimizeVertexCache(resources.indices.Data() + previousIndexBufferSize, resources.indices.Data() + previousIndexBufferSize, 
+        meshopt_optimizeVertexCache(resources.indices.Data() + previousIndexBufferSize, resources.indices.Data() + previousIndexBufferSize,
         indexCount, vertexCount);
 	    meshopt_optimizeVertexFetch(resources.vertices.Data() + previousVertexBufferSize, resources.indices.Data() + previousIndexBufferSize, 
         indexCount, resources.vertices.Data() + previousVertexBufferSize, vertexCount, sizeof(BlitML::Vertex));
@@ -204,6 +204,7 @@ namespace BlitzenEngine
 
     void LoadDefaultData(EngineResources& resources)
     {
-        LoadMeshFromObj(resources, "Assets/Meshes/well.obj", 1);
+        //LoadMeshFromObj(resources, "Assets/Meshes/well.obj", 1);
+        LoadMeshFromObj(resources, "Assets/Meshes/bunny.obj", 1);
     }
 }

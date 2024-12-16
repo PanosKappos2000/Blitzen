@@ -39,7 +39,7 @@
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
 #define BLITZEN_VULKAN_MESH_SHADER              0 
 
-#define BLITZEN_VULKAN_MAX_DRAW_CALLS           1000000
+#define BLITZEN_VULKAN_MAX_DRAW_CALLS           10000 // I am ignoring this right now and I shouldn't be
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
@@ -54,7 +54,9 @@ namespace BlitzenVulkan
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
     struct alignas (16) StaticRenderObject
     {
-        BlitML::mat4 modelMatrix;
+        BlitML::vec3 pos;
+        float scale;
+        BlitML::quat orientation;
 
         uint32_t materialTag;
     };
