@@ -3,12 +3,13 @@
 #define VMA_IMPLEMENTATION
 #include "vma/vk_mem_alloc.h"
 
-void DrawMeshTastsNv(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t taskCount, uint32_t firstTask) 
+void DrawMeshTastsIndirectNv(VkInstance instance, VkCommandBuffer commandBuffer, VkBuffer indirectBuffer, 
+VkDeviceSize offset, uint32_t drawCount, uint32_t stride) 
 {
-    auto func = (PFN_vkCmdDrawMeshTasksNV) vkGetInstanceProcAddr(instance, "vkCmdDrawMeshTasksNV");
+    auto func = (PFN_vkCmdDrawMeshTasksIndirectNV) vkGetInstanceProcAddr(instance, "vkCmdDrawMeshTasksIndirectNV");
     if (func != nullptr) 
     {
-        func(commandBuffer, taskCount, firstTask);
+        func(commandBuffer, indirectBuffer, offset, drawCount, stride);
     } 
 }
 
@@ -69,11 +70,11 @@ namespace BlitzenVulkan
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
         BlitCL::DynamicArray<StaticRenderObject> renderObjects(10000);
-        BlitCL::DynamicArray<VkDrawIndexedIndirectCommand> indirectDraws(10000);
+        BlitCL::DynamicArray<IndirectDrawData> indirectDraws(10000);
         for(size_t i = 0; i < 10000; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
-            VkDrawIndexedIndirectCommand& currentIDraw = indirectDraws[i];
+            IndirectDrawData& currentIDraw = indirectDraws[i];
             StaticRenderObject& currentObject = renderObjects[i];
 
             currentObject.materialTag = currentSurface.pMaterial->materialTag;
@@ -90,11 +91,14 @@ namespace BlitzenVulkan
             BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
             currentObject.orientation = orientation;
 
-            currentIDraw.firstIndex = currentSurface.firstIndex;
-            currentIDraw.indexCount = currentSurface.indexCount;
-            currentIDraw.instanceCount = 1;
-            currentIDraw.firstInstance = 0;
-            currentIDraw.vertexOffset = 0;
+            currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
+            currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
+            currentIDraw.drawIndirect.instanceCount = 1;
+            currentIDraw.drawIndirect.firstInstance = 0;
+            currentIDraw.drawIndirect.vertexOffset = 0;
+
+            currentIDraw.drawIndirectTasks.firstTask = currentSurface.firstMeshlet;
+            currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
         }
 
         // This will hold all the data needed to record all the draw commands indirectly, using a GPU buffer
@@ -210,7 +214,7 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
     BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<VkDrawIndexedIndirectCommand>& indirectDraws)
+    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectDrawData>& indirectDraws)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
@@ -245,7 +249,7 @@ namespace BlitzenVulkan
         materialBufferAddressInfo.buffer = m_currentStaticBuffers.globalMaterialBuffer.buffer;
         m_currentStaticBuffers.bufferAddresses.materialBufferAddress = vkGetBufferDeviceAddress(m_device, &materialBufferAddressInfo);
 
-        VkDeviceSize indirectBufferSize = sizeof(VkDrawIndexedIndirectCommand) * indirectDraws.GetSize();
+        VkDeviceSize indirectBufferSize = sizeof(IndirectDrawData) * indirectDraws.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
@@ -489,19 +493,21 @@ namespace BlitzenVulkan
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         #if BLITZEN_VULKAN_MESH_SHADER
-            for(uint32_t i = 0; i < context.drawCount; ++i)
+            /*for(uint32_t i = 0; i < context.drawCount; ++i)
             {
             
                 DrawMeshTastsNv(m_initHandles.instance, fTools.commandBuffer, context.pDraws[i].meshletCount, context.pDraws[i].firstMeshlet);
-                /*ShaderPushConstant index;
+                ShaderPushConstant index;
                 index.drawTag = context.pDraws[i].objectTag; // Only one object currently so I am hardcoding the index to test it
                 vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
                 sizeof(ShaderPushConstant), &index);
-                vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);*/
-            }
+                vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);
+            }*/
+           DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+           offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
         #else
             vkCmdDrawIndexedIndirect(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
-            0, context.drawCount, sizeof(VkDrawIndexedIndirectCommand));// Ah, the beauty of draw indirect
+            offsetof(IndirectDrawData, drawIndirect), context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
         #endif
 
         vkCmdEndRendering(fTools.commandBuffer);

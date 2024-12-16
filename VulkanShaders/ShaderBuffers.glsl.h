@@ -29,7 +29,7 @@ layout(buffer_reference, std430) readonly buffer MeshBuffer
 
 struct IndirectDraw
 {
-    uint indirectData[5];
+    uint indirectData[7];
 };
 
 layout(buffer_reference, std430) readonly buffer IndirectBuffer
