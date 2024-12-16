@@ -37,7 +37,7 @@
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              1 
+#define BLITZEN_VULKAN_MESH_SHADER              0 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           1000000
 
@@ -48,6 +48,7 @@ namespace BlitzenVulkan
     struct VulkanStats
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
+        uint8_t meshShaderSupport = 0;// TODO: Use this to check during load if mesh shaders are supported so that the application does not fail when they are not
     };
 
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders

@@ -108,6 +108,10 @@ namespace BlitzenEngine
         LoadTextures();
         LoadMaterials();
         LoadDefaultData(m_resources);
+        // My math work, I should use this for quaternions
+        glm::quat qg = glm::angleAxis(glm::radians(45.f), glm::vec3(5.0f, 2.0f, 4.0f));
+        BlitML::quat qb = BlitML::QuatFromAngleAxis(BlitML::vec3(5.0f, 2.0f, 4.0f), BlitML::Radians(45.f), 0);
+        BLIT_INFO("Testing math")
 
 
 
@@ -303,7 +307,7 @@ namespace BlitzenEngine
         if (camera.cameraDirty)
         {
             // I haven't overloaded the += operator
-            camera.position = camera.position + camera.velocity * deltaTime * 40.f; // Needs this 95.f stabilizer, otherwise deltaTime teleports it
+            camera.position = camera.position + camera.velocity * deltaTime * 40.f; 
 
             BlitML::mat4 translation = BlitML::Mat4Inverse(BlitML::Translate(camera.position));
 
@@ -376,14 +380,14 @@ namespace BlitzenEngine
                 {
                     Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
                     camera.cameraDirty = 1;
-                    camera.velocity = BlitML::vec3(0.f, 0.f, -1.f);
+                    camera.velocity = BlitML::vec3(0.f, 0.f, 1.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__S:
                 {
                     Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
                     camera.cameraDirty = 1;
-                    camera.velocity = BlitML::vec3(0.f, 0.f, 1.f);
+                    camera.velocity = BlitML::vec3(0.f, 0.f, -1.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__A:

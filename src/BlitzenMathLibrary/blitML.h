@@ -217,14 +217,15 @@ namespace BlitML
         mat4 res(0);
         res.data[0] = halfTanFov / aspectRatio;
         res.data[5] = halfTanFov;
-        res.data[11] = -1.0f;
+        res.data[11] = 1.0f;
         res.data[14] = near;
         return res;
+
 	    /*return glm::mat4(
 		f / aspectRatio, 0.0f, 0.0f, 0.0f,
 		0.0f, f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, zNear, 0.0f);*/
+		0.0f, 0.0f, zNear, 0.0f); Reference to write this with my own types*/
     }
 
     // Creates and returns a look-at matrix, or a matrix looking at target from the perspective of position.

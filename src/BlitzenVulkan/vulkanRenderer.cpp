@@ -98,7 +98,7 @@ namespace BlitzenVulkan
                 currentIDraw.vertexOffset = 0;
 
                 currentObject.materialTag = currentSurface.pMaterial->materialTag;
-                BlitML::vec3 transform(0.f, -10.f, -50.f);
+                BlitML::vec3 transform(0.f, -10.f, 50.f);
                 currentObject.modelMatrix = BlitML::Translate(transform);
             }
         }
@@ -471,7 +471,6 @@ namespace BlitzenVulkan
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         #if BLITZEN_VULKAN_MESH_SHADER
-        // Draw calls (the 4 is hardcoded but it will be the size of the draw context)
             for(uint32_t i = 0; i < context.drawCount; ++i)
             {
             
@@ -623,12 +622,6 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)
     {
-        //Destroy the current swapchain
-        /*for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
-        {
-            vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], nullptr);
-        }*/
-
         VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
         CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, 
         m_presentQueue, m_computeQueue, m_pCustomAllocator, newSwapchain, m_initHandles.swapchain);

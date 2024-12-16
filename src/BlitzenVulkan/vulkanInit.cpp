@@ -221,43 +221,36 @@ namespace BlitzenVulkan
             {
                 VkPhysicalDevice& pdv = physicalDevices[i];
 
+                // Get core physical device features
                 VkPhysicalDeviceFeatures features{};
                 vkGetPhysicalDeviceFeatures(pdv, &features);
+
+                // Get newer version physical Device Features
                 VkPhysicalDeviceFeatures2 features2{};
                 VkPhysicalDeviceVulkan11Features features11{};
                 features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
                 features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                // Add Vulkan 1.1 features to the pNext chain
                 features2.pNext = &features11;
                 VkPhysicalDeviceVulkan12Features features12{};
                 features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                // Add Vulkan 1.2 features to the pNext chain
                 features11.pNext = &features12;
                 VkPhysicalDeviceVulkan13Features features13{};
                 features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                // Add Vulkan 1.3 features to the pNext chain
                 features12.pNext = &features13;
                 VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh{};
                 featuresMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+                // Add Nvidia mesh shader features to the pNext chain
                 features13.pNext = &featuresMesh;
                 vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
-                #if BLITZEN_VULKAN_INDIRECT_DRAW
-                    if(!features.multiDrawIndirect || !features11.shaderDrawParameters)
-                    {
-                        physicalDevices.RemoveAtIndex(i);
-                        --i;
-                        continue;
-                    }
-                #endif
-                #if BLITZEN_VULKAN_MESH_SHADER
-                    if(!featuresMesh.meshShader)
-                    {
-                        physicalDevices.RemoveAtIndex(i);
-                        --i;
-                        continue;
-                    }
-                #endif
-                if(!features11.storageBuffer16BitAccess ||
-                !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray || 
-                !features13.dynamicRendering || !features13.synchronization2 || !features12.shaderFloat16)
+                // Check that all the required features are supported by the device
+                if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
+                !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
+                !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || 
+                !features13.synchronization2 || !features13.dynamicRendering)
                 {
                     physicalDevices.RemoveAtIndex(i);
                     --i;
@@ -269,30 +262,16 @@ namespace BlitzenVulkan
                 vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, nullptr);
                 BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
                 vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
-                // The device will always need one extension(the swapchain) + the mesh shader extension if mesh shaders are active
-                uint8_t extensionSupport [1 + BLITZEN_VULKAN_MESH_SHADER] = {0};
-                // Check for every extension with strcmp and switch the according element in the array to 1 if it is supported
+                // For now the device only needs to look for one extension
+                uint8_t extensionSupport  = 0;
+                // Check for the required extension name with strcmp
                 for(size_t j = 0; j < dvExtensionsProps.GetSize(); ++j)
                 {
                     if(!strcmp(dvExtensionsProps[j].extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
-                        extensionSupport[0] = 1;
-
-                    #if BLITZEN_VULKAN_MESH_SHADER
-                        if(!strcmp(dvExtensionsProps[j].extensionName, VK_NV_MESH_SHADER_EXTENSION_NAME))
-                            extensionSupport[1] = 1;
-                    #endif  
+                        extensionSupport = 1;  
                 }
-                // Check that no elements in the extension support array are 0
-                uint8_t missingExtension = 0;
-                for(uint8_t j = 0; j < 1 + BLITZEN_VULKAN_MESH_SHADER; ++j)
-                {
-                    if(!extensionSupport[j])
-                    {
-                        missingExtension = 1;
-                    }
-
-                }
-                if (missingExtension)
+                
+                if(!extensionSupport)
                 {
                     physicalDevices.RemoveAtIndex(i);
                     --i;
@@ -405,32 +384,61 @@ namespace BlitzenVulkan
             deviceInfo.flags = 0; // Not using this
             deviceInfo.enabledLayerCount = 0;//Deprecated
 
-            // Only using the swapchain extension for now
-            deviceInfo.enabledExtensionCount = 1 + BLITZEN_VULKAN_MESH_SHADER;
+            // Since mesh shaders are not a required feature, they will be checked separately and if support is not found, the traditional pipeline will be used
+            #if BLITZEN_VULKAN_MESH_SHADER
+                VkPhysicalDeviceFeatures2 features2{};
+                features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                VkPhysicalDeviceMeshShaderFeaturesNV featuresNV{};
+                featuresNV.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+                features2.pNext = &featuresNV;
+                vkGetPhysicalDeviceFeatures2(m_initHandles.chosenGpu, &features2);
+                m_stats.meshShaderSupport = featuresNV.meshShader;
+
+                uint32_t dvExtensionCount = 0;
+                vkEnumerateDeviceExtensionProperties(m_initHandles.chosenGpu, nullptr, &dvExtensionCount, nullptr);
+                BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
+                vkEnumerateDeviceExtensionProperties(m_initHandles.chosenGpu, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
+                uint8_t meshShaderExtension = 0;
+                for(size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
+                {
+                    if(!strcmp(dvExtensionsProps[i].extensionName, VK_NV_MESH_SHADER_EXTENSION_NAME))
+                        meshShaderExtension = 1;
+                }
+                m_stats.meshShaderSupport = m_stats.meshShaderSupport && meshShaderExtension;
+
+                if(m_stats.meshShaderSupport)
+                    BLIT_INFO("Mesh shader support confirmed")
+                else
+                    BLIT_INFO("No mesh shader support, using traditional pipeline")
+            #endif
+
+            // Vulkan should ignore the mesh shader extension if support for it was not found
+            deviceInfo.enabledExtensionCount = 1 + (BLITZEN_VULKAN_MESH_SHADER && m_stats.meshShaderSupport);
+            // Adding the swapchain extension and mesh shader extension if it was requested
             const char* extensionsNames[1 + BLITZEN_VULKAN_MESH_SHADER];
             extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
             #if BLITZEN_VULKAN_MESH_SHADER
-                extensionsNames[1] = VK_NV_MESH_SHADER_EXTENSION_NAME;
+                if(m_stats.meshShaderSupport)
+                    extensionsNames[1] = VK_NV_MESH_SHADER_EXTENSION_NAME;
             #endif
             deviceInfo.ppEnabledExtensionNames = extensionsNames;
 
             // Standard device features
             VkPhysicalDeviceFeatures deviceFeatures{};
-            #if BLITZEN_VULKAN_INDIRECT_DRAW
-                deviceFeatures.multiDrawIndirect = true;
-            #endif
-            deviceInfo.pEnabledFeatures = nullptr;// Enabled features will be given to VkPhysicalDeviceFeatures2
+            // Will allow the renderer to make one draw call for multiple objects using vkCmdDrawIndirect or the indexed version
+            deviceFeatures.multiDrawIndirect = true;
+            deviceInfo.pEnabledFeatures = nullptr;// Enabled features will be given to VkPhysicalDeviceFeatures2 and passed to the pNext chain
 
             // Extended device features
             VkPhysicalDeviceVulkan11Features vulkan11Features{};
             vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-            #if BLITZEN_VULKAN_INDIRECT_DRAW
-                vulkan11Features.shaderDrawParameters = true;
-            #endif
+            vulkan11Features.shaderDrawParameters = true;
+            // Allows use of 16 bit types inside storage buffers in the shaders
             vulkan11Features.storageBuffer16BitAccess = true;
 
             VkPhysicalDeviceVulkan12Features vulkan12Features{};
             vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            // Allows to use vkGetBufferDeviceAddress to get a pointer to a buffer that can be given to the shaders
             vulkan12Features.bufferDeviceAddress = true;
             vulkan12Features.descriptorIndexing = true;
             // Allows shaders to use array with undefined size for descriptors, needed for textures
@@ -440,14 +448,15 @@ namespace BlitzenVulkan
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            // Using dynamic rendering to make things slightly easier
+            // Using dynamic rendering to make things slightly easier(Get rid of render passes and framebuffer, allows definition of rendering attachments separately)
             vulkan13Features.dynamicRendering = true;
             vulkan13Features.synchronization2 = true;
 
             VkPhysicalDeviceMeshShaderFeaturesNV vulkanFeaturesMesh{};
             vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
             #if BLITZEN_VULKAN_MESH_SHADER
-                vulkanFeaturesMesh.meshShader = true;
+                if(m_stats.meshShaderSupport)
+                    vulkanFeaturesMesh.meshShader = true;
             #endif
 
             VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
