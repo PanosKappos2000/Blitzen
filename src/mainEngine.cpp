@@ -108,10 +108,6 @@ namespace BlitzenEngine
         LoadTextures();
         LoadMaterials();
         LoadDefaultData(m_resources);
-        // My math work, I should use this for quaternions
-        glm::quat qg = glm::angleAxis(glm::radians(45.f), glm::vec3(5.0f, 2.0f, 4.0f));
-        BlitML::quat qb = BlitML::QuatFromAngleAxis(BlitML::vec3(5.0f, 2.0f, 4.0f), BlitML::Radians(45.f), 0);
-        BLIT_INFO("Testing math")
 
 
 
