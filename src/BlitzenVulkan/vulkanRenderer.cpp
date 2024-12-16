@@ -25,17 +25,21 @@ namespace BlitzenVulkan
             // Descriptor set layout for global shader data
             VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
             VkDescriptorSetLayoutBinding bufferAddressBinding{};
-            #if BLITZEN_VULKAN_MESH_SHADER
+            if(m_stats.meshShaderSupport)
+            {
                 CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
                 VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT);
                 CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
                 VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT);
-            #else
+            }
+            else
+            {
                 CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
                 CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-            #endif
+            }
+            
             VkDescriptorSetLayoutBinding shaderDataBindings[2] = {shaderDataLayoutBinding, bufferAddressBinding};
             m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 2, shaderDataBindings);
 
@@ -133,11 +137,10 @@ namespace BlitzenVulkan
             materials[i].diffuseTextureTag = gpuData.pMaterials[i].diffuseMapTag;
         }
 
-        #if BLITZEN_VULKAN_MESH_SHADER
+        if (m_stats.meshShaderSupport)
             UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
-        #else
+        else
             UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
-        #endif
 
         /* Main opaque object graphics pipeline */
         {
@@ -156,13 +159,17 @@ namespace BlitzenVulkan
 
             VkShaderModule vertexShaderModule;
             VkPipelineShaderStageCreateInfo shaderStages[2] = {};
-            #if BLITZEN_VULKAN_MESH_SHADER
+            if(m_stats.meshShaderSupport)
+            {
                 CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_NV, "main", vertexShaderModule, 
                 shaderStages[0], nullptr);
-            #else
+            }
+            else
+            {
                 CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
                 shaderStages[0], nullptr);
-            #endif 
+            }
+             
             VkShaderModule fragShaderModule;
             CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
             shaderStages[1], nullptr);
@@ -255,8 +262,9 @@ namespace BlitzenVulkan
 
         VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize;
 
-        #if BLITZEN_VULKAN_MESH_SHADER
-            VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();
+        VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();// Defining this here so that it does not go out of scope
+        if(m_stats.meshShaderSupport)
+        {
             CreateBuffer(m_allocator, m_currentStaticBuffers.globalMeshBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, meshBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
             VkBufferDeviceAddressInfo meshBufferAddressInfo{};
@@ -265,7 +273,7 @@ namespace BlitzenVulkan
             meshBufferAddressInfo.buffer = m_currentStaticBuffers.globalMeshBuffer.buffer;
             m_currentStaticBuffers.bufferAddresses.meshBufferAddress = vkGetBufferDeviceAddress(m_device, &meshBufferAddressInfo);
             stagingBufferSize += meshBufferSize;
-        #endif
+        }
 
         AllocatedBuffer stagingBuffer;
         CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
@@ -280,10 +288,11 @@ namespace BlitzenVulkan
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 
         indirectDraws.Data(), indirectBufferSize);
 
-        #if BLITZEN_VULKAN_MESH_SHADER
+        if(m_stats.meshShaderSupport)
+        {
             BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
             + indirectBufferSize, meshlets.Data(), meshBufferSize);
-        #endif
+        }
 
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -307,11 +316,13 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.drawIndirectBuffer.buffer, indirectBufferSize, 
         vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);
 
-        #if BLITZEN_VULKAN_MESH_SHADER
+        if(m_stats.meshShaderSupport)
+        {
             CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
             m_currentStaticBuffers.globalMeshBuffer.buffer, meshBufferSize, 
             vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize, 0);
-        #endif
+        }
+        
 
         SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
 
@@ -492,7 +503,8 @@ namespace BlitzenVulkan
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        #if BLITZEN_VULKAN_MESH_SHADER
+        if(m_stats.meshShaderSupport)
+        {
             /*for(uint32_t i = 0; i < context.drawCount; ++i)
             {
             
@@ -505,10 +517,12 @@ namespace BlitzenVulkan
             }*/
            DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
            offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
-        #else
+        }
+        else
+        {
             vkCmdDrawIndexedIndirect(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
             offsetof(IndirectDrawData, drawIndirect), context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
-        #endif
+        }
 
         vkCmdEndRendering(fTools.commandBuffer);
 
