@@ -75,7 +75,7 @@ namespace BlitzenVulkan
         // For now it will be used to render many instances of the same mesh
         BlitCL::DynamicArray<StaticRenderObject> renderObjects(10000);
         BlitCL::DynamicArray<IndirectDrawData> indirectDraws(10000);
-        for(size_t i = 0; i < 10000; ++i)
+        for(size_t i = 0; i < 9500; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
             IndirectDrawData& currentIDraw = indirectDraws[i];
@@ -92,6 +92,36 @@ namespace BlitzenVulkan
             (float(rand()) / RAND_MAX) * 2 - 1, // y
             (float(rand()) / RAND_MAX) * 2 - 1); // z
 		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            currentObject.orientation = orientation;
+
+            currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
+            currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
+            currentIDraw.drawIndirect.instanceCount = 1;
+            currentIDraw.drawIndirect.firstInstance = 0;
+            currentIDraw.drawIndirect.vertexOffset = 0;
+
+            currentIDraw.drawIndirectTasks.firstTask = currentSurface.firstMeshlet;
+            currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
+        }
+
+        for (size_t i = 0; i < 500; ++i)
+        {
+            BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
+            IndirectDrawData& currentIDraw = indirectDraws[i];
+            StaticRenderObject& currentObject = renderObjects[i];
+
+            currentObject.materialTag = currentSurface.pMaterial->materialTag;
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 40 - 20,//x 
+                (float(rand()) / RAND_MAX) * 40 - 20,//y
+                (float(rand()) / RAND_MAX) * 40 - 20);//z
+            currentObject.pos = translation;
+            currentObject.scale = 10.f;
+
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1); // z
+            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
             BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
             currentObject.orientation = orientation;
 

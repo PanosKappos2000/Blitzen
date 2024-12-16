@@ -80,6 +80,16 @@ namespace BlitCL
             m_pBlock[m_size++] = newElement;
         }
 
+        void AddBlockAtBack(T* pNewBlock, size_t blockSize)
+        {
+            if(m_size + blockSize > m_capacity)
+            {
+                RearrangeCapacity(m_size + blockSize);
+            }
+            BlitzenCore::BlitMemCopy(m_pBlock + m_size, pNewBlock, blockSize * sizeof(T));
+            m_size += blockSize;
+        }
+
         void RemoveAtIndex(size_t index)
         {
             if(index < m_size && index >= 0)

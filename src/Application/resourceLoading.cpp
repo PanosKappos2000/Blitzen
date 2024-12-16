@@ -91,11 +91,11 @@ namespace BlitzenEngine
             The below code can load a single mesh but it breaks if I try to load more than one
         */
 
-        BlitCL::DynamicArray<BlitML::Vertex> vertices(indexCount);
+        BlitCL::DynamicArray<BlitML::Vertex> triangleVertices(indexCount);
 
         for(size_t i = 0; i < indexCount; ++i)
         {
-            BlitML::Vertex& vtx = vertices[i];
+            BlitML::Vertex& vtx = triangleVertices[i];
 
             int32_t vertexIndex = file.f[i * 3 + 0];
 		    int32_t vertexTextureIndex = file.f[i * 3 + 1];
@@ -112,42 +112,41 @@ namespace BlitzenEngine
         }
 
         BlitCL::DynamicArray<uint32_t> remap(indexCount);
-		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, vertices.Data(), indexCount, sizeof(BlitML::Vertex));
+		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, triangleVertices.Data(), indexCount, sizeof(BlitML::Vertex));
 
-        size_t previousIndexBufferSize = resources.indices.GetSize();
-        size_t previousVertexBufferSize = resources.vertices.GetSize();
-        resources.indices.Resize(previousIndexBufferSize + indexCount);
-        resources.vertices.Resize(previousVertexBufferSize + vertexCount);
+        BlitCL::DynamicArray<uint32_t> indices(indexCount);
+        BlitCL::DynamicArray<BlitML::Vertex> vertices(vertexCount);
 
-        meshopt_remapVertexBuffer(resources.vertices.Data() + previousVertexBufferSize, 
-        vertices.Data(), indexCount, sizeof(BlitML::Vertex), remap.Data());
-		meshopt_remapIndexBuffer(resources.indices.Data() + previousIndexBufferSize, 0, indexCount, remap.Data());
+        meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(BlitML::Vertex), remap.Data());
+		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
 
         // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a mesh
-        meshopt_optimizeVertexCache(resources.indices.Data() + previousIndexBufferSize, resources.indices.Data() + previousIndexBufferSize,
-        indexCount, vertexCount);
-	    meshopt_optimizeVertexFetch(resources.vertices.Data() + previousVertexBufferSize, resources.indices.Data() + previousIndexBufferSize, 
-        indexCount, resources.vertices.Data() + previousVertexBufferSize, vertexCount, sizeof(BlitML::Vertex));
+        meshopt_optimizeVertexCache(indices.Data(), indices.Data(), indexCount, vertexCount);
+	    meshopt_optimizeVertexFetch(vertices.Data(), indices.Data(), indexCount, vertices.Data(), 
+        vertexCount, sizeof(BlitML::Vertex));
 
         PrimitiveSurface newSurface;
         newSurface.indexCount = static_cast<uint32_t>(indexCount);
-        newSurface.firstIndex = static_cast<uint32_t>(previousIndexBufferSize);
+        newSurface.firstIndex = static_cast<uint32_t>(resources.indices.GetSize());
         newSurface.pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
+
+        resources.indices.AddBlockAtBack(indices.Data(), indices.GetSize());
+        resources.vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
 
         if(buildMeshlets)
         {
             BlitML::Meshlet meshlet = {};
 
-            BlitCL::DynamicArray<uint8_t> meshletVertices(resources.vertices.GetSize() - previousVertexBufferSize);
+            BlitCL::DynamicArray<uint8_t> meshletVertices(vertices.GetSize());
             meshletVertices.Fill(UINT8_MAX);
 
             newSurface.firstMeshlet = resources.meshlets.GetSize();
 
-            for (size_t i = previousIndexBufferSize; i < resources.indices.GetSize(); i += 3)
+            for (size_t i = 0; i < indices.GetSize(); i += 3)
             {
-                uint32_t vtxIndexA = resources.indices[i + 0];
-                uint32_t vtxIndexB = resources.indices[i + 1];
-                uint32_t vtxIndexC = resources.indices[i + 2];
+                uint32_t vtxIndexA = indices[i + 0];
+                uint32_t vtxIndexB = indices[i + 1];
+                uint32_t vtxIndexC = indices[i + 2];
 
                 uint8_t& vtxA = meshletVertices[vtxIndexA];
                 uint8_t& vtxB = meshletVertices[vtxIndexB];
@@ -204,7 +203,7 @@ namespace BlitzenEngine
 
     void LoadDefaultData(EngineResources& resources)
     {
-        //LoadMeshFromObj(resources, "Assets/Meshes/well.obj", 1);
         LoadMeshFromObj(resources, "Assets/Meshes/bunny.obj", 1);
+        LoadMeshFromObj(resources, "Assets/Meshes/well.obj", 1);
     }
 }
