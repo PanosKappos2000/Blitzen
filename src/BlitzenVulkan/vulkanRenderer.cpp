@@ -77,7 +77,7 @@ namespace BlitzenVulkan
         // For now it will be used to render many instances of the same mesh
         BlitCL::DynamicArray<StaticRenderObject> renderObjects(10000);
         BlitCL::DynamicArray<IndirectDrawData> indirectDraws(10000);
-        for(size_t i = 0; i < 9950; ++i)
+        for(size_t i = 0; i < 9995; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
             IndirectDrawData& currentIDraw = indirectDraws[i];
@@ -107,7 +107,7 @@ namespace BlitzenVulkan
             currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
         }
 
-        for (size_t i = 0; i < 50; ++i)
+        for (size_t i = 9995; i < 10000; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
             IndirectDrawData& currentIDraw = indirectDraws[i];
@@ -326,6 +326,14 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.bufferAddresses.indirectBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBuffer.buffer);
 
+        // The same as the above but this one will be the final one which will be processed by the compute shaders
+        // Normally, I wouldn't copy the data on to this one but the compute shader fails to setup the commands properly
+        CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBufferFinal, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        m_currentStaticBuffers.bufferAddresses.finalIndirectBufferAddress =
+        GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBufferFinal.buffer);
+
         // This holds the combined size of all the required buffers to pass to the combined staging buffer
         VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize;
 
@@ -385,6 +393,10 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.drawIndirectBuffer.buffer, indirectBufferSize, 
         vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);
 
+        /*CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        m_currentStaticBuffers.drawIndirectBufferFinal.buffer, indirectBufferSize, 
+        vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);*/
+
         if(m_stats.meshShaderSupport)
         {
             CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
@@ -398,14 +410,6 @@ namespace BlitzenVulkan
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
         vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
-
-
-        // Unlike the above buffers, this one will not copy data, its data will be handled by compute shaders
-        CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBufferFinal, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        m_currentStaticBuffers.bufferAddresses.finalIndirectBufferAddress =
-        GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBufferFinal.buffer);
 
 
         VkDescriptorPoolSize poolSize{};
@@ -493,16 +497,6 @@ namespace BlitzenVulkan
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
 
-        /* Dispatching the compute shader that fill the indirect buffer that will be used by draw indirect*/
-        {
-            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
-            0, 1, &globalShaderDataSet, 0, nullptr);
-
-            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectCullingComputePipeline);
-            vkCmdDispatch(fTools.commandBuffer, (context.drawCount + 31) / 32, 1, 1);
-        }
-
-
 
         // Transition the layout of the depth attachment and color attachment to be used as rendering attachments
         {
@@ -531,10 +525,29 @@ namespace BlitzenVulkan
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, depthAttachmentSR);
 
             VkImageMemoryBarrier2 memoryBarriers[2] = {colorAttachmentBarrier, depthAttachmentBarrier};
-
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, memoryBarriers);
         }
         // Attachments ready for rendering
+
+
+
+
+        /* Dispatching the compute shader that fill the indirect buffer that will be used by draw indirect*/
+        {
+            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
+            0, 1, &globalShaderDataSet, 0, nullptr);
+
+            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectCullingComputePipeline);
+            vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>((context.drawCount / 256) + 1), 1, 1);
+
+            VkMemoryBarrier2 memoryBarrier{};
+            MemoryBarrier(memoryBarrier, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_MEMORY_READ_BIT_KHR);
+
+            // Stops later stages from reading from this buffer while compute is not done. Could add this below with the other barriers
+            PipelineBarrier(fTools.commandBuffer, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+        }
 
 
 

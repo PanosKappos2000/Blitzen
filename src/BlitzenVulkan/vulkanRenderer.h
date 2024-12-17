@@ -249,6 +249,12 @@ namespace BlitzenVulkan
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, 
     VkImageSubresourceRange& imageSR);
 
+    void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkDeviceSize offset, VkDeviceSize size);
+
+    void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage);
+
 
     /*-------------------------------
         Vulkan Pipelines 

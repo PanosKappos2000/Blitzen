@@ -37,6 +37,8 @@ struct IndirectDraw
 
     uint taskCount;
     uint firstTask;
+
+    float padding;
 };
 
 layout(buffer_reference, std430) readonly buffer IndirectBuffer

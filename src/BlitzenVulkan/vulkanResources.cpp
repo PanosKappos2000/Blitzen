@@ -283,4 +283,29 @@ namespace BlitzenVulkan
         barrier.newLayout = newLayout;
         barrier.subresourceRange = imageSR;
     }
+
+    void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkDeviceSize offset, VkDeviceSize size)
+    {
+        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        barrier.pNext = nullptr;
+        barrier.buffer = buffer;
+        barrier.srcStageMask = firstSyncStage;
+        barrier.srcAccessMask = firstAccessStage;
+        barrier.dstStageMask = secondSyncStage;
+        barrier.dstAccessMask = secondAccessStage;
+        barrier.offset = offset;
+        barrier.size = size;
+    }
+
+    void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage)
+    {
+        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+        barrier.pNext = nullptr;
+        barrier.srcStageMask = firstSyncStage;
+        barrier.srcAccessMask = firstAccessStage;
+        barrier.dstStageMask = secondSyncStage;
+        barrier.dstAccessMask = secondAccessStage;
+    }
 }

@@ -15,6 +15,7 @@ layout(location = 1) out vec3 outNormal;
 layout(location = 2) out uint outMaterialTag;
 layout(location = 3) out vec3 outModel;
 
+
 void main()
 {
     Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
@@ -29,6 +30,6 @@ void main()
     outMaterialTag = renderObject.materialTag;
     
     outNormal =  currentVertex.normal;
-    
+
     outModel = modelPosition.xyz;
 }

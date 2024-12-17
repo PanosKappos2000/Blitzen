@@ -39,7 +39,7 @@
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
 #define BLITZEN_VULKAN_MESH_SHADER              0 
 
-#define BLITZEN_VULKAN_MAX_DRAW_CALLS           10000 // I am ignoring this right now and I shouldn't be
+#define BLITZEN_VULKAN_MAX_DRAW_CALLS           100000 // I am ignoring this right now and I shouldn't be
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
@@ -61,15 +61,11 @@ namespace BlitzenVulkan
         uint32_t materialTag;
     };
 
-    union alignas(16) IndirectDrawData
+    struct alignas(16) IndirectDrawData
     {
-        uint32_t data[7];
-
-        struct
-        {
-            VkDrawIndexedIndirectCommand drawIndirect;// 5 4byte integers
-            VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 4byte integers
-        };
+        VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
+        VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
+        float pading;
     };
 
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
