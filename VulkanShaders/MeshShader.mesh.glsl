@@ -7,7 +7,6 @@
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 126) out;
 
-
 #include "ShaderBuffers.glsl.h"
 
 layout(location = 0) out vec2 outUv[];
@@ -30,7 +29,8 @@ void main()
 	for (uint i = triangleIndex; i < vertexCount; i+=32)
 	{
 		// Vertex index
-		uint vi = bufferAddrs.meshBuffer.meshlets[meshIndex].vertices[i];
+		uint vi = bufferAddrs.meshBuffer.meshlets[meshIndex].vertices[i] 
+		/*+ bufferAddrs.indirectBuffer.indirectDraws[gl_DrawIDARB].indirectData[3]Doesn't seems to work*/;
 
 		vec3 position = vec3(bufferAddrs.vertexBuffer.vertices[vi].position);
 		vec3 normal = vec3(bufferAddrs.vertexBuffer.vertices[vi].normal);

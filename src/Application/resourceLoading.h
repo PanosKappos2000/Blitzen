@@ -50,6 +50,7 @@ namespace BlitzenEngine
     {
         uint32_t indexCount;
         uint32_t firstIndex;
+        uint32_t vertexOffset;
 
         uint32_t meshletCount = 0;
         uint32_t firstMeshlet;

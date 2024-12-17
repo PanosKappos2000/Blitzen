@@ -818,6 +818,7 @@ namespace BlitzenVulkan
 
         vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
 
+        vkDestroyPipeline(m_device, m_indirectCullingComputePipeline, m_pCustomAllocator);
         vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);
 

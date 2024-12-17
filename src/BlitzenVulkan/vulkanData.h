@@ -34,7 +34,7 @@
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
-#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 
+#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering, I will deactivate it for some time
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
 #define BLITZEN_VULKAN_MESH_SHADER              0 
@@ -162,12 +162,15 @@ namespace BlitzenVulkan
         BlitML::vec3 viewPosition;
     };
 
+    // This struct will be passed to the GPU as uniform descriptor and will give shaders access to all required buffer
     struct alignas(16) BufferDeviceAddresses
     {
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;
         VkDeviceAddress materialBufferAddress;
         VkDeviceAddress meshBufferAddress;
+        VkDeviceAddress indirectBufferAddress;
+        VkDeviceAddress finalIndirectBufferAddress;
     };
 
     // Pushed every frame for the non indirect version to access per object data

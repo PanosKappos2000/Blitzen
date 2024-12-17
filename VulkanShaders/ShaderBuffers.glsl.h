@@ -29,10 +29,22 @@ layout(buffer_reference, std430) readonly buffer MeshBuffer
 
 struct IndirectDraw
 {
-    uint indirectData[7];
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    uint vertexOffset;
+    uint firstInstance;
+
+    uint taskCount;
+    uint firstTask;
 };
 
 layout(buffer_reference, std430) readonly buffer IndirectBuffer
+{
+    IndirectDraw indirectDraws[];
+};
+
+layout(buffer_reference, std430) writeonly buffer FinalIndirect
 {
     IndirectDraw indirectDraws[];
 };
@@ -83,6 +95,8 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     RenderObjectBuffer renderObjects;
     MaterialBuffer materialBuffer;
     MeshBuffer meshBuffer;
+    IndirectBuffer indirectBuffer;
+    FinalIndirect finalIndirectBuffer;
 }bufferAddrs;
 
 struct VertToFragData

@@ -30,14 +30,14 @@ namespace BlitzenVulkan
                 CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
                 VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT);
                 CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-                VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT);
+                VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
             }
             else
             {
                 CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
                 CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
             }
             
             VkDescriptorSetLayoutBinding shaderDataBindings[2] = {shaderDataLayoutBinding, bufferAddressBinding};
@@ -51,8 +51,10 @@ namespace BlitzenVulkan
 
             VkDescriptorSetLayout layouts [2] = {m_globalShaderDataLayout, m_currentStaticBuffers.textureDescriptorSetlayout};
 
+            // I'm not using the push constants anymore(but I could use it for buffer addrs)
             VkPushConstantRange pushConstant{};
             CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(ShaderPushConstant), 0);
+
             CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 1, &pushConstant);
         }
 
@@ -75,7 +77,7 @@ namespace BlitzenVulkan
         // For now it will be used to render many instances of the same mesh
         BlitCL::DynamicArray<StaticRenderObject> renderObjects(10000);
         BlitCL::DynamicArray<IndirectDrawData> indirectDraws(10000);
-        for(size_t i = 0; i < 9500; ++i)
+        for(size_t i = 0; i < 9950; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
             IndirectDrawData& currentIDraw = indirectDraws[i];
@@ -97,15 +99,15 @@ namespace BlitzenVulkan
 
             currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
             currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
+            currentIDraw.drawIndirect.vertexOffset = currentSurface.vertexOffset;
             currentIDraw.drawIndirect.instanceCount = 1;
             currentIDraw.drawIndirect.firstInstance = 0;
-            currentIDraw.drawIndirect.vertexOffset = 0;
 
             currentIDraw.drawIndirectTasks.firstTask = currentSurface.firstMeshlet;
             currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
         }
 
-        for (size_t i = 0; i < 500; ++i)
+        for (size_t i = 0; i < 50; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
             IndirectDrawData& currentIDraw = indirectDraws[i];
@@ -116,7 +118,7 @@ namespace BlitzenVulkan
                 (float(rand()) / RAND_MAX) * 40 - 20,//y
                 (float(rand()) / RAND_MAX) * 40 - 20);//z
             currentObject.pos = translation;
-            currentObject.scale = 10.f;
+            currentObject.scale = 0.1f;
 
             BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                 (float(rand()) / RAND_MAX) * 2 - 1, // y
@@ -127,9 +129,9 @@ namespace BlitzenVulkan
 
             currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
             currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
+            currentIDraw.drawIndirect.vertexOffset = currentSurface.vertexOffset;
             currentIDraw.drawIndirect.instanceCount = 1;
             currentIDraw.drawIndirect.firstInstance = 0;
-            currentIDraw.drawIndirect.vertexOffset = 0;
 
             currentIDraw.drawIndirectTasks.firstTask = currentSurface.firstMeshlet;
             currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
@@ -171,6 +173,32 @@ namespace BlitzenVulkan
             UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
         else
             UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
+
+
+        /* Compute pipeline that fills the draw indirect commands based on culling data*/
+        {
+            VkComputePipelineCreateInfo pipelineInfo{};
+            pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+            pipelineInfo.flags = 0;
+            pipelineInfo.pNext = nullptr;
+
+            VkShaderModule computeShaderModule{};
+            VkPipelineShaderStageCreateInfo shaderStageInfo{};
+            BlitCL::DynamicArray<char> code;
+            CreateShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", computeShaderModule, 
+            shaderStageInfo, &code);
+
+            pipelineInfo.stage = shaderStageInfo;
+            pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;// This layout seems adequate for the compute shader inspite of its name
+
+            VK_CHECK(vkCreateComputePipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_indirectCullingComputePipeline));
+
+            // Beyond this scope, this shader module is not needed
+            vkDestroyShaderModule(m_device, computeShaderModule, m_pCustomAllocator);
+        }
+
+
+
 
         /* Main opaque object graphics pipeline */
         {
@@ -255,53 +283,64 @@ namespace BlitzenVulkan
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.globalVertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        VkBufferDeviceAddressInfo vertexBufferAddressInfo{};
-        vertexBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-        vertexBufferAddressInfo.pNext = nullptr;
-        vertexBufferAddressInfo.buffer = m_currentStaticBuffers.globalVertexBuffer.buffer;
-        m_currentStaticBuffers.bufferAddresses.vertexBufferAddress = vkGetBufferDeviceAddress(m_device, &vertexBufferAddressInfo);
+        CreateBuffer(m_allocator, m_currentStaticBuffers.globalVertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // This buffer will live in the GPU but its address will be retrieved, so that it can be accessed in the shader
+        m_currentStaticBuffers.bufferAddresses.vertexBufferAddress = 
+        GetBufferAddress(m_device, m_currentStaticBuffers.globalVertexBuffer.buffer);
 
-        // Create an index buffer that will all the loaded indices
+        // Create an index buffer that will hold all the loaded indices
         VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
+        // Like the vertex buffer, this will live in the GPU but it does not need to be accessed in the shader, only bound before drawing
         CreateBuffer(m_allocator, m_currentStaticBuffers.globalIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, indexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
+        // The render object buffer will hold per object data for all objects in the scene
         VkDeviceSize renderObjectBufferSize = sizeof(StaticRenderObject) * staticObjects.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        VkBufferDeviceAddressInfo renderObjectBufferAddressInfo{};
-        renderObjectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-        renderObjectBufferAddressInfo.pNext = nullptr;
-        renderObjectBufferAddressInfo.buffer = m_currentStaticBuffers.renderObjectBuffer.buffer;
-        m_currentStaticBuffers.bufferAddresses.renderObjectBufferAddress = vkGetBufferDeviceAddress(m_device, &renderObjectBufferAddressInfo);
+        CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // It also lives in the GPU and needs to be accessed in the shader for per object data like position and orientation
+        m_currentStaticBuffers.bufferAddresses.renderObjectBufferAddress = 
+        GetBufferAddress(m_device, m_currentStaticBuffers.renderObjectBuffer.buffer);
 
+        // Holds material constants 
+        // (like diffuse color and and indices into the array of textures for the different texture maps it uses) 
+        // for every material
         VkDeviceSize materialBufferSize = sizeof(MaterialConstants) * materials.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.globalMaterialBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, materialBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        VkBufferDeviceAddressInfo materialBufferAddressInfo{};
-        materialBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-        materialBufferAddressInfo.pNext = nullptr;
-        materialBufferAddressInfo.buffer = m_currentStaticBuffers.globalMaterialBuffer.buffer;
-        m_currentStaticBuffers.bufferAddresses.materialBufferAddress = vkGetBufferDeviceAddress(m_device, &materialBufferAddressInfo);
+        CreateBuffer(m_allocator, m_currentStaticBuffers.globalMaterialBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, materialBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // Lives in the GPU and will be accessed by the vertex shader to pass the material tag to the fragment shader
+        m_currentStaticBuffers.bufferAddresses.materialBufferAddress = 
+        GetBufferAddress(m_device, m_currentStaticBuffers.globalMaterialBuffer.buffer);
 
+        // Holds all indirect commands needed for vkCmdIndirectDraw variants to draw everything in a scene
         VkDeviceSize indirectBufferSize = sizeof(IndirectDrawData) * indirectDraws.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        // Aside from an indirect buffer, it is also used as a storge buffer as its data will be read and manipulated by compute shaders
+        CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT |VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // As explained above this buffer will be accessed by compute shaders through device address
+        m_currentStaticBuffers.bufferAddresses.indirectBufferAddress = 
+        GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBuffer.buffer);
 
+        // This holds the combined size of all the required buffers to pass to the combined staging buffer
         VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize;
 
         VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();// Defining this here so that it does not go out of scope
+        // The mesh/meshlet buffer will only be created if mesh shading is supported(checked during initalization, only if it the mesh shader macro is set to 1)
         if(m_stats.meshShaderSupport)
         {
-            CreateBuffer(m_allocator, m_currentStaticBuffers.globalMeshBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, meshBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            VkBufferDeviceAddressInfo meshBufferAddressInfo{};
-            meshBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-            meshBufferAddressInfo.pNext = nullptr;
-            meshBufferAddressInfo.buffer = m_currentStaticBuffers.globalMeshBuffer.buffer;
-            m_currentStaticBuffers.bufferAddresses.meshBufferAddress = vkGetBufferDeviceAddress(m_device, &meshBufferAddressInfo);
+            // Holds per object meshlet data for all the objects in the shader
+            CreateBuffer(m_allocator, m_currentStaticBuffers.globalMeshBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+            VMA_MEMORY_USAGE_GPU_ONLY, meshBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            // Like most of the above, it will be accessed in the shaders
+            m_currentStaticBuffers.bufferAddresses.meshBufferAddress = 
+            GetBufferAddress(m_device, m_currentStaticBuffers.globalMeshBuffer.buffer);
+            // the staging buffer size will also be incremented if the meshlet buffer is created
             stagingBufferSize += meshBufferSize;
         }
 
@@ -359,6 +398,15 @@ namespace BlitzenVulkan
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
         vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+
+
+        // Unlike the above buffers, this one will not copy data, its data will be handled by compute shaders
+        CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBufferFinal, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        m_currentStaticBuffers.bufferAddresses.finalIndirectBufferAddress =
+        GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBufferFinal.buffer);
+
 
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -443,6 +491,16 @@ namespace BlitzenVulkan
         vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
 
         BeginCommandBuffer(fTools.commandBuffer, 0);
+
+
+        /* Dispatching the compute shader that fill the indirect buffer that will be used by draw indirect*/
+        {
+            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
+            0, 1, &globalShaderDataSet, 0, nullptr);
+
+            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectCullingComputePipeline);
+            vkCmdDispatch(fTools.commandBuffer, (context.drawCount + 31) / 32, 1, 1);
+        }
 
 
 
@@ -550,7 +608,7 @@ namespace BlitzenVulkan
         }
         else
         {
-            vkCmdDrawIndexedIndirect(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+            vkCmdDrawIndexedIndirect(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
             offsetof(IndirectDrawData, drawIndirect), context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
         }
 

@@ -27,6 +27,8 @@ void main()
     outUv = vec2(float(currentVertex.uvX), float(currentVertex.uvY));
 
     outMaterialTag = renderObject.materialTag;
+    
     outNormal =  currentVertex.normal;
+    
     outModel = modelPosition.xyz;
 }

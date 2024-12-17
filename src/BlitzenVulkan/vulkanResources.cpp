@@ -19,6 +19,15 @@ namespace BlitzenVulkan
         VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, &(buffer.buffer), &(buffer.allocation), &(buffer.allocationInfo)));
     }
 
+    VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer)
+    {
+        VkBufferDeviceAddressInfo indirectBufferAddressInfo{};
+        indirectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        indirectBufferAddressInfo.pNext = nullptr;// For now I'm assuming that no extension will be needed here (I think there are none in the spec anyway)
+        indirectBufferAddressInfo.buffer = buffer;
+        return vkGetBufferDeviceAddress(device, &indirectBufferAddressInfo);
+    }
+
     void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
     uint8_t mimaps /*= 0*/)
     {

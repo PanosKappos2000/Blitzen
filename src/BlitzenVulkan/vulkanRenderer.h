@@ -58,7 +58,10 @@ namespace BlitzenVulkan
 
         AllocatedBuffer renderObjectBuffer;
 
+        // Has all the commands for all the objects on the scene
         AllocatedBuffer drawIndirectBuffer;
+        // Has the commands above after they have been processed by compute
+        AllocatedBuffer drawIndirectBufferFinal;
 
         // Holds the addresses of each one of the above buffers(except global shader data buffer)
         BufferDeviceAddresses bufferAddresses;
@@ -78,6 +81,7 @@ namespace BlitzenVulkan
                 vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
             #endif
             vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
+            vmaDestroyBuffer(allocator, drawIndirectBufferFinal.buffer, drawIndirectBufferFinal.allocation);
             vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
             vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
 
@@ -160,6 +164,8 @@ namespace BlitzenVulkan
         VkPipeline m_opaqueGraphicsPipeline;
         VkPipelineLayout m_opaqueGraphicsPipelineLayout;
 
+        VkPipeline m_indirectCullingComputePipeline;
+
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
 
@@ -193,6 +199,8 @@ namespace BlitzenVulkan
 
     void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
     VmaAllocationCreateFlags allocationFlags);
+
+    VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
     void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
     uint8_t loadMipmaps = 0);
@@ -246,7 +254,14 @@ namespace BlitzenVulkan
         Vulkan Pipelines 
     ---------------------------------*/
 
-    //Helper function that compiles spir-v and adds it to shader stage. Will aid in the creation of graphics and compute pipelines
+    /*
+        This function reads a spir-v shader in byte format from the filepath passed in the second parameter.
+        It needs a reference to an empty shader module(so that it does not go out of scope beofre pipeline creation).
+        It also needs an empty shader stage create info, that will be filled by the function and shoulder later be passed to the pipeline info
+        The shader stage and entry point parameters specify the type of shader(eg. compute) and the main function name respectively
+
+        The finally dynamic array parameter will probably be removed shortly(TODO)
+    */
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, 
     /* I will keep this in case I need to go back to the classic way of doing it */ BlitCL::DynamicArray<char>* shaderCode);
