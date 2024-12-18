@@ -57,6 +57,8 @@ namespace BlitzenVulkan
         BlitML::vec3 pos;
         float scale;
         BlitML::quat orientation;
+        BlitML::vec3 center;
+	    float radius;
 
         uint32_t materialTag;
     };
@@ -65,7 +67,7 @@ namespace BlitzenVulkan
     {
         VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
         VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
-        float pading;
+        float padding;
     };
 
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
@@ -116,6 +118,7 @@ namespace BlitzenVulkan
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionView;
         BlitML::vec3 viewPosition;
+        glm::mat4 projectionTranspose;
 
         DrawObject* pDraws;
         size_t drawCount;
@@ -145,9 +148,11 @@ namespace BlitzenVulkan
         VmaAllocationInfo allocationInfo;
     };
 
-    // Holds universal, constant shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
+    // Holds universal, shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
     struct alignas(16) GlobalShaderData
     {
+        glm::vec4 frustumData[6];
+
         BlitML::mat4 projection;
         BlitML::mat4 view;
         BlitML::mat4 projectionView;

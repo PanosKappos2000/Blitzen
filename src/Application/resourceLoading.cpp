@@ -8,6 +8,16 @@
 #include "objparser.h"// Using some help from Arseny Kapoulkine
 #include "Meshoptimizer/meshoptimizer.h"
 
+// Right now I don't know if I should rely on this or my own math library
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
+#include "glm/gtx/transform.hpp"
+#include "glm/gtx/quaternion.hpp"
+#include <iostream>
+
 namespace BlitzenEngine
 {
     uint8_t LoadResourceSystem(EngineResources& resources)
@@ -193,6 +203,25 @@ namespace BlitzenEngine
                 newSurface.meshletCount++;
             }
         }
+
+        BlitML::vec3 center(0.f);
+        for(size_t i = 0; i < vertices.GetSize(); ++i)
+        {
+            center = center + vertices[i].position;// I have not overloaded the += operator
+        }
+
+        center = center / static_cast<float>(vertices.GetSize());// Again, I've only overloaded the regular operators
+
+        float radius = 0;
+
+        for(size_t i = 0; i < vertices.GetSize(); ++i)
+        {
+            BlitML::vec3 pos = vertices[i].position;
+            radius = BlitML::Max(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
+        }
+
+        newSurface.center = center;
+        newSurface.radius = radius;
 
         resources.meshes[resources.currentMeshIndex].surfaces.PushBack(newSurface);
         ++resources.currentMeshIndex;

@@ -62,6 +62,8 @@ namespace BlitML
 
     inline vec3 operator *(vec3 vec, float scalar) { return vec3(vec.x * scalar, vec.y * scalar, vec.z * scalar); }
 
+    inline vec3 operator /(vec3 vec, float scalar) { return vec3(vec.x / scalar, vec.y / scalar, vec.z / scalar); }
+
     inline vec3 operator / (vec3& v1, vec3& v2) { return vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z); }
 
     union vec4 

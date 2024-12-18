@@ -103,6 +103,12 @@ namespace BlitzenEngine
         BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
+        glm::mat4 projectionTranspose = glm::transpose(glm::mat4(m_camera.projectionMatrix[0], m_camera.projectionMatrix[1], 
+        m_camera.projectionMatrix[2], m_camera.projectionMatrix[3], m_camera.projectionMatrix[4], m_camera.projectionMatrix[5], 
+        m_camera.projectionMatrix[6], m_camera.projectionMatrix[7], m_camera.projectionMatrix[8], m_camera.projectionMatrix[9], 
+        m_camera.projectionMatrix[10], m_camera.projectionMatrix[11], m_camera.projectionMatrix[12], m_camera.projectionMatrix[13], 
+        m_camera.projectionMatrix[14], m_camera.projectionMatrix[15]));
+        BlitML::mat4 tr = BlitML::Transpose(m_camera.projectionMatrix);
 
         // Loads textures that were requested
         LoadTextures();
@@ -117,12 +123,12 @@ namespace BlitzenEngine
 
         // This is declared outide the setup for rendering braces, as it will be passed to render context during the loop
         BlitzenVulkan::DrawObject* draws = reinterpret_cast<BlitzenVulkan::DrawObject*>(
-        BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::LinearAlloc, 10000 * sizeof(BlitzenVulkan::DrawObject)));
+        BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::LinearAlloc, 100000 * sizeof(BlitzenVulkan::DrawObject)));
         uint32_t drawCount = 0;
         #if BLITZEN_VULKAN
         {
             // Combine all the surfaces from every mesh, into the draw objects (this will not be needed once I switch to indirect drawing)
-            for(size_t i = 0; i < 10000; ++i)
+            for(size_t i = 0; i < 100000; ++i)
             {
                 PrimitiveSurface& currentSurface = m_resources.meshes[0].surfaces[0];
                 BlitzenVulkan::DrawObject& currentDraw = draws[i];
@@ -188,6 +194,7 @@ namespace BlitzenEngine
                             renderContext.viewMatrix = m_camera.viewMatrix;
                             renderContext.projectionView = m_camera.projectionViewMatrix;
                             renderContext.viewPosition = m_camera.position;
+                            renderContext.projectionTranspose = projectionTranspose;
 
                             renderContext.pDraws = draws;
                             renderContext.drawCount = drawCount;

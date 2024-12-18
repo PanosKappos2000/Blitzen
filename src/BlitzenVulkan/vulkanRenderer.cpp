@@ -75,18 +75,18 @@ namespace BlitzenVulkan
 
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
-        BlitCL::DynamicArray<StaticRenderObject> renderObjects(10000);
-        BlitCL::DynamicArray<IndirectDrawData> indirectDraws(10000);
-        for(size_t i = 0; i < 9995; ++i)
+        BlitCL::DynamicArray<StaticRenderObject> renderObjects(100000);
+        BlitCL::DynamicArray<IndirectDrawData> indirectDraws(100000);
+        for(size_t i = 0; i < 99995; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
             IndirectDrawData& currentIDraw = indirectDraws[i];
             StaticRenderObject& currentObject = renderObjects[i];
 
             currentObject.materialTag = currentSurface.pMaterial->materialTag;
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 40 - 20,//x 
-            (float(rand()) / RAND_MAX) * 40 - 20,//y
-            (float(rand()) / RAND_MAX) * 40 - 20);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 100 - 50,//x 
+            (float(rand()) / RAND_MAX) * 100 - 50,//y
+            (float(rand()) / RAND_MAX) * 100 - 50);//z
             currentObject.pos = translation;
             currentObject.scale = 5.0f;
 
@@ -96,6 +96,9 @@ namespace BlitzenVulkan
 		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
             BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
             currentObject.orientation = orientation;
+
+            currentObject.center = currentSurface.center;
+            currentObject.radius = currentSurface.radius;
 
             currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
             currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
@@ -107,7 +110,7 @@ namespace BlitzenVulkan
             currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
         }
 
-        for (size_t i = 9995; i < 10000; ++i)
+        for (size_t i = 99995; i < 100000; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
             IndirectDrawData& currentIDraw = indirectDraws[i];
@@ -126,6 +129,9 @@ namespace BlitzenVulkan
             float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
             BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
             currentObject.orientation = orientation;
+
+            currentObject.center = currentSurface.center;
+            currentObject.radius = currentSurface.radius;
 
             currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
             currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
@@ -460,13 +466,19 @@ namespace BlitzenVulkan
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
-        // The calculation will be moved to the camera / engine soon 
         m_globalShaderData.projection = context.projectionMatrix;
         m_globalShaderData.view = context.viewMatrix;
         m_globalShaderData.projectionView = context.projectionView;
         m_globalShaderData.viewPosition = context.viewPosition;
         m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;
+
+        m_globalShaderData.frustumData[0] = context.projectionTranspose[3] + context.projectionTranspose[0];
+        m_globalShaderData.frustumData[1] = context.projectionTranspose[3] - context.projectionTranspose[0];
+        m_globalShaderData.frustumData[2] = context.projectionTranspose[3] + context.projectionTranspose[1];
+        m_globalShaderData.frustumData[3] = context.projectionTranspose[3] - context.projectionTranspose[1];
+        m_globalShaderData.frustumData[4] = context.projectionTranspose[3] - context.projectionTranspose[2];// z - w > 0 -- reverse z
+        m_globalShaderData.frustumData[5] = glm::vec4(0, 0, -1, 100/*Draw distance*/); 
 
         // Declaring it outside the below scope, as it needs to be bound later
         VkDescriptorSet globalShaderDataSet;

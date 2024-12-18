@@ -57,6 +57,9 @@ struct RenderObject
     float scale;
     vec4 orientation;
 
+    vec3 center;
+    float radius;
+
     uint materialTag;
 };
 
@@ -81,6 +84,8 @@ layout (buffer_reference, std430) readonly buffer MaterialBuffer
 
 layout(set = 0, binding = 0) uniform ShaderData
 {
+    vec4 frustumData[6];
+
     mat4 projection;
     mat4 view;
     mat4 projectionView;
