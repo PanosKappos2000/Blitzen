@@ -249,7 +249,7 @@ namespace BlitzenVulkan
                 // Check that all the required features are supported by the device
                 if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
                 !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
-                !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || 
+                !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
                 !features13.synchronization2 || !features13.dynamicRendering)
                 {
                     physicalDevices.RemoveAtIndex(i);
@@ -445,6 +445,7 @@ namespace BlitzenVulkan
             vulkan12Features.runtimeDescriptorArray = true;
             vulkan12Features.shaderFloat16 = true;
             vulkan12Features.storageBuffer8BitAccess = true;
+            vulkan12Features.drawIndirectCount = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;

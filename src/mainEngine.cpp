@@ -96,19 +96,21 @@ namespace BlitzenEngine
         isRunning = 1;
         isSupended = 0;
 
-        //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
-        //static_cast<float>(m_platformData.windowHeight), 10000.f, 0.1f);
         m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), 0.1f);
         BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
-        glm::mat4 projectionTranspose = glm::transpose(glm::mat4(m_camera.projectionMatrix[0], m_camera.projectionMatrix[1], 
+
+        // The transpose of the projection matrix will be used for frustum culling
+        /*glm::mat4 projectionTranspose = glm::transpose(glm::mat4(m_camera.projectionMatrix[0], m_camera.projectionMatrix[1], 
         m_camera.projectionMatrix[2], m_camera.projectionMatrix[3], m_camera.projectionMatrix[4], m_camera.projectionMatrix[5], 
         m_camera.projectionMatrix[6], m_camera.projectionMatrix[7], m_camera.projectionMatrix[8], m_camera.projectionMatrix[9], 
         m_camera.projectionMatrix[10], m_camera.projectionMatrix[11], m_camera.projectionMatrix[12], m_camera.projectionMatrix[13], 
-        m_camera.projectionMatrix[14], m_camera.projectionMatrix[15]));
-        BlitML::mat4 tr = BlitML::Transpose(m_camera.projectionMatrix);
+        m_camera.projectionMatrix[14], m_camera.projectionMatrix[15])); Keeping this her in case my math library is porven inadequate*/
+
+        // The transpose of the projection matrix will be used for frustum culling
+        BlitML::mat4 projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
 
         // Loads textures that were requested
         LoadTextures();

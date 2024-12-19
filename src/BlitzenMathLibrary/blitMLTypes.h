@@ -105,6 +105,8 @@ namespace BlitML
 
     inline vec4 operator / (vec4& v1, vec4& v2) { return vec4(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z, v1.w / v2.w); }
 
+    inline vec4 operator / (vec4& v1, float f) { return vec4(v1.x / f, v1.y / f, v1.z / f, v1.w / f); }
+
 
 
     // Quaternion
@@ -131,6 +133,10 @@ namespace BlitML
         }
 
         inline float& operator [] (size_t index) { return this->data[index]; }
+
+        inline vec4 GetRow(uint8_t row) { 
+            return vec4(this->data[0 + row * 4], this->data[1 + row * 4], this->data[2 + row * 4], this->data[3 + row * 4]); 
+        }
     };
 
     // Still doesn't work
