@@ -110,7 +110,7 @@ namespace BlitzenEngine
         m_camera.projectionMatrix[14], m_camera.projectionMatrix[15])); Keeping this her in case my math library is porven inadequate*/
 
         // The transpose of the projection matrix will be used for frustum culling
-        BlitML::mat4 projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
+        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionViewMatrix);
 
         // Loads textures that were requested
         LoadTextures();
@@ -196,7 +196,7 @@ namespace BlitzenEngine
                             renderContext.viewMatrix = m_camera.viewMatrix;
                             renderContext.projectionView = m_camera.projectionViewMatrix;
                             renderContext.viewPosition = m_camera.position;
-                            renderContext.projectionTranspose = projectionTranspose;
+                            renderContext.projectionTranspose = m_camera.projectionTranspose;
 
                             renderContext.pDraws = draws;
                             renderContext.drawCount = drawCount;
@@ -312,6 +312,7 @@ namespace BlitzenEngine
 
             camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
             camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
+            camera.projectionTranspose = BlitML::Transpose(camera.projectionViewMatrix);
         }
     }
 
