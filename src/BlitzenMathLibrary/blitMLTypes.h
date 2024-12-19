@@ -62,6 +62,8 @@ namespace BlitML
 
     inline vec3 operator *(vec3 vec, float scalar) { return vec3(vec.x * scalar, vec.y * scalar, vec.z * scalar); }
 
+    inline vec3 operator /(vec3 vec, float scalar) { return vec3(vec.x / scalar, vec.y / scalar, vec.z / scalar); }
+
     inline vec3 operator / (vec3& v1, vec3& v2) { return vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z); }
 
     union vec4 
@@ -92,7 +94,7 @@ namespace BlitML
         inline vec4(float first, float second, float third, float fourth) : x{first}, y{second}, z{third}, w{fourth} {}
         inline vec4(vec2& partial , float third, float fourth) : x{partial.x}, y{partial.y}, z{third}, w{fourth} {}
         inline vec4(vec3& partial, float fourth = 0.f) : x{partial.x}, y{partial.y}, z{partial.z}, w{fourth} {}
-        inline vec4(vec4& copy) : x{copy.x}, y{copy.y}, z{copy.z}, w{copy.z} {}  
+        inline vec4(vec4& copy) : x{copy.x}, y{copy.y}, z{copy.z}, w{copy.w} {}  
     };
 
     inline vec4 operator + (vec4& v1, vec4& v2) { return vec4(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w); }

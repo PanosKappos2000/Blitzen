@@ -5,6 +5,7 @@
 
 #include "ShaderBuffers.glsl.h"
 
+
 layout(location = 0) in vec2 uv;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in flat uint materialTag;
@@ -30,5 +31,5 @@ void main()
     vec4 specular = vec4(vec3(shaderData.sunColor * specularFactor), specularSampler.a);
     specular *= specularSampler;
 
-    finalColor = diffuseSampler;
+    finalColor = vec4(0.3f, 0.1f, 0.7f, 1.f);
 }

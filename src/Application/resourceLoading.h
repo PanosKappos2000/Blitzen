@@ -1,6 +1,6 @@
 #pragma once
 #include "Core/blitLogger.h"
-#include "BlitzenMathLibrary/blitMLTypes.h"
+#include "BlitzenMathLibrary/blitML.h"
 #include "Core/blitzenContainerLibrary.h"
 
 #define BLIT_MAX_TEXTURE_COUNT      5000
@@ -45,14 +45,21 @@ namespace BlitzenEngine
         uint32_t materialTag;
     };
 
-    // This is basically what a shader will draw, with each draw call
+    // Has information about a mesh surface that will be given to a GPU friendly struct, so that the GPU can draw each surface
     struct PrimitiveSurface
     {
+        // Data needed by a vertex shader to draw the surface
         uint32_t indexCount;
         uint32_t firstIndex;
+        uint32_t vertexOffset;
 
+        // Data need by a mesh shader to draw a surface
         uint32_t meshletCount = 0;
         uint32_t firstMeshlet;
+
+        // Bounding sphere data, can be used for frustum culling and other operations
+        BlitML::vec3 center;
+        float radius;
 
         MaterialStats* pMaterial;
     };

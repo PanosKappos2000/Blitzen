@@ -34,12 +34,12 @@
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
-#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 
+#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering, I will deactivate it for some time
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
 #define BLITZEN_VULKAN_MESH_SHADER              0 
 
-#define BLITZEN_VULKAN_MAX_DRAW_CALLS           1000000
+#define BLITZEN_VULKAN_MAX_DRAW_CALLS           100000 // I am ignoring this right now and I shouldn't be
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
@@ -48,14 +48,26 @@ namespace BlitzenVulkan
     struct VulkanStats
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
+        uint8_t meshShaderSupport = 0;// TODO: Use this to check during load if mesh shaders are supported so that the application does not fail when they are not
     };
 
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
     struct alignas (16) StaticRenderObject
     {
-        BlitML::mat4 modelMatrix;
+        BlitML::vec3 pos;
+        float scale;
+        BlitML::quat orientation;
+        BlitML::vec3 center;
+	    float radius;
 
         uint32_t materialTag;
+    };
+
+    struct alignas(16) IndirectDrawData
+    {
+        VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
+        VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
+        float padding;
     };
 
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
@@ -106,6 +118,7 @@ namespace BlitzenVulkan
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionView;
         BlitML::vec3 viewPosition;
+        glm::mat4 projectionTranspose;
 
         DrawObject* pDraws;
         size_t drawCount;
@@ -135,9 +148,11 @@ namespace BlitzenVulkan
         VmaAllocationInfo allocationInfo;
     };
 
-    // Holds universal, constant shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
+    // Holds universal, shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
     struct alignas(16) GlobalShaderData
     {
+        glm::vec4 frustumData[6];
+
         BlitML::mat4 projection;
         BlitML::mat4 view;
         BlitML::mat4 projectionView;
@@ -148,12 +163,15 @@ namespace BlitzenVulkan
         BlitML::vec3 viewPosition;
     };
 
+    // This struct will be passed to the GPU as uniform descriptor and will give shaders access to all required buffer
     struct alignas(16) BufferDeviceAddresses
     {
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress renderObjectBufferAddress;
         VkDeviceAddress materialBufferAddress;
         VkDeviceAddress meshBufferAddress;
+        VkDeviceAddress indirectBufferAddress;
+        VkDeviceAddress finalIndirectBufferAddress;
     };
 
     // Pushed every frame for the non indirect version to access per object data

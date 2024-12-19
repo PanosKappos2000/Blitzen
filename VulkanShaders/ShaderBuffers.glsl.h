@@ -29,7 +29,16 @@ layout(buffer_reference, std430) readonly buffer MeshBuffer
 
 struct IndirectDraw
 {
-    uint indirectData[5];
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    uint vertexOffset;
+    uint firstInstance;
+
+    uint taskCount;
+    uint firstTask;
+
+    float padding;
 };
 
 layout(buffer_reference, std430) readonly buffer IndirectBuffer
@@ -37,9 +46,19 @@ layout(buffer_reference, std430) readonly buffer IndirectBuffer
     IndirectDraw indirectDraws[];
 };
 
+layout(buffer_reference, std430) writeonly buffer FinalIndirect
+{
+    IndirectDraw indirectDraws[];
+};
+
 struct RenderObject
 {
-    mat4 worldMatrix;
+    vec3 pos;
+    float scale;
+    vec4 orientation;
+
+    vec3 center;
+    float radius;
 
     uint materialTag;
 };
@@ -65,6 +84,8 @@ layout (buffer_reference, std430) readonly buffer MaterialBuffer
 
 layout(set = 0, binding = 0) uniform ShaderData
 {
+    vec4 frustumData[6];
+
     mat4 projection;
     mat4 view;
     mat4 projectionView;
@@ -81,6 +102,8 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     RenderObjectBuffer renderObjects;
     MaterialBuffer materialBuffer;
     MeshBuffer meshBuffer;
+    IndirectBuffer indirectBuffer;
+    FinalIndirect finalIndirectBuffer;
 }bufferAddrs;
 
 struct VertToFragData
@@ -90,3 +113,8 @@ struct VertToFragData
     uint materialTag;
     vec3 modelPos;
 };
+
+vec3 RotateQuat(vec3 v, vec4 quat)
+{
+	return v + 2.0 * cross(quat.xyz, cross(quat.xyz, v) + quat.w * v);
+}

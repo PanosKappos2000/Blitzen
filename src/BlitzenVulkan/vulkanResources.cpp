@@ -19,6 +19,15 @@ namespace BlitzenVulkan
         VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, &(buffer.buffer), &(buffer.allocation), &(buffer.allocationInfo)));
     }
 
+    VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer)
+    {
+        VkBufferDeviceAddressInfo indirectBufferAddressInfo{};
+        indirectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        indirectBufferAddressInfo.pNext = nullptr;// For now I'm assuming that no extension will be needed here (I think there are none in the spec anyway)
+        indirectBufferAddressInfo.buffer = buffer;
+        return vkGetBufferDeviceAddress(device, &indirectBufferAddressInfo);
+    }
+
     void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
     uint8_t mimaps /*= 0*/)
     {
@@ -273,5 +282,30 @@ namespace BlitzenVulkan
         barrier.oldLayout = oldLayout;
         barrier.newLayout = newLayout;
         barrier.subresourceRange = imageSR;
+    }
+
+    void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkDeviceSize offset, VkDeviceSize size)
+    {
+        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        barrier.pNext = nullptr;
+        barrier.buffer = buffer;
+        barrier.srcStageMask = firstSyncStage;
+        barrier.srcAccessMask = firstAccessStage;
+        barrier.dstStageMask = secondSyncStage;
+        barrier.dstAccessMask = secondAccessStage;
+        barrier.offset = offset;
+        barrier.size = size;
+    }
+
+    void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage)
+    {
+        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+        barrier.pNext = nullptr;
+        barrier.srcStageMask = firstSyncStage;
+        barrier.srcAccessMask = firstAccessStage;
+        barrier.dstStageMask = secondSyncStage;
+        barrier.dstAccessMask = secondAccessStage;
     }
 }

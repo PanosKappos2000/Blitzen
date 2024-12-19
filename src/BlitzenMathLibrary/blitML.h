@@ -35,6 +35,7 @@ namespace BlitML
     inline float Acos(float x) {return acosf(x);}
     inline float Sqrt(float x) {return sqrtf(x);}
     inline float Abs(float x) {return fabsf(x);}
+    inline float Max(float x, float y) {return (x > y) ? x : y;}
 
     inline uint8_t IsPowerOf2(uint64_t value) { return (value != 0) && ((value & (value - 1)) == 0); }
 
@@ -217,14 +218,15 @@ namespace BlitML
         mat4 res(0);
         res.data[0] = halfTanFov / aspectRatio;
         res.data[5] = halfTanFov;
-        res.data[11] = -1.0f;
+        res.data[11] = 1.0f;
         res.data[14] = near;
         return res;
+
 	    /*return glm::mat4(
 		f / aspectRatio, 0.0f, 0.0f, 0.0f,
 		0.0f, f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, zNear, 0.0f);*/
+		0.0f, 0.0f, zNear, 0.0f); Reference to write this with my own types*/
     }
 
     // Creates and returns a look-at matrix, or a matrix looking at target from the perspective of position.
