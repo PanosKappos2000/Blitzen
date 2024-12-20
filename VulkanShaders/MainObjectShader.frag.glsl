@@ -15,6 +15,7 @@ layout(set = 1, binding = 0) uniform sampler2D textures[];
 
 layout (location = 0) out vec4 finalColor;
 
+
 void main()
 {
     Material currentMaterial = bufferAddrs.materialBuffer.materials[materialTag];

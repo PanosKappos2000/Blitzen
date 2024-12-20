@@ -3,6 +3,8 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_shader_draw_parameters : require
 
+#define GRAPHICS_PIPELINE 
+
 #include "ShaderBuffers.glsl.h"
 
 layout(push_constant) uniform constants
@@ -19,9 +21,8 @@ layout(location = 3) out vec3 outModel;
 void main()
 {
     Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
-    RenderObject renderObject = bufferAddrs.renderObjects.renderObjects[gl_DrawIDARB];
+    RenderObject renderObject = bufferAddrs.renderObjects.renderObjects[bufferAddrs.finalIndirectBuffer.indirectDraws[gl_DrawIDARB].objectId];
 
-    // Rotating the model inside the shader seems like a waste but we'll see
     vec4 modelPosition = vec4(RotateQuat(currentVertex.position, renderObject.orientation) * renderObject.scale + renderObject.pos, 1.0);
     gl_Position = shaderData.projectionView * modelPosition;
 

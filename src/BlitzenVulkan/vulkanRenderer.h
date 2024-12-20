@@ -62,6 +62,8 @@ namespace BlitzenVulkan
         AllocatedBuffer drawIndirectBuffer;
         // Has the commands above after they have been processed by compute
         AllocatedBuffer drawIndirectBufferFinal;
+        // Counts how many objects have actually been added to the final draw indirect buffer(helps avoid empty draw calls)
+        AllocatedBuffer drawIndirectCountBuffer;
 
         // Holds the addresses of each one of the above buffers(except global shader data buffer)
         BufferDeviceAddresses bufferAddresses;
@@ -82,6 +84,7 @@ namespace BlitzenVulkan
             #endif
             vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
             vmaDestroyBuffer(allocator, drawIndirectBufferFinal.buffer, drawIndirectBufferFinal.allocation);
+            vmaDestroyBuffer(allocator, drawIndirectCountBuffer.buffer, drawIndirectCountBuffer.allocation);
             vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
             vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
 

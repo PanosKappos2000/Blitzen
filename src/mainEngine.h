@@ -61,6 +61,7 @@ namespace BlitzenEngine
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionMatrix;
         BlitML::mat4 projectionViewMatrix;
+        BlitML::mat4 projectionTranspose;
 
         BlitML::vec3 position;
         BlitML::vec3 eulerAngles;

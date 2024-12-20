@@ -29,6 +29,8 @@ layout(buffer_reference, std430) readonly buffer MeshBuffer
 
 struct IndirectDraw
 {
+    uint objectId;
+
     uint indexCount;
     uint instanceCount;
     uint firstIndex;
@@ -37,8 +39,6 @@ struct IndirectDraw
 
     uint taskCount;
     uint firstTask;
-
-    float padding;
 };
 
 layout(buffer_reference, std430) readonly buffer IndirectBuffer
@@ -46,9 +46,21 @@ layout(buffer_reference, std430) readonly buffer IndirectBuffer
     IndirectDraw indirectDraws[];
 };
 
-layout(buffer_reference, std430) writeonly buffer FinalIndirect
+#ifdef COMPUTE_PIPELINE
+    layout(buffer_reference, std430) writeonly buffer FinalIndirect
+    {
+        IndirectDraw indirectDraws[];
+    };
+#else
+    layout(buffer_reference, std430) readonly buffer FinalIndirect
+    {
+        IndirectDraw indirectDraws[];
+    };
+#endif
+
+layout(buffer_reference, std430) writeonly buffer IndirectCount
 {
-    IndirectDraw indirectDraws[];
+    uint drawCount;
 };
 
 struct RenderObject
@@ -104,6 +116,7 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     MeshBuffer meshBuffer;
     IndirectBuffer indirectBuffer;
     FinalIndirect finalIndirectBuffer;
+    IndirectCount indirectCount;
 }bufferAddrs;
 
 struct VertToFragData

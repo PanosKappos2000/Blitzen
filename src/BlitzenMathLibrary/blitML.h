@@ -137,6 +137,7 @@ namespace BlitML
         }
         return 1;
     }
+
     inline uint8_t Compare(vec3& v1, vec3& v2, float tolerance)
     {
         if (Abs(v1.x - v2.x) > tolerance) 
@@ -175,6 +176,8 @@ namespace BlitML
     inline vec3 Cross(vec3& v1, vec3& v2){
         return vec3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
     }
+
+    inline vec4 NormalizePlane(vec4& p){ return p / Length(ToVec3(p));}
 
 
 

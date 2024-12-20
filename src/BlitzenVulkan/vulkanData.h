@@ -24,7 +24,7 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
+#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
@@ -65,9 +65,9 @@ namespace BlitzenVulkan
 
     struct alignas(16) IndirectDrawData
     {
+        uint32_t drawId;
         VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
         VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
-        float padding;
     };
 
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
@@ -118,7 +118,7 @@ namespace BlitzenVulkan
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionView;
         BlitML::vec3 viewPosition;
-        glm::mat4 projectionTranspose;
+        BlitML::mat4 projectionTranspose;
 
         DrawObject* pDraws;
         size_t drawCount;
@@ -151,7 +151,8 @@ namespace BlitzenVulkan
     // Holds universal, shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
     struct alignas(16) GlobalShaderData
     {
-        glm::vec4 frustumData[6];
+        // Accessed by a compute shader to do frustum culling
+        BlitML::vec4 frustumData[6];
 
         BlitML::mat4 projection;
         BlitML::mat4 view;
@@ -172,6 +173,7 @@ namespace BlitzenVulkan
         VkDeviceAddress meshBufferAddress;
         VkDeviceAddress indirectBufferAddress;
         VkDeviceAddress finalIndirectBufferAddress;
+        VkDeviceAddress indirectCountBufferAddress;
     };
 
     // Pushed every frame for the non indirect version to access per object data
