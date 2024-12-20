@@ -136,13 +136,41 @@ namespace BlitzenEngine
         vertexCount, sizeof(BlitML::Vertex));
 
         PrimitiveSurface newSurface;
-        newSurface.indexCount = static_cast<uint32_t>(indexCount);
-        newSurface.firstIndex = static_cast<uint32_t>(resources.indices.GetSize());
         newSurface.vertexOffset = static_cast<uint32_t>(resources.vertices.GetSize());
         newSurface.pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
 
-        resources.indices.AddBlockAtBack(indices.Data(), indices.GetSize());
+        //resources.indices.AddBlockAtBack(indices.Data(), indices.GetSize());
         resources.vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
+
+        BlitCL::DynamicArray<uint32_t> lodIndices(indices);
+        while(newSurface.lodCount < BLIT_MAX_MESH_LOD)
+        {
+            // Get current element in the LOD array and increment the count
+            MeshLod& lod = newSurface.meshLod[newSurface.lodCount++];
+
+            lod.firstIndex = static_cast<uint32_t>(resources.indices.GetSize());
+            lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
+
+            resources.indices.AddBlockAtBack(lodIndices.Data(), lodIndices.GetSize());
+
+            if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
+            {
+                size_t nextIndicesTarget = static_cast<size_t>(static_cast<double>(lodIndices.GetSize()) * 0.75);
+                float nextError = 0.f;// Placeholder to fill the last parameter in the below function
+                size_t nextIndices = meshopt_simplify(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &vertices[0].position.x, 
+                vertexCount, sizeof(BlitML::Vertex), nextIndicesTarget, 1e-4f, 0, &nextError);
+                // If the next lod size surpasses the previous than this function has failed
+                BLIT_ASSERT(nextIndices <= lodIndices.GetSize())
+
+                // Reached the error bounds
+                if(nextIndices == lodIndices.GetSize())
+                    break;
+
+                lodIndices.Downsize(nextIndices);
+                // Optimize the indices cache
+                meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), vertexCount);
+            }
+        }
 
         if(buildMeshlets)
         {
@@ -223,6 +251,7 @@ namespace BlitzenEngine
         newSurface.center = center;
         newSurface.radius = radius;
 
+        // Add the surface to the current mesh and increment the mesh index, so that the next time another mesh is processed
         resources.meshes[resources.currentMeshIndex].surfaces.PushBack(newSurface);
         ++resources.currentMeshIndex;
 

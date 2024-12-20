@@ -125,7 +125,7 @@ namespace BlitzenVulkan
 
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectDrawData>& indirectDraws);
+        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectOffsets>& indirectDraws);
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 

@@ -123,26 +123,9 @@ namespace BlitzenEngine
             Setup for Vulkan rendering
         ------------------------------------*/
 
-        // This is declared outide the setup for rendering braces, as it will be passed to render context during the loop
-        BlitzenVulkan::DrawObject* draws = reinterpret_cast<BlitzenVulkan::DrawObject*>(
-        BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::LinearAlloc, 100000 * sizeof(BlitzenVulkan::DrawObject)));
-        uint32_t drawCount = 0;
+        uint32_t drawCount = 100000;
         #if BLITZEN_VULKAN
         {
-            // Combine all the surfaces from every mesh, into the draw objects (this will not be needed once I switch to indirect drawing)
-            for(size_t i = 0; i < 100000; ++i)
-            {
-                PrimitiveSurface& currentSurface = m_resources.meshes[0].surfaces[0];
-                BlitzenVulkan::DrawObject& currentDraw = draws[i];
-
-                currentDraw.firstIndex = currentSurface.firstIndex;
-                currentDraw.indexCount = currentSurface.indexCount;
-                currentDraw.firstMeshlet = currentSurface.firstMeshlet;
-                currentDraw.meshletCount = currentSurface.meshletCount;
-                currentDraw.objectTag = drawCount;
-                drawCount++;  
-            }
-
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);
             vulkanData.pTextures = m_resources.textures;
             // The index where the resource system stopped when loading is the amount of mesh assets that were added to the array
@@ -198,7 +181,6 @@ namespace BlitzenEngine
                             renderContext.viewPosition = m_camera.position;
                             renderContext.projectionTranspose = m_camera.projectionTranspose;
 
-                            renderContext.pDraws = draws;
                             renderContext.drawCount = drawCount;
 
                             // Hardcoding the sun for now

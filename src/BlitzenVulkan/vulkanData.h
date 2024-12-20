@@ -63,6 +63,17 @@ namespace BlitzenVulkan
         uint32_t materialTag;
     };
 
+    struct alignas(16) IndirectOffsets
+    {
+        BlitzenEngine::MeshLod lod[8];
+        uint32_t lodCount;
+
+        uint32_t vertexOffset;
+
+        uint32_t taskCount;
+        uint32_t firstTask;
+    };
+
     struct alignas(16) IndirectDrawData
     {
         uint32_t drawId;
@@ -93,20 +104,6 @@ namespace BlitzenVulkan
         {}
     };
 
-    // This is setup before a call to draw frame, and is given to the render context in its member array
-    struct DrawObject
-    {
-        // Data used to call draw indexed
-        uint32_t firstIndex;
-        uint32_t indexCount;
-
-        uint32_t firstMeshlet;
-        uint32_t meshletCount;
-
-        // References a render object in the global buffer
-        uint32_t objectTag;
-    };
-
     // Passed to the renderer every time draw frame is called, to handle special events and update shader data
     struct RenderContext
     {
@@ -120,7 +117,6 @@ namespace BlitzenVulkan
         BlitML::vec3 viewPosition;
         BlitML::mat4 projectionTranspose;
 
-        DrawObject* pDraws;
         size_t drawCount;
 
         BlitML::vec3 sunlightDirection;

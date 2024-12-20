@@ -12,6 +12,7 @@
 #define BLIT_DEFAULT_MATERIAL_NAME  "blit_default_material"
 #define BLIT_DEFAULT_MATERIAL_COUNT  1
 
+#define BLIT_MAX_MESH_LOD           8
 #define BLIT_MAX_MESH_COUNT         10000
 
 namespace BlitzenEngine
@@ -45,12 +46,21 @@ namespace BlitzenEngine
         uint32_t materialTag;
     };
 
+    struct MeshLod
+    {
+        // The amount of indices that have to be iterated over after the first index, in order to draw the surface with this lod
+        uint32_t indexCount;
+        // The index of the first element in the index buffer for this mesh lod
+        uint32_t firstIndex;
+
+        uint32_t meshletCount = 0;
+        uint32_t firstMeshlet;
+    };
+
     // Has information about a mesh surface that will be given to a GPU friendly struct, so that the GPU can draw each surface
     struct PrimitiveSurface
     {
-        // Data needed by a vertex shader to draw the surface
-        uint32_t indexCount;
-        uint32_t firstIndex;
+        // With the way obj files are loaded, this will be needed to index into the vertex buffer
         uint32_t vertexOffset;
 
         // Data need by a mesh shader to draw a surface
@@ -60,6 +70,9 @@ namespace BlitzenEngine
         // Bounding sphere data, can be used for frustum culling and other operations
         BlitML::vec3 center;
         float radius;
+
+        uint32_t lodCount = 0;
+        MeshLod meshLod[BLIT_MAX_MESH_LOD];
 
         MaterialStats* pMaterial;
     };

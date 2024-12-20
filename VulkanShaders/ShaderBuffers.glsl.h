@@ -27,6 +27,28 @@ layout(buffer_reference, std430) readonly buffer MeshBuffer
     Meshlet meshlets[];
 };
 
+struct MeshLod
+{
+    
+    uint indexCount;
+    uint firstIndex;
+
+    uint meshletCount;
+    uint firstMeshlet;
+};
+
+struct IndirectOffsets
+{
+    MeshLod lod[8];
+    // TODO: this could easily be uint8
+    uint lodCount;
+
+    uint vertexOffset;
+
+    uint taskCount;
+    uint firstTask;
+};
+
 struct IndirectDraw
 {
     uint objectId;
@@ -43,7 +65,7 @@ struct IndirectDraw
 
 layout(buffer_reference, std430) readonly buffer IndirectBuffer
 {
-    IndirectDraw indirectDraws[];
+    IndirectOffsets  offsets[];
 };
 
 #ifdef COMPUTE_PIPELINE

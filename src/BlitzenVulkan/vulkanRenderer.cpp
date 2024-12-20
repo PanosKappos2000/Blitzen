@@ -83,11 +83,11 @@ namespace BlitzenVulkan
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
         BlitCL::DynamicArray<StaticRenderObject> renderObjects(100000);
-        BlitCL::DynamicArray<IndirectDrawData> indirectDraws(100000);
+        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(100000);
         for(size_t i = 0; i < 99995; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
-            IndirectDrawData& currentIDraw = indirectDraws[i];
+            IndirectOffsets& currentIDraw = indirectDraws[i];
             StaticRenderObject& currentObject = renderObjects[i];
 
             currentObject.materialTag = currentSurface.pMaterial->materialTag;
@@ -95,7 +95,7 @@ namespace BlitzenVulkan
             (float(rand()) / RAND_MAX) * 100 - 50,//y
             (float(rand()) / RAND_MAX) * 100 - 50);//z
             currentObject.pos = translation;
-            currentObject.scale = 5.0f;
+            currentObject.scale = 5.f;
 
             BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
             (float(rand()) / RAND_MAX) * 2 - 1, // y
@@ -107,20 +107,19 @@ namespace BlitzenVulkan
             currentObject.center = currentSurface.center;
             currentObject.radius = currentSurface.radius;
 
-            currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
-            currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
-            currentIDraw.drawIndirect.vertexOffset = currentSurface.vertexOffset;
-            currentIDraw.drawIndirect.instanceCount = 1;
-            currentIDraw.drawIndirect.firstInstance = 0;
+            for(size_t i = 0; i < currentSurface.lodCount; ++i)
+                currentIDraw.lod[i] = currentSurface.meshLod[i];
+            currentIDraw.lodCount = currentSurface.lodCount;
+            currentIDraw.vertexOffset = currentSurface.vertexOffset;
 
-            currentIDraw.drawIndirectTasks.firstTask = currentSurface.firstMeshlet;
-            currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
+            currentIDraw.firstTask = currentSurface.firstMeshlet;
+            currentIDraw.taskCount = currentSurface.meshletCount;
         }
 
         for (size_t i = 99995; i < 100000; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
-            IndirectDrawData& currentIDraw = indirectDraws[i];
+            IndirectOffsets& currentIDraw = indirectDraws[i];
             StaticRenderObject& currentObject = renderObjects[i];
 
             currentObject.materialTag = currentSurface.pMaterial->materialTag;
@@ -140,14 +139,13 @@ namespace BlitzenVulkan
             currentObject.center = currentSurface.center;
             currentObject.radius = currentSurface.radius;
 
-            currentIDraw.drawIndirect.firstIndex = currentSurface.firstIndex;
-            currentIDraw.drawIndirect.indexCount = currentSurface.indexCount;
-            currentIDraw.drawIndirect.vertexOffset = currentSurface.vertexOffset;
-            currentIDraw.drawIndirect.instanceCount = 1;
-            currentIDraw.drawIndirect.firstInstance = 0;
+            for(size_t i = 0; i < currentIDraw.lodCount; ++i)
+                currentIDraw.lod[i] = currentSurface.meshLod[i];
+            currentIDraw.lodCount = currentSurface.lodCount;
+            currentIDraw.vertexOffset = currentSurface.vertexOffset;
 
-            currentIDraw.drawIndirectTasks.firstTask = currentSurface.firstMeshlet;
-            currentIDraw.drawIndirectTasks.taskCount = currentSurface.meshletCount;
+            currentIDraw.firstTask = currentSurface.firstMeshlet;
+            currentIDraw.taskCount = currentSurface.meshletCount;
         }
 
         // This will hold all the data needed to record all the draw commands indirectly, using a GPU buffer
@@ -292,7 +290,7 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
     BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectDrawData>& indirectDraws)
+    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectOffsets>& indirectDraws)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
@@ -330,7 +328,7 @@ namespace BlitzenVulkan
         GetBufferAddress(m_device, m_currentStaticBuffers.globalMaterialBuffer.buffer);
 
         // Holds all indirect commands needed for vkCmdIndirectDraw variants to draw everything in a scene
-        VkDeviceSize indirectBufferSize = sizeof(IndirectDrawData) * indirectDraws.GetSize();
+        VkDeviceSize indirectBufferSize = sizeof(IndirectOffsets) * indirectDraws.GetSize();
         // Aside from an indirect buffer, it is also used as a storge buffer as its data will be read and manipulated by compute shaders
         CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT |VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
@@ -340,9 +338,10 @@ namespace BlitzenVulkan
         GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBuffer.buffer);
 
         // The same as the above but this one will be generated by the compute shader each frame after doing frustum culling and other operations
+        VkDeviceSize finalIndirectBufferSize = sizeof(IndirectDrawData) * indirectDraws.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBufferFinal, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        VMA_MEMORY_USAGE_GPU_ONLY, finalIndirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         m_currentStaticBuffers.bufferAddresses.finalIndirectBufferAddress =
         GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBufferFinal.buffer);
         
