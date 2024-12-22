@@ -158,7 +158,7 @@ namespace BlitzenEngine
                 size_t nextIndicesTarget = static_cast<size_t>(static_cast<double>(lodIndices.GetSize()) * 0.75);
                 float nextError = 0.f;// Placeholder to fill the last parameter in the below function
                 size_t nextIndices = meshopt_simplify(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &vertices[0].position.x, 
-                vertexCount, sizeof(BlitML::Vertex), nextIndicesTarget, 1e-4f, 0, &nextError);
+                vertices.GetSize(), sizeof(BlitML::Vertex), nextIndicesTarget, 1e-4f, 0, &nextError);
                 // If the next lod size surpasses the previous than this function has failed
                 BLIT_ASSERT(nextIndices <= lodIndices.GetSize())
 

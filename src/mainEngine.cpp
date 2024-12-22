@@ -96,7 +96,7 @@ namespace BlitzenEngine
         isRunning = 1;
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), 0.1f);
         BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
@@ -123,7 +123,7 @@ namespace BlitzenEngine
             Setup for Vulkan rendering
         ------------------------------------*/
 
-        uint32_t drawCount = 100000;
+        uint32_t drawCount = 500000;
         #if BLITZEN_VULKAN
         {
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);
@@ -448,7 +448,7 @@ namespace BlitzenEngine
 
         //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
         //10000.f, 0.1f);
-        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), 0.1f);
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
     }

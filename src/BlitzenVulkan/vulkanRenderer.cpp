@@ -82,18 +82,18 @@ namespace BlitzenVulkan
 
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
-        BlitCL::DynamicArray<StaticRenderObject> renderObjects(100000);
-        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(100000);
-        for(size_t i = 0; i < 99995; ++i)
+        BlitCL::DynamicArray<StaticRenderObject> renderObjects(500000);
+        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(500000);
+        for(size_t i = 0; i < 499995; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
             IndirectOffsets& currentIDraw = indirectDraws[i];
             StaticRenderObject& currentObject = renderObjects[i];
 
             currentObject.materialTag = currentSurface.pMaterial->materialTag;
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 100 - 50,//x 
-            (float(rand()) / RAND_MAX) * 100 - 50,//y
-            (float(rand()) / RAND_MAX) * 100 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 200 - 50,//x 
+            (float(rand()) / RAND_MAX) * 200 - 50,//y
+            (float(rand()) / RAND_MAX) * 200 - 50);//z
             currentObject.pos = translation;
             currentObject.scale = 5.f;
 
@@ -116,7 +116,7 @@ namespace BlitzenVulkan
             currentIDraw.taskCount = currentSurface.meshletCount;
         }
 
-        for (size_t i = 99995; i < 100000; ++i)
+        for (size_t i = 499995; i < 500000; ++i)
         {
             BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
             IndirectOffsets& currentIDraw = indirectDraws[i];

@@ -3,7 +3,6 @@
 #extension GL_GOOGLE_include_directive : require
 
 #define COMPUTE_PIPELINE
-#define FRUSTUM_CULLING     true
 
 #include "ShaderBuffers.glsl.h"
 
@@ -24,16 +23,16 @@ void main()
 	bool visible = true;
 	for (int i = 0; i < 6; ++i)
 		visible = visible && dot(shaderData.frustumData[i], vec4(center, 1)) > -radius;
-
-    visible = FRUSTUM_CULLING ? visible : true;
-
-    float lodDistance = log2(max(1, (distance(center, vec3(0)) - radius)));
-	uint lodIndex = clamp(int(lodDistance), 0, int(currentRead.lodCount) - 1);
-
-    MeshLod currentLod = currentRead.lod[lodIndex];
+    
     
     if(visible)
     {
+        // The level of detail index that should be used is derived by the distance fromt he camera
+        float lodDistance = log2(max(1, (distance(center, vec3(shaderData.viewPosition)) - radius)));
+	    uint lodIndex = clamp(int(lodDistance), 0, int(currentRead.lodCount) - 1);
+
+        MeshLod currentLod = currentRead.lod[lodIndex];
+        
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].objectId = objectIndex;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].indexCount = currentLod.indexCount;
@@ -42,6 +41,7 @@ void main()
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentRead.vertexOffset;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstInstance = 0;
     }
+    
     
     
 }
