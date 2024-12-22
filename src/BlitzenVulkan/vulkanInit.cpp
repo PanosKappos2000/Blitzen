@@ -66,7 +66,7 @@ namespace BlitzenVulkan
 
             uint32_t apiVersion = 0;
             VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
-            BLIT_ASSERT_MESSAGE(apiVersion > VK_API_VERSION_1_3, "Blitzen need to use Vulkan API_VERSION 1.3")
+            BLIT_ASSERT_MESSAGE(apiVersion > VK_API_VERSION_1_3, "Blitzen needs to use Vulkan API_VERSION 1.3")
 
             //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
             VkApplicationInfo applicationInfo{};
@@ -781,7 +781,7 @@ namespace BlitzenVulkan
 
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = 1;// Some device might need this to be higher than 1
+        poolSize.descriptorCount = 2;// Some device might need this to be higher than 1
         VkDescriptorPoolCreateInfo descriptorPoolInfo{};
         descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptorPoolInfo.flags = 0;

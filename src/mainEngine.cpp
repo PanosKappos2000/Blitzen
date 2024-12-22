@@ -123,7 +123,7 @@ namespace BlitzenEngine
             Setup for Vulkan rendering
         ------------------------------------*/
 
-        uint32_t drawCount = 500000;
+        uint32_t drawCount = 1000000;
         #if BLITZEN_VULKAN
         {
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);
@@ -294,7 +294,8 @@ namespace BlitzenEngine
 
             camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
             camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
-            camera.projectionTranspose = BlitML::Transpose(camera.projectionViewMatrix);
+            if(!camera.freezeFrustum)
+                camera.projectionTranspose = BlitML::Transpose(camera.projectionViewMatrix);
         }
     }
 
@@ -358,6 +359,7 @@ namespace BlitzenEngine
                     BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, newContext);
                     return 1;
                 }
+                // The four keys below control basic camera movement. They set a velocity and tell it that it should be updated based on that velocity
                 case BlitzenCore::BlitKey::__W:
                 {
                     Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
@@ -384,6 +386,13 @@ namespace BlitzenEngine
                     Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
                     camera.cameraDirty = 1;
                     camera.velocity = BlitML::vec3(1.f, 0.f, 0.f);
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F1:
+                {
+                    // This is here only for debugging frustum culling. When active, the camera does not update the view frustum
+                    uint8_t& freezeFrustum = Engine::GetEngineInstancePointer()->GetCamera().freezeFrustum;
+                    freezeFrustum = !freezeFrustum;
                     break;
                 }
                 default:
@@ -446,8 +455,6 @@ namespace BlitzenEngine
         }
         isSupended = 0;
 
-        //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
-        //10000.f, 0.1f);
         m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), 0.1f);
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
