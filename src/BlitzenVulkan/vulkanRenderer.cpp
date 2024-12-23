@@ -22,6 +22,62 @@ glm::vec4 glm_NormalizePlane(glm::vec4& plane)
 
 namespace BlitzenVulkan
 {
+    void VulkanRenderer::FrameToolsInit()
+    {
+        VkCommandPoolCreateInfo commandPoolsInfo {};
+        commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allow each individual command buffer to be reset
+        commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
+
+        VkCommandBufferAllocateInfo commandBuffersInfo{};
+        commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBuffersInfo.pNext = nullptr;
+        commandBuffersInfo.commandBufferCount = 1;
+        commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        fenceInfo.pNext = nullptr;
+
+        VkSemaphoreCreateInfo semaphoresInfo{};
+        semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoresInfo.flags = 0;
+        semaphoresInfo.pNext = nullptr;
+
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = 2;// Some device might need this to be higher than 1
+        VkDescriptorPoolCreateInfo descriptorPoolInfo{};
+        descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        descriptorPoolInfo.flags = 0;
+        descriptorPoolInfo.maxSets = 1;
+        descriptorPoolInfo.poolSizeCount = 1;
+        descriptorPoolInfo.pPoolSizes = &poolSize;
+
+        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            FrameTools& frameTools = m_frameToolsList[i];
+            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool)));
+            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
+            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer)));
+
+            VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
+            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
+            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
+
+            CreateBuffer(m_allocator, frameTools.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            frameTools.pGlobalShaderData = reinterpret_cast<GlobalShaderData*>(frameTools.globalShaderDataBuffer.allocation->GetMappedData());
+
+            CreateBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            frameTools.pBufferAddrs = reinterpret_cast<BufferDeviceAddresses*>(frameTools.bufferDeviceAddrsBuffer.allocation->GetMappedData());
+
+            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(frameTools.globalShaderDataDescriptorPool)))
+        }
+    }
+
     void VulkanRenderer::UploadDataToGPUAndSetupForRendering(GPUData& gpuData)
     {
         // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
@@ -116,7 +172,7 @@ namespace BlitzenVulkan
                 (float(rand()) / RAND_MAX) * 200 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 currentObject.pos = translation;
-                currentObject.scale = 1.f;
+                currentObject.scale = 5.f;
 
                 BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                 (float(rand()) / RAND_MAX) * 2 - 1, // y
@@ -504,16 +560,6 @@ namespace BlitzenVulkan
         m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;
 
-        glm::vec4 f[6];
-        // Getting each plane of the frustum to do frustum culling in the shaders
-        /*f[0] = glm_NormalizePlane(context.projectionTranspose[3] + context.projectionTranspose[0]);
-        f[1] = glm_NormalizePlane(context.projectionTranspose[3] - context.projectionTranspose[0]);
-        f[2] = glm_NormalizePlane(context.projectionTranspose[3] + context.projectionTranspose[1]);
-        f[3] = glm_NormalizePlane(context.projectionTranspose[3] - context.projectionTranspose[1]);
-        f[4] = glm_NormalizePlane(context.projectionTranspose[3] - context.projectionTranspose[2]);// z - w > 0 -- reverse z
-        f[5] = glm::vec4(0, 0, -1, 100);*/ 
-
-        //BlitML::vec4 f[6];
         m_globalShaderData.frustumData[0] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0));
         m_globalShaderData.frustumData[1] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(0));
         m_globalShaderData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
@@ -526,22 +572,30 @@ namespace BlitzenVulkan
         /* Allocating and updating the descriptor set used for global shader data*/
         {
             vkResetDescriptorPool(m_device, fTools.globalShaderDataDescriptorPool, 0);
-            GlobalShaderData* pGlobalShaderDataBufferData = reinterpret_cast<GlobalShaderData*>(fTools.globalShaderDataBuffer.allocation->GetMappedData());
-            *pGlobalShaderDataBufferData = m_globalShaderData;
-            BufferDeviceAddresses* pAddressBufferPointer = reinterpret_cast<BufferDeviceAddresses*>(fTools.bufferDeviceAddrsBuffer.allocation->GetMappedData());
-            *pAddressBufferPointer = m_currentStaticBuffers.bufferAddresses;
+
+            *(fTools.pGlobalShaderData) = m_globalShaderData;
+            *(fTools.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
+
             AllocateDescriptorSets(m_device, fTools.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
+
+            // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
             VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
             VkWriteDescriptorSet globalShaderDataWrite{};
             WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             globalShaderDataSet, 0, 1, fTools.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+
+            // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
             VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
             VkWriteDescriptorSet bufferAddressDescriptorWrite{};
             WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
             1, 1, fTools.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
+
+            // Pass the descriptor sets to the update function
             VkWriteDescriptorSet writes[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
             vkUpdateDescriptorSets(m_device, 2, writes, 0, nullptr);
-        }/* Commands for global shader data descriptor set recorded */
+        }
+
+
 
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
         uint32_t swapchainIdx;
@@ -554,28 +608,16 @@ namespace BlitzenVulkan
         // Transition the layout of the depth attachment and color attachment to be used as rendering attachments
         {
             VkImageMemoryBarrier2 colorAttachmentBarrier{};
-            VkImageSubresourceRange colorAttachmentSubresource{};
-            colorAttachmentSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            colorAttachmentSubresource.baseMipLevel = 0;
-            colorAttachmentSubresource.levelCount = VK_REMAINING_MIP_LEVELS;
-            colorAttachmentSubresource.baseArrayLayer = 0;
-            colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | 
             VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | 
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, colorAttachmentSubresource);
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, 
+            VK_REMAINING_MIP_LEVELS);
 
             VkImageMemoryBarrier2 depthAttachmentBarrier{};
-            VkImageSubresourceRange depthAttachmentSR{};
-            depthAttachmentSR.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-            depthAttachmentSR.baseMipLevel = 0;
-            depthAttachmentSR.levelCount = VK_REMAINING_MIP_LEVELS;
-            depthAttachmentSR.baseArrayLayer = 0;
-            depthAttachmentSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT |
-                VK_ACCESS_2_MEMORY_WRITE_BIT,
-            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
+            VK_ACCESS_2_MEMORY_WRITE_BIT,VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, depthAttachmentSR);
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
 
             VkImageMemoryBarrier2 memoryBarriers[2] = {colorAttachmentBarrier, depthAttachmentBarrier};
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, memoryBarriers);
@@ -670,16 +712,6 @@ namespace BlitzenVulkan
 
         if(m_stats.meshShaderSupport)
         {
-            /*for(uint32_t i = 0; i < context.drawCount; ++i)
-            {
-            
-                DrawMeshTastsNv(m_initHandles.instance, fTools.commandBuffer, context.pDraws[i].meshletCount, context.pDraws[i].firstMeshlet);
-                ShaderPushConstant index;
-                index.drawTag = context.pDraws[i].objectTag; // Only one object currently so I am hardcoding the index to test it
-                vkCmdPushConstants(fTools.commandBuffer, m_opaqueGraphicsPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
-                sizeof(ShaderPushConstant), &index);
-                vkCmdDrawIndexed(fTools.commandBuffer, context.pDraws[i].indexCount, 1, context.pDraws[i].firstIndex, 0, 0);
-            }*/
            DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
            offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
         }
@@ -697,15 +729,10 @@ namespace BlitzenVulkan
 
         {
             VkImageMemoryBarrier2 shaderDepthBarrier{};
-            VkImageSubresourceRange depthAttachmentSR{};
-            depthAttachmentSR.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-            depthAttachmentSR.baseMipLevel = 0;
-            depthAttachmentSR.levelCount = VK_REMAINING_MIP_LEVELS;
-            depthAttachmentSR.baseArrayLayer = 0;
-            depthAttachmentSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, depthAttachmentSR);
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
+            0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &shaderDepthBarrier);
         }
 
@@ -716,27 +743,15 @@ namespace BlitzenVulkan
         {
             // color attachment barrier
             VkImageMemoryBarrier2 colorAttachmentBarrier{};
-            VkImageSubresourceRange colorAttachmentSubresource{};
-            colorAttachmentSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            colorAttachmentSubresource.baseMipLevel = 0;
-            colorAttachmentSubresource.levelCount = VK_REMAINING_MIP_LEVELS;
-            colorAttachmentSubresource.baseArrayLayer = 0;
-            colorAttachmentSubresource.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | 
             VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, colorAttachmentSubresource);
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
 
             //swapchain image barrier
             VkImageMemoryBarrier2 swapchainImageBarrier{};
-            VkImageSubresourceRange swapchainImageSR{};
-            swapchainImageSR.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            swapchainImageSR.baseMipLevel = 0;
-            swapchainImageSR.levelCount = VK_REMAINING_MIP_LEVELS;
-            swapchainImageSR.baseArrayLayer = 0;
-            swapchainImageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], swapchainImageBarrier, VK_PIPELINE_STAGE_2_NONE, 
             VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, swapchainImageSR);
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
 
             VkImageMemoryBarrier2 firstTransferMemoryBarriers[2] = {colorAttachmentBarrier, swapchainImageBarrier};
 
@@ -759,15 +774,9 @@ namespace BlitzenVulkan
 
             // Change the swapchain image layout to present
             VkImageMemoryBarrier2 presentImageBarrier{};
-            VkImageSubresourceRange presentImageSR{};
-            presentImageSR.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            presentImageSR.baseMipLevel = 0;
-            presentImageSR.levelCount = VK_REMAINING_MIP_LEVELS;
-            presentImageSR.baseArrayLayer = 0;
-            presentImageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
             ImageMemoryBarrier(m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], presentImageBarrier, VK_PIPELINE_STAGE_2_BLIT_BIT, 
             VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, presentImageSR);
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
 
         }

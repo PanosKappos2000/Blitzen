@@ -88,14 +88,9 @@ namespace BlitzenVulkan
 
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         VkImageMemoryBarrier2 imageMemoryBarrier{};
-        VkImageSubresourceRange imageSR{};
-        imageSR.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageSR.baseArrayLayer = 0;
-        imageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
-        imageSR.baseMipLevel = 0;
-        imageSR.levelCount = VK_REMAINING_MIP_LEVELS;
         ImageMemoryBarrier(image.image, imageMemoryBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
-        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageSR);
+        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
         CopyBufferToImage(commandBuffer, stagingBuffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, extent);
@@ -103,7 +98,8 @@ namespace BlitzenVulkan
         VkImageMemoryBarrier2 secondTransitionBarrier{};
         ImageMemoryBarrier(image.image, secondTransitionBarrier, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
         VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE, 
-        VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageSR);
+        VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &secondTransitionBarrier);
 
         SubmitCommandBuffer(queue, commandBuffer);
@@ -276,7 +272,9 @@ namespace BlitzenVulkan
     }
 
     void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
-    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageSubresourceRange& imageSR)
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, 
+    VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer /* = 0 */, 
+    uint32_t layerCount /* = VK_REMAINING_ARRAY_LAYERS */)
     {
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
         barrier.image = image;
@@ -286,7 +284,11 @@ namespace BlitzenVulkan
         barrier.dstAccessMask = secondAccessStage;
         barrier.oldLayout = oldLayout;
         barrier.newLayout = newLayout;
-        barrier.subresourceRange = imageSR;
+        barrier.subresourceRange.aspectMask = aspectMask;
+        barrier.subresourceRange.baseMipLevel = baseMipLevel;
+        barrier.subresourceRange.levelCount = levelCount;
+        barrier.subresourceRange.baseArrayLayer = baseArrayLayer;
+        barrier.subresourceRange.layerCount = layerCount;
     }
 
     void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 

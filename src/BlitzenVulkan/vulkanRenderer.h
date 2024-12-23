@@ -42,7 +42,12 @@ namespace BlitzenVulkan
         // TODO: See above
         VkDescriptorPool globalShaderDataDescriptorPool;
         AllocatedBuffer globalShaderDataBuffer;
+        // Persistently mapped pointer to the uniform buffer for shader data. Dereferenced and updated each frame
+        GlobalShaderData* pGlobalShaderData;
+
         AllocatedBuffer bufferDeviceAddrsBuffer;
+        // Persistently mapped pointer to the uniform buffer for buffer addresses. Dereferenced and updated each frame
+        BufferDeviceAddresses* pBufferAddrs;
     };
 
     // Holds data for buffers that will be loaded once and will be used for every object
@@ -232,8 +237,10 @@ namespace BlitzenVulkan
     void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage image, VkImageLayout imageLayout, VkExtent3D extent);
 
     void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets);
+
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
     uint32_t dstBinding, uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
     uint32_t descriptorCount, uint32_t binding);
 
@@ -260,7 +267,8 @@ namespace BlitzenVulkan
 
     void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, 
-    VkImageSubresourceRange& imageSR);
+    VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer = 0, 
+    uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS);
 
     void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkDeviceSize offset, VkDeviceSize size);
