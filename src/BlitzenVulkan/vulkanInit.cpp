@@ -588,7 +588,26 @@ namespace BlitzenVulkan
         CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+        {
+            uint32_t width = m_drawExtent.width;
+            uint32_t height = m_drawExtent.height;
+            while(width > 1 || height > 1)
+            {
+                m_depthPyramidMipLevels++;
+
+                width /= 2;
+                height /= 2;
+            }
+            CreateImage(m_device, m_allocator, m_depthPyramid, {m_drawExtent.width / 2, m_drawExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, m_depthPyramidMipLevels);
+
+            for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
+            {
+                CreateImageView(m_device, m_depthPyramidMips[i], m_depthPyramid.image, VK_FORMAT_R32_SFLOAT, 1);
+            }
+        }
 
         return 1;
     }
@@ -823,8 +842,17 @@ namespace BlitzenVulkan
         vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);
 
+        vkDestroyPipeline(m_device, m_depthReduceComputePipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_depthReducePipelineLayout, m_pCustomAllocator);
+        vkDestroyDescriptorSetLayout(m_device, m_depthPyramidImageDescriptorSetLayout, m_pCustomAllocator);
+
         m_depthAttachment.CleanupResources(m_allocator, m_device);
         m_colorAttachment.CleanupResources(m_allocator, m_device);
+        m_depthPyramid.CleanupResources(m_allocator, m_device);
+        for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
+        {
+            vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
+        }
 
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {

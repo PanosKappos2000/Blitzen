@@ -65,6 +65,19 @@ namespace BlitzenVulkan
             CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 1, &pushConstant);
         }
 
+        // Descriptor set layouts for depth reduce compute shader
+        {
+            VkDescriptorSetLayoutBinding inImageLayoutBinding{};
+            VkDescriptorSetLayoutBinding outImageLayoutBinding{};
+            CreateDescriptorSetLayoutBinding(inImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+            CreateDescriptorSetLayoutBinding(outImageLayoutBinding, 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+
+            VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
+            m_depthPyramidImageDescriptorSetLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings);
+        }
+
+
+
         // Texture sampler, for now all textures will use the same one
         CreateTextureSampler(m_device, m_placeholderSampler);
 
@@ -80,97 +93,83 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
         }
 
+
+
+
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
         BlitCL::DynamicArray<StaticRenderObject> renderObjects(1000000);
         BlitCL::DynamicArray<IndirectOffsets> indirectDraws(1000000);
-        for(size_t i = 0; i < 999995; ++i)
+        /*  
+            This is temporary hardcoded loading of multiple objects for testing.
+            Normally, everything below would be given by a game object defined outside the renderer 
+        */
         {
-            BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
-            IndirectOffsets& currentIDraw = indirectDraws[i];
-            StaticRenderObject& currentObject = renderObjects[i];
+            for(size_t i = 0; i < 999995; ++i)
+            {
+                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
+                IndirectOffsets& currentIDraw = indirectDraws[i];
+                StaticRenderObject& currentObject = renderObjects[i];
 
-            currentObject.materialTag = currentSurface.pMaterial->materialTag;
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-            (float(rand()) / RAND_MAX) * 200 - 50,//y
-            (float(rand()) / RAND_MAX) * 1000 - 50);//z
-            currentObject.pos = translation;
-            currentObject.scale = 1.f;
+                currentObject.materialTag = currentSurface.pMaterial->materialTag;
+                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
+                (float(rand()) / RAND_MAX) * 200 - 50,//y
+                (float(rand()) / RAND_MAX) * 1000 - 50);//z
+                currentObject.pos = translation;
+                currentObject.scale = 1.f;
 
-            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-            (float(rand()) / RAND_MAX) * 2 - 1, // y
-            (float(rand()) / RAND_MAX) * 2 - 1); // z
-		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-            currentObject.orientation = orientation;
-
-            currentObject.center = currentSurface.center;
-            currentObject.radius = currentSurface.radius;
-
-            for(size_t i = 0; i < currentSurface.lodCount; ++i)
-                currentIDraw.lod[i] = currentSurface.meshLod[i];
-            currentIDraw.lodCount = currentSurface.lodCount;
-            currentIDraw.vertexOffset = currentSurface.vertexOffset;
-
-            currentIDraw.firstTask = currentSurface.firstMeshlet;
-            currentIDraw.taskCount = currentSurface.meshletCount;
-        }
-
-        for (size_t i = 999995; i < 1000000; ++i)
-        {
-            BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
-            IndirectOffsets& currentIDraw = indirectDraws[i];
-            StaticRenderObject& currentObject = renderObjects[i];
-
-            currentObject.materialTag = currentSurface.pMaterial->materialTag;
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 40 - 20,//x 
-                (float(rand()) / RAND_MAX) * 40 - 20,//y
-                (float(rand()) / RAND_MAX) * 40 - 20);//z
-            currentObject.pos = translation;
-            currentObject.scale = 0.1f;
-
-            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+                BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                 (float(rand()) / RAND_MAX) * 2 - 1, // y
                 (float(rand()) / RAND_MAX) * 2 - 1); // z
-            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-            currentObject.orientation = orientation;
+		        float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+                BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+                currentObject.orientation = orientation;
 
-            currentObject.center = currentSurface.center;
-            currentObject.radius = currentSurface.radius;
+                currentObject.center = currentSurface.center;
+                currentObject.radius = currentSurface.radius;
 
-            for(size_t i = 0; i < currentIDraw.lodCount; ++i)
-                currentIDraw.lod[i] = currentSurface.meshLod[i];
-            currentIDraw.lodCount = currentSurface.lodCount;
-            currentIDraw.vertexOffset = currentSurface.vertexOffset;
+                for(size_t i = 0; i < currentSurface.lodCount; ++i)
+                    currentIDraw.lod[i] = currentSurface.meshLod[i];
+                currentIDraw.lodCount = currentSurface.lodCount;
+                currentIDraw.vertexOffset = currentSurface.vertexOffset;
 
-            currentIDraw.firstTask = currentSurface.firstMeshlet;
-            currentIDraw.taskCount = currentSurface.meshletCount;
+                currentIDraw.firstTask = currentSurface.firstMeshlet;
+                currentIDraw.taskCount = currentSurface.meshletCount;
+            }
+
+            for (size_t i = 999995; i < 1000000; ++i)
+            {
+                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
+                IndirectOffsets& currentIDraw = indirectDraws[i];
+                StaticRenderObject& currentObject = renderObjects[i];
+
+                currentObject.materialTag = currentSurface.pMaterial->materialTag;
+                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 40 - 20,//x 
+                    (float(rand()) / RAND_MAX) * 40 - 20,//y
+                    (float(rand()) / RAND_MAX) * 40 - 20);//z
+                currentObject.pos = translation;
+                currentObject.scale = 0.1f;
+
+                BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+                    (float(rand()) / RAND_MAX) * 2 - 1, // y
+                    (float(rand()) / RAND_MAX) * 2 - 1); // z
+                float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+                BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+                currentObject.orientation = orientation;
+
+                currentObject.center = currentSurface.center;
+                currentObject.radius = currentSurface.radius;
+
+                for(size_t i = 0; i < currentIDraw.lodCount; ++i)
+                    currentIDraw.lod[i] = currentSurface.meshLod[i];
+                currentIDraw.lodCount = currentSurface.lodCount;
+                currentIDraw.vertexOffset = currentSurface.vertexOffset;
+
+                currentIDraw.firstTask = currentSurface.firstMeshlet;
+                currentIDraw.taskCount = currentSurface.meshletCount;
+            }
         }
 
-        // This will hold all the data needed to record all the draw commands indirectly, using a GPU buffer
-        /*BlitCL::DynamicArray<VkDrawIndexedIndirectCommand> indirectDraws;
-        for(size_t i = 0; i < gpuData.meshCount; ++i)
-        {
-            // Since there will only be one array that holds all the data for each surfaces array
-            // The indirect draw array needs to be resized and write to the parts after the previous last element
-            size_t previousIndirectDrawSize = indirectDraws.GetSize();
-            indirectDraws.Resize(gpuData.pMeshes[i].surfaces.GetSize() + previousIndirectDrawSize);
-
-            for(size_t s = 0; s < gpuData.pMeshes[i].surfaces.GetSize(); ++s)
-            {
-                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[i].surfaces[s];
-                VkDrawIndexedIndirectCommand& currentIDraw = indirectDraws[previousIndirectDrawSize + s];
-
-                // A VkDrawIndexedIndirectCommand holds all the data needed for one vkCmdDrawIndexed command
-                // This data can be retrieved from each surface that a mesh has and needs to be drawn
-                currentIDraw.firstIndex = currentSurface.firstIndex;
-                currentIDraw.indexCount = currentSurface.indexCount;
-                currentIDraw.instanceCount = 1000;
-                currentIDraw.firstInstance = 0;
-                currentIDraw.vertexOffset = 0;
-            }
-        } This is the correct code compared to the hardcoded one above, I will restore it later*/
 
         // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
@@ -186,6 +185,8 @@ namespace BlitzenVulkan
             UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
 
 
+
+
         /* Compute pipeline that fills the draw indirect commands based on culling data*/
         {
             VkComputePipelineCreateInfo pipelineInfo{};
@@ -195,9 +196,8 @@ namespace BlitzenVulkan
 
             VkShaderModule computeShaderModule{};
             VkPipelineShaderStageCreateInfo shaderStageInfo{};
-            BlitCL::DynamicArray<char> code;
             CreateShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", computeShaderModule, 
-            shaderStageInfo, &code);
+            shaderStageInfo);
 
             pipelineInfo.stage = shaderStageInfo;
             pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;// This layout seems adequate for the compute shader inspite of its name
@@ -206,6 +206,29 @@ namespace BlitzenVulkan
 
             // Beyond this scope, this shader module is not needed
             vkDestroyShaderModule(m_device, computeShaderModule, m_pCustomAllocator);
+        }
+
+
+
+        {
+            CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidImageDescriptorSetLayout, 0, nullptr);
+
+            VkComputePipelineCreateInfo pipelineInfo{};
+            pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+            pipelineInfo.flags = 0;
+            pipelineInfo.pNext = nullptr;
+
+            VkShaderModule shaderModule{};
+            VkPipelineShaderStageCreateInfo shaderStageInfo{};
+            CreateShaderProgram(m_device, "VulkanShaders/DepthReduce.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", shaderModule, 
+            shaderStageInfo);
+
+            pipelineInfo.stage = shaderStageInfo;
+            pipelineInfo.layout = m_depthReducePipelineLayout;
+
+            VK_CHECK(vkCreateComputePipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_depthReduceComputePipeline));
+
+            vkDestroyShaderModule(m_device, shaderModule, m_pCustomAllocator);
         }
 
 
@@ -231,17 +254,17 @@ namespace BlitzenVulkan
             if(m_stats.meshShaderSupport)
             {
                 CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_NV, "main", vertexShaderModule, 
-                shaderStages[0], nullptr);
+                shaderStages[0]);
             }
             else
             {
                 CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
-                shaderStages[0], nullptr);
+                shaderStages[0]);
             }
              
             VkShaderModule fragShaderModule;
             CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
-            shaderStages[1], nullptr);
+            shaderStages[1]);
             pipelineInfo.stageCount = 2; // Hardcode for default pipeline since I know what I want
             pipelineInfo.pStages = shaderStages;
 
@@ -600,7 +623,7 @@ namespace BlitzenVulkan
             VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
             VkRenderingAttachmentInfo depthAttachment{};
             CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
-            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, {0.f, 0});
+            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, {0, 0, 0, 0}, {0.f, 0});
 
             VkRenderingInfo renderingInfo{};
             renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -668,6 +691,25 @@ namespace BlitzenVulkan
         }
 
         vkCmdEndRendering(fTools.commandBuffer);
+
+
+
+
+        {
+            VkImageMemoryBarrier2 shaderDepthBarrier{};
+            VkImageSubresourceRange depthAttachmentSR{};
+            depthAttachmentSR.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            depthAttachmentSR.baseMipLevel = 0;
+            depthAttachmentSR.levelCount = VK_REMAINING_MIP_LEVELS;
+            depthAttachmentSR.baseArrayLayer = 0;
+            depthAttachmentSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
+            ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
+            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, depthAttachmentSR);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &shaderDepthBarrier);
+        }
+
+
 
 
         // Copying the color attachment to the swapchain image and transitioning the image to present

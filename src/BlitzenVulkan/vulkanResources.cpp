@@ -29,7 +29,7 @@ namespace BlitzenVulkan
     }
 
     void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
-    uint8_t mimaps /*= 0*/)
+    uint8_t mipLevels /*= 1*/)
     {
         image.extent = extent;
         image.format = format;
@@ -40,7 +40,7 @@ namespace BlitzenVulkan
         imageInfo.pNext = nullptr;
         imageInfo.extent = extent;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.mipLevels  = 1;
+        imageInfo.mipLevels  = mipLevels;
         imageInfo.arrayLayers = 1;
         imageInfo.format = format;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -53,21 +53,26 @@ namespace BlitzenVulkan
 
         VK_CHECK(vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &(image.image), &(image.allocation), nullptr))
 
-        VkImageViewCreateInfo imageViewInfo{};
-        imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        imageViewInfo.flags = 0;
-        imageViewInfo.pNext = nullptr;
-        imageViewInfo.image = image.image;
-        imageViewInfo.format = format;
-        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageViewInfo.subresourceRange.aspectMask = (imageUsage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ? 
-        VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        imageViewInfo.subresourceRange.baseMipLevel = 0;
-        imageViewInfo.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        imageViewInfo.subresourceRange.baseArrayLayer = 0;
-        imageViewInfo.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        CreateImageView(device, image.imageView, image.image, format, mipLevels);
+    }
 
-        VK_CHECK(vkCreateImageView(device, &imageViewInfo, nullptr, &image.imageView))
+    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t mipLevels)
+    {
+        VkImageViewCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        info.flags = 0;
+        info.pNext = nullptr;
+        info.image = image;
+        info.format = format;
+        info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        info.subresourceRange.aspectMask = (format == VK_FORMAT_D32_SFLOAT) ? 
+        VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+        info.subresourceRange.baseMipLevel = 0;
+        info.subresourceRange.levelCount = mipLevels;
+        info.subresourceRange.baseArrayLayer = 0;
+        info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+        VK_CHECK(vkCreateImageView(device, &info, nullptr, &imageView))
     }
 
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
@@ -79,7 +84,7 @@ namespace BlitzenVulkan
 
         BlitzenCore::BlitMemCopy(stagingBuffer.allocationInfo.pMappedData, data, imageSize);
 
-        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, format);
+        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         VkImageMemoryBarrier2 imageMemoryBarrier{};

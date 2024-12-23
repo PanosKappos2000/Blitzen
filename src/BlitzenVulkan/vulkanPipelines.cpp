@@ -7,7 +7,7 @@
 namespace BlitzenVulkan
 {
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, BlitCL::DynamicArray<char>* shaderCode)
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage)
     {
         BlitzenPlatform::FileHandle handle;
         // If the file did not open, something might be wrong with the filepath, so it needs to be checked

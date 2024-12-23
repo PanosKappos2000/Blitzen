@@ -157,6 +157,10 @@ namespace BlitzenVulkan
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;
 
+        AllocatedImage m_depthPyramid;
+        VkImageView m_depthPyramidMips[16];
+        uint8_t m_depthPyramidMipLevels = 0;
+
         StaticBuffers m_currentStaticBuffers;
 
         // Structures needed to pass the global shader data
@@ -165,9 +169,13 @@ namespace BlitzenVulkan
 
         // Pipeline used to draw opaque objects
         VkPipeline m_opaqueGraphicsPipeline;
-        VkPipelineLayout m_opaqueGraphicsPipelineLayout;
+        VkPipelineLayout m_opaqueGraphicsPipelineLayout;// Right now this layout is also used for the culling compute pipeline but I might want to change that
 
         VkPipeline m_indirectCullingComputePipeline;
+
+        VkPipeline m_depthReduceComputePipeline;
+        VkPipelineLayout m_depthReducePipelineLayout;
+        VkDescriptorSetLayout m_depthPyramidImageDescriptorSetLayout;
 
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
@@ -206,7 +214,9 @@ namespace BlitzenVulkan
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
     void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
-    uint8_t loadMipmaps = 0);
+    uint8_t mipLevels = 1);
+
+    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t mipLevels);
 
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
     VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
@@ -272,8 +282,7 @@ namespace BlitzenVulkan
         The finally dynamic array parameter will probably be removed shortly(TODO)
     */
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, 
-    /* I will keep this in case I need to go back to the classic way of doing it */ BlitCL::DynamicArray<char>* shaderCode);
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage);
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
 

@@ -34,10 +34,11 @@
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
-#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering, I will deactivate it for some time
+#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 /* This is used for double(+) buffering, I activated it back, 
+but I should probably create a second indirect buffer because of it */
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0 
+#define BLITZEN_VULKAN_MESH_SHADER              0// Mesh shader implementation is pretty terrible at the moment 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           100000 // I am ignoring this right now and I shouldn't be
 
@@ -48,7 +49,7 @@ namespace BlitzenVulkan
     struct VulkanStats
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
-        uint8_t meshShaderSupport = 0;// TODO: Use this to check during load if mesh shaders are supported so that the application does not fail when they are not
+        uint8_t meshShaderSupport = 0;
     };
 
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders

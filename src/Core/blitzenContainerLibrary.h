@@ -89,7 +89,6 @@ namespace BlitCL
 
         void PushBack(T& newElement)
         {
-            BLIT_WARN("DynamicArray::PushBack called")
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
             if(m_size + 1 > m_capacity)
             {
@@ -160,8 +159,6 @@ namespace BlitCL
             }
             if(temp != 0)
                 BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(T));
-
-            BLIT_INFO("DynamicArray reserved %i", m_capacity * sizeof(T))
         }
     };
 
