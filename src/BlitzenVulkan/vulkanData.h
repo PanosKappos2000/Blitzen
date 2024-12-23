@@ -34,7 +34,7 @@
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
-#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2 /* This is used for double(+) buffering, I activated it back, 
+#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 /* This is used for double(+) buffering, I activated it back, 
 but I should probably create a second indirect buffer because of it */
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1

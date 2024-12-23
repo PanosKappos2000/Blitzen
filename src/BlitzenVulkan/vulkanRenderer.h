@@ -35,11 +35,11 @@ namespace BlitzenVulkan
 
         VkFence inFlightFence;
         VkSemaphore imageAcquiredSemaphore;
-        VkSemaphore readyToPresentSemaphore;
+        VkSemaphore readyToPresentSemaphore;        
+    };
 
-        // Any buffers that will be getting their data update every frame, need to be inside the frame tools struct
-        // Actually the above is kind of naive, the buffers will be separated into their own struct, so that they can be reloaded separately if necessary
-        // TODO: See above
+    struct VarBuffers
+    {
         VkDescriptorPool globalShaderDataDescriptorPool;
         AllocatedBuffer globalShaderDataBuffer;
         // Persistently mapped pointer to the uniform buffer for shader data. Dereferenced and updated each frame
@@ -128,6 +128,8 @@ namespace BlitzenVulkan
 
         void FrameToolsInit();
 
+        void VarBuffersInit();
+
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectOffsets>& indirectDraws);
@@ -184,6 +186,8 @@ namespace BlitzenVulkan
 
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
+
+        VarBuffers m_varBuffers[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
 
         // Used to access the right frame tools depending on which ones are already being used
         size_t m_currentFrame = 0;
@@ -322,7 +326,8 @@ namespace BlitzenVulkan
     VkDescriptorType descriptorType, VkShaderStageFlags shaderStage, VkSampler* pImmutableSamplers = nullptr);
 
     //Helper function for pipeline layout creation, takes care of a single descriptor set layout creation
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings);
+    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings, 
+    VkDescriptorSetLayoutCreateFlags flags = 0);
 
     //Helper function for pipeline layout creation, takes care of a single push constant creation
     void CreatePushConstantRange(VkPushConstantRange& pushConstant, VkShaderStageFlags shaderStage, uint32_t size, uint32_t offset = 0);
@@ -336,4 +341,8 @@ namespace BlitzenVulkan
     // Defined in vulkanRenderer.cpp
     void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 
     VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor = {0, 0, 0, 0}, VkClearDepthStencilValue clearValueDepth = {0, 0});
+
+    void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, 
+    uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment, 
+    VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1 );
 }

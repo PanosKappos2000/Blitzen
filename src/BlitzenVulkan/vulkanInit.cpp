@@ -413,13 +413,14 @@ namespace BlitzenVulkan
             #endif
 
             // Vulkan should ignore the mesh shader extension if support for it was not found
-            deviceInfo.enabledExtensionCount = 1 + (BLITZEN_VULKAN_MESH_SHADER && m_stats.meshShaderSupport);
+            deviceInfo.enabledExtensionCount = 2 + (BLITZEN_VULKAN_MESH_SHADER && m_stats.meshShaderSupport);
             // Adding the swapchain extension and mesh shader extension if it was requested
-            const char* extensionsNames[1 + BLITZEN_VULKAN_MESH_SHADER];
+            const char* extensionsNames[2 + BLITZEN_VULKAN_MESH_SHADER];
             extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+            extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
             #if BLITZEN_VULKAN_MESH_SHADER
                 if(m_stats.meshShaderSupport)
-                    extensionsNames[1] = VK_NV_MESH_SHADER_EXTENSION_NAME;
+                    extensionsNames[2] = VK_NV_MESH_SHADER_EXTENSION_NAME;
             #endif
             deviceInfo.ppEnabledExtensionNames = extensionsNames;
 
@@ -751,6 +752,42 @@ namespace BlitzenVulkan
             VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
     }
 
+    void VulkanRenderer::FrameToolsInit()
+    {
+        VkCommandPoolCreateInfo commandPoolsInfo {};
+        commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allow each individual command buffer to be reset
+        commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
+
+        VkCommandBufferAllocateInfo commandBuffersInfo{};
+        commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBuffersInfo.pNext = nullptr;
+        commandBuffersInfo.commandBufferCount = 1;
+        commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        fenceInfo.pNext = nullptr;
+
+        VkSemaphoreCreateInfo semaphoresInfo{};
+        semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoresInfo.flags = 0;
+        semaphoresInfo.pNext = nullptr;
+
+        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            FrameTools& frameTools = m_frameToolsList[i];
+            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool)));
+            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
+            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer)));
+
+            VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
+            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
+            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
+        }
+    }
+
 
     void VulkanRenderer::Shutdown()
     {
@@ -781,15 +818,17 @@ namespace BlitzenVulkan
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];
+            VarBuffers& varBuffers = m_varBuffers[i];
+
             vkDestroyCommandPool(m_device, frameTools.mainCommandPool, m_pCustomAllocator);
 
             vkDestroyFence(m_device, frameTools.inFlightFence, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
 
-            vkDestroyDescriptorPool(m_device, frameTools.globalShaderDataDescriptorPool, m_pCustomAllocator);
-            vmaDestroyBuffer(m_allocator, frameTools.globalShaderDataBuffer.buffer, frameTools.globalShaderDataBuffer.allocation);
-            vmaDestroyBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer.buffer, frameTools.bufferDeviceAddrsBuffer.allocation);
+            vkDestroyDescriptorPool(m_device, varBuffers.globalShaderDataDescriptorPool, m_pCustomAllocator);
+            vmaDestroyBuffer(m_allocator, varBuffers.globalShaderDataBuffer.buffer, varBuffers.globalShaderDataBuffer.allocation);
+            vmaDestroyBuffer(m_allocator, varBuffers.bufferDeviceAddrsBuffer.buffer, varBuffers.bufferDeviceAddrsBuffer.allocation);
         }
 
         vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);

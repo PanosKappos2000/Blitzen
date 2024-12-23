@@ -13,6 +13,16 @@ VkDeviceSize offset, uint32_t drawCount, uint32_t stride)
     } 
 }
 
+void PushDescriptors(VkInstance instance, VkCommandBuffer commandBuffer, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t set, 
+uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites)
+{
+    auto func = (PFN_vkCmdPushDescriptorSetKHR) vkGetInstanceProcAddr(instance, "vkCmdPushDescriptorSetKHR");
+    if(func != nullptr)
+    {
+        func(commandBuffer, bindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+    }
+}
+
 // Temporary helper function until I make sure that my math library works for frustum culling
 // I will keep it here until I implement a moving frustum
 glm::vec4 glm_NormalizePlane(glm::vec4& plane)
@@ -22,64 +32,39 @@ glm::vec4 glm_NormalizePlane(glm::vec4& plane)
 
 namespace BlitzenVulkan
 {
-    void VulkanRenderer::FrameToolsInit()
+    void VulkanRenderer::VarBuffersInit()
     {
-        VkCommandPoolCreateInfo commandPoolsInfo {};
-        commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allow each individual command buffer to be reset
-        commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
+        VkDescriptorPoolSize shaderDataPoolSize{};
+        shaderDataPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        shaderDataPoolSize.descriptorCount = 2;
 
-        VkCommandBufferAllocateInfo commandBuffersInfo{};
-        commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        commandBuffersInfo.pNext = nullptr;
-        commandBuffersInfo.commandBufferCount = 1;
-        commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        fenceInfo.pNext = nullptr;
-
-        VkSemaphoreCreateInfo semaphoresInfo{};
-        semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoresInfo.flags = 0;
-        semaphoresInfo.pNext = nullptr;
-
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = 2;// Some device might need this to be higher than 1
         VkDescriptorPoolCreateInfo descriptorPoolInfo{};
         descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptorPoolInfo.flags = 0;
         descriptorPoolInfo.maxSets = 1;
         descriptorPoolInfo.poolSizeCount = 1;
-        descriptorPoolInfo.pPoolSizes = &poolSize;
+        descriptorPoolInfo.pPoolSizes = &shaderDataPoolSize;
 
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
-            FrameTools& frameTools = m_frameToolsList[i];
-            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool)));
-            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
-            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer)));
+            VarBuffers& buffers = m_varBuffers[i];
 
-            VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
-            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
-            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
-
-            CreateBuffer(m_allocator, frameTools.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            CreateBuffer(m_allocator, buffers.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            frameTools.pGlobalShaderData = reinterpret_cast<GlobalShaderData*>(frameTools.globalShaderDataBuffer.allocation->GetMappedData());
+            buffers.pGlobalShaderData = reinterpret_cast<GlobalShaderData*>(buffers.globalShaderDataBuffer.allocation->GetMappedData());
 
-            CreateBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            CreateBuffer(m_allocator, buffers.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            frameTools.pBufferAddrs = reinterpret_cast<BufferDeviceAddresses*>(frameTools.bufferDeviceAddrsBuffer.allocation->GetMappedData());
+            buffers.pBufferAddrs = reinterpret_cast<BufferDeviceAddresses*>(buffers.bufferDeviceAddrsBuffer.allocation->GetMappedData());
 
-            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(frameTools.globalShaderDataDescriptorPool)))
+            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(buffers.globalShaderDataDescriptorPool)))
         }
     }
 
     void VulkanRenderer::UploadDataToGPUAndSetupForRendering(GPUData& gpuData)
     {
+        VarBuffersInit();
+
         // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
         m_currentStaticBuffers.loadedTextures.Resize(gpuData.textureCount);
 
@@ -129,7 +114,8 @@ namespace BlitzenVulkan
             CreateDescriptorSetLayoutBinding(outImageLayoutBinding, 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
 
             VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
-            m_depthPyramidImageDescriptorSetLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings);
+            m_depthPyramidImageDescriptorSetLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
         }
 
 
@@ -172,7 +158,7 @@ namespace BlitzenVulkan
                 (float(rand()) / RAND_MAX) * 200 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 currentObject.pos = translation;
-                currentObject.scale = 5.f;
+                currentObject.scale = 1.f;
 
                 BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                 (float(rand()) / RAND_MAX) * 2 - 1, // y
@@ -546,8 +532,9 @@ namespace BlitzenVulkan
             RecreateSwapchain(context.windowWidth, context.windowHeight);
         }
 
-        // Gets a ref to the frame tools of the current frame, so that it doesn't index into the array every time
+        // Gets a ref to the frame tools of the current frame
         FrameTools& fTools = m_frameToolsList[m_currentFrame];
+        VarBuffers& vBuffers = m_varBuffers[m_currentFrame];
 
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
@@ -568,27 +555,29 @@ namespace BlitzenVulkan
         m_globalShaderData.frustumData[5] = BlitML::vec4(0, 0, -1, 100/* Draw distance */);// I need to multiply this with view or projection view
 
         // Declaring it outside the below scope, as it needs to be bound later
-        VkDescriptorSet globalShaderDataSet;
+        VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
+        VkDescriptorSet depthPyramidImageSet = VK_NULL_HANDLE;
         /* Allocating and updating the descriptor set used for global shader data*/
         {
-            vkResetDescriptorPool(m_device, fTools.globalShaderDataDescriptorPool, 0);
+            vkResetDescriptorPool(m_device, vBuffers.globalShaderDataDescriptorPool, 0);
 
-            *(fTools.pGlobalShaderData) = m_globalShaderData;
-            *(fTools.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
+            *(vBuffers.pGlobalShaderData) = m_globalShaderData;
+            *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
 
-            AllocateDescriptorSets(m_device, fTools.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
+            // I cannot allocated multiple descriptors at once without using an array that can accept references (BlitCL does not have a static array atm)
+            AllocateDescriptorSets(m_device, vBuffers.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
 
             // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
             VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
             VkWriteDescriptorSet globalShaderDataWrite{};
             WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            globalShaderDataSet, 0, 1, fTools.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+            globalShaderDataSet, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
 
             // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
             VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
             VkWriteDescriptorSet bufferAddressDescriptorWrite{};
             WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
-            1, 1, fTools.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
+            1, 1, vBuffers.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
 
             // Pass the descriptor sets to the update function
             VkWriteDescriptorSet writes[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
@@ -665,21 +654,9 @@ namespace BlitzenVulkan
             VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
             VkRenderingAttachmentInfo depthAttachment{};
             CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
-            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, {0, 0, 0, 0}, {0.f, 0});
+            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, {0.f, 0});
 
-            VkRenderingInfo renderingInfo{};
-            renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-            renderingInfo.flags = 0;
-            renderingInfo.pNext = nullptr;
-            renderingInfo.viewMask = 0;
-            renderingInfo.layerCount = 1;
-            renderingInfo.renderArea.offset = {0, 0};
-            renderingInfo.renderArea.extent = {m_drawExtent};
-            renderingInfo.colorAttachmentCount = 1;
-            renderingInfo.pColorAttachments = &colorAttachment;
-            renderingInfo.pDepthAttachment = &depthAttachment;
-            renderingInfo.pStencilAttachment = nullptr;
-            vkCmdBeginRendering(fTools.commandBuffer, &renderingInfo);
+            BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachment, &depthAttachment, nullptr);
         }
         // Begin rendering command recorded
 
@@ -726,14 +703,73 @@ namespace BlitzenVulkan
 
 
 
-
+        // Operations to create the depth pyramid that will be used for occlusion culling
         {
             VkImageMemoryBarrier2 shaderDepthBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
             0, VK_REMAINING_MIP_LEVELS);
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &shaderDepthBarrier);
+
+            VkImageMemoryBarrier2 depthPyramidFirstBarrier{};
+            ImageMemoryBarrier(m_depthPyramid.image, depthPyramidFirstBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+
+            VkImageMemoryBarrier2 depthPyramidSetBarriers[2] = {shaderDepthBarrier, depthPyramidFirstBarrier};
+
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, depthPyramidSetBarriers);
+
+            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthReduceComputePipeline);
+
+            for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
+            {
+                VkDescriptorImageInfo sourceImageInfo{};
+                sourceImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                sourceImageInfo.imageView = (i == 0) ? m_depthPyramid.imageView : m_depthPyramidMips[i - 1];
+
+                VkDescriptorImageInfo outImageInfo{};
+                outImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                outImageInfo.imageView = m_depthPyramidMips[i];
+
+                VkWriteDescriptorSet write{};
+                WriteImageDescriptorSets(write, &sourceImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, depthPyramidImageSet, 1, 1);
+
+                VkWriteDescriptorSet write2{};
+                WriteImageDescriptorSets(write2, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, depthPyramidImageSet, 1, 0);
+
+                VkWriteDescriptorSet writes[2] = {write, write2};
+
+                PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthReducePipelineLayout, 
+                0, 2, writes);
+
+                uint32_t levelWidth = BlitML::Max(1u, (m_drawExtent.width / 2) >> i);
+                uint32_t levelHeight = BlitML::Max(1u, (m_drawExtent.height / 2) >> i);
+
+                vkCmdDispatch(fTools.commandBuffer, levelWidth / 32 + 1, levelHeight / 32 + 1, 1);
+
+                VkImageMemoryBarrier2 dispatchWriteBarrier{};
+                ImageMemoryBarrier(m_depthPyramid.image, dispatchWriteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, 
+                VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+                PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &dispatchWriteBarrier);
+            }
+
+            VkImageMemoryBarrier2 depthPyramidCompleteBarrier{};
+            ImageMemoryBarrier(m_depthAttachment.image, depthPyramidCompleteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
+            VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
+            VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthPyramidCompleteBarrier);
+
+            VkRenderingAttachmentInfo colorAttachment{};
+            CreateRenderingAttachmentInfo(colorAttachment, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+            VkRenderingAttachmentInfo depthAttachment{};
+            CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+            BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachment, &depthAttachment, nullptr);
+            vkCmdEndRendering(fTools.commandBuffer);
         }
 
 
@@ -850,6 +886,25 @@ namespace BlitzenVulkan
         attachmentInfo.storeOp = storeOp;
         attachmentInfo.clearValue.color = clearValueColor;
         attachmentInfo.clearValue.depthStencil = clearValueDepth;
+    }
+
+    void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, 
+    uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment, 
+    VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask /* =0 */, uint32_t layerCount /* =1 */)
+    {
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.flags = 0;
+        renderingInfo.pNext = nullptr;
+        renderingInfo.viewMask = viewMask;
+        renderingInfo.layerCount = layerCount;
+        renderingInfo.renderArea.offset = renderAreaOffset;
+        renderingInfo.renderArea.extent = renderAreaExtent;
+        renderingInfo.colorAttachmentCount = colorAttachmentCount;
+        renderingInfo.pColorAttachments = pColorAttachments;
+        renderingInfo.pDepthAttachment = pDepthAttachment;
+        renderingInfo.pStencilAttachment = pStencilAttachment;
+        vkCmdBeginRendering(commandBuffer, &renderingInfo);
     }
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)

@@ -262,7 +262,7 @@ namespace BlitzenEngine
 
     void LoadDefaultData(EngineResources& resources)
     {
-        LoadMeshFromObj(resources, "Assets/Meshes/bunny.obj", 1);
+        LoadMeshFromObj(resources, "Assets/Meshes/kitten.obj", 1);
         LoadMeshFromObj(resources, "Assets/Meshes/well.obj", 1);
     }
 }
