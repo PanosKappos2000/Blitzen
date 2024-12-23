@@ -34,17 +34,6 @@ namespace BlitzenVulkan
 {
     void VulkanRenderer::VarBuffersInit()
     {
-        VkDescriptorPoolSize shaderDataPoolSize{};
-        shaderDataPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        shaderDataPoolSize.descriptorCount = 2;
-
-        VkDescriptorPoolCreateInfo descriptorPoolInfo{};
-        descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        descriptorPoolInfo.flags = 0;
-        descriptorPoolInfo.maxSets = 1;
-        descriptorPoolInfo.poolSizeCount = 1;
-        descriptorPoolInfo.pPoolSizes = &shaderDataPoolSize;
-
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             VarBuffers& buffers = m_varBuffers[i];
@@ -56,8 +45,6 @@ namespace BlitzenVulkan
             CreateBuffer(m_allocator, buffers.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
             buffers.pBufferAddrs = reinterpret_cast<BufferDeviceAddresses*>(buffers.bufferDeviceAddrsBuffer.allocation->GetMappedData());
-
-            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(buffers.globalShaderDataDescriptorPool)))
         }
     }
 
@@ -89,7 +76,8 @@ namespace BlitzenVulkan
             }
             
             VkDescriptorSetLayoutBinding shaderDataBindings[2] = {shaderDataLayoutBinding, bufferAddressBinding};
-            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 2, shaderDataBindings);
+            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 2, shaderDataBindings, 
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
             // Descriptor set layout for textures
             VkDescriptorSetLayoutBinding texturesLayoutBinding{};
@@ -111,7 +99,7 @@ namespace BlitzenVulkan
             VkDescriptorSetLayoutBinding inImageLayoutBinding{};
             VkDescriptorSetLayoutBinding outImageLayoutBinding{};
             CreateDescriptorSetLayoutBinding(inImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-            CreateDescriptorSetLayoutBinding(outImageLayoutBinding, 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+            CreateDescriptorSetLayoutBinding(outImageLayoutBinding, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
 
             VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
             m_depthPyramidImageDescriptorSetLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
@@ -553,36 +541,7 @@ namespace BlitzenVulkan
         m_globalShaderData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
         m_globalShaderData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
         m_globalShaderData.frustumData[5] = BlitML::vec4(0, 0, -1, 100/* Draw distance */);// I need to multiply this with view or projection view
-
-        // Declaring it outside the below scope, as it needs to be bound later
-        VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
-        VkDescriptorSet depthPyramidImageSet = VK_NULL_HANDLE;
-        /* Allocating and updating the descriptor set used for global shader data*/
-        {
-            vkResetDescriptorPool(m_device, vBuffers.globalShaderDataDescriptorPool, 0);
-
-            *(vBuffers.pGlobalShaderData) = m_globalShaderData;
-            *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
-
-            // I cannot allocated multiple descriptors at once without using an array that can accept references (BlitCL does not have a static array atm)
-            AllocateDescriptorSets(m_device, vBuffers.globalShaderDataDescriptorPool, &m_globalShaderDataLayout, 1, &globalShaderDataSet);
-
-            // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
-            VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
-            VkWriteDescriptorSet globalShaderDataWrite{};
-            WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            globalShaderDataSet, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-            // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
-            VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
-            VkWriteDescriptorSet bufferAddressDescriptorWrite{};
-            WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
-            1, 1, vBuffers.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
-
-            // Pass the descriptor sets to the update function
-            VkWriteDescriptorSet writes[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
-            vkUpdateDescriptorSets(m_device, 2, writes, 0, nullptr);
-        }
+        
 
 
 
@@ -615,6 +574,35 @@ namespace BlitzenVulkan
 
 
 
+        VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
+        // Update the descriptors that pass global shader data
+        {
+            // Write the data to the buffer pointers
+            *(vBuffers.pGlobalShaderData) = m_globalShaderData;
+            *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
+
+            // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
+            VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
+            VkWriteDescriptorSet globalShaderDataWrite{};
+            WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            globalShaderDataSet, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+
+            // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
+            VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
+            VkWriteDescriptorSet bufferAddressDescriptorWrite{};
+            WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
+            1, 1, vBuffers.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
+
+            // Push the descriptor sets to the compute pipelines and the graphics pipelines
+            VkWriteDescriptorSet writes[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
+            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
+            0, 2, writes);
+            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 
+            0, 2, writes);
+        }
+
+
+
 
         /* Dispatching the compute shader that fills the indirect buffer that will be used by draw indirect*/
         {
@@ -627,10 +615,6 @@ namespace BlitzenVulkan
             VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 
             0, VK_WHOLE_SIZE);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 1, &fillBufferBarrier, 0, nullptr);
-
-            // The compute shader will access the shader data descriptor and the buffer addresses
-            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
-            0, 1, &globalShaderDataSet, 0, nullptr);
 
             // Bind the shader's pipeline and dispatch the shader to do culling
             vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectCullingComputePipeline);
@@ -681,10 +665,12 @@ namespace BlitzenVulkan
             vkCmdSetScissor(fTools.commandBuffer, 0, 1, &scissor);
         }
 
-        VkDescriptorSet descriptorSets [2] = {globalShaderDataSet, m_currentStaticBuffers.textureDescriptorSet};
-        vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 0,
-        2, descriptorSets, 0, nullptr);
+        // The texture descriptor set needs to be bound with a different function since it was allocated ahead of time and can't use PushDescriptors
+        vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 1,
+        1, &m_currentStaticBuffers.textureDescriptorSet, 0, nullptr);
+
         vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
+
         vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         if(m_stats.meshShaderSupport)
@@ -703,12 +689,13 @@ namespace BlitzenVulkan
 
 
 
+        VkDescriptorSet depthPyramidImageSet = VK_NULL_HANDLE;
         // Operations to create the depth pyramid that will be used for occlusion culling
         {
             VkImageMemoryBarrier2 shaderDepthBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
             0, VK_REMAINING_MIP_LEVELS);
 
             VkImageMemoryBarrier2 depthPyramidFirstBarrier{};
@@ -725,15 +712,16 @@ namespace BlitzenVulkan
             for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
             {
                 VkDescriptorImageInfo sourceImageInfo{};
-                sourceImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                sourceImageInfo.imageLayout = (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
                 sourceImageInfo.imageView = (i == 0) ? m_depthPyramid.imageView : m_depthPyramidMips[i - 1];
+                sourceImageInfo.sampler = m_depthAttachmentSampler;
 
                 VkDescriptorImageInfo outImageInfo{};
                 outImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                 outImageInfo.imageView = m_depthPyramidMips[i];
 
                 VkWriteDescriptorSet write{};
-                WriteImageDescriptorSets(write, &sourceImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, depthPyramidImageSet, 1, 1);
+                WriteImageDescriptorSets(write, &sourceImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, depthPyramidImageSet, 1, 1);
 
                 VkWriteDescriptorSet write2{};
                 WriteImageDescriptorSets(write2, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, depthPyramidImageSet, 1, 0);
@@ -758,8 +746,8 @@ namespace BlitzenVulkan
             VkImageMemoryBarrier2 depthPyramidCompleteBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, depthPyramidCompleteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
             VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
-            VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
+            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthPyramidCompleteBarrier);
 
             VkRenderingAttachmentInfo colorAttachment{};
@@ -793,20 +781,41 @@ namespace BlitzenVulkan
 
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, firstTransferMemoryBarriers);
 
-            // Copy the color attachment to the swapchain image
-            VkImageSubresourceLayers colorAttachmentSL{};
-            colorAttachmentSL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            colorAttachmentSL.baseArrayLayer = 0;
-            colorAttachmentSL.layerCount = 1;
-            colorAttachmentSL.mipLevel = 0;
-            VkImageSubresourceLayers swapchainImageSL{};
-            swapchainImageSL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            swapchainImageSL.baseArrayLayer = 0;
-            swapchainImageSL.layerCount = 1;
-            swapchainImageSL.mipLevel = 0;
-            CopyImageToImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-            m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_drawExtent, 
-            m_initHandles.swapchainExtent, colorAttachmentSL, swapchainImageSL);
+            if(context.debugPyramid)
+            {
+                uint32_t debugLevel = 0;
+                VkImageSubresourceLayers colorAttachmentSL{};
+                colorAttachmentSL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                colorAttachmentSL.baseArrayLayer = 0;
+                colorAttachmentSL.layerCount = 1;
+                colorAttachmentSL.mipLevel = debugLevel;
+                VkImageSubresourceLayers swapchainImageSL{};
+                swapchainImageSL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                swapchainImageSL.baseArrayLayer = 0;
+                swapchainImageSL.layerCount = 1;
+                swapchainImageSL.mipLevel = 0;
+                CopyImageToImage(fTools.commandBuffer, m_depthPyramid.image, VK_IMAGE_LAYOUT_GENERAL, 
+                m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                {uint32_t(BlitML::Max(1u, (m_drawExtent.width / 2) >> debugLevel)), uint32_t(BlitML::Max(1u, (m_drawExtent.height / 2) >> debugLevel))}, 
+                m_drawExtent, colorAttachmentSL, swapchainImageSL);
+            }
+            else
+            {
+                // Copy the color attachment to the swapchain image
+                VkImageSubresourceLayers colorAttachmentSL{};
+                colorAttachmentSL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                colorAttachmentSL.baseArrayLayer = 0;
+                colorAttachmentSL.layerCount = 1;
+                colorAttachmentSL.mipLevel = 0;
+                VkImageSubresourceLayers swapchainImageSL{};
+                swapchainImageSL.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                swapchainImageSL.baseArrayLayer = 0;
+                swapchainImageSL.layerCount = 1;
+                swapchainImageSL.mipLevel = 0;
+                CopyImageToImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_drawExtent, 
+                m_initHandles.swapchainExtent, colorAttachmentSL, swapchainImageSL);
+            }
 
             // Change the swapchain image layout to present
             VkImageMemoryBarrier2 presentImageBarrier{};

@@ -5,7 +5,7 @@
 #include "mainEngine.h"
 #include "Platform/platform.h"
 
-
+inline uint8_t gDebugPyramid = 0;
 
 namespace BlitzenEngine
 {
@@ -182,6 +182,8 @@ namespace BlitzenEngine
                             renderContext.projectionTranspose = m_camera.projectionTranspose;
 
                             renderContext.drawCount = drawCount;
+
+                            renderContext.debugPyramid = gDebugPyramid;// Temporary debug code for debug pyramid
 
                             // Hardcoding the sun for now
                             renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
@@ -393,6 +395,11 @@ namespace BlitzenEngine
                     // This is here only for debugging frustum culling. When active, the camera does not update the view frustum
                     uint8_t& freezeFrustum = Engine::GetEngineInstancePointer()->GetCamera().freezeFrustum;
                     freezeFrustum = !freezeFrustum;
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F2:
+                {
+                    gDebugPyramid = !gDebugPyramid;
                     break;
                 }
                 default:

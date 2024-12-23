@@ -40,7 +40,6 @@ namespace BlitzenVulkan
 
     struct VarBuffers
     {
-        VkDescriptorPool globalShaderDataDescriptorPool;
         AllocatedBuffer globalShaderDataBuffer;
         // Persistently mapped pointer to the uniform buffer for shader data. Dereferenced and updated each frame
         GlobalShaderData* pGlobalShaderData;
@@ -163,6 +162,7 @@ namespace BlitzenVulkan
         AllocatedImage m_colorAttachment;
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;
+        VkSampler m_depthAttachmentSampler;// This is needed for depth pyramid and occlusion tests
 
         AllocatedImage m_depthPyramid;
         VkImageView m_depthPyramidMips[16];
@@ -231,6 +231,8 @@ namespace BlitzenVulkan
     VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
 
     void CreateTextureSampler(VkDevice device, VkSampler& sampler);
+
+    VkSampler CreateSampler(VkDevice device);
 
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
     VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL);

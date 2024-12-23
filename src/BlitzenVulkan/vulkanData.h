@@ -122,6 +122,8 @@ namespace BlitzenVulkan
 
         BlitML::vec3 sunlightDirection;
         BlitML::vec4 sunlightColor;
+
+        uint8_t debugPyramid = 0;
     };
 
     struct AllocatedImage

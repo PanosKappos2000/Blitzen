@@ -133,6 +133,24 @@ namespace BlitzenVulkan
         VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
     }
 
+    VkSampler CreateSampler(VkDevice device)
+    {
+        VkSamplerCreateInfo createInfo {}; 
+        createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	    createInfo.magFilter = VK_FILTER_NEAREST;
+	    createInfo.minFilter = VK_FILTER_NEAREST;
+	    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	    createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	    createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	    createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	    createInfo.minLod = 0;
+	    createInfo.maxLod = 16.f;
+
+	    VkSampler sampler = VK_NULL_HANDLE;
+	    VK_CHECK(vkCreateSampler(device, &createInfo, 0, &sampler))
+	    return sampler;
+    }
+
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
     VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL)
     {
@@ -143,8 +161,8 @@ namespace BlitzenVulkan
         VkImageBlit2 imageRegion{};
         imageRegion.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
         imageRegion.pNext = nullptr;
-        imageRegion.srcOffsets[1].x = srcImageSize.width;
-        imageRegion.srcOffsets[1].y = srcImageSize.height;
+        imageRegion.srcOffsets[1].x = static_cast<int32_t>(srcImageSize.width);
+        imageRegion.srcOffsets[1].y = static_cast<int32_t>(srcImageSize.height);
         imageRegion.srcOffsets[1].z = 1;
         imageRegion.srcSubresource = srcImageSL;
         imageRegion.dstOffsets[1].x = dstImageSize.width;

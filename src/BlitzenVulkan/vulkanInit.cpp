@@ -591,6 +591,8 @@ namespace BlitzenVulkan
         CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
+        m_depthAttachmentSampler = CreateSampler(m_device);
+
         {
             uint32_t width = m_drawExtent.width;
             uint32_t height = m_drawExtent.height;
@@ -826,17 +828,12 @@ namespace BlitzenVulkan
             vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
 
-            vkDestroyDescriptorPool(m_device, varBuffers.globalShaderDataDescriptorPool, m_pCustomAllocator);
             vmaDestroyBuffer(m_allocator, varBuffers.globalShaderDataBuffer.buffer, varBuffers.globalShaderDataBuffer.allocation);
             vmaDestroyBuffer(m_allocator, varBuffers.bufferDeviceAddrsBuffer.buffer, varBuffers.bufferDeviceAddrsBuffer.allocation);
         }
 
         vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);
 
-        /*for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
-        {
-            vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], m_pCustomAllocator);
-        }I am not creating these anymore but I am keeping them to check the state of the application */
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
 
         vmaDestroyAllocator(m_allocator);
