@@ -178,7 +178,7 @@ namespace BlitzenVulkan
     // Pushed every frame for the non indirect version to access per object data
     struct alignas(16) ShaderPushConstant
     {
-        uint32_t drawTag;
+        BlitML::vec2 imageSize;
     };
 
     // Passed to the shaders through a storage buffer that contains all of these

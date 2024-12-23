@@ -241,7 +241,9 @@ namespace BlitzenVulkan
 
 
         {
-            CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidImageDescriptorSetLayout, 0, nullptr);
+            VkPushConstantRange pushConstant{};
+            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
+            CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidImageDescriptorSetLayout, 1, &pushConstant);
 
             VkComputePipelineCreateInfo pipelineInfo{};
             pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -695,7 +697,7 @@ namespace BlitzenVulkan
             VkImageMemoryBarrier2 shaderDepthBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
             0, VK_REMAINING_MIP_LEVELS);
 
             VkImageMemoryBarrier2 depthPyramidFirstBarrier{};
@@ -712,7 +714,7 @@ namespace BlitzenVulkan
             for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
             {
                 VkDescriptorImageInfo sourceImageInfo{};
-                sourceImageInfo.imageLayout = (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                sourceImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                 sourceImageInfo.imageView = (i == 0) ? m_depthPyramid.imageView : m_depthPyramidMips[i - 1];
                 sourceImageInfo.sampler = m_depthAttachmentSampler;
 
@@ -734,6 +736,11 @@ namespace BlitzenVulkan
                 uint32_t levelWidth = BlitML::Max(1u, (m_drawExtent.width / 2) >> i);
                 uint32_t levelHeight = BlitML::Max(1u, (m_drawExtent.height / 2) >> i);
 
+                ShaderPushConstant pushConstant;
+                pushConstant.imageSize = {static_cast<float>(levelWidth), static_cast<float>(levelHeight)};
+                vkCmdPushConstants(fTools.commandBuffer, m_depthReducePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShaderPushConstant), 
+                &pushConstant);
+
                 vkCmdDispatch(fTools.commandBuffer, levelWidth / 32 + 1, levelHeight / 32 + 1, 1);
 
                 VkImageMemoryBarrier2 dispatchWriteBarrier{};
@@ -746,7 +753,7 @@ namespace BlitzenVulkan
             VkImageMemoryBarrier2 depthPyramidCompleteBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, depthPyramidCompleteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
             VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, 
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthPyramidCompleteBarrier);
 
