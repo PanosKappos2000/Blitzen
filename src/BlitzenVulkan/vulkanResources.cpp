@@ -53,10 +53,10 @@ namespace BlitzenVulkan
 
         VK_CHECK(vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &(image.image), &(image.allocation), nullptr))
 
-        CreateImageView(device, image.imageView, image.image, format, mipLevels);
+        CreateImageView(device, image.imageView, image.image, format, 0, mipLevels);
     }
 
-    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t mipLevels)
+    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
     {
         VkImageViewCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -67,7 +67,7 @@ namespace BlitzenVulkan
         info.viewType = VK_IMAGE_VIEW_TYPE_2D;
         info.subresourceRange.aspectMask = (format == VK_FORMAT_D32_SFLOAT) ? 
         VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        info.subresourceRange.baseMipLevel = 0;
+        info.subresourceRange.baseMipLevel = baseMipLevel;
         info.subresourceRange.levelCount = mipLevels;
         info.subresourceRange.baseArrayLayer = 0;
         info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
@@ -152,7 +152,7 @@ namespace BlitzenVulkan
     }
 
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
-    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL)
+    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter)
     {
         /*
             This function is pretty hardcoded for now and for a specific use. I don't think I will be needing that many image copies, but we'll see
@@ -179,6 +179,7 @@ namespace BlitzenVulkan
         blitImage.dstImageLayout = dstLayout;
         blitImage.regionCount = 1;
         blitImage.pRegions = &imageRegion;
+        blitImage.filter = filter;
         vkCmdBlitImage2(commandBuffer, &blitImage);
     }
 

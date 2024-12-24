@@ -167,16 +167,16 @@ namespace BlitzenVulkan
                 currentIDraw.taskCount = currentSurface.meshletCount;
             }
 
-            for (size_t i = 999995; i < 1000000; ++i)
+            for (size_t i = 999000; i < 1000000; ++i)
             {
                 BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
                 IndirectOffsets& currentIDraw = indirectDraws[i];
                 StaticRenderObject& currentObject = renderObjects[i];
 
                 currentObject.materialTag = currentSurface.pMaterial->materialTag;
-                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 40 - 20,//x 
-                    (float(rand()) / RAND_MAX) * 40 - 20,//y
-                    (float(rand()) / RAND_MAX) * 40 - 20);//z
+                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 20,//x 
+                    (float(rand()) / RAND_MAX) * 200 - 20,//y
+                    (float(rand()) / RAND_MAX) * 1000 - 20);//z
                 currentObject.pos = translation;
                 currentObject.scale = 0.1f;
 
@@ -311,7 +311,7 @@ namespace BlitzenVulkan
             pipelineInfo.pDynamicState = &dynamicState;
 
             VkPipelineRasterizationStateCreateInfo rasterization{};
-            SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+            SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
             pipelineInfo.pRasterizationState = &rasterization;
 
             VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -697,7 +697,7 @@ namespace BlitzenVulkan
             VkImageMemoryBarrier2 shaderDepthBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
             0, VK_REMAINING_MIP_LEVELS);
 
             VkImageMemoryBarrier2 depthPyramidFirstBarrier{};
@@ -714,8 +714,8 @@ namespace BlitzenVulkan
             for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
             {
                 VkDescriptorImageInfo sourceImageInfo{};
-                sourceImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-                sourceImageInfo.imageView = (i == 0) ? m_depthPyramid.imageView : m_depthPyramidMips[i - 1];
+                sourceImageInfo.imageLayout = (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                sourceImageInfo.imageView = (i == 0) ? m_depthAttachment.imageView : m_depthPyramidMips[i - 1];
                 sourceImageInfo.sampler = m_depthAttachmentSampler;
 
                 VkDescriptorImageInfo outImageInfo{};
@@ -745,15 +745,15 @@ namespace BlitzenVulkan
 
                 VkImageMemoryBarrier2 dispatchWriteBarrier{};
                 ImageMemoryBarrier(m_depthPyramid.image, dispatchWriteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, 
-                VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, 
+                VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
                 PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &dispatchWriteBarrier);
             }
 
             VkImageMemoryBarrier2 depthPyramidCompleteBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, depthPyramidCompleteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
             VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, 
+            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthPyramidCompleteBarrier);
 
@@ -804,7 +804,7 @@ namespace BlitzenVulkan
                 CopyImageToImage(fTools.commandBuffer, m_depthPyramid.image, VK_IMAGE_LAYOUT_GENERAL, 
                 m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
                 {uint32_t(BlitML::Max(1u, (m_drawExtent.width / 2) >> debugLevel)), uint32_t(BlitML::Max(1u, (m_drawExtent.height / 2) >> debugLevel))}, 
-                m_drawExtent, colorAttachmentSL, swapchainImageSL);
+                m_initHandles.swapchainExtent, colorAttachmentSL, swapchainImageSL, VK_FILTER_NEAREST);
             }
             else
             {
@@ -821,7 +821,7 @@ namespace BlitzenVulkan
                 swapchainImageSL.mipLevel = 0;
                 CopyImageToImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
                 m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_drawExtent, 
-                m_initHandles.swapchainExtent, colorAttachmentSL, swapchainImageSL);
+                m_initHandles.swapchainExtent, colorAttachmentSL, swapchainImageSL, VK_FILTER_LINEAR);
             }
 
             // Change the swapchain image layout to present

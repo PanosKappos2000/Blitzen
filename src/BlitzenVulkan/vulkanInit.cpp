@@ -603,12 +603,12 @@ namespace BlitzenVulkan
                 width /= 2;
                 height /= 2;
             }
-            CreateImage(m_device, m_allocator, m_depthPyramid, {m_drawExtent.width / 2, m_drawExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
+            CreateImage(m_device, m_allocator, m_depthPyramid, {m_drawExtent.width / 2, m_drawExtent.height / 2, 1}, VK_FORMAT_R32_SFLOAT, 
             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, m_depthPyramidMipLevels);
 
             for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
             {
-                CreateImageView(m_device, m_depthPyramidMips[i], m_depthPyramid.image, VK_FORMAT_R32_SFLOAT, 1);
+                CreateImageView(m_device, m_depthPyramidMips[i], m_depthPyramid.image, VK_FORMAT_R32_SFLOAT, i, 1);
             }
         }
 
@@ -816,6 +816,7 @@ namespace BlitzenVulkan
         {
             vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
         }
+        vkDestroySampler(m_device, m_depthAttachmentSampler, m_pCustomAllocator);
 
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
