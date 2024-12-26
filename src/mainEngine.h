@@ -17,7 +17,8 @@
 #define BLITZEN_WINDOW_STARTING_X       100
 #define BLITZEN_WINDOW_STARTING_Y       100
 #define BLITZEN_WINDOW_WIDTH            1280
-#define BLITZEN_WINDOW_HEIGHT           720
+#define BLITZEN_WINDOW_HEIGHT           768
+#define BLITZEN_ZNEAR                   1.f
 
 namespace BlitzenEngine
 {

@@ -173,6 +173,7 @@ namespace BlitzenVulkan
         VkDeviceAddress indirectBufferAddress;
         VkDeviceAddress finalIndirectBufferAddress;
         VkDeviceAddress indirectCountBufferAddress;
+        VkDeviceAddress visibilityBufferAddress;
     };
 
     // Pushed every frame for the non indirect version to access per object data

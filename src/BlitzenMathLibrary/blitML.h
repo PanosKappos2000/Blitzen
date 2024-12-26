@@ -40,6 +40,15 @@ namespace BlitML
 
     inline uint8_t IsPowerOf2(uint64_t value) { return (value != 0) && ((value & (value - 1)) == 0); }
 
+    inline uint32_t PreviousPow2(uint32_t value) {
+        uint32_t result = 1;
+        while(result * 2 < value)
+        {
+            result *= 2;
+        }
+        return result;
+    }
+
     static uint8_t sRandSeeded = 0;
 
     inline int32_t Rand() 

@@ -111,6 +111,11 @@ layout(buffer_reference, std430) writeonly buffer IndirectCount
     uint drawCount;
 };
 
+layout(buffer_reference, std430) buffer VisibilityBuffer
+{
+    uint visibilities[];
+};
+
 // The render object struct hold per object data, necessary for a draw call to actually place and draw the object correctly in a scene
 struct RenderObject
 {
@@ -186,6 +191,8 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     FinalIndirect finalIndirectBuffer;
     // Incremented by compute and used by vkCmdDrawIndexedIndirectCount
     IndirectCount indirectCount;
+    // Accessed by compute, and each element switched to 1 or 0 based on culling test results
+    VisibilityBuffer visibilityBuffer;
 }bufferAddrs;
 
 // This function is used in every vertex shader invocation to give the object its orientation

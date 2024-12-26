@@ -594,8 +594,11 @@ namespace BlitzenVulkan
         m_depthAttachmentSampler = CreateSampler(m_device);
 
         {
-            uint32_t width = m_drawExtent.width;
-            uint32_t height = m_drawExtent.height;
+            m_depthPyramidExtent.width = BlitML::PreviousPow2(m_drawExtent.width);
+            m_depthPyramidExtent.height = BlitML::PreviousPow2(m_drawExtent.height);
+
+            uint32_t width = m_depthPyramidExtent.width;
+            uint32_t height = m_depthPyramidExtent.height;
             while(width > 1 || height > 1)
             {
                 m_depthPyramidMipLevels++;
@@ -603,7 +606,7 @@ namespace BlitzenVulkan
                 width /= 2;
                 height /= 2;
             }
-            CreateImage(m_device, m_allocator, m_depthPyramid, {m_drawExtent.width / 2, m_drawExtent.height / 2, 1}, VK_FORMAT_R32_SFLOAT, 
+            CreateImage(m_device, m_allocator, m_depthPyramid, {m_depthPyramidExtent.width, m_depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, m_depthPyramidMipLevels);
 
             for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
@@ -801,6 +804,7 @@ namespace BlitzenVulkan
 
         vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
 
+        vkDestroyPipeline(m_device, m_lateCullingComputePipeline, m_pCustomAllocator);
         vkDestroyPipeline(m_device, m_indirectCullingComputePipeline, m_pCustomAllocator);
         vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);

@@ -219,23 +219,8 @@ namespace BlitzenVulkan
 
         /* Compute pipeline that fills the draw indirect commands based on culling data*/
         {
-            VkComputePipelineCreateInfo pipelineInfo{};
-            pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-            pipelineInfo.flags = 0;
-            pipelineInfo.pNext = nullptr;
-
-            VkShaderModule computeShaderModule{};
-            VkPipelineShaderStageCreateInfo shaderStageInfo{};
-            CreateShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", computeShaderModule, 
-            shaderStageInfo);
-
-            pipelineInfo.stage = shaderStageInfo;
-            pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;// This layout seems adequate for the compute shader inspite of its name
-
-            VK_CHECK(vkCreateComputePipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_indirectCullingComputePipeline));
-
-            // Beyond this scope, this shader module is not needed
-            vkDestroyShaderModule(m_device, computeShaderModule, m_pCustomAllocator);
+            CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            m_opaqueGraphicsPipelineLayout, &m_indirectCullingComputePipeline);
         }
 
 
@@ -245,22 +230,15 @@ namespace BlitzenVulkan
             CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
             CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidImageDescriptorSetLayout, 1, &pushConstant);
 
-            VkComputePipelineCreateInfo pipelineInfo{};
-            pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-            pipelineInfo.flags = 0;
-            pipelineInfo.pNext = nullptr;
+            CreateComputeShaderProgram(m_device, "VulkanShaders/DepthReduce.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            m_depthReducePipelineLayout, &m_depthReduceComputePipeline);
+        }
 
-            VkShaderModule shaderModule{};
-            VkPipelineShaderStageCreateInfo shaderStageInfo{};
-            CreateShaderProgram(m_device, "VulkanShaders/DepthReduce.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", shaderModule, 
-            shaderStageInfo);
 
-            pipelineInfo.stage = shaderStageInfo;
-            pipelineInfo.layout = m_depthReducePipelineLayout;
 
-            VK_CHECK(vkCreateComputePipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_depthReduceComputePipeline));
-
-            vkDestroyShaderModule(m_device, shaderModule, m_pCustomAllocator);
+        {
+            CreateComputeShaderProgram(m_device, "VulkanShaders/LateCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            m_opaqueGraphicsPipelineLayout, &m_lateCullingComputePipeline);
         }
 
 
@@ -407,6 +385,13 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.bufferAddresses.indirectCountBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectCountBuffer.buffer);
 
+        VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * indirectDraws.GetSize();
+        CreateBuffer(m_allocator, m_currentStaticBuffers.drawVisibilityBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, 
+        visibilityBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        m_currentStaticBuffers.bufferAddresses.visibilityBufferAddress =
+        GetBufferAddress(m_device, m_currentStaticBuffers.drawVisibilityBuffer.buffer);
+
         // This holds the combined size of all the required buffers to pass to the combined staging buffer
         VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize;
 
@@ -472,6 +457,9 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.globalMeshBuffer.buffer, meshBufferSize, 
             vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize, 0);
         }
+
+        // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
+        vkCmdFillBuffer(m_placeholderCommands, m_currentStaticBuffers.drawVisibilityBuffer.buffer, 0, visibilityBufferSize, 1);
         
 
         SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
@@ -733,8 +721,8 @@ namespace BlitzenVulkan
                 PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthReducePipelineLayout, 
                 0, 2, writes);
 
-                uint32_t levelWidth = BlitML::Max(1u, (m_drawExtent.width / 2) >> i);
-                uint32_t levelHeight = BlitML::Max(1u, (m_drawExtent.height / 2) >> i);
+                uint32_t levelWidth = BlitML::Max(1u, (m_depthPyramidExtent.width) >> i);
+                uint32_t levelHeight = BlitML::Max(1u, (m_depthPyramidExtent.height) >> i);
 
                 ShaderPushConstant pushConstant;
                 pushConstant.imageSize = {static_cast<float>(levelWidth), static_cast<float>(levelHeight)};
@@ -803,7 +791,7 @@ namespace BlitzenVulkan
                 swapchainImageSL.mipLevel = 0;
                 CopyImageToImage(fTools.commandBuffer, m_depthPyramid.image, VK_IMAGE_LAYOUT_GENERAL, 
                 m_initHandles.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-                {uint32_t(BlitML::Max(1u, (m_drawExtent.width / 2) >> debugLevel)), uint32_t(BlitML::Max(1u, (m_drawExtent.height / 2) >> debugLevel))}, 
+                {uint32_t(BlitML::Max(1u, (m_depthPyramidExtent.width) >> debugLevel)), uint32_t(BlitML::Max(1u, (m_depthPyramidExtent.height) >> debugLevel))}, 
                 m_initHandles.swapchainExtent, colorAttachmentSL, swapchainImageSL, VK_FILTER_NEAREST);
             }
             else

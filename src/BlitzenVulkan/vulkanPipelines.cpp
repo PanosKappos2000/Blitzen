@@ -31,6 +31,28 @@ namespace BlitzenVulkan
         pipelineShaderStage.pName = entryPointName;
     }
 
+    void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    VkPipelineLayout& layout, VkPipeline* pPipeline)
+    {
+        VkComputePipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        pipelineInfo.flags = 0;
+        pipelineInfo.pNext = nullptr;
+
+        VkShaderModule computeShaderModule{};
+        VkPipelineShaderStageCreateInfo shaderStageInfo{};
+        CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, computeShaderModule, 
+        shaderStageInfo);
+
+        pipelineInfo.stage = shaderStageInfo;
+        pipelineInfo.layout = layout;
+
+        VK_CHECK(vkCreateComputePipelines(device, nullptr, 1, &pipelineInfo, nullptr, pPipeline))
+
+        // Beyond this scope, this shader module is not needed
+        vkDestroyShaderModule(device, computeShaderModule, nullptr);
+    }
+
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly()
     {
         VkPipelineInputAssemblyStateCreateInfo res{};

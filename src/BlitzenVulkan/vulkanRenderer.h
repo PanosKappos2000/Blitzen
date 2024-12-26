@@ -60,14 +60,19 @@ namespace BlitzenVulkan
 
         AllocatedBuffer globalMaterialBuffer;
 
+        // Array of per object data (StaticRenderObject, got to change that variable name). 1 element for every object
         AllocatedBuffer renderObjectBuffer;
 
-        // Has all the commands for all the objects on the scene
         AllocatedBuffer drawIndirectBuffer;
-        // Has the commands above after they have been processed by compute
+
+        // Holds all the command for draw indirect to draw everything on a scene
         AllocatedBuffer drawIndirectBufferFinal;
+
         // Counts how many objects have actually been added to the final draw indirect buffer(helps avoid empty draw calls)
         AllocatedBuffer drawIndirectCountBuffer;
+
+        // Holds an array of integers with an element for each object. The integer is 0 or 1, depending on if the associated object was visible last frame
+        AllocatedBuffer drawVisibilityBuffer;
 
         // Holds the addresses of each one of the above buffers(except global shader data buffer)
         BufferDeviceAddresses bufferAddresses;
@@ -83,12 +88,16 @@ namespace BlitzenVulkan
         inline void Cleanup(VmaAllocator allocator, VkDevice device){
             vmaDestroyBuffer(allocator, renderObjectBuffer.buffer, renderObjectBuffer.allocation);
             vmaDestroyBuffer(allocator, globalMaterialBuffer.buffer, globalMaterialBuffer.allocation);
+
             #if BLITZEN_VULKAN_MESH_SHADER
                 vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
             #endif
+
             vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
             vmaDestroyBuffer(allocator, drawIndirectBufferFinal.buffer, drawIndirectBufferFinal.allocation);
             vmaDestroyBuffer(allocator, drawIndirectCountBuffer.buffer, drawIndirectCountBuffer.allocation);
+            vmaDestroyBuffer(allocator, drawVisibilityBuffer.buffer, drawVisibilityBuffer.allocation);
+
             vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
             vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
 
@@ -167,6 +176,7 @@ namespace BlitzenVulkan
         AllocatedImage m_depthPyramid;
         VkImageView m_depthPyramidMips[16];
         uint8_t m_depthPyramidMipLevels = 0;
+        VkExtent2D m_depthPyramidExtent;
 
         StaticBuffers m_currentStaticBuffers;
 
@@ -183,6 +193,8 @@ namespace BlitzenVulkan
         VkPipeline m_depthReduceComputePipeline;
         VkPipelineLayout m_depthReducePipelineLayout;
         VkDescriptorSetLayout m_depthPyramidImageDescriptorSetLayout;
+
+        VkPipeline m_lateCullingComputePipeline;// This one is for the shader that does visibility tests on objects that were rejected last frame
 
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
@@ -297,6 +309,10 @@ namespace BlitzenVulkan
     */
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage);
+
+    // Since the creation of a compute pipeline is very simple, the function can be a wrapper around CreateShaderProgram with a bit of extra code
+    void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    VkPipelineLayout& layout, VkPipeline* pPipeline);
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
 

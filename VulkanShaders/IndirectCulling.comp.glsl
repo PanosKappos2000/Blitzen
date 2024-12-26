@@ -15,6 +15,10 @@ void main()
 	uint groupIndex = gl_WorkGroupID.x;
 	uint objectIndex = gl_GlobalInvocationID.x;
 
+    if(bufferAddrs.visibilityBuffer.visibilities[objectIndex] == 0)
+        return;
+        
+
     IndirectOffsets currentRead = bufferAddrs.indirectBuffer.offsets[objectIndex];
     RenderObject currentObject = bufferAddrs.renderObjects.renderObjects[objectIndex];
 
@@ -23,7 +27,6 @@ void main()
 	bool visible = true;
 	for (int i = 0; i < 6; ++i)
 		visible = visible && dot(shaderData.frustumData[i], vec4(center, 1)) > -radius;
-    
     
     if(visible)
     {

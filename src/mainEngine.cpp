@@ -97,7 +97,7 @@ namespace BlitzenEngine
         isSupended = 0;
 
         m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
-        static_cast<float>(m_platformData.windowHeight), 1.f);
+        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR);
         BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
@@ -463,7 +463,7 @@ namespace BlitzenEngine
         isSupended = 0;
 
         m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
-        static_cast<float>(m_platformData.windowHeight), 1.f);
+        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR);
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
     }
 }
