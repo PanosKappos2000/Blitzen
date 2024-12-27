@@ -92,7 +92,7 @@ layout(buffer_reference, std430) readonly buffer IndirectBuffer
 // The below are the same buffer but it is defined differently in the compute pipeline
 // This will be the final buffer used by vkCmdDrawIndexedIndirect and will be filled by a compute shader after doing culling and other operations
 #ifdef COMPUTE_PIPELINE
-    layout(buffer_reference, std430) writeonly buffer FinalIndirect
+    layout(buffer_reference, std430) buffer FinalIndirect
     {
         IndirectDraw indirectDraws[];
     };
@@ -158,14 +158,10 @@ layout (buffer_reference, std430) readonly buffer MaterialBuffer
 // This holds global shader data passed to the GPU at the start of each frame
 layout(set = 0, binding = 0) uniform ShaderData
 {
-    // Accessed by the compute shader to do frustum culling
+    // Accessed by the compute shader to do frustum culling (I should move this to something different)
     vec4 frustumData[6];
 
-    // Used to transofrm objects to view and clip coordinates
-    mat4 projection;
-    mat4 view;
     // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
-    // It's possible that I might never need the two matrices above in the shader
     mat4 projectionView;
 
     vec4 sunColor;

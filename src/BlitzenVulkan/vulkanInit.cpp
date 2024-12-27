@@ -805,7 +805,10 @@ namespace BlitzenVulkan
         vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
 
         vkDestroyPipeline(m_device, m_lateCullingComputePipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_lateCullingPipelineLayout, m_pCustomAllocator);
+
         vkDestroyPipeline(m_device, m_indirectCullingComputePipeline, m_pCustomAllocator);
+        
         vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);
 
@@ -833,6 +836,7 @@ namespace BlitzenVulkan
             vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
 
+            vmaDestroyBuffer(m_allocator, varBuffers.cullingDataBuffer.buffer, varBuffers.cullingDataBuffer.allocation);
             vmaDestroyBuffer(m_allocator, varBuffers.globalShaderDataBuffer.buffer, varBuffers.globalShaderDataBuffer.allocation);
             vmaDestroyBuffer(m_allocator, varBuffers.bufferDeviceAddrsBuffer.buffer, varBuffers.bufferDeviceAddrsBuffer.allocation);
         }

@@ -153,8 +153,6 @@ namespace BlitzenVulkan
         // Accessed by a compute shader to do frustum culling
         BlitML::vec4 frustumData[6];
 
-        BlitML::mat4 projection;
-        BlitML::mat4 view;
         BlitML::mat4 projectionView;
 
         BlitML::vec4 sunlightColor;
@@ -174,6 +172,16 @@ namespace BlitzenVulkan
         VkDeviceAddress finalIndirectBufferAddress;
         VkDeviceAddress indirectCountBufferAddress;
         VkDeviceAddress visibilityBufferAddress;
+    };
+
+    struct alignas(16) CullingData
+    {
+        float proj0;// The 1st element of the projection matrix
+        float proj11;// The 12th element of the projection matrix
+        float zNear;
+        // Occulusion culling depth pyramid data
+        float pyramidWidth;
+        float pyramidHeight;
     };
 
     // Pushed every frame for the non indirect version to access per object data

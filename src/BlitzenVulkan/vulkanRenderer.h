@@ -47,6 +47,9 @@ namespace BlitzenVulkan
         AllocatedBuffer bufferDeviceAddrsBuffer;
         // Persistently mapped pointer to the uniform buffer for buffer addresses. Dereferenced and updated each frame
         BufferDeviceAddresses* pBufferAddrs;
+
+        AllocatedBuffer cullingDataBuffer;
+        CullingData* pCullingData;
     };
 
     // Holds data for buffers that will be loaded once and will be used for every object
@@ -195,6 +198,7 @@ namespace BlitzenVulkan
         VkDescriptorSetLayout m_depthPyramidImageDescriptorSetLayout;
 
         VkPipeline m_lateCullingComputePipeline;// This one is for the shader that does visibility tests on objects that were rejected last frame
+        VkPipelineLayout m_lateCullingPipelineLayout;
 
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
@@ -360,7 +364,10 @@ namespace BlitzenVulkan
     void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 
     VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor = {0, 0, 0, 0}, VkClearDepthStencilValue clearValueDepth = {0, 0});
 
+    // Starts a render pass using the dynamic rendering feature(command buffer should be in recording state)
     void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, 
     uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment, 
     VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1 );
+
+    void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
 }

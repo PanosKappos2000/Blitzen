@@ -45,6 +45,10 @@ namespace BlitzenVulkan
             CreateBuffer(m_allocator, buffers.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
             buffers.pBufferAddrs = reinterpret_cast<BufferDeviceAddresses*>(buffers.bufferDeviceAddrsBuffer.allocation->GetMappedData());
+
+            CreateBuffer(m_allocator, buffers.cullingDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(CullingData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            buffers.pCullingData = reinterpret_cast<CullingData*>(buffers.cullingDataBuffer.allocation->GetMappedData());
         }
     }
 
@@ -74,9 +78,18 @@ namespace BlitzenVulkan
                 CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
             }
+
+            VkDescriptorSetLayoutBinding cullingDataLayoutBinding{};
+            CreateDescriptorSetLayoutBinding(cullingDataLayoutBinding, 2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            VK_SHADER_STAGE_COMPUTE_BIT);
+
+            VkDescriptorSetLayoutBinding depthImageBinding{};
+            CreateDescriptorSetLayoutBinding(depthImageBinding, 3, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            VK_SHADER_STAGE_COMPUTE_BIT);
             
-            VkDescriptorSetLayoutBinding shaderDataBindings[2] = {shaderDataLayoutBinding, bufferAddressBinding};
-            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 2, shaderDataBindings, 
+            VkDescriptorSetLayoutBinding shaderDataBindings[4] = {shaderDataLayoutBinding, bufferAddressBinding, 
+            cullingDataLayoutBinding, depthImageBinding};
+            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 4, shaderDataBindings, 
             VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
             // Descriptor set layout for textures
@@ -223,8 +236,6 @@ namespace BlitzenVulkan
             m_opaqueGraphicsPipelineLayout, &m_indirectCullingComputePipeline);
         }
 
-
-
         {
             VkPushConstantRange pushConstant{};
             CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
@@ -234,11 +245,11 @@ namespace BlitzenVulkan
             m_depthReducePipelineLayout, &m_depthReduceComputePipeline);
         }
 
-
-
         {
+            CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_globalShaderDataLayout, 0, nullptr);
+
             CreateComputeShaderProgram(m_device, "VulkanShaders/LateCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_opaqueGraphicsPipelineLayout, &m_lateCullingComputePipeline);
+            m_lateCullingPipelineLayout, &m_lateCullingComputePipeline);
         }
 
 
@@ -518,13 +529,13 @@ namespace BlitzenVulkan
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
-        m_globalShaderData.projection = context.projectionMatrix;
-        m_globalShaderData.view = context.viewMatrix;
         m_globalShaderData.projectionView = context.projectionView;
         m_globalShaderData.viewPosition = context.viewPosition;
+
         m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;
 
+        // Create the frustum planes based on the current projection and view matrices 
         m_globalShaderData.frustumData[0] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0));
         m_globalShaderData.frustumData[1] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(0));
         m_globalShaderData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
@@ -538,6 +549,30 @@ namespace BlitzenVulkan
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
+
+
+
+        // The data for this descriptor set will be handled in this scope so that it can be accessed by both late and initial render pass
+        VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
+
+        // Write the data to the buffer pointers
+        *(vBuffers.pGlobalShaderData) = m_globalShaderData;
+        *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
+
+        // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
+        VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
+        VkWriteDescriptorSet globalShaderDataWrite{};
+        WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        globalShaderDataSet, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+
+        // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
+        VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
+        VkWriteDescriptorSet bufferAddressDescriptorWrite{};
+        WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
+        1, 1, vBuffers.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
+
+        // Push the descriptor sets to the compute pipelines and the graphics pipelines
+        VkWriteDescriptorSet globalShaderDataWrites[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
 
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
@@ -564,37 +599,20 @@ namespace BlitzenVulkan
 
 
 
-        VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
-        // Update the descriptors that pass global shader data
+        // Push the descriptor set for global shader data for the compute and graphics pipelines
         {
-            // Write the data to the buffer pointers
-            *(vBuffers.pGlobalShaderData) = m_globalShaderData;
-            *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
-
-            // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
-            VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
-            VkWriteDescriptorSet globalShaderDataWrite{};
-            WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            globalShaderDataSet, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-            // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
-            VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
-            VkWriteDescriptorSet bufferAddressDescriptorWrite{};
-            WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
-            1, 1, vBuffers.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
-
-            // Push the descriptor sets to the compute pipelines and the graphics pipelines
-            VkWriteDescriptorSet writes[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
             PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
-            0, 2, writes);
+            0, 2, globalShaderDataWrites);
             PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 
-            0, 2, writes);
+            0, 2, globalShaderDataWrites);
         }
 
 
 
 
-        /* Dispatching the compute shader that fills the indirect buffer that will be used by draw indirect*/
+        /* 
+            Dispatching the compute that does frustum culling for objects that were visible last frame
+        */
         {
             // Initalize the indirect count buffer as zero
             vkCmdFillBuffer(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, sizeof(uint32_t), 0);
@@ -610,7 +628,7 @@ namespace BlitzenVulkan
             vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectCullingComputePipeline);
             vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>((context.drawCount / 64) + 1), 1, 1);
 
-            // Stops later stages from reading from this buffer while compute is not done
+            // Stops the indirect stage from reading commands before the compute shader completes
             VkMemoryBarrier2 memoryBarrier{};
             MemoryBarrier(memoryBarrier, 
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
@@ -621,7 +639,9 @@ namespace BlitzenVulkan
 
 
 
-        // Define the attachments and begin rendering
+        /* 
+            Start the first render pass
+        */
         {
             VkRenderingAttachmentInfo colorAttachment{};
             CreateRenderingAttachmentInfo(colorAttachment, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
@@ -632,55 +652,48 @@ namespace BlitzenVulkan
 
             BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachment, &depthAttachment, nullptr);
         }
-        // Begin rendering command recorded
+
+
+        // The viewport and scissor are dynamic, so they should be set here
+        DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
 
 
 
-
-        // Dynamic viewport so I have to do this right here
+        /*
+            Draw the objects that passed frustum culling and were visible last frame 
+        */
         {
-            VkViewport viewport{};
-            viewport.x = 0;
-            viewport.y = static_cast<float>(m_drawExtent.height); // Start from full height (flips y axis)
-            viewport.width = static_cast<float>(m_drawExtent.width);
-            viewport.height = -static_cast<float>(m_drawExtent.height);// Move a negative amount of full height (flips y axis)
-            viewport.minDepth = 0.f;
-            viewport.maxDepth = 1.f;
-            vkCmdSetViewport(fTools.commandBuffer, 0, 1, &viewport);
-            VkRect2D scissor{};
-            scissor.extent.width = m_drawExtent.width;
-            scissor.extent.height = m_drawExtent.height;
-            scissor.offset.x = 0;
-            scissor.offset.y = 0;
-            vkCmdSetScissor(fTools.commandBuffer, 0, 1, &scissor);
+            // Bind the texture descriptor set. The shader data descriptor set was pushed earlier before the culling shader was dispatched
+            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 1,
+            1, &m_currentStaticBuffers.textureDescriptorSet, 0, nullptr);
+
+            // Bind the graphics pipeline and the index buffer
+            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
+            vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+            // Use draw indirect to draw the objects(mesh shading or vertex shader)
+            if(m_stats.meshShaderSupport)
+            {
+               DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+               offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
+            }
+            else
+            {
+                vkCmdDrawIndexedIndirectCount(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
+                offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
+                context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
+            }
         }
 
-        // The texture descriptor set needs to be bound with a different function since it was allocated ahead of time and can't use PushDescriptors
-        vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 1,
-        1, &m_currentStaticBuffers.textureDescriptorSet, 0, nullptr);
-
-        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
-
-        vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-        if(m_stats.meshShaderSupport)
-        {
-           DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
-           offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
-        }
-        else
-        {
-            vkCmdDrawIndexedIndirectCount(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
-            offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
-            context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
-        }
-
+        // End of first render pass
         vkCmdEndRendering(fTools.commandBuffer);
 
 
 
         VkDescriptorSet depthPyramidImageSet = VK_NULL_HANDLE;
-        // Operations to create the depth pyramid that will be used for occlusion culling
+        /*
+            Create the depth pyramid before the late render pass, so that it can be used for occlusion culling
+        */
         {
             VkImageMemoryBarrier2 shaderDepthBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
@@ -744,7 +757,81 @@ namespace BlitzenVulkan
             | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthPyramidCompleteBarrier);
+        }
 
+
+        VkDescriptorBufferInfo cullingDataBufferInfo{};
+        VkWriteDescriptorSet cullingDataWrite{};
+        WriteBufferDescriptorSets(cullingDataWrite, cullingDataBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
+        2, 1, vBuffers.cullingDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+
+        VkDescriptorImageInfo depthPyramidImageInfo{};
+        depthPyramidImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        depthPyramidImageInfo.imageView = m_depthAttachment.imageView;
+        depthPyramidImageInfo.sampler = m_depthAttachmentSampler;
+        VkWriteDescriptorSet depthPyramidWrite{};
+        WriteImageDescriptorSets(depthPyramidWrite, &depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, globalShaderDataSet, 
+        1, 3);
+
+        VkWriteDescriptorSet latePassGlobalShaderDataSet[4] = {globalShaderDataWrite, bufferAddressDescriptorWrite, 
+        cullingDataWrite, depthPyramidWrite};
+
+        CullingData cullingData;
+        cullingData.proj0 = context.projectionView[0];
+        cullingData.proj11 = context.projectionView[11];
+        cullingData.zNear = 1.f;
+        cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+        cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+        *(vBuffers.pCullingData) = cullingData;
+        
+        // Push the descriptor set for global shader data for the compute and graphics pipelines
+        {
+            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_lateCullingPipelineLayout, 
+            0, 4, latePassGlobalShaderDataSet);
+            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 
+            0, 2, globalShaderDataWrites);
+        }
+
+
+
+        /*
+            Execute culling tests for late render pass
+        */
+        {
+            // Wait for draw indirect to finish before filling the indirect count buffer with zeroes
+            VkBufferMemoryBarrier2 waitForDrawIndirectCount{};
+            BufferMemoryBarrier(m_currentStaticBuffers.drawIndirectCountBuffer.buffer, waitForDrawIndirectCount, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, 
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 1, &waitForDrawIndirectCount, 0, nullptr);
+
+            // Fill the indirect count buffer with 0
+            vkCmdFillBuffer(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, sizeof(uint32_t), 0);
+
+            // Wait for the transfer operation to finish before dispatching the compute shader
+            VkBufferMemoryBarrier2 waitForBufferFill{};
+            BufferMemoryBarrier(m_currentStaticBuffers.drawIndirectCountBuffer.buffer, waitForBufferFill, VK_PIPELINE_STAGE_2_TRANSFER_BIT, 
+            VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT, 
+            0, VK_WHOLE_SIZE);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 1, &waitForBufferFill, 0, nullptr);
+
+            // Dispatch the compute shader
+            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_lateCullingComputePipeline);
+            vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>(context.drawCount / 64) + 1, 1, 1);
+
+            // Stops the indirect stage from reading commands before the compute shader completes
+            VkMemoryBarrier2 memoryBarrier{};
+            MemoryBarrier(memoryBarrier, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_MEMORY_READ_BIT_KHR);
+            PipelineBarrier(fTools.commandBuffer, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+        }
+
+
+
+        /* 
+            Start the later Render Pass
+        */
+        {
             VkRenderingAttachmentInfo colorAttachment{};
             CreateRenderingAttachmentInfo(colorAttachment, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
             VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
@@ -752,8 +839,38 @@ namespace BlitzenVulkan
             CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
             VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_DONT_CARE);
             BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachment, &depthAttachment, nullptr);
-            vkCmdEndRendering(fTools.commandBuffer);
         }
+
+
+
+        /*
+            Draw the objects that passed frustum culling and were not visible last frame 
+        */
+        {
+            // Bind the texture descriptor set. The shader data descriptor set was pushed earlier before the culling shader was dispatched
+            vkCmdBindDescriptorSets(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 1,
+            1, &m_currentStaticBuffers.textureDescriptorSet, 0, nullptr);
+
+            // Bind the graphics pipeline and the index buffer
+            vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
+            vkCmdBindIndexBuffer(fTools.commandBuffer, m_currentStaticBuffers.globalIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+            // Use draw indirect to draw the objects(mesh shading or vertex shader)
+            if(m_stats.meshShaderSupport)
+            {
+               DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+               offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
+            }
+            else
+            {
+                vkCmdDrawIndexedIndirectCount(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
+                offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
+                context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
+            }
+        }
+
+        // End of late render pass
+        vkCmdEndRendering(fTools.commandBuffer);
 
 
 
@@ -909,6 +1026,27 @@ namespace BlitzenVulkan
         renderingInfo.pDepthAttachment = pDepthAttachment;
         renderingInfo.pStencilAttachment = pStencilAttachment;
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
+    }
+
+    void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent)
+    {
+        VkViewport viewport{};
+        viewport.x = 0;
+        viewport.y = static_cast<float>(extent.height); // Start from full height (flips y axis)
+        viewport.width = static_cast<float>(extent.width);
+        viewport.height = -static_cast<float>(extent.height);// Move a negative amount of full height (flips y axis)
+        viewport.minDepth = 0.f;
+        viewport.maxDepth = 1.f;
+
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.extent.width = extent.width;
+        scissor.extent.height = extent.height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)

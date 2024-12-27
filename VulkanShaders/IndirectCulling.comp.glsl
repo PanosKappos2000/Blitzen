@@ -8,18 +8,13 @@
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-
 void main()
 {
-    uint threadIndex = gl_LocalInvocationID.x;
-	uint groupIndex = gl_WorkGroupID.x;
 	uint objectIndex = gl_GlobalInvocationID.x;
 
     if(bufferAddrs.visibilityBuffer.visibilities[objectIndex] == 0)
         return;
-        
 
-    IndirectOffsets currentRead = bufferAddrs.indirectBuffer.offsets[objectIndex];
     RenderObject currentObject = bufferAddrs.renderObjects.renderObjects[objectIndex];
 
     vec3 center = currentObject.center * currentObject.scale + currentObject.pos;
@@ -30,14 +25,21 @@ void main()
     
     if(visible)
     {
+        // With each element that is added to the draw list, increment the count
+        uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
+
+        IndirectOffsets currentRead = bufferAddrs.indirectBuffer.offsets[objectIndex];
+
         // The level of detail index that should be used is derived by the distance fromt he camera
         float lodDistance = log2(max(1, (distance(center, vec3(shaderData.viewPosition)) - radius)));
 	    uint lodIndex = clamp(int(lodDistance), 0, int(currentRead.lodCount) - 1);
 
         MeshLod currentLod = currentRead.lod[lodIndex];
-        
-        uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
+
+        // The object index is needed to know which element to access in the per object data buffer
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].objectId = objectIndex;
+
+        // Indirect draw commands
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].indexCount = currentLod.indexCount;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].instanceCount = 1;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstIndex = currentLod.firstIndex;
