@@ -35,14 +35,21 @@ namespace BlitzenVulkan
 
         VkFence inFlightFence;
         VkSemaphore imageAcquiredSemaphore;
-        VkSemaphore readyToPresentSemaphore;
+        VkSemaphore readyToPresentSemaphore;        
+    };
 
-        // Any buffers that will be getting their data update every frame, need to be inside the frame tools struct
-        // Actually the above is kind of naive, the buffers will be separated into their own struct, so that they can be reloaded separately if necessary
-        // TODO: See above
-        VkDescriptorPool globalShaderDataDescriptorPool;
+    struct VarBuffers
+    {
         AllocatedBuffer globalShaderDataBuffer;
+        // Persistently mapped pointer to the uniform buffer for shader data. Dereferenced and updated each frame
+        GlobalShaderData* pGlobalShaderData;
+
         AllocatedBuffer bufferDeviceAddrsBuffer;
+        // Persistently mapped pointer to the uniform buffer for buffer addresses. Dereferenced and updated each frame
+        BufferDeviceAddresses* pBufferAddrs;
+
+        AllocatedBuffer cullingDataBuffer;
+        CullingData* pCullingData;
     };
 
     // Holds data for buffers that will be loaded once and will be used for every object
@@ -56,14 +63,19 @@ namespace BlitzenVulkan
 
         AllocatedBuffer globalMaterialBuffer;
 
+        // Array of per object data (StaticRenderObject, got to change that variable name). 1 element for every object
         AllocatedBuffer renderObjectBuffer;
 
-        // Has all the commands for all the objects on the scene
         AllocatedBuffer drawIndirectBuffer;
-        // Has the commands above after they have been processed by compute
+
+        // Holds all the command for draw indirect to draw everything on a scene
         AllocatedBuffer drawIndirectBufferFinal;
+
         // Counts how many objects have actually been added to the final draw indirect buffer(helps avoid empty draw calls)
         AllocatedBuffer drawIndirectCountBuffer;
+
+        // Holds an array of integers with an element for each object. The integer is 0 or 1, depending on if the associated object was visible last frame
+        AllocatedBuffer drawVisibilityBuffer;
 
         // Holds the addresses of each one of the above buffers(except global shader data buffer)
         BufferDeviceAddresses bufferAddresses;
@@ -79,12 +91,16 @@ namespace BlitzenVulkan
         inline void Cleanup(VmaAllocator allocator, VkDevice device){
             vmaDestroyBuffer(allocator, renderObjectBuffer.buffer, renderObjectBuffer.allocation);
             vmaDestroyBuffer(allocator, globalMaterialBuffer.buffer, globalMaterialBuffer.allocation);
+
             #if BLITZEN_VULKAN_MESH_SHADER
                 vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
             #endif
+
             vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
             vmaDestroyBuffer(allocator, drawIndirectBufferFinal.buffer, drawIndirectBufferFinal.allocation);
             vmaDestroyBuffer(allocator, drawIndirectCountBuffer.buffer, drawIndirectCountBuffer.allocation);
+            vmaDestroyBuffer(allocator, drawVisibilityBuffer.buffer, drawVisibilityBuffer.allocation);
+
             vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
             vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
 
@@ -123,9 +139,11 @@ namespace BlitzenVulkan
 
         void FrameToolsInit();
 
+        void VarBuffersInit();
+
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectDrawData>& indirectDraws);
+        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectOffsets>& indirectDraws);
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -156,6 +174,12 @@ namespace BlitzenVulkan
         AllocatedImage m_colorAttachment;
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;
+        VkSampler m_depthAttachmentSampler;// This is needed for depth pyramid and occlusion tests
+
+        AllocatedImage m_depthPyramid;
+        VkImageView m_depthPyramidMips[16];
+        uint8_t m_depthPyramidMipLevels = 0;
+        VkExtent2D m_depthPyramidExtent;
 
         StaticBuffers m_currentStaticBuffers;
 
@@ -165,12 +189,21 @@ namespace BlitzenVulkan
 
         // Pipeline used to draw opaque objects
         VkPipeline m_opaqueGraphicsPipeline;
-        VkPipelineLayout m_opaqueGraphicsPipelineLayout;
+        VkPipelineLayout m_opaqueGraphicsPipelineLayout;// Right now this layout is also used for the culling compute pipeline but I might want to change that
 
         VkPipeline m_indirectCullingComputePipeline;
 
+        VkPipeline m_depthReduceComputePipeline;
+        VkPipelineLayout m_depthReducePipelineLayout;
+        VkDescriptorSetLayout m_depthPyramidImageDescriptorSetLayout;
+
+        VkPipeline m_lateCullingComputePipeline;// This one is for the shader that does visibility tests on objects that were rejected last frame
+        VkPipelineLayout m_lateCullingPipelineLayout;
+
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
+
+        VarBuffers m_varBuffers[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
 
         // Used to access the right frame tools depending on which ones are already being used
         size_t m_currentFrame = 0;
@@ -206,15 +239,19 @@ namespace BlitzenVulkan
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
     void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
-    uint8_t loadMipmaps = 0);
+    uint8_t mipLevels = 1);
+
+    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
 
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
     VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
 
     void CreateTextureSampler(VkDevice device, VkSampler& sampler);
 
+    VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode);
+
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
-    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL);
+    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter);
 
     void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, 
     VkDeviceSize dstOffset);
@@ -222,8 +259,10 @@ namespace BlitzenVulkan
     void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage image, VkImageLayout imageLayout, VkExtent3D extent);
 
     void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets);
+
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
     uint32_t dstBinding, uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
     uint32_t descriptorCount, uint32_t binding);
 
@@ -250,7 +289,8 @@ namespace BlitzenVulkan
 
     void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, 
-    VkImageSubresourceRange& imageSR);
+    VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer = 0, 
+    uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS);
 
     void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkDeviceSize offset, VkDeviceSize size);
@@ -272,8 +312,11 @@ namespace BlitzenVulkan
         The finally dynamic array parameter will probably be removed shortly(TODO)
     */
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, 
-    /* I will keep this in case I need to go back to the classic way of doing it */ BlitCL::DynamicArray<char>* shaderCode);
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage);
+
+    // Since the creation of a compute pipeline is very simple, the function can be a wrapper around CreateShaderProgram with a bit of extra code
+    void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    VkPipelineLayout& layout, VkPipeline* pPipeline);
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
 
@@ -305,7 +348,8 @@ namespace BlitzenVulkan
     VkDescriptorType descriptorType, VkShaderStageFlags shaderStage, VkSampler* pImmutableSamplers = nullptr);
 
     //Helper function for pipeline layout creation, takes care of a single descriptor set layout creation
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings);
+    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings, 
+    VkDescriptorSetLayoutCreateFlags flags = 0);
 
     //Helper function for pipeline layout creation, takes care of a single push constant creation
     void CreatePushConstantRange(VkPushConstantRange& pushConstant, VkShaderStageFlags shaderStage, uint32_t size, uint32_t offset = 0);
@@ -319,4 +363,11 @@ namespace BlitzenVulkan
     // Defined in vulkanRenderer.cpp
     void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 
     VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor = {0, 0, 0, 0}, VkClearDepthStencilValue clearValueDepth = {0, 0});
+
+    // Starts a render pass using the dynamic rendering feature(command buffer should be in recording state)
+    void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, 
+    uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment, 
+    VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1 );
+
+    void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
 }

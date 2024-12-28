@@ -5,7 +5,8 @@
 #include "mainEngine.h"
 #include "Platform/platform.h"
 
-
+inline uint8_t gDebugPyramid = 0;
+inline uint8_t gOcclusion = 1;
 
 namespace BlitzenEngine
 {
@@ -96,8 +97,8 @@ namespace BlitzenEngine
         isRunning = 1;
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
-        static_cast<float>(m_platformData.windowHeight), 0.1f);
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
+        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR);
         BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
         m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
@@ -110,7 +111,7 @@ namespace BlitzenEngine
         m_camera.projectionMatrix[14], m_camera.projectionMatrix[15])); Keeping this her in case my math library is porven inadequate*/
 
         // The transpose of the projection matrix will be used for frustum culling
-        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionViewMatrix);
+        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
 
         // Loads textures that were requested
         LoadTextures();
@@ -123,26 +124,9 @@ namespace BlitzenEngine
             Setup for Vulkan rendering
         ------------------------------------*/
 
-        // This is declared outide the setup for rendering braces, as it will be passed to render context during the loop
-        BlitzenVulkan::DrawObject* draws = reinterpret_cast<BlitzenVulkan::DrawObject*>(
-        BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::LinearAlloc, 100000 * sizeof(BlitzenVulkan::DrawObject)));
-        uint32_t drawCount = 0;
+        uint32_t drawCount = 1'000'000;
         #if BLITZEN_VULKAN
         {
-            // Combine all the surfaces from every mesh, into the draw objects (this will not be needed once I switch to indirect drawing)
-            for(size_t i = 0; i < 100000; ++i)
-            {
-                PrimitiveSurface& currentSurface = m_resources.meshes[0].surfaces[0];
-                BlitzenVulkan::DrawObject& currentDraw = draws[i];
-
-                currentDraw.firstIndex = currentSurface.firstIndex;
-                currentDraw.indexCount = currentSurface.indexCount;
-                currentDraw.firstMeshlet = currentSurface.firstMeshlet;
-                currentDraw.meshletCount = currentSurface.meshletCount;
-                currentDraw.objectTag = drawCount;
-                drawCount++;  
-            }
-
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);
             vulkanData.pTextures = m_resources.textures;
             // The index where the resource system stopped when loading is the amount of mesh assets that were added to the array
@@ -156,7 +140,7 @@ namespace BlitzenEngine
         }// Vulkan renderer ready
         #endif
 
-
+        BlitzenVulkan::RenderContext renderContext;// Declared here so that it can be used to debug frustum culling
 
         // Should be called right before the main loop starts
         StartClock();
@@ -187,23 +171,26 @@ namespace BlitzenEngine
                     {
                         if(m_systems.vulkan)
                         {
-                            BlitzenVulkan::RenderContext renderContext;
                             renderContext.windowResize = m_platformData.windowResize;
                             renderContext.windowWidth = m_platformData.windowWidth;
                             renderContext.windowHeight = m_platformData.windowHeight;
 
                             renderContext.projectionMatrix = m_camera.projectionMatrix;
-                            renderContext.viewMatrix = m_camera.viewMatrix;
+                            if (!m_camera.freezeFrustum)
+                                renderContext.viewMatrix = m_camera.viewMatrix;
                             renderContext.projectionView = m_camera.projectionViewMatrix;
                             renderContext.viewPosition = m_camera.position;
                             renderContext.projectionTranspose = m_camera.projectionTranspose;
+                            renderContext.zNear = BLITZEN_ZNEAR;
 
-                            renderContext.pDraws = draws;
                             renderContext.drawCount = drawCount;
+
+                            renderContext.debugPyramid = gDebugPyramid;// Temporary debug code for debug pyramid
 
                             // Hardcoding the sun for now
                             renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
                             renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+                            renderContext.occlusionEnabled = gOcclusion;
 
                             pVulkan.Data()->DrawFrame(renderContext);
                         }
@@ -312,7 +299,6 @@ namespace BlitzenEngine
 
             camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
             camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
-            camera.projectionTranspose = BlitML::Transpose(camera.projectionViewMatrix);
         }
     }
 
@@ -376,6 +362,7 @@ namespace BlitzenEngine
                     BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, newContext);
                     return 1;
                 }
+                // The four keys below control basic camera movement. They set a velocity and tell it that it should be updated based on that velocity
                 case BlitzenCore::BlitKey::__W:
                 {
                     Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
@@ -402,6 +389,23 @@ namespace BlitzenEngine
                     Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
                     camera.cameraDirty = 1;
                     camera.velocity = BlitML::vec3(1.f, 0.f, 0.f);
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F1:
+                {
+                    // This is here only for debugging frustum culling. When active, the camera does not update the view frustum
+                    uint8_t& freezeFrustum = Engine::GetEngineInstancePointer()->GetCamera().freezeFrustum;
+                    freezeFrustum = !freezeFrustum;
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F2:
+                {
+                    gDebugPyramid = !gDebugPyramid;
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F3:
+                {
+                    gOcclusion = !gOcclusion;
                     break;
                 }
                 default:
@@ -464,11 +468,10 @@ namespace BlitzenEngine
         }
         isSupended = 0;
 
-        //m_camera.projectionMatrix = BlitML::Perspective(BlitML::Radians(45.f), (float)newWidth / (float)newHeight,
-        //10000.f, 0.1f);
-        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(45.f), static_cast<float>(m_platformData.windowWidth) / 
-        static_cast<float>(m_platformData.windowHeight), 0.1f);
+        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
+        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR);
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
+        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
     }
 }
 

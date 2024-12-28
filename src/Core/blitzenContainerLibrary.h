@@ -27,7 +27,16 @@ namespace BlitCL
             {
                 m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
                 BlitzenCore::BlitZeroMemory(m_pBlock, m_size * sizeof(T));
-                return;
+            }
+        }
+
+        DynamicArray(DynamicArray<T>& array)
+            :m_size(array.GetSize()), m_capacity(array.GetSize() * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+        {
+            if (m_size > 0)
+            {
+                m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+                BlitzenCore::BlitMemCopy(m_pBlock, array.Data(), array.GetSize() * sizeof(T));
             }
         }
 
@@ -62,6 +71,16 @@ namespace BlitCL
             m_size = newSize;
         }
 
+        void Downsize(size_t newSize)
+        {
+            if(newSize > m_size)
+            {
+                BLIT_DBLOG("DynamicArray::Downsize(): New size %i is bigger than %i: \nUse Resize(size_t) if this was intended", newSize, m_size)
+                return;
+            }
+            m_size = newSize;
+        }
+
         void Reserve(size_t size)
         {
             BLIT_ASSERT_DEBUG(size)
@@ -70,7 +89,6 @@ namespace BlitCL
 
         void PushBack(T& newElement)
         {
-            BLIT_WARN("DynamicArray::PushBack called")
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
             if(m_size + 1 > m_capacity)
             {
@@ -141,8 +159,6 @@ namespace BlitCL
             }
             if(temp != 0)
                 BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(T));
-
-            BLIT_INFO("DynamicArray reserved %i", m_capacity * sizeof(T))
         }
     };
 

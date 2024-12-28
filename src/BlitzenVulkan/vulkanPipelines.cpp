@@ -7,7 +7,7 @@
 namespace BlitzenVulkan
 {
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, BlitCL::DynamicArray<char>* shaderCode)
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage)
     {
         BlitzenPlatform::FileHandle handle;
         // If the file did not open, something might be wrong with the filepath, so it needs to be checked
@@ -29,6 +29,28 @@ namespace BlitzenVulkan
         pipelineShaderStage.module = shaderModule;
         pipelineShaderStage.stage = shaderStage;
         pipelineShaderStage.pName = entryPointName;
+    }
+
+    void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    VkPipelineLayout& layout, VkPipeline* pPipeline)
+    {
+        VkComputePipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        pipelineInfo.flags = 0;
+        pipelineInfo.pNext = nullptr;
+
+        VkShaderModule computeShaderModule{};
+        VkPipelineShaderStageCreateInfo shaderStageInfo{};
+        CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, computeShaderModule, 
+        shaderStageInfo);
+
+        pipelineInfo.stage = shaderStageInfo;
+        pipelineInfo.layout = layout;
+
+        VK_CHECK(vkCreateComputePipelines(device, nullptr, 1, &pipelineInfo, nullptr, pPipeline))
+
+        // Beyond this scope, this shader module is not needed
+        vkDestroyShaderModule(device, computeShaderModule, nullptr);
     }
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly()
@@ -156,10 +178,13 @@ namespace BlitzenVulkan
         bindingInfo.pImmutableSamplers = pImmutableSamplers;
     }
 
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings)
+    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings, 
+    VkDescriptorSetLayoutCreateFlags flags /* = 0 */)
     {
         VkDescriptorSetLayoutCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        info.flags = flags;
+        info.pNext = nullptr;
         info.bindingCount = bindingCount;
         info.pBindings = pBindings;
 

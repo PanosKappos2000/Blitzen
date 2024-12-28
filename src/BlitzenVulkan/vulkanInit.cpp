@@ -66,7 +66,7 @@ namespace BlitzenVulkan
 
             uint32_t apiVersion = 0;
             VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
-            BLIT_ASSERT_MESSAGE(apiVersion > VK_API_VERSION_1_3, "Blitzen need to use Vulkan API_VERSION 1.3")
+            BLIT_ASSERT_MESSAGE(apiVersion > VK_API_VERSION_1_3, "Blitzen needs to use Vulkan API_VERSION 1.3")
 
             //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
             VkApplicationInfo applicationInfo{};
@@ -250,6 +250,7 @@ namespace BlitzenVulkan
                 if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
                 !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
                 !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
+                !features12.samplerFilterMinmax ||
                 !features13.synchronization2 || !features13.dynamicRendering)
                 {
                     physicalDevices.RemoveAtIndex(i);
@@ -413,13 +414,14 @@ namespace BlitzenVulkan
             #endif
 
             // Vulkan should ignore the mesh shader extension if support for it was not found
-            deviceInfo.enabledExtensionCount = 1 + (BLITZEN_VULKAN_MESH_SHADER && m_stats.meshShaderSupport);
+            deviceInfo.enabledExtensionCount = 2 + (BLITZEN_VULKAN_MESH_SHADER && m_stats.meshShaderSupport);
             // Adding the swapchain extension and mesh shader extension if it was requested
-            const char* extensionsNames[1 + BLITZEN_VULKAN_MESH_SHADER];
+            const char* extensionsNames[2 + BLITZEN_VULKAN_MESH_SHADER];
             extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+            extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
             #if BLITZEN_VULKAN_MESH_SHADER
                 if(m_stats.meshShaderSupport)
-                    extensionsNames[1] = VK_NV_MESH_SHADER_EXTENSION_NAME;
+                    extensionsNames[2] = VK_NV_MESH_SHADER_EXTENSION_NAME;
             #endif
             deviceInfo.ppEnabledExtensionNames = extensionsNames;
 
@@ -446,6 +448,7 @@ namespace BlitzenVulkan
             vulkan12Features.shaderFloat16 = true;
             vulkan12Features.storageBuffer8BitAccess = true;
             vulkan12Features.drawIndirectCount = true;
+            vulkan12Features.samplerFilterMinmax = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -588,7 +591,31 @@ namespace BlitzenVulkan
         CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+        m_depthAttachmentSampler = CreateSampler(m_device, VK_SAMPLER_REDUCTION_MODE_MIN);
+
+        {
+            m_depthPyramidExtent.width = BlitML::PreviousPow2(m_drawExtent.width);
+            m_depthPyramidExtent.height = BlitML::PreviousPow2(m_drawExtent.height);
+
+            uint32_t width = m_depthPyramidExtent.width;
+            uint32_t height = m_depthPyramidExtent.height;
+            while(width > 1 || height > 1)
+            {
+                m_depthPyramidMipLevels++;
+
+                width /= 2;
+                height /= 2;
+            }
+            CreateImage(m_device, m_allocator, m_depthPyramid, {m_depthPyramidExtent.width, m_depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, m_depthPyramidMipLevels);
+
+            for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
+            {
+                CreateImageView(m_device, m_depthPyramidMips[i], m_depthPyramid.image, VK_FORMAT_R32_SFLOAT, i, 1);
+            }
+        }
 
         return 1;
     }
@@ -730,30 +757,6 @@ namespace BlitzenVulkan
             VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, nullptr));
             initHandles.swapchainImages.Resize(swapchainImageCount);
             VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
-
-            // Create image view for each swapchain image (Apparently this might not be needed, but I am keeping it commented out)
-            /*initHandles.swapchainImageViews.Resize(static_cast<size_t>(swapchainImageCount));
-            for(size_t i = 0; i < initHandles.swapchainImageViews.GetSize(); ++i)
-            {
-                VkImageViewCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                info.pNext = nullptr;
-                info.flags = 0;
-                info.image = initHandles.swapchainImages[i];
-                info.format = initHandles.swapchainFormat;
-                info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-                info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // Not sure if this is needed, as a seperate color attachment will be used 
-                info.subresourceRange.baseMipLevel = 0;
-                info.subresourceRange.levelCount = 1;
-                info.subresourceRange.baseArrayLayer = 0;
-                info.subresourceRange.layerCount = 1;
-                info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-                info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-                info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-                info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-                VK_CHECK(vkCreateImageView(device, &info, pCustomAllocator, &(initHandles.swapchainImageViews[i])))
-            }*/
     }
 
     void VulkanRenderer::FrameToolsInit()
@@ -779,16 +782,6 @@ namespace BlitzenVulkan
         semaphoresInfo.flags = 0;
         semaphoresInfo.pNext = nullptr;
 
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = 1;// Some device might need this to be higher than 1
-        VkDescriptorPoolCreateInfo descriptorPoolInfo{};
-        descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        descriptorPoolInfo.flags = 0;
-        descriptorPoolInfo.maxSets = 1;
-        descriptorPoolInfo.poolSizeCount = 1;
-        descriptorPoolInfo.pPoolSizes = &poolSize;
-
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];
@@ -799,12 +792,6 @@ namespace BlitzenVulkan
             VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
             VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
             VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
-
-            CreateBuffer(m_allocator, frameTools.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            CreateBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            VK_CHECK(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, m_pCustomAllocator, &(frameTools.globalShaderDataDescriptorPool)))
         }
     }
 
@@ -819,33 +806,45 @@ namespace BlitzenVulkan
 
         vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
 
+        vkDestroyPipeline(m_device, m_lateCullingComputePipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_lateCullingPipelineLayout, m_pCustomAllocator);
+
         vkDestroyPipeline(m_device, m_indirectCullingComputePipeline, m_pCustomAllocator);
+
         vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);
 
+        vkDestroyPipeline(m_device, m_depthReduceComputePipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_depthReducePipelineLayout, m_pCustomAllocator);
+        vkDestroyDescriptorSetLayout(m_device, m_depthPyramidImageDescriptorSetLayout, m_pCustomAllocator);
+
         m_depthAttachment.CleanupResources(m_allocator, m_device);
         m_colorAttachment.CleanupResources(m_allocator, m_device);
+        m_depthPyramid.CleanupResources(m_allocator, m_device);
+        for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
+        {
+            vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
+        }
+        vkDestroySampler(m_device, m_depthAttachmentSampler, m_pCustomAllocator);
 
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];
+            VarBuffers& varBuffers = m_varBuffers[i];
+
             vkDestroyCommandPool(m_device, frameTools.mainCommandPool, m_pCustomAllocator);
 
             vkDestroyFence(m_device, frameTools.inFlightFence, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
 
-            vkDestroyDescriptorPool(m_device, frameTools.globalShaderDataDescriptorPool, m_pCustomAllocator);
-            vmaDestroyBuffer(m_allocator, frameTools.globalShaderDataBuffer.buffer, frameTools.globalShaderDataBuffer.allocation);
-            vmaDestroyBuffer(m_allocator, frameTools.bufferDeviceAddrsBuffer.buffer, frameTools.bufferDeviceAddrsBuffer.allocation);
+            vmaDestroyBuffer(m_allocator, varBuffers.cullingDataBuffer.buffer, varBuffers.cullingDataBuffer.allocation);
+            vmaDestroyBuffer(m_allocator, varBuffers.globalShaderDataBuffer.buffer, varBuffers.globalShaderDataBuffer.allocation);
+            vmaDestroyBuffer(m_allocator, varBuffers.bufferDeviceAddrsBuffer.buffer, varBuffers.bufferDeviceAddrsBuffer.allocation);
         }
 
         vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);
 
-        /*for(size_t i = 0; i < m_initHandles.swapchainImageViews.GetSize(); ++i)
-        {
-            vkDestroyImageView(m_device, m_initHandles.swapchainImageViews[i], m_pCustomAllocator);
-        }I am not creating these anymore but I am keeping them to check the state of the application */
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
 
         vmaDestroyAllocator(m_allocator);

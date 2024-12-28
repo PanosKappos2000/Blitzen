@@ -35,9 +35,19 @@ namespace BlitML
     inline float Acos(float x) {return acosf(x);}
     inline float Sqrt(float x) {return sqrtf(x);}
     inline float Abs(float x) {return fabsf(x);}
-    inline float Max(float x, float y) {return (x > y) ? x : y;}
+    inline float Max(float x, float y) { return (x > y) ? x : y; }
+    inline uint32_t Max(uint32_t x, uint32_t y) { return (x > y) ? x : y; }
 
     inline uint8_t IsPowerOf2(uint64_t value) { return (value != 0) && ((value & (value - 1)) == 0); }
+
+    inline uint32_t PreviousPow2(uint32_t value) {
+        uint32_t result = 1;
+        while(result * 2 < value)
+        {
+            result *= 2;
+        }
+        return result;
+    }
 
     static uint8_t sRandSeeded = 0;
 

@@ -17,7 +17,8 @@
 #define BLITZEN_WINDOW_STARTING_X       100
 #define BLITZEN_WINDOW_STARTING_Y       100
 #define BLITZEN_WINDOW_WIDTH            1280
-#define BLITZEN_WINDOW_HEIGHT           720
+#define BLITZEN_WINDOW_HEIGHT           768
+#define BLITZEN_ZNEAR                   1.f
 
 namespace BlitzenEngine
 {
@@ -56,7 +57,9 @@ namespace BlitzenEngine
     // Temporary camera struct, this will have its own file and will be a robust system
     struct Camera
     {
-        uint8_t cameraDirty = 0;
+        uint8_t cameraDirty = 0;// Tells the engine if the camera should be updated
+        uint8_t freezeFrustum = 0;/* If this is on it makes frustum culling static, 
+        which means that moving the camera does not change the objects that are culled*/
 
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionMatrix;

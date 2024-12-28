@@ -34,10 +34,11 @@
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
-#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering, I will deactivate it for some time
+#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 /* This is used for double(+) buffering, I activated it back, 
+but I should probably create a second indirect buffer because of it */
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0 
+#define BLITZEN_VULKAN_MESH_SHADER              0// Mesh shader implementation is pretty terrible at the moment 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           100000 // I am ignoring this right now and I shouldn't be
 
@@ -48,7 +49,7 @@ namespace BlitzenVulkan
     struct VulkanStats
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
-        uint8_t meshShaderSupport = 0;// TODO: Use this to check during load if mesh shaders are supported so that the application does not fail when they are not
+        uint8_t meshShaderSupport = 0;
     };
 
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
@@ -61,6 +62,17 @@ namespace BlitzenVulkan
 	    float radius;
 
         uint32_t materialTag;
+    };
+
+    struct alignas(16) IndirectOffsets
+    {
+        BlitzenEngine::MeshLod lod[8];
+        uint32_t lodCount;
+
+        uint32_t vertexOffset;
+
+        uint32_t taskCount;
+        uint32_t firstTask;
     };
 
     struct alignas(16) IndirectDrawData
@@ -93,20 +105,6 @@ namespace BlitzenVulkan
         {}
     };
 
-    // This is setup before a call to draw frame, and is given to the render context in its member array
-    struct DrawObject
-    {
-        // Data used to call draw indexed
-        uint32_t firstIndex;
-        uint32_t indexCount;
-
-        uint32_t firstMeshlet;
-        uint32_t meshletCount;
-
-        // References a render object in the global buffer
-        uint32_t objectTag;
-    };
-
     // Passed to the renderer every time draw frame is called, to handle special events and update shader data
     struct RenderContext
     {
@@ -119,12 +117,15 @@ namespace BlitzenVulkan
         BlitML::mat4 projectionView;
         BlitML::vec3 viewPosition;
         BlitML::mat4 projectionTranspose;
+        float zNear = 1.f;
 
-        DrawObject* pDraws;
         size_t drawCount;
 
         BlitML::vec3 sunlightDirection;
         BlitML::vec4 sunlightColor;
+
+        uint8_t debugPyramid = 0;
+        uint8_t occlusionEnabled = 1;
     };
 
     struct AllocatedImage
@@ -154,9 +155,8 @@ namespace BlitzenVulkan
         // Accessed by a compute shader to do frustum culling
         BlitML::vec4 frustumData[6];
 
-        BlitML::mat4 projection;
-        BlitML::mat4 view;
         BlitML::mat4 projectionView;
+        BlitML::mat4 view;
 
         BlitML::vec4 sunlightColor;
         BlitML::vec3 sunlightDir;// directional light direction vector
@@ -174,12 +174,24 @@ namespace BlitzenVulkan
         VkDeviceAddress indirectBufferAddress;
         VkDeviceAddress finalIndirectBufferAddress;
         VkDeviceAddress indirectCountBufferAddress;
+        VkDeviceAddress visibilityBufferAddress;
+    };
+
+    struct alignas(16) CullingData
+    {
+        float proj0;// The 1st element of the projection matrix
+        float proj5;// The 12th element of the projection matrix
+        float zNear;
+        // Occulusion culling depth pyramid data
+        float pyramidWidth;
+        float pyramidHeight;
+        uint32_t occlusionEnabled;
     };
 
     // Pushed every frame for the non indirect version to access per object data
     struct alignas(16) ShaderPushConstant
     {
-        uint32_t drawTag;
+        BlitML::vec2 imageSize;
     };
 
     // Passed to the shaders through a storage buffer that contains all of these

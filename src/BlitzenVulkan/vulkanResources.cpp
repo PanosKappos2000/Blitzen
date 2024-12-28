@@ -29,7 +29,7 @@ namespace BlitzenVulkan
     }
 
     void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
-    uint8_t mimaps /*= 0*/)
+    uint8_t mipLevels /*= 1*/)
     {
         image.extent = extent;
         image.format = format;
@@ -40,7 +40,7 @@ namespace BlitzenVulkan
         imageInfo.pNext = nullptr;
         imageInfo.extent = extent;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.mipLevels  = 1;
+        imageInfo.mipLevels  = mipLevels;
         imageInfo.arrayLayers = 1;
         imageInfo.format = format;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -53,21 +53,26 @@ namespace BlitzenVulkan
 
         VK_CHECK(vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &(image.image), &(image.allocation), nullptr))
 
-        VkImageViewCreateInfo imageViewInfo{};
-        imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        imageViewInfo.flags = 0;
-        imageViewInfo.pNext = nullptr;
-        imageViewInfo.image = image.image;
-        imageViewInfo.format = format;
-        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageViewInfo.subresourceRange.aspectMask = (imageUsage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ? 
-        VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        imageViewInfo.subresourceRange.baseMipLevel = 0;
-        imageViewInfo.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        imageViewInfo.subresourceRange.baseArrayLayer = 0;
-        imageViewInfo.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        CreateImageView(device, image.imageView, image.image, format, 0, mipLevels);
+    }
 
-        VK_CHECK(vkCreateImageView(device, &imageViewInfo, nullptr, &image.imageView))
+    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
+    {
+        VkImageViewCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        info.flags = 0;
+        info.pNext = nullptr;
+        info.image = image;
+        info.format = format;
+        info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        info.subresourceRange.aspectMask = (format == VK_FORMAT_D32_SFLOAT) ? 
+        VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+        info.subresourceRange.baseMipLevel = baseMipLevel;
+        info.subresourceRange.levelCount = mipLevels;
+        info.subresourceRange.baseArrayLayer = 0;
+        info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+        VK_CHECK(vkCreateImageView(device, &info, nullptr, &imageView))
     }
 
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
@@ -79,18 +84,13 @@ namespace BlitzenVulkan
 
         BlitzenCore::BlitMemCopy(stagingBuffer.allocationInfo.pMappedData, data, imageSize);
 
-        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, format);
+        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         VkImageMemoryBarrier2 imageMemoryBarrier{};
-        VkImageSubresourceRange imageSR{};
-        imageSR.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageSR.baseArrayLayer = 0;
-        imageSR.layerCount = VK_REMAINING_ARRAY_LAYERS;
-        imageSR.baseMipLevel = 0;
-        imageSR.levelCount = VK_REMAINING_MIP_LEVELS;
         ImageMemoryBarrier(image.image, imageMemoryBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
-        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, imageSR);
+        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
         CopyBufferToImage(commandBuffer, stagingBuffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, extent);
@@ -98,7 +98,8 @@ namespace BlitzenVulkan
         VkImageMemoryBarrier2 secondTransitionBarrier{};
         ImageMemoryBarrier(image.image, secondTransitionBarrier, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
         VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE, 
-        VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, imageSR);
+        VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &secondTransitionBarrier);
 
         SubmitCommandBuffer(queue, commandBuffer);
@@ -132,8 +133,31 @@ namespace BlitzenVulkan
         VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
     }
 
+    VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode)
+    {
+        VkSamplerCreateInfo createInfo {}; 
+        createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	    createInfo.magFilter = VK_FILTER_LINEAR;
+	    createInfo.minFilter = VK_FILTER_LINEAR;
+	    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	    createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	    createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	    createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	    createInfo.minLod = 0;
+	    createInfo.maxLod = 16.f;
+
+        VkSamplerReductionModeCreateInfo reductionInfo{};
+        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+        reductionInfo.reductionMode = reductionMode;
+        createInfo.pNext = &reductionInfo;
+
+	    VkSampler sampler = VK_NULL_HANDLE;
+	    VK_CHECK(vkCreateSampler(device, &createInfo, 0, &sampler))
+	    return sampler;
+    }
+
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
-    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL)
+    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter)
     {
         /*
             This function is pretty hardcoded for now and for a specific use. I don't think I will be needing that many image copies, but we'll see
@@ -142,8 +166,8 @@ namespace BlitzenVulkan
         VkImageBlit2 imageRegion{};
         imageRegion.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
         imageRegion.pNext = nullptr;
-        imageRegion.srcOffsets[1].x = srcImageSize.width;
-        imageRegion.srcOffsets[1].y = srcImageSize.height;
+        imageRegion.srcOffsets[1].x = static_cast<int32_t>(srcImageSize.width);
+        imageRegion.srcOffsets[1].y = static_cast<int32_t>(srcImageSize.height);
         imageRegion.srcOffsets[1].z = 1;
         imageRegion.srcSubresource = srcImageSL;
         imageRegion.dstOffsets[1].x = dstImageSize.width;
@@ -160,6 +184,7 @@ namespace BlitzenVulkan
         blitImage.dstImageLayout = dstLayout;
         blitImage.regionCount = 1;
         blitImage.pRegions = &imageRegion;
+        blitImage.filter = filter;
         vkCmdBlitImage2(commandBuffer, &blitImage);
     }
 
@@ -271,7 +296,9 @@ namespace BlitzenVulkan
     }
 
     void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
-    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageSubresourceRange& imageSR)
+    VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, 
+    VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer /* = 0 */, 
+    uint32_t layerCount /* = VK_REMAINING_ARRAY_LAYERS */)
     {
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
         barrier.image = image;
@@ -281,7 +308,11 @@ namespace BlitzenVulkan
         barrier.dstAccessMask = secondAccessStage;
         barrier.oldLayout = oldLayout;
         barrier.newLayout = newLayout;
-        barrier.subresourceRange = imageSR;
+        barrier.subresourceRange.aspectMask = aspectMask;
+        barrier.subresourceRange.baseMipLevel = baseMipLevel;
+        barrier.subresourceRange.levelCount = levelCount;
+        barrier.subresourceRange.baseArrayLayer = baseArrayLayer;
+        barrier.subresourceRange.layerCount = layerCount;
     }
 
     void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
