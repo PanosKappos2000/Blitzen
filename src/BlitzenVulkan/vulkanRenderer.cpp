@@ -141,25 +141,25 @@ namespace BlitzenVulkan
 
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
-        BlitCL::DynamicArray<StaticRenderObject> renderObjects(1000000);
-        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(1000000);
+        BlitCL::DynamicArray<StaticRenderObject> renderObjects(1'000'000);
+        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(1'000'000);
         /*  
             This is temporary hardcoded loading of multiple objects for testing.
             Normally, everything below would be given by a game object defined outside the renderer 
         */
         {
-            for(size_t i = 0; i < 999995; ++i)
+            for(size_t i = 0; i < 900'000; ++i)
             {
-                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
+                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
                 IndirectOffsets& currentIDraw = indirectDraws[i];
                 StaticRenderObject& currentObject = renderObjects[i];
 
                 currentObject.materialTag = currentSurface.pMaterial->materialTag;
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 200 - 50,//y
+                (float(rand()) / RAND_MAX) * 150 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 currentObject.pos = translation;
-                currentObject.scale = 1.f;
+                currentObject.scale = 5.f;
 
                 BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                 (float(rand()) / RAND_MAX) * 2 - 1, // y
@@ -180,30 +180,30 @@ namespace BlitzenVulkan
                 currentIDraw.taskCount = currentSurface.meshletCount;
             }
 
-            for (size_t i = 999000; i < 1000000; ++i)
+            for (size_t i = 900'000; i < 1'000'000; ++i)
             {
-                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
+                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
                 IndirectOffsets& currentIDraw = indirectDraws[i];
                 StaticRenderObject& currentObject = renderObjects[i];
 
                 currentObject.materialTag = currentSurface.pMaterial->materialTag;
-                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 200 - 20,//x 
-                    (float(rand()) / RAND_MAX) * 200 - 20,//y
-                    (float(rand()) / RAND_MAX) * 200 - 20);//z
+                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
+                (float(rand()) / RAND_MAX) * 150 - 50,//y
+                (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 currentObject.pos = translation;
-                currentObject.scale = 5.f;
+                currentObject.scale = 1.f;
 
                 BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-                    (float(rand()) / RAND_MAX) * 2 - 1, // y
-                    (float(rand()) / RAND_MAX) * 2 - 1); // z
-                float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1); // z
+		        float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
                 BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
                 currentObject.orientation = orientation;
 
                 currentObject.center = currentSurface.center;
                 currentObject.radius = currentSurface.radius;
 
-                for(size_t i = 0; i < currentIDraw.lodCount; ++i)
+                for(size_t i = 0; i < currentSurface.lodCount; ++i)
                     currentIDraw.lod[i] = currentSurface.meshLod[i];
                 currentIDraw.lodCount = currentSurface.lodCount;
                 currentIDraw.vertexOffset = currentSurface.vertexOffset;
@@ -531,6 +531,7 @@ namespace BlitzenVulkan
 
         m_globalShaderData.projectionView = context.projectionView;
         m_globalShaderData.viewPosition = context.viewPosition;
+        m_globalShaderData.view = context.viewMatrix;
 
         m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;
@@ -541,7 +542,7 @@ namespace BlitzenVulkan
         m_globalShaderData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
         m_globalShaderData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
         m_globalShaderData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
-        m_globalShaderData.frustumData[5] = BlitML::vec4(0, 0, -1, 100/* Draw distance */);// I need to multiply this with view or projection view
+        m_globalShaderData.frustumData[5] = BlitML::vec4(0, 0, -1, 300/* Draw distance */);// I need to multiply this with view or projection view
         
 
 

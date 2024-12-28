@@ -18,13 +18,14 @@ void main()
 
     RenderObject currentObject = bufferAddrs.renderObjects.renderObjects[objectIndex];
 
-    vec3 center = currentObject.center * currentObject.scale + currentObject.pos;
+    vec3 center = RotateQuat(currentObject.center, currentObject.orientation) * currentObject.scale + currentObject.pos;
+    center = (shaderData.view * vec4(center, 1)).xyz;
 	float radius = currentObject.radius * currentObject.scale;
 	bool visible = true;
 	for (int i = 0; i < 6; ++i)
 		visible = visible && dot(shaderData.frustumData[i], vec4(center, 1)) > -radius;
     
-    if(visible)
+    if(visible && true)
     {
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);

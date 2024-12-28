@@ -156,6 +156,7 @@ namespace BlitzenVulkan
         BlitML::vec4 frustumData[6];
 
         BlitML::mat4 projectionView;
+        BlitML::mat4 view;
 
         BlitML::vec4 sunlightColor;
         BlitML::vec3 sunlightDir;// directional light direction vector

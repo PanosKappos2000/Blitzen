@@ -6,7 +6,7 @@
 #include "Platform/platform.h"
 
 inline uint8_t gDebugPyramid = 0;
-inline uint8_t gOcclusion = 0;
+inline uint8_t gOcclusion = 1;
 
 namespace BlitzenEngine
 {
@@ -111,7 +111,7 @@ namespace BlitzenEngine
         m_camera.projectionMatrix[14], m_camera.projectionMatrix[15])); Keeping this her in case my math library is porven inadequate*/
 
         // The transpose of the projection matrix will be used for frustum culling
-        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionViewMatrix);
+        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
 
         // Loads textures that were requested
         LoadTextures();
@@ -124,7 +124,7 @@ namespace BlitzenEngine
             Setup for Vulkan rendering
         ------------------------------------*/
 
-        uint32_t drawCount = 1000000;
+        uint32_t drawCount = 1'000'000;
         #if BLITZEN_VULKAN
         {
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);
@@ -140,7 +140,7 @@ namespace BlitzenEngine
         }// Vulkan renderer ready
         #endif
 
-
+        BlitzenVulkan::RenderContext renderContext;// Declared here so that it can be used to debug frustum culling
 
         // Should be called right before the main loop starts
         StartClock();
@@ -171,13 +171,13 @@ namespace BlitzenEngine
                     {
                         if(m_systems.vulkan)
                         {
-                            BlitzenVulkan::RenderContext renderContext;
                             renderContext.windowResize = m_platformData.windowResize;
                             renderContext.windowWidth = m_platformData.windowWidth;
                             renderContext.windowHeight = m_platformData.windowHeight;
 
                             renderContext.projectionMatrix = m_camera.projectionMatrix;
-                            renderContext.viewMatrix = m_camera.viewMatrix;
+                            if (!m_camera.freezeFrustum)
+                                renderContext.viewMatrix = m_camera.viewMatrix;
                             renderContext.projectionView = m_camera.projectionViewMatrix;
                             renderContext.viewPosition = m_camera.position;
                             renderContext.projectionTranspose = m_camera.projectionTranspose;
@@ -299,8 +299,6 @@ namespace BlitzenEngine
 
             camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
             camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
-            if(!camera.freezeFrustum)
-                camera.projectionTranspose = BlitML::Transpose(camera.projectionViewMatrix);
         }
     }
 
@@ -473,6 +471,7 @@ namespace BlitzenEngine
         m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR);
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
+        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
     }
 }
 

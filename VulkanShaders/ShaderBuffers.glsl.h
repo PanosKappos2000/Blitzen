@@ -163,6 +163,7 @@ layout(set = 0, binding = 0) uniform ShaderData
 
     // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
     mat4 projectionView;
+    mat4 view;
 
     vec4 sunColor;
     vec3 sunDir;

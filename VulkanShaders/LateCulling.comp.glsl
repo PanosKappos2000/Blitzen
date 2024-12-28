@@ -55,6 +55,7 @@ void main()
     uint currentVisibility = bufferAddrs.visibilityBuffer.visibilities[objectIndex];
 
     vec3 center = RotateQuat(currentObject.center, currentObject.orientation) * currentObject.scale  + currentObject.pos;
+    center = (shaderData.view * vec4(center, 1)).xyz;
     float radius = currentObject.radius * currentObject.scale;
     bool visible = true;
     for(uint i = 0; i < 6; ++i)
