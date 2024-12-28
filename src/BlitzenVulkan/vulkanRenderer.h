@@ -248,7 +248,7 @@ namespace BlitzenVulkan
 
     void CreateTextureSampler(VkDevice device, VkSampler& sampler);
 
-    VkSampler CreateSampler(VkDevice device);
+    VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode);
 
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
     VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter);

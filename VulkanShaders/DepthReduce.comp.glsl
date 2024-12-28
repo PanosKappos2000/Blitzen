@@ -14,8 +14,7 @@ void main()
 {
     uvec2 pos = gl_GlobalInvocationID.xy;
 
-    vec4 depth4 = textureGather(inImage, (vec2(pos) + vec2(0.5)) / imageSize);
-	float depth = min(min(depth4.x, depth4.y), min(depth4.z, depth4.w));
+    float depth = texture(inImage, (vec2(pos) + vec2(0.5)) / imageSize).x;
 
     imageStore(outImage, ivec2(pos), vec4(depth));
 }

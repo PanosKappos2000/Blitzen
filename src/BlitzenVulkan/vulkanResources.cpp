@@ -133,18 +133,23 @@ namespace BlitzenVulkan
         VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
     }
 
-    VkSampler CreateSampler(VkDevice device)
+    VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode)
     {
         VkSamplerCreateInfo createInfo {}; 
         createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	    createInfo.magFilter = VK_FILTER_NEAREST;
-	    createInfo.minFilter = VK_FILTER_NEAREST;
+	    createInfo.magFilter = VK_FILTER_LINEAR;
+	    createInfo.minFilter = VK_FILTER_LINEAR;
 	    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 	    createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	    createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	    createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	    createInfo.minLod = 0;
 	    createInfo.maxLod = 16.f;
+
+        VkSamplerReductionModeCreateInfo reductionInfo{};
+        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+        reductionInfo.reductionMode = reductionMode;
+        createInfo.pNext = &reductionInfo;
 
 	    VkSampler sampler = VK_NULL_HANDLE;
 	    VK_CHECK(vkCreateSampler(device, &createInfo, 0, &sampler))

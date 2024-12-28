@@ -10,6 +10,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
+    // The object index is for the current object's element in the render object and indirect offsets arrays
 	uint objectIndex = gl_GlobalInvocationID.x;
 
     if(bufferAddrs.visibilityBuffer.visibilities[objectIndex] == 0)

@@ -187,11 +187,11 @@ namespace BlitzenVulkan
                 StaticRenderObject& currentObject = renderObjects[i];
 
                 currentObject.materialTag = currentSurface.pMaterial->materialTag;
-                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 20,//x 
+                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 200 - 20,//x 
                     (float(rand()) / RAND_MAX) * 200 - 20,//y
-                    (float(rand()) / RAND_MAX) * 1000 - 20);//z
+                    (float(rand()) / RAND_MAX) * 200 - 20);//z
                 currentObject.pos = translation;
-                currentObject.scale = 0.1f;
+                currentObject.scale = 5.f;
 
                 BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                     (float(rand()) / RAND_MAX) * 2 - 1, // y
@@ -470,7 +470,7 @@ namespace BlitzenVulkan
         }
 
         // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
-        vkCmdFillBuffer(m_placeholderCommands, m_currentStaticBuffers.drawVisibilityBuffer.buffer, 0, visibilityBufferSize, 1);
+        vkCmdFillBuffer(m_placeholderCommands, m_currentStaticBuffers.drawVisibilityBuffer.buffer, 0, visibilityBufferSize, 0);
         
 
         SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
@@ -578,27 +578,7 @@ namespace BlitzenVulkan
 
 
 
-        // Transition the layout of the depth attachment and color attachment to be used as rendering attachments
-        {
-            VkImageMemoryBarrier2 colorAttachmentBarrier{};
-            ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | 
-            VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | 
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, 
-            VK_REMAINING_MIP_LEVELS);
-
-            VkImageMemoryBarrier2 depthAttachmentBarrier{};
-            ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentBarrier, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, VK_ACCESS_2_MEMORY_READ_BIT |
-            VK_ACCESS_2_MEMORY_WRITE_BIT,VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
-            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
-
-            VkImageMemoryBarrier2 memoryBarriers[2] = {colorAttachmentBarrier, depthAttachmentBarrier};
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, memoryBarriers);
-        }
-        // Attachments ready for rendering
-
-
-
+       
         // Push the descriptor set for global shader data for the compute and graphics pipelines
         {
             PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
@@ -607,14 +587,18 @@ namespace BlitzenVulkan
             0, 2, globalShaderDataWrites);
         }
 
-
-
-
         /* 
             Dispatching the compute that does frustum culling for objects that were visible last frame
         */
         {
-            // Initalize the indirect count buffer as zero
+            // Wait for previous frame later pass to be done with the indirect count buffer before zeroing it
+            VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
+            BufferMemoryBarrier(m_currentStaticBuffers.drawIndirectCountBuffer.buffer, waitBeforeZeroingCountBuffer,
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 1, &waitBeforeZeroingCountBuffer, 0, nullptr);
+
+            // Initialize the indirect count buffer as zero
             vkCmdFillBuffer(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, sizeof(uint32_t), 0);
 
             // Before dispatching the compute shader, create a pipeline barrier so that the buffer is filled with 0, before it's processed
@@ -639,6 +623,27 @@ namespace BlitzenVulkan
 
 
 
+        /*
+            Tranition the image layout of the color and depth attachments to be used as rendering attachments
+        */
+        {
+            VkImageMemoryBarrier2 colorAttachmentBarrier{};
+            ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentBarrier, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0,
+            VK_REMAINING_MIP_LEVELS);
+
+            VkImageMemoryBarrier2 depthAttachmentBarrier{};
+            ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
+
+            VkImageMemoryBarrier2 memoryBarriers[2] = { colorAttachmentBarrier, depthAttachmentBarrier };
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, memoryBarriers);
+        }
+
         /* 
             Start the first render pass
         */
@@ -652,6 +657,7 @@ namespace BlitzenVulkan
 
             BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachment, &depthAttachment, nullptr);
         }
+
 
 
         // The viewport and scissor are dynamic, so they should be set here
@@ -752,10 +758,10 @@ namespace BlitzenVulkan
             }
 
             VkImageMemoryBarrier2 depthPyramidCompleteBarrier{};
-            ImageMemoryBarrier(m_depthAttachment.image, depthPyramidCompleteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
-            VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
+            ImageMemoryBarrier(m_depthAttachment.image, depthPyramidCompleteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthPyramidCompleteBarrier);
         }
 
@@ -767,7 +773,7 @@ namespace BlitzenVulkan
 
         VkDescriptorImageInfo depthPyramidImageInfo{};
         depthPyramidImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        depthPyramidImageInfo.imageView = m_depthAttachment.imageView;
+        depthPyramidImageInfo.imageView = m_depthPyramid.imageView;
         depthPyramidImageInfo.sampler = m_depthAttachmentSampler;
         VkWriteDescriptorSet depthPyramidWrite{};
         WriteImageDescriptorSets(depthPyramidWrite, &depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, globalShaderDataSet, 
@@ -777,11 +783,12 @@ namespace BlitzenVulkan
         cullingDataWrite, depthPyramidWrite};
 
         CullingData cullingData;
-        cullingData.proj0 = context.projectionView[0];
-        cullingData.proj11 = context.projectionView[11];
-        cullingData.zNear = 1.f;
+        cullingData.proj0 = context.projectionMatrix[0];
+        cullingData.proj5 = context.projectionMatrix[5];
+        cullingData.zNear = context.zNear;
         cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
         cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+        cullingData.occlusionEnabled = context.occlusionEnabled;
         *(vBuffers.pCullingData) = cullingData;
         
         // Push the descriptor set for global shader data for the compute and graphics pipelines
@@ -791,8 +798,6 @@ namespace BlitzenVulkan
             PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 
             0, 2, globalShaderDataWrites);
         }
-
-
 
         /*
             Execute culling tests for late render pass

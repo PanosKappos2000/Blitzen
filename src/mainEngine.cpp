@@ -6,6 +6,7 @@
 #include "Platform/platform.h"
 
 inline uint8_t gDebugPyramid = 0;
+inline uint8_t gOcclusion = 0;
 
 namespace BlitzenEngine
 {
@@ -180,6 +181,7 @@ namespace BlitzenEngine
                             renderContext.projectionView = m_camera.projectionViewMatrix;
                             renderContext.viewPosition = m_camera.position;
                             renderContext.projectionTranspose = m_camera.projectionTranspose;
+                            renderContext.zNear = BLITZEN_ZNEAR;
 
                             renderContext.drawCount = drawCount;
 
@@ -188,6 +190,7 @@ namespace BlitzenEngine
                             // Hardcoding the sun for now
                             renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
                             renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+                            renderContext.occlusionEnabled = gOcclusion;
 
                             pVulkan.Data()->DrawFrame(renderContext);
                         }
@@ -400,6 +403,11 @@ namespace BlitzenEngine
                 case BlitzenCore::BlitKey::__F2:
                 {
                     gDebugPyramid = !gDebugPyramid;
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F3:
+                {
+                    gOcclusion = !gOcclusion;
                     break;
                 }
                 default:

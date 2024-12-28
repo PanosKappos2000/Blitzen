@@ -250,6 +250,7 @@ namespace BlitzenVulkan
                 if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
                 !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
                 !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
+                !features12.samplerFilterMinmax ||
                 !features13.synchronization2 || !features13.dynamicRendering)
                 {
                     physicalDevices.RemoveAtIndex(i);
@@ -447,6 +448,7 @@ namespace BlitzenVulkan
             vulkan12Features.shaderFloat16 = true;
             vulkan12Features.storageBuffer8BitAccess = true;
             vulkan12Features.drawIndirectCount = true;
+            vulkan12Features.samplerFilterMinmax = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -591,7 +593,7 @@ namespace BlitzenVulkan
         CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-        m_depthAttachmentSampler = CreateSampler(m_device);
+        m_depthAttachmentSampler = CreateSampler(m_device, VK_SAMPLER_REDUCTION_MODE_MIN);
 
         {
             m_depthPyramidExtent.width = BlitML::PreviousPow2(m_drawExtent.width);
@@ -808,7 +810,7 @@ namespace BlitzenVulkan
         vkDestroyPipelineLayout(m_device, m_lateCullingPipelineLayout, m_pCustomAllocator);
 
         vkDestroyPipeline(m_device, m_indirectCullingComputePipeline, m_pCustomAllocator);
-        
+
         vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);
 

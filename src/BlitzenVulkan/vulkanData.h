@@ -117,6 +117,7 @@ namespace BlitzenVulkan
         BlitML::mat4 projectionView;
         BlitML::vec3 viewPosition;
         BlitML::mat4 projectionTranspose;
+        float zNear = 1.f;
 
         size_t drawCount;
 
@@ -124,6 +125,7 @@ namespace BlitzenVulkan
         BlitML::vec4 sunlightColor;
 
         uint8_t debugPyramid = 0;
+        uint8_t occlusionEnabled = 1;
     };
 
     struct AllocatedImage
@@ -177,11 +179,12 @@ namespace BlitzenVulkan
     struct alignas(16) CullingData
     {
         float proj0;// The 1st element of the projection matrix
-        float proj11;// The 12th element of the projection matrix
+        float proj5;// The 12th element of the projection matrix
         float zNear;
         // Occulusion culling depth pyramid data
         float pyramidWidth;
         float pyramidHeight;
+        uint32_t occlusionEnabled;
     };
 
     // Pushed every frame for the non indirect version to access per object data

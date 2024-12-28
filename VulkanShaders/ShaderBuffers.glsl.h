@@ -92,7 +92,7 @@ layout(buffer_reference, std430) readonly buffer IndirectBuffer
 // The below are the same buffer but it is defined differently in the compute pipeline
 // This will be the final buffer used by vkCmdDrawIndexedIndirect and will be filled by a compute shader after doing culling and other operations
 #ifdef COMPUTE_PIPELINE
-    layout(buffer_reference, std430) buffer FinalIndirect
+    layout(buffer_reference, std430) writeonly buffer FinalIndirect
     {
         IndirectDraw indirectDraws[];
     };
