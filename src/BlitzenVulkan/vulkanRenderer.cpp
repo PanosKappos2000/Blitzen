@@ -61,9 +61,11 @@ namespace BlitzenVulkan
 
         // Creating the layout here so that any descriptor sets that are created know about it
         {
-            // Descriptor set layout for global shader data
+            // Binding used by both compute and graphics pipelines, to access global data like the view matrix
             VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
+            // Binding used by both compute and graphics pipelines, to access the addresses of storage buffers
             VkDescriptorSetLayoutBinding bufferAddressBinding{};
+            // If mesh shaders are used the bindings needs to be accessed by mesh shaders, otherwise they will be accessed by vertex shader stage
             if(m_stats.meshShaderSupport)
             {
                 CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
@@ -79,14 +81,17 @@ namespace BlitzenVulkan
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
             }
 
+            // Binding for the global shader data layout, used by culling shaders to do occlusion and frustum culling 
             VkDescriptorSetLayoutBinding cullingDataLayoutBinding{};
             CreateDescriptorSetLayoutBinding(cullingDataLayoutBinding, 2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
             VK_SHADER_STAGE_COMPUTE_BIT);
 
+            // Binding for the global shader data layout, used by culling shaders to access the depth pyramid
             VkDescriptorSetLayoutBinding depthImageBinding{};
             CreateDescriptorSetLayoutBinding(depthImageBinding, 3, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
             VK_SHADER_STAGE_COMPUTE_BIT);
             
+            // All bindings combined to create the global shader data descriptor set layout
             VkDescriptorSetLayoutBinding shaderDataBindings[4] = {shaderDataLayoutBinding, bufferAddressBinding, 
             cullingDataLayoutBinding, depthImageBinding};
             m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 4, shaderDataBindings, 
@@ -105,6 +110,9 @@ namespace BlitzenVulkan
             CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(ShaderPushConstant), 0);
 
             CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 1, &pushConstant);
+
+            // This is the layout for the culling shaders
+            CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_globalShaderDataLayout, 0, nullptr);
         }
 
         // Descriptor set layouts for depth reduce compute shader
@@ -233,7 +241,7 @@ namespace BlitzenVulkan
         /* Compute pipeline that fills the draw indirect commands based on culling data*/
         {
             CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_opaqueGraphicsPipelineLayout, &m_indirectCullingComputePipeline);
+            m_lateCullingPipelineLayout, &m_indirectCullingComputePipeline);
         }
 
         {
@@ -246,8 +254,6 @@ namespace BlitzenVulkan
         }
 
         {
-            CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_globalShaderDataLayout, 0, nullptr);
-
             CreateComputeShaderProgram(m_device, "VulkanShaders/LateCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
             m_lateCullingPipelineLayout, &m_lateCullingComputePipeline);
         }
@@ -529,20 +535,37 @@ namespace BlitzenVulkan
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
+        // Projection and view coordinate parameters will be passed to the global shader data buffer
         m_globalShaderData.projectionView = context.projectionView;
         m_globalShaderData.viewPosition = context.viewPosition;
         m_globalShaderData.view = context.viewMatrix;
 
+        // Global lighting parameters will be written to the global shader data buffer
         m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;
 
-        // Create the frustum planes based on the current projection and view matrices 
+        // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
         m_globalShaderData.frustumData[0] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0));
         m_globalShaderData.frustumData[1] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(0));
         m_globalShaderData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
         m_globalShaderData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
         m_globalShaderData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
         m_globalShaderData.frustumData[5] = BlitML::vec4(0, 0, -1, 300/* Draw distance */);// I need to multiply this with view or projection view
+
+        // Culling data will be written to the culling data buffer
+        CullingData cullingData;
+        cullingData.proj0 = context.projectionMatrix[0];
+        cullingData.proj5 = context.projectionMatrix[5];
+        cullingData.zNear = context.zNear;
+        cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+        cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+        cullingData.occlusionEnabled = context.occlusionEnabled;
+        cullingData.lodEnabled = context.lodEnabled;
+
+        // Write the data to the buffer pointers
+        *(vBuffers.pGlobalShaderData) = m_globalShaderData;
+        *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
+        *(vBuffers.pCullingData) = cullingData;
         
 
 
@@ -556,10 +579,6 @@ namespace BlitzenVulkan
         // The data for this descriptor set will be handled in this scope so that it can be accessed by both late and initial render pass
         VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
 
-        // Write the data to the buffer pointers
-        *(vBuffers.pGlobalShaderData) = m_globalShaderData;
-        *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
-
         // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
         VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
         VkWriteDescriptorSet globalShaderDataWrite{};
@@ -572,8 +591,13 @@ namespace BlitzenVulkan
         WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
         1, 1, vBuffers.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
 
+        VkDescriptorBufferInfo cullingDataBufferInfo{};
+        VkWriteDescriptorSet cullingDataWrite{};
+        WriteBufferDescriptorSets(cullingDataWrite, cullingDataBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
+        2, 1, vBuffers.cullingDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+
         // Push the descriptor sets to the compute pipelines and the graphics pipelines
-        VkWriteDescriptorSet globalShaderDataWrites[2] = {globalShaderDataWrite, bufferAddressDescriptorWrite};
+        VkWriteDescriptorSet globalShaderDataWrites[3] = {globalShaderDataWrite, bufferAddressDescriptorWrite, cullingDataWrite};
 
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
@@ -582,8 +606,8 @@ namespace BlitzenVulkan
        
         // Push the descriptor set for global shader data for the compute and graphics pipelines
         {
-            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_opaqueGraphicsPipelineLayout, 
-            0, 2, globalShaderDataWrites);
+            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_lateCullingPipelineLayout, 
+            0, 3, globalShaderDataWrites);
             PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 
             0, 2, globalShaderDataWrites);
         }
@@ -766,12 +790,6 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthPyramidCompleteBarrier);
         }
 
-
-        VkDescriptorBufferInfo cullingDataBufferInfo{};
-        VkWriteDescriptorSet cullingDataWrite{};
-        WriteBufferDescriptorSets(cullingDataWrite, cullingDataBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
-        2, 1, vBuffers.cullingDataBuffer.buffer, 0, VK_WHOLE_SIZE);
-
         VkDescriptorImageInfo depthPyramidImageInfo{};
         depthPyramidImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         depthPyramidImageInfo.imageView = m_depthPyramid.imageView;
@@ -782,15 +800,6 @@ namespace BlitzenVulkan
 
         VkWriteDescriptorSet latePassGlobalShaderDataSet[4] = {globalShaderDataWrite, bufferAddressDescriptorWrite, 
         cullingDataWrite, depthPyramidWrite};
-
-        CullingData cullingData;
-        cullingData.proj0 = context.projectionMatrix[0];
-        cullingData.proj5 = context.projectionMatrix[5];
-        cullingData.zNear = context.zNear;
-        cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
-        cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
-        cullingData.occlusionEnabled = context.occlusionEnabled;
-        *(vBuffers.pCullingData) = cullingData;
         
         // Push the descriptor set for global shader data for the compute and graphics pipelines
         {

@@ -19,6 +19,7 @@ layout (set = 0, binding = 2) uniform CullingData
     float pyramidHeight;
 
     uint occlusion;
+    uint lod;
 }cullingData;
 
 layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
@@ -87,10 +88,10 @@ void main()
         IndirectOffsets currentRead = bufferAddrs.indirectBuffer.offsets[objectIndex];
 
         // The level of detail index that should be used is derived by the distance fromt he camera
-        float lodDistance = log2(max(1, (distance(center, vec3(shaderData.viewPosition)) - radius)));
+        float lodDistance = log2(max(1, (distance(center, vec3(0)) - radius)));
 	    uint lodIndex = clamp(int(lodDistance), 0, int(currentRead.lodCount) - 1);
 
-        MeshLod currentLod = currentRead.lod[lodIndex];
+        MeshLod currentLod = cullingData.lod == 1 ? currentRead.lod[lodIndex] : currentRead.lod[0];
 
         // The object index is needed to know which element to access in the per object data buffer
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].objectId = objectIndex;

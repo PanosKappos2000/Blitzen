@@ -126,6 +126,7 @@ namespace BlitzenVulkan
 
         uint8_t debugPyramid = 0;
         uint8_t occlusionEnabled = 1;
+        uint8_t lodEnabled = 1;
     };
 
     struct AllocatedImage
@@ -186,6 +187,7 @@ namespace BlitzenVulkan
         float pyramidWidth;
         float pyramidHeight;
         uint32_t occlusionEnabled;
+        uint32_t lodEnabled;
     };
 
     // Pushed every frame for the non indirect version to access per object data

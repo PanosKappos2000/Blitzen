@@ -188,15 +188,16 @@ namespace BlitzenCore
     void InputProcessMouseMove(int16_t x, int16_t y) 
     {
         // Only process if actually different
-        if (s_pInputState->currentMouse.x != x || s_pInputState->currentMouse.y != y) {
+        if (s_pInputState->currentMouse.x != x || s_pInputState->currentMouse.y != y) 
+        {
+            // The context holds the difference between the new and old mouse position, since that is more useful now
+            EventContext context;
+            context.data.si16[0] = x - s_pInputState->currentMouse.x;
+            context.data.si16[1] = y - s_pInputState->currentMouse.y;
             
             s_pInputState->currentMouse.x = x;
             s_pInputState->currentMouse.y = y;
 
-            // Fire the event
-            EventContext context;
-            context.data.ui16[0] = x;
-            context.data.ui16[1] = y;
             FireEvent(BlitEventType::MouseMoved, nullptr, context);
         }
     }

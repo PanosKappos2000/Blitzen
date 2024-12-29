@@ -7,6 +7,7 @@
 
 inline uint8_t gDebugPyramid = 0;
 inline uint8_t gOcclusion = 1;
+inline uint8_t gLod = 1;
 
 namespace BlitzenEngine
 {
@@ -64,6 +65,7 @@ namespace BlitzenEngine
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyPressed, nullptr, OnKeyPress);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, OnResize);
+            BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::MouseMoved, nullptr, OnMouseMove);
         }
     }
 
@@ -186,11 +188,12 @@ namespace BlitzenEngine
                             renderContext.drawCount = drawCount;
 
                             renderContext.debugPyramid = gDebugPyramid;// Temporary debug code for debug pyramid
+                            renderContext.occlusionEnabled = gOcclusion;
+                            renderContext.lodEnabled = gLod;
 
                             // Hardcoding the sun for now
                             renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
                             renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
-                            renderContext.occlusionEnabled = gOcclusion;
 
                             pVulkan.Data()->DrawFrame(renderContext);
                         }
@@ -408,6 +411,11 @@ namespace BlitzenEngine
                     gOcclusion = !gOcclusion;
                     break;
                 }
+                case BlitzenCore::BlitKey::__F4:
+                {
+                    gLod = !gLod;
+                    break;
+                }
                 default:
                 {
                     BLIT_DBLOG("Key pressed %i", key)
@@ -452,6 +460,13 @@ namespace BlitzenEngine
         uint32_t newHeight = data.data.ui32[1];
 
         Engine::GetEngineInstancePointer()->UpdateWindowSize(newWidth, newHeight);
+
+        return 1;
+    }
+
+    uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
+    {
+        Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
 
         return 1;
     }

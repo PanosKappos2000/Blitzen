@@ -67,7 +67,7 @@ namespace BlitzenEngine
         BlitML::mat4 projectionTranspose;
 
         BlitML::vec3 position;
-        BlitML::vec3 eulerAngles;
+        BlitML::quat orientaion;
 
         BlitML::vec3 velocity = BlitML::vec3(0.f);
     };
@@ -84,7 +84,7 @@ namespace BlitzenEngine
     public:
 
         
-        Engine(); //At first I used the constructor for initialization, but because I stupidly used malloc for memory management, I cannot do that for now
+        Engine(); 
         void Init();
 
         void Run();
@@ -137,6 +137,7 @@ namespace BlitzenEngine
     uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
+    uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
 
     // This will be moved somewhere else once I have a good camera system
     void UpdateCamera(Camera& camera, float deltaTime);
