@@ -611,9 +611,9 @@ namespace BlitzenVulkan
             CreateImage(m_device, m_allocator, m_depthPyramid, {m_depthPyramidExtent.width, m_depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, m_depthPyramidMipLevels);
 
-            for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
+            for(uint8_t i = 0; i < m_depthPyramidMipLevels; ++i)
             {
-                CreateImageView(m_device, m_depthPyramidMips[i], m_depthPyramid.image, VK_FORMAT_R32_SFLOAT, i, 1);
+                CreateImageView(m_device, m_depthPyramidMips[size_t(i)], m_depthPyramid.image, VK_FORMAT_R32_SFLOAT, i, 1);
             }
         }
 
@@ -804,7 +804,7 @@ namespace BlitzenVulkan
 
         m_currentStaticBuffers.Cleanup(m_allocator, m_device);
 
-        vkDestroyDescriptorSetLayout(m_device, m_globalShaderDataLayout, m_pCustomAllocator);
+        vkDestroyDescriptorSetLayout(m_device, m_pushDescriptorBufferLayout, m_pCustomAllocator);
 
         vkDestroyPipeline(m_device, m_lateCullingComputePipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_lateCullingPipelineLayout, m_pCustomAllocator);
@@ -816,7 +816,7 @@ namespace BlitzenVulkan
 
         vkDestroyPipeline(m_device, m_depthReduceComputePipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_depthReducePipelineLayout, m_pCustomAllocator);
-        vkDestroyDescriptorSetLayout(m_device, m_depthPyramidImageDescriptorSetLayout, m_pCustomAllocator);
+        vkDestroyDescriptorSetLayout(m_device, m_depthPyramidDescriptorLayout, m_pCustomAllocator);
 
         m_depthAttachment.CleanupResources(m_allocator, m_device);
         m_colorAttachment.CleanupResources(m_allocator, m_device);

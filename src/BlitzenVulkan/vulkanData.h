@@ -153,9 +153,6 @@ namespace BlitzenVulkan
     // Holds universal, shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
     struct alignas(16) GlobalShaderData
     {
-        // Accessed by a compute shader to do frustum culling
-        BlitML::vec4 frustumData[6];
-
         BlitML::mat4 projectionView;
         BlitML::mat4 view;
 
@@ -180,6 +177,7 @@ namespace BlitzenVulkan
 
     struct alignas(16) CullingData
     {
+        BlitML::vec4 frustumData[6];
         float proj0;// The 1st element of the projection matrix
         float proj5;// The 12th element of the projection matrix
         float zNear;

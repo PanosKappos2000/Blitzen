@@ -10,6 +10,9 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 2) uniform CullingData
 {
+    // Used for frustum culling
+    vec4 frustumPlanes[6];
+
     float proj0;
     float proj5;
     float zNear;
@@ -18,8 +21,10 @@ layout (set = 0, binding = 2) uniform CullingData
     float pyramidWidth;
     float pyramidHeight;
 
+    // Debug values, to activate various acceleration algorithms
     uint occlusion;
     uint lod;
+
 }cullingData;
 
 void main()
@@ -37,9 +42,9 @@ void main()
 	float radius = currentObject.radius * currentObject.scale;
 	bool visible = true;
 	for (int i = 0; i < 6; ++i)
-		visible = visible && dot(shaderData.frustumData[i], vec4(center, 1)) > -radius;
+		visible = visible && dot(cullingData.frustumPlanes[i], vec4(center, 1)) > -radius;
     
-    if(visible && true)
+    if(visible)
     {
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
@@ -62,7 +67,5 @@ void main()
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentRead.vertexOffset;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstInstance = 0;
     }
-    
-    
     
 }

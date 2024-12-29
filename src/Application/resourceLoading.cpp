@@ -179,7 +179,7 @@ namespace BlitzenEngine
             BlitCL::DynamicArray<uint8_t> meshletVertices(vertices.GetSize());
             meshletVertices.Fill(UINT8_MAX);
 
-            newSurface.firstMeshlet = resources.meshlets.GetSize();
+            newSurface.firstMeshlet = static_cast<uint32_t>(resources.meshlets.GetSize());
 
             for (size_t i = 0; i < indices.GetSize(); i += 3)
             {

@@ -10,6 +10,8 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 2) uniform CullingData
 {
+    vec4 frustumPlanes[6];
+
     float proj0;
     float proj5;
     float zNear;
@@ -48,6 +50,7 @@ bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 
 	return true;
 }
 
+
 void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x;
@@ -61,7 +64,7 @@ void main()
     bool visible = true;
     for(uint i = 0; i < 6; ++i)
     {
-        visible = visible && dot(shaderData.frustumData[i], vec4(center, 1)) > - radius;
+        visible = visible && dot(cullingData.frustumPlanes[i], vec4(center, 1)) > - radius;
     }
 
     if (visible && uint(cullingData.occlusion) == 1)

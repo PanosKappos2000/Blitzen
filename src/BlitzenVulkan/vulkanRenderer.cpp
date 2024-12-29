@@ -52,79 +52,93 @@ namespace BlitzenVulkan
         }
     }
 
-    void VulkanRenderer::UploadDataToGPUAndSetupForRendering(GPUData& gpuData)
+    void VulkanRenderer::CreateDescriptorLayouts()
+    {
+        // Binding used by both compute and graphics pipelines, to access global data like the view matrix
+        VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
+        // Binding used by both compute and graphics pipelines, to access the addresses of storage buffers
+        VkDescriptorSetLayoutBinding bufferAddressBinding{};
+
+        // If mesh shaders are used the bindings needs to be accessed by mesh shaders, otherwise they will be accessed by vertex shader stage
+        if(m_stats.meshShaderSupport)
+        {
+            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+            CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        }
+        else
+        {
+            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+            CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        }
+
+        // Binding for the global shader data layout, used by culling shaders to do occlusion and frustum culling 
+        VkDescriptorSetLayoutBinding cullingDataLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(cullingDataLayoutBinding, 2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+        VK_SHADER_STAGE_COMPUTE_BIT);
+
+        // Binding for the global shader data layout, used by culling shaders to access the depth pyramid
+        VkDescriptorSetLayoutBinding depthImageBinding{};
+        CreateDescriptorSetLayoutBinding(depthImageBinding, 3, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+        VK_SHADER_STAGE_COMPUTE_BIT);
+        
+        // All bindings combined to create the global shader data descriptor set layout
+        VkDescriptorSetLayoutBinding shaderDataBindings[4] = {shaderDataLayoutBinding, bufferAddressBinding, 
+        cullingDataLayoutBinding, depthImageBinding};
+
+        m_pushDescriptorBufferLayout = CreateDescriptorSetLayout(m_device, 4, shaderDataBindings, 
+        VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+
+
+
+
+        // Descriptor set layout for textures
+        VkDescriptorSetLayoutBinding texturesLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(m_currentStaticBuffers.loadedTextures.GetSize()), 
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+        m_currentStaticBuffers.textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
+
+
+
+
+        // Binding for input image in depth pyramid creation shader
+        VkDescriptorSetLayoutBinding inImageLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(inImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        // Bindng for output image in depth pyramid creation shader
+        VkDescriptorSetLayoutBinding outImageLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(outImageLayoutBinding, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        // Combine the bindings for the final descriptor layout
+        VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
+        m_depthPyramidDescriptorLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
+        VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+    }
+
+    void VulkanRenderer::SetupForRendering(GPUData& gpuData)
     {
         VarBuffersInit();
 
         // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
         m_currentStaticBuffers.loadedTextures.Resize(gpuData.textureCount);
 
-        // Creating the layout here so that any descriptor sets that are created know about it
+        CreateDescriptorLayouts();
+
+        // Pipeline layouts for all shaders
         {
-            // Binding used by both compute and graphics pipelines, to access global data like the view matrix
-            VkDescriptorSetLayoutBinding shaderDataLayoutBinding{};
-            // Binding used by both compute and graphics pipelines, to access the addresses of storage buffers
-            VkDescriptorSetLayoutBinding bufferAddressBinding{};
-            // If mesh shaders are used the bindings needs to be accessed by mesh shaders, otherwise they will be accessed by vertex shader stage
-            if(m_stats.meshShaderSupport)
-            {
-                CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-                VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
-                CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-                VK_SHADER_STAGE_MESH_BIT_NV | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
-            }
-            else
-            {
-                CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
-                CreateDescriptorSetLayoutBinding(bufferAddressBinding, 1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
-            }
+            VkDescriptorSetLayout layouts [2] = {m_pushDescriptorBufferLayout, m_currentStaticBuffers.textureDescriptorSetlayout};
 
-            // Binding for the global shader data layout, used by culling shaders to do occlusion and frustum culling 
-            VkDescriptorSetLayoutBinding cullingDataLayoutBinding{};
-            CreateDescriptorSetLayoutBinding(cullingDataLayoutBinding, 2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-            VK_SHADER_STAGE_COMPUTE_BIT);
-
-            // Binding for the global shader data layout, used by culling shaders to access the depth pyramid
-            VkDescriptorSetLayoutBinding depthImageBinding{};
-            CreateDescriptorSetLayoutBinding(depthImageBinding, 3, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
-            VK_SHADER_STAGE_COMPUTE_BIT);
-            
-            // All bindings combined to create the global shader data descriptor set layout
-            VkDescriptorSetLayoutBinding shaderDataBindings[4] = {shaderDataLayoutBinding, bufferAddressBinding, 
-            cullingDataLayoutBinding, depthImageBinding};
-            m_globalShaderDataLayout = CreateDescriptorSetLayout(m_device, 4, shaderDataBindings, 
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-
-            // Descriptor set layout for textures
-            VkDescriptorSetLayoutBinding texturesLayoutBinding{};
-            CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(m_currentStaticBuffers.loadedTextures.GetSize()), 
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-            m_currentStaticBuffers.textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
-
-            VkDescriptorSetLayout layouts [2] = {m_globalShaderDataLayout, m_currentStaticBuffers.textureDescriptorSetlayout};
-
-            // I'm not using the push constants anymore(but I could use it for buffer addrs)
-            VkPushConstantRange pushConstant{};
-            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(ShaderPushConstant), 0);
-
-            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 1, &pushConstant);
+            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 0, nullptr);
 
             // This is the layout for the culling shaders
-            CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_globalShaderDataLayout, 0, nullptr);
-        }
+            CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_pushDescriptorBufferLayout, 0, nullptr);
 
-        // Descriptor set layouts for depth reduce compute shader
-        {
-            VkDescriptorSetLayoutBinding inImageLayoutBinding{};
-            VkDescriptorSetLayoutBinding outImageLayoutBinding{};
-            CreateDescriptorSetLayoutBinding(inImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-            CreateDescriptorSetLayoutBinding(outImageLayoutBinding, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
-
-            VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
-            m_depthPyramidImageDescriptorSetLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+            VkPushConstantRange pushConstant{};
+            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
+            CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidDescriptorLayout, 1, &pushConstant);
         }
 
 
@@ -143,9 +157,6 @@ namespace BlitzenVulkan
 
             m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
         }
-
-
-
 
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
@@ -221,7 +232,6 @@ namespace BlitzenVulkan
             }
         }
 
-
         // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
         for(size_t i = 0; i < gpuData.materialCount; ++i)
@@ -238,104 +248,17 @@ namespace BlitzenVulkan
 
 
 
-        /* Compute pipeline that fills the draw indirect commands based on culling data*/
-        {
-            CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_lateCullingPipelineLayout, &m_indirectCullingComputePipeline);
-        }
-
-        {
-            VkPushConstantRange pushConstant{};
-            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
-            CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidImageDescriptorSetLayout, 1, &pushConstant);
-
-            CreateComputeShaderProgram(m_device, "VulkanShaders/DepthReduce.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_depthReducePipelineLayout, &m_depthReduceComputePipeline);
-        }
-
-        {
-            CreateComputeShaderProgram(m_device, "VulkanShaders/LateCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_lateCullingPipelineLayout, &m_lateCullingComputePipeline);
-        }
-
-
-
-
-        /* Main opaque object graphics pipeline */
-        {
-            VkGraphicsPipelineCreateInfo pipelineInfo{};
-            pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-            pipelineInfo.flags = 0;
-            pipelineInfo.renderPass = VK_NULL_HANDLE; // Using dynamic rendering
-
-            VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
-            dynamicRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-            VkFormat colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-            dynamicRenderingInfo.colorAttachmentCount = 1;
-            dynamicRenderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
-            dynamicRenderingInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
-            pipelineInfo.pNext = &dynamicRenderingInfo;
-
-            VkShaderModule vertexShaderModule;
-            VkPipelineShaderStageCreateInfo shaderStages[2] = {};
-            if(m_stats.meshShaderSupport)
-            {
-                CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_NV, "main", vertexShaderModule, 
-                shaderStages[0]);
-            }
-            else
-            {
-                CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
-                shaderStages[0]);
-            }
-             
-            VkShaderModule fragShaderModule;
-            CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
-            shaderStages[1]);
-            pipelineInfo.stageCount = 2; // Hardcode for default pipeline since I know what I want
-            pipelineInfo.pStages = shaderStages;
-
-            VkPipelineInputAssemblyStateCreateInfo inputAssembly = SetTriangleListInputAssembly();
-            pipelineInfo.pInputAssemblyState = &inputAssembly;
-
-            VkDynamicState dynamicStates[2];
-            VkPipelineViewportStateCreateInfo viewport{};
-            VkPipelineDynamicStateCreateInfo dynamicState{};
-            SetDynamicStateViewport(dynamicStates, viewport, dynamicState);
-            pipelineInfo.pViewportState = &viewport;
-            pipelineInfo.pDynamicState = &dynamicState;
-
-            VkPipelineRasterizationStateCreateInfo rasterization{};
-            SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-            pipelineInfo.pRasterizationState = &rasterization;
-
-            VkPipelineMultisampleStateCreateInfo multisampling{};
-            SetupMulitsampling(multisampling, VK_FALSE, VK_SAMPLE_COUNT_1_BIT, 1.f, nullptr, VK_FALSE, VK_FALSE);
-            pipelineInfo.pMultisampleState = &multisampling;
-
-            VkPipelineDepthStencilStateCreateInfo depthState{};
-            SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
-            nullptr, nullptr);
-            pipelineInfo.pDepthStencilState = &depthState;
-
-            VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-            CreateColorBlendAttachment(colorBlendAttachment, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_OP_ADD, VK_BLEND_OP_ADD, VK_BLEND_FACTOR_CONSTANT_ALPHA, 
-            VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA);
-            VkPipelineColorBlendStateCreateInfo colorBlendState{};
-            CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
-            pipelineInfo.pColorBlendState = &colorBlendState;
-
-            VkPipelineVertexInputStateCreateInfo vertexInput{};
-            vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            pipelineInfo.pVertexInputState = &vertexInput;
-            pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;
-
-            VK_CHECK(vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGraphicsPipeline))
-
-            vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
-            vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
-        }
+    
+        CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_lateCullingPipelineLayout, &m_indirectCullingComputePipeline);
+        
+        CreateComputeShaderProgram(m_device, "VulkanShaders/DepthReduce.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_depthReducePipelineLayout, &m_depthReduceComputePipeline);
+        
+        CreateComputeShaderProgram(m_device, "VulkanShaders/LateCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_lateCullingPipelineLayout, &m_lateCullingComputePipeline);
+        
+        SetupMainGraphicsPipeline();
     }
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
@@ -544,21 +467,25 @@ namespace BlitzenVulkan
         m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;
 
-        // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
-        m_globalShaderData.frustumData[0] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0));
-        m_globalShaderData.frustumData[1] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(0));
-        m_globalShaderData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
-        m_globalShaderData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
-        m_globalShaderData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
-        m_globalShaderData.frustumData[5] = BlitML::vec4(0, 0, -1, 300/* Draw distance */);// I need to multiply this with view or projection view
-
         // Culling data will be written to the culling data buffer
         CullingData cullingData;
+
+        // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
+        cullingData.frustumData[0] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0));
+        cullingData.frustumData[1] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(0));
+        cullingData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
+        cullingData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
+        cullingData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
+        cullingData.frustumData[5] = BlitML::vec4(0, 0, -1, 300/* Draw distance */);// I need to multiply this with view or projection view
+
+        // Culling data for occlusion culling
         cullingData.proj0 = context.projectionMatrix[0];
         cullingData.proj5 = context.projectionMatrix[5];
         cullingData.zNear = context.zNear;
         cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
         cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+
+        // Debug values to deactivate occlusion culling and other algorithms
         cullingData.occlusionEnabled = context.occlusionEnabled;
         cullingData.lodEnabled = context.lodEnabled;
 
@@ -706,13 +633,13 @@ namespace BlitzenVulkan
             if(m_stats.meshShaderSupport)
             {
                DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
-               offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
+               offsetof(IndirectDrawData, drawIndirectTasks), static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
             }
             else
             {
                 vkCmdDrawIndexedIndirectCount(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
                 offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
-                context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
+                static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
             }
         }
 
@@ -874,13 +801,13 @@ namespace BlitzenVulkan
             if(m_stats.meshShaderSupport)
             {
                DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
-               offsetof(IndirectDrawData, drawIndirectTasks), context.drawCount, sizeof(IndirectDrawData));
+               offsetof(IndirectDrawData, drawIndirectTasks), static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
             }
             else
             {
                 vkCmdDrawIndexedIndirectCount(fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
                 offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
-                context.drawCount, sizeof(IndirectDrawData));// Ah, the beauty of draw indirect
+                static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
             }
         }
 

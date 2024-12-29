@@ -7,16 +7,10 @@
 
 #include "ShaderBuffers.glsl.h"
 
-layout(push_constant) uniform constants
-{
-    uint drawTag;
-}PushConstants;
-
 layout(location = 0) out vec2 outUv;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out uint outMaterialTag;
 layout(location = 3) out vec3 outModel;
-
 
 void main()
 {

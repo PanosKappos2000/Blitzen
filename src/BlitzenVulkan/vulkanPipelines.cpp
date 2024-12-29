@@ -199,4 +199,95 @@ namespace BlitzenVulkan
         pushConstant.size = size;
         pushConstant.offset = offset;
     }
+
+
+
+
+    void VulkanRenderer::SetupMainGraphicsPipeline()
+    {
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.flags = 0;
+        pipelineInfo.renderPass = VK_NULL_HANDLE; // Using dynamic rendering
+        pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;// The layout is expected to have been created earlier
+
+        // Setting up dynamic rendering info for graphics pipeline
+        VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
+        dynamicRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        VkFormat colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+        dynamicRenderingInfo.colorAttachmentCount = 1;
+        dynamicRenderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+        dynamicRenderingInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+        pipelineInfo.pNext = &dynamicRenderingInfo;
+
+        // Loading the vertex shader code (or mesh shading shader if mesh shading is used)
+        VkShaderModule vertexShaderModule;
+        VkPipelineShaderStageCreateInfo shaderStages[2] = {};
+        if(m_stats.meshShaderSupport)
+        {
+            CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_NV, "main", vertexShaderModule, 
+            shaderStages[0]);
+        }
+        else
+        {
+            CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
+            shaderStages[0]);
+        }
+        //Loading the fragment shader
+        VkShaderModule fragShaderModule;
+        CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
+        shaderStages[1]);
+        // Adding the two stages
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = shaderStages;
+
+        // Setting up triangle primitive assembly
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly = SetTriangleListInputAssembly();
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+
+        // Setting the viewport and scissor as dynamic states
+        VkDynamicState dynamicStates[2];
+        VkPipelineViewportStateCreateInfo viewport{};
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        SetDynamicStateViewport(dynamicStates, viewport, dynamicState);
+        pipelineInfo.pViewportState = &viewport;
+        pipelineInfo.pDynamicState = &dynamicState;
+
+        // Setting up the rasterizer with primitive back face culling
+        VkPipelineRasterizationStateCreateInfo rasterization{};
+        SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        pipelineInfo.pRasterizationState = &rasterization;
+
+        // Setting up multisampling(no multisampling for now)
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        SetupMulitsampling(multisampling, VK_FALSE, VK_SAMPLE_COUNT_1_BIT, 1.f, nullptr, VK_FALSE, VK_FALSE);
+        pipelineInfo.pMultisampleState = &multisampling;
+
+        // Depth buffer for reverse z
+        VkPipelineDepthStencilStateCreateInfo depthState{};
+        SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
+        nullptr, nullptr);
+        pipelineInfo.pDepthStencilState = &depthState;
+
+        // Color blending. This pipeline is for opaque objects so it is left as default
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        CreateColorBlendAttachment(colorBlendAttachment, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_OP_ADD, VK_BLEND_OP_ADD, VK_BLEND_FACTOR_CONSTANT_ALPHA, 
+        VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA);
+        VkPipelineColorBlendStateCreateInfo colorBlendState{};
+        CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
+        pipelineInfo.pColorBlendState = &colorBlendState;
+
+        //Setting up the vertex input state (this will not be used but it needs to be passed)
+        VkPipelineVertexInputStateCreateInfo vertexInput{};
+        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        pipelineInfo.pVertexInputState = &vertexInput;
+
+        //Create the graphics pipeline
+        VK_CHECK(vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGraphicsPipeline))
+
+        // Destroy the shader modules after pipeline has been created
+        vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
+        vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
+    }
 }

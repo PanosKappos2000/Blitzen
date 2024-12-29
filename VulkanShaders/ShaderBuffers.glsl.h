@@ -158,9 +158,6 @@ layout (buffer_reference, std430) readonly buffer MaterialBuffer
 // This holds global shader data passed to the GPU at the start of each frame
 layout(set = 0, binding = 0) uniform ShaderData
 {
-    // Accessed by the compute shader to do frustum culling (I should move this to something different)
-    vec4 frustumData[6];
-
     // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
     mat4 projectionView;
     mat4 view;

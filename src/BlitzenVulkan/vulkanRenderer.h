@@ -121,18 +121,14 @@ namespace BlitzenVulkan
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
         /* ---------------------------------------------------------------------------------------------------------
-            2nd part of Vulkan initialization. Gives scene data in arrays and vulkan uploads the data to the GPU
+            2nd part of Vulkan initialization. Setsup buffers, shaders and descriptors for the render loop
         ------------------------------------------------------------------------------------------------------------ */
-        void UploadDataToGPUAndSetupForRendering(GPUData& gpuData);
+        void SetupForRendering(GPUData& gpuData);
 
-        /*-----------------------------------------------------------------------------------------------
-            Renders the world each frame. 
-            If blitzen ever supports other graphics APIs, 
-            they will have the same drawFrame function and will define their own render data structs
-        -------------------------------------------------------------------------------------------------*/
+        // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(RenderContext& pRenderData);
 
-        // Kills the renderer and cleans up allocated handles and resources
+        // Kills the renderer and cleans up allocated handles and resources. Implemented on vulkanInit.cpp
         void Shutdown();
 
     private:
@@ -141,9 +137,13 @@ namespace BlitzenVulkan
 
         void VarBuffersInit();
 
+        void CreateDescriptorLayouts();
+
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectOffsets>& indirectDraws);
+
+        void SetupMainGraphicsPipeline();
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -183,19 +183,35 @@ namespace BlitzenVulkan
 
         StaticBuffers m_currentStaticBuffers;
 
-        // Structures needed to pass the global shader data
-        VkDescriptorSetLayout m_globalShaderDataLayout;
-        GlobalShaderData m_globalShaderData;
+        /*
+            Descriptor set layout for uniform buffers used by multiple shaders. 
+            This includes general data, buffer addresses, culling data etc.
+            Use pushes descriptors.
+            #binding [0]: global shader data used by both compute and graphics pipelines
+            #binding [1]: buffer addresses used by both compute and graphics pipelines
+            #binding [3]: culling data used by culling compute shaders
+            #binding [4]: depth pyramid combined image sampler used by culling compute shaders for occlusion culling
+        */
+        VkDescriptorSetLayout m_pushDescriptorBufferLayout;
+        /*
+            Descriptor set layout for depth pyramid construction. 
+            Used by the depth reduce compute pipeline. 
+            Uses push descriptors
+            # binding[0]: storage image for output image
+            # binding[1]: combined image sampler for input image
+        */
+        VkDescriptorSetLayout m_depthPyramidDescriptorLayout;
+
+        GlobalShaderData m_globalShaderData;// Unnecessary variable could be created in draw frame function
 
         // Pipeline used to draw opaque objects
         VkPipeline m_opaqueGraphicsPipeline;
-        VkPipelineLayout m_opaqueGraphicsPipelineLayout;// Right now this layout is also used for the culling compute pipeline but I might want to change that
+        VkPipelineLayout m_opaqueGraphicsPipelineLayout;
 
         VkPipeline m_indirectCullingComputePipeline;
 
         VkPipeline m_depthReduceComputePipeline;
         VkPipelineLayout m_depthReducePipelineLayout;
-        VkDescriptorSetLayout m_depthPyramidImageDescriptorSetLayout;
 
         VkPipeline m_lateCullingComputePipeline;// This one is for the shader that does visibility tests on objects that were rejected last frame
         VkPipelineLayout m_lateCullingPipelineLayout;

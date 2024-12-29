@@ -138,7 +138,7 @@ namespace BlitzenEngine
             vulkanData.pMeshes = m_resources.meshes;
             vulkanData.meshCount = m_resources.currentMeshIndex;
 
-            pVulkan.Data()->UploadDataToGPUAndSetupForRendering(vulkanData);
+            pVulkan.Data()->SetupForRendering(vulkanData);
         }// Vulkan renderer ready
         #endif
 
