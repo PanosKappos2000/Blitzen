@@ -18,7 +18,7 @@
 #define BLITZEN_WINDOW_STARTING_Y       100
 #define BLITZEN_WINDOW_WIDTH            1280
 #define BLITZEN_WINDOW_HEIGHT           768
-#define BLITZEN_ZNEAR                   1.f
+#define BLITZEN_ZNEAR                   0.01f
 
 namespace BlitzenEngine
 {
@@ -64,10 +64,14 @@ namespace BlitzenEngine
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionMatrix;
         BlitML::mat4 projectionViewMatrix;
+        // Needed for frustum culling (probably does not need to be managed by the camera)
         BlitML::mat4 projectionTranspose;
 
         BlitML::vec3 position;
-        BlitML::quat orientaion;
+        // These 2 should be enough to keep track of rotation 
+        //(A quat and rotation matrix will be created on the fly, to contribute to the final view matrix)
+        float yawRotation = 0.f;
+        float pitchRotation = 0.f;
 
         BlitML::vec3 velocity = BlitML::vec3(0.f);
     };
@@ -103,6 +107,7 @@ namespace BlitzenEngine
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 
         inline Camera& GetCamera() { return m_camera; }
+        inline double GetDeltaTime() { return m_deltaTime; }
 
     private:
 
@@ -123,6 +128,7 @@ namespace BlitzenEngine
         PlatformStateData m_platformData;
 
         Clock m_clock;
+        double m_deltaTime;// The clock helps the engine keep track of the delta time
 
         ActiveRenderer m_renderer;
 

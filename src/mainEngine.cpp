@@ -106,13 +106,6 @@ namespace BlitzenEngine
         m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
 
         // The transpose of the projection matrix will be used for frustum culling
-        /*glm::mat4 projectionTranspose = glm::transpose(glm::mat4(m_camera.projectionMatrix[0], m_camera.projectionMatrix[1], 
-        m_camera.projectionMatrix[2], m_camera.projectionMatrix[3], m_camera.projectionMatrix[4], m_camera.projectionMatrix[5], 
-        m_camera.projectionMatrix[6], m_camera.projectionMatrix[7], m_camera.projectionMatrix[8], m_camera.projectionMatrix[9], 
-        m_camera.projectionMatrix[10], m_camera.projectionMatrix[11], m_camera.projectionMatrix[12], m_camera.projectionMatrix[13], 
-        m_camera.projectionMatrix[14], m_camera.projectionMatrix[15])); Keeping this her in case my math library is porven inadequate*/
-
-        // The transpose of the projection matrix will be used for frustum culling
         m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
 
         // Loads textures that were requested
@@ -159,10 +152,10 @@ namespace BlitzenEngine
             {
                 // Update the clock and deltaTime
                 m_clock.elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clock.startTime;
-                double deltaTime = m_clock.elapsedTime - previousTime;
+                m_deltaTime = m_clock.elapsedTime - previousTime;
                 previousTime = m_clock.elapsedTime;
 
-                UpdateCamera(m_camera, (float)deltaTime);
+                UpdateCamera(m_camera, (float)m_deltaTime);
 
 
                 // Setting up draw frame for active renderer and calling it
@@ -212,7 +205,7 @@ namespace BlitzenEngine
                 // Make sure that the window resize is set to false after the renderer is notified
                 m_platformData.windowResize = 0;
 
-                BlitzenCore::UpdateInput(deltaTime);
+                BlitzenCore::UpdateInput(m_deltaTime);
             }
         }
         // Main loop ends
@@ -295,12 +288,20 @@ namespace BlitzenEngine
     {
         if (camera.cameraDirty)
         {
+            BlitML::vec3 xAxis(1.f, 0.f, 0.f);
+            BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
+
+            BlitML::vec3 yAxis(0.f, -1.f, 0.f);
+            BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
+
+            BlitML::mat4 rotation;
+            rotation = BlitML::QuatToMat4(yawOrientation) * BlitML::QuatToMat4(pitchOrientation);
+
             // I haven't overloaded the += operator
-            camera.position = camera.position + camera.velocity * deltaTime * 40.f; 
+            camera.position = camera.position + BlitML::ToVec3(rotation * BlitML::vec4(camera.velocity * deltaTime * 40.f)); 
+            BlitML::mat4 translation = BlitML::Translate(camera.position);
 
-            BlitML::mat4 translation = BlitML::Mat4Inverse(BlitML::Translate(camera.position));
-
-            camera.viewMatrix = translation; // Normally, I would also add rotation here but the math library has a few problems at the moment
+            camera.viewMatrix = BlitML::Mat4Inverse(translation * rotation); // Normally, I would also add rotation here but the math library has a few problems at the moment
             camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
         }
     }
@@ -467,6 +468,14 @@ namespace BlitzenEngine
     uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
     {
         Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+        float deltaTime = static_cast<float>(Engine::GetEngineInstancePointer()->GetDeltaTime());
+
+        if(data.data.si16[1] < 100.f && data.data.si16[1] > -100.f)
+            camera.pitchRotation -= data.data.si16[1] * 10.f * deltaTime / 100.f;
+        if(data.data.si16[0] < 100.f && data.data.si16[0] > -100.f)
+            camera.yawRotation += data.data.si16[0] * 10.f * deltaTime / 100.f;
+
+        camera.cameraDirty = 1;
 
         return 1;
     }

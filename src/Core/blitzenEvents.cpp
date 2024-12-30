@@ -150,7 +150,7 @@ namespace BlitzenCore
         // TODO: Add shutdown routines when needed.
     }
 
-    void UpdateInput(double delta_time) 
+    void UpdateInput(double deltaTime) 
     {
         // Copy current states to previous states
         BlitzenCore::BlitMemCopy(&s_pInputState->previousKeyboard, &s_pInputState->currentKeyboard, sizeof(KeyboardState));

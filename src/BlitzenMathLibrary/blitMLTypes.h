@@ -139,7 +139,6 @@ namespace BlitML
         }
     };
 
-    // Still doesn't work
     inline mat4 operator * (mat4& mat1, mat4& mat2) 
     {
         mat4 res;
@@ -149,6 +148,17 @@ namespace BlitML
                 res[j + i * 4] = mat1[0 + j] * mat2[0 + i * 4] + mat1[4 + j] * mat2[1 + i * 4] + mat1[8 + j] * mat2[2 + i * 4] + mat1[12 + j] * mat2[3 + i * 4];
             }
         }
+        return res;
+    }
+
+    inline vec4 operator * (mat4& mat, vec4& vec)
+    {
+        vec4 res;
+        res.x = mat[0] * vec.x + vec.y * mat[4] + vec.z * mat[8] + vec.w * mat[12];
+        res.y = mat[1] * vec.x + vec.y * mat[5] + vec.z * mat[9] + vec.w * mat[13];
+        res.z = mat[2] * vec.x + vec.y * mat[6] + vec.z * mat[10] + vec.w * mat[14];
+        res.w = mat[3] * vec.x + vec.y * mat[7] + vec.z * mat[11] + vec.w * mat[15];
+
         return res;
     }
 

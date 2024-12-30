@@ -8,7 +8,7 @@
 #include "objparser.h"// Using some help from Arseny Kapoulkine
 #include "Meshoptimizer/meshoptimizer.h"
 
-// Right now I don't know if I should rely on this or my own math library
+// My math library seems to be fine now but I am keeping this to compare values when needed
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>

@@ -265,7 +265,7 @@ namespace BlitzenVulkan
 
         // Depth buffer for reverse z
         VkPipelineDepthStencilStateCreateInfo depthState{};
-        SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
+        SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
         nullptr, nullptr);
         pipelineInfo.pDepthStencilState = &depthState;
 

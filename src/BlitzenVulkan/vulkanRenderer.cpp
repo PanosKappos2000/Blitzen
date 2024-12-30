@@ -476,7 +476,7 @@ namespace BlitzenVulkan
         cullingData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
         cullingData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
         cullingData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
-        cullingData.frustumData[5] = BlitML::vec4(0, 0, -1, 300/* Draw distance */);// I need to multiply this with view or projection view
+        cullingData.frustumData[5] = BlitML::vec4(0, 0, -1, 300/* Draw distance */);
 
         // Culling data for occlusion culling
         cullingData.proj0 = context.projectionMatrix[0];
