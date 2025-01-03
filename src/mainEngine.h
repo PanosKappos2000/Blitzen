@@ -12,6 +12,7 @@
 
 // Should graphics API implementation be loaded
 #define BLITZEN_VULKAN                  1
+#define BLITZEN_DIRECTX12               0
 
 // Window macros
 #define BLITZEN_WINDOW_STARTING_X       100
@@ -19,6 +20,8 @@
 #define BLITZEN_WINDOW_WIDTH            1280
 #define BLITZEN_WINDOW_HEIGHT           768
 #define BLITZEN_ZNEAR                   0.01f
+#define BLITZEN_FOV                     BlitML::Radians(70.f)
+#define BLITZEN_DRAW_DISTANCE           300.f// TODO: I should start passing this to the renderer
 
 namespace BlitzenEngine
 {
@@ -52,6 +55,10 @@ namespace BlitzenEngine
         #if BLITZEN_VULKAN
             uint8_t vulkan = 0;
         #endif
+
+        #if BLITZEN_DIRECTX12
+            uint8_t directx12 = 0;
+        #endif
     };
 
     // Temporary camera struct, this will have its own file and will be a robust system
@@ -79,8 +86,9 @@ namespace BlitzenEngine
     enum class ActiveRenderer : uint8_t
     {
         Vulkan = 0,
+        Directx12 = 1,
 
-        MaxRenderers = 1
+        MaxRenderers = 2
     };
 
     class Engine

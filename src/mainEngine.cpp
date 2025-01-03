@@ -1,4 +1,4 @@
-// This file contains the main funciton at the bottom
+// This file contains the main function at the bottom
  
 #include "BlitzenVulkan/vulkanRenderer.h"
 
@@ -17,7 +17,7 @@ namespace BlitzenEngine
         BlitzenVulkan::VulkanRenderer* pVulkan = nullptr;
     };
 
-    // Static member variable needs to be declared
+    // Static member variable needs to be declared in the .cpp file as well
     Engine* Engine::pEngineInstance;
 
     Engine::Engine()
@@ -29,38 +29,33 @@ namespace BlitzenEngine
             return;
         }
 
-        // Initialize the engine if no other instance seems to exist
+        // Initialize the engine if it is the first time the constructor is called
         else
         {
-            // The instance is the first thing that gets initalized
+            // Initalize the instance and the system boolean to avoid creating or destroying a 2nd instance
             pEngineInstance = this;
             m_systems.engine = 1;
             BLIT_INFO("%s Booting", BLITZEN_VERSION)
 
-            if(BlitzenCore::InitLogging())
-                BLIT_DBLOG("Test Logging")
-            else
-                BLIT_ERROR("Logging is not active")
+            BLIT_ASSERT(BlitzenCore::InitLogging())// This function does nothing at them moment and always returns 1
 
-            // Engine owns the event system
             if(BlitzenCore::EventsInit())
             {
                 BLIT_INFO("Event system active")
-                BlitzenCore::InputInit(&m_systems.inputState);
+                BlitzenCore::InputInit(&m_systems.inputState);// Activate the input system if the event system was succesfully created
             }
             else
                 BLIT_FATAL("Event system initialization failed!")
 
-            if(!BlitzenEngine::LoadResourceSystem(m_resources))
-            {
-                BLIT_FATAL("Resource system initalization failed")
-            }
+            // This always returns 1 at the moment (I don't know if this would ever fail in the future to be honest)
+            BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadResourceSystem(m_resources), "Failed to acquire resourece system")
+            
 
-            // Assert if platform specific code is initialized, the engine cannot continue without it
+            // Platform specific code initalization. Mostly window(not Windows) related things
             BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
             BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
 
-            // Register some default events, like window closing on escape
+            // Register some default events, like window closing on escape and default inputs for camera and debugging
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, OnEvent);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyPressed, nullptr, OnKeyPress);
             BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
@@ -78,71 +73,99 @@ namespace BlitzenEngine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     void Engine::Run()
     {
+        // Allocate memory for the vulkan renderer, if Vulkan is used (The application does not support anything else anyway)
         #if BLITZEN_VULKAN
             BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
         #endif
-        {
-            uint8_t hasRenderer = 0;
 
-            #if BLITZEN_VULKAN
-                if(pVulkan.Data())
-                {
-                    m_systems.vulkan = pVulkan.Data()->Init(m_platformData.windowWidth, m_platformData.windowHeight);
-                    hasRenderer = m_systems.vulkan;
-                    m_renderer = ActiveRenderer::Vulkan;
-                }
-            #endif
+        // The idea with this is that if Blitzen supported more than one graphics API, it would try to initialize every renderer that was requested
+        // If no renderer initalization function returned 1, than the engine would fail the assertion
+        uint8_t hasRenderer = 0;
 
-            BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
-        }
+        #if BLITZEN_VULKAN
+            if(pVulkan.Data())
+            {
+                // Call the init function and store the result in the systems boolean for Vulkan
+                m_systems.vulkan = pVulkan.Data()->Init(m_platformData.windowWidth, m_platformData.windowHeight);
+                hasRenderer = m_systems.vulkan;
 
+                // Tell Blitzen to use Vulkan for rendering
+                m_renderer = ActiveRenderer::Vulkan;
+            }
+        #endif
+
+        // Directx12 is here for testing purposes, there's no directx12 backend
+        #if BLITZEN_DIRECTX12
+            m_systems.directx12 = 1;
+            hasRenderer = m_systems.directx12;
+            m_renderer = ActiveRenderer::Directx12;
+        #endif
+
+        // Test if any renderer was initialized
+        BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
+        
+        // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
         isRunning = 1;
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
-        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR);
-        BlitML::vec3 initialCameraPosition(0.f, 0.f, 0.f);
-        m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
-        m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
+        // Camera and view frustum matrix values
+        {
+            // Initalize the projection matrix
+            m_camera.projectionMatrix = 
+            BlitML::InfiniteZPerspective(BLITZEN_FOV, 
+            static_cast<float>(m_platformData.windowWidth) / static_cast<float>(m_platformData.windowHeight), 
+            BLITZEN_ZNEAR);
+            // Give an initial position for the camera and pass it to the view matrix
+            BlitML::vec3 initialCameraPosition(50.f, 0.f, 0.f);// Hardcoded, may want to create a macro for this
+            m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
+            // This is calculated here so that the shaders don't need to calculate this for every invocation
+            m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
 
-        // The transpose of the projection matrix will be used for frustum culling
-        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
+            // The transpose of the projection matrix will be used for frustum culling
+            m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
+        }
 
-        // Loads textures that were requested
+        // Loads the textures, materials and meshes that need to be loaded automatically 
+        // The logic around this should be different, this is just test code currently
         LoadTextures();
         LoadMaterials();
         LoadDefaultData(m_resources);
 
-
-
-        /*----------------------------------
-            Setup for Vulkan rendering
-        ------------------------------------*/
-
-        uint32_t drawCount = 1'000'000;
+        uint32_t drawCount = 1'000'000;// Hardcoded but the code around meshes is in test mode anyway
+        //(going over ~1'000'000 render objects causes validation errors)
         #if BLITZEN_VULKAN
         {
-            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);
+            // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
+            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);/* The contructor
+            is needed for values that are references instead of pointers */
+
             vulkanData.pTextures = m_resources.textures;
-            // The index where the resource system stopped when loading is the amount of mesh assets that were added to the array
-            vulkanData.textureCount = m_resources.currentTextureIndex;
+            vulkanData.textureCount = m_resources.currentTextureIndex;// Current texture index is equal to the size of the array of textures
+
             vulkanData.pMaterials = m_resources.materials;
-            vulkanData.materialCount = m_resources.currentMaterialIndex;
+            vulkanData.materialCount = m_resources.currentMaterialIndex;// Current material index is equal to the size of the material array
+
             vulkanData.pMeshes = m_resources.meshes;
-            vulkanData.meshCount = m_resources.currentMeshIndex;
+            vulkanData.meshCount = m_resources.currentMeshIndex;// Current mesh index is equal to the size of the mesh array
+
+            // Draw count will be used to determine the size of draw and object buffers
+            vulkanData.drawCount = drawCount;
 
             pVulkan.Data()->SetupForRendering(vulkanData);
-        }// Vulkan renderer ready
+        }
         #endif
 
-        BlitzenVulkan::RenderContext renderContext;// Declared here so that it can be used to debug frustum culling
+        // This is passed to the renderer every frame after updating the data
+        // Passed here for debug purposes
+        BlitzenVulkan::RenderContext renderContext;
 
-        // Should be called right before the main loop starts
-        StartClock();
-        double previousTime = m_clock.elapsedTime;
+        StartClock();// Start the clock
+        double previousTime = m_clock.elapsedTime;// Initialize previous frame time to the elapsed time
+
         // Main Loop starts
         while(isRunning)
         {
+            // Always returns 1 (not sure if I want messages to stop the application ever)
             if(!BlitzenPlatform::PlatformPumpMessages())
             {
                 isRunning = 0;
@@ -150,46 +173,63 @@ namespace BlitzenEngine
 
             if(!isSupended)
             {
-                // Update the clock and deltaTime
+                // Get the elapsed time of the application
                 m_clock.elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clock.startTime;
+                // Update the delta time by using the previous elapsed time
                 m_deltaTime = m_clock.elapsedTime - previousTime;
+                // Update the previous elapsed time to the current elapsed time
                 previousTime = m_clock.elapsedTime;
 
+                // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
                 UpdateCamera(m_camera, (float)m_deltaTime);
 
-
-                // Setting up draw frame for active renderer and calling it
                 switch(m_renderer)
                 {
                     #if BLITZEN_VULKAN
                     case ActiveRenderer::Vulkan:
                     {
-                        if(m_systems.vulkan)
-                        {
-                            renderContext.windowResize = m_platformData.windowResize;
-                            renderContext.windowWidth = m_platformData.windowWidth;
-                            renderContext.windowHeight = m_platformData.windowHeight;
+                        // In the case that the window was resized, these are passed so that the swapchain can be recreated
+                        renderContext.windowResize = m_platformData.windowResize;
+                        renderContext.windowWidth = m_platformData.windowWidth;
+                        renderContext.windowHeight = m_platformData.windowHeight;
 
-                            renderContext.projectionMatrix = m_camera.projectionMatrix;
-                            if (!m_camera.freezeFrustum)
-                                renderContext.viewMatrix = m_camera.viewMatrix;
-                            renderContext.projectionView = m_camera.projectionViewMatrix;
-                            renderContext.viewPosition = m_camera.position;
-                            renderContext.projectionTranspose = m_camera.projectionTranspose;
-                            renderContext.zNear = BLITZEN_ZNEAR;
+                        // Pass the projection matrix to be used for culling
+                        renderContext.projectionMatrix = m_camera.projectionMatrix;
+                        // Pass the view matrix to promote bounding spheres to view coordinates
+                        // If the freeze frustum global is set to true, this does not get updated, effectively freezing the view frustum
+                        // This will not work if the view matrix is used for anything other than view frustum collisions
+                        if (!m_camera.freezeFrustum)
+                            renderContext.viewMatrix = m_camera.viewMatrix;
+                        // The projection view is the precalculated result of projection * view
+                        // Calculated on the CPU to avoid doing it every vertex/mesh shader invocation
+                        renderContext.projectionView = m_camera.projectionViewMatrix;
+                        renderContext.viewPosition = m_camera.position;
+                        // The transpose of the projection matrix will be used to derive the frustum planes
+                        renderContext.projectionTranspose = m_camera.projectionTranspose;
+                        renderContext.zNear = BLITZEN_ZNEAR;
 
-                            renderContext.drawCount = drawCount;
+                        // The draw count is passed again every frame even thought is is constant at the moment
+                        renderContext.drawCount = drawCount;
 
-                            renderContext.debugPyramid = gDebugPyramid;// Temporary debug code for debug pyramid
-                            renderContext.occlusionEnabled = gOcclusion;
-                            renderContext.lodEnabled = gLod;
+                        // Debug values, controlled by inputs
+                        renderContext.debugPyramid = gDebugPyramid;// This does nothing now, something is broken with occlusion culling / debug pyramid
+                        renderContext.occlusionEnabled = gOcclusion; // f3 to change
+                        renderContext.lodEnabled = gLod;// f4 to change
 
-                            // Hardcoding the sun for now
-                            renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
-                            renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+                        // Hardcoding the sun for now (this is used in the fragment shader but ignored)
+                        renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
+                        renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
 
-                            pVulkan.Data()->DrawFrame(renderContext);
-                        }
+                        // Let the renderere do its thing
+                        pVulkan.Data()->DrawFrame(renderContext);
+
+                        break;
+                    }
+                    #endif
+                    #if BLITZEN_DIRECTX12
+                    case ActiveRenderer::Directx12:
+                    {
+                        BLIT_INFO("Direct 3D not setup, switch to Vulkan")
                         break;
                     }
                     #endif
@@ -198,9 +238,6 @@ namespace BlitzenEngine
                         break;
                     }
                 }
-
-
-
 
                 // Make sure that the window resize is set to false after the renderer is notified
                 m_platformData.windowResize = 0;

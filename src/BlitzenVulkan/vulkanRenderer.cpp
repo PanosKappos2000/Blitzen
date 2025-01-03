@@ -120,6 +120,8 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::SetupForRendering(GPUData& gpuData)
     {
+        BLIT_ASSERT_MESSAGE(gpuData.drawCount, "Nothing to draw")
+
         VarBuffersInit();
 
         // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
@@ -160,14 +162,14 @@ namespace BlitzenVulkan
 
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
-        BlitCL::DynamicArray<StaticRenderObject> renderObjects(1'000'000);
-        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(1'000'000);
+        BlitCL::DynamicArray<StaticRenderObject> renderObjects(gpuData.drawCount);
+        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(gpuData.drawCount);
         /*  
             This is temporary hardcoded loading of multiple objects for testing.
             Normally, everything below would be given by a game object defined outside the renderer 
         */
         {
-            for(size_t i = 0; i < 900'000; ++i)
+            for(size_t i = 0; i < gpuData.drawCount - 100'000; ++i)
             {
                 BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
                 IndirectOffsets& currentIDraw = indirectDraws[i];
@@ -175,7 +177,7 @@ namespace BlitzenVulkan
 
                 currentObject.materialTag = currentSurface.pMaterial->materialTag;
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 150 - 50,//y
+                (float(rand()) / RAND_MAX) * 250 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 currentObject.pos = translation;
                 currentObject.scale = 5.f;
@@ -199,7 +201,7 @@ namespace BlitzenVulkan
                 currentIDraw.taskCount = currentSurface.meshletCount;
             }
 
-            for (size_t i = 900'000; i < 1'000'000; ++i)
+            for (size_t i = gpuData.drawCount - 100'000; i < gpuData.drawCount; ++i)
             {
                 BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
                 IndirectOffsets& currentIDraw = indirectDraws[i];
@@ -207,7 +209,7 @@ namespace BlitzenVulkan
 
                 currentObject.materialTag = currentSurface.pMaterial->materialTag;
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 150 - 50,//y
+                (float(rand()) / RAND_MAX) * 250 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 currentObject.pos = translation;
                 currentObject.scale = 1.f;
@@ -776,10 +778,10 @@ namespace BlitzenVulkan
         {
             VkRenderingAttachmentInfo colorAttachment{};
             CreateRenderingAttachmentInfo(colorAttachment, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
             VkRenderingAttachmentInfo depthAttachment{};
             CreateRenderingAttachmentInfo(depthAttachment, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
-            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
             BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachment, &depthAttachment, nullptr);
         }
 

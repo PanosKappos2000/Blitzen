@@ -34,13 +34,12 @@
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
-#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 /* This is used for double(+) buffering, I activated it back, 
-but I should probably create a second indirect buffer because of it */
+#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0// Mesh shader implementation is pretty terrible at the moment 
+#define BLITZEN_VULKAN_MESH_SHADER              0// This is completely broken at the moment, keep it off 
 
-#define BLITZEN_VULKAN_MAX_DRAW_CALLS           100000 // I am ignoring this right now and I shouldn't be
+#define BLITZEN_VULKAN_MAX_DRAW_CALLS           1'000'000 // I am ignoring this right now and I shouldn't be
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
@@ -55,12 +54,16 @@ namespace BlitzenVulkan
     // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
     struct alignas (16) StaticRenderObject
     {
+        // transform data
         BlitML::vec3 pos;
         float scale;
         BlitML::quat orientation;
+
+        // Bounding sphere
         BlitML::vec3 center;
 	    float radius;
 
+        // Index into the material buffer
         uint32_t materialTag;
     };
 
@@ -99,6 +102,8 @@ namespace BlitzenVulkan
 
         BlitzenEngine::MaterialStats* pMaterials;
         size_t materialCount;
+
+        size_t drawCount = 0;
 
         inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<BlitML::Meshlet>& m)
             :vertices(v), indices(i), meshlets(m)
