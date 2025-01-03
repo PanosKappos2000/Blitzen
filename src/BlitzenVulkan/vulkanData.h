@@ -52,7 +52,7 @@ namespace BlitzenVulkan
         uint8_t meshShaderSupport = 0;
     };
 
-    struct alignas (16) RenderObject
+    struct RenderObject
     {
         uint32_t meshInstanceId;
 

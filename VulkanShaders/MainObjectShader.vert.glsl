@@ -20,14 +20,13 @@ void main()
     // Access the current object data
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[bufferAddrs.finalIndirectBuffer.indirectDraws[gl_DrawIDARB].objectId];
     MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
-    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
 
     vec4 modelPosition = vec4(RotateQuat(currentVertex.position, currentInstance.orientation) * currentInstance.scale + currentInstance.pos, 1.0);
     gl_Position = shaderData.projectionView * modelPosition;
 
     outUv = vec2(float(currentVertex.uvX), float(currentVertex.uvY));
 
-    outMaterialTag = currentSurface.materialTag;
+    outMaterialTag = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId].materialTag;
     
     outNormal =  currentVertex.normal;
 

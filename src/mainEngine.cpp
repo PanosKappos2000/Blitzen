@@ -131,7 +131,7 @@ namespace BlitzenEngine
         LoadMaterials();
         LoadDefaultData(m_resources);
 
-        uint32_t drawCount = 4'000'000;// Hardcoded but the code around meshes is in test mode anyway
+        uint32_t drawCount = 2'000'000;// Hardcoded but the code around meshes is in test mode anyway
         #if BLITZEN_VULKAN
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers

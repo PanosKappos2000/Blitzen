@@ -149,7 +149,7 @@ namespace BlitzenVulkan
         CreateTextureSampler(m_device, m_placeholderSampler);
 
         size_t objectId = 0;
-        gpuData.gameObjects.Resize(gpuData.drawCount);// This is temporary for testing. Game object will not be created in the renderer
+        gpuData.gameObjects.Resize(gpuData.drawCount);// This is temporary for testing. Game objects will not be created in the renderer
         BlitCL::DynamicArray<RenderObject> renderObjects(gpuData.drawCount);
         BlitCL::DynamicArray<MeshInstance> instances(gpuData.gameObjects.GetSize());
         {
@@ -160,7 +160,7 @@ namespace BlitzenVulkan
 
                 // Loading random position and scale. Normally you would get this from the game object
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 250 - 50,//y
+                (float(rand()) / RAND_MAX) * 1000 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 instance.pos = translation;
                 instance.scale = 5.f;
@@ -173,19 +173,19 @@ namespace BlitzenVulkan
                 BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
                 instance.orientation = orientation;
 
-                BlitzenEngine::GameObject& currentObject = gpuData.gameObjects[i];
                 // Normally every game object would have an index to the mesh that it is using. For now, the bunny mesh is loaded manually
                 BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/1];
 
                 for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
                 {
-                    RenderObject& currentRo = renderObjects[objectId];
+                    RenderObject& currentObject = renderObjects[objectId];
 
-                    currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;/* Every surface holds its own Id, 
+                    //currentObject.surfaceId = currentMesh.surfaces[j].surfaceId;
+                    /* Every surface holds its own Id, 
                     unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
                     For now I will hard code it*/
-                    currentRo.surfaceId = 1;
-                    currentRo.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
+                    currentObject.surfaceId = 1;
+                    currentObject.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
 
                     objectId++;
                 }
@@ -198,7 +198,7 @@ namespace BlitzenVulkan
 
                 // Loading random position and scale. Normally you would get this from the game object
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 250 - 50,//y
+                (float(rand()) / RAND_MAX) * 1000 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
                 instance.pos = translation;
                 instance.scale = 1.f;
@@ -211,19 +211,19 @@ namespace BlitzenVulkan
                 BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
                 instance.orientation = orientation;
 
-                BlitzenEngine::GameObject& currentObject = gpuData.gameObjects[i];
                 // Normally every game object would have an index to the mesh that it is using. For now, the kitten mesh is loaded manually
                 BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/0];
 
                 for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
                 {
-                    RenderObject& currentRo = renderObjects[objectId];
+                    RenderObject& currentObject = renderObjects[objectId];
 
-                    currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;/* Every surface holds its own Id, 
+                    //currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;
+                    /* Every surface holds its own Id, 
                     unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
                     For now I will hard code it*/
-                    currentRo.surfaceId = 1;
-                    currentRo.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
+                    currentObject.surfaceId = 0;
+                    currentObject.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
 
                     objectId++;
                 }
@@ -232,7 +232,7 @@ namespace BlitzenVulkan
 
         // Pass each surface from each mesh to a separate array. This should be done earlier by having each mesh index into its surfaces
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
-        surfaces.Reserve(gpuData.meshCount * 10);// reserve some space to avoid to many reallocations
+        surfaces.Reserve(gpuData.meshCount * 10);// reserve some space too avoid too many reallocations
         size_t surfaceIndex = 0;
         for(size_t i = 0; i < gpuData.meshCount; ++i)
         {
