@@ -7,6 +7,8 @@ It manages to do so by performing frustum culling, using LODs and (to a less sig
 Frustum culling and LODs are crucial for performance. Switching any of them off tanks performance significantly.
 Occlusion culling is not as functional and gives very little gain. Because of this I have to cheat and allow frustum culling to have very low draw distance, reducing objects on the z axis.
 
+*It has now been tested with even 4'000'000 objects but there are memory allocation validation errors for Vulkan.
+
 The engine has a default camera than can move and rotate around the scene. It has a problem where, when the frame rate approaches 1000 fps, the rotation slows to a crawl becuase of delta time. This can be fixed with VSync.
 
 The engine has been tested on an rtx3060 for both windows and linux. 
