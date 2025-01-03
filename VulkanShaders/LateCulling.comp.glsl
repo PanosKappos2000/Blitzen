@@ -55,12 +55,14 @@ void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x;
 
-    RenderObject currentObject = bufferAddrs.renderObjects.renderObjects[objectIndex];
-    uint currentVisibility = bufferAddrs.visibilityBuffer.visibilities[objectIndex];
+    // Access the object's data
+    RenderObject currentObject = bufferAddrs.objectBuffer.objects[objectIndex];
+    MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
+    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
 
-    vec3 center = RotateQuat(currentObject.center, currentObject.orientation) * currentObject.scale  + currentObject.pos;
+    vec3 center = RotateQuat(currentSurface.center, currentInstance.orientation) * currentInstance.scale  + currentInstance.pos;
     center = (shaderData.view * vec4(center, 1)).xyz;
-    float radius = currentObject.radius * currentObject.scale;
+    float radius = currentSurface.radius * currentInstance.scale;
     bool visible = true;
     for(uint i = 0; i < 6; ++i)
     {
@@ -83,18 +85,18 @@ void main()
 		}
 	}
 
+    // Only add the object to the indirect buffer if it was invisible last frame but visible now
+    uint currentVisibility = bufferAddrs.visibilityBuffer.visibilities[objectIndex];
     if(visible && currentVisibility == 0)
     {
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
 
-        IndirectOffsets currentRead = bufferAddrs.indirectBuffer.offsets[objectIndex];
-
         // The level of detail index that should be used is derived by the distance fromt he camera
         float lodDistance = log2(max(1, (distance(center, vec3(0)) - radius)));
-	    uint lodIndex = clamp(int(lodDistance), 0, int(currentRead.lodCount) - 1);
+	    uint lodIndex = clamp(int(lodDistance), 0, int(currentSurface.lodCount) - 1);
 
-        MeshLod currentLod = cullingData.lod == 1 ? currentRead.lod[lodIndex] : currentRead.lod[0];
+        MeshLod currentLod = cullingData.lod == 1 ? currentSurface.lod[lodIndex] : currentSurface.lod[0];
 
         // The object index is needed to know which element to access in the per object data buffer
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].objectId = objectIndex;
@@ -103,7 +105,7 @@ void main()
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].indexCount = currentLod.indexCount;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].instanceCount = 1;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstIndex = currentLod.firstIndex;
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentRead.vertexOffset;
+        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentSurface.vertexOffset;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstInstance = 0;
     }
 

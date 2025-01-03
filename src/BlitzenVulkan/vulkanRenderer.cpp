@@ -148,77 +148,100 @@ namespace BlitzenVulkan
         // Texture sampler, for now all textures will use the same one
         CreateTextureSampler(m_device, m_placeholderSampler);
 
-        // This holds data that maps to one draw call for one surface 
-        // For now it will be used to render many instances of the same mesh
-        BlitCL::DynamicArray<StaticRenderObject> renderObjects(gpuData.drawCount);
-        BlitCL::DynamicArray<IndirectOffsets> indirectDraws(gpuData.drawCount);
-        /*  
-            This is temporary hardcoded loading of multiple objects for testing.
-            Normally, everything below would be given by a game object defined outside the renderer 
-        */
+        size_t objectId = 0;
+        gpuData.gameObjects.Resize(gpuData.drawCount);// This is temporary for testing. Game object will not be created in the renderer
+        BlitCL::DynamicArray<RenderObject> renderObjects(gpuData.drawCount);
+        BlitCL::DynamicArray<MeshInstance> instances(gpuData.gameObjects.GetSize());
         {
-            for(size_t i = 0; i < gpuData.drawCount - 100'000; ++i)
+            // Load multiple bunny mesh instances
+            for(size_t i = 0; i < gpuData.gameObjects.GetSize() - 100'000; ++i)
             {
-                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[1].surfaces[0];
-                IndirectOffsets& currentIDraw = indirectDraws[i];
-                StaticRenderObject& currentObject = renderObjects[i];
+                MeshInstance& instance = instances[i];
 
-                currentObject.materialTag = currentSurface.materialId;
+                // Loading random position and scale. Normally you would get this from the game object
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
                 (float(rand()) / RAND_MAX) * 250 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
-                currentObject.pos = translation;
-                currentObject.scale = 5.f;
+                instance.pos = translation;
+                instance.scale = 5.f;
 
+                // Loading random orientation. Normally you would get this from the game object
                 BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                 (float(rand()) / RAND_MAX) * 2 - 1, // y
                 (float(rand()) / RAND_MAX) * 2 - 1); // z
 		        float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
                 BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-                currentObject.orientation = orientation;
+                instance.orientation = orientation;
 
-                currentObject.center = currentSurface.center;
-                currentObject.radius = currentSurface.radius;
+                BlitzenEngine::GameObject& currentObject = gpuData.gameObjects[i];
+                // Normally every game object would have an index to the mesh that it is using. For now, the bunny mesh is loaded manually
+                BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/1];
 
-                for(size_t i = 0; i < currentSurface.lodCount; ++i)
-                    currentIDraw.lod[i] = currentSurface.meshLod[i];
-                currentIDraw.lodCount = currentSurface.lodCount;
-                currentIDraw.vertexOffset = currentSurface.vertexOffset;
+                for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
+                {
+                    RenderObject& currentRo = renderObjects[objectId];
 
-                currentIDraw.firstTask = currentSurface.firstMeshlet;
-                currentIDraw.taskCount = currentSurface.meshletCount;
+                    currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;/* Every surface holds its own Id, 
+                    unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
+                    For now I will hard code it*/
+                    currentRo.surfaceId = 1;
+                    currentRo.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
+
+                    objectId++;
+                }
             }
 
-            for (size_t i = gpuData.drawCount - 100'000; i < gpuData.drawCount; ++i)
+            // Load multiple kitten mesh instances
+            for (size_t i = gpuData.gameObjects.GetSize() - 100'000; i < gpuData.drawCount; ++i)
             {
-                BlitzenEngine::PrimitiveSurface& currentSurface = gpuData.pMeshes[0].surfaces[0];
-                IndirectOffsets& currentIDraw = indirectDraws[i];
-                StaticRenderObject& currentObject = renderObjects[i];
+                MeshInstance& instance = instances[i];
 
-                currentObject.materialTag = currentSurface.materialId;
+                // Loading random position and scale. Normally you would get this from the game object
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
                 (float(rand()) / RAND_MAX) * 250 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
-                currentObject.pos = translation;
-                currentObject.scale = 1.f;
+                instance.pos = translation;
+                instance.scale = 1.f;
 
+                // Loading random orientation. Normally you would get this from the game object
                 BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
                 (float(rand()) / RAND_MAX) * 2 - 1, // y
                 (float(rand()) / RAND_MAX) * 2 - 1); // z
 		        float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
                 BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-                currentObject.orientation = orientation;
+                instance.orientation = orientation;
 
-                currentObject.center = currentSurface.center;
-                currentObject.radius = currentSurface.radius;
+                BlitzenEngine::GameObject& currentObject = gpuData.gameObjects[i];
+                // Normally every game object would have an index to the mesh that it is using. For now, the kitten mesh is loaded manually
+                BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/0];
 
-                for(size_t i = 0; i < currentSurface.lodCount; ++i)
-                    currentIDraw.lod[i] = currentSurface.meshLod[i];
-                currentIDraw.lodCount = currentSurface.lodCount;
-                currentIDraw.vertexOffset = currentSurface.vertexOffset;
+                for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
+                {
+                    RenderObject& currentRo = renderObjects[objectId];
 
-                currentIDraw.firstTask = currentSurface.firstMeshlet;
-                currentIDraw.taskCount = currentSurface.meshletCount;
+                    currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;/* Every surface holds its own Id, 
+                    unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
+                    For now I will hard code it*/
+                    currentRo.surfaceId = 1;
+                    currentRo.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
+
+                    objectId++;
+                }
+            }
+        }
+
+        // Pass each surface from each mesh to a separate array. This should be done earlier by having each mesh index into its surfaces
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
+        surfaces.Reserve(gpuData.meshCount * 10);// reserve some space to avoid to many reallocations
+        size_t surfaceIndex = 0;
+        for(size_t i = 0; i < gpuData.meshCount; ++i)
+        {
+            BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[i];
+            surfaces.Resize(surfaces.GetSize() + currentMesh.surfaces.GetSize());
+            for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
+            {
+                surfaces[surfaceIndex] = currentMesh.surfaces[j];
+                surfaceIndex++;
             }
         }
 
@@ -234,30 +257,6 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
         }
 
-        BlitCL::DynamicArray<RenderObject> ro(gpuData.drawCount);// The draw count should be calculated by going through all game objects and adding the count of their surfaces
-        BlitCL::DynamicArray<MeshInstance> instances(gpuData.gameObjects.GetSize());
-        size_t objectId = 0;
-        for(size_t i = 0; i < gpuData.gameObjects.GetSize(); ++i)
-        {
-            MeshInstance& currentInstance = instances[i];
-            BlitzenEngine::GameObject& currentObject = gpuData.gameObjects[i];
-            BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[currentObject.meshIndex];
-
-            currentInstance.pos = currentObject.position;
-            currentInstance.orientation = currentObject.orientation;
-            currentInstance.scale = currentObject.scale;
-
-            for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
-            {
-                RenderObject& currentRo = ro[objectId];
-
-                currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;// Every surface holds its own Id
-                currentRo.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
-
-                objectId++;
-            }
-        }
-
         // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
         for(size_t i = 0; i < gpuData.materialCount; ++i)
@@ -267,7 +266,7 @@ namespace BlitzenVulkan
         }
 
         // Passes the data needed to perform bindless rendering (uploads it to storage buffers)
-        UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
+        UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, surfaces, instances);
     
         // First render pass Culling compute shader
         CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -286,8 +285,9 @@ namespace BlitzenVulkan
     }
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-    BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectOffsets>& indirectDraws)
+    BlitCL::DynamicArray<RenderObject>& renderObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
+    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
+    BlitCL::DynamicArray<MeshInstance>& meshInstances)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
@@ -304,8 +304,8 @@ namespace BlitzenVulkan
         CreateBuffer(m_allocator, m_currentStaticBuffers.globalIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, indexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
-        // The render object buffer will hold per object data for all objects in the scene
-        VkDeviceSize renderObjectBufferSize = sizeof(StaticRenderObject) * staticObjects.GetSize();
+        // The render object buffer will an index to mesh instance data and one to surface data
+        VkDeviceSize renderObjectBufferSize = sizeof(RenderObject) * renderObjects.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -324,18 +324,25 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.bufferAddresses.materialBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.globalMaterialBuffer.buffer);
 
-        // Holds all indirect commands needed for vkCmdIndirectDraw variants to draw everything in a scene
-        VkDeviceSize indirectBufferSize = sizeof(IndirectOffsets) * indirectDraws.GetSize();
-        // Aside from an indirect buffer, it is also used as a storge buffer as its data will be read and manipulated by compute shaders
-        CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | 
+        // Holds the data to draw any surface that was loaded
+        VkDeviceSize surfaceBufferSize = sizeof(BlitzenEngine::PrimitiveSurface) * surfaces.GetSize();
+        CreateBuffer(m_allocator, m_currentStaticBuffers.surfaceBuffer, 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT |VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, indirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // As explained above this buffer will be accessed by compute shaders through device address
-        m_currentStaticBuffers.bufferAddresses.indirectBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectBuffer.buffer);
+        VMA_MEMORY_USAGE_GPU_ONLY, surfaceBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // Will be accessed in compute and vertex shaders
+        m_currentStaticBuffers.bufferAddresses.surfaceBufferAddress = 
+        GetBufferAddress(m_device, m_currentStaticBuffers.surfaceBuffer.buffer);
 
-        // The same as the above but this one will be generated by the compute shader each frame after doing frustum culling and other operations
-        VkDeviceSize finalIndirectBufferSize = sizeof(IndirectDrawData) * indirectDraws.GetSize();
+        VkDeviceSize meshInstanceBufferSize = sizeof(MeshInstance) * meshInstances.GetSize();
+        CreateBuffer(m_allocator, m_currentStaticBuffers.meshInstanceBuffer, 
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, meshInstanceBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // Will be accessed in compute and vertex shaders
+        m_currentStaticBuffers.bufferAddresses.meshInstanceBufferAddress = 
+        GetBufferAddress(m_device, m_currentStaticBuffers.meshInstanceBuffer.buffer);
+
+        // This is the buffer that will take the data from the surfaces to draw every object in the scene. Filled in the culling shaders
+        VkDeviceSize finalIndirectBufferSize = sizeof(IndirectDrawData) * renderObjects.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectBufferFinal, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, finalIndirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -349,7 +356,8 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.bufferAddresses.indirectCountBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectCountBuffer.buffer);
 
-        VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * indirectDraws.GetSize();
+        // Holds a value that represents if an object was visible last frame or not. Filled by late culling shader
+        VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * renderObjects.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.drawVisibilityBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, 
         visibilityBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -357,7 +365,8 @@ namespace BlitzenVulkan
         GetBufferAddress(m_device, m_currentStaticBuffers.drawVisibilityBuffer.buffer);
 
         // This holds the combined size of all the required buffers to pass to the combined staging buffer
-        VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize;
+        VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize + 
+        meshInstanceBufferSize;
 
         VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();// Defining this here so that it does not go out of scope
         // The mesh/meshlet buffer will only be created if mesh shading is supported(checked during initalization, only if it the mesh shader macro is set to 1)
@@ -380,17 +389,19 @@ namespace BlitzenVulkan
         void* pData = stagingBuffer.allocation->GetMappedData();
         BlitzenCore::BlitMemCopy(pData, vertices.Data(), vertexBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize, indices.Data(), indexBufferSize);
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize, staticObjects.Data(), 
+        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize, renderObjects.Data(), 
         renderObjectBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize, 
         materials.Data(), materialBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 
-        indirectDraws.Data(), indirectBufferSize);
+        surfaces.Data(), surfaceBufferSize);
+        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize +
+        surfaceBufferSize, meshInstances.Data(), meshInstanceBufferSize);
 
         if(m_stats.meshShaderSupport)
         {
             BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
-            + indirectBufferSize, meshlets.Data(), meshBufferSize);
+            + surfaceBufferSize + meshInstanceBufferSize, meshlets.Data(), meshBufferSize);
         }
 
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -412,14 +423,18 @@ namespace BlitzenVulkan
         vertexBufferSize + indexBufferSize + renderObjectBufferSize, 0);
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
-        m_currentStaticBuffers.drawIndirectBuffer.buffer, indirectBufferSize, 
+        m_currentStaticBuffers.surfaceBuffer.buffer, surfaceBufferSize, 
         vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);
+
+        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer,
+        m_currentStaticBuffers.meshInstanceBuffer.buffer, meshInstanceBufferSize, 
+        vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize, 0);
 
         if(m_stats.meshShaderSupport)
         {
             CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
             m_currentStaticBuffers.globalMeshBuffer.buffer, meshBufferSize, 
-            vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + indirectBufferSize, 0);
+            vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize, 0);
         }
 
         // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
@@ -656,8 +671,9 @@ namespace BlitzenVulkan
             // Use draw indirect to draw the objects(mesh shading or vertex shader)
             if(m_stats.meshShaderSupport)
             {
-               DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+               /*DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
                offsetof(IndirectDrawData, drawIndirectTasks), static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
+               With how things have changed I can't really use the mesh shaders for the time being*/
             }
             else
             {
@@ -824,8 +840,9 @@ namespace BlitzenVulkan
             // Use draw indirect to draw the objects(mesh shading or vertex shader)
             if(m_stats.meshShaderSupport)
             {
-               DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
+               /*DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
                offsetof(IndirectDrawData, drawIndirectTasks), static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
+               With how things have changed I can't really use the mesh shaders for the time being*/
             }
             else
             {

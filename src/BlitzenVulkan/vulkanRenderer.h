@@ -66,7 +66,9 @@ namespace BlitzenVulkan
         // Array of per object data (StaticRenderObject, got to change that variable name). 1 element for every object
         AllocatedBuffer renderObjectBuffer;
 
-        AllocatedBuffer drawIndirectBuffer;
+        AllocatedBuffer surfaceBuffer;
+
+        AllocatedBuffer meshInstanceBuffer;
 
         // Holds all the command for draw indirect to draw everything on a scene
         AllocatedBuffer drawIndirectBufferFinal;
@@ -96,7 +98,9 @@ namespace BlitzenVulkan
                 vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
             #endif
 
-            vmaDestroyBuffer(allocator, drawIndirectBuffer.buffer, drawIndirectBuffer.allocation);
+            vmaDestroyBuffer(allocator, meshInstanceBuffer.buffer, meshInstanceBuffer.allocation);
+            vmaDestroyBuffer(allocator, surfaceBuffer.buffer, surfaceBuffer.allocation);
+
             vmaDestroyBuffer(allocator, drawIndirectBufferFinal.buffer, drawIndirectBufferFinal.allocation);
             vmaDestroyBuffer(allocator, drawIndirectCountBuffer.buffer, drawIndirectCountBuffer.allocation);
             vmaDestroyBuffer(allocator, drawVisibilityBuffer.buffer, drawVisibilityBuffer.allocation);
@@ -140,8 +144,9 @@ namespace BlitzenVulkan
         void CreateDescriptorLayouts();
 
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-        BlitCL::DynamicArray<StaticRenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
-        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<IndirectOffsets>& indirectDraws);
+        BlitCL::DynamicArray<RenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
+        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& indirectDraws, 
+        BlitCL::DynamicArray<MeshInstance>& meshInstances);
 
         void SetupMainGraphicsPipeline();
 

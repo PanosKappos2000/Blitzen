@@ -29,33 +29,39 @@ layout (set = 0, binding = 2) uniform CullingData
 
 void main()
 {
-    // The object index is for the current object's element in the render object and indirect offsets arrays
+    // The object index is for the current object's element in the render object
 	uint objectIndex = gl_GlobalInvocationID.x;
 
+    // The early culling shader does not test objects that were not visible last frame
     if(bufferAddrs.visibilityBuffer.visibilities[objectIndex] == 0)
         return;
 
-    RenderObject currentObject = bufferAddrs.renderObjects.renderObjects[objectIndex];
+    // Access the object's data
+    RenderObject currentObject = bufferAddrs.objectBuffer.objects[objectIndex];
+    MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
+    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
 
-    vec3 center = RotateQuat(currentObject.center, currentObject.orientation) * currentObject.scale + currentObject.pos;
+    // Promote the sphere center to view coordinates
+    vec3 center = RotateQuat(currentSurface.center, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
     center = (shaderData.view * vec4(center, 1)).xyz;
-	float radius = currentObject.radius * currentObject.scale;
+    // Scale the sphere radius
+	float radius = currentSurface.radius * currentInstance.scale;
 	bool visible = true;
+    // Check that the bounding sphere is inside the view frustum(frustum culling)
 	for (int i = 0; i < 6; ++i)
 		visible = visible && dot(cullingData.frustumPlanes[i], vec4(center, 1)) > -radius;
     
+    // Add the object to the indirect buffer, only if it passed frustum culling
     if(visible)
     {
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
 
-        IndirectOffsets currentRead = bufferAddrs.indirectBuffer.offsets[objectIndex];
-
         // The level of detail index that should be used is derived by the distance fromt he camera
         float lodDistance = log2(max(1, (distance(center, vec3(0)) - radius)));
-	    uint lodIndex = clamp(int(lodDistance), 0, int(currentRead.lodCount) - 1);
+	    uint lodIndex = clamp(int(lodDistance), 0, int(currentSurface.lodCount) - 1);
 
-        MeshLod currentLod = cullingData.lod == 1 ? currentRead.lod[lodIndex] : currentRead.lod[0];
+        MeshLod currentLod = cullingData.lod == 1 ? currentSurface.lod[lodIndex] : currentSurface.lod[0];
 
         // The object index is needed to know which element to access in the per object data buffer
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].objectId = objectIndex;
@@ -64,7 +70,7 @@ void main()
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].indexCount = currentLod.indexCount;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].instanceCount = 1;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstIndex = currentLod.firstIndex;
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentRead.vertexOffset;
+        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentSurface.vertexOffset;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstInstance = 0;
     }
     

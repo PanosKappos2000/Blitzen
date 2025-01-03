@@ -14,15 +14,20 @@ layout(location = 3) out vec3 outModel;
 
 void main()
 {
+    // Access the current vertex
     Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
-    RenderObject renderObject = bufferAddrs.renderObjects.renderObjects[bufferAddrs.finalIndirectBuffer.indirectDraws[gl_DrawIDARB].objectId];
 
-    vec4 modelPosition = vec4(RotateQuat(currentVertex.position, renderObject.orientation) * renderObject.scale + renderObject.pos, 1.0);
+    // Access the current object data
+    RenderObject currentObject = bufferAddrs.objectBuffer.objects[bufferAddrs.finalIndirectBuffer.indirectDraws[gl_DrawIDARB].objectId];
+    MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
+    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
+
+    vec4 modelPosition = vec4(RotateQuat(currentVertex.position, currentInstance.orientation) * currentInstance.scale + currentInstance.pos, 1.0);
     gl_Position = shaderData.projectionView * modelPosition;
 
     outUv = vec2(float(currentVertex.uvX), float(currentVertex.uvY));
 
-    outMaterialTag = renderObject.materialTag;
+    outMaterialTag = currentSurface.materialTag;
     
     outNormal =  currentVertex.normal;
 

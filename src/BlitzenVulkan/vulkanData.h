@@ -52,23 +52,6 @@ namespace BlitzenVulkan
         uint8_t meshShaderSupport = 0;
     };
 
-    // Holds the data of a static object. Will be passed to the shaders only once during loading and will be indexed in the shaders
-    struct alignas (16) StaticRenderObject
-    {
-        // transform data
-        BlitML::vec3 pos;
-        float scale;
-        BlitML::quat orientation;
-        // The above should be replaced with uint32_t meshInstanceIndex
-
-        // Bounding sphere
-        BlitML::vec3 center;
-	    float radius;
-
-        // Index into the material buffer
-        uint32_t materialTag;
-    };
-
     struct alignas (16) RenderObject
     {
         uint32_t meshInstanceId;
@@ -77,8 +60,7 @@ namespace BlitzenVulkan
     };
 
     // This will be passed to the shaders and indexed into everytime an instance of this surface appears
-    // The one from resourceLoading.h will be used since it's an exact copy of this
-    struct SurfaceData
+    struct alignas(16) SurfaceData
     {
         BlitzenEngine::MeshLod meshLod[BLIT_MAX_MESH_LOD];
         uint32_t lodCount = 0;
@@ -100,22 +82,11 @@ namespace BlitzenVulkan
     };
 
     // There might be multiple instances of a mesh with different transforms, so this data should be different for each instance
-    struct MeshInstance
+    struct alignas(16) MeshInstance
     {
         BlitML::vec3 pos;
         float scale;
         BlitML::quat orientation;
-    };
-
-    struct alignas(16) IndirectOffsets
-    {
-        BlitzenEngine::MeshLod lod[8];
-        uint32_t lodCount;
-
-        uint32_t vertexOffset;
-
-        uint32_t taskCount;
-        uint32_t firstTask;
     };
 
     struct alignas(16) IndirectDrawData
@@ -214,10 +185,16 @@ namespace BlitzenVulkan
     struct alignas(16) BufferDeviceAddresses
     {
         VkDeviceAddress vertexBufferAddress;
+
         VkDeviceAddress renderObjectBufferAddress;
+
         VkDeviceAddress materialBufferAddress;
+
         VkDeviceAddress meshBufferAddress;
-        VkDeviceAddress indirectBufferAddress;
+
+        VkDeviceAddress surfaceBufferAddress;
+        VkDeviceAddress meshInstanceBufferAddress;
+
         VkDeviceAddress finalIndirectBufferAddress;
         VkDeviceAddress indirectCountBufferAddress;
         VkDeviceAddress visibilityBufferAddress;

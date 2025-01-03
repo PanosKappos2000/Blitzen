@@ -49,8 +49,7 @@ struct MeshLod
     uint firstMeshlet;
 };
 
-// The initial indirect data that is loaded to the GPU from the CPU during loading. Will be used to fill the final indirect buffer
-struct IndirectOffsets
+struct Surface
 {
     // Holds up to 8 level of detail data structs
     MeshLod lod[8];
@@ -61,8 +60,21 @@ struct IndirectOffsets
     // The vertex offset is the same for every level of details and must be passed to the indirect commands buffer based on the renderer's structure
     uint vertexOffset;
 
+    // Meshlets
     uint taskCount;
     uint firstTask;
+
+    // Bounding sphere
+    vec3 center;
+    float radius;
+
+    uint materialTag;
+    uint surfaceIndex;
+};
+
+layout(buffer_reference, std430) readonly buffer SurfaceBuffer
+{
+    Surface surfaces[];
 };
 
 // Draw indirect struct. Accessed by the vkCmdDrawIndexedIndirectCount command, but also written into by the culling compute shader
@@ -81,12 +93,6 @@ struct IndirectDraw
 
     uint taskCount;
     uint firstTask;
-};
-
-// This buffer holds the draw data for every object in the scene that might need to be drawn
-layout(buffer_reference, std430) readonly buffer IndirectBuffer
-{
-    IndirectOffsets  offsets[];
 };
 
 // The below are the same buffer but it is defined differently in the compute pipeline
@@ -116,26 +122,28 @@ layout(buffer_reference, std430) buffer VisibilityBuffer
     uint visibilities[];
 };
 
-// The render object struct hold per object data, necessary for a draw call to actually place and draw the object correctly in a scene
 struct RenderObject
 {
-    // Positions data(could be a model matrix as well but I like this)
-    vec3 pos;
-    float scale;
-    vec4 orientation;
-
-    // This data is used for boudning sphere frustum culling. It is only used by the culling compute shader. Could be placed elsewhere
-    vec3 center;
-    float radius;
-
-    // Passed to the fragment shader to access the correct texture and material data
-    uint materialTag;
+    uint meshInstanceId;// Index into the mesh instance buffer
+    uint surfaceId;// Index into the surface buffer
 };
 
 // Holds an array of the above structs for every object in the scene. Passed to the GPU during load. Accessed using the objectId in the FinalIndirect buffer
-layout(buffer_reference, std430) readonly buffer RenderObjectBuffer
+layout(buffer_reference, std430) readonly buffer ObjectBuffer
 {
-    RenderObject renderObjects[];
+    RenderObject objects[];
+};
+
+struct MeshInstance
+{
+    vec3 pos;
+    float scale;
+    vec4 orientation;
+};
+
+layout(buffer_reference, std430) readonly buffer MeshInstanceBuffer
+{
+    MeshInstance instances[];
 };
 
 // Holds data that defines the material of a surface
@@ -173,14 +181,16 @@ layout(set = 0, binding = 1) uniform BufferAddrs
 {
     // Global Vertex buffer address
     VertexBuffer vertexBuffer;
-    // Render object buffer(accessed by vertex shader)
-    RenderObjectBuffer renderObjects;
+    // Render object buffer(accessed by vertex shader and compute shaders)
+    ObjectBuffer objectBuffer;
     // Material buffer (accessed by fragment shader)
     MaterialBuffer materialBuffer;
     // meshlet buffer (accessed by mesh shader if mesh shading is active)
-    MeshBuffer meshBuffer;
+    MeshBuffer meshletBuffer;
     // Initial indirect data buffer (accessed by compute to create the final indirect buffer)
-    IndirectBuffer indirectBuffer;
+    SurfaceBuffer surfaceBuffer;
+    // Accessed by compute and vertex shader
+    MeshInstanceBuffer meshInstanceBuffer;
     // Accessed by compute, vertex shader and the cpu when command recording for vkCmdDrawIndexedIndirectCount
     FinalIndirect finalIndirectBuffer;
     // Incremented by compute and used by vkCmdDrawIndexedIndirectCount

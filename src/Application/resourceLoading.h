@@ -58,7 +58,7 @@ namespace BlitzenEngine
     };
 
     // Has information about a mesh surface that will be given to a GPU friendly struct, so that the GPU can draw each surface
-    struct PrimitiveSurface
+    struct alignas(16) PrimitiveSurface
     {
         MeshLod meshLod[BLIT_MAX_MESH_LOD];
         uint32_t lodCount = 0;
