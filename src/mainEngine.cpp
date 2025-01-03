@@ -210,6 +210,7 @@ namespace BlitzenEngine
 
                         // The draw count is passed again every frame even thought is is constant at the moment
                         renderContext.drawCount = drawCount;
+                        renderContext.drawDistance = BLITZEN_DRAW_DISTANCE;
 
                         // Debug values, controlled by inputs
                         renderContext.debugPyramid = gDebugPyramid;// This does nothing now, something is broken with occlusion culling / debug pyramid

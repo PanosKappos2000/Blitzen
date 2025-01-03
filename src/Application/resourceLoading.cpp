@@ -155,10 +155,10 @@ namespace BlitzenEngine
 
             if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
             {
-                size_t nextIndicesTarget = static_cast<size_t>(static_cast<double>(lodIndices.GetSize()) * 0.75);
+                size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
                 float nextError = 0.f;// Placeholder to fill the last parameter in the below function
                 size_t nextIndices = meshopt_simplify(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &vertices[0].position.x, 
-                vertices.GetSize(), sizeof(BlitML::Vertex), nextIndicesTarget, 1e-2f, 0, &nextError);
+                vertices.GetSize(), sizeof(BlitML::Vertex), nextIndicesTarget, 1e-1f, 0, &nextError);
                 // If the next lod size surpasses the previous than this function has failed
                 BLIT_ASSERT(nextIndices <= lodIndices.GetSize())
 

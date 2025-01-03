@@ -125,6 +125,7 @@ namespace BlitzenVulkan
         float zNear = 1.f;
 
         size_t drawCount;
+        float drawDistance;
 
         BlitML::vec3 sunlightDirection;
         BlitML::vec4 sunlightColor;

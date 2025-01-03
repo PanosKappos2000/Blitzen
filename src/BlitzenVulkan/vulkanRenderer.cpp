@@ -478,7 +478,7 @@ namespace BlitzenVulkan
         cullingData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
         cullingData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
         cullingData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
-        cullingData.frustumData[5] = BlitML::vec4(0, 0, -1, 300/* Draw distance */);
+        cullingData.frustumData[5] = BlitML::vec4(0, 0, -1, context.drawDistance);
 
         // Culling data for occlusion culling
         cullingData.proj0 = context.projectionMatrix[0];
@@ -566,7 +566,7 @@ namespace BlitzenVulkan
             vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectCullingComputePipeline);
             vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>((context.drawCount / 64) + 1), 1, 1);
 
-            // Stops the indirect stage from reading commands before the compute shader completes
+            // Stops the indirect stage from reading commands until the compute shader completes
             VkMemoryBarrier2 memoryBarrier{};
             MemoryBarrier(memoryBarrier, 
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
