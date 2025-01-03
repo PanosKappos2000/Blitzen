@@ -21,7 +21,7 @@
 #define BLITZEN_WINDOW_HEIGHT           768
 #define BLITZEN_ZNEAR                   0.01f
 #define BLITZEN_FOV                     BlitML::Radians(70.f)
-#define BLITZEN_DRAW_DISTANCE           400.f// TODO: I should start passing this to the renderer
+#define BLITZEN_DRAW_DISTANCE           600.f
 
 namespace BlitzenEngine
 {

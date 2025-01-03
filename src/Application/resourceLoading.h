@@ -60,6 +60,9 @@ namespace BlitzenEngine
     // Has information about a mesh surface that will be given to a GPU friendly struct, so that the GPU can draw each surface
     struct PrimitiveSurface
     {
+        MeshLod meshLod[BLIT_MAX_MESH_LOD];
+        uint32_t lodCount = 0;
+
         // With the way obj files are loaded, this will be needed to index into the vertex buffer
         uint32_t vertexOffset;
 
@@ -71,10 +74,9 @@ namespace BlitzenEngine
         BlitML::vec3 center;
         float radius;
 
-        uint32_t lodCount = 0;
-        MeshLod meshLod[BLIT_MAX_MESH_LOD];
+        uint32_t materialId;
 
-        MaterialStats* pMaterial;
+        uint32_t surfaceId;
     };
 
     struct MeshAssets
@@ -100,6 +102,7 @@ namespace BlitzenEngine
         // Probably should have Mesh assets here instead of surfaces
         MeshAssets meshes[BLIT_MAX_MESH_COUNT];
         size_t currentMeshIndex = 0;
+        uint32_t currentSurfaceIndex = 0;
     };
 
     uint8_t LoadResourceSystem(EngineResources& resources);

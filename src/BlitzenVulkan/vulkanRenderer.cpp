@@ -148,18 +148,6 @@ namespace BlitzenVulkan
         // Texture sampler, for now all textures will use the same one
         CreateTextureSampler(m_device, m_placeholderSampler);
 
-        // Allocating an image for each texture and telling it to use the one sampler the renderer creates (for now)
-        for(size_t i = 0; i < gpuData.textureCount; ++i)
-        {
-            
-            CreateTextureImage(reinterpret_cast<void*>(gpuData.pTextures[i].pTextureData), m_device, m_allocator, 
-            m_currentStaticBuffers.loadedTextures[i].image, 
-            {(uint32_t)gpuData.pTextures[i].textureWidth, (uint32_t)gpuData.pTextures[i].textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
-            VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
-
-            m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
-        }
-
         // This holds data that maps to one draw call for one surface 
         // For now it will be used to render many instances of the same mesh
         BlitCL::DynamicArray<StaticRenderObject> renderObjects(gpuData.drawCount);
@@ -175,7 +163,7 @@ namespace BlitzenVulkan
                 IndirectOffsets& currentIDraw = indirectDraws[i];
                 StaticRenderObject& currentObject = renderObjects[i];
 
-                currentObject.materialTag = currentSurface.pMaterial->materialTag;
+                currentObject.materialTag = currentSurface.materialId;
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
                 (float(rand()) / RAND_MAX) * 250 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
@@ -207,7 +195,7 @@ namespace BlitzenVulkan
                 IndirectOffsets& currentIDraw = indirectDraws[i];
                 StaticRenderObject& currentObject = renderObjects[i];
 
-                currentObject.materialTag = currentSurface.pMaterial->materialTag;
+                currentObject.materialTag = currentSurface.materialId;
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
                 (float(rand()) / RAND_MAX) * 250 - 50,//y
                 (float(rand()) / RAND_MAX) * 1000 - 50);//z
@@ -234,6 +222,42 @@ namespace BlitzenVulkan
             }
         }
 
+        // Allocating an image for each texture and telling it to use the one sampler the renderer creates (for now)
+        for(size_t i = 0; i < gpuData.textureCount; ++i)
+        {
+            
+            CreateTextureImage(reinterpret_cast<void*>(gpuData.pTextures[i].pTextureData), m_device, m_allocator, 
+            m_currentStaticBuffers.loadedTextures[i].image, 
+            {(uint32_t)gpuData.pTextures[i].textureWidth, (uint32_t)gpuData.pTextures[i].textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
+            VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
+
+            m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
+        }
+
+        BlitCL::DynamicArray<RenderObject> ro(gpuData.drawCount);// The draw count should be calculated by going through all game objects and adding the count of their surfaces
+        BlitCL::DynamicArray<MeshInstance> instances(gpuData.gameObjects.GetSize());
+        size_t objectId = 0;
+        for(size_t i = 0; i < gpuData.gameObjects.GetSize(); ++i)
+        {
+            MeshInstance& currentInstance = instances[i];
+            BlitzenEngine::GameObject& currentObject = gpuData.gameObjects[i];
+            BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[currentObject.meshIndex];
+
+            currentInstance.pos = currentObject.position;
+            currentInstance.orientation = currentObject.orientation;
+            currentInstance.scale = currentObject.scale;
+
+            for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
+            {
+                RenderObject& currentRo = ro[objectId];
+
+                currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;// Every surface holds its own Id
+                currentRo.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
+
+                objectId++;
+            }
+        }
+
         // Configure the material data to what is actually needed by the GPU
         BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
         for(size_t i = 0; i < gpuData.materialCount; ++i)
@@ -242,24 +266,22 @@ namespace BlitzenVulkan
             materials[i].diffuseTextureTag = gpuData.pMaterials[i].diffuseMapTag;
         }
 
-        if (m_stats.meshShaderSupport)
-            UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
-        else
-            UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
-
-
-
-
+        // Passes the data needed to perform bindless rendering (uploads it to storage buffers)
+        UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, indirectDraws);
     
+        // First render pass Culling compute shader
         CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
         m_lateCullingPipelineLayout, &m_indirectCullingComputePipeline);
         
+        // Depth pyramid generation compute shader
         CreateComputeShaderProgram(m_device, "VulkanShaders/DepthReduce.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
         m_depthReducePipelineLayout, &m_depthReduceComputePipeline);
         
+        // Later render pass culling compute shader
         CreateComputeShaderProgram(m_device, "VulkanShaders/LateCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
         m_lateCullingPipelineLayout, &m_lateCullingComputePipeline);
         
+        // Graphics pipeline setup and vertex / mesh shader and fragment shader loading
         SetupMainGraphicsPipeline();
     }
 

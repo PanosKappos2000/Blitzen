@@ -137,7 +137,7 @@ namespace BlitzenEngine
 
         PrimitiveSurface newSurface;
         newSurface.vertexOffset = static_cast<uint32_t>(resources.vertices.GetSize());
-        newSurface.pMaterial = resources.materialTable.Get("loaded_material", &resources.materials[0]);
+        newSurface.materialId = resources.materialTable.Get("loaded_material", &resources.materials[0])->materialTag;
 
         //resources.indices.AddBlockAtBack(indices.Data(), indices.GetSize());
         resources.vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());

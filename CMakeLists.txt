@@ -19,6 +19,8 @@ add_executable(BlitzenEngine
                 src/mainEngine.h
                 src/Application/resourceLoading.h
                 src/Application/resourceLoading.cpp
+
+                src/Game/blitObject.h
                 
                 src/Core/blitMemory.h
                 src/Core/blitzenMemory.cpp

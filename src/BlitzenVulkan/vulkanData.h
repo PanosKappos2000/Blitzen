@@ -8,6 +8,7 @@
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Application/resourceLoading.h"
+#include "Game/blitObject.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -39,7 +40,7 @@
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
 #define BLITZEN_VULKAN_MESH_SHADER              0// This is completely broken at the moment, keep it off 
 
-#define BLITZEN_VULKAN_MAX_DRAW_CALLS           1'000'000 // I am ignoring this right now and I shouldn't be
+#define BLITZEN_VULKAN_MAX_DRAW_CALLS           1'000'000 // I am ignoring this right now and I shouldn't be(To be fair the renderer is capable of handling more than this)
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
@@ -58,6 +59,7 @@ namespace BlitzenVulkan
         BlitML::vec3 pos;
         float scale;
         BlitML::quat orientation;
+        // The above should be replaced with uint32_t meshInstanceIndex
 
         // Bounding sphere
         BlitML::vec3 center;
@@ -65,6 +67,44 @@ namespace BlitzenVulkan
 
         // Index into the material buffer
         uint32_t materialTag;
+    };
+
+    struct alignas (16) RenderObject
+    {
+        uint32_t meshInstanceId;
+
+        uint32_t surfaceId;
+    };
+
+    // This will be passed to the shaders and indexed into everytime an instance of this surface appears
+    // The one from resourceLoading.h will be used since it's an exact copy of this
+    struct SurfaceData
+    {
+        BlitzenEngine::MeshLod meshLod[BLIT_MAX_MESH_LOD];
+        uint32_t lodCount = 0;
+
+        // With the way obj files are loaded, this will be needed to index into the vertex buffer
+        uint32_t vertexOffset;
+
+        // Data need by a mesh shader to draw a surface
+        uint32_t meshletCount = 0;
+        uint32_t firstMeshlet;
+
+        // Bounding sphere data, can be used for frustum culling and other operations
+        BlitML::vec3 center;
+        float radius;
+
+        uint32_t materialTag;
+
+        uint32_t surfaceIndex;
+    };
+
+    // There might be multiple instances of a mesh with different transforms, so this data should be different for each instance
+    struct MeshInstance
+    {
+        BlitML::vec3 pos;
+        float scale;
+        BlitML::quat orientation;
     };
 
     struct alignas(16) IndirectOffsets
@@ -93,6 +133,8 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<uint32_t>& indices;
 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets;
+
+        BlitCL::DynamicArray<BlitzenEngine::GameObject> gameObjects;// The data from this will be transformed to mesh instance and render objects
 
         BlitzenEngine::MeshAssets* pMeshes;
         size_t meshCount;
