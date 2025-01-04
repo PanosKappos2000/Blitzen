@@ -694,81 +694,77 @@ namespace BlitzenVulkan
             Create the depth pyramid before the late render pass, so that it can be used for occlusion culling
         */
         {
+            // Wait for the previous render pass to be done with the depth attachment
             VkImageMemoryBarrier2 shaderDepthBarrier{};
             ImageMemoryBarrier(m_depthAttachment.image, shaderDepthBarrier, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, 
             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
             0, VK_REMAINING_MIP_LEVELS);
 
+            // Wait for the previous frame to be done with the depth pyramid 
             VkImageMemoryBarrier2 depthPyramidFirstBarrier{};
-            ImageMemoryBarrier(m_depthPyramid.image, depthPyramidFirstBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+            ImageMemoryBarrier(m_depthPyramid.image, depthPyramidFirstBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 
             VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
 
             VkImageMemoryBarrier2 depthPyramidSetBarriers[2] = {shaderDepthBarrier, depthPyramidFirstBarrier};
-
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, depthPyramidSetBarriers);
 
+            // Bind the compute pipeline, the depth pyramid will be called for as many depth pyramid mip levels there are
             vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthReduceComputePipeline);
 
+            // Call the depth pyramid creation compute shader for every mip level in the depth pyramid
             for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
             {
+                // Pass the depth attachment image view or the previous image view of the depth pyramid as the image to be read by the shader
                 VkDescriptorImageInfo sourceImageInfo{};
-                sourceImageInfo.imageLayout = (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-                sourceImageInfo.imageView = (i == 0) ? m_depthAttachment.imageView : m_depthPyramidMips[i - 1];
-                sourceImageInfo.sampler = m_depthAttachmentSampler;
-
-                VkDescriptorImageInfo outImageInfo{};
-                outImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-                outImageInfo.imageView = m_depthPyramidMips[i];
-
                 VkWriteDescriptorSet write{};
-                WriteImageDescriptorSets(write, &sourceImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, depthPyramidImageSet, 1, 1);
+                WriteImageDescriptorSets(write, sourceImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, depthPyramidImageSet, 1, 
+                (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL, 
+                (i == 0) ? m_depthAttachment.imageView : m_depthPyramidMips[i - 1], m_depthAttachmentSampler);
 
+                // Pass the current depth pyramid image view to the shader as the output
+                VkDescriptorImageInfo outImageInfo{};
                 VkWriteDescriptorSet write2{};
-                WriteImageDescriptorSets(write2, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, depthPyramidImageSet, 1, 0);
-
+                WriteImageDescriptorSets(write2, outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, depthPyramidImageSet, 0, 
+                VK_IMAGE_LAYOUT_GENERAL, m_depthPyramidMips[i]);
                 VkWriteDescriptorSet writes[2] = {write, write2};
 
+                // Push the descriptor sets
                 PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthReducePipelineLayout, 
                 0, 2, writes);
 
+                // Calculate the extent of the current depth pyramid mip level
                 uint32_t levelWidth = BlitML::Max(1u, (m_depthPyramidExtent.width) >> i);
                 uint32_t levelHeight = BlitML::Max(1u, (m_depthPyramidExtent.height) >> i);
-
+                // Pass the extent to the push constant
                 ShaderPushConstant pushConstant;
                 pushConstant.imageSize = {static_cast<float>(levelWidth), static_cast<float>(levelHeight)};
                 vkCmdPushConstants(fTools.commandBuffer, m_depthReducePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShaderPushConstant), 
                 &pushConstant);
 
+                // Dispatch the shader
                 vkCmdDispatch(fTools.commandBuffer, levelWidth / 32 + 1, levelHeight / 32 + 1, 1);
 
+                // Wait for the shader to finish before the next loop calls it again
                 VkImageMemoryBarrier2 dispatchWriteBarrier{};
                 ImageMemoryBarrier(m_depthPyramid.image, dispatchWriteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, 
                 VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
                 PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &dispatchWriteBarrier);
             }
-
-            VkMemoryBarrier2 depthPyramidCompleteBarrier{};
-            MemoryBarrier(depthPyramidCompleteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-            | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-            PipelineBarrier(fTools.commandBuffer, 1, &depthPyramidCompleteBarrier, 0, nullptr, 0, nullptr);
         }
 
+        // The later culling compute shader needs the depth pyramid descriptor on top of everything else that the first version gets
         VkDescriptorImageInfo depthPyramidImageInfo{};
-        depthPyramidImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        depthPyramidImageInfo.imageView = m_depthPyramid.imageView;
-        depthPyramidImageInfo.sampler = m_depthAttachmentSampler;
         VkWriteDescriptorSet depthPyramidWrite{};
-        WriteImageDescriptorSets(depthPyramidWrite, &depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, globalShaderDataSet, 
-        1, 3);
+        WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, globalShaderDataSet, 
+        3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
 
         VkWriteDescriptorSet latePassGlobalShaderDataSet[4] = {globalShaderDataWrite, bufferAddressDescriptorWrite, 
         cullingDataWrite, depthPyramidWrite};
         
-        // Push the descriptor set for global shader data for the compute and graphics pipelines
+        // Pass the push descriptors to the culling pipeline and the graphics pipeline
         {
             PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_lateCullingPipelineLayout, 
             0, 4, latePassGlobalShaderDataSet);
@@ -808,6 +804,7 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
         }
 
+        // Once the compute shader is done, the depth attachment can transition to depth attachment layout
         VkImageMemoryBarrier2 depthAttachmentReadBarrier{};
         ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentReadBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
         VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
@@ -1039,6 +1036,7 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)
     {
+        // Create a new swapchain by passing an empty swapchain handle to the new swapchain argument and the old swapchain to oldSwapchain
         VkSwapchainKHR newSwapchain = VK_NULL_HANDLE;
         CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, 
         m_presentQueue, m_computeQueue, m_pCustomAllocator, newSwapchain, m_initHandles.swapchain);
@@ -1046,6 +1044,7 @@ namespace BlitzenVulkan
         // The draw extent should also be updated depending on if the swapchain got bigger or smaller
         m_drawExtent.width = std::min(windowWidth, m_drawExtent.width);
         m_drawExtent.height = std::min(windowHeight, m_drawExtent.height);
+        // TODO: Recreate the depth pyramid if the the draw extent changes
 
         // Wait for the GPU to be done with the swapchain and destroy the swapchain
         vkDeviceWaitIdle(m_device);

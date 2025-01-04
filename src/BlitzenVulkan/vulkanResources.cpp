@@ -280,6 +280,22 @@ namespace BlitzenVulkan
         write.pImageInfo = pImageInfos;
     }
 
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo, VkDescriptorType descirptorType, VkDescriptorSet dstSet, 
+    uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler /*= VK_NULL_HANDLE*/)
+    {
+        imageInfo.imageLayout = layout;
+        imageInfo.imageView = imageView;
+        imageInfo.sampler = sampler;
+
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = nullptr;
+        write.dstSet = dstSet;
+        write.dstBinding = binding;
+        write.descriptorType = descirptorType;
+        write.descriptorCount = 1; // Hardcoded, for more than one descriptor, the above function should be used
+        write.pImageInfo = &imageInfo;
+    }
+
     void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount, VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount, 
     VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount, VkImageMemoryBarrier2* pImageBarriers)
     {

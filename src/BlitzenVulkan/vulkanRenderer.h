@@ -239,10 +239,10 @@ namespace BlitzenVulkan
 
 
 
-    /* --------------------------------------------
-        Initialization stage 1 helper functions
-    -----------------------------------------------*/
-
+    
+    /*Initializes the swapchain handle that is passed in the newSwapchain argument
+    Makes the correct tests to create it according to what the device allows
+    oldSwapchain can be passed if the swapchain needs to be recreated*/
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
     Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
     VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
@@ -254,38 +254,62 @@ namespace BlitzenVulkan
         Vulkan Resources 
     ------------------------- */
 
-    void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
-    VmaAllocationCreateFlags allocationFlags);
+    // Allocates a buffer using VMA
+    void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
+    VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, VmaAllocationCreateFlags allocationFlags);
 
+    // Returns the GPU address of a buffer
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
-    void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
-    uint8_t mipLevels = 1);
+    // Allocates an image resourece using VMA. It also creates a default image view for it
+    void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
+    VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels = 1);
 
+    // Separate image view creation structure. This is useful for something like the depth pyramid where image views need to be created separately
     void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
 
-    void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
-    VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
+    // Allocate an image resource to be used specifically as texture. 
+    // The 1st parameter should be the loaded image data that should be passed to the image resource
+    void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
+    VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
 
+    // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 
+    // TODO: Replace this with a general purpose function
     void CreateTextureSampler(VkDevice device, VkSampler& sampler);
 
+    // Returns a VkSampler used only for depth pyramid creation
+    // TODO: Replace this with a general purpose function like the above
     VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode);
 
-    void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
-    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter);
+    // Uses vkCmdBlitImage2 to copy a source image to a destination image. Hardcodes alot of parameters. 
+    //Can be improved but this is used rarely for now, so I will leave it as is until I have to
+    void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, 
+    VkImage dstImage, VkImageLayout dstLayout, VkExtent2D srcImageSize, VkExtent2D dstImageSize, 
+    VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter);
 
-    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, 
-    VkDeviceSize dstOffset);
+    // Copies parts of one buffer to parts of another, depending on the offsets that are passed
+    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, 
+    VkDeviceSize copySize, VkDeviceSize srcOffset, VkDeviceSize dstOffset);
 
+    // Copies data held by a buffer to an image. Used in texture image creation to hold the texture data in the buffer and then pass it to the image
     void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage image, VkImageLayout imageLayout, VkExtent3D extent);
 
-    void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets);
+    // Allocates a descriptor set that is passed without using push descriptors
+    void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
+    uint32_t descriptorSetCount, VkDescriptorSet* pSets);
 
-    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
-    uint32_t dstBinding, uint32_t descriptorCount, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+    // Creates VkWriteDescriptorSet for a buffer type descriptor set
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, 
+    VkDescriptorType descriptorType, VkDescriptorSet dstSet, uint32_t dstBinding, uint32_t descriptorCount, 
+    VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
 
+    // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
     uint32_t descriptorCount, uint32_t binding);
+
+    // Creates VkDescriptorImageInfo and uses it to create a VkWriteDescriptorSet for images. DescriptorCount is set to 1 by default
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo, VkDescriptorType descirptorType, VkDescriptorSet dstSet, 
+    uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler = VK_NULL_HANDLE);
 
 
 
