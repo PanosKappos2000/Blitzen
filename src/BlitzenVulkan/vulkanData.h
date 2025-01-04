@@ -40,7 +40,7 @@
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
 #define BLITZEN_VULKAN_MESH_SHADER              0// This is completely broken at the moment, keep it off 
 
-#define BLITZEN_VULKAN_MAX_DRAW_CALLS           1'000'000 // I am ignoring this right now and I shouldn't be(To be fair the renderer is capable of handling more than this)
+#define BLITZEN_VULKAN_MAX_DRAW_CALLS           5'000'000 // Going to 6'000'000 causes validation errors, but the renderer can still manage it (tested up to 10'000'000)
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
@@ -55,7 +55,6 @@ namespace BlitzenVulkan
     struct RenderObject
     {
         uint32_t meshInstanceId;
-
         uint32_t surfaceId;
     };
 

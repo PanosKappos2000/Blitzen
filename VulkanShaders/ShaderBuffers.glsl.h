@@ -122,6 +122,7 @@ layout(buffer_reference, std430) buffer VisibilityBuffer
     uint visibilities[];
 };
 
+// Every possible draw call has one of these structs
 struct RenderObject
 {
     uint meshInstanceId;// Index into the mesh instance buffer

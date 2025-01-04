@@ -121,6 +121,7 @@ namespace BlitzenVulkan
     void VulkanRenderer::SetupForRendering(GPUData& gpuData)
     {
         BLIT_ASSERT_MESSAGE(gpuData.drawCount, "Nothing to draw")
+        BLIT_ASSERT(gpuData.drawCount <= BLITZEN_VULKAN_MAX_DRAW_CALLS)
 
         VarBuffersInit();
 
@@ -154,7 +155,7 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<MeshInstance> instances(gpuData.gameObjects.GetSize());
         {
             // Load multiple bunny mesh instances
-            for(size_t i = 0; i < gpuData.gameObjects.GetSize() - 100'000; ++i)
+            for(size_t i = 0; i < gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; ++i)
             {
                 MeshInstance& instance = instances[i];
 
@@ -192,7 +193,7 @@ namespace BlitzenVulkan
             }
 
             // Load multiple kitten mesh instances
-            for (size_t i = gpuData.gameObjects.GetSize() - 100'000; i < gpuData.drawCount; ++i)
+            for (size_t i = gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; i < gpuData.drawCount; ++i)
             {
                 MeshInstance& instance = instances[i];
 
@@ -308,7 +309,7 @@ namespace BlitzenVulkan
         VkDeviceSize renderObjectBufferSize = sizeof(RenderObject) * renderObjects.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        VMA_MEMORY_USAGE_GPU_ONLY, sizeof(RenderObject) * BLITZEN_VULKAN_MAX_DRAW_CALLS, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         // It also lives in the GPU and needs to be accessed in the shader for per object data like position and orientation
         m_currentStaticBuffers.bufferAddresses.renderObjectBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.renderObjectBuffer.buffer);
