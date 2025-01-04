@@ -2,12 +2,11 @@
 Focused on 3D graphics real time rendering and using GPU-driven techniques to render large scenes with good performance. 
 Only uses Vulkan for now.
 
-It is now capable of rendering over 1 million high poly meshes (tested with 1'400'000 stanford bunnies and 100'000 kitten meshes).
+It is now capable of rendering over 5 million high poly meshes (tested with 4'500'000 stanford bunnies and 500'000 kitten meshes).
+(Going above that will cause Vulkan side validation errors about heap allocation on the GPU).
 It manages to do so by performing frustum culling, using LODs and (to a less significant extent) occlusion culling. All done in compute shaders.
 Frustum culling and LODs are crucial for performance. Switching any of them off tanks performance significantly.
 Occlusion culling is not as functional and gives very little gain. Because of this I have to cheat and allow frustum culling to have very low draw distance, reducing objects on the z axis.
-
-*It has now been tested with even 4'000'000 objects but there are memory allocation validation errors for Vulkan.
 
 The engine has a default camera than can move and rotate around the scene. It has a problem where, when the frame rate approaches 1000 fps, the rotation slows to a crawl becuase of delta time. This can be fixed with VSync.
 
