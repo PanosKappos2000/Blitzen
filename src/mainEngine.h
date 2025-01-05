@@ -23,6 +23,13 @@
 #define BLITZEN_FOV                     BlitML::Radians(70.f)
 #define BLITZEN_DRAW_DISTANCE           600.f
 
+// Define what Blitzen tries to do at runtime. 
+// The first one tries to draw a heavy scene with multiple meshes. 
+// The second one tests physics implementation
+// Both are tests and now the way the engine should normally work
+#define BLITZEN_GRAPHICS_STRESS_TEST    1
+#define BLITZEN_PHYSICS_TEST            0
+
 namespace BlitzenEngine
 {
     struct PlatformStateData

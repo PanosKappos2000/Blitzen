@@ -25,7 +25,7 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
+#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
@@ -52,55 +52,25 @@ namespace BlitzenVulkan
         uint8_t meshShaderSupport = 0;
     };
 
+    // Accesses per object data (TODO: Should be something defined in a general rendering file like resourceLoading.h)
     struct RenderObject
     {
         uint32_t meshInstanceId;
         uint32_t surfaceId;
     };
 
-    // This will be passed to the shaders and indexed into everytime an instance of this surface appears
-    struct alignas(16) SurfaceData
-    {
-        BlitzenEngine::MeshLod meshLod[BLIT_MAX_MESH_LOD];
-        uint32_t lodCount = 0;
-
-        // With the way obj files are loaded, this will be needed to index into the vertex buffer
-        uint32_t vertexOffset;
-
-        // Data need by a mesh shader to draw a surface
-        uint32_t meshletCount = 0;
-        uint32_t firstMeshlet;
-
-        // Bounding sphere data, can be used for frustum culling and other operations
-        BlitML::vec3 center;
-        float radius;
-
-        uint32_t materialTag;
-
-        uint32_t surfaceIndex;
-    };
-
-    // There might be multiple instances of a mesh with different transforms, so this data should be different for each instance
-    struct alignas(16) MeshInstance
-    {
-        BlitML::vec3 pos;
-        float scale;
-        BlitML::quat orientation;
-    };
-
-    // This holds the commands for both the mesh shader and vertex shader indirect commands
+    // Holds the command struct for a call to vkCmdDrawIndexedIndirectCount, as well as a draw Id to access the correct RenderObject
     struct IndirectDrawData
     {
         uint32_t drawId;
         VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
-        //VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
-        //VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32 bit integers
     };
 
+    // Holds the command structu for a call to vkCmdDrawMeshTasksIndirectCountExt, as well as a task Id to access the correct task
     struct IndirectTaskData
     {
         uint32_t taskId;
-        VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;
+        VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
     };
 
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
@@ -155,6 +125,7 @@ namespace BlitzenVulkan
         uint8_t lodEnabled = 1;
     };
 
+    // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
     struct AllocatedImage
     {
         VkImage image;

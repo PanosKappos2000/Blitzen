@@ -152,12 +152,12 @@ namespace BlitzenVulkan
         size_t objectId = 0;
         gpuData.gameObjects.Resize(gpuData.drawCount);// This is temporary for testing. Game objects will not be created in the renderer
         BlitCL::DynamicArray<RenderObject> renderObjects(gpuData.drawCount);
-        BlitCL::DynamicArray<MeshInstance> instances(gpuData.gameObjects.GetSize());
+        BlitCL::DynamicArray<BlitzenEngine::MeshInstance> instances(gpuData.gameObjects.GetSize());
         {
             // Load multiple bunny mesh instances
             for(size_t i = 0; i < gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; ++i)
             {
-                MeshInstance& instance = instances[i];
+                BlitzenEngine::MeshInstance& instance = instances[i];
 
                 // Loading random position and scale. Normally you would get this from the game object
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
@@ -195,7 +195,7 @@ namespace BlitzenVulkan
             // Load multiple kitten mesh instances
             for (size_t i = gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; i < gpuData.drawCount; ++i)
             {
-                MeshInstance& instance = instances[i];
+                BlitzenEngine::MeshInstance& instance = instances[i];
 
                 // Loading random position and scale. Normally you would get this from the game object
                 BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
@@ -288,7 +288,7 @@ namespace BlitzenVulkan
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
     BlitCL::DynamicArray<RenderObject>& renderObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
     BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
-    BlitCL::DynamicArray<MeshInstance>& meshInstances)
+    BlitCL::DynamicArray<BlitzenEngine::MeshInstance>& meshInstances)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
@@ -334,7 +334,7 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.bufferAddresses.surfaceBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.surfaceBuffer.buffer);
 
-        VkDeviceSize meshInstanceBufferSize = sizeof(MeshInstance) * meshInstances.GetSize();
+        VkDeviceSize meshInstanceBufferSize = sizeof(BlitzenEngine::MeshInstance) * meshInstances.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.meshInstanceBuffer, 
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, meshInstanceBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -1066,13 +1066,23 @@ namespace BlitzenVulkan
         m_presentQueue, m_computeQueue, m_pCustomAllocator, newSwapchain, m_initHandles.swapchain);
 
         // The draw extent should also be updated depending on if the swapchain got bigger or smaller
-        m_drawExtent.width = std::min(windowWidth, m_drawExtent.width);
-        m_drawExtent.height = std::min(windowHeight, m_drawExtent.height);
-        // TODO: Recreate the depth pyramid if the the draw extent changes
+        //m_drawExtent.width = std::min(windowWidth, m_drawExtent.width);
+        //m_drawExtent.height = std::min(windowHeight, m_drawExtent.height);
 
-        // Wait for the GPU to be done with the swapchain and destroy the swapchain
+        // Wait for the GPU to be done with the swapchain and destroy the swapchain and depth pyramid
         vkDeviceWaitIdle(m_device);
+
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, nullptr);
         m_initHandles.swapchain = newSwapchain;
+
+        m_depthPyramid.CleanupResources(m_allocator, m_device);
+        for(uint8_t i = 0; i < m_depthPyramidMipLevels; ++i)
+        {
+            vkDestroyImageView(m_device, m_depthPyramidMips[size_t(i)], m_pCustomAllocator);
+        }
+
+        // ReCreate the depth pyramid after the old one has been destroyed
+        CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
+        m_drawExtent, m_device, m_allocator, 0);
     }
 }

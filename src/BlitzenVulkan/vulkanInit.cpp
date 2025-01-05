@@ -551,20 +551,19 @@ namespace BlitzenVulkan
         /*
              Swapchain creation
         */
-       CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
-       m_initHandles.swapchain);
+        CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
+        m_initHandles.swapchain);
 
-
-        /* Create the vma allocator for vulkan resource allocation */
-        {
-            VmaAllocatorCreateInfo allocatorInfo{};
-            allocatorInfo.device = m_device;
-            allocatorInfo.instance = m_initHandles.instance;
-            allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
-            allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        /* 
+            Create the vma allocator for vulkan resource allocation 
+        */
+        VmaAllocatorCreateInfo allocatorInfo{};
+        allocatorInfo.device = m_device;
+        allocatorInfo.instance = m_initHandles.instance;
+        allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
+        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
         
-            VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
-        }
 
 
 
@@ -587,6 +586,7 @@ namespace BlitzenVulkan
             VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferInfo, &m_placeholderCommands))
         }
 
+        // Create the sync structure and command buffers that need to differ for each frame in flight
         FrameToolsInit();
 
         // This will be referred to by rendering attachments and will be updated when the window is resized
@@ -598,31 +598,45 @@ namespace BlitzenVulkan
         CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-        m_depthAttachmentSampler = CreateSampler(m_device, VK_SAMPLER_REDUCTION_MODE_MIN);
-
-        {
-            m_depthPyramidExtent.width = BlitML::PreviousPow2(m_drawExtent.width);
-            m_depthPyramidExtent.height = BlitML::PreviousPow2(m_drawExtent.height);
-
-            uint32_t width = m_depthPyramidExtent.width;
-            uint32_t height = m_depthPyramidExtent.height;
-            while(width > 1 || height > 1)
-            {
-                m_depthPyramidMipLevels++;
-
-                width /= 2;
-                height /= 2;
-            }
-            CreateImage(m_device, m_allocator, m_depthPyramid, {m_depthPyramidExtent.width, m_depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
-            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, m_depthPyramidMipLevels);
-
-            for(uint8_t i = 0; i < m_depthPyramidMipLevels; ++i)
-            {
-                CreateImageView(m_device, m_depthPyramidMips[size_t(i)], m_depthPyramid.image, VK_FORMAT_R32_SFLOAT, i, 1);
-            }
-        }
+        CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
+        m_drawExtent, m_device, m_allocator);
 
         return 1;
+    }
+
+    void CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+    VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
+    VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler /* =1 */)
+    {
+        // This will fail if mip levels do not start from 0
+        depthPyramidMipLevels = 0;
+
+        // Create the sampler only if it is requested. In case where the depth pyramid is recreated on window resize, this is not needed
+        if(createSampler)
+            depthAttachmentSampler = CreateSampler(device, VK_SAMPLER_REDUCTION_MODE_MIN);
+
+        // Get a conservative starting extent for the depth pyramid image, by getting the previous power of 2 of the draw extent
+        depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
+        depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
+
+        // Get the amount of mip levels for the depth pyramid by dividing the extent by 2, until both width and height are not over 1
+        uint32_t width = depthPyramidExtent.width;
+        uint32_t height = depthPyramidExtent.height;
+        while(width > 1 || height > 1)
+        {
+            depthPyramidMipLevels++;
+            width /= 2;
+            height /= 2;
+        }
+
+        // Create the depth pyramid image which will be used as storage image and to then transfer its data for occlusion culling
+        CreateImage(device, allocator, depthPyramidImage, {depthPyramidExtent.width, depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, depthPyramidMipLevels);
+
+        for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
+        {
+            CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image, VK_FORMAT_R32_SFLOAT, i, 1);
+        }
     }
 
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 

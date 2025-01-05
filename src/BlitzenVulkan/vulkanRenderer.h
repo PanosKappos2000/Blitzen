@@ -148,7 +148,7 @@ namespace BlitzenVulkan
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<RenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& indirectDraws, 
-        BlitCL::DynamicArray<MeshInstance>& meshInstances);
+        BlitCL::DynamicArray<BlitzenEngine::MeshInstance>& meshInstances);
 
         void SetupMainGraphicsPipeline();
 
@@ -248,6 +248,11 @@ namespace BlitzenVulkan
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
     Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
     VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
+
+    // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
+    void CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+    VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
+    VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler = 1);
 
 
 

@@ -84,6 +84,14 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<PrimitiveSurface> surfaces;
     };
 
+    // Data that can vary for 2 different object with the same or different objects
+    struct alignas(16) MeshInstance
+    {
+        BlitML::vec3 pos;
+        float scale;
+        BlitML::quat orientation;
+    };
+
     // This struct holds all loaded resources and is held by the engine and referenced by the loading system
     struct EngineResources
     {
