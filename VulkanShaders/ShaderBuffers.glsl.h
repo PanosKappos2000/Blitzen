@@ -80,8 +80,10 @@ layout(buffer_reference, std430) readonly buffer SurfaceBuffer
 // Draw indirect struct. Accessed by the vkCmdDrawIndexedIndirectCount command, but also written into by the culling compute shader
 struct IndirectDraw
 {
-    // Since there will be fewer draw calls than the amount of objects in the scene, 
-    // the indirect buffer will also hold the object ID to access per object data in the vertex shader
+    /* 
+        Since there will be fewer draw calls than the amount of objects in the scene, 
+        the indirect buffer will also hold the object ID to access per object data in the vertex shader
+    */
     uint objectId;
 
     // Everything needed for vkCmdDrawIndexedIndirectCount call
@@ -90,10 +92,6 @@ struct IndirectDraw
     uint firstIndex;
     uint vertexOffset;
     uint firstInstance;
-
-    // Everything needed for vkCmdDrawIndirectMeshTasksExt call
-    uint groupSizeX;
-    uint groupSizeY;
 };
 
 // The below are the same buffer but it is defined differently in the compute pipeline

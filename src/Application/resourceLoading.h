@@ -118,6 +118,8 @@ namespace BlitzenEngine
 
     uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets = 0);
 
+    size_t LoadMeshlet(EngineResources& resoureces, BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+
 
     // Placeholder to load some default resources while testing the systems
     void LoadDefaultData(EngineResources& resources);

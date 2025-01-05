@@ -59,7 +59,8 @@ namespace BlitzenVulkan
 
         AllocatedBuffer globalIndexBuffer;
 
-        AllocatedBuffer globalMeshBuffer;
+        AllocatedBuffer meshletBuffer;
+        AllocatedBuffer indirectTaskBuffer;
 
         AllocatedBuffer globalMaterialBuffer;
 
@@ -95,7 +96,8 @@ namespace BlitzenVulkan
             vmaDestroyBuffer(allocator, globalMaterialBuffer.buffer, globalMaterialBuffer.allocation);
 
             #if BLITZEN_VULKAN_MESH_SHADER
-                vmaDestroyBuffer(allocator, globalMeshBuffer.buffer, globalMeshBuffer.allocation);
+                vmaDestroyBuffer(allocator, meshletBuffer.buffer, meshletBuffer.allocation);
+                vmaDestroyBuffer(allocator, indirectTaskBuffer.buffer, indirectTaskBuffer.allocation);
             #endif
 
             vmaDestroyBuffer(allocator, meshInstanceBuffer.buffer, meshInstanceBuffer.allocation);

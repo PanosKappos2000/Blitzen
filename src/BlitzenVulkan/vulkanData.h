@@ -25,7 +25,7 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
+#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
@@ -38,7 +38,7 @@
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0// Trying to fix mesh shader, but it's still broken until further notice. Deactivate to test the application 
+#define BLITZEN_VULKAN_MESH_SHADER              0// For now mesh shaders are completely busted 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           5'000'000 // Going to 6'000'000 causes validation errors, but the renderer can still manage it (tested up to 10'000'000)
 
@@ -93,8 +93,14 @@ namespace BlitzenVulkan
     {
         uint32_t drawId;
         VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
-        VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
+        //VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
         //VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32 bit integers
+    };
+
+    struct IndirectTaskData
+    {
+        uint32_t taskId;
+        VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;
     };
 
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame

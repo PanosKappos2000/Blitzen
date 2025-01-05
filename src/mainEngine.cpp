@@ -131,7 +131,7 @@ namespace BlitzenEngine
         LoadMaterials();
         LoadDefaultData(m_resources);
 
-        uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS;// Rendering as many objects as the renderer allows
+        uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering as many objects as the renderer allows
         #if BLITZEN_VULKAN
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers

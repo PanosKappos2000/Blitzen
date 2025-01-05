@@ -172,11 +172,6 @@ namespace BlitzenEngine
             }
         }
 
-        if(buildMeshlets)
-        {
-            
-        }
-
         BlitML::vec3 center(0.f);
         for(size_t i = 0; i < vertices.GetSize(); ++i)
         {
@@ -201,6 +196,18 @@ namespace BlitzenEngine
         ++resources.currentMeshIndex;
 
         return 1;
+    }
+
+    size_t LoadMeshlet(EngineResources& resoureces, BlitCL::DynamicArray<BlitML::Vertex>& vertices, 
+    BlitCL::DynamicArray<uint32_t>& indices)
+    {
+        const size_t maxVertices = 64;
+        const size_t maxTriangles = 124;
+
+        BlitCL::DynamicArray<meshopt_Meshlet> akMeshlets(meshopt_buildMeshletsBound(indices.GetSize(), maxVertices, maxTriangles));
+        //akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), vertices.Data(),  ))
+
+        return 0;
     }
 
 

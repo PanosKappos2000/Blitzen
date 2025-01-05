@@ -50,6 +50,7 @@ bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 
 	return true;
 }
 
+
 void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x;

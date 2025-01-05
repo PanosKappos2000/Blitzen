@@ -27,6 +27,7 @@ layout (set = 0, binding = 2) uniform CullingData
 
 }cullingData;
 
+
 void main()
 {
     // The object index is for the current object's element in the render object

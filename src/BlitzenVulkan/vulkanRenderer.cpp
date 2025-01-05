@@ -160,9 +160,9 @@ namespace BlitzenVulkan
                 MeshInstance& instance = instances[i];
 
                 // Loading random position and scale. Normally you would get this from the game object
-                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1000 - 50,//y
-                (float(rand()) / RAND_MAX) * 1000 - 50);//z
+                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
                 instance.pos = translation;
                 instance.scale = 5.f;
 
@@ -198,9 +198,9 @@ namespace BlitzenVulkan
                 MeshInstance& instance = instances[i];
 
                 // Loading random position and scale. Normally you would get this from the game object
-                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1000 - 50,//y
-                (float(rand()) / RAND_MAX) * 1000 - 50);//z
+                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
                 instance.pos = translation;
                 instance.scale = 1.f;
 
@@ -370,18 +370,25 @@ namespace BlitzenVulkan
         meshInstanceBufferSize;
 
         VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();// Defining this here so that it does not go out of scope
+        VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjects.GetSize();// Defining this here so that it does not go out of scope
         // The mesh/meshlet buffer will only be created if mesh shading is supported(checked during initalization, only if it the mesh shader macro is set to 1)
         if(m_stats.meshShaderSupport)
         {
             // Holds per object meshlet data for all the objects in the shader
-            CreateBuffer(m_allocator, m_currentStaticBuffers.globalMeshBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+            CreateBuffer(m_allocator, m_currentStaticBuffers.meshletBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
             VMA_MEMORY_USAGE_GPU_ONLY, meshBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
             // Like most of the above, it will be accessed in the shaders
             m_currentStaticBuffers.bufferAddresses.meshBufferAddress = 
-            GetBufferAddress(m_device, m_currentStaticBuffers.globalMeshBuffer.buffer);
+            GetBufferAddress(m_device, m_currentStaticBuffers.meshletBuffer.buffer);
             // the staging buffer size will also be incremented if the meshlet buffer is created
             stagingBufferSize += meshBufferSize;
+
+            CreateBuffer(m_allocator, m_currentStaticBuffers.indirectTaskBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+            VMA_MEMORY_USAGE_GPU_ONLY, indirectTaskBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            // TODO: Get the address of this buffer (I might want to add a push constant for the addresses of the buffers for mesh shaders)
+            stagingBufferSize += indirectTaskBufferSize;
         }
 
         AllocatedBuffer stagingBuffer;
@@ -403,39 +410,56 @@ namespace BlitzenVulkan
         {
             BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
             + surfaceBufferSize + meshInstanceBufferSize, meshlets.Data(), meshBufferSize);
+
+            BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
+            + surfaceBufferSize + meshInstanceBufferSize + meshBufferSize, nullptr, indirectTaskBufferSize);
         }
 
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
+        // Holds the offset of the staging buffer that the next copy operation should start from
+        VkDeviceSize currentStagingBufferOffset = 0;
+
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
         m_currentStaticBuffers.globalVertexBuffer.buffer, vertexBufferSize, 
-        0, 0);
+        currentStagingBufferOffset, 0);
+        currentStagingBufferOffset += vertexBufferSize;// Add the size of the previous buffer to the offset
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
         m_currentStaticBuffers.globalIndexBuffer.buffer, indexBufferSize, 
-        vertexBufferSize, 0);
+        currentStagingBufferOffset, 0);
+        currentStagingBufferOffset += indexBufferSize;// Add the size of the previous buffer to the offset
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
         m_currentStaticBuffers.renderObjectBuffer.buffer, renderObjectBufferSize, 
-        vertexBufferSize + indexBufferSize, 0);
+        currentStagingBufferOffset, 0);
+        currentStagingBufferOffset += renderObjectBufferSize;// Add the size of the previous buffer to the offset
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
         m_currentStaticBuffers.globalMaterialBuffer.buffer, materialBufferSize, 
-        vertexBufferSize + indexBufferSize + renderObjectBufferSize, 0);
+        currentStagingBufferOffset, 0);
+        currentStagingBufferOffset += materialBufferSize;// Add the size of the previous buffer to the offset
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
         m_currentStaticBuffers.surfaceBuffer.buffer, surfaceBufferSize, 
-        vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 0);
+        currentStagingBufferOffset, 0);
+        currentStagingBufferOffset += surfaceBufferSize;// Add the size of the previous buffer to the offset
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer,
         m_currentStaticBuffers.meshInstanceBuffer.buffer, meshInstanceBufferSize, 
         vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize, 0);
+        currentStagingBufferOffset += meshInstanceBufferSize;// Add the size of the previous buffer to the offset
 
         if(m_stats.meshShaderSupport)
         {
             CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
-            m_currentStaticBuffers.globalMeshBuffer.buffer, meshBufferSize, 
-            vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize, 0);
+            m_currentStaticBuffers.meshletBuffer.buffer, meshBufferSize, 
+            currentStagingBufferOffset, 0);
+            currentStagingBufferOffset += meshBufferSize;// Add the size of the previous buffer to the offset
+
+            CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+            m_currentStaticBuffers.indirectTaskBuffer.buffer, indirectTaskBufferSize, 
+            currentStagingBufferOffset, 0);
         }
 
         // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
@@ -672,9 +696,9 @@ namespace BlitzenVulkan
             // Use draw indirect to draw the objects(mesh shading or vertex shader)
             if(m_stats.meshShaderSupport)
             {
-               DrawMeshTasks(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
-               offsetof(IndirectDrawData, drawIndirectTasks), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, 
-               0, sizeof(IndirectDrawData));
+               DrawMeshTasks(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.indirectTaskBuffer.buffer, 
+               offsetof(IndirectTaskData, drawIndirectTasks), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, 
+               0, sizeof(IndirectTaskData));
             }
             else
             {
