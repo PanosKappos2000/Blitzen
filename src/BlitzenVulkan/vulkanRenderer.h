@@ -313,33 +313,33 @@ namespace BlitzenVulkan
 
 
 
-
-    /*--------------------------------------
-        Command Buffer helper functions
-    ---------------------------------------*/
-
+    // Puts command buffer in the ready state. vkCmd type function can be called after this and until vkEndCommandBuffer is called
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
 
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint8_t waitSemaphoreCount = 0, 
-    VkSemaphore waitSemaphore = VK_NULL_HANDLE, VkPipelineStageFlags2 waitPipelineStage = VK_PIPELINE_STAGE_2_NONE, uint8_t signalSemaphoreCount = 0,
-    VkSemaphore signalSemaphore = VK_NULL_HANDLE, VkPipelineStageFlags2 signalPipelineStage = VK_PIPELINE_STAGE_2_NONE, VkFence fence = VK_NULL_HANDLE);
+    // Submits the command buffer to excecute the recorded commands. Semaphores, fences and other sync structures can be specified 
+    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, 
+    uint8_t waitSemaphoreCount = 0, VkSemaphore waitSemaphore = VK_NULL_HANDLE, 
+    VkPipelineStageFlags2 waitPipelineStage = VK_PIPELINE_STAGE_2_NONE, 
+    uint8_t signalSemaphoreCount = 0, VkSemaphore signalSemaphore = VK_NULL_HANDLE, 
+    VkPipelineStageFlags2 signalPipelineStage = VK_PIPELINE_STAGE_2_NONE, VkFence fence = VK_NULL_HANDLE);
 
 
-    /*--------------------------------------------------------------
-        Pipeline barriers (implemented in vulkanResources.cpp)
-    --------------------------------------------------------------*/
-
+    
+    // Records a command for a pipeline barrier with the specified memory, buffer and image barriers
     void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount, VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount, 
     VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount, VkImageMemoryBarrier2* pImageBarriers);
 
+    // Sets up an image memory barrier to be passed to the above function
     void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkImageLayout oldLayout, VkImageLayout newLayout, 
     VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer = 0, 
     uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS);
 
+    // Sets up a buffer memory barrier to be passed to the PipelineBarrier function
     void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, VkDeviceSize offset, VkDeviceSize size);
 
+    // Sets up a memory barrier to be passed to the PipelineBarrier function
     void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
     VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage);
 
@@ -353,8 +353,6 @@ namespace BlitzenVulkan
         It needs a reference to an empty shader module(so that it does not go out of scope beofre pipeline creation).
         It also needs an empty shader stage create info, that will be filled by the function and shoulder later be passed to the pipeline info
         The shader stage and entry point parameters specify the type of shader(eg. compute) and the main function name respectively
-
-        The finally dynamic array parameter will probably be removed shortly(TODO)
     */
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage);
@@ -401,18 +399,18 @@ namespace BlitzenVulkan
 
 
 
-    /*----------------------------
-        Other helper functions
-    -----------------------------*/
-
-    // Defined in vulkanRenderer.cpp
-    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 
-    VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor = {0, 0, 0, 0}, VkClearDepthStencilValue clearValueDepth = {0, 0});
+    
+    // Defined in vulkanRenderer.cpp, create a rending attachment info needed to call vkCmdBeginRendering (dynamic rendering)
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, 
+    VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, 
+    VkClearColorValue clearValueColor = {0, 0, 0, 0}, VkClearDepthStencilValue clearValueDepth = {0, 0});
 
     // Starts a render pass using the dynamic rendering feature(command buffer should be in recording state)
     void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, 
     uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment, 
     VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1 );
 
+    // Calles the code needed to dynamically set the viewport and scissor. 
+    // The graphics pipeline uses a dynamic viewport and scissor by default, so this needs to be called during the frame loop
     void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
 }

@@ -251,7 +251,7 @@ namespace BlitzenVulkan
                 !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
                 !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
                 !features12.samplerFilterMinmax ||
-                !features13.synchronization2 || !features13.dynamicRendering)
+                !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
                 {
                     physicalDevices.RemoveAtIndex(i);
                     --i;
@@ -389,12 +389,13 @@ namespace BlitzenVulkan
             #if BLITZEN_VULKAN_MESH_SHADER
                 VkPhysicalDeviceFeatures2 features2{};
                 features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                VkPhysicalDeviceMeshShaderFeaturesNV featuresNV{};
-                featuresNV.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-                features2.pNext = &featuresNV;
+                VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
+                meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+                features2.pNext = &meshFeatures;
                 vkGetPhysicalDeviceFeatures2(m_initHandles.chosenGpu, &features2);
-                m_stats.meshShaderSupport = featuresNV.meshShader;
+                m_stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
 
+                // Check the extensions as well
                 uint32_t dvExtensionCount = 0;
                 vkEnumerateDeviceExtensionProperties(m_initHandles.chosenGpu, nullptr, &dvExtensionCount, nullptr);
                 BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
@@ -402,7 +403,7 @@ namespace BlitzenVulkan
                 uint8_t meshShaderExtension = 0;
                 for(size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
                 {
-                    if(!strcmp(dvExtensionsProps[i].extensionName, VK_NV_MESH_SHADER_EXTENSION_NAME))
+                    if(!strcmp(dvExtensionsProps[i].extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME))
                         meshShaderExtension = 1;
                 }
                 m_stats.meshShaderSupport = m_stats.meshShaderSupport && meshShaderExtension;
@@ -455,12 +456,16 @@ namespace BlitzenVulkan
             // Using dynamic rendering to make things slightly easier(Get rid of render passes and framebuffer, allows definition of rendering attachments separately)
             vulkan13Features.dynamicRendering = true;
             vulkan13Features.synchronization2 = true;
+            vulkan13Features.maintenance4 = true;
 
             VkPhysicalDeviceMeshShaderFeaturesNV vulkanFeaturesMesh{};
             vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
             #if BLITZEN_VULKAN_MESH_SHADER
                 if(m_stats.meshShaderSupport)
+                {
                     vulkanFeaturesMesh.meshShader = true;
+                    vulkanFeaturesMesh.taskShader = true;
+                }
             #endif
 
             VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};

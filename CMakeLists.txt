@@ -104,7 +104,7 @@ ENDIF(WIN32)
     add_custom_command(
       OUTPUT ${SPIRV}
       COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/"
-      COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
+      COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${GLSL} -o ${SPIRV}
       DEPENDS ${GLSL})
     list(APPEND SPIRV_BINARY_FILES ${SPIRV})
   endforeach(GLSL)

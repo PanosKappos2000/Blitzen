@@ -3,13 +3,13 @@
 #define VMA_IMPLEMENTATION
 #include "vma/vk_mem_alloc.h"
 
-void DrawMeshTastsIndirectNv(VkInstance instance, VkCommandBuffer commandBuffer, VkBuffer indirectBuffer, 
-VkDeviceSize offset, uint32_t drawCount, uint32_t stride) 
+void DrawMeshTasks(VkInstance instance, VkCommandBuffer commandBuffer, VkBuffer drawBuffer, 
+VkDeviceSize drawOffset, VkBuffer countBuffer, VkDeviceSize countOffset, uint32_t maxDrawCount, uint32_t stride) 
 {
-    auto func = (PFN_vkCmdDrawMeshTasksIndirectNV) vkGetInstanceProcAddr(instance, "vkCmdDrawMeshTasksIndirectNV");
+    auto func = (PFN_vkCmdDrawMeshTasksIndirectCountEXT) vkGetInstanceProcAddr(instance, "vkCmdDrawMeshTasksIndirectCountEXT");
     if (func != nullptr) 
     {
-        func(commandBuffer, indirectBuffer, offset, drawCount, stride);
+        func(commandBuffer, drawBuffer, drawOffset, countBuffer, countOffset, maxDrawCount, stride);
     } 
 }
 
@@ -672,9 +672,9 @@ namespace BlitzenVulkan
             // Use draw indirect to draw the objects(mesh shading or vertex shader)
             if(m_stats.meshShaderSupport)
             {
-               /*DrawMeshTastsIndirectNv(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBuffer.buffer, 
-               offsetof(IndirectDrawData, drawIndirectTasks), static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
-               With how things have changed I can't really use the mesh shaders for the time being*/
+               DrawMeshTasks(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.drawIndirectBufferFinal.buffer, 
+               offsetof(IndirectDrawData, drawIndirectTasks), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, 
+               0, sizeof(IndirectDrawData));
             }
             else
             {

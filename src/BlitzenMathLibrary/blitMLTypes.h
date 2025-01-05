@@ -176,9 +176,16 @@ namespace BlitML
 
     struct alignas(16) Meshlet
     {
-	    uint32_t vertices[64]; // index into the original index buffer
-	    uint32_t indices[126 * 3]; // up to 124 triangles, index into the above array of vertex indices
-	    uint32_t triangleCount = 0; // The number of used elements in indices
-	    uint32_t vertexCount; // The number of used elements in vertices
+        // Boudning sphere
+    	vec3 center;
+    	float radius;
+
+        // This is for backface culling
+    	int8_t cone_axis[3];
+    	int8_t cone_cutoff;
+
+    	uint32_t dataOffset; // dataOffset..dataOffset+vertexCount-1 stores vertex indices, indices are packed in 4b units after that
+    	uint8_t vertexCount;
+    	uint8_t triangleCount;
     };
 }

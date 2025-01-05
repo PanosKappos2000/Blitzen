@@ -91,8 +91,9 @@ struct IndirectDraw
     uint vertexOffset;
     uint firstInstance;
 
-    uint taskCount;
-    uint firstTask;
+    // Everything needed for vkCmdDrawIndirectMeshTasksExt call
+    uint groupSizeX;
+    uint groupSizeY;
 };
 
 // The below are the same buffer but it is defined differently in the compute pipeline

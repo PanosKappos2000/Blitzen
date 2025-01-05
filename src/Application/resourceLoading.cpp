@@ -174,62 +174,7 @@ namespace BlitzenEngine
 
         if(buildMeshlets)
         {
-            BlitML::Meshlet meshlet = {};
-
-            BlitCL::DynamicArray<uint8_t> meshletVertices(vertices.GetSize());
-            meshletVertices.Fill(UINT8_MAX);
-
-            newSurface.firstMeshlet = static_cast<uint32_t>(resources.meshlets.GetSize());
-
-            for (size_t i = 0; i < indices.GetSize(); i += 3)
-            {
-                uint32_t vtxIndexA = indices[i + 0];
-                uint32_t vtxIndexB = indices[i + 1];
-                uint32_t vtxIndexC = indices[i + 2];
-
-                uint8_t& vtxA = meshletVertices[vtxIndexA];
-                uint8_t& vtxB = meshletVertices[vtxIndexB];
-                uint8_t& vtxC = meshletVertices[vtxIndexC];
-
-                // If the current meshlet's vertex count + the vertices that are going to be added next is over the meshlet vertex limit, 
-                // It gets added to the dynamic array and a new entry is created
-                if (meshlet.vertexCount + (vtxA == UINT8_MAX) + (vtxB == UINT8_MAX) + (vtxC == UINT8_MAX) > 64 || meshlet.triangleCount >= 126)
-		        {
-                    newSurface.meshletCount++;
-                    resources.meshlets.PushBack(meshlet);
-
-			        for (size_t j = 0; j < meshlet.vertexCount; ++j)
-				        meshletVertices[meshlet.vertices[j]] = UINT8_MAX;
-			        
-                    meshlet = {};
-                }
-
-                if (vtxA == UINT8_MAX)
-		        {
-		        	vtxA = meshlet.vertexCount;
-		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexA;
-		        }
-		        if (vtxB == UINT8_MAX)
-		        {
-		        	vtxB = meshlet.vertexCount;
-		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexB;
-		        }
-		        if (vtxC == UINT8_MAX)
-		        {
-		        	vtxC = meshlet.vertexCount;
-		        	meshlet.vertices[meshlet.vertexCount++] = vtxIndexC;
-		        }
-
-                meshlet.indices[meshlet.triangleCount * 3 + 0] = vtxA;
-		        meshlet.indices[meshlet.triangleCount * 3 + 1] = vtxB;
-		        meshlet.indices[meshlet.triangleCount * 3 + 2] = vtxC;
-                meshlet.triangleCount++;
-            }
-            if(meshlet.triangleCount)
-            {
-                resources.meshlets.PushBack(meshlet);
-                newSurface.meshletCount++;
-            }
+            
         }
 
         BlitML::vec3 center(0.f);

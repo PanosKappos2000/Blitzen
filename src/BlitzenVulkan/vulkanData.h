@@ -38,7 +38,7 @@
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0// This is completely broken at the moment, keep it off 
+#define BLITZEN_VULKAN_MESH_SHADER              0// Trying to fix mesh shader, but it's still broken until further notice. Deactivate to test the application 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           5'000'000 // Going to 6'000'000 causes validation errors, but the renderer can still manage it (tested up to 10'000'000)
 
@@ -88,11 +88,13 @@ namespace BlitzenVulkan
         BlitML::quat orientation;
     };
 
-    struct alignas(16) IndirectDrawData
+    // This holds the commands for both the mesh shader and vertex shader indirect commands
+    struct IndirectDrawData
     {
         uint32_t drawId;
         VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
         VkDrawMeshTasksIndirectCommandNV drawIndirectTasks;// 2 32bit integers
+        //VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32 bit integers
     };
 
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
