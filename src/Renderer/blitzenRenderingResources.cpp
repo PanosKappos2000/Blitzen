@@ -1,4 +1,4 @@
-#include "resourceLoading.h"
+#include "blitRenderingResources.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"

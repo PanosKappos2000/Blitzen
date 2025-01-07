@@ -4,7 +4,7 @@
 #include "Platform/platform.h"
 #include "Core/blitzenContainerLibrary.h"
 #include "Core/blitEvents.h"
-#include "Application/resourceLoading.h"
+#include "Renderer/blitRenderingResources.h"
 #include "BlitzenMathLibrary/blitMLTypes.h"
 
 

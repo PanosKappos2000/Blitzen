@@ -119,6 +119,7 @@ namespace BlitzenVulkan
         loadedTextures.Back().image, 
         {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
         VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
+        
         loadedTextures.Back().sampler = m_placeholderSampler;
     }
 

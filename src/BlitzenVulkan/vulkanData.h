@@ -7,7 +7,7 @@
 
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
-#include "Application/resourceLoading.h"
+#include "Renderer/blitRenderingResources.h"
 #include "Game/blitObject.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed
