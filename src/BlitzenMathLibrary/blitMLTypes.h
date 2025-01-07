@@ -97,7 +97,7 @@ namespace BlitML
         inline vec4(vec4& copy) : x{copy.x}, y{copy.y}, z{copy.z}, w{copy.w} {}  
     };
 
-    inline vec4 operator + (vec4& v1, vec4& v2) { return vec4(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w); }
+    inline vec4 operator + (vec4 v1, vec4 v2) { return vec4(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w); }
 
     inline vec4 operator - (vec4& v1, vec4& v2){ return vec4(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z, v1.w - v2.w); }
 
@@ -151,7 +151,7 @@ namespace BlitML
         return res;
     }
 
-    inline vec4 operator * (mat4& mat, vec4& vec)
+    inline vec4 operator * (mat4& mat, vec4 vec)
     {
         vec4 res;
         res.x = mat[0] * vec.x + vec.y * mat[4] + vec.z * mat[8] + vec.w * mat[12];

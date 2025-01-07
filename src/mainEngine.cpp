@@ -357,10 +357,14 @@ namespace BlitzenEngine
             BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
 
             BlitML::mat4 rotation;
-            rotation = BlitML::QuatToMat4(yawOrientation) * BlitML::QuatToMat4(pitchOrientation);
+            BlitML::mat4 yawRot = BlitML::QuatToMat4(yawOrientation);
+            BlitML::mat4 pitchRot = BlitML::QuatToMat4(pitchOrientation);
+            rotation = yawRot * pitchRot;
 
             // I haven't overloaded the += operator
-            camera.position = camera.position + BlitML::ToVec3(rotation * BlitML::vec4(camera.velocity * deltaTime * 40.f)); 
+            BlitML::vec3 finalVelocity = camera.velocity * deltaTime * 40.f;
+            BlitML::vec4 directionalVelocity = rotation * BlitML::vec4(finalVelocity);
+            camera.position = camera.position + BlitML::ToVec3(directionalVelocity); 
             BlitML::mat4 translation = BlitML::Translate(camera.position);
 
             camera.viewMatrix = BlitML::Mat4Inverse(translation * rotation); // Normally, I would also add rotation here but the math library has a few problems at the moment

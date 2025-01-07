@@ -83,9 +83,9 @@ namespace BlitML
     inline float LengthSquared(vec3& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z; }
     inline float LengthSquared(vec4& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z, vec.w * vec.w; }
 
-    inline float Length(vec2& vec) { return Sqrt(LengthSquared(vec)); }
-    inline float Length(vec3& vec) { return Sqrt(LengthSquared(vec)); }
-    inline float Length(vec4& vec) { return Sqrt(LengthSquared(vec)); } 
+    inline float Length(vec2 vec) { return Sqrt(LengthSquared(vec)); }
+    inline float Length(vec3 vec) { return Sqrt(LengthSquared(vec)); }
+    inline float Length(vec4 vec) { return Sqrt(LengthSquared(vec)); } 
     
 
     inline void Normalize(vec2& vec) {
@@ -120,11 +120,11 @@ namespace BlitML
         return vec4(vec.x / len, vec.y / len, vec.z / len, vec.w / len);
     }
 
-    inline float Distance(vec2& v1, vec2& v2){
+    inline float Distance(vec2 v1, vec2 v2){
         vec2 d(v1 - v2);
         return Length(d);
     }
-    inline float Distance(vec3& v1, vec3& v2){
+    inline float Distance(vec3 v1, vec3 v2){
         vec3 d(v1 - v2);
         return Length(d);
     }
@@ -187,7 +187,7 @@ namespace BlitML
         return vec3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
     }
 
-    inline vec4 NormalizePlane(vec4& p){ return p / Length(ToVec3(p));}
+    inline vec4 NormalizePlane(vec4 p){ return p / Length(ToVec3(p));}
 
 
 
