@@ -114,8 +114,9 @@ namespace BlitzenEngine
     uint8_t LoadResourceSystem(EngineResources& resources);
 
 
-
-    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName);
+    // Takes a filename and loads at texture from it, and passes it to each renderer parameter that is not null
+    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName, 
+    void* pVulkan, void* pDirectx12);// The renderers are void* so that I do not expose their API in the .h file
 
 
     void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 

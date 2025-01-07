@@ -125,10 +125,52 @@ namespace BlitzenEngine
             m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
         }
 
-        // Loads the textures, materials and meshes that need to be loaded automatically 
-        // The logic around this should be different, this is just test code currently
-        LoadTextures();
-        LoadMaterials();
+        /*
+            Load the default textures and some other textures for testing
+        */
+        {
+            // Default texture at index 0
+            uint32_t blitTexCol = glm::packUnorm4x8(glm::vec4(0.3, 0, 0.6, 1));
+            uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+	        uint32_t pixels[16 * 16]; 
+	        for (int x = 0; x < 16; x++) 
+            {
+	        	for (int y = 0; y < 16; y++) 
+                {
+	        		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : blitTexCol;
+	        	}
+	        }
+            m_resources.textures[0].pTextureData = reinterpret_cast<uint8_t*>(pixels);
+            m_resources.textures[0].textureHeight = 1;
+            m_resources.textures[0].textureWidth = 1;
+            m_resources.textures[0].textureChannels = 4;
+            m_resources.textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(m_resources.textures[0]));
+
+            // This is hardcoded now
+            LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone.png", "loaded_texture", pVulkan.Data(), nullptr);
+            LoadTextureFromFile(m_resources, "Assets/Textures/texture.jpg", "loaded_texture2", pVulkan.Data(), nullptr);
+            LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan.Data(), nullptr);
+        }
+
+        /*
+            Load the default material and some material for testing
+        */
+        {
+            // Manually load a default material at index 0
+            m_resources.materials[0].diffuseColor = BlitML::vec4(1.f);
+            m_resources.materials[0].diffuseTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
+            m_resources.materials[0].specularTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
+            m_resources.materials[0].materialId = 0;
+            m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
+
+            // Test code
+            BlitML::vec4 color1(0.1f);
+            BlitML::vec4 color2(0.2f);
+            DefineMaterial(m_resources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
+            DefineMaterial(m_resources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
+        }
+
+        // Load test data to draw
         LoadDefaultData(m_resources);
 
         uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering as many objects as the renderer allows
@@ -248,8 +290,10 @@ namespace BlitzenEngine
         // Main loop ends
         StopClock();
 
-        // The renderer is shutdown here as its memory scope it this Run function
+        // There is not active renderer since the application is shutting down
         m_renderer = ActiveRenderer::MaxRenderers;
+
+        // The renderer is shutdown here because it will go out of scope if this run function goes out of scope
         #if BLITZEN_VULKAN
             m_systems.vulkan = 0;
             pVulkan.Data()->Shutdown();
@@ -257,55 +301,6 @@ namespace BlitzenEngine
 
         // With the main loop done, Blitzen calls Shutdown on itself
         Shutdown();
-    }
-
-
-
-
-
-
-
-    void Engine::LoadTextures()
-    {
-        // Default texture at index 0
-        uint32_t blitTexCol = glm::packUnorm4x8(glm::vec4(0.3, 0, 0.6, 1));
-        uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
-	    uint32_t pixels[16 * 16]; 
-	    for (int x = 0; x < 16; x++) 
-        {
-	    	for (int y = 0; y < 16; y++) 
-            {
-	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : blitTexCol;
-	    	}
-	    }
-        m_resources.textures[0].pTextureData = reinterpret_cast<uint8_t*>(pixels);
-        m_resources.textures[0].textureHeight = 1;
-        m_resources.textures[0].textureWidth = 1;
-        m_resources.textures[0].textureChannels = 4;
-        m_resources.textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(m_resources.textures[0]));
-        // Default texture set
-        
-
-        // This is hardcoded now, but this is how all textures will be loaded
-        LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone.png", "loaded_texture");
-        LoadTextureFromFile(m_resources, "Assets/Textures/texture.jpg", "loaded_texture2");
-        LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture");
-    }
-
-    void Engine::LoadMaterials()
-    {
-        // Manually load a default material at index 0
-        m_resources.materials[0].diffuseColor = BlitML::vec4(1.f);
-        m_resources.materials[0].diffuseTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
-        m_resources.materials[0].specularTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
-        m_resources.materials[0].materialId = 0;
-        m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
-
-        // Test code
-        BlitML::vec4 color1(0.1f);
-        BlitML::vec4 color2(0.2f);
-        DefineMaterial(m_resources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
-        DefineMaterial(m_resources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
     }
 
     void Engine::StartClock()
@@ -318,31 +313,6 @@ namespace BlitzenEngine
     {
         m_clock.elapsedTime = 0;
     }
-
-    // This will move from here once I add a camera system
-    void UpdateCamera(Camera& camera, float deltaTime)
-    {
-        if (camera.cameraDirty)
-        {
-            BlitML::vec3 xAxis(1.f, 0.f, 0.f);
-            BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
-
-            BlitML::vec3 yAxis(0.f, -1.f, 0.f);
-            BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
-
-            BlitML::mat4 rotation;
-            rotation = BlitML::QuatToMat4(yawOrientation) * BlitML::QuatToMat4(pitchOrientation);
-
-            // I haven't overloaded the += operator
-            camera.position = camera.position + BlitML::ToVec3(rotation * BlitML::vec4(camera.velocity * deltaTime * 40.f)); 
-            BlitML::mat4 translation = BlitML::Translate(camera.position);
-
-            camera.viewMatrix = BlitML::Mat4Inverse(translation * rotation); // Normally, I would also add rotation here but the math library has a few problems at the moment
-            camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
-        }
-    }
-
-
 
     void Engine::Shutdown()
     {
@@ -374,6 +344,29 @@ namespace BlitzenEngine
 
 
 
+
+    // This will move from here once I add a camera system
+    void UpdateCamera(Camera& camera, float deltaTime)
+    {
+        if (camera.cameraDirty)
+        {
+            BlitML::vec3 xAxis(1.f, 0.f, 0.f);
+            BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
+
+            BlitML::vec3 yAxis(0.f, -1.f, 0.f);
+            BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
+
+            BlitML::mat4 rotation;
+            rotation = BlitML::QuatToMat4(yawOrientation) * BlitML::QuatToMat4(pitchOrientation);
+
+            // I haven't overloaded the += operator
+            camera.position = camera.position + BlitML::ToVec3(rotation * BlitML::vec4(camera.velocity * deltaTime * 40.f)); 
+            BlitML::mat4 translation = BlitML::Translate(camera.position);
+
+            camera.viewMatrix = BlitML::Mat4Inverse(translation * rotation); // Normally, I would also add rotation here but the math library has a few problems at the moment
+            camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
+        }
+    }
 
     uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
     {

@@ -104,7 +104,6 @@ namespace BlitzenEngine
 
         
         Engine(); 
-        void Init();
 
         void Run();
 
@@ -128,9 +127,6 @@ namespace BlitzenEngine
 
         void StartClock();
         void StopClock();
-
-        void LoadTextures();
-        void LoadMaterials();
 
     private:
 

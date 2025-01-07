@@ -110,6 +110,19 @@ namespace BlitzenVulkan
         VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
         m_depthPyramidDescriptorLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+
+        // The graphics pipeline will use 2 layouts, the one for push desciptors and the constant one for textures
+        VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout, m_currentStaticBuffers.textureDescriptorSetlayout };
+        CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 0, nullptr);
+
+        // The layout for culling shaders uses the push descriptor layout but accesses more bindings for culling data and the depth pyramid
+        CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_pushDescriptorBufferLayout, 0, nullptr);
+
+        // The depth pyramid shader uses the set with depth pyramid images and depth attachment image, 
+        // and a push constant for the width and height of the current mip level of the depth pyramid
+        VkPushConstantRange pushConstant{};
+        CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
+        CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidDescriptorLayout, 1, &pushConstant);
     }
 
     void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture)
@@ -130,24 +143,8 @@ namespace BlitzenVulkan
 
         VarBuffersInit();
 
-        // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
-        loadedTextures.Resize(gpuData.textureCount);
-
+        // Create all know descriptor layouts for all known pipelines
         CreateDescriptorLayouts();
-
-        // Pipeline layouts for all shaders
-        {
-            VkDescriptorSetLayout layouts [2] = {m_pushDescriptorBufferLayout, m_currentStaticBuffers.textureDescriptorSetlayout};
-
-            CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 0, nullptr);
-
-            // This is the layout for the culling shaders
-            CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_pushDescriptorBufferLayout, 0, nullptr);
-
-            VkPushConstantRange pushConstant{};
-            CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
-            CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidDescriptorLayout, 1, &pushConstant);
-        }
 
         size_t objectId = 0;
         gpuData.gameObjects.Resize(gpuData.drawCount);// This is temporary for testing. Game objects will not be created in the renderer
@@ -227,18 +224,6 @@ namespace BlitzenVulkan
 
                 objectId++;
             }
-        }
-
-        // Allocating an image for each texture and telling it to use the one sampler the renderer creates (for now)
-        for(size_t i = 0; i < gpuData.textureCount; ++i)
-        {
-            
-            CreateTextureImage(reinterpret_cast<void*>(gpuData.pTextures[i].pTextureData), m_device, m_allocator, 
-            loadedTextures[i].image, 
-            {(uint32_t)gpuData.pTextures[i].textureWidth, (uint32_t)gpuData.pTextures[i].textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
-            VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
-
-            loadedTextures[i].sampler = m_placeholderSampler;
         }
 
         // Passes the data needed to perform bindless rendering (uploads it to storage buffers)

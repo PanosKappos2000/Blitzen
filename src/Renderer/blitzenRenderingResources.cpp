@@ -1,4 +1,5 @@
 #include "blitRenderingResources.h"
+#include "BlitzenVulkan/vulkanRenderer.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"
@@ -34,7 +35,8 @@ namespace BlitzenEngine
         Texture specific functions
     ----------------------------------*/
 
-    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName)
+    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName, 
+    void* pVulkan, void* pDirectx12)
     {
         TextureStats& current = resources.textures[resources.currentTextureIndex];
 
@@ -52,9 +54,18 @@ namespace BlitzenEngine
         // If the load failed give the default texture
         else
         {
-            // TODO: Load the default texture so that the application does not fail
+            current.textureTag = BLIT_DEFAULT_TEXTURE_COUNT - 1;
         }
 
+        // If the vulkan renderer was given to the function and the data from the file was successfully loaded, the texture is passed to the renderer
+        if(pVulkan && load)
+        {
+            BlitzenVulkan::VulkanRenderer* pRenderer = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
+
+            pRenderer->UploadTexture(current);
+        }
+
+        // Return 1 if the data from the file was loaded and 0 otherwise
         return load;
     }
 
