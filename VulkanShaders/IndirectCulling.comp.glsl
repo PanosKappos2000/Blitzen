@@ -10,23 +10,27 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 2) uniform CullingData
 {
-    // Used for frustum culling
-    vec4 frustumPlanes[6];
+    // frustum planes
+    float frustumRight;
+    float frustumLeft;
+    float frustumTop;
+    float frustumBottom;
 
-    float proj0;
-    float proj5;
+    float proj0;// The 1st element of the projection matrix
+    float proj5;// The 12th element of the projection matrix
+
+    // The draw distance and zNear, needed for both occlusion and frustum culling
     float zNear;
+    float zFar;
 
     // Occulusion culling depth pyramid data
     float pyramidWidth;
     float pyramidHeight;
 
-    // Debug values, to activate various acceleration algorithms
-    uint occlusion;
-    uint lod;
-
+    // Debug values
+    uint occlusionEnabled;
+    uint lodEnabled;
 }cullingData;
-
 
 void main()
 {
@@ -45,12 +49,18 @@ void main()
     // Promote the sphere center to view coordinates
     vec3 center = RotateQuat(currentSurface.center, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
     center = (shaderData.view * vec4(center, 1)).xyz;
+
     // Scale the sphere radius
 	float radius = currentSurface.radius * currentInstance.scale;
-	bool visible = true;
+
     // Check that the bounding sphere is inside the view frustum(frustum culling)
-	for (int i = 0; i < 6; ++i)
-		visible = visible && dot(cullingData.frustumPlanes[i], vec4(center, 1)) > -radius;
+	bool visible = true;
+    // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time(Arseny Kapoulkine)
+    visible = visible && center.z * cullingData.frustumLeft - abs(center.x) * cullingData.frustumRight > -radius;
+	visible = visible && center.z * cullingData.frustumBottom - abs(center.y) * cullingData.frustumTop > -radius;
+	// the near/far plane culling uses camera space Z directly
+	visible = visible && center.z + radius > cullingData.zNear && center.z - radius < cullingData.zFar;
+	
     
     // Add the object to the indirect buffer, only if it passed frustum culling
     if(visible)
@@ -62,7 +72,7 @@ void main()
         float lodDistance = log2(max(1, (distance(center, vec3(0)) - radius)));
 	    uint lodIndex = clamp(int(lodDistance), 0, int(currentSurface.lodCount) - 1);
 
-        MeshLod currentLod = cullingData.lod == 1 ? currentSurface.lod[lodIndex] : currentSurface.lod[0];
+        MeshLod currentLod = cullingData.lodEnabled == 1 ? currentSurface.lod[lodIndex] : currentSurface.lod[0];
 
         // The object index is needed to know which element to access in the per object data buffer
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].objectId = objectIndex;

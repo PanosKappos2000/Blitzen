@@ -535,17 +535,19 @@ namespace BlitzenVulkan
         CullingData cullingData;
 
         // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
-        cullingData.frustumData[0] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0));
-        cullingData.frustumData[1] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(0));
-        cullingData.frustumData[2] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1));
-        cullingData.frustumData[3] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(1));
-        cullingData.frustumData[4] = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) - context.projectionTranspose.GetRow(2));
-        cullingData.frustumData[5] = BlitML::vec4(0, 0, -1, context.drawDistance);
+        BlitML::vec4 frustumX = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0)); // x + w < 0
+        BlitML::vec4 frustumY = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1)); // y+ w < 0;
+        cullingData.frustumRight = frustumX.x;
+        cullingData.frustumLeft = frustumX.z;
+        cullingData.frustumTop = frustumY.y;
+        cullingData.frustumBottom = frustumY.z;
+
+        cullingData.zNear = context.zNear;
+        cullingData.zFar = context.drawDistance;
 
         // Culling data for occlusion culling
         cullingData.proj0 = context.projectionMatrix[0];
         cullingData.proj5 = context.projectionMatrix[5];
-        cullingData.zNear = context.zNear;
         cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
         cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
 

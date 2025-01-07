@@ -180,13 +180,24 @@ namespace BlitzenVulkan
 
     struct alignas(16) CullingData
     {
-        BlitML::vec4 frustumData[6];
+        // frustum planes
+        float frustumRight;
+        float frustumLeft;
+        float frustumTop;
+        float frustumBottom;
+
         float proj0;// The 1st element of the projection matrix
         float proj5;// The 12th element of the projection matrix
+
+        // The draw distance and zNear, needed for both occlusion and frustum culling
         float zNear;
+        float zFar;
+
         // Occulusion culling depth pyramid data
         float pyramidWidth;
         float pyramidHeight;
+
+        // Debug values
         uint32_t occlusionEnabled;
         uint32_t lodEnabled;
     };
