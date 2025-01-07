@@ -84,19 +84,22 @@ namespace BlitzenVulkan
 
         BlitCL::DynamicArray<BlitzenEngine::GameObject> gameObjects;// The data from this will be transformed to mesh instance and render objects
 
-        BlitzenEngine::MeshAssets* pMeshes;
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces;
+
+        BlitzenEngine::Mesh* pMeshes;
         size_t meshCount;
 
         BlitzenEngine::TextureStats* pTextures; 
         size_t textureCount;
 
-        BlitzenEngine::MaterialStats* pMaterials;
+        BlitzenEngine::Material* pMaterials;
         size_t materialCount;
 
         size_t drawCount = 0;
 
-        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<BlitML::Meshlet>& m)
-            :vertices(v), indices(i), meshlets(m)
+        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<BlitML::Meshlet>& m, 
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s)
+            :vertices(v), indices(i), meshlets(m), surfaces(s)
         {}
     };
 
@@ -206,16 +209,6 @@ namespace BlitzenVulkan
     struct alignas(16) ShaderPushConstant
     {
         BlitML::vec2 imageSize;
-    };
-
-    // Passed to the shaders through a storage buffer that contains all of these
-    struct alignas(16) MaterialConstants
-    {
-        BlitML::vec4 diffuseColor;
-        float shininess;
-
-        uint32_t diffuseTextureTag;
-        uint32_t specularTextureTag;
     };
 
     // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once

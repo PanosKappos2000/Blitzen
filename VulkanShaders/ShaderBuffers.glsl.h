@@ -156,6 +156,8 @@ struct Material
     // Used to access each texture map
     uint diffuseMapIndex;
     uint specularMapIndex;
+
+    uint materialId;
 };
 
 layout (buffer_reference, std430) readonly buffer MaterialBuffer

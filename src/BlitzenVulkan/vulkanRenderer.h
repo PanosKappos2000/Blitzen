@@ -88,9 +88,6 @@ namespace BlitzenVulkan
         VkDescriptorSetLayout textureDescriptorSetlayout;
         VkDescriptorSet textureDescriptorSet;
 
-        // Holds all vulkan texture data for each texture loaded to the GPU
-        BlitCL::DynamicArray<TextureData> loadedTextures;
-
         inline void Cleanup(VmaAllocator allocator, VkDevice device){
             vmaDestroyBuffer(allocator, renderObjectBuffer.buffer, renderObjectBuffer.allocation);
             vmaDestroyBuffer(allocator, globalMaterialBuffer.buffer, globalMaterialBuffer.allocation);
@@ -113,10 +110,6 @@ namespace BlitzenVulkan
             // Destroy the texture image descriptor set resources
             vkDestroyDescriptorPool(device, textureDescriptorPool, nullptr);
             vkDestroyDescriptorSetLayout(device, textureDescriptorSetlayout, nullptr);
-            for(size_t i = 0; i < loadedTextures.GetSize(); ++i)
-            {
-                loadedTextures[i].image.CleanupResources(allocator, device);
-            }
         }
     };
 
@@ -130,6 +123,8 @@ namespace BlitzenVulkan
             2nd part of Vulkan initialization. Setsup buffers, shaders and descriptors for the render loop
         ------------------------------------------------------------------------------------------------------------ */
         void SetupForRendering(GPUData& gpuData);
+
+        void UploadTexture(BlitzenEngine::TextureStats& newTexture);
 
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(RenderContext& pRenderData);
@@ -146,13 +141,18 @@ namespace BlitzenVulkan
         void CreateDescriptorLayouts();
 
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-        BlitCL::DynamicArray<RenderObject>& staticObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
+        BlitCL::DynamicArray<RenderObject>& staticObjects, BlitzenEngine::Material* pMaterials, size_t materialCount, 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& indirectDraws, 
         BlitCL::DynamicArray<BlitzenEngine::MeshInstance>& meshInstances);
 
         void SetupMainGraphicsPipeline();
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
+
+    public:
+
+        // Array of structs that represent the way textures will be pushed to the GPU
+        BlitCL::DynamicArray<TextureData> loadedTextures;
 
     private:
 

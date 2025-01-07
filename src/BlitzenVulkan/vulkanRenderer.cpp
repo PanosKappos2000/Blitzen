@@ -92,17 +92,11 @@ namespace BlitzenVulkan
         m_pushDescriptorBufferLayout = CreateDescriptorSetLayout(m_device, 4, shaderDataBindings, 
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 
-
-
-
         // Descriptor set layout for textures
         VkDescriptorSetLayoutBinding texturesLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(m_currentStaticBuffers.loadedTextures.GetSize()), 
+        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(loadedTextures.GetSize()), 
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
         m_currentStaticBuffers.textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
-
-
-
 
         // Binding for input image in depth pyramid creation shader
         VkDescriptorSetLayoutBinding inImageLayoutBinding{};
@@ -118,6 +112,16 @@ namespace BlitzenVulkan
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
     }
 
+    void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture)
+    {
+        loadedTextures.Resize(loadedTextures.GetSize() + 1);
+        CreateTextureImage(reinterpret_cast<void*>(newTexture.pTextureData), m_device, m_allocator, 
+        loadedTextures.Back().image, 
+        {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
+        VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
+        loadedTextures.Back().sampler = m_placeholderSampler;
+    }
+
     void VulkanRenderer::SetupForRendering(GPUData& gpuData)
     {
         BLIT_ASSERT_MESSAGE(gpuData.drawCount, "Nothing to draw")
@@ -126,7 +130,7 @@ namespace BlitzenVulkan
         VarBuffersInit();
 
         // Setting the size of the texture array here , so that the pipeline knows how many descriptors the layout should have
-        m_currentStaticBuffers.loadedTextures.Resize(gpuData.textureCount);
+        loadedTextures.Resize(gpuData.textureCount);
 
         CreateDescriptorLayouts();
 
@@ -144,105 +148,83 @@ namespace BlitzenVulkan
             CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidDescriptorLayout, 1, &pushConstant);
         }
 
-
-
-        // Texture sampler, for now all textures will use the same one
-        CreateTextureSampler(m_device, m_placeholderSampler);
-
         size_t objectId = 0;
         gpuData.gameObjects.Resize(gpuData.drawCount);// This is temporary for testing. Game objects will not be created in the renderer
         BlitCL::DynamicArray<RenderObject> renderObjects(gpuData.drawCount);
         BlitCL::DynamicArray<BlitzenEngine::MeshInstance> instances(gpuData.gameObjects.GetSize());
+        // Load multiple bunny mesh instances
+        for(size_t i = 0; i < gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; ++i)
         {
-            // Load multiple bunny mesh instances
-            for(size_t i = 0; i < gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; ++i)
+            BlitzenEngine::MeshInstance& instance = instances[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            instance.pos = translation;
+            instance.scale = 5.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            instance.orientation = orientation;
+
+            // Normally every game object would have an index to the mesh that it is using. For now, the bunny mesh is loaded manually
+            BlitzenEngine::Mesh& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/1];
+
+            for(size_t j = 0; j < currentMesh.surfaceCount; ++j)
             {
-                BlitzenEngine::MeshInstance& instance = instances[i];
+                RenderObject& currentObject = renderObjects[objectId];
 
-                // Loading random position and scale. Normally you would get this from the game object
-                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
-                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
-                instance.pos = translation;
-                instance.scale = 5.f;
+                //currentObject.surfaceId = currentMesh.surfaces[j].surfaceId;
+                /* Every surface holds its own Id, 
+                unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
+                For now I will hard code it*/
+                currentObject.surfaceId = 1;
+                currentObject.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
 
-                // Loading random orientation. Normally you would get this from the game object
-                BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-                (float(rand()) / RAND_MAX) * 2 - 1, // y
-                (float(rand()) / RAND_MAX) * 2 - 1); // z
-		        float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-                BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-                instance.orientation = orientation;
-
-                // Normally every game object would have an index to the mesh that it is using. For now, the bunny mesh is loaded manually
-                BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/1];
-
-                for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
-                {
-                    RenderObject& currentObject = renderObjects[objectId];
-
-                    //currentObject.surfaceId = currentMesh.surfaces[j].surfaceId;
-                    /* Every surface holds its own Id, 
-                    unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
-                    For now I will hard code it*/
-                    currentObject.surfaceId = 1;
-                    currentObject.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
-
-                    objectId++;
-                }
-            }
-
-            // Load multiple kitten mesh instances
-            for (size_t i = gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; i < gpuData.drawCount; ++i)
-            {
-                BlitzenEngine::MeshInstance& instance = instances[i];
-
-                // Loading random position and scale. Normally you would get this from the game object
-                BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
-                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
-                instance.pos = translation;
-                instance.scale = 1.f;
-
-                // Loading random orientation. Normally you would get this from the game object
-                BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-                (float(rand()) / RAND_MAX) * 2 - 1, // y
-                (float(rand()) / RAND_MAX) * 2 - 1); // z
-		        float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-                BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-                instance.orientation = orientation;
-
-                // Normally every game object would have an index to the mesh that it is using. For now, the kitten mesh is loaded manually
-                BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/0];
-
-                for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
-                {
-                    RenderObject& currentObject = renderObjects[objectId];
-
-                    //currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;
-                    /* Every surface holds its own Id, 
-                    unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
-                    For now I will hard code it*/
-                    currentObject.surfaceId = 0;
-                    currentObject.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
-
-                    objectId++;
-                }
+                objectId++;
             }
         }
 
-        // Pass each surface from each mesh to a separate array. This should be done earlier by having each mesh index into its surfaces
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
-        surfaces.Reserve(gpuData.meshCount * 10);// reserve some space too avoid too many reallocations
-        size_t surfaceIndex = 0;
-        for(size_t i = 0; i < gpuData.meshCount; ++i)
+        // Load multiple kitten mesh instances
+        for (size_t i = gpuData.gameObjects.GetSize() - gpuData.gameObjects.GetSize() / 10; i < gpuData.drawCount; ++i)
         {
-            BlitzenEngine::MeshAssets& currentMesh = gpuData.pMeshes[i];
-            surfaces.Resize(surfaces.GetSize() + currentMesh.surfaces.GetSize());
-            for(size_t j = 0; j < currentMesh.surfaces.GetSize(); ++j)
+            BlitzenEngine::MeshInstance& instance = instances[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            instance.pos = translation;
+            instance.scale = 1.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            instance.orientation = orientation;
+
+            // Normally every game object would have an index to the mesh that it is using. For now, the kitten mesh is loaded manually
+            BlitzenEngine::Mesh& currentMesh = gpuData.pMeshes[/*currentObject.meshIndex*/0];
+
+            for(size_t j = 0; j < currentMesh.surfaceCount; ++j)
             {
-                surfaces[surfaceIndex] = currentMesh.surfaces[j];
-                surfaceIndex++;
+                RenderObject& currentObject = renderObjects[objectId];
+
+                //currentRo.surfaceId = currentMesh.surfaces[j].surfaceId;
+                /* Every surface holds its own Id, 
+                unforunately this cannot work with how I have setup asset loading at the moment, but I will fix it in the near future
+                For now I will hard code it*/
+                currentObject.surfaceId = 0;
+                currentObject.meshInstanceId = i;// Each game object has one mesh, so the mesh instance id is equal to the game object id
+
+                objectId++;
             }
         }
 
@@ -251,23 +233,16 @@ namespace BlitzenVulkan
         {
             
             CreateTextureImage(reinterpret_cast<void*>(gpuData.pTextures[i].pTextureData), m_device, m_allocator, 
-            m_currentStaticBuffers.loadedTextures[i].image, 
+            loadedTextures[i].image, 
             {(uint32_t)gpuData.pTextures[i].textureWidth, (uint32_t)gpuData.pTextures[i].textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
             VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
 
-            m_currentStaticBuffers.loadedTextures[i].sampler = m_placeholderSampler;
-        }
-
-        // Configure the material data to what is actually needed by the GPU
-        BlitCL::DynamicArray<MaterialConstants> materials(gpuData.materialCount);
-        for(size_t i = 0; i < gpuData.materialCount; ++i)
-        {
-            materials[i].diffuseColor = gpuData.pMaterials[i].diffuseColor;
-            materials[i].diffuseTextureTag = gpuData.pMaterials[i].diffuseMapTag;
+            loadedTextures[i].sampler = m_placeholderSampler;
         }
 
         // Passes the data needed to perform bindless rendering (uploads it to storage buffers)
-        UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, materials, gpuData.meshlets, surfaces, instances);
+        UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, 
+        gpuData.pMaterials, gpuData.materialCount, gpuData.meshlets, gpuData.surfaces, instances);
     
         // First render pass Culling compute shader
         CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -286,7 +261,7 @@ namespace BlitzenVulkan
     }
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-    BlitCL::DynamicArray<RenderObject>& renderObjects, BlitCL::DynamicArray<MaterialConstants>& materials, 
+    BlitCL::DynamicArray<RenderObject>& renderObjects, BlitzenEngine::Material* pMaterials, size_t materialCount, 
     BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
     BlitCL::DynamicArray<BlitzenEngine::MeshInstance>& meshInstances)
     {
@@ -317,7 +292,7 @@ namespace BlitzenVulkan
         // Holds material constants 
         // (like diffuse color and and indices into the array of textures for the different texture maps it uses) 
         // for every material
-        VkDeviceSize materialBufferSize = sizeof(MaterialConstants) * materials.GetSize();
+        VkDeviceSize materialBufferSize = sizeof(BlitzenEngine::Material) * materialCount;
         CreateBuffer(m_allocator, m_currentStaticBuffers.globalMaterialBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, materialBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -400,7 +375,7 @@ namespace BlitzenVulkan
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize, renderObjects.Data(), 
         renderObjectBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize, 
-        materials.Data(), materialBufferSize);
+        pMaterials, materialBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 
         surfaces.Data(), surfaceBufferSize);
         BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize +
@@ -488,12 +463,12 @@ namespace BlitzenVulkan
         AllocateDescriptorSets(m_device, m_currentStaticBuffers.textureDescriptorPool, &m_currentStaticBuffers.textureDescriptorSetlayout, 
         1, &m_currentStaticBuffers.textureDescriptorSet);
 
-        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(m_currentStaticBuffers.loadedTextures.GetSize());
+        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(loadedTextures.GetSize());
         for(size_t i = 0; i < imageInfos.GetSize(); ++i)
         {
             imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfos[i].imageView = m_currentStaticBuffers.loadedTextures[i].image.imageView;
-            imageInfos[i].sampler = m_currentStaticBuffers.loadedTextures[i].sampler;
+            imageInfos[i].imageView = loadedTextures[i].image.imageView;
+            imageInfos[i].sampler = loadedTextures[i].sampler;
         }
 
         VkWriteDescriptorSet write{};

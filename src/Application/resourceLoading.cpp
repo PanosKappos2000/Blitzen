@@ -67,15 +67,16 @@ namespace BlitzenEngine
     void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName)
     {
-        MaterialStats& current = resources.materials[resources.currentMaterialIndex];
+        Material& current = resources.materials[resources.currentMaterialIndex];
 
         current.diffuseColor = diffuseColor;
         current.shininess = shininess;
-        current.diffuseMapName = diffuseMapName;
-        current.diffuseMapTag = resources.textureTable.Get(diffuseMapName, &resources.textures[0])->textureTag;
-        current.specularMapName = specularMapName;
-        current.specularMapTag = resources.textureTable.Get(specularMapName, &resources.textures[0])->textureTag;
-        current.materialTag = static_cast<uint32_t>(resources.currentMaterialIndex);
+
+        current.diffuseTextureTag = resources.textureTable.Get(diffuseMapName, &resources.textures[0])->textureTag;
+        current.specularTextureTag = resources.textureTable.Get(specularMapName, &resources.textures[0])->textureTag;
+
+        current.materialId = static_cast<uint32_t>(resources.currentMaterialIndex);
+
         resources.materialTable.Set(materialName, &current);
         resources.currentMaterialIndex++;
     }
@@ -84,12 +85,17 @@ namespace BlitzenEngine
 
     uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets /*= 0*/)
     {
+        // The function should return if the engine will go over the max allowed mesh assets
         if(resources.currentMeshIndex > BLIT_MAX_MESH_COUNT)
         {
             BLIT_ERROR("Max mesh count: ( %i ) reached!", BLIT_MAX_MESH_COUNT)
             BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
             return 0;
         }
+
+        // Get the current mesh and give it the size surface array as its first surface index
+        Mesh& currentMesh = resources.meshes[resources.currentMeshIndex];
+        currentMesh.firstSurface = resources.surfaces.GetSize();
 
         ObjFile file;
         if(!objParseFile(file, filename))
@@ -137,7 +143,7 @@ namespace BlitzenEngine
 
         PrimitiveSurface newSurface;
         newSurface.vertexOffset = static_cast<uint32_t>(resources.vertices.GetSize());
-        newSurface.materialId = resources.materialTable.Get("loaded_material", &resources.materials[0])->materialTag;
+        newSurface.materialId = resources.materialTable.Get("loaded_material", &resources.materials[0])->materialId;
 
         //resources.indices.AddBlockAtBack(indices.Data(), indices.GetSize());
         resources.vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
@@ -192,8 +198,9 @@ namespace BlitzenEngine
         newSurface.radius = radius;
 
         // Add the surface to the current mesh and increment the mesh index, so that the next time another mesh is processed
-        resources.meshes[resources.currentMeshIndex].surfaces.PushBack(newSurface);
-        ++resources.currentMeshIndex;
+        resources.surfaces.PushBack(newSurface);
+        currentMesh.surfaceCount++;// Increment the surface count
+        ++resources.currentMeshIndex;// Increment the mesh index
 
         return 1;
     }

@@ -601,6 +601,9 @@ namespace BlitzenVulkan
         CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
         m_drawExtent, m_device, m_allocator);
 
+        // Texture sampler, for now all textures will use the same one
+        CreateTextureSampler(m_device, m_placeholderSampler);
+
         return 1;
     }
 
@@ -818,6 +821,11 @@ namespace BlitzenVulkan
     void VulkanRenderer::Shutdown()
     {
         vkDeviceWaitIdle(m_device);
+
+        for(size_t i = 0; i < loadedTextures.GetSize(); ++i)
+        {
+            loadedTextures[i].image.CleanupResources(m_allocator, m_device);
+        }
 
         vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
 

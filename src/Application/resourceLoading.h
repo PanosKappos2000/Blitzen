@@ -13,7 +13,7 @@
 #define BLIT_DEFAULT_MATERIAL_COUNT  1
 
 #define BLIT_MAX_MESH_LOD           8
-#define BLIT_MAX_MESH_COUNT         10000
+#define BLIT_MAX_MESH_COUNT         100'000
 
 namespace BlitzenEngine
 {
@@ -28,22 +28,16 @@ namespace BlitzenEngine
         uint32_t textureTag;
     };
 
-    struct MaterialStats
+    // Passed to the GPU as a unified storage buffer. Part of Material stats
+    struct alignas(16) Material
     {
-        // Specify the material constants
         BlitML::vec4 diffuseColor;
         float shininess;
 
-        // Access the textures this material uses
-        const char* diffuseMapName;
-        const char* specularMapName;
+        uint32_t diffuseTextureTag;
+        uint32_t specularTextureTag;
 
-        // Allows shaders to access the saved data of the textures used by the material
-        uint32_t diffuseMapTag;
-        uint32_t specularMapTag;
-
-        // This tag is for the shaders to know where in the material buffer this material can be accessed
-        uint32_t materialTag;
+        uint32_t materialId;
     };
 
     struct MeshLod
@@ -79,9 +73,10 @@ namespace BlitzenEngine
         uint32_t surfaceId;
     };
 
-    struct MeshAssets
+    struct Mesh
     {
-        BlitCL::DynamicArray<PrimitiveSurface> surfaces;
+        uint32_t firstSurface;
+        uint32_t surfaceCount = 0;
     };
 
     // Data that can vary for 2 different object with the same or different objects
@@ -99,18 +94,21 @@ namespace BlitzenEngine
         BlitCL::PointerTable<TextureStats> textureTable;
         size_t currentTextureIndex = BLIT_DEFAULT_TEXTURE_COUNT;
 
-        MaterialStats materials[BLIT_MAX_MATERIAL_COUNT];
-        BlitCL::PointerTable<MaterialStats> materialTable;
+        Material materials[BLIT_MAX_MATERIAL_COUNT];
+        BlitCL::PointerTable<Material> materialTable;
         size_t currentMaterialIndex = BLIT_DEFAULT_MATERIAL_COUNT;
 
         BlitCL::DynamicArray<BlitML::Vertex> vertices;
         BlitCL::DynamicArray<uint32_t> indices;
         BlitCL::DynamicArray<BlitML::Meshlet> meshlets;
 
-        // Probably should have Mesh assets here instead of surfaces
-        MeshAssets meshes[BLIT_MAX_MESH_COUNT];
+        // Every mesh allowed is place here
+        Mesh meshes[BLIT_MAX_MESH_COUNT];
         size_t currentMeshIndex = 0;
         uint32_t currentSurfaceIndex = 0;
+
+        // Each mesh points to a continuous pack of elements of this surface array
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
     };
 
     uint8_t LoadResourceSystem(EngineResources& resources);

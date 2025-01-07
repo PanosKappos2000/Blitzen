@@ -135,8 +135,8 @@ namespace BlitzenEngine
         #if BLITZEN_VULKAN
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
-            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets);/* The contructor
-            is needed for values that are references instead of pointers */
+            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets, 
+            m_resources.surfaces);/* The contructor is needed for values that are references instead of pointers */
 
             vulkanData.pTextures = m_resources.textures;
             vulkanData.textureCount = m_resources.currentTextureIndex;// Current texture index is equal to the size of the array of textures
@@ -296,10 +296,9 @@ namespace BlitzenEngine
     {
         // Manually load a default material at index 0
         m_resources.materials[0].diffuseColor = BlitML::vec4(1.f);
-        m_resources.materials[0].diffuseMapName = BLIT_DEFAULT_TEXTURE_NAME;
-        m_resources.materials[0].diffuseMapTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
-        m_resources.materials[0].specularMapTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
-        m_resources.materials[0].materialTag = 0;
+        m_resources.materials[0].diffuseTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
+        m_resources.materials[0].specularTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
+        m_resources.materials[0].materialId = 0;
         m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
 
         // Test code
