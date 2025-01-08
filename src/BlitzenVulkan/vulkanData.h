@@ -82,9 +82,12 @@ namespace BlitzenVulkan
 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets;
 
-        BlitCL::DynamicArray<BlitzenEngine::GameObject> gameObjects;// The data from this will be transformed to mesh instance and render objects
+        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms;
 
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces;
+
+        BlitzenEngine::GameObject* pGameObjects;// This will be transformed to render objects
+        size_t gameObjectCount;
 
         BlitzenEngine::Mesh* pMeshes;
         size_t meshCount;
@@ -98,8 +101,8 @@ namespace BlitzenVulkan
         size_t drawCount = 0;
 
         inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<BlitML::Meshlet>& m, 
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s)
-            :vertices(v), indices(i), meshlets(m), surfaces(s)
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& t)
+            :vertices(v), indices(i), meshlets(m), surfaces(s), transforms(t)
         {}
     };
 

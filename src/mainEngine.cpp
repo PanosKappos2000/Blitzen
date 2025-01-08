@@ -173,12 +173,66 @@ namespace BlitzenEngine
         // Load test data to draw
         LoadDefaultData(m_resources);
 
-        uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering as many objects as the renderer allows
+        uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
+
+        m_resources.objectCount = drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
+        m_resources.transforms.Resize(m_resources.objectCount);// Every object has a different transform
+        // Hardcode a large amount of objects with the stanford bunny mesh and random transforms
+        for(size_t i = 0; i < m_resources.objectCount - m_resources.objectCount / 10; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            transform.pos = translation;
+            transform.scale = 5.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = m_resources.objects[i];
+
+            currentObject.meshIndex = 1;// Hardcode the bunny mesh for each object in this loop
+            currentObject.transformIndex = i;// Transform index is the same as the object index
+        }
+        // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
+        for (size_t i = m_resources.objectCount - m_resources.objectCount / 10; i < m_resources.objectCount; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            transform.pos = translation;
+            transform.scale = 1.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = m_resources.objects[i];
+
+            currentObject.meshIndex = 0;// Hardcode the kitten mesh for each object in this loop
+            currentObject.transformIndex = i;// Transform index is the same as the object index
+        }
+
         #if BLITZEN_VULKAN
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets, 
-            m_resources.surfaces);/* The contructor is needed for values that are references instead of pointers */
+            m_resources.surfaces, m_resources.transforms);/* The contructor is needed for values that are references instead of pointers */
 
             vulkanData.pTextures = m_resources.textures;
             vulkanData.textureCount = m_resources.currentTextureIndex;// Current texture index is equal to the size of the array of textures
@@ -188,6 +242,9 @@ namespace BlitzenEngine
 
             vulkanData.pMeshes = m_resources.meshes;
             vulkanData.meshCount = m_resources.currentMeshIndex;// Current mesh index is equal to the size of the mesh array
+
+            vulkanData.pGameObjects = m_resources.objects;
+            vulkanData.gameObjectCount = m_resources.objectCount;
 
             // Draw count will be used to determine the size of draw and object buffers
             vulkanData.drawCount = drawCount;

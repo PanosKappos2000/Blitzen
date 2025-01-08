@@ -2,6 +2,7 @@
 #include "Core/blitLogger.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Core/blitzenContainerLibrary.h"
+#include "Game/blitObject.h" // I probably do not want to include this here
 
 #define BLIT_MAX_TEXTURE_COUNT      5000
 #define BLIT_DEFAULT_TEXTURE_NAME   "blit_default_tex"
@@ -14,6 +15,8 @@
 
 #define BLIT_MAX_MESH_LOD           8
 #define BLIT_MAX_MESH_COUNT         100'000
+
+#define BLIT_MAX_OBJECTS            5'000'000
 
 namespace BlitzenEngine
 {
@@ -80,14 +83,15 @@ namespace BlitzenEngine
     };
 
     // Data that can vary for 2 different object with the same or different objects
-    struct alignas(16) MeshInstance
+    struct alignas(16) MeshTransform
     {
         BlitML::vec3 pos;
         float scale;
         BlitML::quat orientation;
     };
 
-    // This struct holds all loaded resources and is held by the engine and referenced by the loading system
+    // This structu holds every loaded resource that will be used for rendering all game objects
+    // TODO: Change the name of this struct to rendering resources
     struct EngineResources
     {
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
@@ -98,17 +102,24 @@ namespace BlitzenEngine
         BlitCL::PointerTable<Material> materialTable;
         size_t currentMaterialIndex = BLIT_DEFAULT_MATERIAL_COUNT;
 
+        // Arrays that hold all necessary geometry data
         BlitCL::DynamicArray<BlitML::Vertex> vertices;
         BlitCL::DynamicArray<uint32_t> indices;
         BlitCL::DynamicArray<BlitML::Meshlet> meshlets;
 
-        // Every mesh allowed is place here
+        // The data of every mesh allowed is in this fixed size array and the currentMeshIndex holds the current amount of loaded meshes
         Mesh meshes[BLIT_MAX_MESH_COUNT];
         size_t currentMeshIndex = 0;
-        uint32_t currentSurfaceIndex = 0;
+
+        // Each instance of a mesh has a different transform that is an element in this array
+        BlitCL::DynamicArray<MeshTransform> transforms;
 
         // Each mesh points to a continuous pack of elements of this surface array
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
+        uint32_t currentSurfaceIndex = 0;// This might not be necessary since surfaces are placed in dynamic array
+
+        BlitzenEngine::GameObject objects[BLIT_MAX_OBJECTS];
+        uint32_t objectCount;
     };
 
     uint8_t LoadResourceSystem(EngineResources& resources);
