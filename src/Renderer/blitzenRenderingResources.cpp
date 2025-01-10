@@ -168,6 +168,9 @@ namespace BlitzenEngine
             lod.firstIndex = static_cast<uint32_t>(resources.indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
 
+            lod.firstMeshlet = static_cast<uint32_t>(resources.meshlets.GetSize());
+            lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(LoadMeshlet(resources, vertices, indices)) : 0;
+
             resources.indices.AddBlockAtBack(lodIndices.Data(), lodIndices.GetSize());
 
             if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
@@ -216,16 +219,64 @@ namespace BlitzenEngine
         return 1;
     }
 
-    size_t LoadMeshlet(EngineResources& resoureces, BlitCL::DynamicArray<BlitML::Vertex>& vertices, 
+    // The code for this function is taken from Arseny's niagara streams. It uses his meshoptimizer library which I am not that familiar with
+    size_t LoadMeshlet(EngineResources& resources, BlitCL::DynamicArray<BlitML::Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
         const size_t maxVertices = 64;
         const size_t maxTriangles = 124;
+        const float coneWeight = 0.25f;
 
         BlitCL::DynamicArray<meshopt_Meshlet> akMeshlets(meshopt_buildMeshletsBound(indices.GetSize(), maxVertices, maxTriangles));
-        //akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), vertices.Data(),  ))
+        BlitCL::DynamicArray<unsigned int> meshletVertices(akMeshlets.GetSize() * maxVertices);
+        BlitCL::DynamicArray<unsigned char> meshletTriangles(akMeshlets.GetSize() * maxTriangles * 3);
 
-        return 0;
+        akMeshlets.Downsize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), indices.Data(), indices.GetSize(), 
+        &vertices[0].position.x, vertices.GetSize(), sizeof(BlitML::Vertex), maxVertices, maxTriangles, coneWeight));
+
+        
+	    // note: I could append meshletVertices & meshletTriangles buffers more or less directly with small changes in Meshlet struct, 
+        // but for now keep the GPU side layout flexible and separate
+        for(size_t i = 0; i < akMeshlets.GetSize(); ++i)
+        {
+            meshopt_Meshlet& meshlet = akMeshlets[i];
+
+            meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset], &meshletTriangles[meshlet.triangle_offset], 
+            meshlet.triangle_count, meshlet.vertex_count);
+
+            size_t dataOffset = resources.meshletData.GetSize();
+            for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
+            {
+                resources.meshletData.PushBack(meshletVertices[meshlet.vertex_offset + i]);
+            }
+
+            const unsigned int* indexGroups = reinterpret_cast<const unsigned int*>(&meshletTriangles[0] + meshlet.triangle_offset);
+            unsigned int indexGroupCount = (meshlet.triangle_count * 3 + 3);
+
+            for(unsigned int i = 0; i < indexGroupCount; ++i)
+            {
+                resources.meshletData.PushBack(uint32_t(indexGroups[size_t(i)]));
+            }
+
+            meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
+            &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, &vertices[0].position.x, vertices.GetSize(), sizeof(BlitML::Vertex));
+
+            BlitML::Meshlet m = {};
+            m.dataOffset = static_cast<uint32_t>(dataOffset);
+            m.triangleCount = meshlet.triangle_count;
+            m.vertexCount = meshlet.vertex_count;
+
+            m.center = BlitML::vec3(bounds.center[0], bounds.center[1], bounds.center[2]);
+            m.radius = bounds.radius;
+            m.cone_axis[0] = bounds.cone_axis_s8[0];
+		    m.cone_axis[1] = bounds.cone_axis_s8[1];
+		    m.cone_axis[2] = bounds.cone_axis_s8[2];
+		    m.cone_cutoff = bounds.cone_cutoff_s8; 
+
+            resources.meshlets.PushBack(m);
+        }
+
+        return akMeshlets.GetSize();
     }
 
 

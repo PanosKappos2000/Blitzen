@@ -422,7 +422,7 @@ namespace BlitzenVulkan
             extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
             #if BLITZEN_VULKAN_MESH_SHADER
                 if(m_stats.meshShaderSupport)
-                    extensionsNames[2] = VK_NV_MESH_SHADER_EXTENSION_NAME;
+                    extensionsNames[2] = VK_EXT_MESH_SHADER_EXTENSION_NAME;
             #endif
             deviceInfo.ppEnabledExtensionNames = extensionsNames;
 

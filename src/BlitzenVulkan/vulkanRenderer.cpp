@@ -274,7 +274,7 @@ namespace BlitzenVulkan
 
         VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();// Defining this here so that it does not go out of scope
         VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjects.GetSize();// Defining this here so that it does not go out of scope
-        // The mesh/meshlet buffer will only be created if mesh shading is supported(checked during initalization, only if it the mesh shader macro is set to 1)
+        // The meshlet buffer will only be created if mesh shading is supported(checked during initalization, only if it the mesh shader macro is set to 1)
         if(m_stats.meshShaderSupport)
         {
             // Holds per object meshlet data for all the objects in the shader
@@ -287,6 +287,7 @@ namespace BlitzenVulkan
             // the staging buffer size will also be incremented if the meshlet buffer is created
             stagingBufferSize += meshBufferSize;
 
+            // Like with the traditional pipeline indirect buffer, this will be initialized by the compute shaders
             CreateBuffer(m_allocator, m_currentStaticBuffers.indirectTaskBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
             VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
             VMA_MEMORY_USAGE_GPU_ONLY, indirectTaskBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -313,9 +314,6 @@ namespace BlitzenVulkan
         {
             BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
             + surfaceBufferSize + meshInstanceBufferSize, meshlets.Data(), meshBufferSize);
-
-            BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
-            + surfaceBufferSize + meshInstanceBufferSize + meshBufferSize, nullptr, indirectTaskBufferSize);
         }
 
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -359,10 +357,6 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.meshletBuffer.buffer, meshBufferSize, 
             currentStagingBufferOffset, 0);
             currentStagingBufferOffset += meshBufferSize;// Add the size of the previous buffer to the offset
-
-            CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
-            m_currentStaticBuffers.indirectTaskBuffer.buffer, indirectTaskBufferSize, 
-            currentStagingBufferOffset, 0);
         }
 
         // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)

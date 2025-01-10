@@ -106,6 +106,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<BlitML::Vertex> vertices;
         BlitCL::DynamicArray<uint32_t> indices;
         BlitCL::DynamicArray<BlitML::Meshlet> meshlets;
+        BlitCL::DynamicArray<uint32_t> meshletData;
 
         // The data of every mesh allowed is in this fixed size array and the currentMeshIndex holds the current amount of loaded meshes
         Mesh meshes[BLIT_MAX_MESH_COUNT];
