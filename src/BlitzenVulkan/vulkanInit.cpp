@@ -45,6 +45,84 @@ namespace BlitzenVulkan
     }
     // Validation layers function pointers
 
+    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
+    {
+        m_pCustomAllocator = nullptr;
+
+        // Like the assertion message below says, Blitzen will not use Vulkan without indirect
+        BLIT_ASSERT_MESSAGE(BLITZEN_VULKAN_INDIRECT_DRAW, "Blitzen will not support Vulkan without draw indirect going forward.If you want to use Vulkan enable the BLITZEN_VULKAN_INDIRECT_DRAW on vulkanData.h")
+
+        CreateInstance(m_initHandles.instance);
+
+        // A debug messenger for validation layers is created when in debug mode
+        #ifndef NDEBUG
+            CreateDebugMessenger(m_initHandles);
+        #endif
+
+        // Create the surface depending on the implementation on Platform.cpp
+        BlitzenPlatform::CreateVulkanSurface(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator);
+
+        // Call the function to search for a suitable physical device, it it can't find one return 0
+        if(!PickPhysicalDevice(m_initHandles, m_graphicsQueue, m_computeQueue, m_presentQueue, m_stats))
+        {
+            return 0;
+        }
+
+        // Create the device
+        CreateDevice(m_device, m_initHandles, m_graphicsQueue, m_presentQueue, m_computeQueue, m_stats);
+
+        //Create the swapchain
+        CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
+        m_initHandles.swapchain);
+
+        // Initialize VMA allocator
+        VmaAllocatorCreateInfo allocatorInfo{};
+        allocatorInfo.device = m_device;
+        allocatorInfo.instance = m_initHandles.instance;
+        allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
+        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
+        
+        /* Allocating temporary command buffer, since some commands will be needed outside of the draw loop*/
+        {
+            VkCommandPoolCreateInfo commandPoolCreateInfo{};
+            commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            // This will allow each command buffer created by this pool to be inidividually reset
+            commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            commandPoolCreateInfo.pNext = nullptr;
+            commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueue.index;
+            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_placeholderCommandPool));
+
+            VkCommandBufferAllocateInfo commandBufferInfo{};
+            commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            commandBufferInfo.pNext = nullptr;
+            commandBufferInfo.commandPool = m_placeholderCommandPool;
+            commandBufferInfo.commandBufferCount = 1;
+            commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferInfo, &m_placeholderCommands))
+        }// TODO: Remove this pointless code
+
+        // Create the sync structure and command buffers that need to differ for each frame in flight
+        FrameToolsInit();
+
+        // This will be referred to by rendering attachments and will be updated when the window is resized
+        m_drawExtent = {windowWidth, windowHeight};
+
+        // Initlize the rendering attachments
+        CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+        // Create the depth pyramid image and its mips that will be used for occlusion culling
+        CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
+        m_drawExtent, m_device, m_allocator);
+
+        // Texture sampler, for now all textures will use the same one
+        CreateTextureSampler(m_device, m_placeholderSampler);
+
+        return 1;
+    }
 
     void CreateInstance(VkInstance& instance)
     {
@@ -334,202 +412,15 @@ namespace BlitzenVulkan
             initHandles.chosenGpu = physicalDevices[0];
         else
             BLIT_INFO("Discrete GPU found")
+
+        // If the function has reached this point, it means it found a physical device
+        return 1;
     }
 
-    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
+    void CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
+    Queue& presentQueue, Queue& computeQueue, VulkanStats& stats)
     {
-        m_pCustomAllocator = nullptr;
-
-        // Like the assertion message below says, Blitzen will not use Vulkan without indirect
-        BLIT_ASSERT_MESSAGE(BLITZEN_VULKAN_INDIRECT_DRAW, "Blitzen will not support Vulkan without draw indirect going forward.If you want to use Vulkan enable the BLITZEN_VULKAN_INDIRECT_DRAW on vulkanData.h")
-
-        CreateInstance(m_initHandles.instance);
-
-        // A debug messenger for validation layers is created when in debug mode
-        #ifndef NDEBUG
-            CreateDebugMessenger(m_initHandles);
-        #endif
-
-        // Create the surface depending on the implementation on Platform.cpp
-        BlitzenPlatform::CreateVulkanSurface(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator);
-
-
-
-
-        
-        /*
-            Physical device (GPU representation) selection
-        */
-        {
-            uint32_t physicalDeviceCount = 0;
-            vkEnumeratePhysicalDevices(m_initHandles.instance, &physicalDeviceCount, nullptr);
-            BLIT_ASSERT(physicalDeviceCount)
-            BlitCL::DynamicArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-            vkEnumeratePhysicalDevices(m_initHandles.instance, &physicalDeviceCount, physicalDevices.Data());
-
-            // Goes through the available devices, to eliminate the ones that are completely inadequate
-            for(size_t i = 0; i < physicalDevices.GetSize(); ++i)
-            {
-                VkPhysicalDevice& pdv = physicalDevices[i];
-
-                // Get core physical device features
-                VkPhysicalDeviceFeatures features{};
-                vkGetPhysicalDeviceFeatures(pdv, &features);
-
-                // Get newer version physical Device Features
-                VkPhysicalDeviceFeatures2 features2{};
-                VkPhysicalDeviceVulkan11Features features11{};
-                features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-                features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                // Add Vulkan 1.1 features to the pNext chain
-                features2.pNext = &features11;
-                VkPhysicalDeviceVulkan12Features features12{};
-                features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-                // Add Vulkan 1.2 features to the pNext chain
-                features11.pNext = &features12;
-                VkPhysicalDeviceVulkan13Features features13{};
-                features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-                // Add Vulkan 1.3 features to the pNext chain
-                features12.pNext = &features13;
-                VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh{};
-                featuresMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-                // Add Nvidia mesh shader features to the pNext chain
-                features13.pNext = &featuresMesh;
-                vkGetPhysicalDeviceFeatures2(pdv, &features2);
-
-                // Check that all the required features are supported by the device
-                if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
-                !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
-                !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
-                !features12.samplerFilterMinmax ||
-                !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
-                {
-                    physicalDevices.RemoveAtIndex(i);
-                    --i;
-                    continue;
-                }
-
-                // Checking if the device supports all extensions that will be requested from Vulkan
-                uint32_t dvExtensionCount = 0;
-                vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, nullptr);
-                BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
-                vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
-                // For now the device only needs to look for one extension
-                uint8_t extensionSupport  = 0;
-                // Check for the required extension name with strcmp
-                for(size_t j = 0; j < dvExtensionsProps.GetSize(); ++j)
-                {
-                    if(!strcmp(dvExtensionsProps[j].extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
-                        extensionSupport = 1;  
-                }
-                
-                if(!extensionSupport)
-                {
-                    physicalDevices.RemoveAtIndex(i);
-                    --i;
-                    continue;
-                }
-
-                VkPhysicalDeviceProperties props{};
-                vkGetPhysicalDeviceProperties(pdv, &props);
-                if (props.apiVersion < VK_API_VERSION_1_3)
-                {
-                    physicalDevices.RemoveAtIndex(i);
-                    --i;
-                    continue;
-                }
-
-                //Retrieve queue families from device
-                uint32_t queueFamilyPropertyCount = 0;
-                vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, nullptr);
-                // Remove this device from the candidates, if no queue families were retrieved
-                if(!queueFamilyPropertyCount)
-                {
-                    physicalDevices.RemoveAtIndex(i);
-                    --i;
-                    continue;
-                }
-                // Store the queue family properties to query for their indices
-                BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(static_cast<size_t>(queueFamilyPropertyCount));
-                for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
-                {
-                    queueFamilyProperties[j].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
-                }
-                vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
-                for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
-                {
-                    // Checks for a graphics queue index, if one has not already been found 
-                    if(queueFamilyProperties[j].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && !m_graphicsQueue.hasIndex)
-                    {
-                        m_graphicsQueue.index = static_cast<uint32_t>(j);
-                        m_graphicsQueue.hasIndex = 1;
-                    }
-
-                    // Checks for a compute queue index, if one has not already been found 
-                    if(queueFamilyProperties[j].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT && !m_computeQueue.hasIndex)
-                    {
-                        m_computeQueue.index = static_cast<uint32_t>(j);
-                        m_computeQueue.hasIndex = 1;
-                    }
-
-                    VkBool32 supportsPresent = VK_FALSE;
-                    VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, static_cast<uint32_t>(j), m_initHandles.surface, &supportsPresent))
-                    if(supportsPresent == VK_TRUE && !m_presentQueue.hasIndex)
-                    {
-                        m_presentQueue.index = static_cast<uint32_t>(j);
-                        m_presentQueue.hasIndex = 1;
-                    }
-                }
-
-                // If one of the required queue families has no index, then it gets removed from the candidates
-                if(!m_presentQueue.hasIndex || !m_graphicsQueue.hasIndex || !m_computeQueue.hasIndex)
-                {
-                    physicalDevices.RemoveAtIndex(i);
-                    --i;
-                }
-            }
-
-            if(!physicalDevices.GetSize())
-            {
-                BLIT_WARN("Your machine has no physical device that supports vulkan the way Blitzen wants it. \n \
-                Try another graphics specification or disable some features")
-                return 0;
-            }
-
-            for(size_t i = 0; i < physicalDevices.GetSize(); ++i)
-            {
-                VkPhysicalDevice& pdv = physicalDevices[i];
-
-                // Retrieve properties from device
-                VkPhysicalDeviceProperties props{};
-                vkGetPhysicalDeviceProperties(pdv, &props);
-
-                // Prefer discrete gpu if there is one
-                if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-                {
-                    m_initHandles.chosenGpu = pdv;
-                    m_stats.hasDiscreteGPU = 1;
-                }
-            }
-
-            // If a discrete GPU is not found, the renderer chooses the 1st device. This will change the way the renderer goes forward
-            if(!m_stats.hasDiscreteGPU)
-                m_initHandles.chosenGpu = physicalDevices[0];
-            else
-                BLIT_INFO("Discrete GPU found")
-
-        }
-        /*
-            Chosen physical device saved to m_chosenGpu
-        */
-
-
-
-        /*-----------------------
-            Device creation
-        -------------------------*/
-        {
-            VkDeviceCreateInfo deviceInfo{};
+        VkDeviceCreateInfo deviceInfo{};
             deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
             deviceInfo.flags = 0; // Not using this
             deviceInfo.enabledLayerCount = 0;//Deprecated
@@ -542,7 +433,7 @@ namespace BlitzenVulkan
                 meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
                 features2.pNext = &meshFeatures;
                 vkGetPhysicalDeviceFeatures2(m_initHandles.chosenGpu, &features2);
-                m_stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
+                stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
 
                 // Check the extensions as well
                 uint32_t dvExtensionCount = 0;
@@ -555,22 +446,22 @@ namespace BlitzenVulkan
                     if(!strcmp(dvExtensionsProps[i].extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME))
                         meshShaderExtension = 1;
                 }
-                m_stats.meshShaderSupport = m_stats.meshShaderSupport && meshShaderExtension;
+                stats.meshShaderSupport = stats.meshShaderSupport && meshShaderExtension;
 
-                if(m_stats.meshShaderSupport)
+                if(stats.meshShaderSupport)
                     BLIT_INFO("Mesh shader support confirmed")
                 else
                     BLIT_INFO("No mesh shader support, using traditional pipeline")
             #endif
 
             // Vulkan should ignore the mesh shader extension if support for it was not found
-            deviceInfo.enabledExtensionCount = 2 + (BLITZEN_VULKAN_MESH_SHADER && m_stats.meshShaderSupport);
+            deviceInfo.enabledExtensionCount = 2 + (BLITZEN_VULKAN_MESH_SHADER && stats.meshShaderSupport);
             // Adding the swapchain extension and mesh shader extension if it was requested
             const char* extensionsNames[2 + BLITZEN_VULKAN_MESH_SHADER];
             extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
             extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
             #if BLITZEN_VULKAN_MESH_SHADER
-                if(m_stats.meshShaderSupport)
+                if(stats.meshShaderSupport)
                     extensionsNames[2] = VK_EXT_MESH_SHADER_EXTENSION_NAME;
             #endif
             deviceInfo.ppEnabledExtensionNames = extensionsNames;
@@ -628,25 +519,25 @@ namespace BlitzenVulkan
             vulkan13Features.pNext = &vulkanFeaturesMesh;
 
             BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
-            queueInfos[0].queueFamilyIndex = m_graphicsQueue.index;
+            queueInfos[0].queueFamilyIndex = graphicsQueue.index;
             VkDeviceQueueCreateInfo deviceQueueInfo{};
             // If compute has a different index from present, add a new info for it
-            if(m_graphicsQueue.index != m_computeQueue.index)
+            if(graphicsQueue.index != computeQueue.index)
             {
                 queueInfos.PushBack(deviceQueueInfo);
-                queueInfos[1].queueFamilyIndex = m_computeQueue.index;
+                queueInfos[1].queueFamilyIndex = computeQueue.index;
             }
             // If an info was created for compute and present is not equal to compute or graphics, create a new one for present as well
-            if(queueInfos.GetSize() == 2 && queueInfos[0].queueFamilyIndex != m_presentQueue.index && queueInfos[1].queueFamilyIndex != m_presentQueue.index)
+            if(queueInfos.GetSize() == 2 && queueInfos[0].queueFamilyIndex != presentQueue.index && queueInfos[1].queueFamilyIndex != presentQueue.index)
             {
                 queueInfos.PushBack(deviceQueueInfo);
-                queueInfos[2].queueFamilyIndex = m_presentQueue.index;
+                queueInfos[2].queueFamilyIndex = presentQueue.index;
             }
             // If an info was not created for compute but present has a different index from the other 2, create a new info for it
-            if(queueInfos.GetSize() == 1 && queueInfos[0].queueFamilyIndex != m_presentQueue.index)
+            if(queueInfos.GetSize() == 1 && queueInfos[0].queueFamilyIndex != presentQueue.index)
             {
                 queueInfos.PushBack(deviceQueueInfo);
-                queueInfos[1].queueFamilyIndex = m_presentQueue.index;
+                queueInfos[1].queueFamilyIndex = presentQueue.index;
             }
             // With the count of the queue infos found and the indices passed, the rest is standard
             float priority = 1.f;
@@ -663,97 +554,34 @@ namespace BlitzenVulkan
             deviceInfo.pQueueCreateInfos = queueInfos.Data();
 
             // Create the device
-            VK_CHECK(vkCreateDevice(m_initHandles.chosenGpu, &deviceInfo, m_pCustomAllocator, &m_device));
+            VK_CHECK(vkCreateDevice(initHandles.chosenGpu, &deviceInfo, nullptr, &device));
 
             // Retrieve graphics queue handle
             VkDeviceQueueInfo2 graphicsQueueInfo{};
             graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
             graphicsQueueInfo.pNext = nullptr; // Not using this
             graphicsQueueInfo.flags = 0; // Not using this
-            graphicsQueueInfo.queueFamilyIndex = m_graphicsQueue.index;
+            graphicsQueueInfo.queueFamilyIndex = graphicsQueue.index;
             graphicsQueueInfo.queueIndex = 0;
-            vkGetDeviceQueue2(m_device, &graphicsQueueInfo, &m_graphicsQueue.handle);
+            vkGetDeviceQueue2(device, &graphicsQueueInfo, &graphicsQueue.handle);
 
             // Retrieve compute queue handle
             VkDeviceQueueInfo2 computeQueueInfo{};
             computeQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
             computeQueueInfo.pNext = nullptr; // Not using this
             computeQueueInfo.flags = 0; // Not using this
-            computeQueueInfo.queueFamilyIndex = m_computeQueue.index;
+            computeQueueInfo.queueFamilyIndex = computeQueue.index;
             computeQueueInfo.queueIndex = 0;
-            vkGetDeviceQueue2(m_device, &computeQueueInfo, &m_computeQueue.handle);
+            vkGetDeviceQueue2(device, &computeQueueInfo, &computeQueue.handle);
 
             // Retrieve present queue handle
             VkDeviceQueueInfo2 presentQueueInfo{};
             presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
             presentQueueInfo.pNext = nullptr; // Not using this
             presentQueueInfo.flags = 0; // Not using this
-            presentQueueInfo.queueFamilyIndex = m_presentQueue.index;
+            presentQueueInfo.queueFamilyIndex = presentQueue.index;
             presentQueueInfo.queueIndex = 0;
-            vkGetDeviceQueue2(m_device, &presentQueueInfo, &m_presentQueue.handle);
-        }
-        /*
-            Device created and saved to m_device. Queue handles retrieved
-        */
-
-
-        /*
-             Swapchain creation
-        */
-        CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
-        m_initHandles.swapchain);
-
-        /* 
-            Create the vma allocator for vulkan resource allocation 
-        */
-        VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.device = m_device;
-        allocatorInfo.instance = m_initHandles.instance;
-        allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
-        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-        VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
-        
-
-
-
-        /* Allocating temporary command buffer, since some commands will be needed outside of the draw loop*/
-        {
-            VkCommandPoolCreateInfo commandPoolCreateInfo{};
-            commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            // This will allow each command buffer created by this pool to be inidividually reset
-            commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-            commandPoolCreateInfo.pNext = nullptr;
-            commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueue.index;
-            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_placeholderCommandPool));
-
-            VkCommandBufferAllocateInfo commandBufferInfo{};
-            commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            commandBufferInfo.pNext = nullptr;
-            commandBufferInfo.commandPool = m_placeholderCommandPool;
-            commandBufferInfo.commandBufferCount = 1;
-            commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferInfo, &m_placeholderCommands))
-        }
-
-        // Create the sync structure and command buffers that need to differ for each frame in flight
-        FrameToolsInit();
-
-        // This will be referred to by rendering attachments and will be updated when the window is resized
-        m_drawExtent = {windowWidth, windowHeight};
-
-        // Initlize the rendering attachments
-        CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-        CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-
-        CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
-        m_drawExtent, m_device, m_allocator);
-
-        // Texture sampler, for now all textures will use the same one
-        CreateTextureSampler(m_device, m_placeholderSampler);
-
-        return 1;
+            vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
     }
 
     void CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 

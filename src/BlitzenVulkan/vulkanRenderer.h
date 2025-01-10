@@ -245,7 +245,11 @@ namespace BlitzenVulkan
 
     void CreateDebugMessenger(InitializationHandles& m_initHandles);
 
-    uint8_t PickPhysicalDevice(InitializationHandles& m_initHandles);
+    uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
+    VulkanStats& stats);
+
+    void CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
+    Queue& presentQueue, Queue& computeQueue, VulkanStats& stats);
     
     /*Initializes the swapchain handle that is passed in the newSwapchain argument
     Makes the correct tests to create it according to what the device allows
