@@ -24,12 +24,17 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer
 // Meshlet used in the mesh shader to draw a surface or mesh
 struct Meshlet
 {
-    // Indices to the index buffer to draw the meshlet
-    uint vertices[64];
-    // Indices into the above buffer
-	uint indices[126 * 3]; // up to 42 triangles
-	uint triangleCount;
-	uint vertexCount;
+    // Boudning sphere
+    vec3 center;
+    float radius;
+    
+    // This is for backface culling
+    int8_t cone_axis[3];
+    int8_t cone_cutoff;
+
+    uint dataOffset; // dataOffset..dataOffset+vertexCount-1 stores vertex indices, indices are packed in 4b units after that
+    uint8_t vertexCount;
+    uint8_t triangleCount;
 };
 
 // The single buffer that holds all meshlet data in the scene
@@ -94,6 +99,15 @@ struct IndirectDraw
     uint firstInstance;
 };
 
+struct IndirectTask
+{
+    uint TaskId;
+
+    uint groupCountX;
+    uint groupCountY;
+    uint groupCountZ;
+};
+
 // The below are the same buffer but it is defined differently in the compute pipeline
 // This will be the final buffer used by vkCmdDrawIndexedIndirect and will be filled by a compute shader after doing culling and other operations
 #ifdef COMPUTE_PIPELINE
@@ -101,11 +115,21 @@ struct IndirectDraw
     {
         IndirectDraw indirectDraws[];
     };
+
+    layout(buffer_reference, std430) writeonly buffer IndirectTasksBuffer
+    {
+        IndirectTask tasks[];
+    };
 #else
     // In the graphics pipeline, this needs to be accessed to retrieve the object ID
     layout(buffer_reference, std430) readonly buffer FinalIndirect
     {
         IndirectDraw indirectDraws[];
+    };
+
+    layout(buffer_reference, std430) readonly buffer IndirectTasksBuffer
+    {
+        IndirectTask tasks[];
     };
 #endif
 

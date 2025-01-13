@@ -1,4 +1,7 @@
-// This file contains the main function at the bottom
+/* 
+    The code in this file calls all of the functions needed to run the applications.
+    Contains the main function at the bottom
+*/
  
 #include "BlitzenVulkan/vulkanRenderer.h"
 
@@ -173,12 +176,12 @@ namespace BlitzenEngine
         // Load test data to draw
         LoadDefaultData(m_resources);
 
-        uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
+        uint32_t drawCount = 1'000'000;// Rendering a large amount of objects to stress test the renderer
 
         m_resources.objectCount = drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
         m_resources.transforms.Resize(m_resources.objectCount);// Every object has a different transform
         // Hardcode a large amount of objects with the stanford bunny mesh and random transforms
-        for(size_t i = 0; i < m_resources.objectCount - m_resources.objectCount / 10; ++i)
+        for(size_t i = 0; i < m_resources.objectCount / 2; ++i)
         {
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
@@ -203,7 +206,7 @@ namespace BlitzenEngine
             currentObject.transformIndex = i;// Transform index is the same as the object index
         }
         // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
-        for (size_t i = m_resources.objectCount - m_resources.objectCount / 10; i < m_resources.objectCount; ++i)
+        for (size_t i = m_resources.objectCount / 2; i < m_resources.objectCount; ++i)
         {
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
@@ -407,26 +410,42 @@ namespace BlitzenEngine
     {
         if (camera.cameraDirty)
         {
-            BlitML::vec3 xAxis(1.f, 0.f, 0.f);
-            BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
-
-            BlitML::vec3 yAxis(0.f, -1.f, 0.f);
-            BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
-
-            BlitML::mat4 rotation;
-            BlitML::mat4 yawRot = BlitML::QuatToMat4(yawOrientation);
-            BlitML::mat4 pitchRot = BlitML::QuatToMat4(pitchOrientation);
-            rotation = yawRot * pitchRot;
-
             // I haven't overloaded the += operator
             BlitML::vec3 finalVelocity = camera.velocity * deltaTime * 40.f;
-            BlitML::vec4 directionalVelocity = rotation * BlitML::vec4(finalVelocity);
-            camera.position = camera.position + BlitML::ToVec3(directionalVelocity); 
-            BlitML::mat4 translation = BlitML::Translate(camera.position);
+            BlitML::vec4 directionalVelocity = camera.rotation * BlitML::vec4(finalVelocity);
+            camera.position = camera.position + BlitML::ToVec3(directionalVelocity);
+            camera.translation = BlitML::Translate(camera.position);
 
-            camera.viewMatrix = BlitML::Mat4Inverse(translation * rotation); // Normally, I would also add rotation here but the math library has a few problems at the moment
+            camera.viewMatrix = BlitML::Mat4Inverse(camera.translation * camera.rotation);
             camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
         }
+    }
+
+    void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation)
+    {
+        // find how much the camera's yaw moved
+        if(yawRotation < 100.f && yawRotation > -100.f)
+        {
+            camera.yawRotation += yawRotation * 10.f * deltaTime / 100.f;
+        }
+        // Find how much the camera's pitch moved
+        if(pitchRotation < 100.f && pitchRotation > -100.f)
+        {
+            camera.pitchRotation -= pitchRotation * 10.f * deltaTime / 100.f;
+        }
+
+        // Find the yaw orientation of the camera using quaternions
+        BlitML::vec3 yAxis(0.f, -1.f, 0.f);
+        BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
+
+        // Find the pitch orientation of the camera using quaternions
+        BlitML::vec3 xAxis(1.f, 0.f, 0.f);
+        BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
+
+        // Turn the quaternions to matrices and multiply them to get the new rotation matrix
+        BlitML::mat4 yawRot = BlitML::QuatToMat4(yawOrientation);
+        BlitML::mat4 pitchRot = BlitML::QuatToMat4(pitchOrientation);
+        camera.rotation = yawRot * pitchRot;
     }
 
     uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
@@ -560,12 +579,9 @@ namespace BlitzenEngine
         Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
         float deltaTime = static_cast<float>(Engine::GetEngineInstancePointer()->GetDeltaTime());
 
-        if(data.data.si16[1] < 100.f && data.data.si16[1] > -100.f)
-            camera.pitchRotation -= data.data.si16[1] * 10.f * deltaTime / 100.f;
-        if(data.data.si16[0] < 100.f && data.data.si16[0] > -100.f)
-            camera.yawRotation += data.data.si16[0] * 10.f * deltaTime / 100.f;
-
         camera.cameraDirty = 1;
+
+        RotateCamera(camera, deltaTime, data.data.si16[1], data.data.si16[0]);
 
         return 1;
     }
@@ -601,10 +617,9 @@ int main()
 
     // Blitzen engine Allocated and freed inside this scope
     {
-        // Blitzen engine allocated with smart pointer, it will cause stack overflow otherwise
+        // Blitzen engine allocated on the heap, it will cause stack overflow otherwise
         BlitCL::SmartPointer<BlitzenEngine::Engine, BlitzenCore::AllocationType::Engine> Blitzen;
 
-        // This is basically the true main function
         Blitzen.Data()->Run();
     }
 

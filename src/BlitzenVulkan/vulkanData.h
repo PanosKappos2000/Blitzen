@@ -25,7 +25,7 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
+#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0

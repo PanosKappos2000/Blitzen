@@ -83,9 +83,12 @@ namespace BlitzenEngine
 
         BlitML::vec3 position;
         // These 2 should be enough to keep track of rotation 
-        //(A quat and rotation matrix will be created on the fly, to contribute to the final view matrix)
+        // (A quat and rotation matrix will be created on the fly, to contribute to the final view matrix)
         float yawRotation = 0.f;
         float pitchRotation = 0.f;
+
+        BlitML::mat4 rotation = BlitML::mat4();
+        BlitML::mat4 translation = BlitML::mat4();
 
         BlitML::vec3 velocity = BlitML::vec3(0.f);
     };
@@ -158,4 +161,5 @@ namespace BlitzenEngine
 
     // This will be moved somewhere else once I have a good camera system
     void UpdateCamera(Camera& camera, float deltaTime);
+    void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation);
 }

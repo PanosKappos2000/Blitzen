@@ -255,7 +255,7 @@ namespace BlitzenVulkan
 
         // Setting up the rasterizer with primitive back face culling
         VkPipelineRasterizationStateCreateInfo rasterization{};
-        SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
         pipelineInfo.pRasterizationState = &rasterization;
 
         // Setting up multisampling(no multisampling for now)

@@ -14,7 +14,12 @@ layout(location = 1) out vec3 outNormal[];
 layout(location = 2) out uint outMaterialTag[];
 layout(location = 3) out vec3 outModel[];
 
+//taskPayloadSharedEXT uint meshletIndices[32];
+
 void main()
 {
-    
+    uint threadId = gl_LocalInvocationID.x;
+	//uint meshletId = meshletIndices[gl_WorkGroupID.x];
+
+    //uint drawId
 }

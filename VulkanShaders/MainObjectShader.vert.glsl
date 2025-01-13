@@ -21,14 +21,14 @@ void main()
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[bufferAddrs.finalIndirectBuffer.indirectDraws[gl_DrawIDARB].objectId];
     MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
 
-    vec4 modelPosition = vec4(RotateQuat(currentVertex.position, currentInstance.orientation) * currentInstance.scale + currentInstance.pos, 1.0);
-    gl_Position = shaderData.projectionView * modelPosition;
+    vec3 modelPosition = RotateQuat(currentVertex.position, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
+    gl_Position = shaderData.projectionView * vec4(modelPosition, 1.0);
 
     outUv = vec2(float(currentVertex.uvX), float(currentVertex.uvY));
 
     outMaterialTag = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId].materialTag;
     
-    outNormal =  currentVertex.normal;
+    outNormal =  RotateQuat(currentVertex.normal, currentInstance.orientation);
 
-    outModel = modelPosition.xyz;
+    outModel = modelPosition;
 }
