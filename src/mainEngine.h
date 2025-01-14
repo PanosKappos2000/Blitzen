@@ -72,8 +72,6 @@ namespace BlitzenEngine
     struct Camera
     {
         uint8_t cameraDirty = 0;// Tells the engine if the camera should be updated
-        uint8_t freezeFrustum = 0;/* If this is on it makes frustum culling static, 
-        which means that moving the camera does not change the objects that are culled*/
 
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionMatrix;

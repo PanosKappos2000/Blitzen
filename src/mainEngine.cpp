@@ -8,6 +8,7 @@
 #include "mainEngine.h"
 #include "Platform/platform.h"
 
+inline uint8_t gFreezeFrustum = 0;
 inline uint8_t gDebugPyramid = 0;
 inline uint8_t gOcclusion = 1;
 inline uint8_t gLod = 1;
@@ -176,12 +177,12 @@ namespace BlitzenEngine
         // Load test data to draw
         LoadDefaultData(m_resources);
 
-        uint32_t drawCount = 1'000'000;// Rendering a large amount of objects to stress test the renderer
+        uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
 
         m_resources.objectCount = drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
         m_resources.transforms.Resize(m_resources.objectCount);// Every object has a different transform
-        // Hardcode a large amount of objects with the stanford bunny mesh and random transforms
-        for(size_t i = 0; i < m_resources.objectCount / 2; ++i)
+        // Hardcode a large amount of male model mesh
+        for(size_t i = 0; i < m_resources.objectCount / 10; ++i)
         {
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
@@ -190,7 +191,7 @@ namespace BlitzenEngine
             (float(rand()) / RAND_MAX) * 1'000 - 50,//y
             (float(rand()) / RAND_MAX) * 1'000 - 50);//z
             transform.pos = translation;
-            transform.scale = 5.f;
+            transform.scale = 0.1f;
 
             // Loading random orientation. Normally you would get this from the game object
             BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
@@ -202,11 +203,11 @@ namespace BlitzenEngine
 
             GameObject& currentObject = m_resources.objects[i];
 
-            currentObject.meshIndex = 1;// Hardcode the bunny mesh for each object in this loop
+            currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
             currentObject.transformIndex = i;// Transform index is the same as the object index
         }
         // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
-        for (size_t i = m_resources.objectCount / 2; i < m_resources.objectCount; ++i)
+        for (size_t i = m_resources.objectCount / 10; i < m_resources.objectCount / 8; ++i)
         {
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
@@ -215,19 +216,69 @@ namespace BlitzenEngine
             (float(rand()) / RAND_MAX) * 1'000 - 50,//y
             (float(rand()) / RAND_MAX) * 1'000 - 50);//z
             transform.pos = translation;
-            transform.scale = 1.f;
+            transform.scale = 0.1f;
 
             // Loading random orientation. Normally you would get this from the game object
             BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
             (float(rand()) / RAND_MAX) * 2 - 1, // y
             (float(rand()) / RAND_MAX) * 2 - 1); // z
 		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = m_resources.objects[i];
+
+            currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
+            currentObject.transformIndex = i;// Transform index is the same as the object index
+        }
+        // Hardcode a large amount of stanford dragons
+        for (size_t i = m_resources.objectCount / 8; i < m_resources.objectCount / 6; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            transform.pos = translation;
+            transform.scale = 0.1f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1); // z
+            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
             BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
             transform.orientation = orientation;
 
             GameObject& currentObject = m_resources.objects[i];
 
             currentObject.meshIndex = 0;// Hardcode the kitten mesh for each object in this loop
+            currentObject.transformIndex = i;// Transform index is the same as the object index
+        }
+        // Hardcode a large amount of standford bunnies
+        for (size_t i = m_resources.objectCount / 6; i < m_resources.objectCount; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            transform.pos = translation;
+            transform.scale = 5.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1); // z
+            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = m_resources.objects[i];
+
+            currentObject.meshIndex = 2;// Hardcode the kitten mesh for each object in this loop
             currentObject.transformIndex = i;// Transform index is the same as the object index
         }
 
@@ -299,7 +350,7 @@ namespace BlitzenEngine
                         // Pass the view matrix to promote bounding spheres to view coordinates
                         // If the freeze frustum global is set to true, this does not get updated, effectively freezing the view frustum
                         // This will not work if the view matrix is used for anything other than view frustum collisions
-                        if (!m_camera.freezeFrustum)
+                        if (!gFreezeFrustum)
                             renderContext.viewMatrix = m_camera.viewMatrix;
                         // The projection view is the precalculated result of projection * view
                         // Calculated on the CPU to avoid doing it every vertex/mesh shader invocation
@@ -506,9 +557,7 @@ namespace BlitzenEngine
                 }
                 case BlitzenCore::BlitKey::__F1:
                 {
-                    // This is here only for debugging frustum culling. When active, the camera does not update the view frustum
-                    uint8_t& freezeFrustum = Engine::GetEngineInstancePointer()->GetCamera().freezeFrustum;
-                    freezeFrustum = !freezeFrustum;
+                    gFreezeFrustum = !gFreezeFrustum;
                     break;
                 }
                 case BlitzenCore::BlitKey::__F2:

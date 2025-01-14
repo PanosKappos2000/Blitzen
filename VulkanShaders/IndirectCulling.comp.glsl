@@ -68,7 +68,7 @@ void main()
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
 
-        // The level of detail index that should be used is derived by the distance fromt he camera
+        // The level of detail index that should be used is derived by the distance from he camera
         float lodDistance = log2(max(1, (distance(center, vec3(0)) - radius)));
 	    uint lodIndex = clamp(int(lodDistance), 0, int(currentSurface.lodCount) - 1);
 

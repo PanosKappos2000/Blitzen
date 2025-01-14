@@ -176,7 +176,7 @@ namespace BlitML
 
     struct alignas(16) Meshlet
     {
-        // Boudning sphere
+        // Bounding sphere for frustum culling
     	vec3 center;
     	float radius;
 
