@@ -30,6 +30,8 @@ layout (set = 0, binding = 2) uniform CullingData
     // Debug values
     uint occlusionEnabled;
     uint lodEnabled;
+
+    uint drawCount;
 }cullingData;
 
 layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
@@ -62,6 +64,9 @@ bool projectSphere(vec3 C, float r, float znear, float P00, float P11, out vec4 
 void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x;
+
+    if(cullingData.drawCount < objectIndex)
+        return;
 
     // Access the object's data
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[objectIndex];

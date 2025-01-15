@@ -216,7 +216,7 @@ namespace BlitzenEngine
             (float(rand()) / RAND_MAX) * 1'000 - 50,//y
             (float(rand()) / RAND_MAX) * 1'000 - 50);//z
             transform.pos = translation;
-            transform.scale = 0.1f;
+            transform.scale = 1.f;
 
             // Loading random orientation. Normally you would get this from the game object
             BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x

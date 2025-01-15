@@ -38,7 +38,7 @@
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0// For now mesh shaders are completely busted 
+#define BLITZEN_VULKAN_MESH_SHADER              1 // For now mesh shaders are completely busted 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           5'000'000 // Going to 6'000'000 causes validation errors, but the renderer can still manage it (tested up to 10'000'000)
 
@@ -207,6 +207,8 @@ namespace BlitzenVulkan
         // Debug values
         uint32_t occlusionEnabled;
         uint32_t lodEnabled;
+
+        uint32_t drawCount;
     };
 
     // Pushed every frame for the non indirect version to access per object data

@@ -416,9 +416,11 @@ namespace BlitzenVulkan
         FrameTools& fTools = m_frameToolsList[m_currentFrame];
         VarBuffers& vBuffers = m_varBuffers[m_currentFrame];
 
+
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
+
 
         // Projection and view coordinate parameters will be passed to the global shader data buffer
         m_globalShaderData.projectionView = context.projectionView;
@@ -453,38 +455,37 @@ namespace BlitzenVulkan
         cullingData.occlusionEnabled = context.occlusionEnabled;
         cullingData.lodEnabled = context.lodEnabled;
 
+        cullingData.drawCount = static_cast<uint32_t>(context.drawCount);
+
         // Write the data to the buffer pointers
         *(vBuffers.pGlobalShaderData) = m_globalShaderData;
         *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
         *(vBuffers.pCullingData) = cullingData;
         
 
-
-
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
 
 
-
         // The data for this descriptor set will be handled in this scope so that it can be accessed by both late and initial render pass
-        VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
+        //VkDescriptorSet globalShaderDataSet = VK_NULL_HANDLE;
 
         // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
         VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
         VkWriteDescriptorSet globalShaderDataWrite{};
         WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        globalShaderDataSet, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+        VK_NULL_HANDLE, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
 
         // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
         VkDescriptorBufferInfo bufferAddressDescriptorBufferInfo{};
         VkWriteDescriptorSet bufferAddressDescriptorWrite{};
-        WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
+        WriteBufferDescriptorSets(bufferAddressDescriptorWrite, bufferAddressDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_NULL_HANDLE, 
         1, 1, vBuffers.bufferDeviceAddrsBuffer.buffer, 0, sizeof(BufferDeviceAddresses));
 
         VkDescriptorBufferInfo cullingDataBufferInfo{};
         VkWriteDescriptorSet cullingDataWrite{};
-        WriteBufferDescriptorSets(cullingDataWrite, cullingDataBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, globalShaderDataSet, 
+        WriteBufferDescriptorSets(cullingDataWrite, cullingDataBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_NULL_HANDLE, 
         2, 1, vBuffers.cullingDataBuffer.buffer, 0, VK_WHOLE_SIZE);
 
         // Push the descriptor sets to the compute pipelines and the graphics pipelines
@@ -682,7 +683,7 @@ namespace BlitzenVulkan
         // The later culling compute shader needs the depth pyramid descriptor on top of everything else that the first version gets
         VkDescriptorImageInfo depthPyramidImageInfo{};
         VkWriteDescriptorSet depthPyramidWrite{};
-        WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, globalShaderDataSet, 
+        WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 
         3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
 
         VkWriteDescriptorSet latePassGlobalShaderDataSet[4] = {globalShaderDataWrite, bufferAddressDescriptorWrite, 

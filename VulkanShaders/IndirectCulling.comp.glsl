@@ -30,12 +30,19 @@ layout (set = 0, binding = 2) uniform CullingData
     // Debug values
     uint occlusionEnabled;
     uint lodEnabled;
+
+    // Taking the draw count to guard against dispatching for empty draws
+    uint drawCount;
 }cullingData;
 
 void main()
 {
     // The object index is for the current object's element in the render object
 	uint objectIndex = gl_GlobalInvocationID.x;
+
+    // Abort if the object index is above draw count
+    if(cullingData.drawCount < objectIndex)
+        return;
 
     // The early culling shader does not test objects that were not visible last frame
     if(bufferAddrs.visibilityBuffer.visibilities[objectIndex] == 0)
