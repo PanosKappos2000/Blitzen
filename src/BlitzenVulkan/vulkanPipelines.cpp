@@ -222,23 +222,42 @@ namespace BlitzenVulkan
 
         // Loading the vertex shader code (or mesh shading shader if mesh shading is used)
         VkShaderModule vertexShaderModule;
-        VkPipelineShaderStageCreateInfo shaderStages[2] = {};
+        VkPipelineShaderStageCreateInfo shaderStages[3] = {};
+        // Create the mesh shader program for vertex shader if mesh shaders are requested and supported
         if(m_stats.meshShaderSupport)
         {
             CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_NV, "main", vertexShaderModule, 
             shaderStages[0]);
         }
+        // Create the vertex shader program for vertex processing if mesh shaders were not requested or not supported
         else
         {
             CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
             shaderStages[0]);
         }
+
         //Loading the fragment shader
         VkShaderModule fragShaderModule;
         CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
         shaderStages[1]);
-        // Adding the two stages
-        pipelineInfo.stageCount = 2;
+
+        // Loading the task shader if mesh shaders are requested and supported
+        VkShaderModule taskShaderModule;
+        if(m_stats.meshShaderSupport)
+        {
+            CreateShaderProgram(m_device, "VulkanShaders/MeshShader.task.glsl.spv", VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule, 
+            shaderStages[2]);
+        }
+
+        // If the pipeline is going to use mesh shaders, the task shader needs to also be supported, so there will be 3 shader stages
+        if(m_stats.meshShaderSupport)
+        {
+            pipelineInfo.stageCount = 3;
+        }
+        else
+        {
+            pipelineInfo.stageCount = 2;
+        }
         pipelineInfo.pStages = shaderStages;
 
         // Setting up triangle primitive assembly
@@ -289,5 +308,9 @@ namespace BlitzenVulkan
         // Destroy the shader modules after pipeline has been created
         vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
         vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
+        if(m_stats.meshShaderSupport)
+        {
+            vkDestroyShaderModule(m_device, taskShaderModule, m_pCustomAllocator);
+        }
     }
 }

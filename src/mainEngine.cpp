@@ -204,7 +204,7 @@ namespace BlitzenEngine
             GameObject& currentObject = m_resources.objects[i];
 
             currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
-            currentObject.transformIndex = i;// Transform index is the same as the object index
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
         // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
         for (size_t i = m_resources.objectCount / 10; i < m_resources.objectCount / 8; ++i)
@@ -229,7 +229,7 @@ namespace BlitzenEngine
             GameObject& currentObject = m_resources.objects[i];
 
             currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
-            currentObject.transformIndex = i;// Transform index is the same as the object index
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
         // Hardcode a large amount of stanford dragons
         for (size_t i = m_resources.objectCount / 8; i < m_resources.objectCount / 6; ++i)
@@ -254,7 +254,7 @@ namespace BlitzenEngine
             GameObject& currentObject = m_resources.objects[i];
 
             currentObject.meshIndex = 0;// Hardcode the kitten mesh for each object in this loop
-            currentObject.transformIndex = i;// Transform index is the same as the object index
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
         // Hardcode a large amount of standford bunnies
         for (size_t i = m_resources.objectCount / 6; i < m_resources.objectCount; ++i)
@@ -279,7 +279,7 @@ namespace BlitzenEngine
             GameObject& currentObject = m_resources.objects[i];
 
             currentObject.meshIndex = 2;// Hardcode the kitten mesh for each object in this loop
-            currentObject.transformIndex = i;// Transform index is the same as the object index
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
 
         #if BLITZEN_VULKAN

@@ -101,7 +101,7 @@ struct IndirectDraw
 
 struct IndirectTask
 {
-    uint TaskId;
+    uint taskId;
 
     uint groupCountX;
     uint groupCountY;
@@ -219,6 +219,8 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     MeshInstanceBuffer meshInstanceBuffer;
     // Accessed by compute, vertex shader and the cpu when command recording for vkCmdDrawIndexedIndirectCount
     FinalIndirect finalIndirectBuffer;
+    // Accessed by compute, mesh shader, task shader and the cpu when command recording for vkCmdDrawMeshTasksIndirectCountEXT
+    IndirectTasksBuffer indirectTaskBuffer;
     // Incremented by compute and used by vkCmdDrawIndexedIndirectCount
     IndirectCount indirectCount;
     // Accessed by compute, and each element switched to 1 or 0 based on culling test results

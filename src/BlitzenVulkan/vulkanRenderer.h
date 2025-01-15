@@ -94,13 +94,13 @@ namespace BlitzenVulkan
 
             #if BLITZEN_VULKAN_MESH_SHADER
                 vmaDestroyBuffer(allocator, meshletBuffer.buffer, meshletBuffer.allocation);
-                vmaDestroyBuffer(allocator, indirectTaskBuffer.buffer, indirectTaskBuffer.allocation);
             #endif
 
             vmaDestroyBuffer(allocator, meshInstanceBuffer.buffer, meshInstanceBuffer.allocation);
             vmaDestroyBuffer(allocator, surfaceBuffer.buffer, surfaceBuffer.allocation);
 
             vmaDestroyBuffer(allocator, drawIndirectBufferFinal.buffer, drawIndirectBufferFinal.allocation);
+            vmaDestroyBuffer(allocator, indirectTaskBuffer.buffer, indirectTaskBuffer.allocation);
             vmaDestroyBuffer(allocator, drawIndirectCountBuffer.buffer, drawIndirectCountBuffer.allocation);
             vmaDestroyBuffer(allocator, drawVisibilityBuffer.buffer, drawVisibilityBuffer.allocation);
 

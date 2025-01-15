@@ -180,6 +180,7 @@ namespace BlitzenVulkan
         VkDeviceAddress meshInstanceBufferAddress;
 
         VkDeviceAddress finalIndirectBufferAddress;
+        VkDeviceAddress indirectTaskBufferAddress;
         VkDeviceAddress indirectCountBufferAddress;
         VkDeviceAddress visibilityBufferAddress;
     };

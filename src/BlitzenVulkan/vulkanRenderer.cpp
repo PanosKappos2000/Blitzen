@@ -160,7 +160,7 @@ namespace BlitzenVulkan
                 RenderObject& currentObject = renderObjects[objectId];
 
                 // Get the surface Id for this render object by adding the current index to the first surface of the mesh
-                currentObject.surfaceId = currentMesh.firstSurface + j;
+                currentObject.surfaceId = currentMesh.firstSurface + static_cast<uint32_t>(j);
                 
                 currentObject.meshInstanceId = gpuData.pGameObjects[i].transformIndex;
 
@@ -273,7 +273,6 @@ namespace BlitzenVulkan
         meshInstanceBufferSize;
 
         VkDeviceSize meshBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();// Defining this here so that it does not go out of scope
-        VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjects.GetSize();// Defining this here so that it does not go out of scope
         // The meshlet buffer will only be created if mesh shading is supported(checked during initalization, only if it the mesh shader macro is set to 1)
         if(m_stats.meshShaderSupport)
         {
@@ -286,14 +285,16 @@ namespace BlitzenVulkan
             GetBufferAddress(m_device, m_currentStaticBuffers.meshletBuffer.buffer);
             // the staging buffer size will also be incremented if the meshlet buffer is created
             stagingBufferSize += meshBufferSize;
-
-            // Like with the traditional pipeline indirect buffer, this will be initialized by the compute shaders
-            CreateBuffer(m_allocator, m_currentStaticBuffers.indirectTaskBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-            VMA_MEMORY_USAGE_GPU_ONLY, indirectTaskBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            // TODO: Get the address of this buffer (I might want to add a push constant for the addresses of the buffers for mesh shaders)
-            stagingBufferSize += indirectTaskBufferSize;
         }
+
+        VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjects.GetSize();
+        // Like with the traditional pipeline indirect buffer, this will be initialized by the compute shaders
+        CreateBuffer(m_allocator, m_currentStaticBuffers.indirectTaskBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, indirectTaskBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // Get the address to access in the culling compute shaders to set the indirect commands
+        m_currentStaticBuffers.bufferAddresses.indirectTaskBufferAddress = 
+        GetBufferAddress(m_device, m_currentStaticBuffers.indirectTaskBuffer.buffer);
 
         AllocatedBuffer stagingBuffer;
         CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 

@@ -83,6 +83,13 @@ void main()
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstIndex = currentLod.firstIndex;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentSurface.vertexOffset;
         bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstInstance = 0;
+
+        // Indirect task commands
+        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].taskId = currentLod.firstMeshlet;
+        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountX = currentLod.meshletCount;
+        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountY = 1;
+        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountZ = 1;
+
     }
     
 }

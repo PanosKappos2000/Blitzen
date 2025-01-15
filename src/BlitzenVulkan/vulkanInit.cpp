@@ -432,14 +432,14 @@ namespace BlitzenVulkan
                 VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
                 meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
                 features2.pNext = &meshFeatures;
-                vkGetPhysicalDeviceFeatures2(m_initHandles.chosenGpu, &features2);
+                vkGetPhysicalDeviceFeatures2(initHandles.chosenGpu, &features2);
                 stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
 
                 // Check the extensions as well
                 uint32_t dvExtensionCount = 0;
-                vkEnumerateDeviceExtensionProperties(m_initHandles.chosenGpu, nullptr, &dvExtensionCount, nullptr);
+                vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, nullptr);
                 BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
-                vkEnumerateDeviceExtensionProperties(m_initHandles.chosenGpu, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
+                vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
                 uint8_t meshShaderExtension = 0;
                 for(size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
                 {
@@ -501,7 +501,7 @@ namespace BlitzenVulkan
             VkPhysicalDeviceMeshShaderFeaturesNV vulkanFeaturesMesh{};
             vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
             #if BLITZEN_VULKAN_MESH_SHADER
-                if(m_stats.meshShaderSupport)
+                if(stats.meshShaderSupport)
                 {
                     vulkanFeaturesMesh.meshShader = true;
                     vulkanFeaturesMesh.taskShader = true;
