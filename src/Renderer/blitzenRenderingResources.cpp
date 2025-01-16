@@ -106,7 +106,7 @@ namespace BlitzenEngine
 
         // Get the current mesh and give it the size surface array as its first surface index
         Mesh& currentMesh = resources.meshes[resources.currentMeshIndex];
-        currentMesh.firstSurface = resources.surfaces.GetSize();
+        currentMesh.firstSurface = static_cast<uint32_t>(resources.surfaces.GetSize());
 
         ObjFile file;
         if(!objParseFile(file, filename))

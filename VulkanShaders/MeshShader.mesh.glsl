@@ -7,7 +7,7 @@
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 126) out;
 
-#include "ShaderBuffers.glsl.h"
+#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
 layout(location = 0) out vec2 outUv[];
 layout(location = 1) out vec3 outNormal[];
@@ -25,7 +25,7 @@ void main()
 
     // Access the current object data
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[drawId];
-    MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
+    MeshInstance currentInstance = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
     Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
 
     // Meshlet data

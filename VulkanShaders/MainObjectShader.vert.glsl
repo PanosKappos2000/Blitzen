@@ -5,7 +5,7 @@
 
 #define GRAPHICS_PIPELINE 
 
-#include "ShaderBuffers.glsl.h"
+#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
 layout(location = 0) out vec2 outUv;
 layout(location = 1) out vec3 outNormal;
@@ -18,8 +18,8 @@ void main()
     Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
 
     // Access the current object data
-    RenderObject currentObject = bufferAddrs.objectBuffer.objects[bufferAddrs.finalIndirectBuffer.indirectDraws[gl_DrawIDARB].objectId];
-    MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
+    RenderObject currentObject = bufferAddrs.objectBuffer.objects[bufferAddrs.indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
+    MeshInstance currentInstance = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
 
     vec3 modelPosition = RotateQuat(currentVertex.position, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
     gl_Position = shaderData.projectionView * vec4(modelPosition, 1.0);

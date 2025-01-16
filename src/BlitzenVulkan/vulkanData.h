@@ -38,7 +38,7 @@
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              1 // For now mesh shaders are completely busted 
+#define BLITZEN_VULKAN_MESH_SHADER              0 // For now mesh shaders are completely busted 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           5'000'000 // Going to 6'000'000 causes validation errors, but the renderer can still manage it (tested up to 10'000'000)
 
@@ -165,23 +165,39 @@ namespace BlitzenVulkan
         BlitML::vec3 viewPosition;
     };
 
-    // This struct will be passed to the GPU as uniform descriptor and will give shaders access to all required buffer
+    // This struct will be passed to the GPU as uniform descriptor and will give shaders access to the global storage buffers
     struct alignas(16) BufferDeviceAddresses
     {
+        // Address of the global vertex buffer, accessed in the vertex and mesh shaders
         VkDeviceAddress vertexBufferAddress;
 
+        // Address of per object data buffer, accessed in multiple shaders for per object / per instance indices
         VkDeviceAddress renderObjectBufferAddress;
 
+        // Address of the buffer that holds all material data, accessed in vertex, mesh and fragment shaders to perform shading
         VkDeviceAddress materialBufferAddress;
 
-        VkDeviceAddress meshBufferAddress;
+        // Address of the buffer that holds all meshlet data in the scene, accessed in mesh and task shaders
+        VkDeviceAddress meshletBufferAddress;
 
+        // Address of the buffer that holds all surfaces in the scene, accessed by many shaders for per unique render object data
         VkDeviceAddress surfaceBufferAddress;
-        VkDeviceAddress meshInstanceBufferAddress;
 
-        VkDeviceAddress finalIndirectBufferAddress;
+        // Address of the buffer that holds the transforms and other per instance data, accessed by mnay shaders for per instance data
+        VkDeviceAddress transformBufferAddress;
+
+        // Holds the indirect draw commands buffer address. It is accessed by the culling compute shaders to be setup before drawing
+        VkDeviceAddress indirectDrawBufferAddress;
+
+        // Holds the indirect task commands buffer address. It is accessed by the culling compute shaders to be setup before drawing
         VkDeviceAddress indirectTaskBufferAddress;
+
+        // Holds the indirect count buffer address, that only holds a single integer. 
+        // It is accessed by the culling compute shaders to be setup before drawing
         VkDeviceAddress indirectCountBufferAddress;
+
+        // Holds the address of the buffer that holds an integer for the previous frame visibility of every object in the scene. 
+        // Accessed by the culling compute shaders
         VkDeviceAddress visibilityBufferAddress;
     };
 

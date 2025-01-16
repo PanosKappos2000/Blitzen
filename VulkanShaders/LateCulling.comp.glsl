@@ -4,7 +4,7 @@
 
 #define COMPUTE_PIPELINE
 
-#include "ShaderBuffers.glsl.h"
+#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -70,7 +70,7 @@ void main()
 
     // Access the object's data
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[objectIndex];
-    MeshInstance currentInstance = bufferAddrs.meshInstanceBuffer.instances[currentObject.meshInstanceId];
+    MeshInstance currentInstance = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
     Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
 
     // Promote the sphere center to view coordinates
@@ -119,14 +119,14 @@ void main()
         MeshLod currentLod = cullingData.lodEnabled == 1 ? currentSurface.lod[lodIndex] : currentSurface.lod[0];
 
         // The object index is needed to know which element to access in the per object data buffer
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].objectId = objectIndex;
+        bufferAddrs.indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
 
         // Indirect draw commands
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].indexCount = currentLod.indexCount;
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].instanceCount = 1;
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstIndex = currentLod.firstIndex;
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].vertexOffset = currentSurface.vertexOffset;
-        bufferAddrs.finalIndirectBuffer.indirectDraws[drawIndex].firstInstance = 0;
+        bufferAddrs.indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
+        bufferAddrs.indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
+        bufferAddrs.indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
+        bufferAddrs.indirectDrawBuffer.draws[drawIndex].vertexOffset = currentSurface.vertexOffset;
+        bufferAddrs.indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
 
         // Indirect task commands
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].taskId = currentLod.firstMeshlet;

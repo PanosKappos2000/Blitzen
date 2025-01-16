@@ -38,7 +38,7 @@ struct Meshlet
 };
 
 // The single buffer that holds all meshlet data in the scene
-layout(buffer_reference, std430) readonly buffer MeshBuffer
+layout(buffer_reference, std430) readonly buffer MeshletBuffer
 {
     Meshlet meshlets[];
 };
@@ -111,9 +111,9 @@ struct IndirectTask
 // The below are the same buffer but it is defined differently in the compute pipeline
 // This will be the final buffer used by vkCmdDrawIndexedIndirect and will be filled by a compute shader after doing culling and other operations
 #ifdef COMPUTE_PIPELINE
-    layout(buffer_reference, std430) writeonly buffer FinalIndirect
+    layout(buffer_reference, std430) writeonly buffer IndirectDrawBuffer
     {
-        IndirectDraw indirectDraws[];
+        IndirectDraw draws[];
     };
 
     layout(buffer_reference, std430) writeonly buffer IndirectTasksBuffer
@@ -122,9 +122,9 @@ struct IndirectTask
     };
 #else
     // In the graphics pipeline, this needs to be accessed to retrieve the object ID
-    layout(buffer_reference, std430) readonly buffer FinalIndirect
+    layout(buffer_reference, std430) readonly buffer IndirectDrawBuffer
     {
-        IndirectDraw indirectDraws[];
+        IndirectDraw draws[];
     };
 
     layout(buffer_reference, std430) readonly buffer IndirectTasksBuffer
@@ -212,13 +212,13 @@ layout(set = 0, binding = 1) uniform BufferAddrs
     // Material buffer (accessed by fragment shader)
     MaterialBuffer materialBuffer;
     // meshlet buffer (accessed by mesh shader if mesh shading is active)
-    MeshBuffer meshletBuffer;
+    MeshletBuffer meshletBuffer;
     // Initial indirect data buffer (accessed by compute to create the final indirect buffer)
     SurfaceBuffer surfaceBuffer;
     // Accessed by compute and vertex shader
-    MeshInstanceBuffer meshInstanceBuffer;
+    MeshInstanceBuffer transformBuffer;
     // Accessed by compute, vertex shader and the cpu when command recording for vkCmdDrawIndexedIndirectCount
-    FinalIndirect finalIndirectBuffer;
+    IndirectDrawBuffer indirectDrawBuffer;
     // Accessed by compute, mesh shader, task shader and the cpu when command recording for vkCmdDrawMeshTasksIndirectCountEXT
     IndirectTasksBuffer indirectTaskBuffer;
     // Incremented by compute and used by vkCmdDrawIndexedIndirectCount
