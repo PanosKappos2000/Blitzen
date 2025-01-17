@@ -118,11 +118,11 @@ namespace BlitzenEngine
             The below code can load a single mesh but it breaks if I try to load more than one
         */
 
-        BlitCL::DynamicArray<BlitML::Vertex> triangleVertices(indexCount);
+        BlitCL::DynamicArray<Vertex> triangleVertices(indexCount);
 
         for(size_t i = 0; i < indexCount; ++i)
         {
-            BlitML::Vertex& vtx = triangleVertices[i];
+            Vertex& vtx = triangleVertices[i];
 
             int32_t vertexIndex = file.f[i * 3 + 0];
 		    int32_t vertexTextureIndex = file.f[i * 3 + 1];
@@ -139,18 +139,18 @@ namespace BlitzenEngine
         }
 
         BlitCL::DynamicArray<uint32_t> remap(indexCount);
-		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, triangleVertices.Data(), indexCount, sizeof(BlitML::Vertex));
+		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, triangleVertices.Data(), indexCount, sizeof(Vertex));
 
         BlitCL::DynamicArray<uint32_t> indices(indexCount);
-        BlitCL::DynamicArray<BlitML::Vertex> vertices(vertexCount);
+        BlitCL::DynamicArray<Vertex> vertices(vertexCount);
 
-        meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(BlitML::Vertex), remap.Data());
+        meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
 		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
 
         // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a mesh
         meshopt_optimizeVertexCache(indices.Data(), indices.Data(), indexCount, vertexCount);
 	    meshopt_optimizeVertexFetch(vertices.Data(), indices.Data(), indexCount, vertices.Data(), 
-        vertexCount, sizeof(BlitML::Vertex));
+        vertexCount, sizeof(Vertex));
 
         PrimitiveSurface newSurface;
         newSurface.vertexOffset = static_cast<uint32_t>(resources.vertices.GetSize());
@@ -178,7 +178,7 @@ namespace BlitzenEngine
                 size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
                 float nextError = 0.f;// Placeholder to fill the last parameter in the below function
                 size_t nextIndices = meshopt_simplify(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &vertices[0].position.x, 
-                vertices.GetSize(), sizeof(BlitML::Vertex), nextIndicesTarget, 1e-1f, 0, &nextError);
+                vertices.GetSize(), sizeof(Vertex), nextIndicesTarget, 1e-1f, 0, &nextError);
                 // If the next lod size surpasses the previous than this function has failed
                 BLIT_ASSERT(nextIndices <= lodIndices.GetSize())
 
@@ -211,8 +211,7 @@ namespace BlitzenEngine
         newSurface.center = center;
         newSurface.radius = radius;
 
-        // Add the surface to the current mesh and increment the mesh index, so that the next time another mesh is processed
-        resources.surfaces.PushBack(newSurface);
+        resources.surfaces.PushBack(newSurface);// Add the surface to the global surfaces array
         currentMesh.surfaceCount++;// Increment the surface count
         ++resources.currentMeshIndex;// Increment the mesh index
 
@@ -220,7 +219,7 @@ namespace BlitzenEngine
     }
 
     // The code for this function is taken from Arseny's niagara streams. It uses his meshoptimizer library which I am not that familiar with
-    size_t LoadMeshlet(RenderingResources& resources, BlitCL::DynamicArray<BlitML::Vertex>& vertices, 
+    size_t LoadMeshlet(RenderingResources& resources, BlitCL::DynamicArray<Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
         const size_t maxVertices = 64;
@@ -232,7 +231,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<unsigned char> meshletTriangles(akMeshlets.GetSize() * maxTriangles * 3);
 
         akMeshlets.Downsize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), indices.Data(), indices.GetSize(), 
-        &vertices[0].position.x, vertices.GetSize(), sizeof(BlitML::Vertex), maxVertices, maxTriangles, coneWeight));
+        &vertices[0].position.x, vertices.GetSize(), sizeof(Vertex), maxVertices, maxTriangles, coneWeight));
 
         
 	    // note: I could append meshletVertices & meshletTriangles buffers more or less directly with small changes in Meshlet struct, 
@@ -259,9 +258,9 @@ namespace BlitzenEngine
             }
 
             meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
-            &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, &vertices[0].position.x, vertices.GetSize(), sizeof(BlitML::Vertex));
+            &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, &vertices[0].position.x, vertices.GetSize(), sizeof(Vertex));
 
-            BlitML::Meshlet m = {};
+            Meshlet m = {};
             m.dataOffset = static_cast<uint32_t>(dataOffset);
             m.triangleCount = meshlet.triangle_count;
             m.vertexCount = meshlet.vertex_count;

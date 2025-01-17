@@ -38,7 +38,7 @@
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0 // For now mesh shaders are completely busted 
+#define BLITZEN_VULKAN_MESH_SHADER              1 // For now mesh shaders are completely busted 
 
 #define BLITZEN_VULKAN_MAX_DRAW_CALLS           5'000'000 // Going to 6'000'000 causes validation errors, but the renderer can still manage it (tested up to 10'000'000)
 
@@ -76,11 +76,11 @@ namespace BlitzenVulkan
     // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
     struct GPUData
     {
-        BlitCL::DynamicArray<BlitML::Vertex>& vertices;
+        BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices;
 
         BlitCL::DynamicArray<uint32_t>& indices;
 
-        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets;
+        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets;
 
         BlitCL::DynamicArray<uint32_t>& meshletData;
 
@@ -102,9 +102,9 @@ namespace BlitzenVulkan
 
         size_t drawCount = 0;
 
-        inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<BlitML::Meshlet>& m, 
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& t, 
-        BlitCL::DynamicArray<uint32_t>& md)
+        inline GPUData(BlitCL::DynamicArray<BlitzenEngine::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, 
+        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& m, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s, 
+        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& t, BlitCL::DynamicArray<uint32_t>& md)
             :vertices(v), indices(i), meshlets(m), surfaces(s), transforms(t), meshletData(md)
         {}
     };

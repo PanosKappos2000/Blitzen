@@ -161,31 +161,4 @@ namespace BlitML
 
         return res;
     }
-
-
-
-
-
-    struct alignas(16) Vertex
-    {
-        vec3 position;
-        uint16_t uvX;
-        vec3 normal;
-        uint16_t uvY;
-    };
-
-    struct alignas(16) Meshlet
-    {
-        // Bounding sphere for frustum culling
-    	vec3 center;
-    	float radius;
-
-        // This is for backface culling
-    	int8_t cone_axis[3];
-    	int8_t cone_cutoff;
-
-    	uint32_t dataOffset; // dataOffset..dataOffset+vertexCount-1 stores vertex indices, indices are packed in 4b units after that
-    	uint8_t vertexCount;
-    	uint8_t triangleCount;
-    };
 }

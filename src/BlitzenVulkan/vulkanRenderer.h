@@ -142,9 +142,9 @@ namespace BlitzenVulkan
 
         void CreateDescriptorLayouts();
 
-        void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+        void UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitCL::DynamicArray<RenderObject>& objects, BlitzenEngine::Material* pMaterials, size_t materialCount, 
-        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData,
+        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData,
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
         void SetupMainGraphicsPipeline();

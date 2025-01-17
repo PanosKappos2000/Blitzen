@@ -249,3 +249,10 @@ vec3 RotateQuat(vec3 v, vec4 quat)
 {
 	return v + 2.0 * cross(quat.xyz, cross(quat.xyz, v) + quat.w * v);
 }
+
+// Struct used for mesh shaders
+struct MeshTaskPayload
+{
+	uint drawId;
+	uint meshletIndices[32];
+};

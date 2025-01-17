@@ -31,6 +31,29 @@ namespace BlitzenEngine
         uint32_t textureTag;
     };
 
+    struct alignas(16) Vertex
+    {
+        BlitML::vec3 position;
+        uint16_t uvX;
+        BlitML::vec3 normal;
+        uint16_t uvY;
+    };
+
+    struct alignas(16) Meshlet
+    {
+        // Bounding sphere for frustum culling
+    	BlitML::vec3 center;
+    	float radius;
+
+        // This is for backface culling
+    	int8_t cone_axis[3];
+    	int8_t cone_cutoff;
+
+    	uint32_t dataOffset; // dataOffset..dataOffset+vertexCount-1 stores vertex indices, indices are packed in 4b units after that
+    	uint8_t vertexCount;
+    	uint8_t triangleCount;
+    };
+
     // Passed to the GPU as a unified storage buffer. Part of Material stats
     struct alignas(16) Material
     {
@@ -102,9 +125,9 @@ namespace BlitzenEngine
         size_t currentMaterialIndex = BLIT_DEFAULT_MATERIAL_COUNT;
 
         // Arrays that hold all necessary geometry data
-        BlitCL::DynamicArray<BlitML::Vertex> vertices;
+        BlitCL::DynamicArray<Vertex> vertices;
         BlitCL::DynamicArray<uint32_t> indices;
-        BlitCL::DynamicArray<BlitML::Meshlet> meshlets;
+        BlitCL::DynamicArray<Meshlet> meshlets;
         BlitCL::DynamicArray<uint32_t> meshletData;
 
         // The data of every mesh allowed is in this fixed size array and the currentMeshIndex holds the current amount of loaded meshes
@@ -136,7 +159,7 @@ namespace BlitzenEngine
 
     uint8_t LoadMeshFromObj(RenderingResources& resources, const char* filename, uint8_t buildMeshlets = 0);
 
-    size_t LoadMeshlet(RenderingResources& resoureces, BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+    size_t LoadMeshlet(RenderingResources& resoureces, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
 
 
     // Placeholder to load some default resources while testing the systems

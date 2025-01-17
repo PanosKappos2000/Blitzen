@@ -498,7 +498,7 @@ namespace BlitzenVulkan
             vulkan13Features.synchronization2 = true;
             vulkan13Features.maintenance4 = true;
 
-            VkPhysicalDeviceMeshShaderFeaturesNV vulkanFeaturesMesh{};
+            VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
             vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
             #if BLITZEN_VULKAN_MESH_SHADER
                 if(stats.meshShaderSupport)

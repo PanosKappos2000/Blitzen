@@ -190,13 +190,13 @@ namespace BlitzenVulkan
         SetupMainGraphicsPipeline();
     }
 
-    void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+    void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
     BlitCL::DynamicArray<RenderObject>& renderObjects, BlitzenEngine::Material* pMaterials, size_t materialCount, 
-    BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData, 
+    BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData, 
     BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms)
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
-        VkDeviceSize vertexBufferSize = sizeof(BlitML::Vertex) * vertices.GetSize();
+        VkDeviceSize vertexBufferSize = sizeof(BlitzenEngine::Vertex) * vertices.GetSize();
         CreateBuffer(m_allocator, m_currentStaticBuffers.vertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -247,7 +247,7 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.bufferAddresses.transformBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.transformBuffer.buffer);
 
-        VkDeviceSize meshletBufferSize = sizeof(BlitML::Meshlet) * meshlets.GetSize();
+        VkDeviceSize meshletBufferSize = sizeof(BlitzenEngine::Meshlet) * meshlets.GetSize();
         // Holds per object meshlet data for all the objects in the shader
         CreateBuffer(m_allocator, m_currentStaticBuffers.meshletBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
@@ -304,29 +304,31 @@ namespace BlitzenVulkan
         AllocatedBuffer stagingBuffer;
         CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
         stagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        void* pData = stagingBuffer.allocation->GetMappedData();
+        uint8_t* pData = reinterpret_cast<uint8_t*>(stagingBuffer.allocation->GetMappedData());
         // Copy the data vertex data into the staging buffer's address
         BlitzenCore::BlitMemCopy(pData, vertices.Data(), vertexBufferSize);
+        pData += vertexBufferSize;
         // Copy the index data into the staging buffer's address after the vertex data
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize, indices.Data(), indexBufferSize);
+        BlitzenCore::BlitMemCopy(pData, indices.Data(), indexBufferSize);
+        pData += indexBufferSize;
         // Copy the render objects data into the staging buffer's address after the index data
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize, renderObjects.Data(), 
-        renderObjectBufferSize);
+        BlitzenCore::BlitMemCopy(pData, renderObjects.Data(), renderObjectBufferSize);
+        pData += renderObjectBufferSize;
         // Copy the material data into the staging buffer's address after the render object data
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize, 
-        pMaterials, materialBufferSize);
+        BlitzenCore::BlitMemCopy(pData, pMaterials, materialBufferSize);
+        pData += materialBufferSize;
         // Copy the surface data into the staging buffer's address after the material data
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize, 
-        surfaces.Data(), surfaceBufferSize);
+        BlitzenCore::BlitMemCopy(pData, surfaces.Data(), surfaceBufferSize);
+        pData += surfaceBufferSize;
         // Copy the transform data into the staging buffer's address after the surface data
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize +
-        surfaceBufferSize, transforms.Data(), meshInstanceBufferSize);
+        BlitzenCore::BlitMemCopy(pData, transforms.Data(), meshInstanceBufferSize);
+        pData += meshInstanceBufferSize;
         // Copy the meshlets into the staging buffer's address after the transform data
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
-        + surfaceBufferSize + meshInstanceBufferSize, meshlets.Data(), meshletBufferSize);
+        BlitzenCore::BlitMemCopy(pData, meshlets.Data(), meshletBufferSize);
+        pData += meshletBufferSize;
         // Copy the meshlet data into the staging buffer's address after the meshlets
-        BlitzenCore::BlitMemCopy(reinterpret_cast<uint8_t*>(pData) + vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize
-        + surfaceBufferSize + meshInstanceBufferSize + meshletBufferSize, meshletData.Data(), meshletDataBufferSize);
+        BlitzenCore::BlitMemCopy(pData, meshletData.Data(), meshletDataBufferSize);
+        pData += meshletDataBufferSize;
 
         // Start recording the transfer commands
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -617,7 +619,6 @@ namespace BlitzenVulkan
         vkCmdEndRendering(fTools.commandBuffer);
 
 
-        VkDescriptorSet depthPyramidImageSet = VK_NULL_HANDLE;
         /*
             Create the depth pyramid before the late render pass, so that it can be used for occlusion culling
         */
@@ -647,14 +648,14 @@ namespace BlitzenVulkan
                 // Pass the depth attachment image view or the previous image view of the depth pyramid as the image to be read by the shader
                 VkDescriptorImageInfo sourceImageInfo{};
                 VkWriteDescriptorSet write{};
-                WriteImageDescriptorSets(write, sourceImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, depthPyramidImageSet, 1, 
+                WriteImageDescriptorSets(write, sourceImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 1, 
                 (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL, 
                 (i == 0) ? m_depthAttachment.imageView : m_depthPyramidMips[i - 1], m_depthAttachmentSampler);
 
                 // Pass the current depth pyramid image view to the shader as the output
                 VkDescriptorImageInfo outImageInfo{};
                 VkWriteDescriptorSet write2{};
-                WriteImageDescriptorSets(write2, outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, depthPyramidImageSet, 0, 
+                WriteImageDescriptorSets(write2, outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0, 
                 VK_IMAGE_LAYOUT_GENERAL, m_depthPyramidMips[i]);
                 VkWriteDescriptorSet writes[2] = {write, write2};
 
@@ -732,6 +733,7 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
         }
 
+
         // Once the compute shader is done, the depth attachment can transition to depth attachment layout
         VkImageMemoryBarrier2 depthAttachmentReadBarrier{};
         ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentReadBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -752,7 +754,6 @@ namespace BlitzenVulkan
             VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
             BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachment, &depthAttachment, nullptr);
         }
-
 
 
         /*

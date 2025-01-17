@@ -14,17 +14,15 @@ layout(location = 1) out vec3 outNormal[];
 layout(location = 2) out uint outMaterialTag[];
 layout(location = 3) out vec3 outModel[];
 
-taskPayloadSharedEXT uint meshletIndices[32];
+taskPayloadSharedEXT MeshTaskPayload payload;
 
 void main()
 {
     uint threadId = gl_LocalInvocationID.x;
-	uint meshletId = meshletIndices[gl_WorkGroupID.x];
-
-    uint drawId = bufferAddrs.indirectDrawBuffer.draws[gl_DrawIDARB].objectId;
+	uint meshletId = payload.meshletIndices[gl_WorkGroupID.x];
 
     // Access the current object data
-    RenderObject currentObject = bufferAddrs.objectBuffer.objects[drawId];
+    RenderObject currentObject = bufferAddrs.objectBuffer.objects[payload.drawId];
     MeshInstance currentInstance = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
     Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
 
