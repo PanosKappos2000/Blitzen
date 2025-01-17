@@ -82,6 +82,8 @@ namespace BlitzenVulkan
 
         BlitCL::DynamicArray<BlitML::Meshlet>& meshlets;
 
+        BlitCL::DynamicArray<uint32_t>& meshletData;
+
         BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms;
 
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces;
@@ -101,8 +103,9 @@ namespace BlitzenVulkan
         size_t drawCount = 0;
 
         inline GPUData(BlitCL::DynamicArray<BlitML::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, BlitCL::DynamicArray<BlitML::Meshlet>& m, 
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& t)
-            :vertices(v), indices(i), meshlets(m), surfaces(s), transforms(t)
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& t, 
+        BlitCL::DynamicArray<uint32_t>& md)
+            :vertices(v), indices(i), meshlets(m), surfaces(s), transforms(t), meshletData(md)
         {}
     };
 
@@ -177,8 +180,11 @@ namespace BlitzenVulkan
         // Address of the buffer that holds all material data, accessed in vertex, mesh and fragment shaders to perform shading
         VkDeviceAddress materialBufferAddress;
 
-        // Address of the buffer that holds all meshlet data in the scene, accessed in mesh and task shaders
+        // Address of the buffer that holds all meshlets in the scene, accessed in mesh and task shaders
         VkDeviceAddress meshletBufferAddress;
+
+        // Address of the buffer that holds all meshlet indices in the scene, accessed in mesh and task shaders
+        VkDeviceAddress meshletDataBufferAddress;
 
         // Address of the buffer that holds all surfaces in the scene, accessed by many shaders for per unique render object data
         VkDeviceAddress surfaceBufferAddress;

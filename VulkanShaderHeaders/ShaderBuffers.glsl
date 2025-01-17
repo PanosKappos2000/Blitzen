@@ -43,6 +43,11 @@ layout(buffer_reference, std430) readonly buffer MeshletBuffer
     Meshlet meshlets[];
 };
 
+layout(buffer_reference, std430) readonly buffer MeshletDataBuffer
+{
+    uint data[];
+};
+
 // Holds a specific level of detail's index offset and count (as well as the according data for mesh shaders)
 struct MeshLod
 {
@@ -207,22 +212,34 @@ layout(set = 0, binding = 1) uniform BufferAddrs
 {
     // Global Vertex buffer address
     VertexBuffer vertexBuffer;
+
     // Render object buffer(accessed by vertex shader and compute shaders)
     ObjectBuffer objectBuffer;
+
     // Material buffer (accessed by fragment shader)
     MaterialBuffer materialBuffer;
-    // meshlet buffer (accessed by mesh shader if mesh shading is active)
+
+    // meshlet buffer (accessed by mesh shader)
     MeshletBuffer meshletBuffer;
+
+    // Meshlet data buffer (accessed by mesh shader)
+    MeshletDataBuffer meshletDataBuffer;
+
     // Initial indirect data buffer (accessed by compute to create the final indirect buffer)
     SurfaceBuffer surfaceBuffer;
+
     // Accessed by compute and vertex shader
     MeshInstanceBuffer transformBuffer;
+
     // Accessed by compute, vertex shader and the cpu when command recording for vkCmdDrawIndexedIndirectCount
     IndirectDrawBuffer indirectDrawBuffer;
+
     // Accessed by compute, mesh shader, task shader and the cpu when command recording for vkCmdDrawMeshTasksIndirectCountEXT
     IndirectTasksBuffer indirectTaskBuffer;
+
     // Incremented by compute and used by vkCmdDrawIndexedIndirectCount
     IndirectCount indirectCount;
+    
     // Accessed by compute, and each element switched to 1 or 0 based on culling test results
     VisibilityBuffer visibilityBuffer;
 }bufferAddrs;

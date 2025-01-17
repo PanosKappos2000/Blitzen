@@ -5,7 +5,6 @@
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
-
 layout(location = 0) in vec2 uv;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in flat uint materialTag;

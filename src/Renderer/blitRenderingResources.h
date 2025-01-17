@@ -27,7 +27,7 @@ namespace BlitzenEngine
         int32_t textureChannels = 0;
         uint8_t* pTextureData;
 
-        // This tag is for the shaders to know which image memory to access, when a render object uses this texture
+        // This tag is for the shaders to know which image memory to access, when a material uses this texture
         uint32_t textureTag;
     };
 
@@ -90,9 +90,8 @@ namespace BlitzenEngine
         BlitML::quat orientation;
     };
 
-    // This structu holds every loaded resource that will be used for rendering all game objects
-    // TODO: Change the name of this struct to rendering resources
-    struct EngineResources
+    // This struct holds every loaded resource that will be used for rendering all game objects
+    struct RenderingResources
     {
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
         BlitCL::PointerTable<TextureStats> textureTable;
@@ -123,23 +122,23 @@ namespace BlitzenEngine
         uint32_t objectCount;
     };
 
-    uint8_t LoadResourceSystem(EngineResources& resources);
+    uint8_t LoadResourceSystem(RenderingResources& resources);
 
 
     // Takes a filename and loads at texture from it, and passes it to each renderer parameter that is not null
-    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName, 
+    uint8_t LoadTextureFromFile(RenderingResources& resources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12);// The renderers are void* so that I do not expose their API in the .h file
 
 
-    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
+    void DefineMaterial(RenderingResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName);
 
 
-    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets = 0);
+    uint8_t LoadMeshFromObj(RenderingResources& resources, const char* filename, uint8_t buildMeshlets = 0);
 
-    size_t LoadMeshlet(EngineResources& resoureces, BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+    size_t LoadMeshlet(RenderingResources& resoureces, BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
 
 
     // Placeholder to load some default resources while testing the systems
-    void LoadDefaultData(EngineResources& resources);
+    void LoadDefaultData(RenderingResources& resources);
 }

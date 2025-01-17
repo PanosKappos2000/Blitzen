@@ -21,7 +21,7 @@ void main()
     uint threadId = gl_LocalInvocationID.x;
 	uint meshletId = meshletIndices[gl_WorkGroupID.x];
 
-    uint drawId = bufferAddrs.indirectTaskBuffer.tasks[gl_DrawIDARB].taskId;
+    uint drawId = bufferAddrs.indirectDrawBuffer.draws[gl_DrawIDARB].objectId;
 
     // Access the current object data
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[drawId];
@@ -38,14 +38,24 @@ void main()
 
     for(uint i = threadId; i < vertexCount; i += 64)
     {
-        uint vertexIndex = 0;//meshletData[vertexOffset + i] + currentSurface.vertexOffset;
+        uint vertexIndex = bufferAddrs.meshletDataBuffer.data[vertexOffset + i] + currentSurface.vertexOffset;
         Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[vertexIndex];
 
         vec3 position = currentVertex.position;
-		vec3 normal = currentVertex.normal;
+		vec3 normal = RotateQuat(currentVertex.normal, currentInstance.orientation);
 		vec2 uv = vec2(currentVertex.uvX, currentVertex.uvY);
 
         gl_MeshVerticesEXT[i].gl_Position = shaderData.projectionView * 
         vec4(RotateQuat(position, currentInstance.orientation) * currentInstance.scale + currentInstance.pos, 1);
+
+        outNormal[i] = normal;
     }
+
+    for(uint i = threadId; i < triangleCount; i += 64)
+    {
+        uint triangle = bufferAddrs.meshletDataBuffer.data[indexOffset + i];
+        gl_PrimitiveTriangleIndicesEXT[i] = uvec3((triangle >> 16) & 0xff, (triangle >> 8) & 0xff, triangle & 0xff);
+    }
+
+    SetMeshOutputsEXT(vertexCount, triangleCount);
 }

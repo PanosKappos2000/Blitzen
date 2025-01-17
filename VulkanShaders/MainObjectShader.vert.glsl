@@ -7,6 +7,7 @@
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
+
 layout(location = 0) out vec2 outUv;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out uint outMaterialTag;

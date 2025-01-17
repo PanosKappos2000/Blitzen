@@ -6,6 +6,7 @@
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
+
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 2) uniform CullingData
@@ -130,7 +131,7 @@ void main()
 
         // Indirect task commands
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].taskId = currentLod.firstMeshlet;
-        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountX = currentLod.meshletCount;
+        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountX = (currentLod.meshletCount + 31) / 32;
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountY = 1;
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountZ = 1;
 

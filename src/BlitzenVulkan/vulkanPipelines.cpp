@@ -226,7 +226,7 @@ namespace BlitzenVulkan
         // Create the mesh shader program for vertex shader if mesh shaders are requested and supported
         if(m_stats.meshShaderSupport)
         {
-            CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_NV, "main", vertexShaderModule, 
+            CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule, 
             shaderStages[0]);
         }
         // Create the vertex shader program for vertex processing if mesh shaders were not requested or not supported

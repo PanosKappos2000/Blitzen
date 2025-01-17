@@ -55,12 +55,13 @@ namespace BlitzenVulkan
     // Holds data for buffers that will be loaded once and will be used for every object
     struct StaticBuffers
     {
-        AllocatedBuffer globalVertexBuffer;
+        AllocatedBuffer vertexBuffer;
 
-        AllocatedBuffer globalIndexBuffer;
+        AllocatedBuffer indexBuffer;
 
         AllocatedBuffer meshletBuffer;
-        AllocatedBuffer indirectTaskBuffer;
+
+        AllocatedBuffer meshletDataBuffer;
 
         AllocatedBuffer globalMaterialBuffer;
 
@@ -69,10 +70,12 @@ namespace BlitzenVulkan
 
         AllocatedBuffer surfaceBuffer;
 
-        AllocatedBuffer meshInstanceBuffer;
+        AllocatedBuffer transformBuffer;
 
         // Holds all the command for draw indirect to draw everything on a scene
-        AllocatedBuffer drawIndirectBufferFinal;
+        AllocatedBuffer indirectDrawBuffer;
+
+        AllocatedBuffer indirectTaskBuffer;
 
         // Counts how many objects have actually been added to the final draw indirect buffer(helps avoid empty draw calls)
         AllocatedBuffer drawIndirectCountBuffer;
@@ -92,20 +95,19 @@ namespace BlitzenVulkan
             vmaDestroyBuffer(allocator, renderObjectBuffer.buffer, renderObjectBuffer.allocation);
             vmaDestroyBuffer(allocator, globalMaterialBuffer.buffer, globalMaterialBuffer.allocation);
 
-            #if BLITZEN_VULKAN_MESH_SHADER
-                vmaDestroyBuffer(allocator, meshletBuffer.buffer, meshletBuffer.allocation);
-            #endif
+            vmaDestroyBuffer(allocator, meshletBuffer.buffer, meshletBuffer.allocation);
+            vmaDestroyBuffer(allocator, meshletDataBuffer.buffer, meshletDataBuffer.allocation);
 
-            vmaDestroyBuffer(allocator, meshInstanceBuffer.buffer, meshInstanceBuffer.allocation);
+            vmaDestroyBuffer(allocator, transformBuffer.buffer, transformBuffer.allocation);
             vmaDestroyBuffer(allocator, surfaceBuffer.buffer, surfaceBuffer.allocation);
 
-            vmaDestroyBuffer(allocator, drawIndirectBufferFinal.buffer, drawIndirectBufferFinal.allocation);
+            vmaDestroyBuffer(allocator, indirectDrawBuffer.buffer, indirectDrawBuffer.allocation);
             vmaDestroyBuffer(allocator, indirectTaskBuffer.buffer, indirectTaskBuffer.allocation);
             vmaDestroyBuffer(allocator, drawIndirectCountBuffer.buffer, drawIndirectCountBuffer.allocation);
             vmaDestroyBuffer(allocator, drawVisibilityBuffer.buffer, drawVisibilityBuffer.allocation);
 
-            vmaDestroyBuffer(allocator, globalIndexBuffer.buffer, globalIndexBuffer.allocation);
-            vmaDestroyBuffer(allocator, globalVertexBuffer.buffer, globalVertexBuffer.allocation);
+            vmaDestroyBuffer(allocator, indexBuffer.buffer, indexBuffer.allocation);
+            vmaDestroyBuffer(allocator, vertexBuffer.buffer, vertexBuffer.allocation);
 
             // Destroy the texture image descriptor set resources
             vkDestroyDescriptorPool(device, textureDescriptorPool, nullptr);
@@ -141,9 +143,9 @@ namespace BlitzenVulkan
         void CreateDescriptorLayouts();
 
         void UploadDataToGPU(BlitCL::DynamicArray<BlitML::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-        BlitCL::DynamicArray<RenderObject>& staticObjects, BlitzenEngine::Material* pMaterials, size_t materialCount, 
-        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& indirectDraws, 
-        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
+        BlitCL::DynamicArray<RenderObject>& objects, BlitzenEngine::Material* pMaterials, size_t materialCount, 
+        BlitCL::DynamicArray<BlitML::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData,
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
         void SetupMainGraphicsPipeline();
 

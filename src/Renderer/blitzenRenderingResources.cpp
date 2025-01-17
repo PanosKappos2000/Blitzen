@@ -21,7 +21,7 @@
 
 namespace BlitzenEngine
 {
-    uint8_t LoadResourceSystem(EngineResources& resources)
+    uint8_t LoadResourceSystem(RenderingResources& resources)
     {
         resources.textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
         resources.materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
@@ -35,7 +35,7 @@ namespace BlitzenEngine
         Texture specific functions
     ----------------------------------*/
 
-    uint8_t LoadTextureFromFile(EngineResources& resources, const char* filename, const char* texName, 
+    uint8_t LoadTextureFromFile(RenderingResources& resources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12)
     {
         TextureStats& current = resources.textures[resources.currentTextureIndex];
@@ -75,7 +75,7 @@ namespace BlitzenEngine
         Material specific functions
     -----------------------------------*/
 
-    void DefineMaterial(EngineResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
+    void DefineMaterial(RenderingResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName)
     {
         Material& current = resources.materials[resources.currentMaterialIndex];
@@ -94,7 +94,7 @@ namespace BlitzenEngine
 
 
 
-    uint8_t LoadMeshFromObj(EngineResources& resources, const char* filename, uint8_t buildMeshlets /*= 0*/)
+    uint8_t LoadMeshFromObj(RenderingResources& resources, const char* filename, uint8_t buildMeshlets /*= 0*/)
     {
         // The function should return if the engine will go over the max allowed mesh assets
         if(resources.currentMeshIndex > BLIT_MAX_MESH_COUNT)
@@ -220,7 +220,7 @@ namespace BlitzenEngine
     }
 
     // The code for this function is taken from Arseny's niagara streams. It uses his meshoptimizer library which I am not that familiar with
-    size_t LoadMeshlet(EngineResources& resources, BlitCL::DynamicArray<BlitML::Vertex>& vertices, 
+    size_t LoadMeshlet(RenderingResources& resources, BlitCL::DynamicArray<BlitML::Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
         const size_t maxVertices = 64;
@@ -281,7 +281,7 @@ namespace BlitzenEngine
 
 
 
-    void LoadDefaultData(EngineResources& resources)
+    void LoadDefaultData(RenderingResources& resources)
     {
         LoadMeshFromObj(resources, "Assets/Meshes/dragon.obj", 1);
         LoadMeshFromObj(resources, "Assets/Meshes/kitten.obj", 1);

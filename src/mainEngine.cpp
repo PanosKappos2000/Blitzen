@@ -187,9 +187,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
-            (float(rand()) / RAND_MAX) * 1'000 - 50,//y
-            (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'500 - 50);//z
             transform.pos = translation;
             transform.scale = 0.1f;
 
@@ -212,9 +212,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
-            (float(rand()) / RAND_MAX) * 1'000 - 50,//y
-            (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'500 - 50);//z
             transform.pos = translation;
             transform.scale = 1.f;
 
@@ -237,9 +237,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
-                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'500 - 50);//z
             transform.pos = translation;
             transform.scale = 0.1f;
 
@@ -262,9 +262,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = m_resources.transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'000 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1'000 - 50,//y
-                (float(rand()) / RAND_MAX) * 1'000 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'500 - 50);//z
             transform.pos = translation;
             transform.scale = 5.f;
 
@@ -286,7 +286,8 @@ namespace BlitzenEngine
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
             BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets, 
-            m_resources.surfaces, m_resources.transforms);/* The contructor is needed for values that are references instead of pointers */
+            m_resources.surfaces, m_resources.transforms, m_resources.meshletData);/* The contructor is needed for values 
+            that are references instead of pointers */
 
             vulkanData.pTextures = m_resources.textures;
             vulkanData.textureCount = m_resources.currentTextureIndex;// Current texture index is equal to the size of the array of textures

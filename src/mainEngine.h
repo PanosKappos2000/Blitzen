@@ -117,7 +117,7 @@ namespace BlitzenEngine
         inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }
 
         inline EngineSystems& GetEngineSystems() { return m_systems; }
-        inline EngineResources& GetEngineResources() { return m_resources; }
+        inline RenderingResources& GetEngineResources() { return m_resources; }
 
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 
@@ -148,7 +148,7 @@ namespace BlitzenEngine
 
         Camera m_camera;
         
-        EngineResources m_resources;
+        RenderingResources m_resources;
     };
 
     // Will be registered to the event system on initalization

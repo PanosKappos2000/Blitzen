@@ -2,6 +2,7 @@
 
 #extension GL_EXT_mesh_shader: require
 #extension GL_GOOGLE_include_directive: require
+#extension GL_ARB_shader_draw_parameters : require
 
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -12,7 +13,7 @@ struct MeshTaskPayload
     uint clusterIndices[32];
 };
 
-taskPayloadSharedEXT MeshTaskPayload payload;
+taskPayloadSharedEXT uint meshletIndices[32];
 
 bool coneCull(vec4 cone, vec3 view)
 {
@@ -21,5 +22,16 @@ bool coneCull(vec4 cone, vec3 view)
 
 void main()
 {
+    uint threadIndex = gl_LocalInvocationID.x;
+	uint meshletGroupIndex = gl_WorkGroupID.x;
 
+	uint drawId = bufferAddrs.indirectDrawBuffer.draws[gl_DrawIDARB].objectId;
+    RenderObject currentObject = bufferAddrs.objectBuffer.objects[drawId];
+	MeshInstance meshDraw = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
+    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
+
+    uint meshletIndex = meshletGroupIndex * 32 + threadIndex + bufferAddrs.indirectTaskBuffer.tasks[gl_DrawIDARB].taskId;
+
+    meshletIndices[threadIndex] = meshletIndex;
+    EmitMeshTasksEXT(32, 1, 1);
 }
