@@ -6,6 +6,7 @@
 #include "Core/blitEvents.h"
 #include "Renderer/blitRenderingResources.h"
 #include "BlitzenMathLibrary/blitMLTypes.h"
+#include "Game/blitCamera.h"
 
 
 #define BLITZEN_VERSION                 "Blitzen Engine 0.C"
@@ -23,10 +24,6 @@
 #define BLITZEN_FOV                     BlitML::Radians(70.f)
 #define BLITZEN_DRAW_DISTANCE           600.f
 
-// Define what Blitzen tries to do at runtime. 
-// The first one tries to draw a heavy scene with multiple meshes. 
-// The second one tests physics implementation
-// Both are tests and now the way the engine should normally work
 #define BLITZEN_GRAPHICS_STRESS_TEST    1
 #define BLITZEN_PHYSICS_TEST            0
 
@@ -68,29 +65,6 @@ namespace BlitzenEngine
         #endif
     };
 
-    // Temporary camera struct, this will have its own file and will be a robust system
-    struct Camera
-    {
-        uint8_t cameraDirty = 0;// Tells the engine if the camera should be updated
-
-        BlitML::mat4 viewMatrix;
-        BlitML::mat4 projectionMatrix;
-        BlitML::mat4 projectionViewMatrix;
-        // Needed for frustum culling (probably does not need to be managed by the camera)
-        BlitML::mat4 projectionTranspose;
-
-        BlitML::vec3 position;
-        // These 2 should be enough to keep track of rotation 
-        // (A quat and rotation matrix will be created on the fly, to contribute to the final view matrix)
-        float yawRotation = 0.f;
-        float pitchRotation = 0.f;
-
-        BlitML::mat4 rotation = BlitML::mat4();
-        BlitML::mat4 translation = BlitML::mat4();
-
-        BlitML::vec3 velocity = BlitML::vec3(0.f);
-    };
-
     enum class ActiveRenderer : uint8_t
     {
         Vulkan = 0,
@@ -121,7 +95,13 @@ namespace BlitzenEngine
 
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 
-        inline Camera& GetCamera() { return m_camera; }
+        // Returns the main camera
+        inline Camera& GetCamera() { return m_mainCamera; }
+        // Returns the moving camera (in some cases, like detachment, it is differen than the main camera)
+        inline Camera* GetMovingCamera() { return m_pMovingCamera; }
+        // Change the moving camera
+        inline void SetMovingCamera(Camera* pCamera) { m_pMovingCamera = pCamera; }
+        inline CameraContainer& GetCameraContainer() { return m_cameraContainer; }
         inline double GetDeltaTime() { return m_deltaTime; }
 
     private:
@@ -146,7 +126,13 @@ namespace BlitzenEngine
 
         EngineSystems m_systems;
 
-        Camera m_camera;
+        // Holds all the camera created and an index to the active one
+        CameraContainer m_cameraContainer;
+
+        // The main camera is the one whose values are used for culling and other operations
+        Camera& m_mainCamera;
+        // The camera that moves around the scene, usually the same as the main camera, unless the user requests detatch
+        Camera* m_pMovingCamera;
         
         RenderingResources m_resources;
     };
@@ -156,8 +142,4 @@ namespace BlitzenEngine
     uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
-
-    // This will be moved somewhere else once I have a good camera system
-    void UpdateCamera(Camera& camera, float deltaTime);
-    void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation);
 }

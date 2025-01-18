@@ -25,6 +25,8 @@ namespace BlitzenEngine
     Engine* Engine::pEngineInstance;
 
     Engine::Engine()
+        :m_mainCamera{m_cameraContainer.cameraList[BLIT_MAIN_CAMERA_ID]}, // The main camera is the first element in the camera list
+        m_pMovingCamera{&m_cameraContainer.cameraList[BLIT_MAIN_CAMERA_ID]} // The moving camera is a reference to the same camera as the main one initially
     {
         // There should not be a 2nd instance of Blitzen Engine
         if(GetEngineInstancePointer())
@@ -114,19 +116,11 @@ namespace BlitzenEngine
 
         // Camera and view frustum matrix values
         {
-            // Initalize the projection matrix
-            m_camera.projectionMatrix = 
-            BlitML::InfiniteZPerspective(BLITZEN_FOV, 
-            static_cast<float>(m_platformData.windowWidth) / static_cast<float>(m_platformData.windowHeight), 
-            BLITZEN_ZNEAR);
-            // Give an initial position for the camera and pass it to the view matrix
-            BlitML::vec3 initialCameraPosition(50.f, 0.f, 0.f);// Hardcoded, may want to create a macro for this
-            m_camera.viewMatrix = BlitML::Mat4Inverse(BlitML::Translate(initialCameraPosition));
-            // This is calculated here so that the shaders don't need to calculate this for every invocation
-            m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
+            // The active camera is the first element in camera list
+            m_cameraContainer.activeCameraID = BLIT_MAIN_CAMERA_ID;
 
-            // The transpose of the projection matrix will be used for frustum culling
-            m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
+            SetupCamera(m_mainCamera, BLITZEN_FOV, static_cast<float>(m_platformData.windowWidth), 
+            static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
         }
 
         /*
@@ -334,7 +328,7 @@ namespace BlitzenEngine
                 previousTime = m_clock.elapsedTime;
 
                 // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
-                UpdateCamera(m_camera, (float)m_deltaTime);
+                UpdateCamera(*m_pMovingCamera, (float)m_deltaTime);
 
                 switch(m_renderer)
                 {
@@ -346,19 +340,22 @@ namespace BlitzenEngine
                         renderContext.windowWidth = m_platformData.windowWidth;
                         renderContext.windowHeight = m_platformData.windowHeight;
 
-                        // Pass the projection matrix to be used for culling
-                        renderContext.projectionMatrix = m_camera.projectionMatrix;
-                        // Pass the view matrix to promote bounding spheres to view coordinates
-                        // If the freeze frustum global is set to true, this does not get updated, effectively freezing the view frustum
-                        // This will not work if the view matrix is used for anything other than view frustum collisions
-                        if (!gFreezeFrustum)
-                            renderContext.viewMatrix = m_camera.viewMatrix;
-                        // The projection view is the precalculated result of projection * view
+                        // Pass the projection matrix to be used to promote objects to clip coordinates without promoting them to view coordinates
+                        renderContext.projectionMatrix = m_mainCamera.projectionMatrix;
+
+                        // Pass the view matrix to be used to promote objects to view coordinates but not clip coordinates
+                        renderContext.viewMatrix = m_mainCamera.viewMatrix;
+
+                        // The projection view is the result of projectionMatrix * viewMatrix
                         // Calculated on the CPU to avoid doing it every vertex/mesh shader invocation
-                        renderContext.projectionView = m_camera.projectionViewMatrix;
-                        renderContext.viewPosition = m_camera.position;
+                        // This one is changed even if the camera is detatched
+                        renderContext.projectionView = 
+                        m_pMovingCamera->projectionViewMatrix;
+
+                        // Camera position is needed for some lighting calculations
+                        renderContext.viewPosition = m_mainCamera.position;
                         // The transpose of the projection matrix will be used to derive the frustum planes
-                        renderContext.projectionTranspose = m_camera.projectionTranspose;
+                        renderContext.projectionTranspose = m_mainCamera.projectionTranspose;
                         renderContext.zNear = BLITZEN_ZNEAR;
 
                         // The draw count is passed again every frame even thought is is constant at the moment
@@ -456,50 +453,6 @@ namespace BlitzenEngine
 
 
 
-
-    // This will move from here once I add a camera system
-    void UpdateCamera(Camera& camera, float deltaTime)
-    {
-        if (camera.cameraDirty)
-        {
-            // I haven't overloaded the += operator
-            BlitML::vec3 finalVelocity = camera.velocity * deltaTime * 40.f;
-            BlitML::vec4 directionalVelocity = camera.rotation * BlitML::vec4(finalVelocity);
-            camera.position = camera.position + BlitML::ToVec3(directionalVelocity);
-            camera.translation = BlitML::Translate(camera.position);
-
-            camera.viewMatrix = BlitML::Mat4Inverse(camera.translation * camera.rotation);
-            camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
-        }
-    }
-
-    void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation)
-    {
-        // find how much the camera's yaw moved
-        if(yawRotation < 100.f && yawRotation > -100.f)
-        {
-            camera.yawRotation += yawRotation * 10.f * deltaTime / 100.f;
-        }
-        // Find how much the camera's pitch moved
-        if(pitchRotation < 100.f && pitchRotation > -100.f)
-        {
-            camera.pitchRotation -= pitchRotation * 10.f * deltaTime / 100.f;
-        }
-
-        // Find the yaw orientation of the camera using quaternions
-        BlitML::vec3 yAxis(0.f, -1.f, 0.f);
-        BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
-
-        // Find the pitch orientation of the camera using quaternions
-        BlitML::vec3 xAxis(1.f, 0.f, 0.f);
-        BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
-
-        // Turn the quaternions to matrices and multiply them to get the new rotation matrix
-        BlitML::mat4 yawRot = BlitML::QuatToMat4(yawOrientation);
-        BlitML::mat4 pitchRot = BlitML::QuatToMat4(pitchOrientation);
-        camera.rotation = yawRot * pitchRot;
-    }
-
     uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
     {
         if(eventType == BlitzenCore::BlitEventType::EngineShutdown)
@@ -530,35 +483,48 @@ namespace BlitzenEngine
                 // The four keys below control basic camera movement. They set a velocity and tell it that it should be updated based on that velocity
                 case BlitzenCore::BlitKey::__W:
                 {
-                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
-                    camera.cameraDirty = 1;
-                    camera.velocity = BlitML::vec3(0.f, 0.f, 1.f);
+                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
+                    pCamera->cameraDirty = 1;
+                    pCamera->velocity = BlitML::vec3(0.f, 0.f, 1.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__S:
                 {
-                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
-                    camera.cameraDirty = 1;
-                    camera.velocity = BlitML::vec3(0.f, 0.f, -1.f);
+                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
+                    pCamera->cameraDirty = 1;
+                    pCamera->velocity = BlitML::vec3(0.f, 0.f, -1.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__A:
                 {
-                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
-                    camera.cameraDirty = 1;
-                    camera.velocity = BlitML::vec3(-1.f, 0.f, 0.f);
+                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
+                    pCamera->cameraDirty = 1;
+                    pCamera->velocity = BlitML::vec3(-1.f, 0.f, 0.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__D:
                 {
-                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
-                    camera.cameraDirty = 1;
-                    camera.velocity = BlitML::vec3(1.f, 0.f, 0.f);
+                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
+                    pCamera->cameraDirty = 1;
+                    pCamera->velocity = BlitML::vec3(1.f, 0.f, 0.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__F1:
                 {
+                    Camera& main = Engine::GetEngineInstancePointer()->GetCamera();
+                    CameraContainer& container = Engine::GetEngineInstancePointer()->GetCameraContainer();
                     gFreezeFrustum = !gFreezeFrustum;
+                    if(gFreezeFrustum)
+                    {
+                        Camera& detatched = container.cameraList[BLIT_DETATCHED_CAMERA_ID];
+                        SetupCamera(detatched, main.fov, main.windowWidth, main.windowHeight, main.zNear, main.position, 
+                        main.yawRotation, main.pitchRotation);
+                        Engine::GetEngineInstancePointer()->SetMovingCamera(&detatched);
+                    }
+                    else
+                    {
+                        Engine::GetEngineInstancePointer()->SetMovingCamera(&main);
+                    }
                     break;
                 }
                 case BlitzenCore::BlitKey::__F2:
@@ -590,22 +556,22 @@ namespace BlitzenEngine
                 case BlitzenCore::BlitKey::__W:
                 case BlitzenCore::BlitKey::__S:
                 {
-                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
-                    camera.velocity.z = 0.f;
-                    if(camera.velocity.y == 0.f && camera.velocity.x == 0.f)
+                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
+                    pCamera->velocity.z = 0.f;
+                    if(pCamera->velocity.y == 0.f && pCamera->velocity.x == 0.f)
                     {
-                        camera.cameraDirty = 0;
+                        pCamera->cameraDirty = 0;
                     }
                     break;
                 }
                 case BlitzenCore::BlitKey::__A:
                 case BlitzenCore::BlitKey::__D:
                 {
-                    Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
-                    camera.velocity.x = 0.f;
-                    if (camera.velocity.y == 0.f && camera.velocity.z == 0.f)
+                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
+                    pCamera->velocity.x = 0.f;
+                    if (pCamera->velocity.y == 0.f && pCamera->velocity.z == 0.f)
                     {
-                        camera.cameraDirty = 0;
+                        pCamera->cameraDirty = 0;
                     }
                     break;
                 }
@@ -626,7 +592,7 @@ namespace BlitzenEngine
 
     uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
     {
-        Camera& camera = Engine::GetEngineInstancePointer()->GetCamera();
+        Camera& camera = *(Engine::GetEngineInstancePointer()->GetMovingCamera());
         float deltaTime = static_cast<float>(Engine::GetEngineInstancePointer()->GetDeltaTime());
 
         camera.cameraDirty = 1;
@@ -648,10 +614,11 @@ namespace BlitzenEngine
         }
         isSupended = 0;
 
-        m_camera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
+        // I will want to turn this into a function
+        m_mainCamera.projectionMatrix = BlitML::InfiniteZPerspective(BlitML::Radians(70.f), static_cast<float>(m_platformData.windowWidth) / 
         static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR);
-        m_camera.projectionViewMatrix = m_camera.projectionMatrix * m_camera.viewMatrix;
-        m_camera.projectionTranspose = BlitML::Transpose(m_camera.projectionMatrix);
+        m_mainCamera.projectionViewMatrix = m_mainCamera.projectionMatrix * m_mainCamera.viewMatrix;
+        m_mainCamera.projectionTranspose = BlitML::Transpose(m_mainCamera.projectionMatrix);
     }
 }
 

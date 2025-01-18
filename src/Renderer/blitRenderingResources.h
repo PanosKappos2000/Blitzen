@@ -49,7 +49,7 @@ namespace BlitzenEngine
     	int8_t cone_axis[3];
     	int8_t cone_cutoff;
 
-    	uint32_t dataOffset; // dataOffset..dataOffset+vertexCount-1 stores vertex indices, indices are packed in 4b units after that
+    	uint32_t dataOffset; // Index into meshlet data
     	uint8_t vertexCount;
     	uint8_t triangleCount;
     };

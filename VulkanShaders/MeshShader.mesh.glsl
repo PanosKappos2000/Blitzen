@@ -5,7 +5,7 @@
 #extension GL_ARB_shader_draw_parameters : require
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
-layout(triangles, max_vertices = 64, max_primitives = 126) out;
+layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
