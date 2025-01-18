@@ -2,7 +2,7 @@
 #include "blitAssert.h"
 #include "Platform/platform.h"
 
-#include "mainEngine.h"
+#include "Engine/blitzenEngine.h"
 
 #include <stdarg.h>
 #include <cstring>

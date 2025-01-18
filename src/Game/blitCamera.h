@@ -38,10 +38,13 @@ namespace BlitzenEngine
 
     void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
     BlitML::vec3 initialCameraPosition, float initialYawRotation = 0, float initialPitchRotation = 0);
+
     // Will be called every frame to smoothly update camera based on user input
     void UpdateCamera(Camera& camera, float deltaTime);
     // Called directly from key press event functions to change the camera's orientation and rotation matrix
     void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation);
+
+    void UpdateProjection(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear);
 
     struct CameraContainer
     {

@@ -1,5 +1,5 @@
 #include "blitCamera.h"
-#include "mainEngine.h"
+#include "Engine/blitzenEngine.h"
 
 namespace BlitzenEngine
 {
@@ -86,5 +86,21 @@ namespace BlitzenEngine
         BlitML::mat4 yawRot = BlitML::QuatToMat4(yawOrientation);
         BlitML::mat4 pitchRot = BlitML::QuatToMat4(pitchOrientation);
         camera.rotation = yawRot * pitchRot;
+    }
+
+    void UpdateProjection(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear)
+    {
+        // Change the projection according to the parameters
+        camera.projectionMatrix = BlitML::InfiniteZPerspective(fov, windowWidth/ windowHeight, zNear);
+
+        // Update the values that depend on the projection matrix
+        camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
+        camera.projectionTranspose = BlitML::Transpose(camera.projectionMatrix);
+
+        // Update these values so they can be accessed if the camera system needs them separately
+        camera.windowWidth = windowWidth;
+        camera.windowHeight = windowHeight;
+        camera.fov = fov;
+        camera.zNear = zNear;
     }
 }

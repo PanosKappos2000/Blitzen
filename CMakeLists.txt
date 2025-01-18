@@ -8,6 +8,9 @@ set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(BlitzenEngine
+                src/Engine/blitzenEngine.cpp
+                src/Engine/blitzenEngine.h
+
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
                 src/BlitzenVulkan/vulkanRenderer.cpp
@@ -15,13 +18,11 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanResources.cpp
                 src/BlitzenVulkan/vulkanPipelines.cpp
 
-                src/mainEngine.cpp
-                src/mainEngine.h
-
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
 
                 src/Game/blitObject.h
+                src/Game/blitzenObject.cpp
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
                 

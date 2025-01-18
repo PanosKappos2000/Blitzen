@@ -1,6 +1,6 @@
 #include "blitEvents.h"
 
-#include "mainEngine.h"
+#include "Engine/blitzenEngine.h"
 
 namespace BlitzenCore
 {

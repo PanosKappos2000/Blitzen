@@ -142,4 +142,7 @@ namespace BlitzenEngine
     uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
+
+    // Implemented in blitzenObject.cpp, define here temporarily to avoid circular dependency
+    void CreateTestGameObjects(RenderingResources& resources, uint32_t drawCount);
 }

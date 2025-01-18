@@ -1,6 +1,6 @@
 #include "blitMemory.h"
 #include "Platform/platform.h"
-#include "mainEngine.h"
+#include "Engine/blitzenEngine.h"
 
 namespace BlitzenCore
 {
