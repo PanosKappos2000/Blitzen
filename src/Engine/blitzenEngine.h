@@ -65,14 +65,6 @@ namespace BlitzenEngine
         #endif
     };
 
-    enum class ActiveRenderer : uint8_t
-    {
-        Vulkan = 0,
-        Directx12 = 1,
-
-        MaxRenderers = 2
-    };
-
     class Engine
     {
     public:
@@ -101,13 +93,16 @@ namespace BlitzenEngine
         inline Camera* GetMovingCamera() { return m_pMovingCamera; }
         // Change the moving camera
         inline void SetMovingCamera(Camera* pCamera) { m_pMovingCamera = pCamera; }
+        // Return the camera container to get access to all the available cameras
         inline CameraContainer& GetCameraContainer() { return m_cameraContainer; }
+
+        // Returns delta time, crucial for functions that move objects
         inline double GetDeltaTime() { return m_deltaTime; }
 
-    private:
-
-        void StartClock();
-        void StopClock();
+        inline void ChangeFreezeFrustumState() { m_freezeFrustum = !m_freezeFrustum; }
+        inline void ChangeDebugPyramidActiveState() { isDebugPyramidActive = !isDebugPyramidActive; }
+        inline void ChangeOcclusionCullingState() { m_occlusionCulling = !m_occlusionCulling; }
+        inline void ChangeLodEnabledState()  { m_lodEnabled = !m_lodEnabled; }
 
     private:
 
@@ -122,8 +117,6 @@ namespace BlitzenEngine
         Clock m_clock;
         double m_deltaTime;// The clock helps the engine keep track of the delta time
 
-        ActiveRenderer m_renderer;
-
         EngineSystems m_systems;
 
         // Holds all the camera created and an index to the active one
@@ -134,7 +127,14 @@ namespace BlitzenEngine
         // The camera that moves around the scene, usually the same as the main camera, unless the user requests detatch
         Camera* m_pMovingCamera;
         
+        // Holds the values of all loaded rendering resources
         RenderingResources m_resources;
+
+        // Debug values, these should probably be held by the renderer and not the engine
+        uint8_t m_freezeFrustum = 0;
+        uint8_t isDebugPyramidActive = 0;
+        uint8_t m_occlusionCulling = 1;
+        uint8_t m_lodEnabled = 1;
     };
 
     // Will be registered to the event system on initalization

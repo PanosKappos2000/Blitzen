@@ -10,6 +10,7 @@ set (CMAKE_CXX_STANDARD_REQUIRED True)
 add_executable(BlitzenEngine
                 src/Engine/blitzenEngine.cpp
                 src/Engine/blitzenEngine.h
+                src/Engine/blitzenDefaultEvents.cpp
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
@@ -20,6 +21,8 @@ add_executable(BlitzenEngine
 
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
+                src/Renderer/blitRenderer.h
+                src/Renderer/blitzenRenderer.cpp
 
                 src/Game/blitObject.h
                 src/Game/blitzenObject.cpp

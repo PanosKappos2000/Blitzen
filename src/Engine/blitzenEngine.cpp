@@ -3,15 +3,11 @@
     Contains the main function at the bottom
 */
  
-#include "BlitzenVulkan/vulkanRenderer.h"
-
 #include "Engine/blitzenEngine.h"
 #include "Platform/platform.h"
+#include "Renderer/blitRenderer.h"
 
-inline uint8_t gFreezeFrustum = 0;
-inline uint8_t gDebugPyramid = 0;
-inline uint8_t gOcclusion = 1;
-inline uint8_t gLod = 1;
+#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
 
 namespace BlitzenEngine
 {
@@ -79,49 +75,34 @@ namespace BlitzenEngine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     void Engine::Run()
     {
-        // Allocate memory for the vulkan renderer, if Vulkan is used (The application does not support anything else anyway)
-        #if BLITZEN_VULKAN
-            BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
-        #endif
-
-        // The idea with this is that if Blitzen supported more than one graphics API, it would try to initialize every renderer that was requested
-        // If no renderer initalization function returned 1, than the engine would fail the assertion
+        // Checks if at least one of the rendering APIs was initialized
         uint8_t hasRenderer = 0;
 
+        // Create the vulkan renderer if it's requested
         #if BLITZEN_VULKAN
-            if(pVulkan.Data())
-            {
-                // Call the init function and store the result in the systems boolean for Vulkan
-                m_systems.vulkan = pVulkan.Data()->Init(m_platformData.windowWidth, m_platformData.windowHeight);
-                hasRenderer = m_systems.vulkan;
-
-                // Tell Blitzen to use Vulkan for rendering
-                m_renderer = ActiveRenderer::Vulkan;
-            }
+            BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
+            hasRenderer = CreateVulkanRenderer(pVulkan, m_platformData.windowWidth, m_platformData.windowHeight);
         #endif
 
         // Directx12 is here for testing purposes, there's no directx12 backend
         #if BLITZEN_DIRECTX12
             m_systems.directx12 = 1;
             hasRenderer = m_systems.directx12;
-            m_renderer = ActiveRenderer::Directx12;
         #endif
 
         // Test if any renderer was initialized
         BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
+
+        ActiveRenderer activeRenderer = BLIT_ACTIVE_RENDERER_ON_BOOT;
+
+        BLIT_ASSERT(CheckActiveRenderer(activeRenderer))
         
         // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
         isRunning = 1;
         isSupended = 0;
 
-        // Camera and view frustum matrix values
-        {
-            // The active camera is the first element in camera list
-            m_cameraContainer.activeCameraID = BLIT_MAIN_CAMERA_ID;
-
-            SetupCamera(m_mainCamera, BLITZEN_FOV, static_cast<float>(m_platformData.windowWidth), 
-            static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
-        }
+        SetupCamera(m_mainCamera, BLITZEN_FOV, static_cast<float>(m_platformData.windowWidth), 
+        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
 
         /*
             Load the default textures and some other textures for testing
@@ -175,37 +156,12 @@ namespace BlitzenEngine
         uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
         CreateTestGameObjects(m_resources, drawCount);
 
-        #if BLITZEN_VULKAN
-        {
-            // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
-            BlitzenVulkan::GPUData vulkanData(m_resources.vertices, m_resources.indices, m_resources.meshlets, 
-            m_resources.surfaces, m_resources.transforms, m_resources.meshletData);/* The contructor is needed for values 
-            that are references instead of pointers */
-
-            vulkanData.pTextures = m_resources.textures;
-            vulkanData.textureCount = m_resources.currentTextureIndex;// Current texture index is equal to the size of the array of textures
-
-            vulkanData.pMaterials = m_resources.materials;
-            vulkanData.materialCount = m_resources.currentMaterialIndex;// Current material index is equal to the size of the material array
-
-            vulkanData.pMeshes = m_resources.meshes;
-            vulkanData.meshCount = m_resources.currentMeshIndex;// Current mesh index is equal to the size of the mesh array
-
-            vulkanData.pGameObjects = m_resources.objects;
-            vulkanData.gameObjectCount = m_resources.objectCount;
-
-            // Draw count will be used to determine the size of draw and object buffers
-            vulkanData.drawCount = drawCount;
-
-            pVulkan.Data()->SetupForRendering(vulkanData);
-        }
-        #endif
-
-        // This is passed to the renderer every frame after updating the data
-        // Passed here for debug purposes
-        BlitzenVulkan::RenderContext renderContext;
-
-        StartClock();// Start the clock
+        // Pass the resources and pointers to any of the renderers that might be used for rendering
+        SetupRequestedRenderersForDrawing(m_resources, drawCount, pVulkan.Data());
+        
+        // Start the clock
+        m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
+        m_clock.elapsedTime = 0;
         double previousTime = m_clock.elapsedTime;// Initialize previous frame time to the elapsed time
 
         // Main Loop starts
@@ -229,65 +185,10 @@ namespace BlitzenEngine
                 // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
                 UpdateCamera(*m_pMovingCamera, (float)m_deltaTime);
 
-                switch(m_renderer)
-                {
-                    #if BLITZEN_VULKAN
-                    case ActiveRenderer::Vulkan:
-                    {
-                        // In the case that the window was resized, these are passed so that the swapchain can be recreated
-                        renderContext.windowResize = m_platformData.windowResize;
-                        renderContext.windowWidth = m_platformData.windowWidth;
-                        renderContext.windowHeight = m_platformData.windowHeight;
-
-                        // Pass the projection matrix to be used to promote objects to clip coordinates without promoting them to view coordinates
-                        renderContext.projectionMatrix = m_mainCamera.projectionMatrix;
-
-                        // Pass the view matrix to be used to promote objects to view coordinates but not clip coordinates
-                        renderContext.viewMatrix = m_mainCamera.viewMatrix;
-
-                        // The projection view is the result of projectionMatrix * viewMatrix
-                        // Calculated on the CPU to avoid doing it every vertex/mesh shader invocation
-                        // This one is changed even if the camera is detatched
-                        renderContext.projectionView = 
-                        m_pMovingCamera->projectionViewMatrix;
-
-                        // Camera position is needed for some lighting calculations
-                        renderContext.viewPosition = m_mainCamera.position;
-                        // The transpose of the projection matrix will be used to derive the frustum planes
-                        renderContext.projectionTranspose = m_mainCamera.projectionTranspose;
-                        renderContext.zNear = BLITZEN_ZNEAR;
-
-                        // The draw count is passed again every frame even thought is is constant at the moment
-                        renderContext.drawCount = drawCount;
-                        renderContext.drawDistance = BLITZEN_DRAW_DISTANCE;
-
-                        // Debug values, controlled by inputs
-                        renderContext.debugPyramid = gDebugPyramid;// This does nothing now, something is broken with occlusion culling / debug pyramid
-                        renderContext.occlusionEnabled = gOcclusion; // f3 to change
-                        renderContext.lodEnabled = gLod;// f4 to change
-
-                        // Hardcoding the sun for now (this is used in the fragment shader but ignored)
-                        renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
-                        renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
-
-                        // Let the renderere do its thing
-                        pVulkan.Data()->DrawFrame(renderContext);
-
-                        break;
-                    }
-                    #endif
-                    #if BLITZEN_DIRECTX12
-                    case ActiveRenderer::Directx12:
-                    {
-                        BLIT_INFO("Direct 3D not setup, switch to Vulkan")
-                        break;
-                    }
-                    #endif
-                    default:
-                    {
-                        break;
-                    }
-                }
+                // Draw the frame
+                DrawFrame(m_mainCamera, m_pMovingCamera, drawCount, 
+                m_platformData.windowWidth, m_platformData.windowHeight, m_platformData.windowResize, 
+                pVulkan.Data(), activeRenderer);
 
                 // Make sure that the window resize is set to false after the renderer is notified
                 m_platformData.windowResize = 0;
@@ -296,10 +197,9 @@ namespace BlitzenEngine
             }
         }
         // Main loop ends
-        StopClock();
 
-        // There is not active renderer since the application is shutting down
-        m_renderer = ActiveRenderer::MaxRenderers;
+        // Zeroing the clock right now is not necessary but if there are many possible game loops, then this needs to happen
+        m_clock.elapsedTime = 0;
 
         // The renderer is shutdown here because it will go out of scope if this run function goes out of scope
         #if BLITZEN_VULKAN
@@ -309,17 +209,6 @@ namespace BlitzenEngine
 
         // With the main loop done, Blitzen calls Shutdown on itself
         Shutdown();
-    }
-
-    void Engine::StartClock()
-    {
-        m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
-        m_clock.elapsedTime = 0;
-    }
-
-    void Engine::StopClock()
-    {
-        m_clock.elapsedTime = 0;
     }
 
     void Engine::Shutdown()
@@ -348,157 +237,6 @@ namespace BlitzenEngine
         {
             BLIT_ERROR("Any uninitialized instances of Blitzen will not be explicitly cleaned up")
         }
-    }
-
-
-
-    uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
-    {
-        if(eventType == BlitzenCore::BlitEventType::EngineShutdown)
-        {
-            BLIT_WARN("Engine shutdown event encountered!")
-            BlitzenEngine::Engine::GetEngineInstancePointer()->RequestShutdown();
-            return 1; 
-        }
-
-        return 0;
-    }
-
-    uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
-    {
-        //Get the key pressed from the event context
-        BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(data.data.ui16[0]);
-
-        if(eventType == BlitzenCore::BlitEventType::KeyPressed)
-        {
-            switch(key)
-            {
-                case BlitzenCore::BlitKey::__ESCAPE:
-                {
-                    BlitzenCore::EventContext newContext = {};
-                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, newContext);
-                    return 1;
-                }
-                // The four keys below control basic camera movement. They set a velocity and tell it that it should be updated based on that velocity
-                case BlitzenCore::BlitKey::__W:
-                {
-                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
-                    pCamera->cameraDirty = 1;
-                    pCamera->velocity = BlitML::vec3(0.f, 0.f, 1.f);
-                    break;
-                }
-                case BlitzenCore::BlitKey::__S:
-                {
-                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
-                    pCamera->cameraDirty = 1;
-                    pCamera->velocity = BlitML::vec3(0.f, 0.f, -1.f);
-                    break;
-                }
-                case BlitzenCore::BlitKey::__A:
-                {
-                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
-                    pCamera->cameraDirty = 1;
-                    pCamera->velocity = BlitML::vec3(-1.f, 0.f, 0.f);
-                    break;
-                }
-                case BlitzenCore::BlitKey::__D:
-                {
-                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
-                    pCamera->cameraDirty = 1;
-                    pCamera->velocity = BlitML::vec3(1.f, 0.f, 0.f);
-                    break;
-                }
-                case BlitzenCore::BlitKey::__F1:
-                {
-                    Camera& main = Engine::GetEngineInstancePointer()->GetCamera();
-                    CameraContainer& container = Engine::GetEngineInstancePointer()->GetCameraContainer();
-                    gFreezeFrustum = !gFreezeFrustum;
-                    if(gFreezeFrustum)
-                    {
-                        Camera& detatched = container.cameraList[BLIT_DETATCHED_CAMERA_ID];
-                        SetupCamera(detatched, main.fov, main.windowWidth, main.windowHeight, main.zNear, main.position, 
-                        main.yawRotation, main.pitchRotation);
-                        Engine::GetEngineInstancePointer()->SetMovingCamera(&detatched);
-                    }
-                    else
-                    {
-                        Engine::GetEngineInstancePointer()->SetMovingCamera(&main);
-                    }
-                    break;
-                }
-                case BlitzenCore::BlitKey::__F2:
-                {
-                    gDebugPyramid = !gDebugPyramid;
-                    break;
-                }
-                case BlitzenCore::BlitKey::__F3:
-                {
-                    gOcclusion = !gOcclusion;
-                    break;
-                }
-                case BlitzenCore::BlitKey::__F4:
-                {
-                    gLod = !gLod;
-                    break;
-                }
-                default:
-                {
-                    BLIT_DBLOG("Key pressed %i", key)
-                    return 1;
-                }
-            }
-        }
-        else if (eventType == BlitzenCore::BlitEventType::KeyReleased)
-        {
-            switch (key)
-            {
-                case BlitzenCore::BlitKey::__W:
-                case BlitzenCore::BlitKey::__S:
-                {
-                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
-                    pCamera->velocity.z = 0.f;
-                    if(pCamera->velocity.y == 0.f && pCamera->velocity.x == 0.f)
-                    {
-                        pCamera->cameraDirty = 0;
-                    }
-                    break;
-                }
-                case BlitzenCore::BlitKey::__A:
-                case BlitzenCore::BlitKey::__D:
-                {
-                    Camera* pCamera = Engine::GetEngineInstancePointer()->GetMovingCamera();
-                    pCamera->velocity.x = 0.f;
-                    if (pCamera->velocity.y == 0.f && pCamera->velocity.z == 0.f)
-                    {
-                        pCamera->cameraDirty = 0;
-                    }
-                    break;
-                }
-            }
-        }
-        return 0;
-    }
-
-    uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
-    {
-        uint32_t newWidth = data.data.ui32[0];
-        uint32_t newHeight = data.data.ui32[1];
-
-        Engine::GetEngineInstancePointer()->UpdateWindowSize(newWidth, newHeight);
-
-        return 1;
-    }
-
-    uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
-    {
-        Camera& camera = *(Engine::GetEngineInstancePointer()->GetMovingCamera());
-        float deltaTime = static_cast<float>(Engine::GetEngineInstancePointer()->GetDeltaTime());
-
-        camera.cameraDirty = 1;
-
-        RotateCamera(camera, deltaTime, data.data.si16[1], data.data.si16[0]);
-
-        return 1;
     }
 
     void Engine::UpdateWindowSize(uint32_t newWidth, uint32_t newHeight) 
