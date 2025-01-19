@@ -55,14 +55,6 @@ namespace BlitzenEngine
         BlitzenCore::InputState inputState;
 
         uint8_t logSystem = 0;
-
-        #if BLITZEN_VULKAN
-            uint8_t vulkan = 0;
-        #endif
-
-        #if BLITZEN_DIRECTX12
-            uint8_t directx12 = 0;
-        #endif
     };
 
     class Engine
@@ -83,7 +75,6 @@ namespace BlitzenEngine
         inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }
 
         inline EngineSystems& GetEngineSystems() { return m_systems; }
-        inline RenderingResources& GetEngineResources() { return m_resources; }
 
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 

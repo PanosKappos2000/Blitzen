@@ -1,5 +1,5 @@
 #include "blitRenderingResources.h"
-#include "BlitzenVulkan/vulkanRenderer.h"
+#include "blitRenderer.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"
@@ -21,7 +21,8 @@
 
 namespace BlitzenEngine
 {
-    uint8_t LoadResourceSystem(RenderingResources& resources)
+
+    uint8_t LoadRenderingResourceSystem(RenderingResources& resources)
     {
         resources.textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
         resources.materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
@@ -69,11 +70,32 @@ namespace BlitzenEngine
         return load;
     }
 
+    void LoadTestTextures(RenderingResources* pResources, void* pVulkan, void* pDx12)
+    {
+        // Default texture at index 0
+        uint32_t blitTexCol = glm::packUnorm4x8(glm::vec4(0.3, 0, 0.6, 1));
+        uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+	    uint32_t pixels[16 * 16]; 
+	    for (int x = 0; x < 16; x++) 
+        {
+	    	for (int y = 0; y < 16; y++) 
+            {
+	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : blitTexCol;
+	    	}
+	    }
+        pResources->textures[0].pTextureData = reinterpret_cast<uint8_t*>(pixels);
+        pResources->textures[0].textureHeight = 1;
+        pResources->textures[0].textureWidth = 1;
+        pResources->textures[0].textureChannels = 4;
+        pResources->textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(pResources->textures[0]));
+
+        // This is hardcoded now
+        LoadTextureFromFile(*pResources, "Assets/Textures/cobblestone.png", "loaded_texture", pVulkan, nullptr);
+        LoadTextureFromFile(*pResources, "Assets/Textures/texture.jpg", "loaded_texture2", pVulkan, nullptr);
+        LoadTextureFromFile(*pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan, nullptr);
+    }
 
 
-    /*----------------------------------
-        Material specific functions
-    -----------------------------------*/
 
     void DefineMaterial(RenderingResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName)
@@ -91,6 +113,23 @@ namespace BlitzenEngine
         resources.materialTable.Set(materialName, &current);
         resources.currentMaterialIndex++;
     }
+
+    void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12)
+    {
+        // Manually load a default material at index 0
+        pResources->materials[0].diffuseColor = BlitML::vec4(1.f);
+        pResources->materials[0].diffuseTextureTag = pResources->textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &pResources->textures[0])->textureTag;
+        pResources->materials[0].specularTextureTag = pResources->textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &pResources->textures[0])->textureTag;
+        pResources->materials[0].materialId = 0;
+        pResources->materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(pResources->materials[0]));
+
+        // Test code
+        BlitML::vec4 color1(0.1f);
+        BlitML::vec4 color2(0.2f);
+        DefineMaterial(*pResources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
+        DefineMaterial(*pResources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
+    }
+    
 
 
 

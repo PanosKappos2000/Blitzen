@@ -421,9 +421,11 @@ namespace BlitzenVulkan
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
     void VulkanRenderer::DrawFrame(RenderContext& context)
     {
+        BlitzenEngine::Camera& camera = context.camera;
+
         if(context.windowResize)
         {
-            RecreateSwapchain(context.windowWidth, context.windowHeight);
+            RecreateSwapchain(static_cast<uint32_t>(camera.windowWidth), static_cast<uint32_t>(camera.windowHeight));
         }
 
         // Gets a ref to the frame tools of the current frame
@@ -436,32 +438,41 @@ namespace BlitzenVulkan
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
 
-        // Projection and view coordinate parameters will be passed to the global shader data buffer
-        m_globalShaderData.projectionView = context.projectionView;
-        m_globalShaderData.viewPosition = context.viewPosition;
-        m_globalShaderData.view = context.viewMatrix;
+        // Pass the result of projection * view from the detatched camera if it moved since last frame
+        // In case the camera is indeed detatched from the main, the camera will move, but culling will not change for debugging purposes
+        if(context.pDetatchedCamera->cameraDirty)
+            m_globalShaderData.projectionView = context.pDetatchedCamera->projectionViewMatrix;
+
+        // Pass the camera position and view matrix from the main camera, it if has moved since last frame
+        if(camera.cameraDirty)
+        {
+            m_globalShaderData.viewPosition = camera.position;
+            m_globalShaderData.view = camera.viewMatrix;
+        }
 
         // Global lighting parameters will be written to the global shader data buffer
-        m_globalShaderData.sunlightDir = context.sunlightDirection;
-        m_globalShaderData.sunlightColor = context.sunlightColor;
+        // TODO: Add some logic to see if these value change (currently they never change and are unused)
+        /*m_globalShaderData.sunlightDir = context.sunlightDirection;
+        m_globalShaderData.sunlightColor = context.sunlightColor;*/
 
         // Culling data will be written to the culling data buffer
+        // TODO: This should not be created each time draw frame, instead it should be owned by the renderer or vBuffers
         CullingData cullingData;
 
         // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
-        BlitML::vec4 frustumX = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(0)); // x + w < 0
-        BlitML::vec4 frustumY = BlitML::NormalizePlane(context.projectionTranspose.GetRow(3) + context.projectionTranspose.GetRow(1)); // y+ w < 0;
+        BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
+        BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
         cullingData.frustumRight = frustumX.x;
         cullingData.frustumLeft = frustumX.z;
         cullingData.frustumTop = frustumY.y;
         cullingData.frustumBottom = frustumY.z;
 
-        cullingData.zNear = context.zNear;
-        cullingData.zFar = context.drawDistance;
+        cullingData.zNear = camera.zNear;
+        cullingData.zFar = camera.drawDistance;
 
         // Culling data for occlusion culling
-        cullingData.proj0 = context.projectionMatrix[0];
-        cullingData.proj5 = context.projectionMatrix[5];
+        cullingData.proj0 = camera.projectionMatrix[0];
+        cullingData.proj5 = camera.projectionMatrix[5];
         cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
         cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
 

@@ -3,8 +3,10 @@
 
 namespace BlitzenEngine
 {
-    inline uint8_t vulkanInitialized = 0;
-    inline uint8_t dx12Initialized = 0;
+    inline BlitzenVulkan::VulkanRenderer* gpVulkan = nullptr;
+    inline void* gpDx12 = nullptr;
+
+    inline Camera* gpMainCamera = nullptr;
 
     uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
     uint32_t windowWidth, uint32_t windowHeight)
@@ -12,7 +14,8 @@ namespace BlitzenEngine
         if(pVulkan.Data())
         {
             // Call the init function and store the result in the systems boolean for Vulkan
-            vulkanInitialized =  pVulkan.Data()->Init(windowWidth, windowHeight);
+            uint8_t vulkanInitialized =  pVulkan.Data()->Init(windowWidth, windowHeight);
+            gpVulkan = pVulkan.Data();
             return vulkanInitialized;
         }
         else
@@ -21,22 +24,22 @@ namespace BlitzenEngine
         }
     }
 
-    uint8_t isVulkanInitialized() { return vulkanInitialized; }
+    uint8_t isVulkanInitialized() { return gpVulkan != nullptr; }
 
     uint8_t CheckActiveRenderer(ActiveRenderer ar)
     {
         switch(ar)
         {
             case ActiveRenderer::Vulkan:
-                return vulkanInitialized;
+                return isVulkanInitialized();
             default:
                 break;
         }
     }
 
-    void SetupRequestedRenderersForDrawing(RenderingResources& resources, size_t drawCount, BlitzenVulkan::VulkanRenderer* pVulkan /* nullptr*/)
+    void SetupRequestedRenderersForDrawing(RenderingResources& resources, size_t drawCount)
     {
-        if(pVulkan && vulkanInitialized)
+        if(gpVulkan)
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
             BlitzenVulkan::GPUData vulkanData(resources.vertices, resources.indices, resources.meshlets, 
@@ -58,16 +61,18 @@ namespace BlitzenEngine
             // Draw count will be used to determine the size of draw and object buffers
             vulkanData.drawCount = drawCount;
 
-            pVulkan->SetupForRendering(vulkanData);
+            gpVulkan->SetupForRendering(vulkanData);
         }
     }
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
     uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
-    void* pRendererBackend, ActiveRenderer ar, RuntimeDebugValues* pDebugValues /*= nullptr*/)
+    ActiveRenderer ar, RuntimeDebugValues* pDebugValues /*= nullptr*/)
     {
-        if(!pRendererBackend)
+        // Check that the pointer for the active renderer is not Null, if it is warn the use that they should switch the active renderer
+        if(!CheckActiveRenderer(ar))
         {
+            BLIT_ERROR("Renderer not available, switch active renderer");
             return;
         }
 
@@ -75,49 +80,24 @@ namespace BlitzenEngine
         {
             case ActiveRenderer::Vulkan:
             {
-                BlitzenVulkan::VulkanRenderer* pVulkan = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pRendererBackend);
-                BlitzenVulkan::RenderContext renderContext;
-                        
-                // In the case that the window was resized, these are passed so that the swapchain can be recreated
-                renderContext.windowResize = windowResize;
-                renderContext.windowWidth = windowWidth;
-                renderContext.windowHeight = windowHeight;
+                // Hardcoding the sun for now (this is used in the fragment shader but ignored)
+                BlitML::vec3 sunDir(-0.57735f, -0.57735f, 0.57735f);
+                BlitML::vec4 sunColor(0.8f, 0.8f, 0.8f, 1.0f);
 
-                // Pass the projection matrix to be used to promote objects to clip coordinates without promoting them to view coordinates
-                renderContext.projectionMatrix = camera.projectionMatrix;
-
-                // Pass the view matrix to be used to promote objects to view coordinates but not clip coordinates
-                renderContext.viewMatrix = camera.viewMatrix;
-
-                // The projection view is the result of projectionMatrix * viewMatrix
-                // Calculated on the CPU to avoid doing it every vertex/mesh shader invocation
-                // This one is changed even if the camera is detatched
-                renderContext.projectionView = pMovingCamera->projectionViewMatrix;
-
-                // Camera position is needed for some lighting calculations
-                renderContext.viewPosition = camera.position;
-                // The transpose of the projection matrix will be used to derive the frustum planes
-                renderContext.projectionTranspose = camera.projectionTranspose;
-                renderContext.zNear = BLITZEN_ZNEAR;
-
-                // The draw count is passed again every frame even thought is is constant at the moment
-                renderContext.drawCount = drawCount;
-                renderContext.drawDistance = BLITZEN_DRAW_DISTANCE;
+                // Create the render context
+                BlitzenVulkan::RenderContext renderContext(camera, pMovingCamera, drawCount, 
+                sunDir, sunColor, windowResize);
 
                 // Debug values, controlled by inputs
-                if(!pDebugValues)
+                if(pDebugValues)
                 {
-                    renderContext.debugPyramid = 0;// This does nothing now, something is broken with occlusion culling / debug pyramid
-                    renderContext.occlusionEnabled = 1; // f3 to change
-                    renderContext.lodEnabled = 1;// f4 to change
+                    renderContext.debugPyramid = pDebugValues->isDebugPyramidActive; // f2 to change (inoperable)
+                    renderContext.occlusionEnabled = pDebugValues->m_occlusionCulling; // f3 to change
+                    renderContext.lodEnabled = pDebugValues->m_lodEnabled;// f4 to change
                 }
 
-                // Hardcoding the sun for now (this is used in the fragment shader but ignored)
-                renderContext.sunlightDirection = BlitML::vec3(-0.57735f, -0.57735f, 0.57735f);
-                renderContext.sunlightColor = BlitML::vec4(0.8f, 0.8f, 0.8f, 1.0f);
-
-                // Let the renderere do its thing
-                pVulkan->DrawFrame(renderContext);
+                // Let Vulkan do its thing
+                gpVulkan->DrawFrame(renderContext);
 
                 break;
             }

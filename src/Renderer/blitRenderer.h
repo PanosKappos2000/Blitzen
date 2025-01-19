@@ -25,16 +25,18 @@ namespace BlitzenEngine
     uint8_t CheckActiveRenderer(ActiveRenderer ar);
 
     // The parameters for this functions will be tidied up later
-    void SetupRequestedRenderersForDrawing(RenderingResources& resources, size_t drawCount, BlitzenVulkan::VulkanRenderer* pVulkan = nullptr);
+    void SetupRequestedRenderersForDrawing(RenderingResources& resources, size_t drawCount);
 
     struct RuntimeDebugValues
     {
-
+        uint8_t isDebugPyramidActive = 0;
+        uint8_t m_occlusionCulling = 1;
+        uint8_t m_lodEnabled = 1; 
     };
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
     uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
-    void* pRendererBackend, ActiveRenderer ar, RuntimeDebugValues* pDebugValues = nullptr);
+    ActiveRenderer ar, RuntimeDebugValues* pDebugValues = nullptr);
 
     void ShutdownRenderers();
 }

@@ -9,6 +9,7 @@
 #include "BlitzenMathLibrary/blitML.h"
 #include "Renderer/blitRenderingResources.h"
 #include "Game/blitObject.h"
+#include "Game/blitCamera.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -113,18 +114,21 @@ namespace BlitzenVulkan
     struct RenderContext
     {
         uint8_t windowResize = 0;
-        uint32_t windowWidth;
-        uint32_t windowHeight;
 
-        BlitML::mat4 projectionMatrix;
-        BlitML::mat4 viewMatrix;
-        BlitML::mat4 projectionView;
+        /* The renderer assumes that the camera includes the following values:
+        BlitML::mat4 projectionMatrix
+        BlitML::mat4 viewMatrix
+        BlitML::mat4 projectionView
         BlitML::vec3 viewPosition;
-        BlitML::mat4 projectionTranspose;
-        float zNear = 1.f;
+        BlitML::mat4 projectionTranspose
+        float zNear
+        float drawDistance */
+        BlitzenEngine::Camera& camera;
+
+        // In case where the camera is detatched, this points to a different camera then the above
+        BlitzenEngine::Camera* pDetatchedCamera;
 
         size_t drawCount;
-        float drawDistance;
 
         BlitML::vec3 sunlightDirection;
         BlitML::vec4 sunlightColor;
@@ -132,6 +136,14 @@ namespace BlitzenVulkan
         uint8_t debugPyramid = 0;
         uint8_t occlusionEnabled = 1;
         uint8_t lodEnabled = 1;
+
+        inline RenderContext(BlitzenEngine::Camera& cam, BlitzenEngine::Camera* pDetatchedCam, size_t dc, 
+        BlitML::vec3& sunDir, BlitML::vec4& sunColor, uint8_t resize,
+        uint8_t pyramid = 0, uint8_t occlusion = 1, uint8_t lod = 1)
+            :camera(cam), pDetatchedCamera(pDetatchedCam), drawCount(dc), sunlightDirection(sunDir), 
+            sunlightColor(sunColor), windowResize(resize), debugPyramid(pyramid), occlusionEnabled(occlusion), 
+            lodEnabled(lod)
+        {}
     };
 
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer

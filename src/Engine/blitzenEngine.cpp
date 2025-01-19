@@ -48,11 +48,7 @@ namespace BlitzenEngine
             }
             else
                 BLIT_FATAL("Event system initialization failed!")
-
-            // This always returns 1 at the moment (I don't know if this would ever fail in the future to be honest)
-            BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadResourceSystem(m_resources), "Failed to acquire resourece system")
             
-
             // Platform specific code initalization. Mostly window(not Windows) related things
             BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
             BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
@@ -75,6 +71,9 @@ namespace BlitzenEngine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     void Engine::Run()
     {
+        BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
+        BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadRenderingResourceSystem(m_resources), "Failed to acquire resourece system")
+
         // Checks if at least one of the rendering APIs was initialized
         uint8_t hasRenderer = 0;
 
@@ -82,12 +81,6 @@ namespace BlitzenEngine
         #if BLITZEN_VULKAN
             BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
             hasRenderer = CreateVulkanRenderer(pVulkan, m_platformData.windowWidth, m_platformData.windowHeight);
-        #endif
-
-        // Directx12 is here for testing purposes, there's no directx12 backend
-        #if BLITZEN_DIRECTX12
-            m_systems.directx12 = 1;
-            hasRenderer = m_systems.directx12;
         #endif
 
         // Test if any renderer was initialized
@@ -103,51 +96,11 @@ namespace BlitzenEngine
 
         SetupCamera(m_mainCamera, BLITZEN_FOV, static_cast<float>(m_platformData.windowWidth), 
         static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
+        m_mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
 
-        /*
-            Load the default textures and some other textures for testing
-        */
-        {
-            // Default texture at index 0
-            uint32_t blitTexCol = glm::packUnorm4x8(glm::vec4(0.3, 0, 0.6, 1));
-            uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
-	        uint32_t pixels[16 * 16]; 
-	        for (int x = 0; x < 16; x++) 
-            {
-	        	for (int y = 0; y < 16; y++) 
-                {
-	        		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : blitTexCol;
-	        	}
-	        }
-            m_resources.textures[0].pTextureData = reinterpret_cast<uint8_t*>(pixels);
-            m_resources.textures[0].textureHeight = 1;
-            m_resources.textures[0].textureWidth = 1;
-            m_resources.textures[0].textureChannels = 4;
-            m_resources.textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(m_resources.textures[0]));
+        LoadTestTextures(&m_resources, pVulkan.Data(), nullptr);
 
-            // This is hardcoded now
-            LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone.png", "loaded_texture", pVulkan.Data(), nullptr);
-            LoadTextureFromFile(m_resources, "Assets/Textures/texture.jpg", "loaded_texture2", pVulkan.Data(), nullptr);
-            LoadTextureFromFile(m_resources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan.Data(), nullptr);
-        }
-
-        /*
-            Load the default material and some material for testing
-        */
-        {
-            // Manually load a default material at index 0
-            m_resources.materials[0].diffuseColor = BlitML::vec4(1.f);
-            m_resources.materials[0].diffuseTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
-            m_resources.materials[0].specularTextureTag = m_resources.textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &m_resources.textures[0])->textureTag;
-            m_resources.materials[0].materialId = 0;
-            m_resources.materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(m_resources.materials[0]));
-
-            // Test code
-            BlitML::vec4 color1(0.1f);
-            BlitML::vec4 color2(0.2f);
-            DefineMaterial(m_resources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
-            DefineMaterial(m_resources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
-        }
+        LoadTestMaterials(&m_resources, pVulkan.Data(), nullptr);
 
         // Load test data to draw
         LoadDefaultData(m_resources);
@@ -157,7 +110,7 @@ namespace BlitzenEngine
         CreateTestGameObjects(m_resources, drawCount);
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        SetupRequestedRenderersForDrawing(m_resources, drawCount, pVulkan.Data());
+        SetupRequestedRenderersForDrawing(m_resources, drawCount);
         
         // Start the clock
         m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
@@ -188,7 +141,7 @@ namespace BlitzenEngine
                 // Draw the frame
                 DrawFrame(m_mainCamera, m_pMovingCamera, drawCount, 
                 m_platformData.windowWidth, m_platformData.windowHeight, m_platformData.windowResize, 
-                pVulkan.Data(), activeRenderer);
+                activeRenderer);
 
                 // Make sure that the window resize is set to false after the renderer is notified
                 m_platformData.windowResize = 0;
@@ -203,7 +156,6 @@ namespace BlitzenEngine
 
         // The renderer is shutdown here because it will go out of scope if this run function goes out of scope
         #if BLITZEN_VULKAN
-            m_systems.vulkan = 0;
             pVulkan.Data()->Shutdown();
         #endif
 

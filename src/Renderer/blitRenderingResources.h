@@ -145,16 +145,20 @@ namespace BlitzenEngine
         uint32_t objectCount;
     };
 
-    uint8_t LoadResourceSystem(RenderingResources& resources);
+    uint8_t LoadRenderingResourceSystem(RenderingResources& resources);
 
 
     // Takes a filename and loads at texture from it, and passes it to each renderer parameter that is not null
     uint8_t LoadTextureFromFile(RenderingResources& resources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12);// The renderers are void* so that I do not expose their API in the .h file
 
+    void LoadTestTextures(RenderingResources* pResources, void* pVulkan, void* pDx12);
+
 
     void DefineMaterial(RenderingResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName);
+
+    void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12);
 
 
     uint8_t LoadMeshFromObj(RenderingResources& resources, const char* filename, uint8_t buildMeshlets = 0);
