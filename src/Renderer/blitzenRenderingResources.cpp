@@ -22,10 +22,10 @@
 namespace BlitzenEngine
 {
 
-    uint8_t LoadRenderingResourceSystem(RenderingResources& resources)
+    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources)
     {
-        resources.textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
-        resources.materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
+        pResources->textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
+        pResources->materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
 
         return 1;
     }
@@ -36,10 +36,10 @@ namespace BlitzenEngine
         Texture specific functions
     ----------------------------------*/
 
-    uint8_t LoadTextureFromFile(RenderingResources& resources, const char* filename, const char* texName, 
+    uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12)
     {
-        TextureStats& current = resources.textures[resources.currentTextureIndex];
+        TextureStats& current = pResources->textures[pResources->currentTextureIndex];
 
         current.pTextureData = stbi_load(filename, &(current.textureWidth), &(current.textureHeight), &(current.textureChannels), 4);
 
@@ -48,9 +48,9 @@ namespace BlitzenEngine
         // Go to the next element in the container, only if the texture was loaded successfully
         if(load)
         {
-            current.textureTag = static_cast<uint32_t>(resources.currentTextureIndex);
-            resources.textureTable.Set(texName, &current);
-            resources.currentTextureIndex++;
+            current.textureTag = static_cast<uint32_t>(pResources->currentTextureIndex);
+            pResources->textureTable.Set(texName, &current);
+            pResources->currentTextureIndex++;
         }
         // If the load failed give the default texture
         else
@@ -90,28 +90,28 @@ namespace BlitzenEngine
         pResources->textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(pResources->textures[0]));
 
         // This is hardcoded now
-        LoadTextureFromFile(*pResources, "Assets/Textures/cobblestone.png", "loaded_texture", pVulkan, nullptr);
-        LoadTextureFromFile(*pResources, "Assets/Textures/texture.jpg", "loaded_texture2", pVulkan, nullptr);
-        LoadTextureFromFile(*pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan, nullptr);
+        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture", pVulkan, nullptr);
+        LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture2", pVulkan, nullptr);
+        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan, nullptr);
     }
 
 
 
-    void DefineMaterial(RenderingResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
+    void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName)
     {
-        Material& current = resources.materials[resources.currentMaterialIndex];
+        Material& current = pResources->materials[pResources->currentMaterialIndex];
 
         current.diffuseColor = diffuseColor;
         current.shininess = shininess;
 
-        current.diffuseTextureTag = resources.textureTable.Get(diffuseMapName, &resources.textures[0])->textureTag;
-        current.specularTextureTag = resources.textureTable.Get(specularMapName, &resources.textures[0])->textureTag;
+        current.diffuseTextureTag = pResources->textureTable.Get(diffuseMapName, &pResources->textures[0])->textureTag;
+        current.specularTextureTag = pResources->textureTable.Get(specularMapName, &pResources->textures[0])->textureTag;
 
-        current.materialId = static_cast<uint32_t>(resources.currentMaterialIndex);
+        current.materialId = static_cast<uint32_t>(pResources->currentMaterialIndex);
 
-        resources.materialTable.Set(materialName, &current);
-        resources.currentMaterialIndex++;
+        pResources->materialTable.Set(materialName, &current);
+        pResources->currentMaterialIndex++;
     }
 
     void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12)
@@ -126,17 +126,17 @@ namespace BlitzenEngine
         // Test code
         BlitML::vec4 color1(0.1f);
         BlitML::vec4 color2(0.2f);
-        DefineMaterial(*pResources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
-        DefineMaterial(*pResources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
+        DefineMaterial(pResources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
+        DefineMaterial(pResources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
     }
     
 
 
 
-    uint8_t LoadMeshFromObj(RenderingResources& resources, const char* filename, uint8_t buildMeshlets /*= 0*/)
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, uint8_t buildMeshlets /*= 0*/)
     {
         // The function should return if the engine will go over the max allowed mesh assets
-        if(resources.currentMeshIndex > BLIT_MAX_MESH_COUNT)
+        if(pResources->currentMeshIndex > BLIT_MAX_MESH_COUNT)
         {
             BLIT_ERROR("Max mesh count: ( %i ) reached!", BLIT_MAX_MESH_COUNT)
             BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
@@ -144,8 +144,8 @@ namespace BlitzenEngine
         }
 
         // Get the current mesh and give it the size surface array as its first surface index
-        Mesh& currentMesh = resources.meshes[resources.currentMeshIndex];
-        currentMesh.firstSurface = static_cast<uint32_t>(resources.surfaces.GetSize());
+        Mesh& currentMesh = pResources->meshes[pResources->currentMeshIndex];
+        currentMesh.firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
 
         ObjFile file;
         if(!objParseFile(file, filename))
@@ -192,11 +192,11 @@ namespace BlitzenEngine
         vertexCount, sizeof(Vertex));
 
         PrimitiveSurface newSurface;
-        newSurface.vertexOffset = static_cast<uint32_t>(resources.vertices.GetSize());
-        newSurface.materialId = resources.materialTable.Get("loaded_material", &resources.materials[0])->materialId;
+        newSurface.vertexOffset = static_cast<uint32_t>(pResources->vertices.GetSize());
+        newSurface.materialId = pResources->materialTable.Get("loaded_material", &pResources->materials[0])->materialId;
 
-        //resources.indices.AddBlockAtBack(indices.Data(), indices.GetSize());
-        resources.vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
+        // Since the vertices will be global for all shaders and objects, new elements will be added to the one vertex array
+        pResources->vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
 
         BlitCL::DynamicArray<uint32_t> lodIndices(indices);
         while(newSurface.lodCount < BLIT_MAX_MESH_LOD)
@@ -204,13 +204,13 @@ namespace BlitzenEngine
             // Get current element in the LOD array and increment the count
             MeshLod& lod = newSurface.meshLod[newSurface.lodCount++];
 
-            lod.firstIndex = static_cast<uint32_t>(resources.indices.GetSize());
+            lod.firstIndex = static_cast<uint32_t>(pResources->indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
 
-            lod.firstMeshlet = static_cast<uint32_t>(resources.meshlets.GetSize());
-            lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(LoadMeshlet(resources, vertices, indices)) : 0;
+            lod.firstMeshlet = static_cast<uint32_t>(pResources->meshlets.GetSize());
+            lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(LoadMeshlet(pResources, vertices, indices)) : 0;
 
-            resources.indices.AddBlockAtBack(lodIndices.Data(), lodIndices.GetSize());
+            pResources->indices.AddBlockAtBack(lodIndices.Data(), lodIndices.GetSize());
 
             if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
             {
@@ -250,15 +250,15 @@ namespace BlitzenEngine
         newSurface.center = center;
         newSurface.radius = radius;
 
-        resources.surfaces.PushBack(newSurface);// Add the surface to the global surfaces array
+        pResources->surfaces.PushBack(newSurface);// Add the surface to the global surfaces array
         currentMesh.surfaceCount++;// Increment the surface count
-        ++resources.currentMeshIndex;// Increment the mesh index
+        ++(pResources->currentMeshIndex);// Increment the mesh index
 
         return 1;
     }
 
     // The code for this function is taken from Arseny's niagara streams. It uses his meshoptimizer library which I am not that familiar with
-    size_t LoadMeshlet(RenderingResources& resources, BlitCL::DynamicArray<Vertex>& vertices, 
+    size_t LoadMeshlet(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
         const size_t maxVertices = 64;
@@ -282,10 +282,10 @@ namespace BlitzenEngine
             meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset], &meshletTriangles[meshlet.triangle_offset], 
             meshlet.triangle_count, meshlet.vertex_count);
 
-            size_t dataOffset = resources.meshletData.GetSize();
+            size_t dataOffset = pResources->meshletData.GetSize();
             for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
             {
-                resources.meshletData.PushBack(meshletVertices[meshlet.vertex_offset + i]);
+                pResources->meshletData.PushBack(meshletVertices[meshlet.vertex_offset + i]);
             }
 
             const unsigned int* indexGroups = reinterpret_cast<const unsigned int*>(&meshletTriangles[0] + meshlet.triangle_offset);
@@ -293,7 +293,7 @@ namespace BlitzenEngine
 
             for(unsigned int i = 0; i < indexGroupCount; ++i)
             {
-                resources.meshletData.PushBack(uint32_t(indexGroups[size_t(i)]));
+                pResources->meshletData.PushBack(uint32_t(indexGroups[size_t(i)]));
             }
 
             meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
@@ -311,7 +311,7 @@ namespace BlitzenEngine
 		    m.cone_axis[2] = bounds.cone_axis_s8[2];
 		    m.cone_cutoff = bounds.cone_cutoff_s8; 
 
-            resources.meshlets.PushBack(m);
+            pResources->meshlets.PushBack(m);
         }
 
         return akMeshlets.GetSize();
@@ -319,11 +319,118 @@ namespace BlitzenEngine
 
 
 
-    void LoadDefaultData(RenderingResources& resources)
+    void LoadDefaultData(RenderingResources* pResources)
     {
-        LoadMeshFromObj(resources, "Assets/Meshes/dragon.obj", 1);
-        LoadMeshFromObj(resources, "Assets/Meshes/kitten.obj", 1);
-        LoadMeshFromObj(resources, "Assets/Meshes/bunny.obj", 1);
-        LoadMeshFromObj(resources, "Assets/Meshes/FinalBaseMesh.obj", 1);
+        LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj", 1);
+        LoadMeshFromObj(pResources, "Assets/Meshes/kitten.obj", 1);
+        LoadMeshFromObj(pResources, "Assets/Meshes/bunny.obj", 1);
+        LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj", 1);
+    }
+
+
+    void CreateTestGameObjects(RenderingResources* pResources, uint32_t drawCount)
+    {
+        pResources->objectCount = drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
+        pResources->transforms.Resize(pResources->objectCount);// Every object has a different transform
+        // Hardcode a large amount of male model mesh
+        for(size_t i = 0; i < pResources->objectCount / 10; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            transform.pos = translation;
+            transform.scale = 0.1f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = pResources->objects[i];
+
+            currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+        }
+        // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
+        for (size_t i = pResources->objectCount / 10; i < pResources->objectCount / 8; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+            (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+            (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            transform.pos = translation;
+            transform.scale = 1.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = pResources->objects[i];
+
+            currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+        }
+        // Hardcode a large amount of stanford dragons
+        for (size_t i = pResources->objectCount / 8; i < pResources->objectCount / 6; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            transform.pos = translation;
+            transform.scale = 0.1f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1); // z
+            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = pResources->objects[i];
+
+            currentObject.meshIndex = 0;// Hardcode the kitten mesh for each object in this loop
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+        }
+        // Hardcode a large amount of standford bunnies
+        for (size_t i = pResources->objectCount / 6; i < pResources->objectCount; ++i)
+        {
+            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
+                (float(rand()) / RAND_MAX) * 1'500 - 50,//y
+                (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            transform.pos = translation;
+            transform.scale = 5.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1); // z
+            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            transform.orientation = orientation;
+
+            GameObject& currentObject = pResources->objects[i];
+
+            currentObject.meshIndex = 2;// Hardcode the kitten mesh for each object in this loop
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+        }
     }
 }

@@ -71,8 +71,9 @@ namespace BlitzenEngine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     void Engine::Run()
     {
+        // Allocated the rendering resources on the heap, it is too big for the stack of this function
         BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
-        BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadRenderingResourceSystem(m_resources), "Failed to acquire resourece system")
+        BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadRenderingResourceSystem(pResources.Data()), "Failed to acquire resourece system")
 
         // Checks if at least one of the rendering APIs was initialized
         uint8_t hasRenderer = 0;
@@ -86,8 +87,8 @@ namespace BlitzenEngine
         // Test if any renderer was initialized
         BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
 
+        // Initialize the active renderer and assert if it is available
         ActiveRenderer activeRenderer = BLIT_ACTIVE_RENDERER_ON_BOOT;
-
         BLIT_ASSERT(CheckActiveRenderer(activeRenderer))
         
         // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
@@ -98,19 +99,19 @@ namespace BlitzenEngine
         static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
         m_mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
 
-        LoadTestTextures(&m_resources, pVulkan.Data(), nullptr);
+        LoadTestTextures(pResources.Data(), pVulkan.Data(), nullptr);
 
-        LoadTestMaterials(&m_resources, pVulkan.Data(), nullptr);
+        LoadTestMaterials(pResources.Data(), pVulkan.Data(), nullptr);
 
         // Load test data to draw
-        LoadDefaultData(m_resources);
+        LoadDefaultData(pResources.Data());
 
         // Load some hardcoded game objects to test the rendering
         uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
-        CreateTestGameObjects(m_resources, drawCount);
+        CreateTestGameObjects(pResources.Data(), drawCount);
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        SetupRequestedRenderersForDrawing(m_resources, drawCount);
+        SetupRequestedRenderersForDrawing(pResources.Data(), drawCount);
         
         // Start the clock
         m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
@@ -219,10 +220,8 @@ int main()
 
     // Blitzen engine Allocated and freed inside this scope
     {
-        // Blitzen engine allocated on the heap, it will cause stack overflow otherwise
-        BlitCL::SmartPointer<BlitzenEngine::Engine, BlitzenCore::AllocationType::Engine> Blitzen;
-
-        Blitzen.Data()->Run();
+        BlitzenEngine::Engine engine;
+        engine.Run();
     }
 
     BlitzenCore::MemoryManagementShutdown();

@@ -37,26 +37,26 @@ namespace BlitzenEngine
         }
     }
 
-    void SetupRequestedRenderersForDrawing(RenderingResources& resources, size_t drawCount)
+    void SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount)
     {
         if(gpVulkan)
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
-            BlitzenVulkan::GPUData vulkanData(resources.vertices, resources.indices, resources.meshlets, 
-            resources.surfaces, resources.transforms, resources.meshletData);/* The contructor is needed for values 
+            BlitzenVulkan::GPUData vulkanData(pResources->vertices, pResources->indices, pResources->meshlets, 
+            pResources->surfaces, pResources->transforms, pResources->meshletData);/* The contructor is needed for values 
             that are references instead of pointers */
 
-            vulkanData.pTextures = resources.textures;
-            vulkanData.textureCount = resources.currentTextureIndex;// Current texture index is equal to the size of the array of textures
+            vulkanData.pTextures = pResources->textures;
+            vulkanData.textureCount = pResources->currentTextureIndex;// Current texture index is equal to the size of the array of textures
 
-            vulkanData.pMaterials = resources.materials;
-            vulkanData.materialCount = resources.currentMaterialIndex;// Current material index is equal to the size of the material array
+            vulkanData.pMaterials = pResources->materials;
+            vulkanData.materialCount = pResources->currentMaterialIndex;// Current material index is equal to the size of the material array
 
-            vulkanData.pMeshes = resources.meshes;
-            vulkanData.meshCount = resources.currentMeshIndex;// Current mesh index is equal to the size of the mesh array
+            vulkanData.pMeshes = pResources->meshes;
+            vulkanData.meshCount = pResources->currentMeshIndex;// Current mesh index is equal to the size of the mesh array
 
-            vulkanData.pGameObjects = resources.objects;
-            vulkanData.gameObjectCount = resources.objectCount;
+            vulkanData.pGameObjects = pResources->objects;
+            vulkanData.gameObjectCount = pResources->objectCount;
 
             // Draw count will be used to determine the size of draw and object buffers
             vulkanData.drawCount = drawCount;

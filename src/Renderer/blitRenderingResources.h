@@ -145,27 +145,31 @@ namespace BlitzenEngine
         uint32_t objectCount;
     };
 
-    uint8_t LoadRenderingResourceSystem(RenderingResources& resources);
+    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources);
 
 
     // Takes a filename and loads at texture from it, and passes it to each renderer parameter that is not null
-    uint8_t LoadTextureFromFile(RenderingResources& resources, const char* filename, const char* texName, 
+    uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12);// The renderers are void* so that I do not expose their API in the .h file
 
     void LoadTestTextures(RenderingResources* pResources, void* pVulkan, void* pDx12);
 
 
-    void DefineMaterial(RenderingResources& resources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
+    void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName);
 
     void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12);
 
 
-    uint8_t LoadMeshFromObj(RenderingResources& resources, const char* filename, uint8_t buildMeshlets = 0);
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, uint8_t buildMeshlets = 0);
 
-    size_t LoadMeshlet(RenderingResources& resoureces, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+    size_t LoadMeshlet(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
 
 
     // Placeholder to load some default resources while testing the systems
-    void LoadDefaultData(RenderingResources& resources);
+    void LoadDefaultData(RenderingResources* pResources);
+
+
+    // This function is used to load a default scene
+    void CreateTestGameObjects(RenderingResources* pResources, uint32_t drawCount);
 }

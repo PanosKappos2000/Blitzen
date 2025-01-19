@@ -25,7 +25,7 @@ namespace BlitzenEngine
     uint8_t CheckActiveRenderer(ActiveRenderer ar);
 
     // The parameters for this functions will be tidied up later
-    void SetupRequestedRenderersForDrawing(RenderingResources& resources, size_t drawCount);
+    void SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount);
 
     struct RuntimeDebugValues
     {

@@ -4,7 +4,6 @@
 #include "Platform/platform.h"
 #include "Core/blitzenContainerLibrary.h"
 #include "Core/blitEvents.h"
-#include "Renderer/blitRenderingResources.h"
 #include "BlitzenMathLibrary/blitMLTypes.h"
 #include "Game/blitCamera.h"
 
@@ -117,9 +116,6 @@ namespace BlitzenEngine
         Camera& m_mainCamera;
         // The camera that moves around the scene, usually the same as the main camera, unless the user requests detatch
         Camera* m_pMovingCamera;
-        
-        // Holds the values of all loaded rendering resources
-        RenderingResources m_resources;
 
         // Debug values, these should probably be held by the renderer and not the engine
         uint8_t m_freezeFrustum = 0;
@@ -133,7 +129,4 @@ namespace BlitzenEngine
     uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
     uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);
-
-    // Implemented in blitzenObject.cpp, define here temporarily to avoid circular dependency
-    void CreateTestGameObjects(RenderingResources& resources, uint32_t drawCount);
 }
