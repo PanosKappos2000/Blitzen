@@ -579,10 +579,6 @@ namespace BlitzenEngine
 			    cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
 
                 LoadSurface(pResources, vertices, indices, buildMeshlets);
-
-                // Adding this surface to the render objects, there will be a render object for each surface 
-                // No game objects will be used for a gltf scene as it is a scene and not a character really
-                pResources->renders[pResources->renderObjectCount].surfaceId = pResources->surfaces.Back().surfaceId;
             }
         }
 
