@@ -23,8 +23,8 @@
 #define BLITZEN_FOV                     BlitML::Radians(70.f)
 #define BLITZEN_DRAW_DISTANCE           600.f
 
-#define BLITZEN_GRAPHICS_STRESS_TEST    1
-#define BLITZEN_PHYSICS_TEST            0
+#define BLITZEN_GEOMETRY_STRESS_TEST    1
+#define BLITZEN_GLTF_SCENE              1
 
 namespace BlitzenEngine
 {

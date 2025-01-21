@@ -124,7 +124,7 @@ namespace BlitzenVulkan
         /* ---------------------------------------------------------------------------------------------------------
             2nd part of Vulkan initialization. Setsup buffers, shaders and descriptors for the render loop
         ------------------------------------------------------------------------------------------------------------ */
-        void SetupForRendering(GPUData& gpuData);
+        void SetupForRendering(GPUData& gpuData, BlitzenEngine::Camera& camera);
 
         void UploadTexture(BlitzenEngine::TextureStats& newTexture);
 
@@ -211,8 +211,6 @@ namespace BlitzenVulkan
         */
         VkDescriptorSetLayout m_depthPyramidDescriptorLayout;
 
-        GlobalShaderData m_globalShaderData;// Unnecessary variable could be created in draw frame function
-
         // Pipeline used to draw opaque objects
         VkPipeline m_opaqueGraphicsPipeline;
         VkPipelineLayout m_opaqueGraphicsPipelineLayout;
@@ -238,6 +236,10 @@ namespace BlitzenVulkan
 
         // I do not need a sampler for each texture and there is a limit for each device, so I'll need to create only a few samlplers
         VkSampler m_placeholderSampler;
+
+        // Data copied every frame to the descriptor buffer pointer
+        CullingData cullingData;
+        GlobalShaderData globalShaderData;
     };
 
 

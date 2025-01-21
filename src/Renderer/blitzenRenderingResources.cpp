@@ -319,7 +319,7 @@ namespace BlitzenEngine
 
 
 
-    void LoadDefaultData(RenderingResources* pResources)
+    void LoadTestGeometry(RenderingResources* pResources)
     {
         LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj", 1);
         LoadMeshFromObj(pResources, "Assets/Meshes/kitten.obj", 1);
@@ -432,5 +432,14 @@ namespace BlitzenEngine
             currentObject.meshIndex = 2;// Hardcode the kitten mesh for each object in this loop
             currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
+    }
+
+    // Calls some test functions to load a scene that tests the renderer's geometry rendering
+    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, void* pVulkan, void* pDx12)
+    {
+        LoadTestTextures(pResources, pVulkan, nullptr);
+        LoadTestMaterials(pResources, pVulkan, nullptr);
+        LoadTestGeometry(pResources);
+        CreateTestGameObjects(pResources, drawCount);
     }
 }

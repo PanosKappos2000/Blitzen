@@ -6,6 +6,7 @@
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
+#define CULL  true
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -69,7 +70,6 @@ void main()
 	// the near/far plane culling uses camera space Z directly
 	visible = visible && center.z + radius > cullingData.zNear && center.z - radius < cullingData.zFar;
 	
-    
     // Add the object to the indirect buffer, only if it passed frustum culling
     if(visible)
     {
@@ -97,7 +97,5 @@ void main()
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountX = (currentLod.meshletCount + 31) / 32;
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountY = 1;
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountZ = 1;
-
-    }
-    
+    } 
 }

@@ -136,7 +136,7 @@ namespace BlitzenVulkan
         loadedTextures.Back().sampler = m_placeholderSampler;
     }
 
-    void VulkanRenderer::SetupForRendering(GPUData& gpuData)
+    void VulkanRenderer::SetupForRendering(GPUData& gpuData, BlitzenEngine::Camera& camera)
     {
         BLIT_ASSERT_MESSAGE(gpuData.drawCount, "Nothing to draw")
         BLIT_ASSERT(gpuData.drawCount <= BLITZEN_VULKAN_MAX_DRAW_CALLS)
@@ -188,6 +188,22 @@ namespace BlitzenVulkan
         
         // Graphics pipeline setup and vertex / mesh shader and fragment shader loading
         SetupMainGraphicsPipeline();
+
+        globalShaderData.projectionView = camera.projectionViewMatrix;
+        globalShaderData.viewPosition = camera.position;
+        globalShaderData.view = camera.viewMatrix;
+        BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
+        BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
+        cullingData.frustumRight = frustumX.x;
+        cullingData.frustumLeft = frustumX.z;
+        cullingData.frustumTop = frustumY.y;
+        cullingData.frustumBottom = frustumY.z;
+
+        // Culling data for occlusion culling
+        cullingData.proj0 = camera.projectionMatrix[0];
+        cullingData.proj5 = camera.projectionMatrix[5];
+        cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+        cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
     }
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
@@ -441,13 +457,13 @@ namespace BlitzenVulkan
         // Pass the result of projection * view from the detatched camera if it moved since last frame
         // In case the camera is indeed detatched from the main, the camera will move, but culling will not change for debugging purposes
         if(context.pDetatchedCamera->cameraDirty)
-            m_globalShaderData.projectionView = context.pDetatchedCamera->projectionViewMatrix;
+            globalShaderData.projectionView = context.pDetatchedCamera->projectionViewMatrix;
 
         // Pass the camera position and view matrix from the main camera, it if has moved since last frame
         if(camera.cameraDirty)
         {
-            m_globalShaderData.viewPosition = camera.position;
-            m_globalShaderData.view = camera.viewMatrix;
+            globalShaderData.viewPosition = camera.position;
+            globalShaderData.view = camera.viewMatrix;
         }
 
         // Global lighting parameters will be written to the global shader data buffer
@@ -455,26 +471,26 @@ namespace BlitzenVulkan
         /*m_globalShaderData.sunlightDir = context.sunlightDirection;
         m_globalShaderData.sunlightColor = context.sunlightColor;*/
 
-        // Culling data will be written to the culling data buffer
-        // TODO: This should not be created each time draw frame, instead it should be owned by the renderer or vBuffers
-        CullingData cullingData;
-
         // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
-        BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
-        BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
-        cullingData.frustumRight = frustumX.x;
-        cullingData.frustumLeft = frustumX.z;
-        cullingData.frustumTop = frustumY.y;
-        cullingData.frustumBottom = frustumY.z;
+        if(context.windowResize)
+        {
+            BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
+            BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
+            cullingData.frustumRight = frustumX.x;
+            cullingData.frustumLeft = frustumX.z;
+            cullingData.frustumTop = frustumY.y;
+            cullingData.frustumBottom = frustumY.z;
 
+            // Culling data for occlusion culling
+            cullingData.proj0 = camera.projectionMatrix[0];
+            cullingData.proj5 = camera.projectionMatrix[5];
+            cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+            cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+        }
+
+        // The near and far planes of the frustum will use the camera directly
         cullingData.zNear = camera.zNear;
         cullingData.zFar = camera.drawDistance;
-
-        // Culling data for occlusion culling
-        cullingData.proj0 = camera.projectionMatrix[0];
-        cullingData.proj5 = camera.projectionMatrix[5];
-        cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
-        cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
 
         // Debug values to deactivate occlusion culling and other algorithms
         cullingData.occlusionEnabled = context.occlusionEnabled;
@@ -483,7 +499,7 @@ namespace BlitzenVulkan
         cullingData.drawCount = static_cast<uint32_t>(context.drawCount);
 
         // Write the data to the buffer pointers
-        *(vBuffers.pGlobalShaderData) = m_globalShaderData;
+        *(vBuffers.pGlobalShaderData) = globalShaderData;
         *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
         *(vBuffers.pCullingData) = cullingData;
         

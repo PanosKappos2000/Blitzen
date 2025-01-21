@@ -167,9 +167,13 @@ namespace BlitzenEngine
 
 
     // Placeholder to load some default resources while testing the systems
-    void LoadDefaultData(RenderingResources* pResources);
+    void LoadTestGeometry(RenderingResources* pResources);
 
 
     // This function is used to load a default scene
     void CreateTestGameObjects(RenderingResources* pResources, uint32_t drawCount);
+
+
+    // Calls some test functions to load a scene that tests the renderer's geometry rendering
+    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, void* pVulkan, void* pDx12);
 }

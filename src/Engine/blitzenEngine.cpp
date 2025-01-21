@@ -99,19 +99,21 @@ namespace BlitzenEngine
         static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
         m_mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
 
-        LoadTestTextures(pResources.Data(), pVulkan.Data(), nullptr);
-
-        LoadTestMaterials(pResources.Data(), pVulkan.Data(), nullptr);
-
-        // Load test data to draw
-        LoadDefaultData(pResources.Data());
-
-        // Load some hardcoded game objects to test the rendering
-        uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
-        CreateTestGameObjects(pResources.Data(), drawCount);
+        
+        #if BLITZEN_GEOMETRY_STRESS_TEST
+            // Load some hardcoded game objects to test the rendering
+            uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
+            LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
+        #elif BLITZEN_GLTF_SCENE
+            //LoadScene(filepath)
+            uint32_t drawCount = 0;
+        #else
+            // There are no draws if none of the valid modes are active
+            uint32_t drawCount = 0;
+        #endif
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        SetupRequestedRenderersForDrawing(pResources.Data(), drawCount);
+        SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, m_mainCamera);
         
         // Start the clock
         m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
@@ -218,9 +220,11 @@ int main()
 {
     BlitzenCore::MemoryManagementInit();
 
-    // Blitzen engine Allocated and freed inside this scope
+    // Blitzen engine leaves in this scope, it needs to go out of scope before memory management shuts down
     {
         BlitzenEngine::Engine engine;
+
+        // This is the true main function of the application
         engine.Run();
     }
 

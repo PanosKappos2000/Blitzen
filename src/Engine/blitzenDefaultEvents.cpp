@@ -72,6 +72,8 @@ namespace BlitzenEngine
                     else
                     {
                         Engine::GetEngineInstancePointer()->SetMovingCamera(&main);
+                        // Tell the renderer to change the camera without waiting for movement
+                        main.cameraDirty = 1;// This might break some logic in some cases, but it can easily be fixed
                     }
                     break;
                 }

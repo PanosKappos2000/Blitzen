@@ -37,7 +37,7 @@ namespace BlitzenEngine
         }
     }
 
-    void SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount)
+    void SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount, Camera& camera)
     {
         if(gpVulkan)
         {
@@ -61,7 +61,7 @@ namespace BlitzenEngine
             // Draw count will be used to determine the size of draw and object buffers
             vulkanData.drawCount = drawCount;
 
-            gpVulkan->SetupForRendering(vulkanData);
+            gpVulkan->SetupForRendering(vulkanData, camera);
         }
     }
 
