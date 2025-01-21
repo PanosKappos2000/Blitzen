@@ -58,6 +58,9 @@ namespace BlitzenEngine
             vulkanData.pGameObjects = pResources->objects;
             vulkanData.gameObjectCount = pResources->objectCount;
 
+            vulkanData.pRenderObjects = pResources->renders;
+            vulkanData.renderObjectCount = pResources->renderObjectCount;
+
             // Draw count will be used to determine the size of draw and object buffers
             vulkanData.drawCount = drawCount;
 

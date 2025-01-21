@@ -16,7 +16,7 @@
 #define BLIT_MAX_MESH_LOD           8
 #define BLIT_MAX_MESH_COUNT         100'000
 
-#define BLIT_MAX_OBJECTS            5'000'000
+#define BLIT_MAX_OBJECTS            5'000'000 // This is too high for game object count, but it needs to be as high as max draw count for now
 
 namespace BlitzenEngine
 {
@@ -113,6 +113,13 @@ namespace BlitzenEngine
         BlitML::quat orientation;
     };
 
+    // Accesses per draw data. A single draw has a unique transform and surface combination
+    struct RenderObject
+    {
+        uint32_t transformId;
+        uint32_t surfaceId;
+    };
+
     // This struct holds every loaded resource that will be used for rendering all game objects
     struct RenderingResources
     {
@@ -139,10 +146,12 @@ namespace BlitzenEngine
 
         // Each mesh points to a continuous pack of elements of this surface array
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
-        uint32_t currentSurfaceIndex = 0;// This might not be necessary since surfaces are placed in dynamic array
 
-        BlitzenEngine::GameObject objects[BLIT_MAX_OBJECTS];
+        GameObject objects[BLIT_MAX_OBJECTS];
         uint32_t objectCount;
+
+        RenderObject renders[BLIT_MAX_OBJECTS];
+        uint32_t renderObjectCount;        
     };
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources);
@@ -161,9 +170,15 @@ namespace BlitzenEngine
     void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12);
 
 
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, uint8_t buildMeshlets = 0);
+    // Loads a mesh from an obj file
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, uint8_t buildMeshlets = 1);
 
+    // Generates meshlet for a mesh or surface loaded using meshOptimizer library and converts it to the renderer's format
     size_t LoadMeshlet(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+
+    // Takes the vertices and indices loaded for a mesh primitive from a file and converts the data to the renderer's format
+    void LoadSurface(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+    uint8_t buildMeshlets);
 
 
     // Placeholder to load some default resources while testing the systems
@@ -176,4 +191,8 @@ namespace BlitzenEngine
 
     // Calls some test functions to load a scene that tests the renderer's geometry rendering
     void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, void* pVulkan, void* pDx12);
+
+
+    // Takes a path to a gltf file and loads the resources needed to render the scene
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets = 1);
 }

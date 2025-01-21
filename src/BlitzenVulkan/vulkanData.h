@@ -26,7 +26,7 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
+#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
@@ -51,13 +51,6 @@ namespace BlitzenVulkan
     {
         uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
         uint8_t meshShaderSupport = 0;
-    };
-
-    // Accesses per object data (TODO: Should be something defined in a general rendering file like resourceLoading.h)
-    struct RenderObject
-    {
-        uint32_t meshInstanceId;
-        uint32_t surfaceId;
     };
 
     // Holds the command struct for a call to vkCmdDrawIndexedIndirectCount, as well as a draw Id to access the correct RenderObject
@@ -91,6 +84,9 @@ namespace BlitzenVulkan
 
         BlitzenEngine::GameObject* pGameObjects;// This will be transformed to render objects
         size_t gameObjectCount;
+
+        BlitzenEngine::RenderObject* pRenderObjects;
+        size_t renderObjectCount;
 
         BlitzenEngine::Mesh* pMeshes;
         size_t meshCount;

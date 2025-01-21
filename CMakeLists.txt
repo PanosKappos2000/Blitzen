@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project (BlitzenEngine VERSION 1.0)
-
-#find_package (Vulkan REQUIRED COMPONENTS glslc)
+project (BlitzenEngine VERSION 0)
 
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -55,6 +53,7 @@ add_executable(BlitzenEngine
                 src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
                 src/VendorCode/Meshoptimizer/clusterizer.cpp
                 src/VendorCode/Meshoptimizer/simplifier.cpp
+                src/VendorCode/Cgltf/cgltf.h
                 #src/VendorCode/volk/volk.c
                 )
 
@@ -66,12 +65,12 @@ target_include_directories(BlitzenEngine PUBLIC
 
 IF(WIN32)
     target_link_directories(BlitzenEngine PUBLIC
-    "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")
     target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1)
 ELSEIF(UNIX)
     target_link_directories(BlitzenEngine PUBLIC
-    "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixLib")
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixLib")
     target_link_libraries(BlitzenEngine PUBLIC
                         libvulkan.so.1
                         X11.so

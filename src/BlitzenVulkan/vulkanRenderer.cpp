@@ -146,31 +146,7 @@ namespace BlitzenVulkan
         // Create all know descriptor layouts for all known pipelines
         CreateDescriptorLayouts();
 
-        // TODO: The part below should be general for all renderers, not something that Vulkan does
-        // Right now each mesh has one surface but in the future this might not be the case, so a separate index is needed for each render object
-        size_t objectId = 0;
-        BlitCL::DynamicArray<RenderObject> renderObjects(gpuData.drawCount);
-        // Create all the render objects by getting the data from the game objects
-        for(size_t i = 0; i < gpuData.gameObjectCount; ++i)
-        {
-            // Get the mesh used by the current game object
-            BlitzenEngine::Mesh& currentMesh = gpuData.pMeshes[gpuData.pGameObjects[i].meshIndex];
-
-            for(size_t j = 0; j < currentMesh.surfaceCount; ++j)
-            {
-                RenderObject& currentObject = renderObjects[objectId];
-
-                // Get the surface Id for this render object by adding the current index to the first surface of the mesh
-                currentObject.surfaceId = currentMesh.firstSurface + static_cast<uint32_t>(j);
-                
-                currentObject.meshInstanceId = gpuData.pGameObjects[i].transformIndex;
-
-                objectId++;
-            }
-        }
-
-        // Passes the data needed to perform bindless rendering (uploads it to storage buffers)
-        UploadDataToGPU(gpuData.vertices, gpuData.indices, renderObjects, 
+        UploadDataToGPU(gpuData.vertices, gpuData.indices, gpuData.pRenderObjects, gpuData.renderObjectCount,
         gpuData.pMaterials, gpuData.materialCount, gpuData.meshlets, gpuData.meshletData, 
         gpuData.surfaces, gpuData.transforms);
     
@@ -189,16 +165,17 @@ namespace BlitzenVulkan
         // Graphics pipeline setup and vertex / mesh shader and fragment shader loading
         SetupMainGraphicsPipeline();
 
+        // Pass camera values here so that they are available before the first frame
         globalShaderData.projectionView = camera.projectionViewMatrix;
         globalShaderData.viewPosition = camera.position;
         globalShaderData.view = camera.viewMatrix;
+        // Frustum planes
         BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
         BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
         cullingData.frustumRight = frustumX.x;
         cullingData.frustumLeft = frustumX.z;
         cullingData.frustumTop = frustumY.y;
         cullingData.frustumBottom = frustumY.z;
-
         // Culling data for occlusion culling
         cullingData.proj0 = camera.projectionMatrix[0];
         cullingData.proj5 = camera.projectionMatrix[5];
@@ -207,7 +184,7 @@ namespace BlitzenVulkan
     }
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-    BlitCL::DynamicArray<RenderObject>& renderObjects, BlitzenEngine::Material* pMaterials, size_t materialCount, 
+    BlitzenEngine::RenderObject* pRenderObjects, size_t renderObjectCount, BlitzenEngine::Material* pMaterials, size_t materialCount, 
     BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData, 
     BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms)
     {
@@ -227,10 +204,11 @@ namespace BlitzenVulkan
         VMA_MEMORY_USAGE_GPU_ONLY, indexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
         // The render object buffer will an index to mesh instance data and one to surface data
-        VkDeviceSize renderObjectBufferSize = sizeof(RenderObject) * renderObjects.GetSize();
+        VkDeviceSize renderObjectBufferSize = sizeof(BlitzenEngine::RenderObject) * renderObjectCount;
+        // When Creating the buffer the max size is used otherwise there will be alignment issues, TODO: Test this again at some point
         CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, sizeof(RenderObject) * BLITZEN_VULKAN_MAX_DRAW_CALLS, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        VMA_MEMORY_USAGE_GPU_ONLY, sizeof(BlitzenEngine::RenderObject) * BLITZEN_VULKAN_MAX_DRAW_CALLS, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         // It also lives in the GPU and needs to be accessed in the shader for per object data like position and orientation
         m_currentStaticBuffers.bufferAddresses.renderObjectBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.renderObjectBuffer.buffer);
@@ -284,14 +262,14 @@ namespace BlitzenVulkan
         meshInstanceBufferSize + meshletBufferSize + meshletDataBufferSize;
 
         // This is the buffer that will take the data from the surfaces to draw every object in the scene. Filled in the culling shaders
-        VkDeviceSize finalIndirectBufferSize = sizeof(IndirectDrawData) * renderObjects.GetSize();
+        VkDeviceSize finalIndirectBufferSize = sizeof(IndirectDrawData) * renderObjectCount;
         CreateBuffer(m_allocator, m_currentStaticBuffers.indirectDrawBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY, finalIndirectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         m_currentStaticBuffers.bufferAddresses.indirectDrawBufferAddress =
         GetBufferAddress(m_device, m_currentStaticBuffers.indirectDrawBuffer.buffer);
 
-        VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjects.GetSize();
+        VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
         // Like with the traditional pipeline indirect buffer, this will be initialized by the compute shaders
         CreateBuffer(m_allocator, m_currentStaticBuffers.indirectTaskBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
@@ -309,7 +287,7 @@ namespace BlitzenVulkan
         GetBufferAddress(m_device, m_currentStaticBuffers.drawIndirectCountBuffer.buffer);
 
         // Holds a value that represents if an object was visible last frame or not. Filled by late culling shader
-        VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * renderObjects.GetSize();
+        VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * renderObjectCount;
         CreateBuffer(m_allocator, m_currentStaticBuffers.drawVisibilityBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, 
         visibilityBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
@@ -328,7 +306,7 @@ namespace BlitzenVulkan
         BlitzenCore::BlitMemCopy(pData, indices.Data(), indexBufferSize);
         pData += indexBufferSize;
         // Copy the render objects data into the staging buffer's address after the index data
-        BlitzenCore::BlitMemCopy(pData, renderObjects.Data(), renderObjectBufferSize);
+        BlitzenCore::BlitMemCopy(pData, pRenderObjects, renderObjectBufferSize);
         pData += renderObjectBufferSize;
         // Copy the material data into the staging buffer's address after the render object data
         BlitzenCore::BlitMemCopy(pData, pMaterials, materialBufferSize);

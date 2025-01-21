@@ -105,8 +105,8 @@ namespace BlitzenEngine
             uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
         #elif BLITZEN_GLTF_SCENE
-            //LoadScene(filepath)
-            uint32_t drawCount = 0;
+            LoadGltfScene(pResources.Data(), "Assets/Scenes/SmallCity1.glb", 1);
+            uint32_t drawCount = pResources.Data()->renderObjectCount;
         #else
             // There are no draws if none of the valid modes are active
             uint32_t drawCount = 0;
