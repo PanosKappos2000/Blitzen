@@ -99,8 +99,13 @@ namespace BlitzenEngine
         static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
         m_mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
 
-        
-        #if BLITZEN_GEOMETRY_STRESS_TEST
+        #if BLITZEN_OBJ_AND_GLTF_COMBINE_TEST
+            // Load some hardcoded game objects to test the rendering
+            uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
+            LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
+            LoadGltfScene(pResources.Data(), "Assets/Scenes/structure.glb", 1);
+            drawCount = pResources.Data()->renderObjectCount;
+        #elif BLITZEN_GEOMETRY_STRESS_TEST
             // Load some hardcoded game objects to test the rendering
             uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);

@@ -273,6 +273,15 @@ namespace BlitzenEngine
         // Since the vertices will be global for all shaders and objects, new elements will be added to the one vertex array
         pResources->vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
 
+        BlitCL::DynamicArray<BlitML::vec3> normals(vertices.GetSize());
+	    for (size_t i = 0; i < vertices.GetSize(); ++i)
+	    {
+		    Vertex& v = vertices[i];
+		    normals[i] = BlitML::vec3(v.normal.x / 127.f - 1.f, v.normal.y / 127.f - 1.f, v.normal.z / 127.f - 1.f);
+	    }
+        float lodScale = meshopt_simplifyScale(&vertices[0].position.x, vertices.GetSize(), sizeof(Vertex));
+        float lodError = 0.f;
+	    float normalWeights[3] = {1.f, 1.f, 1.f};
         BlitCL::DynamicArray<uint32_t> lodIndices(indices);
         while(newSurface.lodCount < BLIT_MAX_MESH_LOD)
         {
@@ -289,10 +298,12 @@ namespace BlitzenEngine
 
             if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
             {
-                size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
-                float nextError = 0.f;// Placeholder to fill the last parameter in the below function
-                size_t nextIndices = meshopt_simplify(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &vertices[0].position.x, 
-                vertices.GetSize(), sizeof(Vertex), nextIndicesTarget, 1e-1f, 0, &nextError);
+                size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65));
+                size_t nextIndices = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), 
+                lodIndices.GetSize(), &vertices[0].position.x, 
+                vertices.GetSize(), sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3), 
+                normalWeights, 3, nullptr, nextIndicesTarget, 1e-1f, 0, &lodError);
+
                 // If the next lod size surpasses the previous than this function has failed
                 BLIT_ASSERT(nextIndices <= lodIndices.GetSize())
 
@@ -301,6 +312,7 @@ namespace BlitzenEngine
                     break;
 
                 lodIndices.Downsize(nextIndices);
+
                 // Optimize the indices cache
                 meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), vertices.GetSize());
             }
