@@ -298,7 +298,7 @@ namespace BlitzenVulkan
             if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
             !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
             !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
-            !features12.samplerFilterMinmax ||
+            !features12.samplerFilterMinmax || !features12.shaderInt8 ||
             !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
             {
                 physicalDevices.RemoveAtIndex(i);
@@ -487,6 +487,7 @@ namespace BlitzenVulkan
             // Allows shaders to use array with undefined size for descriptors, needed for textures
             vulkan12Features.runtimeDescriptorArray = true;
             vulkan12Features.shaderFloat16 = true;
+            vulkan12Features.shaderInt8 = true;
             vulkan12Features.storageBuffer8BitAccess = true;
             vulkan12Features.drawIndirectCount = true;
             vulkan12Features.samplerFilterMinmax = true;

@@ -4,14 +4,9 @@
 // Mutliple vertices are passed to the GPU for each surface, so that the surface can be drawn
 struct Vertex
 {
-    // Assigned to gl_Position after being transformed to the right coordinates
     vec3 position;
-    // Passed to the fragment shader for texture mapping
-    float16_t uvX;
-    // Passed to the fragment shader for lighting calculations
-    vec3 normal;
-    // Passed to the fragment shader for texture mapping
-    float16_t uvY;
+    float16_t uvX, uvY;
+    uint8_t normalX, normalY, normalZ;
 };
 
 // This is the single vertex buffer for the main graphics pipeline, accessed by draw indirect through index offset, index count and vertex offset

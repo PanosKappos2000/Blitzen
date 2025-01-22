@@ -172,9 +172,15 @@ namespace BlitzenEngine
             vtx.position.x = file.v[vertexIndex * 3 + 0];
 		    vtx.position.y = file.v[vertexIndex * 3 + 1];
 		    vtx.position.z = file.v[vertexIndex * 3 + 2];
-		    vtx.normal.x = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 0];
-		    vtx.normal.y = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 1];
-		    vtx.normal.z = vertexNormalIndex < 0 ? 1.f : file.vn[vertexNormalIndex * 3 + 2];
+
+            // Load the normal and turn them to 8 bit integers
+		    float normalX = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 0];
+		    float normalY = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 1];
+		    float normalZ = vertexNormalIndex < 0 ? 1.f : file.vn[vertexNormalIndex * 3 + 2];
+            vtx.normalX = static_cast<uint8_t>(normalX * 127.f + 127.5f);
+            vtx.normalY = static_cast<uint8_t>(normalY * 127.f + 127.5f);
+            vtx.normalZ = static_cast<uint8_t>(normalZ * 127.f + 127.5f);
+
 		    vtx.uvX = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0]);
 		    vtx.uvY = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1]);
         }
@@ -277,7 +283,7 @@ namespace BlitzenEngine
 	    for (size_t i = 0; i < vertices.GetSize(); ++i)
 	    {
 		    Vertex& v = vertices[i];
-		    normals[i] = BlitML::vec3(v.normal.x / 127.f - 1.f, v.normal.y / 127.f - 1.f, v.normal.z / 127.f - 1.f);
+		    normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f, v.normalY / 127.f - 1.f, v.normalZ / 127.f - 1.f);
 	    }
         float lodScale = meshopt_simplifyScale(&vertices[0].position.x, vertices.GetSize(), sizeof(Vertex));
         float lodError = 0.f;
@@ -571,8 +577,9 @@ namespace BlitzenEngine
 			    	cgltf_accessor_unpack_floats(nrm, scratch.Data(), vertexCount * 3);
 			    	for (size_t j = 0; j < vertexCount; ++j)
 			    	{
-			    		vertices[j].normal = BlitML::vec3(scratch[j * 3 + 0] * 127.f + 127.5f, 
-                        scratch[j * 3 + 1] * 127.f + 127.5f, scratch[j * 3 + 2] * 127.f + 127.5f);
+			    		vertices[j].normalX = static_cast<uint8_t>(scratch[j * 3 + 0] * 127.f + 127.5f);
+                        vertices[j].normalY = static_cast<uint8_t>(scratch[j * 3 + 1] * 127.f + 127.5f); 
+                        vertices[j].normalZ = static_cast<uint8_t>(scratch[j * 3 + 2] * 127.f + 127.5f);
 			    	}
 			    }
 

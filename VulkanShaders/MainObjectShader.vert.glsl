@@ -7,7 +7,6 @@
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
-
 layout(location = 0) out vec2 outUv;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out uint outMaterialTag;
@@ -29,7 +28,8 @@ void main()
 
     outMaterialTag = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId].materialTag;
     
-    outNormal =  RotateQuat(currentVertex.normal, currentInstance.orientation);
+    vec3 normal = vec3(currentVertex.normalX, currentVertex.normalY, currentVertex.normalZ);
+    outNormal =  RotateQuat(normal, currentInstance.orientation);
 
     outModel = modelPosition;
 }

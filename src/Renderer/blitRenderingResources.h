@@ -34,9 +34,8 @@ namespace BlitzenEngine
     struct alignas(16) Vertex
     {
         BlitML::vec3 position;
-        uint16_t uvX;
-        BlitML::vec3 normal;
-        uint16_t uvY;
+        uint16_t uvX, uvY;
+        uint8_t normalX, normalY, normalZ;
     };
 
     struct alignas(16) Meshlet
