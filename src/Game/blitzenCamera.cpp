@@ -1,9 +1,7 @@
 #include "blitCamera.h"
-#include "Engine/blitzenEngine.h"
 
 namespace BlitzenEngine
 {
-    // TODO: This function is incomplete, there are more thing I should be stting up
     void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
     BlitML::vec3 initialCameraPosition, float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
     {

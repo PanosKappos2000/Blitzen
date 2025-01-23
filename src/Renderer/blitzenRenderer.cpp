@@ -108,4 +108,10 @@ namespace BlitzenEngine
                 break;
         }
     }
+
+    void ShutdownRenderers()
+    {
+        if(gpVulkan)
+            gpVulkan->Shutdown();
+    }
 }

@@ -1,6 +1,8 @@
 #pragma once
 
-#include "blitLogger.h"
+#include <stdio.h>
+#include <cstdint>
+#include <cstddef>
 
 #define BLITZEN_ASSERTION_ENABLED   1
 

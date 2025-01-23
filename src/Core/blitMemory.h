@@ -27,6 +27,7 @@ namespace BlitzenCore
         MaxTypes = 14
     };
 
+    // This is used to log every allocation and check if there are any memory leaks in the end
     struct AllocationStats
     {
         size_t totalAllocated = 0;
@@ -35,6 +36,7 @@ namespace BlitzenCore
         size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)];
     };
 
+    // Initializes the different allocators and the allocation stats
     void MemoryManagementInit();
 
     void* BlitAlloc(AllocationType alloc, size_t size);
@@ -43,17 +45,20 @@ namespace BlitzenCore
     void BlitMemSet(void* pDst, int32_t value, size_t size);
     void BlitZeroMemory(void* pBlock, size_t size);
 
-    // Helper for the above functions since they are templated and need to be defined here and have no access to the static memory stats
+    // Log all allocations to catch memory leaks
     void LogAllocation(AllocationType alloc, size_t size);
+    // Unlog allocations when freed, to catch memory leaks
     void LogFree(AllocationType alloc, size_t size);
-    // This allocation actually calls the constructor of the object that gets allocated(the constructor must have no parameters)
+
+    // This allocation function calls the constructor of the object that gets allocated(the constructor must have no parameters)
     template<typename T> 
     T* BlitConstructAlloc(AllocationType alloc)
     {
         LogAllocation(alloc, sizeof(T));
         return new T();
     }
-    // The free for the above version of free
+
+    // This free function calls the constructor of the object that get freed
     template<typename T>
     void BlitDestroyAlloc(AllocationType alloc, T* pToDestroy)
     {
@@ -63,6 +68,8 @@ namespace BlitzenCore
 
     void MemoryManagementShutdown();
 
+    // The linear allocator allocates a big amount of memory on boot and places everything it allocates there
+    // It deallocates the whole thing when memory management is shutdown
     struct LinearAllocator
     {
         size_t totalAllocated = 0;
@@ -70,5 +77,6 @@ namespace BlitzenCore
         size_t blockSize;
     };
 
+    // Allocates memory using the linear allocator
     void* BlitAllocLinear(AllocationType alloc, size_t size);
 }

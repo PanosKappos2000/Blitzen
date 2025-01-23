@@ -1,7 +1,11 @@
 #pragma once
 
 #include "BlitzenVulkan/vulkanRenderer.h"
+
+// The rendering resources are passed to the renderers to set up their global buffers
 #include "Renderer/blitRenderingResources.h"
+
+// The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
 namespace BlitzenEngine

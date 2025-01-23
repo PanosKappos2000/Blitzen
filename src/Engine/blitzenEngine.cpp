@@ -11,12 +11,6 @@
 
 namespace BlitzenEngine
 {
-    // This will hold pointer to all the renderers (not really necessary but whatever)
-    struct BlitzenRenderers
-    {
-        BlitzenVulkan::VulkanRenderer* pVulkan = nullptr;
-    };
-
     // Static member variable needs to be declared in the .cpp file as well
     Engine* Engine::pEngineInstance;
 
@@ -38,27 +32,6 @@ namespace BlitzenEngine
             pEngineInstance = this;
             m_systems.engine = 1;
             BLIT_INFO("%s Booting", BLITZEN_VERSION)
-
-            BLIT_ASSERT(BlitzenCore::InitLogging())// This function does nothing at them moment and always returns 1
-
-            if(BlitzenCore::EventsInit())
-            {
-                BLIT_INFO("Event system active")
-                BlitzenCore::InputInit(&m_systems.inputState);// Activate the input system if the event system was succesfully created
-            }
-            else
-                BLIT_FATAL("Event system initialization failed!")
-            
-            // Platform specific code initalization. Mostly window(not Windows) related things
-            BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
-            BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
-
-            // Register some default events, like window closing on escape and default inputs for camera and debugging
-            BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, OnEvent);
-            BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyPressed, nullptr, OnKeyPress);
-            BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
-            BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, OnResize);
-            BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::MouseMoved, nullptr, OnMouseMove);
         }
     }
 
@@ -71,9 +44,27 @@ namespace BlitzenEngine
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
     void Engine::Run()
     {
+        // Initialize logging
+        m_systems.logSystem = BlitzenCore::InitLogging();
+
+        // Initialize the event system 
+        m_systems.eventSystem = BlitzenCore::EventsInit();
+
+        // Initialize the input system after the event system
+        m_systems.inputSystem = BlitzenCore::InputInit(&m_systems.inputState);
+
+        // Platform specific code initalization. 
+        // This should be called after the event system has been initialized because the event function is called.
+        // That will break the application without the event system.
+        BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
+        BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
+            
+        // With the event and input systems active, register the engine's default events and input bindings
+        RegisterDefaultEvents();
+        
         // Allocated the rendering resources on the heap, it is too big for the stack of this function
         BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
-        BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadRenderingResourceSystem(pResources.Data()), "Failed to acquire resourece system")
+        BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadRenderingResourceSystem(pResources.Data()), "Failed to acquire resource system")
 
         // Checks if at least one of the rendering APIs was initialized
         uint8_t hasRenderer = 0;
@@ -147,7 +138,7 @@ namespace BlitzenEngine
                 // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
                 UpdateCamera(*m_pMovingCamera, (float)m_deltaTime);
 
-                // Draw the frame
+                // Draw the frame!!!!
                 RuntimeDebugValues debugValues{0, m_occlusionCulling, m_lodEnabled};
                 DrawFrame(m_mainCamera, m_pMovingCamera, drawCount, 
                 m_platformData.windowWidth, m_platformData.windowHeight, m_platformData.windowResize, 
@@ -159,15 +150,9 @@ namespace BlitzenEngine
                 BlitzenCore::UpdateInput(m_deltaTime);
             }
         }
-        // Main loop ends
 
-        // Zeroing the clock right now is not necessary but if there are many possible game loops, then this needs to happen
-        m_clock.elapsedTime = 0;
-
-        // The renderer is shutdown here because it will go out of scope if this run function goes out of scope
-        #if BLITZEN_VULKAN
-            pVulkan.Data()->Shutdown();
-        #endif
+        // Shutdown the renderers before the engine is shutdown
+        ShutdownRenderers();
 
         // With the main loop done, Blitzen calls Shutdown on itself
         Shutdown();

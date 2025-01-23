@@ -28,7 +28,7 @@ namespace BlitzenCore
         const char* logLevels[6] = {"{FATAL}: ", "{ERROR}: ", "{Info}: ", "{Warning}: ", "{Debug}: ", "{Trace}: "};
         uint8_t isError = level < LogLevel::INFO;
 
-        //Temporary to avoid dynamic arrays for now
+        // Temporary to avoid dynamic arrays for now, even though this is terrible
         char outMessage[1500];
         memset(outMessage, 0, sizeof(outMessage));
 
@@ -45,18 +45,20 @@ namespace BlitzenCore
         char outMessage2[1500];
         snprintf(outMessage2, 1500, "%s%s\n", logLevels[static_cast<uint8_t>(level)], outMessage);
 
-        // The way error messages are handled varies from platform to platform
+        // Create a custom error message
         if (isError) 
         {
             BlitzenPlatform::PlatformConsoleError(outMessage2, static_cast<uint8_t>(level));
-        } 
+        }
+
+        // Create a custom non error message 
         else 
         {
             BlitzenPlatform::PlatformConsoleWrite(outMessage2, static_cast<uint8_t>(level));
         }
     }
 
-
+    // Used by assertions to print to the window
     void ReportAssertionFailure(const char* expression, const char* message, const char* file, int32_t line)
     {
         Log(LogLevel::FATAL, "Assertion failure: %s, message: %s, in file: %s, line: %d", expression, message, file, line);

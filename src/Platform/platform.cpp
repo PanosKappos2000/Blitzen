@@ -1,6 +1,13 @@
 #include "platform.h"
 #include "Core/blitEvents.h"
+
+// Including Vulkan to load the VkSurfaceKHR since that is platform specific
 #include "BlitzenVulkan/vulkanData.h"
+
+// The Engine class is needed to see if it has been initialized
+#include "Engine/blitzenEngine.h"
+
+// Need this for memchr and strchr
 #include <cstring>
 
 namespace BlitzenPlatform
@@ -36,6 +43,11 @@ namespace BlitzenPlatform
 
         uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
         {
+            // Platform cannot startup if the engine or the event system have not been initialized first
+            BlitzenEngine::Engine* pEngine = BlitzenEngine::Engine::GetEngineInstancePointer();
+            if(!pEngine || !(pEngine->GetEngineSystems().eventSystem) || !(pEngine->GetEngineSystems().inputSystem))
+                return 0;
+
             s_pPlatformState.winInstance = GetModuleHandleA(0);
 
             HICON icon = LoadIcon(s_pPlatformState.winInstance, IDI_APPLICATION);
@@ -95,7 +107,6 @@ namespace BlitzenPlatform
             if(!handle)
             {
                 MessageBoxA(nullptr, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-                BLIT_FATAL("Window creation failed!")
                 return 0;
             }
             else

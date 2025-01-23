@@ -58,7 +58,6 @@ namespace BlitCL
             // A different function will be used for downsizing
             if(newSize < m_size)
             {
-                BLIT_DBLOG("DynamicArray::Resize(): New size %i is smaller than %i: \nUse Downsize(size_t) if this was intended", newSize, m_size)
                 return;
             }
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
@@ -75,7 +74,6 @@ namespace BlitCL
         {
             if(newSize > m_size)
             {
-                BLIT_DBLOG("DynamicArray::Downsize(): New size %i is bigger than %i: \nUse Resize(size_t) if this was intended", newSize, m_size)
                 return;
             }
             m_size = newSize;

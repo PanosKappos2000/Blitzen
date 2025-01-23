@@ -224,7 +224,8 @@ namespace BlitzenCore
         MouseState previousMouse;
     };
 
-    void InputInit(InputState* pInputState);
+    uint8_t InputInit(InputState* pInputState);
+
     void InputShutdown();
     void UpdateInput(double deltaTime);
 

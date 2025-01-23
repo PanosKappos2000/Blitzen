@@ -1,6 +1,9 @@
 #pragma once
+
+// The camera will need to access math library types and functions
 #include "BlitzenMathLibrary/blitML.h"
 
+// The engine will hold an array
 #define BLIT_MAX_CAMERAS_IN_SCENE    2
 #define BLIT_MAIN_CAMERA_ID          0
 #define BLIT_DETATCHED_CAMERA_ID     1
@@ -57,20 +60,23 @@ namespace BlitzenEngine
         BlitML::vec3 velocity = BlitML::vec3(0.f);
     };
 
+    // Gives some default values to a new camera so that it does not spawn with a random transform
     void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
     BlitML::vec3 initialCameraPosition, float initialYawRotation = 0, float initialPitchRotation = 0);
 
-    // Will be called every frame to smoothly update camera based on user input
+    // Moves a camera based on the velocity and the rotation matrix. Only works if cameraDirty is 1
     void UpdateCamera(Camera& camera, float deltaTime);
-    // Called directly from key press event functions to change the camera's orientation and rotation matrix
+
+    // Rotates a camera based on the amount passed to pitchRotation and yawRotation. Does not support rollRotation for now
     void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation);
 
+    // Since the main camera is also responsible for the projection matrix, whenever it needs to be updated the main camera is passed to this functions
+    // Values that have to do with projection are also updated
     void UpdateProjection(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear);
 
+    // Redundant struct, might want to replace this with an array of cameras held by either the engine or created in the Engine::Run function
     struct CameraContainer
     {
         Camera cameraList[BLIT_MAX_CAMERAS_IN_SCENE];
-
-        uint8_t activeCameraID;
     };
 }

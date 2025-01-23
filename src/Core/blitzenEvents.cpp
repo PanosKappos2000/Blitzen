@@ -131,13 +131,26 @@ namespace BlitzenCore
     
     inline InputState* s_pInputState = nullptr;
 
-    void InputInit(InputState* pInputState) 
+    uint8_t InputInit(InputState* pInputState) 
     {
+        BlitzenEngine::Engine* pEngine = BlitzenEngine::Engine::GetEngineInstancePointer();
+        if(!pEngine || !pEngine->GetEngineSystems().eventSystem)
+        {
+            BLIT_ERROR("Cannot initialize input system before the event system")
+            return 0;
+        }
+
         s_pInputState = pInputState;
         if(s_pInputState)
+        {
             BLIT_INFO("Input system initialized.")
+            return 1;
+        }
         else
+        {
             BLIT_FATAL("Input system initialization failed")
+            return 0;
+        }
     }
 
     void InputShutdown() 

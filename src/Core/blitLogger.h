@@ -1,8 +1,9 @@
 #pragma once
 
+// standard c header files
 #include <stdio.h>
 #include <cstdint>
-#include <cstddef>// Apparently we need this for some compilers, to use size_t 
+#include <cstddef>
 
 namespace BlitzenCore
 {

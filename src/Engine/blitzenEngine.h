@@ -8,7 +8,7 @@
 #include "Game/blitCamera.h"
 
 
-#define BLITZEN_VERSION                 "Blitzen Engine 0.C"
+#define BLITZEN_VERSION                 "Blitzen Engine 0"
 
 // Should graphics API implementation be loaded
 #define BLITZEN_VULKAN                  1
@@ -23,6 +23,7 @@
 #define BLITZEN_FOV                     BlitML::Radians(70.f)
 #define BLITZEN_DRAW_DISTANCE           600.f
 
+// Various hardcoded modes to test the renderer
 #define BLITZEN_GEOMETRY_STRESS_TEST        0
 #define BLITZEN_GLTF_SCENE                  1
 #define BLITZEN_OBJ_AND_GLTF_COMBINE_TEST   1
@@ -124,6 +125,8 @@ namespace BlitzenEngine
         uint8_t m_occlusionCulling = 1;
         uint8_t m_lodEnabled = 1;
     };
+
+    void RegisterDefaultEvents();
 
     // Will be registered to the event system on initalization
     uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data);

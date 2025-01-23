@@ -1,17 +1,26 @@
 #include "blitRenderingResources.h"
 #include "blitRenderer.h"
 
+// Single file .pnh and .jpeg image loader, to be used for textures
+// https://github.com/nothings/stb
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"
 
+// Used for loading .obj meshes
+// https://github.com/thisistherk/fast_obj
 #define FAST_OBJ_IMPLEMENTATION
 #include "fast_obj.h"
-#include "objparser.h"// Using some help from Arseny Kapoulkine
+
+// Algorithms for building meshlets, loading LODs, optimizing vertex caches etc.
+// https://github.com/zeux/meshoptimizer
 #include "Meshoptimizer/meshoptimizer.h"
+#include "objparser.h"
+
+// Single file gltf loading https://github.com/jkuhlmann/cgltf
 #define CGLTF_IMPLEMENTATION
 #include "cgltf/cgltf.h"
 
-// My math library seems to be fine now but I am keeping this to compare values when needed
+// Not necessary since I have my own math library, but I use glm for random values in textures
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
@@ -19,7 +28,6 @@
 #include <glm/mat4x4.hpp>
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/quaternion.hpp"
-#include <iostream>
 
 namespace BlitzenEngine
 {

@@ -10,13 +10,11 @@ namespace BlitzenCore
 
     inline LinearAllocator s_linearAlloc;
 
-    /* 
-        Main memory management functions
-    */
     void MemoryManagementInit()
     {
         BlitzenPlatform::PlatformMemZero(&globalAllocationStats, sizeof(AllocationStats));
 
+        // Allocate a big block of memory for the linear allocator
         s_linearAlloc.blockSize = BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE;
         s_linearAlloc.pBlock = BlitAlloc(BlitzenCore::AllocationType::LinearAlloc, BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE);
     }
@@ -76,13 +74,17 @@ namespace BlitzenCore
 
     void MemoryManagementShutdown()
     {
-        BlitFree(BlitzenCore::AllocationType::LinearAlloc, s_linearAlloc.pBlock, s_linearAlloc.blockSize);
-
+        // Memory management should not shut down before the Engine
         if (BlitzenEngine::Engine::GetEngineInstancePointer())
         {
             BLIT_ERROR("Blitzen is still active, memory management cannot be shutdown")
             return;
         }
+
+        // Free the big block of memory held by the linear allocator
+        BlitFree(BlitzenCore::AllocationType::LinearAlloc, s_linearAlloc.pBlock, s_linearAlloc.blockSize);
+
+        // Warn the user of any memory leaks to look for
         if (globalAllocationStats.totalAllocated)
         {
             BLIT_WARN("There is still unallocated memory. Total Unallocated Memory: %i \n \
