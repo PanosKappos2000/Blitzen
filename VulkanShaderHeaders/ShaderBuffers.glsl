@@ -52,6 +52,8 @@ struct MeshLod
 
     uint meshletCount;
     uint firstMeshlet;
+
+    float error;
 };
 
 struct Surface

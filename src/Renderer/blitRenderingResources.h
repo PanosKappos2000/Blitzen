@@ -74,6 +74,8 @@ namespace BlitzenEngine
 
         uint32_t meshletCount = 0;
         uint32_t firstMeshlet;
+
+        float error;
     };
 
     // Has information about a mesh surface that will be given to a GPU friendly struct, so that the GPU can draw each surface

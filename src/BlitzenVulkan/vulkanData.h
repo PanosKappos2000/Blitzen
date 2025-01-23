@@ -234,6 +234,8 @@ namespace BlitzenVulkan
         float pyramidWidth;
         float pyramidHeight;
 
+        float lodTarget;
+
         // Debug values
         uint32_t occlusionEnabled;
         uint32_t lodEnabled;

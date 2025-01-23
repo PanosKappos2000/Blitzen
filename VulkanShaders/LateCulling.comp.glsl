@@ -6,6 +6,9 @@
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
+#define CULL  true
+#define LOD_BASE    10.f
+#define LOD_STEP    1.5f
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -27,6 +30,8 @@ layout (set = 0, binding = 2) uniform CullingData
     // Occulusion culling depth pyramid data
     float pyramidWidth;
     float pyramidHeight;
+
+    float lodTarget;
 
     // Debug values
     uint occlusionEnabled;
@@ -113,11 +118,22 @@ void main()
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
 
-        // The level of detail index that should be used is derived by the distance fromt he camera
-        float lodDistance = log2(max(1, (distance(center, vec3(0)) - radius)));
-	    uint lodIndex = clamp(int(lodDistance), 0, int(currentSurface.lodCount) - 1);
-
-        MeshLod currentLod = cullingData.lodEnabled == 1 ? currentSurface.lod[lodIndex] : currentSurface.lod[0];
+        // The lod index is declared here. if LODs are not enabled the most detailed version of an object will be used by default
+        uint lodIndex = 0;
+        /*  
+            The LOD index is calculated using a formula where the distance to bounding sphere
+            surface is taken and the minimum error that would result in acceptable
+            screen-space deviation is computed based on camera parameters
+        */
+        if (cullingData.lodEnabled == 1)
+		{
+			float distance = max(length(center) - radius, 0);
+			float threshold = distance * cullingData.lodTarget / currentInstance.scale;
+			for (uint i = 1; i < currentSurface.lodCount; ++i)
+				if (currentSurface.lod[i].error < threshold)
+					lodIndex = i;
+		}
+        MeshLod currentLod = currentSurface.lod[lodIndex];
 
         // The object index is needed to know which element to access in the per object data buffer
         bufferAddrs.indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;

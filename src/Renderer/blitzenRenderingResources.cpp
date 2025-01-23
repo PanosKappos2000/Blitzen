@@ -273,53 +273,70 @@ namespace BlitzenEngine
         // Create the new surface that will be added and initialize its vertex offset
         PrimitiveSurface newSurface;
         newSurface.vertexOffset = static_cast<uint32_t>(pResources->vertices.GetSize());
-        /* newSurface.materialId = pResources->materialTable.Get("loaded_material", &pResources->materials[0])->materialId;
-        Harcoded material that is not being used, probably will remove this */
 
         // Since the vertices will be global for all shaders and objects, new elements will be added to the one vertex array
         pResources->vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
 
+        // Create the normal array to be used with the meshoptimizer function for lod generation
         BlitCL::DynamicArray<BlitML::vec3> normals(vertices.GetSize());
 	    for (size_t i = 0; i < vertices.GetSize(); ++i)
 	    {
 		    Vertex& v = vertices[i];
 		    normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f, v.normalY / 127.f - 1.f, v.normalZ / 127.f - 1.f);
 	    }
+
+        // This will be used to take into accout surface dimensions when saving the lod error
         float lodScale = meshopt_simplifyScale(&vertices[0].position.x, vertices.GetSize(), sizeof(Vertex));
+
+        // Lod error will be passed as a pointer every time the meshopt lod genration function is called, to save the next error
         float lodError = 0.f;
+
 	    float normalWeights[3] = {1.f, 1.f, 1.f};
+
+        // Pass the original loaded indices of the surface to the new lod indices
         BlitCL::DynamicArray<uint32_t> lodIndices(indices);
+
         while(newSurface.lodCount < BLIT_MAX_MESH_LOD)
         {
             // Get current element in the LOD array and increment the count
             MeshLod& lod = newSurface.meshLod[newSurface.lodCount++];
 
+            // Save the indices that will be used for the current lod level
             lod.firstIndex = static_cast<uint32_t>(pResources->indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
 
+            // Save the meshlets that will be used for the current lod level
             lod.firstMeshlet = static_cast<uint32_t>(pResources->meshlets.GetSize());
             lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(LoadMeshlet(pResources, vertices, indices)) : 0;
 
+            // Add the new indices that were loaded for this lod level to the global index buffer
             pResources->indices.AddBlockAtBack(lodIndices.Data(), lodIndices.GetSize());
+
+            // Save the current lod error
+            lod.error = lodError * lodScale;
 
             if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
             {
+                // Specify the next target index count (simplify by 65% each time)
                 size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65));
-                size_t nextIndices = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), 
+
+                // Generate the indices
+                size_t nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), 
                 lodIndices.GetSize(), &vertices[0].position.x, 
                 vertices.GetSize(), sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3), 
                 normalWeights, 3, nullptr, nextIndicesTarget, 1e-1f, 0, &lodError);
 
                 // If the next lod size surpasses the previous than this function has failed
-                BLIT_ASSERT(nextIndices <= lodIndices.GetSize())
+                BLIT_ASSERT(nextIndicesSize <= lodIndices.GetSize())
 
                 // Reached the error bounds
-                if(nextIndices == lodIndices.GetSize())
+                if(nextIndicesSize == lodIndices.GetSize())
                     break;
 
-                lodIndices.Downsize(nextIndices);
-
-                // Optimize the indices cache
+                // Downsize the indices to the next indices size
+                lodIndices.Downsize(nextIndicesSize);
+ 
+                // Optimize the new vertex cache that was generated
                 meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), vertices.GetSize());
             }
         }
@@ -344,6 +361,7 @@ namespace BlitzenEngine
         newSurface.center = center;
         newSurface.radius = radius;
 
+        // Add the resources to the global surface array so that it is added to the GPU buffer
         pResources->surfaces.PushBack(newSurface);
     }
 

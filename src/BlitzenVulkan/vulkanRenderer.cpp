@@ -181,6 +181,8 @@ namespace BlitzenVulkan
         cullingData.proj5 = camera.projectionMatrix[5];
         cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
         cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+        // Lod target based on camera / screen space parameters
+        cullingData.lodTarget = (2 / cullingData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
     }
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
@@ -464,6 +466,8 @@ namespace BlitzenVulkan
             cullingData.proj5 = camera.projectionMatrix[5];
             cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
             cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+
+            cullingData.lodTarget = (2 / cullingData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
         }
 
         // The near and far planes of the frustum will use the camera directly
