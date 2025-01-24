@@ -49,7 +49,7 @@ namespace BlitzenEngine
     uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12)
     {
-        TextureStats& current = pResources->textures[pResources->currentTextureIndex];
+        TextureStats& current = pResources->textures[pResources->textureCount];
 
         current.pTextureData = stbi_load(filename, &(current.textureWidth), &(current.textureHeight), &(current.textureChannels), 4);
 
@@ -58,9 +58,9 @@ namespace BlitzenEngine
         // Go to the next element in the container, only if the texture was loaded successfully
         if(load)
         {
-            current.textureTag = static_cast<uint32_t>(pResources->currentTextureIndex);
+            current.textureTag = static_cast<uint32_t>(pResources->textureCount);
             pResources->textureTable.Set(texName, &current);
-            pResources->currentTextureIndex++;
+            pResources->textureCount++;
         }
         // If the load failed give the default texture
         else
@@ -110,7 +110,7 @@ namespace BlitzenEngine
     void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName)
     {
-        Material& current = pResources->materials[pResources->currentMaterialIndex];
+        Material& current = pResources->materials[pResources->materialCount];
 
         current.diffuseColor = diffuseColor;
         current.shininess = shininess;
@@ -118,10 +118,10 @@ namespace BlitzenEngine
         current.diffuseTextureTag = pResources->textureTable.Get(diffuseMapName, &pResources->textures[0])->textureTag;
         current.specularTextureTag = pResources->textureTable.Get(specularMapName, &pResources->textures[0])->textureTag;
 
-        current.materialId = static_cast<uint32_t>(pResources->currentMaterialIndex);
+        current.materialId = static_cast<uint32_t>(pResources->materialCount);
 
         pResources->materialTable.Set(materialName, &current);
-        pResources->currentMaterialIndex++;
+        pResources->materialCount++;
     }
 
     void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12)
@@ -146,7 +146,7 @@ namespace BlitzenEngine
     uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, uint8_t buildMeshlets /*= 0*/)
     {
         // The function should return if the engine will go over the max allowed mesh assets
-        if(pResources->currentMeshIndex > BLIT_MAX_MESH_COUNT)
+        if(pResources->meshCount > BLIT_MAX_MESH_COUNT)
         {
             BLIT_ERROR("Max mesh count: ( %i ) reached!", BLIT_MAX_MESH_COUNT)
             BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
@@ -154,7 +154,7 @@ namespace BlitzenEngine
         }
 
         // Get the current mesh and give it the size surface array as its first surface index
-        Mesh& currentMesh = pResources->meshes[pResources->currentMeshIndex];
+        Mesh& currentMesh = pResources->meshes[pResources->meshCount];
         currentMesh.firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
 
         ObjFile file;
@@ -205,7 +205,7 @@ namespace BlitzenEngine
         LoadSurface(pResources, vertices, indices, buildMeshlets);
 
         currentMesh.surfaceCount++;// Increment the surface count
-        ++(pResources->currentMeshIndex);// Increment the mesh index
+        ++(pResources->meshCount);// Increment the mesh count
 
         return 1;
     }
@@ -582,14 +582,15 @@ namespace BlitzenEngine
 		    const cgltf_mesh& mesh = pData->meshes[i];
 
             // Find the first surface of the current mesh. 
-            // It is important for the mesh structu and to save the data for later to create the render objects
+            // It is important for the mesh struct and to save the data for later to create the render objects
             uint32_t firstSurface = pResources->surfaces.GetSize();
 
-            // Tell the new mesh the surfaces that it should draw
-            pResources->meshes[pResources->currentMeshIndex].firstSurface = firstSurface;
-            pResources->meshes[pResources->currentMeshIndex].surfaceCount = mesh.primitives_count;
-            pResources->currentMeshIndex++;
+            // Give the new mesh the surface that it owns and increment the mesh count
+            pResources->meshes[pResources->meshCount].firstSurface = firstSurface;
+            pResources->meshes[pResources->meshCount].surfaceCount = mesh.primitives_count;
+            pResources->meshCount++;
 
+            // Pass the first surface here so that it can be accessed by the nodes
 		    surfaceIndices.PushBack(firstSurface);
 
             for(size_t j = 0; j < mesh.primitives_count; ++j)
@@ -650,13 +651,16 @@ namespace BlitzenEngine
 		    const cgltf_node* node = &(pData->nodes[i]);
 		    if (node->mesh)
 		    {
+                // Gets the model matrix
 			    float matrix[16];
 			    cgltf_node_transform_world(node, matrix);
 
+                // Uses these float arrays to hold the decomposed matrix
 			    float translation[3];
 			    float rotation[4];
 			    float scale[3];
 
+                // Decomposes the model transform and tranlates the data to the engine's transform structure
 			    BlitML::decomposeTransform(translation, rotation, scale, matrix);
                 MeshTransform transform;
 				transform.pos = BlitML::vec3(translation[0], translation[1], translation[2]);

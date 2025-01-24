@@ -121,16 +121,61 @@ namespace BlitzenEngine
         uint32_t surfaceId;
     };
 
+    // Holds universal, shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
+    struct alignas(16) GlobalShaderData
+    {
+        BlitML::mat4 projectionView;
+        BlitML::mat4 view;
+
+        BlitML::vec4 sunlightColor;
+        BlitML::vec3 sunlightDir;// directional light direction vector
+
+        BlitML::vec3 viewPosition;
+    };
+
+    // Struct to be constructed in drawFrame function so that it can be passed to the graphics API
+    struct alignas(16) CullingData
+    {
+        // frustum planes
+        float frustumRight;
+        float frustumLeft;
+        float frustumTop;
+        float frustumBottom;
+
+        float proj0;// The 1st element of the projection matrix
+        float proj5;// The 12th element of the projection matrix
+
+        // The draw distance and zNear, needed for both occlusion and frustum culling
+        float zNear;
+        float zFar;
+
+        // Occulusion culling depth pyramid data
+        float pyramidWidth;
+        float pyramidHeight;
+
+        float lodTarget;
+
+        // Debug values
+        uint32_t occlusionEnabled = 1;
+        uint32_t lodEnabled = 1;
+
+        uint32_t drawCount;
+    };
+
     // This struct holds every loaded resource that will be used for rendering all game objects
     struct RenderingResources
     {
+        // These hold values that need to be passed to the shaders. Some values change constantly as they depend on camera and window values
+        GlobalShaderData shaderData;
+        CullingData cullingData;
+
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
         BlitCL::PointerTable<TextureStats> textureTable;
-        size_t currentTextureIndex = BLIT_DEFAULT_TEXTURE_COUNT;
+        size_t textureCount = BLIT_DEFAULT_TEXTURE_COUNT;
 
         Material materials[BLIT_MAX_MATERIAL_COUNT];
         BlitCL::PointerTable<Material> materialTable;
-        size_t currentMaterialIndex = BLIT_DEFAULT_MATERIAL_COUNT;
+        size_t materialCount = BLIT_DEFAULT_MATERIAL_COUNT;
 
         // Arrays that hold all necessary geometry data
         BlitCL::DynamicArray<Vertex> vertices;
@@ -140,7 +185,7 @@ namespace BlitzenEngine
 
         // The data of every mesh allowed is in this fixed size array and the currentMeshIndex holds the current amount of loaded meshes
         Mesh meshes[BLIT_MAX_MESH_COUNT];
-        size_t currentMeshIndex = 0;
+        size_t meshCount = 0;
 
         // Each instance of a mesh has a different transform that is an element in this array
         BlitCL::DynamicArray<MeshTransform> transforms;
@@ -148,11 +193,27 @@ namespace BlitzenEngine
         // Each mesh points to a continuous pack of elements of this surface array
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
 
+        // TODO: This is not a rendering resource, it should not be part of this struct
         GameObject objects[BLIT_MAX_OBJECTS];
         uint32_t objectCount;
 
         RenderObject renders[BLIT_MAX_OBJECTS];
         uint32_t renderObjectCount;        
+    };
+
+    // Passed to the renderer every time draw frame is called, to handle special events and update shader data
+    struct RenderContext
+    {
+        // Some graphics APIs may need to handle window resizing by themselves
+        uint8_t windowResize = 0;
+        uint32_t windowWidth;
+        uint32_t windowHeight;
+
+        CullingData& cullingData;
+
+        GlobalShaderData& globalShaderData;
+
+        inline RenderContext(CullingData& cd, GlobalShaderData& sd) :cullingData(cd), globalShaderData(sd) {}
     };
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources);

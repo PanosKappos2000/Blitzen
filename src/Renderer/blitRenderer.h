@@ -8,6 +8,8 @@
 // The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
+#define BLITZEN_MAX_DRAW_OBJECTS    5'000'000 // Max draw calls allowed, if render objects go above this, the application will fail
+
 namespace BlitzenEngine
 {
     enum class ActiveRenderer : uint8_t
@@ -29,7 +31,7 @@ namespace BlitzenEngine
     uint8_t CheckActiveRenderer(ActiveRenderer ar);
 
     // The parameters for this functions will be tidied up later
-    void SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount, Camera& camera);
+    uint8_t SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount, Camera& camera);
 
     struct RuntimeDebugValues
     {
@@ -40,7 +42,7 @@ namespace BlitzenEngine
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
     uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
-    ActiveRenderer ar, RuntimeDebugValues* pDebugValues = nullptr);
+    ActiveRenderer ar, RenderContext& renderContext, RuntimeDebugValues* pDebugValues = nullptr);
 
     void ShutdownRenderers();
 }

@@ -2,6 +2,7 @@
 
 /*#define VK_NO_PROTOTYPES
 #include <Volk/volk.h>*/
+
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 
@@ -9,7 +10,6 @@
 #include "BlitzenMathLibrary/blitML.h"
 #include "Renderer/blitRenderingResources.h"
 #include "Game/blitObject.h"
-#include "Game/blitCamera.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -39,9 +39,7 @@
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
 #define BLITZEN_VULKAN_INDIRECT_DRAW            1
-#define BLITZEN_VULKAN_MESH_SHADER              0 // For now mesh shaders are completely busted 
-
-#define BLITZEN_VULKAN_MAX_DRAW_CALLS           5'000'000 // Going to 6'000'000 causes validation errors, but the renderer can still manage it (tested up to 10'000'000)
+#define BLITZEN_VULKAN_MESH_SHADER              0 // Mesh shaders have output but it is wrong 
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 
@@ -106,42 +104,6 @@ namespace BlitzenVulkan
         {}
     };
 
-    // Passed to the renderer every time draw frame is called, to handle special events and update shader data
-    struct RenderContext
-    {
-        uint8_t windowResize = 0;
-
-        /* The renderer assumes that the camera includes the following values:
-        BlitML::mat4 projectionMatrix
-        BlitML::mat4 viewMatrix
-        BlitML::mat4 projectionView
-        BlitML::vec3 viewPosition;
-        BlitML::mat4 projectionTranspose
-        float zNear
-        float drawDistance */
-        BlitzenEngine::Camera& camera;
-
-        // In case where the camera is detatched, this points to a different camera then the above
-        BlitzenEngine::Camera* pDetatchedCamera;
-
-        size_t drawCount;
-
-        BlitML::vec3 sunlightDirection;
-        BlitML::vec4 sunlightColor;
-
-        uint8_t debugPyramid = 0;
-        uint8_t occlusionEnabled = 1;
-        uint8_t lodEnabled = 1;
-
-        inline RenderContext(BlitzenEngine::Camera& cam, BlitzenEngine::Camera* pDetatchedCam, size_t dc, 
-        BlitML::vec3& sunDir, BlitML::vec4& sunColor, uint8_t resize,
-        uint8_t pyramid = 0, uint8_t occlusion = 1, uint8_t lod = 1)
-            :camera(cam), pDetatchedCamera(pDetatchedCam), drawCount(dc), sunlightDirection(sunDir), 
-            sunlightColor(sunColor), windowResize(resize), debugPyramid(pyramid), occlusionEnabled(occlusion), 
-            lodEnabled(lod)
-        {}
-    };
-
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
     struct AllocatedImage
     {
@@ -162,18 +124,6 @@ namespace BlitzenVulkan
         VkBuffer buffer;
         VmaAllocation allocation;
         VmaAllocationInfo allocationInfo;
-    };
-
-    // Holds universal, shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
-    struct alignas(16) GlobalShaderData
-    {
-        BlitML::mat4 projectionView;
-        BlitML::mat4 view;
-
-        BlitML::vec4 sunlightColor;
-        BlitML::vec3 sunlightDir;// directional light direction vector
-
-        BlitML::vec3 viewPosition;
     };
 
     // This struct will be passed to the GPU as uniform descriptor and will give shaders access to the global storage buffers
@@ -213,34 +163,6 @@ namespace BlitzenVulkan
         // Holds the address of the buffer that holds an integer for the previous frame visibility of every object in the scene. 
         // Accessed by the culling compute shaders
         VkDeviceAddress visibilityBufferAddress;
-    };
-
-    struct alignas(16) CullingData
-    {
-        // frustum planes
-        float frustumRight;
-        float frustumLeft;
-        float frustumTop;
-        float frustumBottom;
-
-        float proj0;// The 1st element of the projection matrix
-        float proj5;// The 12th element of the projection matrix
-
-        // The draw distance and zNear, needed for both occlusion and frustum culling
-        float zNear;
-        float zFar;
-
-        // Occulusion culling depth pyramid data
-        float pyramidWidth;
-        float pyramidHeight;
-
-        float lodTarget;
-
-        // Debug values
-        uint32_t occlusionEnabled;
-        uint32_t lodEnabled;
-
-        uint32_t drawCount;
     };
 
     // Pushed every frame for the non indirect version to access per object data

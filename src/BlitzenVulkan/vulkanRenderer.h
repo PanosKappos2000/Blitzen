@@ -42,14 +42,14 @@ namespace BlitzenVulkan
     {
         AllocatedBuffer globalShaderDataBuffer;
         // Persistently mapped pointer to the uniform buffer for shader data. Dereferenced and updated each frame
-        GlobalShaderData* pGlobalShaderData;
+        BlitzenEngine::GlobalShaderData* pGlobalShaderData;
 
         AllocatedBuffer bufferDeviceAddrsBuffer;
         // Persistently mapped pointer to the uniform buffer for buffer addresses. Dereferenced and updated each frame
         BufferDeviceAddresses* pBufferAddrs;
 
         AllocatedBuffer cullingDataBuffer;
-        CullingData* pCullingData;
+        BlitzenEngine::CullingData* pCullingData;
     };
 
     // Holds data for buffers that will be loaded once and will be used for every object
@@ -124,12 +124,12 @@ namespace BlitzenVulkan
         /* ---------------------------------------------------------------------------------------------------------
             2nd part of Vulkan initialization. Setsup buffers, shaders and descriptors for the render loop
         ------------------------------------------------------------------------------------------------------------ */
-        void SetupForRendering(GPUData& gpuData, BlitzenEngine::Camera& camera);
+        void SetupForRendering(GPUData& gpuData, BlitzenEngine::CullingData& cullData);
 
         void UploadTexture(BlitzenEngine::TextureStats& newTexture);
 
         // Called each frame to draw the scene that is requested by the engine
-        void DrawFrame(RenderContext& pRenderData);
+        void DrawFrame(BlitzenEngine::RenderContext& pRenderData);
 
         // Kills the renderer and cleans up allocated handles and resources. Implemented on vulkanInit.cpp
         void Shutdown();
@@ -236,10 +236,6 @@ namespace BlitzenVulkan
 
         // I do not need a sampler for each texture and there is a limit for each device, so I'll need to create only a few samlplers
         VkSampler m_placeholderSampler;
-
-        // Data copied every frame to the descriptor buffer pointer
-        CullingData cullingData;
-        GlobalShaderData globalShaderData;
     };
 
 

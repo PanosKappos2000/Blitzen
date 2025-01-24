@@ -93,13 +93,13 @@ namespace BlitzenEngine
         // Different types of hardcoded scenes to test the renderer, since the engine does not have an editor
         #if BLITZEN_OBJ_AND_GLTF_COMBINE_TEST
             // Load some hardcoded game objects to test the rendering
-            uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
+            uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
             LoadGltfScene(pResources.Data(), "Assets/Scenes/structure.glb", 1);
             drawCount = pResources.Data()->renderObjectCount;
         #elif BLITZEN_GEOMETRY_STRESS_TEST
             // Load some hardcoded game objects to test the rendering
-            uint32_t drawCount = BLITZEN_VULKAN_MAX_DRAW_CALLS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
+            uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
         #elif BLITZEN_GLTF_SCENE
             LoadGltfScene(pResources.Data(), "Assets/Scenes/structure.glb", 1);
@@ -110,7 +110,8 @@ namespace BlitzenEngine
         #endif
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, m_mainCamera);
+        BLIT_ASSERT(SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, m_mainCamera));/* I use an assertion here
+        but it could be handled some other way as well */
         
         // Start the clock
         m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
@@ -140,9 +141,10 @@ namespace BlitzenEngine
 
                 // Draw the frame!!!!
                 RuntimeDebugValues debugValues{0, m_occlusionCulling, m_lodEnabled};
+                RenderContext renderContext(pResources.Data()->cullingData, pResources.Data()->shaderData);
                 DrawFrame(m_mainCamera, m_pMovingCamera, drawCount, 
                 m_platformData.windowWidth, m_platformData.windowHeight, m_platformData.windowResize, 
-                activeRenderer, &debugValues);
+                activeRenderer, renderContext, &debugValues);
 
                 // Make sure that the window resize is set to false after the renderer is notified
                 m_platformData.windowResize = 0;

@@ -39,16 +39,16 @@ namespace BlitzenVulkan
             VarBuffers& buffers = m_varBuffers[i];
 
             CreateBuffer(m_allocator, buffers.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            buffers.pGlobalShaderData = reinterpret_cast<GlobalShaderData*>(buffers.globalShaderDataBuffer.allocation->GetMappedData());
+            sizeof(BlitzenEngine::GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            buffers.pGlobalShaderData = reinterpret_cast<BlitzenEngine::GlobalShaderData*>(buffers.globalShaderDataBuffer.allocation->GetMappedData());
 
             CreateBuffer(m_allocator, buffers.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT);
             buffers.pBufferAddrs = reinterpret_cast<BufferDeviceAddresses*>(buffers.bufferDeviceAddrsBuffer.allocation->GetMappedData());
 
             CreateBuffer(m_allocator, buffers.cullingDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(CullingData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
-            buffers.pCullingData = reinterpret_cast<CullingData*>(buffers.cullingDataBuffer.allocation->GetMappedData());
+            sizeof(BlitzenEngine::CullingData), VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            buffers.pCullingData = reinterpret_cast<BlitzenEngine::CullingData*>(buffers.cullingDataBuffer.allocation->GetMappedData());
         }
     }
 
@@ -136,11 +136,8 @@ namespace BlitzenVulkan
         loadedTextures.Back().sampler = m_placeholderSampler;
     }
 
-    void VulkanRenderer::SetupForRendering(GPUData& gpuData, BlitzenEngine::Camera& camera)
+    void VulkanRenderer::SetupForRendering(GPUData& gpuData, BlitzenEngine::CullingData& cullData)
     {
-        BLIT_ASSERT_MESSAGE(gpuData.drawCount, "Nothing to draw")
-        BLIT_ASSERT(gpuData.drawCount <= BLITZEN_VULKAN_MAX_DRAW_CALLS)
-
         VarBuffersInit();
 
         // Create all know descriptor layouts for all known pipelines
@@ -165,24 +162,11 @@ namespace BlitzenVulkan
         // Graphics pipeline setup and vertex / mesh shader and fragment shader loading
         SetupMainGraphicsPipeline();
 
-        // Pass camera values here so that they are available before the first frame
-        globalShaderData.projectionView = camera.projectionViewMatrix;
-        globalShaderData.viewPosition = camera.position;
-        globalShaderData.view = camera.viewMatrix;
-        // Frustum planes
-        BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
-        BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
-        cullingData.frustumRight = frustumX.x;
-        cullingData.frustumLeft = frustumX.z;
-        cullingData.frustumTop = frustumY.y;
-        cullingData.frustumBottom = frustumY.z;
-        // Culling data for occlusion culling
-        cullingData.proj0 = camera.projectionMatrix[0];
-        cullingData.proj5 = camera.projectionMatrix[5];
-        cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
-        cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+        // culing data values that need to be handled by the renderer itself
+        cullData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+        cullData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
         // Lod target based on camera / screen space parameters
-        cullingData.lodTarget = (2 / cullingData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
+        cullData.lodTarget = (2 / cullData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
     }
 
     void VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
@@ -210,7 +194,7 @@ namespace BlitzenVulkan
         // When Creating the buffer the max size is used otherwise there will be alignment issues, TODO: Test this again at some point
         CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, sizeof(BlitzenEngine::RenderObject) * BLITZEN_VULKAN_MAX_DRAW_CALLS, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         // It also lives in the GPU and needs to be accessed in the shader for per object data like position and orientation
         m_currentStaticBuffers.bufferAddresses.renderObjectBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.renderObjectBuffer.buffer);
@@ -415,75 +399,38 @@ namespace BlitzenVulkan
     /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         Every operation needed for drawing a single frame is put here
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
-    void VulkanRenderer::DrawFrame(RenderContext& context)
+    void VulkanRenderer::DrawFrame(BlitzenEngine::RenderContext& context)
     {
-        BlitzenEngine::Camera& camera = context.camera;
-
         if(context.windowResize)
         {
-            RecreateSwapchain(static_cast<uint32_t>(camera.windowWidth), static_cast<uint32_t>(camera.windowHeight));
+            RecreateSwapchain(context.windowWidth, context.windowHeight);
         }
 
         // Gets a ref to the frame tools of the current frame
         FrameTools& fTools = m_frameToolsList[m_currentFrame];
         VarBuffers& vBuffers = m_varBuffers[m_currentFrame];
 
+        BlitzenEngine::CullingData& cullData = context.cullingData;
+        BlitzenEngine::GlobalShaderData& shaderData = context.globalShaderData;
+
+        // Handle the pyramid width if the window resized
+        if(context.windowResize)
+        {
+            cullData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+            cullData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+
+            // Update the lod target as well since it uses window dimensions
+            cullData.lodTarget = (2 / cullData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
+        }
 
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
-
-        // Pass the result of projection * view from the detatched camera if it moved since last frame
-        // In case the camera is indeed detatched from the main, the camera will move, but culling will not change for debugging purposes
-        if(context.pDetatchedCamera->cameraDirty)
-            globalShaderData.projectionView = context.pDetatchedCamera->projectionViewMatrix;
-
-        // Pass the camera position and view matrix from the main camera, it if has moved since last frame
-        if(camera.cameraDirty)
-        {
-            globalShaderData.viewPosition = camera.position;
-            globalShaderData.view = camera.viewMatrix;
-        }
-
-        // Global lighting parameters will be written to the global shader data buffer
-        // TODO: Add some logic to see if these value change (currently they never change and are unused)
-        /*m_globalShaderData.sunlightDir = context.sunlightDirection;
-        m_globalShaderData.sunlightColor = context.sunlightColor;*/
-
-        // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
-        if(context.windowResize)
-        {
-            BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
-            BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
-            cullingData.frustumRight = frustumX.x;
-            cullingData.frustumLeft = frustumX.z;
-            cullingData.frustumTop = frustumY.y;
-            cullingData.frustumBottom = frustumY.z;
-
-            // Culling data for occlusion culling
-            cullingData.proj0 = camera.projectionMatrix[0];
-            cullingData.proj5 = camera.projectionMatrix[5];
-            cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
-            cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
-
-            cullingData.lodTarget = (2 / cullingData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
-        }
-
-        // The near and far planes of the frustum will use the camera directly
-        cullingData.zNear = camera.zNear;
-        cullingData.zFar = camera.drawDistance;
-
-        // Debug values to deactivate occlusion culling and other algorithms
-        cullingData.occlusionEnabled = context.occlusionEnabled;
-        cullingData.lodEnabled = context.lodEnabled;
-
-        cullingData.drawCount = static_cast<uint32_t>(context.drawCount);
-
         // Write the data to the buffer pointers
-        *(vBuffers.pGlobalShaderData) = globalShaderData;
+        *(vBuffers.pGlobalShaderData) = shaderData;
         *(vBuffers.pBufferAddrs) = m_currentStaticBuffers.bufferAddresses;
-        *(vBuffers.pCullingData) = cullingData;
+        *(vBuffers.pCullingData) = cullData;
         
 
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
@@ -545,7 +492,7 @@ namespace BlitzenVulkan
 
             // Bind the shader's pipeline and dispatch the shader to do culling
             vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectCullingComputePipeline);
-            vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>((context.drawCount / 64) + 1), 1, 1);
+            vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>((cullData.drawCount / 64) + 1), 1, 1);
 
             // Stops the indirect stage from reading commands until the compute shader completes
             VkMemoryBarrier2 memoryBarrier{};
@@ -614,13 +561,13 @@ namespace BlitzenVulkan
             {
                 DrawMeshTasks(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.indirectTaskBuffer.buffer, 
                 offsetof(IndirectTaskData, drawIndirectTasks), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
-                static_cast<uint32_t>(context.drawCount), sizeof(IndirectTaskData));
+                static_cast<uint32_t>(cullData.drawCount), sizeof(IndirectTaskData));
             }
             else
             {
                 vkCmdDrawIndexedIndirectCount(fTools.commandBuffer, m_currentStaticBuffers.indirectDrawBuffer.buffer, 
                 offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
-                static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
+                static_cast<uint32_t>(cullData.drawCount), sizeof(IndirectDrawData));
             }
         }
 
@@ -732,7 +679,7 @@ namespace BlitzenVulkan
 
             // Dispatch the compute shader
             vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_lateCullingComputePipeline);
-            vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>(context.drawCount / 64) + 1, 1, 1);
+            vkCmdDispatch(fTools.commandBuffer, static_cast<uint32_t>(cullData.drawCount / 64) + 1, 1, 1);
 
             // Stops the indirect stage from reading commands before the compute shader completes
             VkMemoryBarrier2 memoryBarrier{};
@@ -782,13 +729,13 @@ namespace BlitzenVulkan
             {
                 DrawMeshTasks(m_initHandles.instance, fTools.commandBuffer, m_currentStaticBuffers.indirectTaskBuffer.buffer, 
                 offsetof(IndirectTaskData, drawIndirectTasks), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
-                static_cast<uint32_t>(context.drawCount), sizeof(IndirectTaskData));
+                static_cast<uint32_t>(cullData.drawCount), sizeof(IndirectTaskData));
             }
             else
             {
                 vkCmdDrawIndexedIndirectCount(fTools.commandBuffer, m_currentStaticBuffers.indirectDrawBuffer.buffer, 
                 offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
-                static_cast<uint32_t>(context.drawCount), sizeof(IndirectDrawData));
+                static_cast<uint32_t>(cullData.drawCount), sizeof(IndirectDrawData));
             }
         }
 
@@ -814,7 +761,7 @@ namespace BlitzenVulkan
 
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, firstTransferMemoryBarriers);
 
-            if(context.debugPyramid)
+            if(0)// This should say if(context.debugPyramid)
             {
                 uint32_t debugLevel = 0;
                 VkImageSubresourceLayers colorAttachmentSL{};

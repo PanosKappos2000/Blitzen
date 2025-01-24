@@ -6,8 +6,6 @@ namespace BlitzenEngine
     inline BlitzenVulkan::VulkanRenderer* gpVulkan = nullptr;
     inline void* gpDx12 = nullptr;
 
-    inline Camera* gpMainCamera = nullptr;
-
     uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
     uint32_t windowWidth, uint32_t windowHeight)
     {
@@ -32,13 +30,29 @@ namespace BlitzenEngine
         {
             case ActiveRenderer::Vulkan:
                 return isVulkanInitialized();
+            case ActiveRenderer::Directx12:
+                return 0;
             default:
-                break;
+                return 0;
         }
     }
 
-    void SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount, Camera& camera)
+    uint8_t SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount, Camera& camera)
     {
+        if(drawCount <= 0)
+        {
+            BLIT_ERROR("Nothing to draw, Renderer not setup")
+            return 0;
+        }
+
+        if(drawCount > BLITZEN_MAX_DRAW_OBJECTS)
+        {
+            BLIT_ERROR("The render object count %i is higher than the current maximum allowed by the engine: %i", drawCount, BLITZEN_MAX_DRAW_OBJECTS)
+            return 0;
+        }
+
+        uint8_t isThereRendererOnStandby;
+
         if(gpVulkan)
         {
             // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
@@ -47,13 +61,13 @@ namespace BlitzenEngine
             that are references instead of pointers */
 
             vulkanData.pTextures = pResources->textures;
-            vulkanData.textureCount = pResources->currentTextureIndex;// Current texture index is equal to the size of the array of textures
+            vulkanData.textureCount = pResources->textureCount;
 
             vulkanData.pMaterials = pResources->materials;
-            vulkanData.materialCount = pResources->currentMaterialIndex;// Current material index is equal to the size of the material array
+            vulkanData.materialCount = pResources->materialCount;
 
             vulkanData.pMeshes = pResources->meshes;
-            vulkanData.meshCount = pResources->currentMeshIndex;// Current mesh index is equal to the size of the mesh array
+            vulkanData.meshCount = pResources->meshCount;
 
             vulkanData.pGameObjects = pResources->objects;
             vulkanData.gameObjectCount = pResources->objectCount;
@@ -64,13 +78,43 @@ namespace BlitzenEngine
             // Draw count will be used to determine the size of draw and object buffers
             vulkanData.drawCount = drawCount;
 
-            gpVulkan->SetupForRendering(vulkanData, camera);
+            // Setting this before the other values because it is needed for lod target, which is defined by vulkan
+            pResources->cullingData.proj5 = camera.projectionMatrix[5];
+            gpVulkan->SetupForRendering(vulkanData, pResources->cullingData);
+
+            // This should be the return value of the above function, to check if everything went fine
+            isThereRendererOnStandby = 1;
         }
+
+        // If it has succesfully loaded a graphics API, it can move on to uploading culling and global shader data and then return succesfully
+        if(isThereRendererOnStandby)
+        {
+            // Pass camera values here so that they are available before the first frame
+            pResources->shaderData.projectionView = camera.projectionViewMatrix;
+            pResources->shaderData.viewPosition = camera.position;
+            pResources->shaderData.view = camera.viewMatrix;
+
+            // Frustum planes
+            BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
+            BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
+            pResources->cullingData.frustumRight = frustumX.x;
+            pResources->cullingData.frustumLeft = frustumX.z;
+            pResources->cullingData.frustumTop = frustumY.y;
+            pResources->cullingData.frustumBottom = frustumY.z;
+
+            // Culling data for occlusion culling
+            pResources->cullingData.proj0 = camera.projectionMatrix[0];
+            pResources->cullingData.proj5 = camera.projectionMatrix[5];
+
+            return 1;
+        }
+
+        return 0;
     }
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
     uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
-    ActiveRenderer ar, RuntimeDebugValues* pDebugValues /*= nullptr*/)
+    ActiveRenderer ar, RenderContext& context, RuntimeDebugValues* pDebugValues /*= nullptr*/)
     {
         // Check that the pointer for the active renderer is not Null, if it is warn the use that they should switch the active renderer
         if(!CheckActiveRenderer(ar))
@@ -83,24 +127,63 @@ namespace BlitzenEngine
         {
             case ActiveRenderer::Vulkan:
             {
-                // Hardcoding the sun for now (this is used in the fragment shader but ignored)
-                BlitML::vec3 sunDir(-0.57735f, -0.57735f, 0.57735f);
-                BlitML::vec4 sunColor(0.8f, 0.8f, 0.8f, 1.0f);
+                GlobalShaderData& shaderData = context.globalShaderData;
 
-                // Create the render context
-                BlitzenVulkan::RenderContext renderContext(camera, pMovingCamera, drawCount, 
-                sunDir, sunColor, windowResize);
+                // Pass the result of projection * view from the detatched camera if it moved since last frame
+                // In case the camera is indeed detatched from the main, the camera will move, but culling will not change for debugging purposes
+                if(pMovingCamera->cameraDirty)
+                    shaderData.projectionView = pMovingCamera->projectionViewMatrix;
+
+                // Pass the camera position and view matrix from the main camera, it if has moved since last frame
+                if(camera.cameraDirty)
+                {
+                    shaderData.viewPosition = camera.position;
+                    shaderData.view = camera.viewMatrix;
+                }
+
+                // Global lighting parameters will be written to the global shader data buffer
+                // TODO: Add some logic to see if these value change (currently they never change and are unused)
+                /*shaderData.sunlightDir = BlitML::vec3 sunDir(-0.57735f, -0.57735f, 0.57735f);
+                shaderData.sunlightColor = BlitML::vec4 sunColor(0.8f, 0.8f, 0.8f, 1.0f);*/
+
+                CullingData& cullingData = context.cullingData;
+
+                // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
+                if(windowResize)
+                {
+                    BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
+                    BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
+                    cullingData.frustumRight = frustumX.x;
+                    cullingData.frustumLeft = frustumX.z;
+                    cullingData.frustumTop = frustumY.y;
+                    cullingData.frustumBottom = frustumY.z;
+
+                    // Culling data for occlusion culling
+                    cullingData.proj0 = camera.projectionMatrix[0];
+                    cullingData.proj5 = camera.projectionMatrix[5];
+                }
+
+                // The near and far planes of the frustum will use the camera directly
+                cullingData.zNear = camera.zNear;
+                cullingData.zFar = camera.drawDistance;
+
+                cullingData.drawCount = static_cast<uint32_t>(drawCount);
+
+
+                context.windowResize = windowResize;
+                context.windowWidth = windowWidth;
+                context.windowHeight = windowHeight;
 
                 // Debug values, controlled by inputs
                 if(pDebugValues)
                 {
-                    renderContext.debugPyramid = pDebugValues->isDebugPyramidActive; // f2 to change (inoperable)
-                    renderContext.occlusionEnabled = pDebugValues->m_occlusionCulling; // f3 to change
-                    renderContext.lodEnabled = pDebugValues->m_lodEnabled;// f4 to change
+                    //cullingData.debugPyramid = pDebugValues->isDebugPyramidActive; // f2 to change (inoperable)
+                    cullingData.occlusionEnabled = pDebugValues->m_occlusionCulling; // f3 to change
+                    cullingData.lodEnabled = pDebugValues->m_lodEnabled;// f4 to change
                 }
 
                 // Let Vulkan do its thing
-                gpVulkan->DrawFrame(renderContext);
+                gpVulkan->DrawFrame(context);
 
                 break;
             }
