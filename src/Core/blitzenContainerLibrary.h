@@ -259,7 +259,7 @@ namespace BlitCL
 
     
 
-    template<typename T, BlitzenCore::AllocationType A>
+    template<typename T, BlitzenCore::AllocationType A = BlitzenCore::AllocationType::SmartPointer>
     class SmartPointer
     {
     public:

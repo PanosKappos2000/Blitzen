@@ -326,26 +326,38 @@ namespace BlitzenEngine
             if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
             {
                 // Specify the next target index count (simplify by 65% each time)
-                size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65));
+                size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
+
+                const float maxError = 1e-1f;// Parameter for meshopt_simplifyWithAttributes
+
+                // The next error will be saved here to check if the actual lod error should be updated
+                float nextError = 0;
 
                 // Generate the indices
                 size_t nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), 
                 lodIndices.GetSize(), &vertices[0].position.x, 
                 vertices.GetSize(), sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3), 
-                normalWeights, 3, nullptr, nextIndicesTarget, 1e-1f, 0, &lodError);
+                normalWeights, 3, nullptr, nextIndicesTarget, maxError, 0, &nextError);
 
                 // If the next lod size surpasses the previous than this function has failed
                 BLIT_ASSERT(nextIndicesSize <= lodIndices.GetSize())
 
                 // Reached the error bounds
-                if(nextIndicesSize == lodIndices.GetSize())
+                if(nextIndicesSize == lodIndices.GetSize() || nextIndicesSize == 0)
                     break;
+
+                // while I could keep this LOD, it's too close to the last one (and it can't go below that due to constant error bound above)
+			    if (nextIndicesSize >= size_t(double(lodIndices.GetSize()) * 0.95))
+				    break;
 
                 // Downsize the indices to the next indices size
                 lodIndices.Downsize(nextIndicesSize);
  
                 // Optimize the new vertex cache that was generated
                 meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), vertices.GetSize());
+
+                // since it starts from next lod accumulate the error
+                lodError = BlitML::Max(lodError, nextError);
             }
         }
 
@@ -521,26 +533,30 @@ namespace BlitzenEngine
     uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets /*=1*/)
     {
         cgltf_options options = {};
-	    cgltf_data* data = nullptr;
-	    cgltf_result res = cgltf_parse_file(&options, path, &data);
+
+        // Use a smart pointer so that the cgltf_data gets freed automatically whenever the function returns
+        // Might be possible to just have this on the stack though, I don't know why I put it on the heap
+        // TODO: Test
+	    BlitCL::SmartPointer<cgltf_data> gltfData;
+        cgltf_data* pData = gltfData.Data();
+
+	    cgltf_result res = cgltf_parse_file(&options, path, &pData);
 	    if (res != cgltf_result_success)
         {
             BLIT_WARN("Failed to load gltf file: %s", path)
 		    return 0;
         }
 
-        res = cgltf_load_buffers(&options, data, path);
+        res = cgltf_load_buffers(&options, pData, path);
 	    if (res != cgltf_result_success)
 	    {
-		    cgltf_free(data);
-		    return false;
+		    return 0;
 	    }
 
-	    res = cgltf_validate(data);
+	    res = cgltf_validate(pData);
 	    if (res != cgltf_result_success)
 	    {
-		    cgltf_free(data);
-		    return false;
+		    return 0;
 	    }
 
         // The surface indices is a list of the first surface of each mesh. Used to create the render object struct
@@ -560,10 +576,10 @@ namespace BlitzenEngine
 	        return scratch;
         };
 
-        for (size_t i = 0; i < data->meshes_count; ++i)
+        for (size_t i = 0; i < pData->meshes_count; ++i)
 	    {
             // Get the current mesh
-		    const cgltf_mesh& mesh = data->meshes[i];
+		    const cgltf_mesh& mesh = pData->meshes[i];
 
             // Find the first surface of the current mesh. 
             // It is important for the mesh structu and to save the data for later to create the render objects
@@ -579,8 +595,10 @@ namespace BlitzenEngine
             for(size_t j = 0; j < mesh.primitives_count; ++j)
             {
                 const cgltf_primitive& prim = mesh.primitives[j];
-			    BLIT_ASSERT(prim.type == cgltf_primitive_type_triangles);
-			    BLIT_ASSERT(prim.indices);
+			    
+                // Skip primitives that are not triangles
+                if(prim.type != cgltf_primitive_type_triangles || !prim.indices)
+                    continue;
 
 			    size_t vertexCount = prim.attributes[0].data->count;
 
@@ -627,9 +645,9 @@ namespace BlitzenEngine
             }
         }
 
-        for (size_t i = 0; i < data->nodes_count; ++i)
+        for (size_t i = 0; i < pData->nodes_count; ++i)
 	    {
-		    const cgltf_node* node = &data->nodes[i];
+		    const cgltf_node* node = &(pData->nodes[i]);
 		    if (node->mesh)
 		    {
 			    float matrix[16];
@@ -648,7 +666,7 @@ namespace BlitzenEngine
 			    // TODO: better warnings for non-uniform or negative scale
 
                 // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
-			    uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(data, node->mesh)];
+			    uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(pData, node->mesh)];
                 uint32_t transformId = pResources->transforms.GetSize();
 
 			    for (unsigned int j = 0; j < node->mesh->primitives_count; ++j)
@@ -664,7 +682,6 @@ namespace BlitzenEngine
                 pResources->transforms.PushBack(transform);
 		    }
 	    }
-	    cgltf_free(data);
 
         return 1;
     }
