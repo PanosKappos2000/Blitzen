@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vulkanData.h"
+#include "Renderer/blitDDSTextures.h"
 
 namespace BlitzenVulkan
 {
@@ -292,6 +293,9 @@ namespace BlitzenVulkan
     // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 
     // TODO: Replace this with a general purpose function
     void CreateTextureSampler(VkDevice device, VkSampler& sampler);
+
+    // Returns VkFormat based on DDS input to correctly load a texture image
+    VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10);
 
     // Returns a VkSampler used only for depth pyramid creation
     // TODO: Replace this with a general purpose function like the above

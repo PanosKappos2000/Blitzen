@@ -133,6 +133,57 @@ namespace BlitzenVulkan
         VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
     }
 
+    VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10)
+    {
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
+	        return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+	    if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
+	        return VK_FORMAT_BC2_UNORM_BLOCK;
+	    if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
+	        return VK_FORMAT_BC3_UNORM_BLOCK;
+
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
+	    {
+	    	switch (header10.dxgiFormat)
+	    	{
+	    	    case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
+	    	    	return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
+	    	    	return VK_FORMAT_BC2_UNORM_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
+	    	    	return VK_FORMAT_BC3_UNORM_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
+	    	    	return VK_FORMAT_BC4_UNORM_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
+	    	    	return VK_FORMAT_BC4_SNORM_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
+	    	    	return VK_FORMAT_BC5_UNORM_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
+	    	    	return VK_FORMAT_BC5_SNORM_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
+	    	    	return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
+	    	        return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+	    	    	return VK_FORMAT_BC7_UNORM_BLOCK;
+	    	}
+	}
+	return VK_FORMAT_UNDEFINED;
+    }
+
     VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode)
     {
         VkSamplerCreateInfo createInfo {}; 

@@ -9,6 +9,7 @@
 
 namespace BlitzenEngine
 {
+    // Copied form https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-pixelformat
     struct DDS_PIXELFORMAT
     {
       unsigned int dwSize;
@@ -21,6 +22,7 @@ namespace BlitzenEngine
       unsigned int dwABitMask;
     };
 
+    // Copied from https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
     struct DDS_HEADER
     {
       unsigned int dwSize;
@@ -39,6 +41,7 @@ namespace BlitzenEngine
       unsigned int dwReserved2;
     };
 
+    // Copied from https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header-dxt10
     struct DDS_HEADER_DXT10
     {
       unsigned int dxgiFormat;
@@ -48,6 +51,7 @@ namespace BlitzenEngine
       unsigned int miscFlags2;
     };
 
+    // Taken from https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
     enum DXGI_FORMAT
     {
 	    DXGI_FORMAT_BC1_UNORM = 71,
@@ -65,4 +69,8 @@ namespace BlitzenEngine
 	    DXGI_FORMAT_BC7_UNORM = 98,
 	    DXGI_FORMAT_BC7_UNORM_SRGB = 99,
     };
+
+    inline unsigned int FourCC(const char (&str)[5]){
+	    return (unsigned(str[0]) << 0) | (unsigned(str[1]) << 8) | (unsigned(str[2]) << 16) | (unsigned(str[3]) << 24);
+    }
 }

@@ -21,6 +21,7 @@ add_executable(BlitzenEngine
                 src/Renderer/blitzenRenderingResources.cpp
                 src/Renderer/blitRenderer.h
                 src/Renderer/blitzenRenderer.cpp
+                src/Renderer/blitDDSTextures.h
 
                 src/Game/blitObject.h
                 src/Game/blitzenObject.cpp
