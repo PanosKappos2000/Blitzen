@@ -29,6 +29,9 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/quaternion.hpp"
 
+// I have that this is temporary and that I can do my own string formating
+#include <string>
+
 namespace BlitzenEngine
 {
 
@@ -532,6 +535,12 @@ namespace BlitzenEngine
 
     uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets /*=1*/)
     {
+        if(pResources->renderObjectCount >= BLITZEN_MAX_DRAW_OBJECTS)
+        {
+            BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. GLTF LOADING FAILED!")
+            return 0;
+        }
+
         cgltf_options options = {};
 
         // Use a smart pointer so that the cgltf_data gets freed automatically whenever the function returns
@@ -576,6 +585,37 @@ namespace BlitzenEngine
 	        return scratch;
         };
 
+        // I had to fold and use the STL
+        BlitCL::DynamicArray<std::string> texturePaths(pData->textures_count);
+        for (size_t i = 0; i < pData->textures_count; ++i)
+	    {
+		    cgltf_texture* texture = &(pData->textures[i]);
+		    BLIT_ASSERT(texture->image);
+
+		    cgltf_image* image = texture->image;
+		    BLIT_ASSERT(image->uri);
+
+		    std::string ipath = path;
+		    std::string::size_type pos = ipath.find_last_of('/');
+		    if (pos == std::string::npos)
+		    	ipath = "";
+		    else
+		    	ipath = ipath.substr(0, pos + 1);
+
+		    std::string uri = image->uri;
+		    uri.resize(cgltf_decode_uri(&uri[0]));
+		    std::string::size_type dot = uri.find_last_of('.');
+		    if (dot != std::string::npos)
+		    	uri.replace(dot, uri.size() - dot, ".dds");
+
+		    texturePaths[i] = ipath + uri;
+	    }
+
+        for(size_t i = 0; i < texturePaths.GetSize(); ++i)
+        {
+            BLIT_INFO("Texture loaded from: %s", texturePaths[i])
+        }
+
         for (size_t i = 0; i < pData->meshes_count; ++i)
 	    {
             // Get the current mesh
@@ -583,11 +623,11 @@ namespace BlitzenEngine
 
             // Find the first surface of the current mesh. 
             // It is important for the mesh struct and to save the data for later to create the render objects
-            uint32_t firstSurface = pResources->surfaces.GetSize();
+            uint32_t firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
 
             // Give the new mesh the surface that it owns and increment the mesh count
             pResources->meshes[pResources->meshCount].firstSurface = firstSurface;
-            pResources->meshes[pResources->meshCount].surfaceCount = mesh.primitives_count;
+            pResources->meshes[pResources->meshCount].surfaceCount = static_cast<uint32_t>(mesh.primitives_count);
             pResources->meshCount++;
 
             // Pass the first surface here so that it can be accessed by the nodes
@@ -671,10 +711,14 @@ namespace BlitzenEngine
 
                 // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
 			    uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(pData, node->mesh)];
-                uint32_t transformId = pResources->transforms.GetSize();
+                uint32_t transformId = static_cast<uint32_t>(pResources->transforms.GetSize());
 
 			    for (unsigned int j = 0; j < node->mesh->primitives_count; ++j)
 			    {
+                    // If the gltf goes over BLITZEN_MAX_DRAW_OBJECTS after already loading resources, I have no choice but to assert
+                    BLIT_ASSERT_MESSAGE(pResources->renderObjectCount <= BLITZEN_MAX_DRAW_OBJECTS, "While Loading a GLTF, \
+                    additional geometry was loaded which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value")
+
                     RenderObject& current = pResources->renders[pResources->renderObjectCount];
                     current.surfaceId = surfaceOffset + j;
                     current.transformId = transformId;

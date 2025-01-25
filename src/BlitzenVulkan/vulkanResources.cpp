@@ -180,8 +180,9 @@ namespace BlitzenVulkan
 	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
 	    	    	return VK_FORMAT_BC7_UNORM_BLOCK;
 	    	}
-	}
-	return VK_FORMAT_UNDEFINED;
+	    }
+        
+	    return VK_FORMAT_UNDEFINED;
     }
 
     VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode)
