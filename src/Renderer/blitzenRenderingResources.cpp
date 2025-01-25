@@ -76,7 +76,7 @@ namespace BlitzenEngine
         {
             BlitzenVulkan::VulkanRenderer* pRenderer = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
 
-            pRenderer->UploadTexture(current);
+            pRenderer->UploadTexture(current, VK_FORMAT_R8G8B8A8_UNORM);
         }
 
         // Return 1 if the data from the file was loaded and 0 otherwise
@@ -533,7 +533,8 @@ namespace BlitzenEngine
         CreateTestGameObjects(pResources, drawCount);
     }
 
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets /*=1*/)
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets /*=1*/, 
+    void* pVulkan /*=nullptr*/)
     {
         if(pResources->renderObjectCount >= BLITZEN_MAX_DRAW_OBJECTS)
         {
@@ -546,8 +547,7 @@ namespace BlitzenEngine
         // Use a smart pointer so that the cgltf_data gets freed automatically whenever the function returns
         // Might be possible to just have this on the stack though, I don't know why I put it on the heap
         // TODO: Test
-	    BlitCL::SmartPointer<cgltf_data> gltfData;
-        cgltf_data* pData = gltfData.Data();
+        cgltf_data* pData = nullptr;
 
 	    cgltf_result res = cgltf_parse_file(&options, path, &pData);
 	    if (res != cgltf_result_success)
@@ -555,6 +555,8 @@ namespace BlitzenEngine
             BLIT_WARN("Failed to load gltf file: %s", path)
 		    return 0;
         }
+
+        BlitCL::SmartPointer<cgltf_data> gltfData(pData, cgltf_free);
 
         res = cgltf_load_buffers(&options, pData, path);
 	    if (res != cgltf_result_success)
@@ -567,9 +569,6 @@ namespace BlitzenEngine
 	    {
 		    return 0;
 	    }
-
-        // The surface indices is a list of the first surface of each mesh. Used to create the render object struct
-        BlitCL::DynamicArray<uint32_t> surfaceIndices;
 
         // Defining a lambda here for finding the accessor since it will probably not be used outside of this
         auto findAccessor = [](const cgltf_primitive* prim,  cgltf_attribute_type type, cgltf_int index = 0){
@@ -590,10 +589,12 @@ namespace BlitzenEngine
         for (size_t i = 0; i < pData->textures_count; ++i)
 	    {
 		    cgltf_texture* texture = &(pData->textures[i]);
-		    BLIT_ASSERT(texture->image);
+		    if(!texture->image)
+                break;
 
 		    cgltf_image* image = texture->image;
-		    BLIT_ASSERT(image->uri);
+		    if(!image->uri)
+                break;
 
 		    std::string ipath = path;
 		    std::string::size_type pos = ipath.find_last_of('/');
@@ -605,6 +606,7 @@ namespace BlitzenEngine
 		    std::string uri = image->uri;
 		    uri.resize(cgltf_decode_uri(&uri[0]));
 		    std::string::size_type dot = uri.find_last_of('.');
+
 		    if (dot != std::string::npos)
 		    	uri.replace(dot, uri.size() - dot, ".dds");
 
@@ -613,8 +615,32 @@ namespace BlitzenEngine
 
         for(size_t i = 0; i < texturePaths.GetSize(); ++i)
         {
-            BLIT_INFO("Texture loaded from: %s", texturePaths[i])
+            DDS_HEADER header;
+            DDS_HEADER_DXT10 header10;
+
+            // The data from the file will be written to this and passed to Vulkan
+            void* pDataForVulkan = nullptr;
+
+            // Create a placeholder image format
+            unsigned int imageFormat = 0;
+
+            // Add the texture to the vulkan renderer
+            if(pVulkan && LoadDDSImage(texturePaths[i].c_str(), header, header10, 1, pDataForVulkan, imageFormat))
+            {
+                // Cast the placeholder format to a VkFormat
+                VkFormat vulkanImageFormat = static_cast<VkFormat>(imageFormat);
+
+                BlitzenVulkan::VulkanRenderer* pVk = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
+                pVk->UploadDDSTexture(header, header10, vulkanImageFormat, pDataForVulkan);
+            }
+            else
+            {
+                BLIT_ERROR("GLTF texures failed to load")
+            }
         }
+
+        // The surface indices is a list of the first surface of each mesh. Used to create the render object struct
+        BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
 
         for (size_t i = 0; i < pData->meshes_count; ++i)
 	    {
@@ -631,7 +657,7 @@ namespace BlitzenEngine
             pResources->meshCount++;
 
             // Pass the first surface here so that it can be accessed by the nodes
-		    surfaceIndices.PushBack(firstSurface);
+		    surfaceIndices[i] = firstSurface;
 
             for(size_t j = 0; j < mesh.primitives_count; ++j)
             {

@@ -258,5 +258,6 @@ namespace BlitzenEngine
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets = 1);
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets = 1, 
+    void* pVulkan = nullptr);
 }

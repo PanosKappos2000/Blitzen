@@ -71,6 +71,11 @@ namespace BlitzenEngine
     };
 
     inline unsigned int FourCC(const char (&str)[5]){
-	    return (unsigned(str[0]) << 0) | (unsigned(str[1]) << 8) | (unsigned(str[2]) << 16) | (unsigned(str[3]) << 24);
+	      return (unsigned(str[0]) << 0) | (unsigned(str[1]) << 8) | (unsigned(str[2]) << 16) | (unsigned(str[3]) << 24);
     }
+
+    uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
+    uint8_t loadForVulkan = 0, void* pDataForVulkan = nullptr, unsigned int vulkanImageFormat = 0);
+
+    size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize);
 }

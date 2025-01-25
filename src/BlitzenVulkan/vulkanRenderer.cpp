@@ -125,15 +125,30 @@ namespace BlitzenVulkan
         CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidDescriptorLayout, 1, &pushConstant);
     }
 
-    void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture)
+    void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format)
     {
         loadedTextures.Resize(loadedTextures.GetSize() + 1);
+
         CreateTextureImage(reinterpret_cast<void*>(newTexture.pTextureData), m_device, m_allocator, 
         loadedTextures.Back().image, 
-        {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, VK_FORMAT_R8G8B8A8_UNORM, 
+        {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, format, 
         VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
         
         loadedTextures.Back().sampler = m_placeholderSampler;
+    }
+
+    uint8_t VulkanRenderer::UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, 
+    BlitzenEngine::DDS_HEADER_DXT10& header10, VkFormat format, void* pData)
+    {
+        loadedTextures.Resize(loadedTextures.GetSize() + 1);
+
+        // Find the size of the DDS image
+        unsigned int blockSize =(format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || 
+        format == VK_FORMAT_BC4_SNORM_BLOCK || 
+        format == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
+	    size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+
+        return 1;
     }
 
     void VulkanRenderer::SetupForRendering(GPUData& gpuData, BlitzenEngine::CullingData& cullData)

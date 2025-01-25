@@ -127,7 +127,12 @@ namespace BlitzenVulkan
         ------------------------------------------------------------------------------------------------------------ */
         void SetupForRendering(GPUData& gpuData, BlitzenEngine::CullingData& cullData);
 
-        void UploadTexture(BlitzenEngine::TextureStats& newTexture);
+        // Prototype function for textures, used with stb_image
+        void UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format);
+
+        // Function for DDS texture loading
+        uint8_t UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, VkFormat format, 
+        void* pData);
 
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::RenderContext& pRenderData);
@@ -289,6 +294,11 @@ namespace BlitzenVulkan
     // The 1st parameter should be the loaded image data that should be passed to the image resource
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
     VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
+
+    // Texture image function used with DDS textures specifically
+    void CreateTextureImage(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& hader10, 
+    void* pData, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
+    VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue);
 
     // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 
     // TODO: Replace this with a general purpose function

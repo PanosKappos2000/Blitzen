@@ -259,23 +259,52 @@ namespace BlitCL
 
     
 
-    template<typename T, BlitzenCore::AllocationType A = BlitzenCore::AllocationType::SmartPointer>
+    template<typename T, // The type of pointer stored
+    BlitzenCore::AllocationType A = BlitzenCore::AllocationType::SmartPointer, // The allocation type that the allocator should keep track of
+    typename Ret = void> // The type that the custom destructor returns>
     class SmartPointer
     {
     public:
 
-        SmartPointer()
+        typedef Ret(*DstrPfn)(T*);
+
+        SmartPointer(T* pDataToCopy = nullptr, DstrPfn customDestructor = nullptr)
         {
+            // Allocated on the heap
             m_pData = BlitzenCore::BlitConstructAlloc<T>(A);
+
+            if(pDataToCopy)
+            {
+                // Copy the data over to the member variable
+                BlitzenCore::BlitMemCopy(m_pData, pDataToCopy, sizeof(T));
+                // Redirect the pointer, in case the user wants to use it again
+                pDataToCopy = m_pData;
+            }
+
+            m_customDestructor = customDestructor;
         }
 
         inline T* Data() { return m_pData; }
 
         ~SmartPointer()
         {
-            BlitzenCore::BlitDestroyAlloc(A, m_pData);
+            // Call the additional destructor function if it was given on construction
+            if(m_customDestructor)
+            {
+                m_customDestructor(m_pData);
+
+                // The smart pointer trusts that the custom destructor did its job and free the block of memory
+                BlitzenCore::LogFree(A, sizeof(T));
+            }
+
+            // Does the job using delete, if the user did not provide a custom destructor
+            else
+                BlitzenCore::BlitDestroyAlloc(A, m_pData);
         }
     private:
         T* m_pData;
+
+        // Additional destructor function currently fixed type (void(*)(T*))
+        DstrPfn m_customDestructor;
     };
 }
