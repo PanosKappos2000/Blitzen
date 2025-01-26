@@ -615,27 +615,33 @@ namespace BlitzenEngine
 
         for(size_t i = 0; i < texturePaths.GetSize(); ++i)
         {
-            DDS_HEADER header;
-            DDS_HEADER_DXT10 header10;
+            // Don't go over the texture limit, might want to throw a warning here
+            if(pResources->textureCount >= BLIT_MAX_TEXTURE_COUNT)
+                break;
+
+            DDS_HEADER header = {};
+            DDS_HEADER_DXT10 header10 = {};
 
             // The data from the file will be written to this and passed to Vulkan
-            void* pDataForVulkan = nullptr;
+            TextureStats& texture = pResources->textures[pResources->textureCount];
 
             // Create a placeholder image format
             unsigned int imageFormat = 0;
 
-            // Add the texture to the vulkan renderer
-            if(pVulkan && LoadDDSImage(texturePaths[i].c_str(), header, header10, 1, pDataForVulkan, imageFormat))
+            // Add the texture to the vulkan renderer if a pointer for it was passed
+            if(pVulkan)
             {
-                // Cast the placeholder format to a VkFormat
-                VkFormat vulkanImageFormat = static_cast<VkFormat>(imageFormat);
-
-                BlitzenVulkan::VulkanRenderer* pVk = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
-                pVk->UploadDDSTexture(header, header10, vulkanImageFormat, pDataForVulkan);
-            }
-            else
-            {
-                BLIT_ERROR("GLTF texures failed to load")
+                BlitzenVulkan::VulkanRenderer* pRenderer = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
+                if(pRenderer->UploadDDSTexture(header, header10, texture.pTextureData, texturePaths[i].c_str()))
+                {
+                    texture.textureWidth = header.dwWidth;
+                    texture.textureHeight = header.dwHeight;
+                    texture.textureTag = pResources->textureCount++;
+                }
+                else
+                {
+                    BLIT_INFO("GLTF texture from file: %s failed to load for Vulkan", texturePaths[i].c_str())
+                }
             }
         }
 

@@ -76,25 +76,33 @@ namespace BlitzenVulkan
     }
 
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
-    VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps /*= 0*/)
+    VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels /*=1*/)
     {
+        // Create a buffer that will hold the data of the texture
         VkDeviceSize imageSize = extent.width * extent.height * extent.depth * 4;
         AllocatedBuffer stagingBuffer;
-        CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, imageSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-
+        CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+        imageSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // Copy the data to the buffer
         BlitzenCore::BlitMemCopy(stagingBuffer.allocationInfo.pMappedData, data, imageSize);
 
-        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        // Create a Vulkan image, that will have VK_IMAGE_USAGE_TRANSFER_BIT as well as the usage provided
+        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels);
 
+        // Start recording commands
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        // Transition the layout of the image to optimal for data transfer
         VkImageMemoryBarrier2 imageMemoryBarrier{};
         ImageMemoryBarrier(image.image, imageMemoryBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
         VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
+        // Copy the buffer to the image
         CopyBufferToImage(commandBuffer, stagingBuffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, extent);
 
+        // Trasition the layout of the image to be used as a texture
         VkImageMemoryBarrier2 secondTransitionBarrier{};
         ImageMemoryBarrier(image.image, secondTransitionBarrier, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
         VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE, 
@@ -102,10 +110,62 @@ namespace BlitzenVulkan
         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &secondTransitionBarrier);
 
+        // Submit the command and wait for the queue to finish
         SubmitCommandBuffer(queue, commandBuffer);
         vkQueueWaitIdle(queue);
 
+        // Destroy the buffer, it is no longer needed
         vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+    }
+
+    void CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
+    VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels)
+    {
+        // Create an image for the texture data to be copied into. 
+        // Adds the VK_IMAGE_USAGE_TRANSFER_DST_BIT, so that it can accept the data transfer from the buffer
+        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels);
+
+        // Get the initial offset for the first mip level to be copied
+        uint32_t bufferOffset = 0;
+        uint32_t mipWidth = extent.width;
+        uint32_t mipHeight = extent.height;
+
+        uint32_t blockSize = (format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || format == VK_FORMAT_BC4_SNORM_BLOCK 
+		|| format == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
+
+        // Create an array that will hold the copy regions for all mip levels
+        BlitCL::DynamicArray<VkBufferImageCopy2> copyRegions(mipLevels);
+
+        // Create the copy regions
+        for(uint8_t i = 0; i < mipLevels; ++i)
+        {
+            CreateCopyBufferToImageRegion(copyRegions[i], {mipWidth, mipHeight, 1}, {0, 0, 0}, VK_IMAGE_ASPECT_COLOR_BIT, 
+            i, 0, 1, bufferOffset, 0, 0);
+
+            bufferOffset += ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * blockSize;
+		    mipWidth = mipWidth > 1 ? mipWidth / 2 : 1;
+		    mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
+        }
+
+        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        // Create an image barrier for transiton to transfer dst optimal layout
+        VkImageMemoryBarrier2 transitionToTransferDSToptimal{};
+        ImageMemoryBarrier(image.image, transitionToTransferDSToptimal, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+        VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &transitionToTransferDSToptimal);
+
+        CopyBufferToImage(commandBuffer, buffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, copyRegions.Data());
+
+        VkImageMemoryBarrier2 transitionImageToShaderReadOptimal{};
+        ImageMemoryBarrier(image.image, transitionImageToShaderReadOptimal, VK_PIPELINE_STAGE_2_COPY_BIT, 
+        VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &transitionImageToShaderReadOptimal);
+
+        SubmitCommandBuffer(queue, commandBuffer);
+        vkQueueWaitIdle(queue);
     }
 
     void CreateTextureSampler(VkDevice device, VkSampler& sampler)
@@ -237,6 +297,7 @@ namespace BlitzenVulkan
         blitImage.regionCount = 1;
         blitImage.pRegions = &imageRegion;
         blitImage.filter = filter;
+
         vkCmdBlitImage2(commandBuffer, &blitImage);
     }
 
@@ -266,7 +327,7 @@ namespace BlitzenVulkan
         copyRegion.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
         copyRegion.pNext = nullptr;
         copyRegion.imageExtent = extent;
-        // most things here are pretty hardcoded, but I don't know if I'll actually needs this again anytime soon
+        
         copyRegion.imageOffset = { 0, 0, 0 };
         copyRegion.imageSubresource.mipLevel = 0;
         copyRegion.imageSubresource.baseArrayLayer = 0;
@@ -285,6 +346,38 @@ namespace BlitzenVulkan
         copyInfo.regionCount = 1;
         copyInfo.pRegions = &copyRegion;
         vkCmdCopyBufferToImage2(commandBuffer, &copyInfo);
+    }
+
+    void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout imageLayout, 
+    uint32_t bufferImageCopyRegionCount, VkBufferImageCopy2* bufferImageCopyRegions)
+    {
+        VkCopyBufferToImageInfo2 copyInfo{};
+        copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2;
+        copyInfo.pNext = nullptr;
+        copyInfo.srcBuffer = srcBuffer;
+        copyInfo.dstImage = dstImage;
+        copyInfo.dstImageLayout = imageLayout;
+        copyInfo.regionCount = bufferImageCopyRegionCount;
+        copyInfo.pRegions = bufferImageCopyRegions;
+
+        vkCmdCopyBufferToImage2(commandBuffer, &copyInfo);
+    }
+
+    void CreateCopyBufferToImageRegion(VkBufferImageCopy2& result, VkExtent3D imageExtent, VkOffset3D imageOffset, 
+    VkImageAspectFlags aspectMask, uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkDeviceSize bufferOffset, 
+    VkDeviceSize bufferImageHeight, VkDeviceSize bufferRowLength)
+    {
+        result.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
+        result.pNext = nullptr;
+        result.imageExtent = imageExtent;
+        result.imageOffset = imageOffset;
+        result.imageSubresource.aspectMask = aspectMask;
+        result.imageSubresource.mipLevel = mipLevel;
+        result.imageSubresource.baseArrayLayer = baseArrayLayer;
+        result.imageSubresource.layerCount = layerCount;
+        result.bufferOffset = bufferOffset;
+        result.bufferImageHeight = bufferImageHeight;
+        result.bufferRowLength = bufferRowLength;
     }
 
     void AllocatedImage::CleanupResources(VmaAllocator allocator, VkDevice device)

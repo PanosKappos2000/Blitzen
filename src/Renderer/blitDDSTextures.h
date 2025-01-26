@@ -75,7 +75,7 @@ namespace BlitzenEngine
     }
 
     uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
-    uint8_t loadForVulkan = 0, void* pDataForVulkan = nullptr, unsigned int vulkanImageFormat = 0);
+    unsigned int& vulkanImageFormat, uint8_t loadForVulkan = 0, void* pDataForVulkan = nullptr);
 
     size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize);
 }

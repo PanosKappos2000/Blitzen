@@ -132,23 +132,46 @@ namespace BlitzenVulkan
         CreateTextureImage(reinterpret_cast<void*>(newTexture.pTextureData), m_device, m_allocator, 
         loadedTextures.Back().image, 
         {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, format, 
-        VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 0);
+        VK_IMAGE_USAGE_SAMPLED_BIT, m_placeholderCommands, m_graphicsQueue.handle, 1);
         
         loadedTextures.Back().sampler = m_placeholderSampler;
     }
 
-    uint8_t VulkanRenderer::UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, 
-    BlitzenEngine::DDS_HEADER_DXT10& header10, VkFormat format, void* pData)
+    uint8_t VulkanRenderer::UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
+    void* pData, const char* filepath)
     {
-        loadedTextures.Resize(loadedTextures.GetSize() + 1);
+        BlitzenVulkan::AllocatedBuffer stagingBuffer;
+        CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VMA_MEMORY_USAGE_CPU_TO_GPU, 128 * 1024 * 1024, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        pData = stagingBuffer.allocationInfo.pMappedData;
 
-        // Find the size of the DDS image
-        unsigned int blockSize =(format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || 
-        format == VK_FORMAT_BC4_SNORM_BLOCK || 
-        format == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
-	    size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+        // Call the function to initialize header, header10 for DDS, get the data of the image and the image format
+        unsigned int format = VK_FORMAT_UNDEFINED;
+        uint8_t load = BlitzenEngine::LoadDDSImage(filepath, header, header10, format, 1, pData);
 
-        return 1;
+        // If the previous function returns successfuly load the texture
+        if(load)
+        {
+            // Cast the placeholder format to a VkFormat
+            VkFormat vkFormat = static_cast<VkFormat>(format);
+
+            loadedTextures.Resize(loadedTextures.GetSize() + 1);
+
+            CreateTextureImage(stagingBuffer, m_device, m_allocator, loadedTextures.Back().image, 
+            {header.dwWidth, header.dwHeight, 1}, vkFormat, VK_IMAGE_USAGE_SAMPLED_BIT, 
+            m_placeholderCommands, m_graphicsQueue.handle, header.dwMipMapCount);
+        
+            loadedTextures.Back().sampler = m_placeholderSampler;
+
+            // Destroy the buffer before returning
+            vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+
+            return 1;
+        }
+
+        vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+
+        return 0;
     }
 
     void VulkanRenderer::SetupForRendering(GPUData& gpuData, BlitzenEngine::CullingData& cullData)

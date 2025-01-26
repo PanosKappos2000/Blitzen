@@ -5,17 +5,19 @@
 
 namespace BlitzenEngine
 {
-    uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10,
-    uint8_t loadForVulkan /*=0*/, void* pDataForVulkan /*=nullptr*/, unsigned int vulkanImageFormat /*=VK_UNDEFINED*/)
+    uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
+	unsigned int& vulkanImageFormat, uint8_t loadForVulkan /*=0*/, void* pDataForVulkan /*=nullptr*/)
     {
         FILE* file = fopen(filepath, "rb");
 
-	    if (!file)
-		    return 0;
+		if (!file)
+		{
+			return 0;
+		}
 
         // Create a smart pointer that will call fClose automatically
         // This is overcomplicating things for no reason of course, I could just call fClose but I am just testing out my smart pointer 
-	    BlitCL::SmartPointer<FILE, BlitzenCore::AllocationType::SmartPointer, int> filePtr(file, fclose);
+	    //BlitCL::SmartPointer<FILE, BlitzenCore::AllocationType::SmartPointer, int> filePtr(file, fclose);
 
 	    unsigned int magic = 0;
 
@@ -37,7 +39,7 @@ namespace BlitzenEngine
 	    if (header.ddspf.dwFourCC == FourCC("DX10") && header10.resourceDimension != DDS_DIMENSION_TEXTURE2D)
 		    return 0;
 
-        if(pDataForVulkan)
+        if(loadForVulkan)
         {
             vulkanImageFormat = (unsigned int)BlitzenVulkan::GetDDSVulkanFormat(header, header10);
 
@@ -47,7 +49,8 @@ namespace BlitzenEngine
             }
 
             unsigned int blockSize =
-		    (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
+		    (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK 
+			|| vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
 	        size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
 
             size_t readSize = fread(pDataForVulkan, 1, imageSize, file);
@@ -59,6 +62,7 @@ namespace BlitzenEngine
 		        return 0;
         }
         
+		fclose(file);// TODO: Temporary I want to use the smart pointer instead of this
         return 1;
     }
 

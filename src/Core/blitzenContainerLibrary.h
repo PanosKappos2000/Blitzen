@@ -291,7 +291,8 @@ namespace BlitCL
             // Call the additional destructor function if it was given on construction
             if(m_customDestructor)
             {
-                m_customDestructor(m_pData);
+                if(m_pData)
+                    m_customDestructor(m_pData);
 
                 // The smart pointer trusts that the custom destructor did its job and free the block of memory
                 BlitzenCore::LogFree(A, sizeof(T));

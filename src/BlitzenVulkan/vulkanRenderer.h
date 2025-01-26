@@ -131,8 +131,8 @@ namespace BlitzenVulkan
         void UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format);
 
         // Function for DDS texture loading
-        uint8_t UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, VkFormat format, 
-        void* pData);
+        uint8_t UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
+        void* pData, const char* filepath);
 
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::RenderContext& pRenderData);
@@ -293,12 +293,12 @@ namespace BlitzenVulkan
     // Allocate an image resource to be used specifically as texture. 
     // The 1st parameter should be the loaded image data that should be passed to the image resource
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
-    VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t loadMipMaps = 0);
+    VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels = 1);
 
-    // Texture image function used with DDS textures specifically
-    void CreateTextureImage(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& hader10, 
-    void* pData, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
-    VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue);
+    // This function is similar to the above but it gives its own buffer and mip levels are required. 
+    // The buffer should already hold the texture data in pMappedData
+    void CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
+    VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels);
 
     // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 
     // TODO: Replace this with a general purpose function
@@ -323,6 +323,14 @@ namespace BlitzenVulkan
 
     // Copies data held by a buffer to an image. Used in texture image creation to hold the texture data in the buffer and then pass it to the image
     void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage image, VkImageLayout imageLayout, VkExtent3D extent);
+
+    void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout imageLayout, 
+    uint32_t bufferImageCopyRegionCount, VkBufferImageCopy2* bufferImageCopyRegions);
+
+    // Create a copy VkBufferImageCopy2 to be passed to the array that will be passed to CopyBufferToImage function above
+    void CreateCopyBufferToImageRegion(VkBufferImageCopy2& result, VkExtent3D imageExtent, VkOffset3D imageOffset, 
+    VkImageAspectFlags aspectMask, uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkDeviceSize bufferOffset, 
+    VkDeviceSize bufferImageHeight, VkDeviceSize bufferRowLength);
 
     // Allocates a descriptor set that is passed without using push descriptors
     void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
