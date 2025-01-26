@@ -185,9 +185,9 @@ namespace BlitzenVulkan
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         samplerInfo.mipLodBias = 0.f;
-        samplerInfo.maxLod = 0.f;
+        samplerInfo.maxLod = 16.f;
         samplerInfo.minLod = 0.f;
 
         VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
@@ -365,7 +365,7 @@ namespace BlitzenVulkan
 
     void CreateCopyBufferToImageRegion(VkBufferImageCopy2& result, VkExtent3D imageExtent, VkOffset3D imageOffset, 
     VkImageAspectFlags aspectMask, uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkDeviceSize bufferOffset, 
-    VkDeviceSize bufferImageHeight, VkDeviceSize bufferRowLength)
+    uint32_t bufferImageHeight, uint32_t bufferRowLength)
     {
         result.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
         result.pNext = nullptr;
@@ -422,6 +422,7 @@ namespace BlitzenVulkan
         write.dstBinding = binding;
         write.descriptorType = descriptorType;
         write.descriptorCount = descriptorCount;
+        //write.dstArrayElement = 
         write.pImageInfo = pImageInfos;
     }
 

@@ -65,10 +65,10 @@ namespace BlitzenEngine
             pResources->textureTable.Set(texName, &current);
             pResources->textureCount++;
         }
-        // If the load failed give the default texture
+        // If the load failed give it a texture tag of zero
         else
         {
-            current.textureTag = BLIT_DEFAULT_TEXTURE_COUNT - 1;
+            current.textureTag = 0;
         }
 
         // If the vulkan renderer was given to the function and the data from the file was successfully loaded, the texture is passed to the renderer
@@ -85,26 +85,9 @@ namespace BlitzenEngine
 
     void LoadTestTextures(RenderingResources* pResources, void* pVulkan, void* pDx12)
     {
-        // Default texture at index 0
-        uint32_t blitTexCol = glm::packUnorm4x8(glm::vec4(0.3, 0, 0.6, 1));
-        uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
-	    uint32_t pixels[16 * 16]; 
-	    for (int x = 0; x < 16; x++) 
-        {
-	    	for (int y = 0; y < 16; y++) 
-            {
-	    		pixels[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : blitTexCol;
-	    	}
-	    }
-        pResources->textures[0].pTextureData = reinterpret_cast<uint8_t*>(pixels);
-        pResources->textures[0].textureHeight = 1;
-        pResources->textures[0].textureWidth = 1;
-        pResources->textures[0].textureChannels = 4;
-        pResources->textureTable.Set(BLIT_DEFAULT_TEXTURE_NAME, &(pResources->textures[0]));
-
         // This is hardcoded now
-        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture", pVulkan, nullptr);
-        LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture2", pVulkan, nullptr);
+        LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture", pVulkan, nullptr);
+        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture2", pVulkan, nullptr);
         LoadTextureFromFile(pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan, nullptr);
     }
 
@@ -129,13 +112,6 @@ namespace BlitzenEngine
 
     void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12)
     {
-        // Manually load a default material at index 0
-        pResources->materials[0].diffuseColor = BlitML::vec4(1.f);
-        pResources->materials[0].diffuseTextureTag = pResources->textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &pResources->textures[0])->textureTag;
-        pResources->materials[0].specularTextureTag = pResources->textureTable.Get(BLIT_DEFAULT_TEXTURE_NAME, &pResources->textures[0])->textureTag;
-        pResources->materials[0].materialId = 0;
-        pResources->materialTable.Set(BLIT_DEFAULT_MATERIAL_NAME, &(pResources->materials[0]));
-
         // Test code
         BlitML::vec4 color1(0.1f);
         BlitML::vec4 color2(0.2f);
@@ -384,6 +360,9 @@ namespace BlitzenEngine
         newSurface.center = center;
         newSurface.radius = radius;
 
+        // Default material
+        newSurface.materialId = 0;
+
         // Add the resources to the global surface array so that it is added to the GPU buffer
         pResources->surfaces.PushBack(newSurface);
     }
@@ -584,6 +563,9 @@ namespace BlitzenEngine
 	        return scratch;
         };
 
+        // Before loading textures save the previous texture size, to use for indexing
+        size_t previousTextureSize = pResources->textureCount;
+
         // I had to fold and use the STL
         BlitCL::DynamicArray<std::string> texturePaths(pData->textures_count);
         for (size_t i = 0; i < pData->textures_count; ++i)
@@ -636,13 +618,33 @@ namespace BlitzenEngine
                 {
                     texture.textureWidth = header.dwWidth;
                     texture.textureHeight = header.dwHeight;
-                    texture.textureTag = pResources->textureCount++;
+                    texture.textureTag = static_cast<uint32_t>(pResources->textureCount);
+
+                    pResources->textureCount++;
                 }
                 else
                 {
                     BLIT_INFO("GLTF texture from file: %s failed to load for Vulkan", texturePaths[i].c_str())
                 }
             }
+        }
+
+        // Save the previous material count
+        size_t previousMaterialCount = pResources->materialCount;
+        // Create one BlitzenEngine::Material for each material in the gltf
+        for (size_t i = 0; i < pData->materials_count; ++i)
+        {
+            cgltf_material& cgltf_mat = pData->materials[i];
+
+            Material& mat = pResources->materials[pResources->materialCount++];
+            mat.materialId = pResources->materialCount - 1;
+
+            mat.diffuseTextureTag = mat.diffuseTextureTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
+            previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_metallic_roughness.base_color_texture.texture)
+            : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
+            previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture)
+            : 0;
+
         }
 
         // The surface indices is a list of the first surface of each mesh. Used to create the render object struct
@@ -715,6 +717,13 @@ namespace BlitzenEngine
 			    cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
 
                 LoadSurface(pResources, vertices, indices, buildMeshlets);
+
+                // Get the material index and pass it to the surface if there is material index
+                if(prim.material)
+                {
+                    pResources->surfaces.Back().materialId = 
+                    pResources->materials[previousMaterialCount + cgltf_material_index(pData, prim.material)].materialId;
+                }
             }
         }
 

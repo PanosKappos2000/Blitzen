@@ -468,35 +468,56 @@ namespace BlitzenVulkan
 
             // Standard device features
             VkPhysicalDeviceFeatures deviceFeatures{};
-            // Will allow the renderer to make one draw call for multiple objects using vkCmdDrawIndirect or the indexed version
+
+            // Allows the renderer to use one vkCmdDrawIndrect type call for multiple objects
             deviceFeatures.multiDrawIndirect = true;
-            deviceInfo.pEnabledFeatures = nullptr;// Enabled features will be given to VkPhysicalDeviceFeatures2 and passed to the pNext chain
 
             // Extended device features
             VkPhysicalDeviceVulkan11Features vulkan11Features{};
             vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+
             vulkan11Features.shaderDrawParameters = true;
+
             // Allows use of 16 bit types inside storage buffers in the shaders
             vulkan11Features.storageBuffer16BitAccess = true;
 
             VkPhysicalDeviceVulkan12Features vulkan12Features{};
             vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            // Allows to use vkGetBufferDeviceAddress to get a pointer to a buffer that can be given to the shaders
+
+            // Allow the application to get the address of a buffer and pass it to the shaders
             vulkan12Features.bufferDeviceAddress = true;
+
+            // Allows the shaders to index into array held by descriptors, needed for textures
             vulkan12Features.descriptorIndexing = true;
+
             // Allows shaders to use array with undefined size for descriptors, needed for textures
             vulkan12Features.runtimeDescriptorArray = true;
+
+            // Allows the use of float16_t type in the shaders
             vulkan12Features.shaderFloat16 = true;
+
+            // Allows the use of 8 bit integers in shaders
             vulkan12Features.shaderInt8 = true;
+
+            // Allows storage buffers to have 8bit data
             vulkan12Features.storageBuffer8BitAccess = true;
+
+            // Allows the use of draw indirect count, which has the power to completely removes unneeded draw calls
             vulkan12Features.drawIndirectCount = true;
+
+            // This is needed to create a sampler for the depth pyramid that will be used for occlusion culling
             vulkan12Features.samplerFilterMinmax = true;
 
             VkPhysicalDeviceVulkan13Features vulkan13Features{};
             vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            // Using dynamic rendering to make things slightly easier(Get rid of render passes and framebuffer, allows definition of rendering attachments separately)
+
+            // Dynamic rendering removes the need for VkRenderPass and allows the creation of rendering attachmets at draw time
             vulkan13Features.dynamicRendering = true;
+
+            // Used for PipelineBarrier2, better sync structure API
             vulkan13Features.synchronization2 = true;
+
+            // Don't remember what this is
             vulkan13Features.maintenance4 = true;
 
             VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
@@ -513,6 +534,7 @@ namespace BlitzenVulkan
             vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
             vulkanExtendedFeatures.features = deviceFeatures;
 
+            // Add all features structs to the pNext chain
             deviceInfo.pNext = &vulkanExtendedFeatures;
             vulkanExtendedFeatures.pNext = &vulkan11Features;
             vulkan11Features.pNext = &vulkan12Features;

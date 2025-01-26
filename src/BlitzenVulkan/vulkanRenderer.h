@@ -330,7 +330,7 @@ namespace BlitzenVulkan
     // Create a copy VkBufferImageCopy2 to be passed to the array that will be passed to CopyBufferToImage function above
     void CreateCopyBufferToImageRegion(VkBufferImageCopy2& result, VkExtent3D imageExtent, VkOffset3D imageOffset, 
     VkImageAspectFlags aspectMask, uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkDeviceSize bufferOffset, 
-    VkDeviceSize bufferImageHeight, VkDeviceSize bufferRowLength);
+    uint32_t bufferImageHeight, uint32_t bufferRowLength);
 
     // Allocates a descriptor set that is passed without using push descriptors
     void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 

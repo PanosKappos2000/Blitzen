@@ -402,22 +402,25 @@ namespace BlitzenVulkan
 
         vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
 
-
+        // The descriptor will have multiple descriptors of combined image sampler type. The count is derived from the amount of textures loaded
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        // This would normally be 1, but an old machine that I tested this on, failed because of this. I will look at the documentation for an explanation
-        poolSize.descriptorCount = 5;
+        poolSize.descriptorCount = loadedTextures.GetSize();
+
+        // Create the descriptor pool for the textures
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.pNext = nullptr;
-        poolInfo.maxSets = 1;
+        poolInfo.maxSets = loadedTextures.GetSize();
         poolInfo.poolSizeCount = 1;
         poolInfo.pPoolSizes = &poolSize;
         VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, m_pCustomAllocator, &m_currentStaticBuffers.textureDescriptorPool))
  
+        // Allocate the descriptor set that will be used to bind the textures
         AllocateDescriptorSets(m_device, m_currentStaticBuffers.textureDescriptorPool, &m_currentStaticBuffers.textureDescriptorSetlayout, 
         1, &m_currentStaticBuffers.textureDescriptorSet);
 
+        // Create image infos for every texture to be passed to the VkWriteDescriptorSet
         BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(loadedTextures.GetSize());
         for(size_t i = 0; i < imageInfos.GetSize(); ++i)
         {
@@ -426,6 +429,7 @@ namespace BlitzenVulkan
             imageInfos[i].sampler = loadedTextures[i].sampler;
         }
 
+        // Update every descriptor set so that it is available at draw time
         VkWriteDescriptorSet write{};
         WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_currentStaticBuffers.textureDescriptorSet, 
         static_cast<uint32_t>(imageInfos.GetSize()), 0);

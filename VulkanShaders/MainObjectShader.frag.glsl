@@ -33,5 +33,9 @@ void main()
     vec4 specular = vec4(vec3(shaderData.sunColor * specularFactor), specularSampler.a);
     specular *= specularSampler;
 
-    finalColor = vec4(normal * 0.5 + vec3(0.5), 1.0);
+    // Not optimal but I am going to keep this for the moment
+    if(materialTag != 0)
+        finalColor = diffuseSampler;
+    else
+        finalColor = vec4(normal, 1);
 }

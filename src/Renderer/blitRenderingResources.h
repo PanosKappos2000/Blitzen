@@ -5,13 +5,9 @@
 #include "Game/blitObject.h" // I probably do not want to include this here
 
 #define BLIT_MAX_TEXTURE_COUNT      5000
-#define BLIT_DEFAULT_TEXTURE_NAME   "blit_default_tex"
 #define BLIT_TEXTURE_NAME_MAX_SIZE  512
-#define BLIT_DEFAULT_TEXTURE_COUNT  1
 
 #define BLIT_MAX_MATERIAL_COUNT     10000
-#define BLIT_DEFAULT_MATERIAL_NAME  "blit_default_material"
-#define BLIT_DEFAULT_MATERIAL_COUNT  1
 
 #define BLIT_MAX_MESH_LOD           8
 #define BLIT_MAX_MESH_COUNT         100'000
@@ -171,11 +167,11 @@ namespace BlitzenEngine
 
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
         BlitCL::PointerTable<TextureStats> textureTable;
-        size_t textureCount = BLIT_DEFAULT_TEXTURE_COUNT;
+        size_t textureCount = 0;
 
         Material materials[BLIT_MAX_MATERIAL_COUNT];
         BlitCL::PointerTable<Material> materialTable;
-        size_t materialCount = BLIT_DEFAULT_MATERIAL_COUNT;
+        size_t materialCount = 0;
 
         // Arrays that hold all necessary geometry data
         BlitCL::DynamicArray<Vertex> vertices;
