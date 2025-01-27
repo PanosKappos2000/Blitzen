@@ -157,6 +157,13 @@ namespace BlitzenVulkan
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
+        // Dispatches the compute shader that will perform culling on a render object level and will ready the indirect draw commands
+        // If it calls the late version it does occlusion culling as well
+        void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
+        uint32_t groupCountX, uint8_t lateCulling);
+
+        void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount);
+
     public:
 
         // Array of structs that represent the way textures will be pushed to the GPU
@@ -320,7 +327,7 @@ namespace BlitzenVulkan
     //Can be improved but this is used rarely for now, so I will leave it as is until I have to
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, 
     VkImage dstImage, VkImageLayout dstLayout, VkExtent2D srcImageSize, VkExtent2D dstImageSize, 
-    VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter);
+    VkImageSubresourceLayers srcImageSL, VkImageSubresourceLayers dstImageSL, VkFilter filter);
 
     // Copies parts of one buffer to parts of another, depending on the offsets that are passed
     void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, 

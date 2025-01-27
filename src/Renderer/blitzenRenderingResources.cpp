@@ -1,7 +1,7 @@
 #include "blitRenderingResources.h"
 #include "blitRenderer.h"
 
-// Single file .pnh and .jpeg image loader, to be used for textures
+// Single file .png and .jpeg image loader, to be used for textures
 // https://github.com/nothings/stb
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"
@@ -52,40 +52,44 @@ namespace BlitzenEngine
     uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12)
     {
-        TextureStats& current = pResources->textures[pResources->textureCount];
+        // Don't go over the texture limit, might want to throw a warning here
+        if(pResources->textureCount >= BLIT_MAX_TEXTURE_COUNT)
+            return 0;
 
-        current.pTextureData = stbi_load(filename, &(current.textureWidth), &(current.textureHeight), &(current.textureChannels), 4);
+        DDS_HEADER header = {};
+        DDS_HEADER_DXT10 header10 = {};
 
-        uint8_t load = current.pTextureData != nullptr;
+        // The data from the file will be written to this and passed to Vulkan
+        TextureStats& texture = pResources->textures[pResources->textureCount];
 
-        // Go to the next element in the container, only if the texture was loaded successfully
-        if(load)
-        {
-            current.textureTag = static_cast<uint32_t>(pResources->textureCount);
-            pResources->textureTable.Set(texName, &current);
-            pResources->textureCount++;
-        }
-        // If the load failed give it a texture tag of zero
-        else
-        {
-            current.textureTag = 0;
-        }
+        // Create a placeholder image format
+        unsigned int imageFormat = 0;
 
-        // If the vulkan renderer was given to the function and the data from the file was successfully loaded, the texture is passed to the renderer
-        if(pVulkan && load)
+        uint8_t load = 0;
+        // Add the texture to the vulkan renderer if a pointer for it was passed
+        if(pVulkan)
         {
             BlitzenVulkan::VulkanRenderer* pRenderer = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
+            if(pRenderer->UploadDDSTexture(header, header10, texture.pTextureData, filename))
+            {
+                texture.textureWidth = header.dwWidth;
+                texture.textureHeight = header.dwHeight;
+                texture.textureTag = static_cast<uint32_t>(pResources->textureCount);
 
-            pRenderer->UploadTexture(current, VK_FORMAT_R8G8B8A8_UNORM);
+                pResources->textureCount++;
+                load = 1;
+            }
+            else
+            {
+                BLIT_INFO("Texture from file: %s failed to load for Vulkan", filename)
+            }
         }
-
-        // Return 1 if the data from the file was loaded and 0 otherwise
         return load;
     }
+    
 
     void LoadTestTextures(RenderingResources* pResources, void* pVulkan, void* pDx12)
     {
-        // This is hardcoded now
         LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture", pVulkan, nullptr);
         LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture2", pVulkan, nullptr);
         LoadTextureFromFile(pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan, nullptr);
@@ -112,7 +116,6 @@ namespace BlitzenEngine
 
     void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12)
     {
-        // Test code
         BlitML::vec4 color1(0.1f);
         BlitML::vec4 color2(0.2f);
         DefineMaterial(pResources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");

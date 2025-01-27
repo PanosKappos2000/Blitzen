@@ -290,7 +290,7 @@ namespace BlitzenVulkan
     }
 
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
-    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers& srcImageSL, VkImageSubresourceLayers& dstImageSL, VkFilter filter)
+    VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers srcImageSL, VkImageSubresourceLayers dstImageSL, VkFilter filter)
     {
         /*
             This function is pretty hardcoded for now and for a specific use. I don't think I will be needing that many image copies, but we'll see
