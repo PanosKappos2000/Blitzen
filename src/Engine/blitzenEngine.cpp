@@ -100,9 +100,9 @@ namespace BlitzenEngine
         #elif BLITZEN_OBJ_AND_MULTIPLE_GLTF_TEST
             uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
-            LoadGltfScene(pResources.Data(), "Assets/Scenes/Sponza/scene.gltf", 0, pVulkan.Data());
-            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
             //LoadGltfScene(pResources.Data(), "../AssetsOut/Scenes/Museum/scene.gltf", 1, pVulkan.Data());
+            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
+            LoadGltfScene(pResources.Data(), "../AssetsOut/Scenes/Plaza/scene.gltf", 1, pVulkan.Data());
             drawCount = pResources.Data()->renderObjectCount;
         #elif BLITZEN_GEOMETRY_STRESS_TEST
             // Load some hardcoded game objects to test the rendering

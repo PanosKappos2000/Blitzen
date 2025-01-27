@@ -56,6 +56,7 @@ void main()
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[objectIndex];
     MeshInstance currentInstance = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
     Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
+    
 
     // Promote the sphere center to view coordinates
     vec3 center = RotateQuat(currentSurface.center, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
@@ -77,7 +78,6 @@ void main()
     {
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
-        
 
         // The lod index is declared here. if LODs are not enabled the most detailed version of an object will be used by default
         uint lodIndex = 0;
@@ -108,9 +108,9 @@ void main()
         bufferAddrs.indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
 
         // Indirect task commands
-        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].taskId = currentLod.firstMeshlet;
+        /*bufferAddrs.indirectTaskBuffer.tasks[drawIndex].taskId = currentLod.firstMeshlet;
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountX = (currentLod.meshletCount + 31) / 32;
         bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountY = 1;
-        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountZ = 1;
+        bufferAddrs.indirectTaskBuffer.tasks[drawIndex].groupCountZ = 1;*/
     } 
 }

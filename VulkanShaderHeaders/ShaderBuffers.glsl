@@ -61,10 +61,10 @@ struct Surface
     // Bounding sphere
     vec3 center;
     float radius;
-    
+
     // Holds up to 8 level of detail data structs
     MeshLod lod[8];
-    // TODO: this could easily be uint8
+    
     // Indicates the active elements of the above array, the lod index needs to be clamped between 0 and this value
     uint8_t lodCount;
 
@@ -72,7 +72,6 @@ struct Surface
     uint vertexOffset;
 
     uint materialTag;
-    uint surfaceIndex;
 };
 
 layout(buffer_reference, std430) readonly buffer SurfaceBuffer

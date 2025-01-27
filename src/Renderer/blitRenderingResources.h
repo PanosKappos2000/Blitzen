@@ -90,7 +90,7 @@ namespace BlitzenEngine
         uint32_t materialId;
 
         // I would like for this to be removed so that it does not get uploaded in the shaders, this struct is already huge
-        uint32_t surfaceId;
+        //uint32_t surfaceId;
     };
 
     struct Mesh
