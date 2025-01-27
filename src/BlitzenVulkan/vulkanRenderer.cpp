@@ -220,6 +220,11 @@ namespace BlitzenVulkan
         // This buffer will live in the GPU but its address will be retrieved, so that it can be accessed in the shader
         m_currentStaticBuffers.bufferAddresses.vertexBufferAddress = 
         GetBufferAddress(m_device, m_currentStaticBuffers.vertexBuffer.buffer);
+        AllocatedBuffer stagingVertexBuffer;
+        CreateBuffer(m_allocator, stagingVertexBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+        vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        void* pVertexBufferData = stagingVertexBuffer.allocationInfo.pMappedData;
+        BlitzenCore::BlitMemCopy(pVertexBufferData, vertices.Data(), vertexBufferSize);
 
         // Create an index buffer that will hold all the loaded indices
         VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
@@ -282,7 +287,7 @@ namespace BlitzenVulkan
         GetBufferAddress(m_device, m_currentStaticBuffers.meshletDataBuffer.buffer);
 
         // This holds the combined size of all the required buffers to pass to the combined staging buffer
-        VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize + 
+        VkDeviceSize stagingBufferSize = indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize + 
         meshInstanceBufferSize + meshletBufferSize + meshletDataBufferSize;
 
         // This is the buffer that will take the data from the surfaces to draw every object in the scene. Filled in the culling shaders
@@ -323,9 +328,6 @@ namespace BlitzenVulkan
         CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
         stagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
         uint8_t* pData = reinterpret_cast<uint8_t*>(stagingBuffer.allocation->GetMappedData());
-        // Copy the data vertex data into the staging buffer's address
-        BlitzenCore::BlitMemCopy(pData, vertices.Data(), vertexBufferSize);
-        pData += vertexBufferSize;
         // Copy the index data into the staging buffer's address after the vertex data
         BlitzenCore::BlitMemCopy(pData, indices.Data(), indexBufferSize);
         pData += indexBufferSize;
@@ -354,10 +356,10 @@ namespace BlitzenVulkan
         // Holds the offset of the staging buffer that the next copy operation should start from
         VkDeviceSize currentStagingBufferOffset = 0;
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        // Copy the vertex buffer to the staging buffer
+        CopyBufferToBuffer(m_placeholderCommands, stagingVertexBuffer.buffer, 
         m_currentStaticBuffers.vertexBuffer.buffer, vertexBufferSize, 
-        currentStagingBufferOffset, 0);
-        currentStagingBufferOffset += vertexBufferSize;// Add the size of the previous buffer to the offset
+        0, 0);
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
         m_currentStaticBuffers.indexBuffer.buffer, indexBufferSize, 
@@ -381,7 +383,7 @@ namespace BlitzenVulkan
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer,
         m_currentStaticBuffers.transformBuffer.buffer, meshInstanceBufferSize, 
-        vertexBufferSize + indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize, 0);
+        currentStagingBufferOffset, 0);
         currentStagingBufferOffset += meshInstanceBufferSize;// Add the size of the previous buffer to the offset
 
         CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
@@ -401,17 +403,18 @@ namespace BlitzenVulkan
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
         vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, stagingVertexBuffer.buffer, stagingVertexBuffer.allocation);
 
         // The descriptor will have multiple descriptors of combined image sampler type. The count is derived from the amount of textures loaded
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSize.descriptorCount = loadedTextures.GetSize();
+        poolSize.descriptorCount = static_cast<uint32_t>(loadedTextures.GetSize());
 
         // Create the descriptor pool for the textures
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.pNext = nullptr;
-        poolInfo.maxSets = loadedTextures.GetSize();
+        poolInfo.maxSets = static_cast<uint32_t>(loadedTextures.GetSize());
         poolInfo.poolSizeCount = 1;
         poolInfo.pPoolSizes = &poolSize;
         VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, m_pCustomAllocator, &m_currentStaticBuffers.textureDescriptorPool))

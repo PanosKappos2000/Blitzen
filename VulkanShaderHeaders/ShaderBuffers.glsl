@@ -58,22 +58,18 @@ struct MeshLod
 
 struct Surface
 {
+    // Bounding sphere
+    vec3 center;
+    float radius;
+    
     // Holds up to 8 level of detail data structs
     MeshLod lod[8];
     // TODO: this could easily be uint8
     // Indicates the active elements of the above array, the lod index needs to be clamped between 0 and this value
-    uint lodCount;
+    uint8_t lodCount;
 
     // The vertex offset is the same for every level of details and must be passed to the indirect commands buffer based on the renderer's structure
     uint vertexOffset;
-
-    // Meshlets
-    uint taskCount;
-    uint firstTask;
-
-    // Bounding sphere
-    vec3 center;
-    float radius;
 
     uint materialTag;
     uint surfaceIndex;

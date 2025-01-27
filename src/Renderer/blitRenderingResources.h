@@ -77,22 +77,19 @@ namespace BlitzenEngine
     // Has information about a mesh surface that will be given to a GPU friendly struct, so that the GPU can draw each surface
     struct alignas(16) PrimitiveSurface
     {
-        MeshLod meshLod[BLIT_MAX_MESH_LOD];
-        uint32_t lodCount = 0;
-
-        // With the way obj files are loaded, this will be needed to index into the vertex buffer
-        uint32_t vertexOffset;
-
-        // Data need by a mesh shader to draw a surface
-        uint32_t meshletCount = 0;
-        uint32_t firstMeshlet;
-
         // Bounding sphere data, can be used for frustum culling and other operations
         BlitML::vec3 center;
         float radius;
 
+        MeshLod meshLod[BLIT_MAX_MESH_LOD];
+        uint8_t lodCount = 0;
+
+        // With the way obj files are loaded, this will be needed to index into the vertex buffer
+        uint32_t vertexOffset;
+
         uint32_t materialId;
 
+        // I would like for this to be removed so that it does not get uploaded in the shaders, this struct is already huge
         uint32_t surfaceId;
     };
 
@@ -183,7 +180,7 @@ namespace BlitzenEngine
         Mesh meshes[BLIT_MAX_MESH_COUNT];
         size_t meshCount = 0;
 
-        // Each instance of a mesh has a different transform that is an element in this array
+        // Each render object has a different transform held by this array 
         BlitCL::DynamicArray<MeshTransform> transforms;
 
         // Each mesh points to a continuous pack of elements of this surface array
@@ -193,6 +190,7 @@ namespace BlitzenEngine
         GameObject objects[BLIT_MAX_OBJECTS];
         uint32_t objectCount;
 
+        // All render objects are located here
         RenderObject renders[BLIT_MAX_OBJECTS];
         uint32_t renderObjectCount;        
     };

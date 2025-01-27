@@ -132,6 +132,8 @@ namespace BlitzenEngine
             return 0;
         }
 
+        BLIT_INFO("Loading obj model form file: %s", filename)
+
         // Get the current mesh and give it the size surface array as its first surface index
         Mesh& currentMesh = pResources->meshes[pResources->meshCount];
         currentMesh.firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
@@ -142,11 +144,9 @@ namespace BlitzenEngine
 
         size_t indexCount = file.f_size / 3;
 
-        /*!
-            The below code can load a single mesh but it breaks if I try to load more than one
-        */
-
         BlitCL::DynamicArray<Vertex> triangleVertices(indexCount);
+
+        BLIT_INFO("Loading vertices and indices")
 
         for(size_t i = 0; i < indexCount; ++i)
         {
@@ -181,6 +181,7 @@ namespace BlitzenEngine
         meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
 		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
 
+        BLIT_INFO("Creating surface")
         LoadSurface(pResources, vertices, indices, buildMeshlets);
 
         currentMesh.surfaceCount++;// Increment the surface count
@@ -549,6 +550,8 @@ namespace BlitzenEngine
 		    return 0;
 	    }
 
+        BLIT_INFO("Loading GLTF scene from file: %s", path)
+
         // Defining a lambda here for finding the accessor since it will probably not be used outside of this
         auto findAccessor = [](const cgltf_primitive* prim,  cgltf_attribute_type type, cgltf_int index = 0){
             for (size_t i = 0; i < prim->attributes_count; ++i)
@@ -565,6 +568,8 @@ namespace BlitzenEngine
 
         // Before loading textures save the previous texture size, to use for indexing
         size_t previousTextureSize = pResources->textureCount;
+
+        BLIT_INFO("Loading textures")
 
         // I had to fold and use the STL
         BlitCL::DynamicArray<std::string> texturePaths(pData->textures_count);
@@ -629,6 +634,8 @@ namespace BlitzenEngine
             }
         }
 
+        BLIT_INFO("Loading materials")
+
         // Save the previous material count
         size_t previousMaterialCount = pResources->materialCount;
         // Create one BlitzenEngine::Material for each material in the gltf
@@ -643,9 +650,11 @@ namespace BlitzenEngine
             previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_metallic_roughness.base_color_texture.texture)
             : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
             previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture)
-            : 0;
+            : previousTextureSize + 0;
 
         }
+
+        BLIT_INFO("Loading meshes and primitives")
 
         // The surface indices is a list of the first surface of each mesh. Used to create the render object struct
         BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
@@ -726,6 +735,8 @@ namespace BlitzenEngine
                 }
             }
         }
+
+        BLIT_INFO("Loading scene nodes")
 
         for (size_t i = 0; i < pData->nodes_count; ++i)
 	    {

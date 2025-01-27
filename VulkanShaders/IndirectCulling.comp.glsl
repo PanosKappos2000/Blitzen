@@ -77,6 +77,7 @@ void main()
     {
         // With each element that is added to the draw list, increment the count
         uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
+        
 
         // The lod index is declared here. if LODs are not enabled the most detailed version of an object will be used by default
         uint lodIndex = 0;
