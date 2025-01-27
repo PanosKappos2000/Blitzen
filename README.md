@@ -13,3 +13,5 @@ It uses a very basic, default camera that moves with the mouse and WASD keys to 
 The engine loads textures from .gtlf files but they have to be DDS textures. Textures with unsupported formats can be converted offline by using something like NVIDIA's texture tools.
 
 The engine has not been tested for a variety of hardware. For example, it is uncertain if it works on any type of AMD GPU
+
+The application supports Windows and Linux but it has been a few weeks since it was last tested on linux.
