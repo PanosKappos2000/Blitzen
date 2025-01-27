@@ -280,6 +280,11 @@ namespace BlitzenVulkan
     void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
     VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, VmaAllocationCreateFlags allocationFlags);
 
+    // Create a gpu only storage buffer and a staging buffer to hold its data. Returns the address of the storage buffer if the caller requests it
+    VkDeviceAddress CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
+    void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
+    VkBufferUsageFlags usage, VkDeviceSize size, uint8_t getBufferDeviceAddress = 0);
+
     // Returns the GPU address of a buffer
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 

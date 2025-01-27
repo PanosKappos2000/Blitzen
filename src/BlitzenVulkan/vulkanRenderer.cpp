@@ -214,81 +214,64 @@ namespace BlitzenVulkan
     {
         // Create a storage buffer that will hold the vertices and get its device address to access it in the shaders
         VkDeviceSize vertexBufferSize = sizeof(BlitzenEngine::Vertex) * vertices.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.vertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // This buffer will live in the GPU but its address will be retrieved, so that it can be accessed in the shader
-        m_currentStaticBuffers.bufferAddresses.vertexBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.vertexBuffer.buffer);
         AllocatedBuffer stagingVertexBuffer;
-        CreateBuffer(m_allocator, stagingVertexBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-        vertexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        void* pVertexBufferData = stagingVertexBuffer.allocationInfo.pMappedData;
-        BlitzenCore::BlitMemCopy(pVertexBufferData, vertices.Data(), vertexBufferSize);
+        m_currentStaticBuffers.bufferAddresses.vertexBufferAddress = 
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, vertices.Data(), m_currentStaticBuffers.vertexBuffer, 
+        stagingVertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, vertexBufferSize, 1);
 
         // Create an index buffer that will hold all the loaded indices
         VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
-        // Like the vertex buffer, this will live in the GPU but it does not need to be accessed in the shader, only bound before drawing
-        CreateBuffer(m_allocator, m_currentStaticBuffers.indexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, indexBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        AllocatedBuffer stagingIndexBuffer;
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), m_currentStaticBuffers.indexBuffer, 
+        stagingIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize);
 
-        // The render object buffer will an index to mesh instance data and one to surface data
+        // The render object buffer will have an index to transform data and one to surface data
         VkDeviceSize renderObjectBufferSize = sizeof(BlitzenEngine::RenderObject) * renderObjectCount;
-        // When Creating the buffer the max size is used otherwise there will be alignment issues, TODO: Test this again at some point
-        CreateBuffer(m_allocator, m_currentStaticBuffers.renderObjectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, renderObjectBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // It also lives in the GPU and needs to be accessed in the shader for per object data like position and orientation
+        AllocatedBuffer renderObjectStagingBuffer;
         m_currentStaticBuffers.bufferAddresses.renderObjectBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.renderObjectBuffer.buffer);
-
-        // Holds material constants 
-        // (like diffuse color and and indices into the array of textures for the different texture maps it uses) 
-        // for every material
-        VkDeviceSize materialBufferSize = sizeof(BlitzenEngine::Material) * materialCount;
-        CreateBuffer(m_allocator, m_currentStaticBuffers.globalMaterialBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, materialBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // Lives in the GPU and will be accessed by the vertex shader to pass the material tag to the fragment shader
-        m_currentStaticBuffers.bufferAddresses.materialBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.globalMaterialBuffer.buffer);
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pRenderObjects, m_currentStaticBuffers.renderObjectBuffer, 
+        renderObjectStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT 
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, renderObjectBufferSize, 1);
 
         // Holds the data to draw any surface that was loaded
         VkDeviceSize surfaceBufferSize = sizeof(BlitzenEngine::PrimitiveSurface) * surfaces.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.surfaceBuffer, 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT |VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, surfaceBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // Will be accessed in compute and vertex shaders
+        AllocatedBuffer surfaceStagingBuffer;
         m_currentStaticBuffers.bufferAddresses.surfaceBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.surfaceBuffer.buffer);
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, surfaces.Data(), m_currentStaticBuffers.surfaceBuffer, 
+        surfaceStagingBuffer, VK_BUFFER_USAGE_TRANSFER_DST_BIT |VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, surfaceBufferSize, 1);
 
-        VkDeviceSize meshInstanceBufferSize = sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.transformBuffer, 
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, meshInstanceBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // Will be accessed in compute and vertex shaders
+        // Holds all material data (indices to material maps and material constant values for each material)
+        VkDeviceSize materialBufferSize = sizeof(BlitzenEngine::Material) * materialCount;
+        AllocatedBuffer materialStagingBuffer;
+        m_currentStaticBuffers.bufferAddresses.materialBufferAddress = 
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pMaterials, m_currentStaticBuffers.globalMaterialBuffer, 
+        materialStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, materialBufferSize, 1);
+
+        // Holds all transforms for every render object
+        VkDeviceSize transformBufferSize = sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize();
+        AllocatedBuffer transformStagingBuffer;
         m_currentStaticBuffers.bufferAddresses.transformBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.transformBuffer.buffer);
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, transforms.Data(), m_currentStaticBuffers.transformBuffer, 
+        transformStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, transformBufferSize, 1);
 
+        // Holds all meshlets / clusters
         VkDeviceSize meshletBufferSize = sizeof(BlitzenEngine::Meshlet) * meshlets.GetSize();
-        // Holds per object meshlet data for all the objects in the shader
-        CreateBuffer(m_allocator, m_currentStaticBuffers.meshletBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, meshletBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // Like most of the above, it will be accessed in the shaders
+        AllocatedBuffer meshletStagingBuffer;
         m_currentStaticBuffers.bufferAddresses.meshletBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.meshletBuffer.buffer);
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, meshlets.Data(), m_currentStaticBuffers.meshletBuffer, 
+        meshletStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, meshletBufferSize, 1);
 
         VkDeviceSize meshletDataBufferSize = sizeof(uint32_t) * meshletData.GetSize();
-        CreateBuffer(m_allocator, m_currentStaticBuffers.meshletDataBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, 
-        meshletDataBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        AllocatedBuffer meshletDataStagingBuffer;
         m_currentStaticBuffers.bufferAddresses.meshletDataBufferAddress = 
-        GetBufferAddress(m_device, m_currentStaticBuffers.meshletDataBuffer.buffer);
-
-        // This holds the combined size of all the required buffers to pass to the combined staging buffer
-        VkDeviceSize stagingBufferSize = indexBufferSize + renderObjectBufferSize + materialBufferSize + surfaceBufferSize + 
-        meshInstanceBufferSize + meshletBufferSize + meshletDataBufferSize;
+        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, meshletData.Data(), m_currentStaticBuffers.meshletDataBuffer, 
+        meshletDataStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, meshletDataBufferSize, 1);
 
         // This is the buffer that will take the data from the surfaces to draw every object in the scene. Filled in the culling shaders
         VkDeviceSize finalIndirectBufferSize = sizeof(IndirectDrawData) * renderObjectCount;
@@ -323,87 +306,64 @@ namespace BlitzenVulkan
         m_currentStaticBuffers.bufferAddresses.visibilityBufferAddress =
         GetBufferAddress(m_device, m_currentStaticBuffers.drawVisibilityBuffer.buffer);
 
-        // Create a staging buffer that is the size of all the buffers combined
-        AllocatedBuffer stagingBuffer;
-        CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-        stagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        uint8_t* pData = reinterpret_cast<uint8_t*>(stagingBuffer.allocation->GetMappedData());
-        // Copy the index data into the staging buffer's address after the vertex data
-        BlitzenCore::BlitMemCopy(pData, indices.Data(), indexBufferSize);
-        pData += indexBufferSize;
-        // Copy the render objects data into the staging buffer's address after the index data
-        BlitzenCore::BlitMemCopy(pData, pRenderObjects, renderObjectBufferSize);
-        pData += renderObjectBufferSize;
-        // Copy the material data into the staging buffer's address after the render object data
-        BlitzenCore::BlitMemCopy(pData, pMaterials, materialBufferSize);
-        pData += materialBufferSize;
-        // Copy the surface data into the staging buffer's address after the material data
-        BlitzenCore::BlitMemCopy(pData, surfaces.Data(), surfaceBufferSize);
-        pData += surfaceBufferSize;
-        // Copy the transform data into the staging buffer's address after the surface data
-        BlitzenCore::BlitMemCopy(pData, transforms.Data(), meshInstanceBufferSize);
-        pData += meshInstanceBufferSize;
-        // Copy the meshlets into the staging buffer's address after the transform data
-        BlitzenCore::BlitMemCopy(pData, meshlets.Data(), meshletBufferSize);
-        pData += meshletBufferSize;
-        // Copy the meshlet data into the staging buffer's address after the meshlets
-        BlitzenCore::BlitMemCopy(pData, meshletData.Data(), meshletDataBufferSize);
-        pData += meshletDataBufferSize;
-
         // Start recording the transfer commands
         BeginCommandBuffer(m_placeholderCommands, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-        // Holds the offset of the staging buffer that the next copy operation should start from
-        VkDeviceSize currentStagingBufferOffset = 0;
-
-        // Copy the vertex buffer to the staging buffer
+        // Copies the data held by the staging buffer to the vertex buffer
         CopyBufferToBuffer(m_placeholderCommands, stagingVertexBuffer.buffer, 
         m_currentStaticBuffers.vertexBuffer.buffer, vertexBufferSize, 
         0, 0);
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        // Copies the index data held by the staging buffer to the index buffer
+        CopyBufferToBuffer(m_placeholderCommands, stagingIndexBuffer.buffer, 
         m_currentStaticBuffers.indexBuffer.buffer, indexBufferSize, 
-        currentStagingBufferOffset, 0);
-        currentStagingBufferOffset += indexBufferSize;// Add the size of the previous buffer to the offset
+        0, 0);
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        // Copies the render object data held by the staging buffer to the render object buffer
+        CopyBufferToBuffer(m_placeholderCommands, renderObjectStagingBuffer.buffer, 
         m_currentStaticBuffers.renderObjectBuffer.buffer, renderObjectBufferSize, 
-        currentStagingBufferOffset, 0);
-        currentStagingBufferOffset += renderObjectBufferSize;// Add the size of the previous buffer to the offset
+        0, 0);
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
-        m_currentStaticBuffers.globalMaterialBuffer.buffer, materialBufferSize, 
-        currentStagingBufferOffset, 0);
-        currentStagingBufferOffset += materialBufferSize;// Add the size of the previous buffer to the offset
-
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        // Copies the surface data held by the staging buffer to the surface buffer
+        CopyBufferToBuffer(m_placeholderCommands, surfaceStagingBuffer.buffer, 
         m_currentStaticBuffers.surfaceBuffer.buffer, surfaceBufferSize, 
-        currentStagingBufferOffset, 0);
-        currentStagingBufferOffset += surfaceBufferSize;// Add the size of the previous buffer to the offset
+        0, 0);
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer,
-        m_currentStaticBuffers.transformBuffer.buffer, meshInstanceBufferSize, 
-        currentStagingBufferOffset, 0);
-        currentStagingBufferOffset += meshInstanceBufferSize;// Add the size of the previous buffer to the offset
+        // Copies the material data held by the staging buffer to the material buffer
+        CopyBufferToBuffer(m_placeholderCommands, materialStagingBuffer.buffer, 
+        m_currentStaticBuffers.globalMaterialBuffer.buffer, materialBufferSize, 
+        0, 0);
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        // Copies the transform data held by the staging buffer to the transform buffer
+        CopyBufferToBuffer(m_placeholderCommands, transformStagingBuffer.buffer,
+        m_currentStaticBuffers.transformBuffer.buffer, transformBufferSize, 
+        0, 0);
+
+        // Copies the cluster data held by the staging buffer to the meshlet buffer
+        CopyBufferToBuffer(m_placeholderCommands, meshletStagingBuffer.buffer, 
         m_currentStaticBuffers.meshletBuffer.buffer, meshletBufferSize, 
-        currentStagingBufferOffset, 0);
-        currentStagingBufferOffset += meshletBufferSize;// Add the size of the previous buffer to the offset
+        0, 0);
 
-        CopyBufferToBuffer(m_placeholderCommands, stagingBuffer.buffer, 
+        CopyBufferToBuffer(m_placeholderCommands, meshletDataStagingBuffer.buffer, 
         m_currentStaticBuffers.meshletDataBuffer.buffer, meshletDataBufferSize, 
-        currentStagingBufferOffset, 0);
+        0, 0);
 
         // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
         vkCmdFillBuffer(m_placeholderCommands, m_currentStaticBuffers.drawVisibilityBuffer.buffer, 0, visibilityBufferSize, 0);
         
+        // Submit the commands and wait for the queue to finish
         SubmitCommandBuffer(m_graphicsQueue.handle, m_placeholderCommands);
-
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
-        vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+        // Destroy all the staging buffers
         vmaDestroyBuffer(m_allocator, stagingVertexBuffer.buffer, stagingVertexBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, stagingIndexBuffer.buffer, stagingIndexBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, renderObjectStagingBuffer.buffer, renderObjectStagingBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, surfaceStagingBuffer.buffer, surfaceStagingBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, materialStagingBuffer.buffer, materialStagingBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, transformStagingBuffer.buffer, transformStagingBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, meshletStagingBuffer.buffer, meshletStagingBuffer.allocation);
+        vmaDestroyBuffer(m_allocator, meshletDataStagingBuffer.buffer, meshletDataStagingBuffer.allocation);
 
         // The descriptor will have multiple descriptors of combined image sampler type. The count is derived from the amount of textures loaded
         VkDescriptorPoolSize poolSize{};

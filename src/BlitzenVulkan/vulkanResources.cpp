@@ -19,6 +19,27 @@ namespace BlitzenVulkan
         VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, &(buffer.buffer), &(buffer.allocation), &(buffer.allocationInfo)));
     }
 
+    VkDeviceAddress CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
+    void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
+    VkBufferUsageFlags usage, VkDeviceSize size, uint8_t getBufferDeviceAddress /*=0*/)
+    {
+        // Create the storage buffer
+        CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
+        size, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+
+        // Create the staging buffer and copy the data to it
+        CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+        size, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        void* pVertexBufferData = stagingBuffer.allocationInfo.pMappedData;
+        BlitzenCore::BlitMemCopy(pVertexBufferData, pData, size);
+
+        // If a buffer device address is requested, it is retrieved and returned
+        VkDeviceAddress res = {};
+        if(getBufferDeviceAddress)
+            res = GetBufferAddress(device, storageBuffer.buffer);
+        return res;
+    }
+
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer)
     {
         VkBufferDeviceAddressInfo indirectBufferAddressInfo{};
