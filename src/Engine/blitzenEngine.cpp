@@ -101,7 +101,7 @@ namespace BlitzenEngine
             BLIT_WARN("This version assumes that we are on the local dev build and attempts to access personal files for testing")
             uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
-            //LoadGltfScene(pResources.Data(), "../../GltfTestScenes/Scenes/Museum/scene.gltf", 1, pVulkan.Data());
+            LoadGltfScene(pResources.Data(), "../../GltfTestScenes/Scenes/Museum/scene.gltf", 1, pVulkan.Data());
             LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
             LoadGltfScene(pResources.Data(), "../../GltfTestScenes/Scenes/Plaza/scene.gltf", 1, pVulkan.Data());
             drawCount = pResources.Data()->renderObjectCount;

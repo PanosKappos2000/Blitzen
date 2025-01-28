@@ -18,7 +18,7 @@ void main()
     uint objectIndex = gl_GlobalInvocationID.x;
 
     // This a guard so that the compute shader does not go over the draw count
-    if(cullingData.drawCount < objectIndex)
+    if(cullingData.drawCount <= objectIndex)
         return;
 
     // Access the object's data

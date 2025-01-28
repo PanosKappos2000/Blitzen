@@ -17,7 +17,7 @@ void main()
 	uint objectIndex = gl_GlobalInvocationID.x;
 
     // This is a guard so that the culling shader does not go over the draw count
-    if(cullingData.drawCount < objectIndex)
+    if(cullingData.drawCount <= objectIndex)
         return;
 
     // This culling shader also returns if the current object was not visible last frame
