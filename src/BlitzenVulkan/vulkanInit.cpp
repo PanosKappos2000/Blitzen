@@ -833,16 +833,15 @@ namespace BlitzenVulkan
 
         vkDestroyDescriptorSetLayout(m_device, m_pushDescriptorBufferLayout, m_pCustomAllocator);
 
-        vkDestroyPipeline(m_device, m_lateCullingComputePipeline, m_pCustomAllocator);
-        vkDestroyPipelineLayout(m_device, m_lateCullingPipelineLayout, m_pCustomAllocator);
+        vkDestroyPipeline(m_device, m_lateDrawCullPipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_drawCullPipelineLayout, m_pCustomAllocator);
+        vkDestroyPipeline(m_device, m_initialDrawCullPipeline, m_pCustomAllocator);
 
-        vkDestroyPipeline(m_device, m_indirectCullingComputePipeline, m_pCustomAllocator);
+        vkDestroyPipeline(m_device, m_opaqueGeometryPipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_opaqueGeometryPipelineLayout, m_pCustomAllocator);
 
-        vkDestroyPipeline(m_device, m_opaqueGraphicsPipeline, m_pCustomAllocator);
-        vkDestroyPipelineLayout(m_device, m_opaqueGraphicsPipelineLayout, m_pCustomAllocator);
-
-        vkDestroyPipeline(m_device, m_depthReduceComputePipeline, m_pCustomAllocator);
-        vkDestroyPipelineLayout(m_device, m_depthReducePipelineLayout, m_pCustomAllocator);
+        vkDestroyPipeline(m_device, m_depthPyramidGenerationPipeline, m_pCustomAllocator);
+        vkDestroyPipelineLayout(m_device, m_depthPyramidGenerationPipelineLayout, m_pCustomAllocator);
         vkDestroyDescriptorSetLayout(m_device, m_depthPyramidDescriptorLayout, m_pCustomAllocator);
 
         m_depthAttachment.CleanupResources(m_allocator, m_device);

@@ -40,7 +40,8 @@ void main()
         Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[vertexIndex];
 
         vec3 position = currentVertex.position;
-		vec3 normal = RotateQuat(currentVertex.normal, currentInstance.orientation);
+        vec3 n = vec3(currentVertex.normalX, currentVertex.normalY, currentVertex.normalZ);
+		vec3 normal = RotateQuat(n, currentInstance.orientation);
 		vec2 uv = vec2(currentVertex.uvX, currentVertex.uvY);
 
         gl_MeshVerticesEXT[i].gl_Position = shaderData.projectionView * 

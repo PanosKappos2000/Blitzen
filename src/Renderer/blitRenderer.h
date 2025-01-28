@@ -8,7 +8,11 @@
 // The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
-#define BLITZEN_MAX_DRAW_OBJECTS    5'000'000 // Max draw calls allowed, if render objects go above this, the application will fail
+// Max draw calls allowed, if render objects go above this, the application will fail
+#define BLITZEN_MAX_DRAW_OBJECTS    5'000'000
+
+// Cluster rendering is not yet implemented, but I really wish I can try it out soon
+#define BLITZEN_CLUSTER_RENDERING   0
 
 namespace BlitzenEngine
 {

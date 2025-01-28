@@ -113,16 +113,17 @@ namespace BlitzenVulkan
 
         // The graphics pipeline will use 2 layouts, the one for push desciptors and the constant one for textures
         VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout, m_currentStaticBuffers.textureDescriptorSetlayout };
-        CreatePipelineLayout(m_device, &m_opaqueGraphicsPipelineLayout, 2, layouts, 0, nullptr);
+        CreatePipelineLayout(m_device, &m_opaqueGeometryPipelineLayout, 2, layouts, 0, nullptr);
 
         // The layout for culling shaders uses the push descriptor layout but accesses more bindings for culling data and the depth pyramid
-        CreatePipelineLayout(m_device, &m_lateCullingPipelineLayout, 1, &m_pushDescriptorBufferLayout, 0, nullptr);
+        CreatePipelineLayout(m_device, &m_drawCullPipelineLayout, 1, &m_pushDescriptorBufferLayout, 0, nullptr);
 
         // The depth pyramid shader uses the set with depth pyramid images and depth attachment image, 
-        // and a push constant for the width and height of the current mip level of the depth pyramid
-        VkPushConstantRange pushConstant{};
-        CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ShaderPushConstant));
-        CreatePipelineLayout(m_device, &m_depthReducePipelineLayout, 1, &m_depthPyramidDescriptorLayout, 1, &pushConstant);
+        // It also needs a push constant for the width and height of the current mip level of the depth pyramid
+        VkPushConstantRange depthPyramidMipExtentPushConstant{};
+        CreatePushConstantRange(depthPyramidMipExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
+        CreatePipelineLayout(m_device, &m_depthPyramidGenerationPipelineLayout, 1, &m_depthPyramidDescriptorLayout, 
+        1, &depthPyramidMipExtentPushConstant);
     }
 
     void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format)
@@ -185,19 +186,23 @@ namespace BlitzenVulkan
         gpuData.pMaterials, gpuData.materialCount, gpuData.meshlets, gpuData.meshletData, 
         gpuData.surfaces, gpuData.transforms);
     
-        // First render pass Culling compute shader
-        CreateComputeShaderProgram(m_device, "VulkanShaders/IndirectCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_lateCullingPipelineLayout, &m_indirectCullingComputePipeline);
+        // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
+        // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
+        CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_drawCullPipelineLayout, &m_initialDrawCullPipeline);
         
-        // Depth pyramid generation compute shader
-        CreateComputeShaderProgram(m_device, "VulkanShaders/DepthReduce.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_depthReducePipelineLayout, &m_depthReduceComputePipeline);
+        // Creates pipeline for the depth pyramid generation shader which will be dispatched before the late culling compute shader
+        CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_depthPyramidGenerationPipelineLayout, &m_depthPyramidGenerationPipeline);
         
-        // Later render pass culling compute shader
-        CreateComputeShaderProgram(m_device, "VulkanShaders/LateCulling.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_lateCullingPipelineLayout, &m_lateCullingComputePipeline);
+        // Creates pipeline for the late culling shader that will be dispatched before the 2nd render pass.
+        // It performs frustum culling and occlusion culling on all objects.
+        // It creates a draw command for the objects that were not tested by the previous shader
+        // It also sets the visibility of each object for this frame, so that it can be accessed next frame
+        CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_drawCullPipelineLayout, &m_lateDrawCullPipeline);
         
-        // Graphics pipeline setup and vertex / mesh shader and fragment shader loading
+        // Create the graphics pipeline object 
         SetupMainGraphicsPipeline();
 
         // culing data values that need to be handled by the renderer itself
@@ -465,16 +470,21 @@ namespace BlitzenVulkan
         WriteBufferDescriptorSets(cullingDataWrite, cullingDataBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_NULL_HANDLE, 
         2, 1, vBuffers.cullingDataBuffer.buffer, 0, VK_WHOLE_SIZE);
 
-        // Passes the writes to the descriptor set
-        VkWriteDescriptorSet globalShaderDataWrites[3] = {globalShaderDataWrite, bufferAddressDescriptorWrite, cullingDataWrite};
+        // The depth pyramid write will not be used in the first pass culling shader. It will later be set by the late culling shader
+        VkDescriptorImageInfo depthPyramidImageInfo{};
+        VkWriteDescriptorSet depthPyramidWrite{};
+
+        // Create a new write descriptor set array and add the depth pyramid image info binding to it
+        VkWriteDescriptorSet globalShaderDataWrites[4] = {globalShaderDataWrite, bufferAddressDescriptorWrite, 
+        cullingDataWrite, depthPyramidWrite}; 
 
         // Push every the shader data, culling data and buffer address uniform buffers to the compute shaders
-        PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_lateCullingPipelineLayout, 
+        PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
         0, 3, globalShaderDataWrites);
 
         // Dispatch the compute shader to do early culling 
         //(only perform  frustum culling and LOD selection on objects that were visible on the previous frame)
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_indirectCullingComputePipeline, 
+        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline, 
         (cullData.drawCount / 64) + 1, 0);
 
 
@@ -547,7 +557,7 @@ namespace BlitzenVulkan
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, depthPyramidSetBarriers);
 
         // Bind the compute pipeline, the depth pyramid will be called for as many depth pyramid mip levels there are
-        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthReduceComputePipeline);
+        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthPyramidGenerationPipeline);
 
         // Call the depth pyramid creation compute shader for every mip level in the depth pyramid
         for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
@@ -567,17 +577,16 @@ namespace BlitzenVulkan
             VkWriteDescriptorSet writes[2] = {write, write2};
 
             // Push the descriptor sets
-            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthReducePipelineLayout, 
+            PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthPyramidGenerationPipelineLayout, 
             0, 2, writes);
 
             // Calculate the extent of the current depth pyramid mip level
             uint32_t levelWidth = BlitML::Max(1u, (m_depthPyramidExtent.width) >> i);
             uint32_t levelHeight = BlitML::Max(1u, (m_depthPyramidExtent.height) >> i);
             // Pass the extent to the push constant
-            ShaderPushConstant pushConstant;
-            pushConstant.imageSize = {static_cast<float>(levelWidth), static_cast<float>(levelHeight)};
-            vkCmdPushConstants(fTools.commandBuffer, m_depthReducePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShaderPushConstant), 
-            &pushConstant);
+            BlitML::vec2 pyramidLevelExtentPushConstant(static_cast<float>(levelWidth), static_cast<float>(levelHeight));
+            vkCmdPushConstants(fTools.commandBuffer, m_depthPyramidGenerationPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
+            sizeof(BlitML::vec2), &pyramidLevelExtentPushConstant);
 
             // Dispatch the shader
             vkCmdDispatch(fTools.commandBuffer, levelWidth / 32 + 1, levelHeight / 32 + 1, 1);
@@ -592,29 +601,24 @@ namespace BlitzenVulkan
 
 
 
-        // The late culling compute shader needs access to the depth pyramid image info, everything else was written earlier
-        VkDescriptorImageInfo depthPyramidImageInfo{};
-        VkWriteDescriptorSet depthPyramidWrite{};
         WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 
         3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
 
-        // Create a new write descriptor set array and add the depth pyramid image info binding to it
-        VkWriteDescriptorSet latePassGlobalShaderDataSet[4] = {globalShaderDataWrite, bufferAddressDescriptorWrite, 
-        cullingDataWrite, depthPyramidWrite};
+        globalShaderDataWrites[3] = depthPyramidWrite;
         
         // Pushes all the previous descriptor bindings + the 
-        PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_lateCullingPipelineLayout, 
-        0, 4, latePassGlobalShaderDataSet);
+        PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
+        0, 4, globalShaderDataWrites);
 
         // Dispatches the compute shader to do culling on objects that were not visible last frame. 
         // It will do both occusion and frustum culling and LOD selection
         // It also performs these operations on objects that were visible last frame, but it only updates their visibility buffer
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateCullingComputePipeline, 
+        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
         cullData.drawCount / 64 + 1, 1);
 
 
         /*
-            Later render pass
+            Late render pass
         */
         // Wait for the culling compute shader to be done with the depth attachment and transition it to depth attahcment layout
         VkImageMemoryBarrier2 depthAttachmentReadBarrier{};
@@ -739,16 +743,16 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount)
     {
-        // Push all uniform buffer descriptors but the culling data one to the graphics pipelines
-        PushDescriptors(m_initHandles.instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 
-        0, 2, pDescriptorWrites);
+        // Pushes all uniform buffer descriptors but the culling data one to the graphics pipelines
+        PushDescriptors(m_initHandles.instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        m_opaqueGeometryPipelineLayout, 0, 2, pDescriptorWrites);
 
         // Bind the texture descriptor set. This one was allocated and written to in the UploadDataToGPU function
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipelineLayout, 1,
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGeometryPipelineLayout, 1,
         1, &m_currentStaticBuffers.textureDescriptorSet, 0, nullptr);
 
         // Bind the graphics pipeline and the index buffer
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGraphicsPipeline);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGeometryPipeline);
         vkCmdBindIndexBuffer(commandBuffer, m_currentStaticBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         // Use draw indirect to draw the objects(mesh shading or vertex shader)

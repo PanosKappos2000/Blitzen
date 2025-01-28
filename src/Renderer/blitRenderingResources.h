@@ -12,7 +12,7 @@
 #define BLIT_MAX_MESH_LOD           8
 #define BLIT_MAX_MESH_COUNT         100'000
 
-#define BLIT_MAX_OBJECTS            5'000'000 // This is too high for game object count, but it needs to be as high as max draw count for now
+#define BLIT_MAX_OBJECTS            5'000'000
 
 namespace BlitzenEngine
 {

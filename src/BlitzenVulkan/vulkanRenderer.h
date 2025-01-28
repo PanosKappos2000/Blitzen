@@ -198,6 +198,8 @@ namespace BlitzenVulkan
         VkExtent2D m_drawExtent;
         VkSampler m_depthAttachmentSampler;// This is needed for depth pyramid and occlusion tests
 
+        // The depth pyramid is generated for occlusion culling based on the depth buffer of an initial render pass
+        // It has a maximum fo 16 mip levels, but the actual count is based on the window width and height
         AllocatedImage m_depthPyramid;
         VkImageView m_depthPyramidMips[16];
         uint8_t m_depthPyramidMipLevels = 0;
@@ -224,17 +226,25 @@ namespace BlitzenVulkan
         */
         VkDescriptorSetLayout m_depthPyramidDescriptorLayout;
 
-        // Pipeline used to draw opaque objects
-        VkPipeline m_opaqueGraphicsPipeline;
-        VkPipelineLayout m_opaqueGraphicsPipelineLayout;
+        // This pipeline Draws opaque objects using the indirect commands create by culling compute shaders
+        VkPipeline m_opaqueGeometryPipeline;
+        VkPipelineLayout m_opaqueGeometryPipelineLayout;
 
-        VkPipeline m_indirectCullingComputePipeline;
+        // These are compute pipelines that hold the shaders that will perform culling operations on render object level
+        // @InitialDrawCull
+        // The initial culling shader will do frustum culling tests on the objects that were visible last frame
+        // @LateDrawCull
+        // The late culling shader will do both frustum and occlusion culling on all objects
+        // For objects that were not accessed by the initial shader, it will create draw commands (if the are not culled away)
+        // It will also set the frame visibility of each object. This data will be accessed by the initial cull shader next frame
+        VkPipeline m_initialDrawCullPipeline;
+        VkPipeline m_lateDrawCullPipeline;
+        VkPipelineLayout m_drawCullPipelineLayout;
 
-        VkPipeline m_depthReduceComputePipeline;
-        VkPipelineLayout m_depthReducePipelineLayout;
-
-        VkPipeline m_lateCullingComputePipeline;// This one is for the shader that does visibility tests on objects that were rejected last frame
-        VkPipelineLayout m_lateCullingPipelineLayout;
+        // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
+        // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 
+        VkPipeline m_depthPyramidGenerationPipeline;
+        VkPipelineLayout m_depthPyramidGenerationPipelineLayout;
 
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
@@ -405,11 +415,11 @@ namespace BlitzenVulkan
         The shader stage and entry point parameters specify the type of shader(eg. compute) and the main function name respectively
     */
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage);
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, VkSpecializationInfo* pSpecializationInfo = nullptr);
 
     // Since the creation of a compute pipeline is very simple, the function can be a wrapper around CreateShaderProgram with a bit of extra code
     void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkPipelineLayout& layout, VkPipeline* pPipeline);
+    VkPipelineLayout& layout, VkPipeline* pPipeline, VkSpecializationInfo* pSpecializationInfo = nullptr);
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
 

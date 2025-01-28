@@ -7,7 +7,7 @@
 namespace BlitzenVulkan
 {
     void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage)
+    VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, VkSpecializationInfo* pSpecializationInfo /*=nullptr*/)
     {
         BlitzenPlatform::FileHandle handle;
         // If the file did not open, something might be wrong with the filepath, so it needs to be checked
@@ -29,10 +29,13 @@ namespace BlitzenVulkan
         pipelineShaderStage.module = shaderModule;
         pipelineShaderStage.stage = shaderStage;
         pipelineShaderStage.pName = entryPointName;
+
+        // Add specialization info if the user requests it (the function assumes that it is properly setup)
+        pipelineShaderStage.pSpecializationInfo = pSpecializationInfo;
     }
 
     void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
-    VkPipelineLayout& layout, VkPipeline* pPipeline)
+    VkPipelineLayout& layout, VkPipeline* pPipeline, VkSpecializationInfo* pSpecializationInfo /*=nullptr*/)
     {
         VkComputePipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -42,7 +45,7 @@ namespace BlitzenVulkan
         VkShaderModule computeShaderModule{};
         VkPipelineShaderStageCreateInfo shaderStageInfo{};
         CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, computeShaderModule, 
-        shaderStageInfo);
+        shaderStageInfo, pSpecializationInfo);
 
         pipelineInfo.stage = shaderStageInfo;
         pipelineInfo.layout = layout;
@@ -209,7 +212,7 @@ namespace BlitzenVulkan
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.flags = 0;
         pipelineInfo.renderPass = VK_NULL_HANDLE; // Using dynamic rendering
-        pipelineInfo.layout = m_opaqueGraphicsPipelineLayout;// The layout is expected to have been created earlier
+        pipelineInfo.layout = m_opaqueGeometryPipelineLayout;// The layout is expected to have been created earlier
 
         // Setting up dynamic rendering info for graphics pipeline
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
@@ -303,7 +306,7 @@ namespace BlitzenVulkan
         pipelineInfo.pVertexInputState = &vertexInput;
 
         //Create the graphics pipeline
-        VK_CHECK(vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGraphicsPipeline))
+        VK_CHECK(vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGeometryPipeline))
 
         // Destroy the shader modules after pipeline has been created
         vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);

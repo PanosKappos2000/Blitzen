@@ -165,12 +165,6 @@ namespace BlitzenVulkan
         VkDeviceAddress visibilityBufferAddress;
     };
 
-    // Pushed every frame for the non indirect version to access per object data
-    struct alignas(16) ShaderPushConstant
-    {
-        BlitML::vec2 imageSize;
-    };
-
     // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once
     struct TextureData
     {

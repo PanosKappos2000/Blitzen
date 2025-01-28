@@ -98,18 +98,19 @@ namespace BlitzenEngine
             LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
             drawCount = pResources.Data()->renderObjectCount;
         #elif BLITZEN_OBJ_AND_MULTIPLE_GLTF_TEST
+            BLIT_WARN("This version assumes that we are on the local dev build and attempts to access personal files for testing")
             uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
-            //LoadGltfScene(pResources.Data(), "../AssetsOut/Scenes/Museum/scene.gltf", 1, pVulkan.Data());
+            //LoadGltfScene(pResources.Data(), "../../GltfTestScenes/Scenes/Museum/scene.gltf", 1, pVulkan.Data());
             LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
-            LoadGltfScene(pResources.Data(), "../AssetsOut/Scenes/Plaza/scene.gltf", 1, pVulkan.Data());
+            LoadGltfScene(pResources.Data(), "../../GltfTestScenes/Scenes/Plaza/scene.gltf", 1, pVulkan.Data());
             drawCount = pResources.Data()->renderObjectCount;
         #elif BLITZEN_GEOMETRY_STRESS_TEST
             // Load some hardcoded game objects to test the rendering
             uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
         #elif BLITZEN_GLTF_SCENE
-            LoadGltfScene(pResources.Data(), "Assets/Scenes/Sponza/scene.gltf", 1, pVulkan.Data());
+            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
             uint32_t drawCount = pResources.Data()->renderObjectCount;
         #else
             // There are no draws if none of the valid modes are active
