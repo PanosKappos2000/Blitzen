@@ -2,6 +2,8 @@
 
 #include "BlitzenVulkan/vulkanRenderer.h"
 
+#include "BlitzenGl/openglRenderer.h"
+
 // The rendering resources are passed to the renderers to set up their global buffers
 #include "Renderer/blitRenderingResources.h"
 
@@ -20,8 +22,9 @@ namespace BlitzenEngine
     {
         Vulkan = 0,
         Directx12 = 1,
+        Opengl = 2,
 
-        MaxRenderers = 2
+        MaxRenderers = 3
     };
 
     // Takes a smart pointer to a vulkan renderer and initalizes it. Succesfully returns if it gets initialized
@@ -30,6 +33,12 @@ namespace BlitzenEngine
 
     // Small fuction that tells the engine if Vulkan is active
     uint8_t isVulkanInitialized();
+
+    // Create the opengl renderer
+    uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer);
+
+    // Checks if opengl is initialized
+    uint8_t IsOpenglInitialized();
 
     // This function checks if the requested active renderer is available
     uint8_t CheckActiveRenderer(ActiveRenderer ar);

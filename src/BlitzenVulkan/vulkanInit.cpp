@@ -517,7 +517,7 @@ namespace BlitzenVulkan
             // Used for PipelineBarrier2, better sync structure API
             vulkan13Features.synchronization2 = true;
 
-            // Don't remember what this is
+            // This is needed for local size id in shaders
             vulkan13Features.maintenance4 = true;
 
             VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};

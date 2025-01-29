@@ -4,6 +4,9 @@
 namespace BlitzenEngine
 {
     inline BlitzenVulkan::VulkanRenderer* gpVulkan = nullptr;
+
+    inline BlitzenGL::OpenglRenderer* gpGl = nullptr;
+
     inline void* gpDx12 = nullptr;
 
     uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
@@ -22,7 +25,27 @@ namespace BlitzenEngine
         }
     }
 
+    uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer)
+    {
+        #if LINUX
+            BLIT_ERROR("Opengl not available for Linux builds at the moment")
+            return 0;
+        #else
+            if(renderer.Init())
+            {
+                gpGl = &renderer;
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        #endif
+    }
+
     uint8_t isVulkanInitialized() { return gpVulkan != nullptr; }
+
+    uint8_t IsOpenglInitialized() {return gpGl != nullptr;}
 
     uint8_t CheckActiveRenderer(ActiveRenderer ar)
     {
@@ -30,6 +53,8 @@ namespace BlitzenEngine
         {
             case ActiveRenderer::Vulkan:
                 return isVulkanInitialized();
+            case ActiveRenderer::Opengl:
+                return IsOpenglInitialized();
             case ActiveRenderer::Directx12:
                 return 0;
             default:

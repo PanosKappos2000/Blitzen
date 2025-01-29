@@ -7,7 +7,7 @@
 #include "Platform/platform.h"
 #include "Renderer/blitRenderer.h"
 
-#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
+#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Opengl
 
 namespace BlitzenEngine
 {
@@ -72,8 +72,11 @@ namespace BlitzenEngine
         // Create the vulkan renderer if it's requested
         #if BLITZEN_VULKAN
             BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
-            hasRenderer = CreateVulkanRenderer(pVulkan, m_platformData.windowWidth, m_platformData.windowHeight);
+            hasRenderer = hasRenderer || CreateVulkanRenderer(pVulkan, m_platformData.windowWidth, m_platformData.windowHeight);
         #endif
+
+        BlitzenGL::OpenglRenderer gl;
+        hasRenderer = CreateOpenglRenderer(gl) || hasRenderer;
 
         // Test if any renderer was initialized
         BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")

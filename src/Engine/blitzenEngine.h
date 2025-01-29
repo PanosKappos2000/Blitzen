@@ -13,6 +13,7 @@
 // Should graphics API implementation be loaded
 #define BLITZEN_VULKAN                  1
 #define BLITZEN_DIRECTX12               0
+#define BLITZEN_OPENGL                  1
 
 // Window macros
 #define BLITZEN_WINDOW_STARTING_X       100

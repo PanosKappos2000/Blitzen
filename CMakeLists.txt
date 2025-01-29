@@ -17,6 +17,9 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanResources.cpp
                 src/BlitzenVulkan/vulkanPipelines.cpp
 
+                src/BlitzenGL/openglRenderer.h
+                src/BlitzenGL/openglInit.cpp
+
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
                 src/Renderer/blitRenderer.h
@@ -63,13 +66,17 @@ target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies"
-                        "${PROJECT_SOURCE_DIR}/src/VendorCode")
+                        "${PROJECT_SOURCE_DIR}/src/VendorCode"
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include")
 
 IF(WIN32)
     target_link_directories(BlitzenEngine PUBLIC
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib")
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib"
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/lib/Release/x64")
     target_link_libraries(BlitzenEngine PUBLIC  
-                        vulkan-1)
+                        vulkan-1
+                        glew32s
+                        OpenGL32)
 ELSEIF(UNIX)
     target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixLib")

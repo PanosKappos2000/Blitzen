@@ -4,6 +4,9 @@
 // Including Vulkan to load the VkSurfaceKHR since that is platform specific
 #include "BlitzenVulkan/vulkanData.h"
 
+// Including the opengl renderer to create the platform specific rendering context
+#include "BlitzenGl/openglRenderer.h"
+
 // The Engine class is needed to see if it has been initialized
 #include "Engine/blitzenEngine.h"
 
@@ -62,6 +65,7 @@ namespace BlitzenPlatform
             wc.hIcon = icon;
             wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
             wc.hbrBackground = nullptr;
+
             // !This must be the exact same as the 2nd parameter of CreateWindowExA
             wc.lpszClassName = "BlitzenWindowClass";
 
@@ -215,6 +219,57 @@ namespace BlitzenPlatform
             info.hinstance = s_pPlatformState.winInstance;
             info.hwnd = s_pPlatformState.winWindow;
             vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
+        }
+
+        uint8_t CreateOpenglContext()
+        {
+            HDC hdc;
+            hdc = GetDC(s_pPlatformState.winWindow);
+
+            // Pixel format
+            PIXELFORMATDESCRIPTOR pfd;
+            pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+            pfd.nVersion = 1;
+            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_SUPPORT_COMPOSITION | PFD_DOUBLEBUFFER;
+            pfd.iPixelType = PFD_TYPE_RGBA;
+            pfd.cColorBits = 32;
+            pfd.cAlphaBits = 8;
+            pfd.iLayerType = PFD_MAIN_PLANE;
+
+            // Acquires pixel format index
+            int formatIndex = ChoosePixelFormat(hdc, &pfd);
+            if(!formatIndex)
+            {
+                return 0;
+            }
+            // Sets the pixel format
+            if(!SetPixelFormat(hdc, formatIndex, &pfd))
+            {
+                return 0;
+            }
+            if (!DescribePixelFormat(hdc, formatIndex, sizeof(pfd), &pfd))
+            {
+                return 0;
+            }
+
+            if ((pfd.dwFlags & PFD_SUPPORT_OPENGL) != PFD_SUPPORT_OPENGL)
+            {
+                return 0;
+            }
+
+            // Creates a render context
+            HGLRC hglrc = wglCreateContext(hdc);
+
+            // Finally, makes the current context the one that was just created. If this fails the function returns 0
+            return wglMakeCurrent(hdc, hglrc);
+        }
+
+        uint8_t GetOpenglExtensions(GLenum name)
+        {
+            const GLubyte* extensions = glGetString(name);
+            LPCSTR winExt = reinterpret_cast<LPCSTR>(extensions);
+            PROC proc = wglGetProcAddress(winExt);
+            return 0;// This code is not necessary for now, but I am keeping this as I might need it
         }
 
 
