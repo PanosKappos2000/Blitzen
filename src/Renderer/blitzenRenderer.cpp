@@ -195,65 +195,65 @@ namespace BlitzenEngine
             return;
         }
 
+        GlobalShaderData& shaderData = context.globalShaderData;
+
+        // Pass the result of projection * view from the detatched camera if it moved since last frame
+        // In case the camera is indeed detatched from the main, the camera will move, but culling will not change for debugging purposes
+        if(pMovingCamera->cameraDirty)
+            shaderData.projectionView = pMovingCamera->projectionViewMatrix;
+
+        // Pass the camera position and view matrix from the main camera, it if has moved since last frame
+        if(camera.cameraDirty)
+        {
+            shaderData.viewPosition = camera.position;
+            shaderData.view = camera.viewMatrix;
+        }
+
+        // Global lighting parameters will be written to the global shader data buffer
+        // TODO: Add some logic to see if these value change (currently they never change and are unused)
+        /*shaderData.sunlightDir = BlitML::vec3 sunDir(-0.57735f, -0.57735f, 0.57735f);
+        shaderData.sunlightColor = BlitML::vec4 sunColor(0.8f, 0.8f, 0.8f, 1.0f);*/
+
+        CullingData& cullingData = context.cullingData;
+
+        // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
+        if(windowResize)
+        {
+            BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
+            BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
+            cullingData.frustumRight = frustumX.x;
+            cullingData.frustumLeft = frustumX.z;
+            cullingData.frustumTop = frustumY.y;
+            cullingData.frustumBottom = frustumY.z;
+
+            // Culling data for occlusion culling
+            cullingData.proj0 = camera.projectionMatrix[0];
+            cullingData.proj5 = camera.projectionMatrix[5];
+        }
+
+        // The near and far planes of the frustum will use the camera directly
+        cullingData.zNear = camera.zNear;
+        cullingData.zFar = camera.drawDistance;
+
+        cullingData.drawCount = static_cast<uint32_t>(drawCount);
+
+
+        context.windowResize = windowResize;
+        context.windowWidth = windowWidth;
+        context.windowHeight = windowHeight;
+
+        // Debug values, controlled by inputs
+        if(pDebugValues)
+        {
+            //cullingData.debugPyramid = pDebugValues->isDebugPyramidActive; // f2 to change (inoperable)
+            cullingData.occlusionEnabled = pDebugValues->m_occlusionCulling; // f3 to change
+            cullingData.lodEnabled = pDebugValues->m_lodEnabled;// f4 to change
+        }
+
         switch(iActive)
         {
             case ActiveRenderer::Vulkan:
             {
-                GlobalShaderData& shaderData = context.globalShaderData;
-
-                // Pass the result of projection * view from the detatched camera if it moved since last frame
-                // In case the camera is indeed detatched from the main, the camera will move, but culling will not change for debugging purposes
-                if(pMovingCamera->cameraDirty)
-                    shaderData.projectionView = pMovingCamera->projectionViewMatrix;
-
-                // Pass the camera position and view matrix from the main camera, it if has moved since last frame
-                if(camera.cameraDirty)
-                {
-                    shaderData.viewPosition = camera.position;
-                    shaderData.view = camera.viewMatrix;
-                }
-
-                // Global lighting parameters will be written to the global shader data buffer
-                // TODO: Add some logic to see if these value change (currently they never change and are unused)
-                /*shaderData.sunlightDir = BlitML::vec3 sunDir(-0.57735f, -0.57735f, 0.57735f);
-                shaderData.sunlightColor = BlitML::vec4 sunColor(0.8f, 0.8f, 0.8f, 1.0f);*/
-
-                CullingData& cullingData = context.cullingData;
-
-                // Create the frustum planes based on the current projection matrix, will be written to the culling data buffer
-                if(windowResize)
-                {
-                    BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
-                    BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
-                    cullingData.frustumRight = frustumX.x;
-                    cullingData.frustumLeft = frustumX.z;
-                    cullingData.frustumTop = frustumY.y;
-                    cullingData.frustumBottom = frustumY.z;
-
-                    // Culling data for occlusion culling
-                    cullingData.proj0 = camera.projectionMatrix[0];
-                    cullingData.proj5 = camera.projectionMatrix[5];
-                }
-
-                // The near and far planes of the frustum will use the camera directly
-                cullingData.zNear = camera.zNear;
-                cullingData.zFar = camera.drawDistance;
-
-                cullingData.drawCount = static_cast<uint32_t>(drawCount);
-
-
-                context.windowResize = windowResize;
-                context.windowWidth = windowWidth;
-                context.windowHeight = windowHeight;
-
-                // Debug values, controlled by inputs
-                if(pDebugValues)
-                {
-                    //cullingData.debugPyramid = pDebugValues->isDebugPyramidActive; // f2 to change (inoperable)
-                    cullingData.occlusionEnabled = pDebugValues->m_occlusionCulling; // f3 to change
-                    cullingData.lodEnabled = pDebugValues->m_lodEnabled;// f4 to change
-                }
-
                 // Let Vulkan do its thing
                 gpVulkan->DrawFrame(context);
 
@@ -262,7 +262,7 @@ namespace BlitzenEngine
             case ActiveRenderer::Opengl:
             {
                 #if _MSC_VER
-                    gpGl->DrawFrame();
+                    gpGl->DrawFrame(context);
                 #endif
                 break;
             }

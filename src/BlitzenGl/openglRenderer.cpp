@@ -17,22 +17,51 @@ namespace BlitzenGL
         // Set the viewport
         glViewport(0, 0, windowWidth, windowHeight);
 
+        // Enable depth testing
+        glEnable(GL_DEPTH_TEST);
+
         return 1;
     }
 
     uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources)
     { 
         BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->vertices;
+        glGenVertexArrays(1, &m_vertexArray);
         glGenBuffers(1, &m_vertexBuffer);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_vertexBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, vertices.GetSize() * sizeof(BlitzenEngine::Vertex), vertices.Data(), GL_STATIC_READ);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_vertexBuffer);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+        glBindVertexArray(m_vertexArray);
 
-        BlitCL::DynamicArray<uint32_t>& indices = pResources->indices;
+        glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), vertices.Data(), GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(BlitzenEngine::Vertex), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0); 
+        glBindVertexArray(0);
+
+        pIndices = &pResources->indices;
         glGenBuffers(1, &m_indexBuffer);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.GetSize(), indices.Data(), GL_STATIC_READ);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * pIndices->GetSize(), pIndices->Data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+        BlitzenEngine::PrimitiveSurface& surface = pResources->surfaces[0];
+        IndirectDrawCommand command{surface.meshLod[0].indexCount, 1, surface.meshLod[0].firstIndex, surface.vertexOffset, 0};
+        glGenBuffers(1, &m_indirectDrawBuffer);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer);
+        glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(IndirectDrawCommand), &command,  GL_STATIC_DRAW);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+
+        BlitzenEngine::MeshTransform transform;
+        transform.orientation = BlitML::quat(0);
+        transform.pos = BlitML::vec3(0, 0, -70.f);
+        transform.scale = 1.f;
+        glGenBuffers(1, &m_transformBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_transformBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::MeshTransform), &transform, GL_STATIC_READ);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_transformBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         if(!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", 
         m_opaqueGeometryGraphicsProgram))
@@ -41,17 +70,20 @@ namespace BlitzenGL
         return 1;
     }
 
-    void OpenglRenderer::DrawFrame()
+    void OpenglRenderer::DrawFrame(BlitzenEngine::RenderContext& context)
     {
         glClearColor(0, 0.5f, 0.7f, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(m_opaqueGeometryGraphicsProgram);
-
+        glBindVertexArray(m_vertexArray);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer);
 
-        glDrawElements(GL_TRIANGLES, 50, GL_UNSIGNED_INT, 0);
+        int vertexColorLocation = glGetUniformLocation(m_opaqueGeometryGraphicsProgram, "projectionView");
+        glUniformMatrix4fv(vertexColorLocation, 1, GL_FALSE, &context.globalShaderData.projectionView[0]);
 
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 1, sizeof(IndirectDrawCommand));
 
 	    BlitzenPlatform::OpenglSwapBuffers();
     }
@@ -70,6 +102,7 @@ namespace BlitzenGL
             return 0;
 
         // Attaches the two shaders and link the graphics program
+        program = glCreateProgram();
         glAttachShader(program, vertexShader);
         glAttachShader(program, fragmentShader);
         glLinkProgram(program);

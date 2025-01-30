@@ -17,12 +17,21 @@ namespace BlitzenGL
     using GlBuffer = unsigned int;
     using GlShader = unsigned int;
 
+    struct IndirectDrawCommand
+    {
+        uint32_t  indexCount;
+        uint32_t  instanceCount;
+        uint32_t  firstIndex;
+        uint32_t  vertexOffset;
+        uint32_t  firstInstance;
+    };
+
     class OpenglRenderer
     {
     public:
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
-        void DrawFrame();
+        void DrawFrame(BlitzenEngine::RenderContext& context);
 
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
 
@@ -32,7 +41,14 @@ namespace BlitzenGL
         GraphicsProgram m_opaqueGeometryGraphicsProgram;
 
         GlBuffer m_vertexBuffer;
+        GlBuffer m_vertexArray;
         GlBuffer m_indexBuffer;
+
+        GlBuffer m_indirectDrawBuffer;
+
+        GlBuffer m_transformBuffer;
+
+        BlitCL::DynamicArray<uint32_t>* pIndices;
     };
 
     uint8_t CompileShader(GlShader& shader, GLenum shaderType, const char* filepath);
