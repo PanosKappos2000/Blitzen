@@ -101,7 +101,7 @@ add_dependencies(BlitzenEngine copy_assets)
 
 # Copy the glsl shaders to the binary directory
 add_custom_target(copy_glsl_shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/VulkanShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders
 )
 add_dependencies(BlitzenEngine copy_glsl_shaders)
 

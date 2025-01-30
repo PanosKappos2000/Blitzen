@@ -24,7 +24,7 @@ namespace BlitzenGL
 
         void DrawFrame();
 
-        void SetupForRendering();
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
 
         void Shutdown();
 

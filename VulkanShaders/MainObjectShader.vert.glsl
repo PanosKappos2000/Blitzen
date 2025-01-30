@@ -1,5 +1,6 @@
 #version 450
 
+#extension GL_ARB_shading_language_include : enable
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_shader_draw_parameters : require
 

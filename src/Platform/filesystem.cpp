@@ -75,6 +75,8 @@ namespace BlitzenPlatform
         if (handle.pHandle && lineBuffer && pLength && maxLength > 0) 
         {
             char* buffer = *lineBuffer;
+            if (!buffer)
+                return 0;
             if (fgets(buffer, static_cast<int32_t>(maxLength), (FILE*)handle.pHandle) != 0) 
             {
                 *pLength = strlen(*lineBuffer);

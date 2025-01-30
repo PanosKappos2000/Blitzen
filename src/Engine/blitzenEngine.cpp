@@ -7,7 +7,7 @@
 #include "Platform/platform.h"
 #include "Renderer/blitRenderer.h"
 
-#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
+#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Opengl
 
 namespace BlitzenEngine
 {

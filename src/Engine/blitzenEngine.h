@@ -13,7 +13,7 @@
 // Should graphics API implementation be loaded
 #define BLITZEN_VULKAN                  1
 #define BLITZEN_DIRECTX12               0
-#define BLITZEN_OPENGL                  0
+#define BLITZEN_OPENGL                  1
 
 // Window macros
 #define BLITZEN_WINDOW_STARTING_X       100
@@ -27,7 +27,7 @@
 // Various hardcoded modes to test the renderer
 #define BLITZEN_GEOMETRY_STRESS_TEST        1
 #define BLITZEN_GLTF_SCENE                  1
-#define BLITZEN_OBJ_AND_GLTF_COMBINE_TEST   0
+#define BLITZEN_OBJ_AND_GLTF_COMBINE_TEST   1
 #define BLITZEN_OBJ_AND_MULTIPLE_GLTF_TEST  1
 
 namespace BlitzenEngine

@@ -147,7 +147,14 @@ namespace BlitzenEngine
         #if _MSC_VER
         if(gpGl)
         {
-            gpGl->SetupForRendering();
+            if(!gpGl->SetupForRendering(pResources))
+            {
+                BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
+                gpGl = nullptr;
+                isThereRendererOnStandby = isThereRendererOnStandby | 0;
+            }
+
+            isThereRendererOnStandby = 1;
         }
         #endif
 
@@ -181,10 +188,10 @@ namespace BlitzenEngine
     uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
     ActiveRenderer ar, RenderContext& context, RuntimeDebugValues* pDebugValues /*= nullptr*/)
     {
-        // Check that the pointer for the active renderer is not Null, if it is warn the use that they should switch the active renderer
+        // Check that the pointer for the active renderer is not Null
         if(!CheckActiveRenderer(ar))
         {
-            BLIT_ERROR("Renderer not available, switch active renderer");
+            // I could throw a warning here but it would fill the screen with the same error message over and over
             return;
         }
 

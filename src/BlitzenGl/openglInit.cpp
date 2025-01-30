@@ -2,5 +2,5 @@
 
 namespace BlitzenGL
 {
-    
+    // TODO: Remove this file
 }

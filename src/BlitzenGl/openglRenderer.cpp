@@ -2,20 +2,7 @@
 #if _MSC_VER
 #include "openglRenderer.h"
 #include "Platform/filesystem.h"
-
-const char *vertexShaderSource = "#version 450 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-
-const char* fragmentShaderSource = "#version 330 core\n"
-                                    "out vec4 FragColor;\n"
-                                    "void main()\n"
-                                    "{\n"
-                                    "FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-                                    "}";
+#include <string>
 
 namespace BlitzenGL
 {
@@ -33,28 +20,25 @@ namespace BlitzenGL
         return 1;
     }
 
-    void OpenglRenderer::SetupForRendering()
-    {
-        BlitML::vec3 vertices[3];
-        vertices[0] = BlitML::vec3(-0.5f, 0.f, 0.f);
-        vertices[1] = BlitML::vec3(0.f, 1.f, 0.f);
-        vertices[2] = BlitML::vec3(0.5f, 0.f, 0.f);
-
+    uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources)
+    { 
+        BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->vertices;
         glGenBuffers(1, &m_vertexBuffer);
-        glGenVertexArrays(1, &m_indexBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_vertexBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, vertices.GetSize() * sizeof(BlitzenEngine::Vertex), vertices.Data(), GL_STATIC_READ);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_vertexBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-        glBindVertexArray(m_indexBuffer);
+        BlitCL::DynamicArray<uint32_t>& indices = pResources->indices;
+        glGenBuffers(1, &m_indexBuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.GetSize(), indices.Data(), GL_STATIC_READ);
 
-        glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(BlitML::vec3), &vertices, GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(BlitML::vec3), (void*)0);
-        glEnableVertexAttribArray(0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        BLIT_ASSERT(CreateGraphicsProgram("VulkanShaders/MainObjectShader.vert.glsl.spv", "VulkanShaders/MainObjectShader.frag.glsl.spv", 
+        if(!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", 
         m_opaqueGeometryGraphicsProgram))
+            return 0;
+        
+        return 1;
     }
 
     void OpenglRenderer::DrawFrame()
@@ -63,8 +47,11 @@ namespace BlitzenGL
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(m_opaqueGeometryGraphicsProgram);
-        glBindVertexArray(m_indexBuffer);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
+
+        glDrawElements(GL_TRIANGLES, 50, GL_UNSIGNED_INT, 0);
+
 
 	    BlitzenPlatform::OpenglSwapBuffers();
     }
@@ -72,14 +59,14 @@ namespace BlitzenGL
     uint8_t CreateGraphicsProgram(const char* vertexShaderFilepath, const char* fragmentShaderFilepath, 
     GraphicsProgram& program)
     {
-        // Compiles the fragment shader
-        GlShader fragmentShader;
-        if(!CompileShader(fragmentShader, GL_FRAGMENT_SHADER, fragmentShaderFilepath))
-            return 0;
-
         // Compiles the vertex shader
         GlShader vertexShader;
         if(!CompileShader(vertexShader, GL_VERTEX_SHADER, vertexShaderFilepath))
+            return 0;
+
+        // Compiles the fragment shader
+        GlShader fragmentShader;
+        if(!CompileShader(fragmentShader, GL_FRAGMENT_SHADER, fragmentShaderFilepath))
             return 0;
 
         // Attaches the two shaders and link the graphics program
@@ -110,20 +97,28 @@ namespace BlitzenGL
         BlitzenPlatform::FileHandle handle;
         if(!BlitzenPlatform::OpenFile(filepath, BlitzenPlatform::FileModes::Read, 1, handle))
             return 0;
-            
-        size_t filesize = 0;
-        uint8_t* pBytes = nullptr;
-        if(!BlitzenPlatform::FilesystemReadAllBytes(handle, &pBytes, &filesize))
-            return 0;
-        BlitzenPlatform::CloseFile(handle);
+        
+        // This string will hold the final shader source code
+        std::string shaderSource;
+        // lineLen will hold the size of each line, placeholder will temporarily hold the code of each line
+        size_t lineLen = 0;
+        std::string placeholder;
+        placeholder.resize(1000);
+        char* data = (char*)placeholder.c_str();
+        // Goes through every line, save the code and the size
+        while(BlitzenPlatform::FilesystemReadLine(handle, 1000, &data, &lineLen))
+        {
+            // Appends to the final source code string only up to lineLen
+            shaderSource.append(placeholder.c_str(), lineLen);
+        }
 
-        // Compile the vertex shader
+        // Compiles the shader
+        const char* source = shaderSource.c_str();
         shader = glCreateShader(shaderType);
-        glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V, pBytes, filesize);
-        const char* entryPoint = "main";
-        glSpecializeShader(shader, (const GLchar*)entryPoint, 0, nullptr, nullptr);
+        glShaderSource(shader, 1, &source, nullptr);
+        glCompileShader(shader);
 
-        // Check if the vertex shader compiled succesfully
+        // Checks if the shader compiled succesfully
         int32_t  success = 0;
         char infoLog[512];
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
@@ -131,6 +126,7 @@ namespace BlitzenGL
         {
             glGetShaderInfoLog(shader, 512, nullptr, infoLog);
             BLIT_ERROR("GLSL_COMPILATION_ERROR::%s", infoLog);
+            glDeleteShader(shader);
             return 0;
         }
 

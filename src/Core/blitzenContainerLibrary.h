@@ -26,6 +26,8 @@ namespace BlitCL
             if (m_size > 0)
             {
                 m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+
+                // TODO: I want to try removing this but it will break the application. Maybe I will create a branch at some point
                 BlitzenCore::BlitZeroMemory(m_pBlock, m_size * sizeof(T));
             }
         }
