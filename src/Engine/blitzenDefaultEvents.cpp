@@ -1,4 +1,5 @@
 #include "blitzenEngine.h"
+#include "Renderer/blitRenderer.h"
 
 namespace BlitzenEngine
 {
@@ -99,6 +100,16 @@ namespace BlitzenEngine
                 case BlitzenCore::BlitKey::__F4:
                 {
                     Engine::GetEngineInstancePointer()->ChangeLodEnabledState();
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F5:
+                {
+                    SetActiveRenderer(ActiveRenderer::Opengl);
+                    break;
+                }
+                case BlitzenCore::BlitKey::__F6:
+                {
+                    SetActiveRenderer(ActiveRenderer::Vulkan);
                     break;
                 }
                 default:

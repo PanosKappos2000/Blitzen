@@ -17,7 +17,6 @@ void main()
 {
     // Access the current vertex
     Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
-    
 
     // Access the current object data
     RenderObject currentObject = bufferAddrs.objectBuffer.objects[bufferAddrs.indirectDrawBuffer.draws[gl_DrawIDARB].objectId];

@@ -35,11 +35,15 @@ namespace BlitzenEngine
     uint8_t isVulkanInitialized();
 
     // Create the opengl renderer
-    uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer);
+    uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer, uint32_t windowWidth, uint32_t windowHeight);
 
     // Checks if opengl is initialized
     uint8_t IsOpenglInitialized();
 
+    // When changing the renderer mid flight, the previous renderer might need to clear the frame
+    void ClearCurrentActiveRenderer();
+    // Sets the renderer / graphics API that will be used when drawing
+    uint8_t SetActiveRenderer(ActiveRenderer ar);
     // This function checks if the requested active renderer is available
     uint8_t CheckActiveRenderer(ActiveRenderer ar);
 

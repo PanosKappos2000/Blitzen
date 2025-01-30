@@ -21,15 +21,21 @@ namespace BlitzenPlatform
 
     #if _MSC_VER
         #include <windows.h>
+        #include <Windows.h>
         #include <windowsx.h>
         #include <WinUser.h>
         #include <windowsx.h>
         #include <vulkan/vulkan_win32.h>
+        // Necessary for some wgl function pointers
+        #include <GL/wglew.h>
 
         struct PlatformState
         {
             HINSTANCE winInstance;
             HWND winWindow;
+
+            // gl render context
+            HGLRC hglrc;
         };    
 
         inline PlatformState s_pPlatformState;
@@ -134,6 +140,12 @@ namespace BlitzenPlatform
 
         void PlatformShutdown()
         {
+            // Delete the gl render context
+            if(s_pPlatformState.hglrc)
+            {
+                wglDeleteContext(s_pPlatformState.hglrc);
+            }
+
             if(s_pPlatformState.winWindow)
             {
                 DestroyWindow(s_pPlatformState.winWindow);
@@ -221,10 +233,10 @@ namespace BlitzenPlatform
             vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
         }
 
-        uint8_t CreateOpenglContext()
+        uint8_t CreateOpenglDrawContext()
         {
-            HDC hdc;
-            hdc = GetDC(s_pPlatformState.winWindow);
+            // Get the device context of the window
+            HDC hdc = GetDC(s_pPlatformState.winWindow);
 
             // Pixel format
             PIXELFORMATDESCRIPTOR pfd;
@@ -236,13 +248,12 @@ namespace BlitzenPlatform
             pfd.cAlphaBits = 8;
             pfd.iLayerType = PFD_MAIN_PLANE;
 
-            // Acquires pixel format index
+            // Setup a dummy pixel format 
             int formatIndex = ChoosePixelFormat(hdc, &pfd);
             if(!formatIndex)
             {
                 return 0;
             }
-            // Sets the pixel format
             if(!SetPixelFormat(hdc, formatIndex, &pfd))
             {
                 return 0;
@@ -257,19 +268,63 @@ namespace BlitzenPlatform
                 return 0;
             }
 
-            // Creates a render context
-            HGLRC hglrc = wglCreateContext(hdc);
+            // Create the dummy render context
+            s_pPlatformState.hglrc = wglCreateContext(hdc);
 
-            // Finally, makes the current context the one that was just created. If this fails the function returns 0
-            return wglMakeCurrent(hdc, hglrc);
+            // Make this the current context so that glew can be initialized
+            if(!wglMakeCurrent(hdc, s_pPlatformState.hglrc))
+            {
+                return 0;
+            }
+
+            // Initializes glew
+            if (glewInit() != GLEW_OK)
+            {
+                return 0;
+            }
+
+            // With glew now available, extension function pointers can be accessed and a better gl context can be retrieved
+            // So the old render context is deleted and the device is released
+            wglDeleteContext(s_pPlatformState.hglrc);
+            ReleaseDC(s_pPlatformState.winWindow, hdc);
+
+            // Get a new device context
+            hdc = GetDC(s_pPlatformState.winWindow);
+
+            // Choose a pixel format with attributes
+            const int attribList[] =
+            {
+                WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+                WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+                WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+                WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+                WGL_COLOR_BITS_ARB, 32,
+                WGL_DEPTH_BITS_ARB, 24,
+                WGL_STENCIL_BITS_ARB, 8,
+                0, // End
+            };
+            int pixelFormat;
+            UINT numFormats;
+            wglChoosePixelFormatARB(hdc, attribList, NULL, 1, &pixelFormat, &numFormats);
+
+            // Set the pixel format
+            PIXELFORMATDESCRIPTOR pixelFormatDesc = {};
+	        DescribePixelFormat(hdc, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pixelFormatDesc);
+	        SetPixelFormat(hdc, pixelFormat, &pixelFormatDesc);
+
+            // Create a new render context with attributes (latest opengl version)
+            int const createAttribs[] = {WGL_CONTEXT_MAJOR_VERSION_ARB, 4, WGL_CONTEXT_MINOR_VERSION_ARB,  6,
+		    WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB, 0};
+            s_pPlatformState.hglrc = wglCreateContextAttribsARB(hdc, 0, createAttribs);
+
+            // Set the gl render context as the new one
+            return (wglMakeCurrent(hdc, s_pPlatformState.hglrc));
         }
 
-        uint8_t GetOpenglExtensions(GLenum name)
+        void OpenglSwapBuffers()
         {
-            const GLubyte* extensions = glGetString(name);
-            LPCSTR winExt = reinterpret_cast<LPCSTR>(extensions);
-            PROC proc = wglGetProcAddress(winExt);
-            return 0;// This code is not necessary for now, but I am keeping this as I might need it
+            wglSwapIntervalEXT(1);
+            wglSwapLayerBuffers(GetDC(s_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
         }
 
 

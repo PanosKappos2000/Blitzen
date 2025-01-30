@@ -26,7 +26,7 @@ namespace BlitzenCore
     void Log(LogLevel level, const char* message, ...)
     {
         const char* logLevels[6] = {"{FATAL}: ", "{ERROR}: ", "{Info}: ", "{Warning}: ", "{Debug}: ", "{Trace}: "};
-        uint8_t isError = level < LogLevel::INFO;
+        uint8_t isError = level < LogLevel::Info;
 
         // Temporary to avoid dynamic arrays for now, even though this is terrible
         char outMessage[1500];

@@ -9,6 +9,8 @@ namespace BlitzenEngine
 
     inline void* gpDx12 = nullptr;
 
+    inline ActiveRenderer iActive = ActiveRenderer::MaxRenderers;
+
     uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
     uint32_t windowWidth, uint32_t windowHeight)
     {
@@ -25,13 +27,13 @@ namespace BlitzenEngine
         }
     }
 
-    uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer)
+    uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer, uint32_t windowWidth, uint32_t windowHeight)
     {
         #if LINUX
             BLIT_ERROR("Opengl not available for Linux builds at the moment")
             return 0;
         #else
-            if(renderer.Init())
+            if(renderer.Init(windowWidth, windowHeight))
             {
                 gpGl = &renderer;
                 return 1;
@@ -59,6 +61,37 @@ namespace BlitzenEngine
                 return 0;
             default:
                 return 0;
+        }
+    }
+
+    uint8_t SetActiveRenderer(ActiveRenderer ar)
+    {
+        if(CheckActiveRenderer(ar))
+        {
+            ClearCurrentActiveRenderer();
+            iActive = ar;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    void ClearCurrentActiveRenderer()
+    {
+        switch(iActive)
+        {
+            case ActiveRenderer::Vulkan:
+            {
+                if(gpVulkan)
+                {
+                    gpVulkan->ClearFrame();
+                }
+                break;
+            }
+            default:
+            {
+                break;
+            }
         }
     }
 
@@ -111,6 +144,13 @@ namespace BlitzenEngine
             isThereRendererOnStandby = 1;
         }
 
+        #if _MSC_VER
+        if(gpGl)
+        {
+            gpGl->SetupForRendering();
+        }
+        #endif
+
         // If it has succesfully loaded a graphics API, it can move on to uploading culling and global shader data and then return succesfully
         if(isThereRendererOnStandby)
         {
@@ -148,7 +188,7 @@ namespace BlitzenEngine
             return;
         }
 
-        switch(ar)
+        switch(iActive)
         {
             case ActiveRenderer::Vulkan:
             {
@@ -210,6 +250,13 @@ namespace BlitzenEngine
                 // Let Vulkan do its thing
                 gpVulkan->DrawFrame(context);
 
+                break;
+            }
+            case ActiveRenderer::Opengl:
+            {
+                #if _MSC_VER
+                    gpGl->DrawFrame();
+                #endif
                 break;
             }
             default:

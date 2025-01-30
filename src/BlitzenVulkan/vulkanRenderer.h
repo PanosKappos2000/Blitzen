@@ -166,6 +166,8 @@ namespace BlitzenVulkan
 
     public:
 
+        void ClearFrame();
+
         // Array of structs that represent the way textures will be pushed to the GPU
         BlitCL::DynamicArray<TextureData> loadedTextures;
 

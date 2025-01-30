@@ -137,6 +137,7 @@ namespace BlitzenPlatform
             // File size
             fseek(reinterpret_cast<FILE*>(handle.pHandle), 0, SEEK_END);
             uint64_t size = ftell(reinterpret_cast<FILE*>(handle.pHandle));
+            
             rewind(reinterpret_cast<FILE*>(handle.pHandle));
             *pBytesRead = reinterpret_cast<uint8_t*>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::String, sizeof(char) * size));
             *byteCount = fread(*pBytesRead, 1, size, reinterpret_cast<FILE*>(handle.pHandle));

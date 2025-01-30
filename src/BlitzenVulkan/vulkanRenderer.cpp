@@ -892,4 +892,68 @@ namespace BlitzenVulkan
         CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
         m_drawExtent, m_device, m_allocator, 0);
     }
+
+    void VulkanRenderer::ClearFrame()
+    {
+        vkDeviceWaitIdle(m_device);
+        FrameTools& fTools = m_frameToolsList[m_currentFrame];
+        VkCommandBuffer commandBuffer = m_frameToolsList[m_currentFrame].commandBuffer;
+
+        vkWaitForFences(m_device, 1, &fTools.inFlightFence, VK_TRUE, 1000000000);
+        vkResetFences(m_device, 1, &fTools.inFlightFence);
+
+        uint32_t swapchainIdx;
+        vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
+
+        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        VkImageMemoryBarrier2 colorAttachmentBarrier{};
+        ImageMemoryBarrier(m_initHandles.swapchainImages[swapchainIdx], colorAttachmentBarrier, 
+        VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
+        VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 
+        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &colorAttachmentBarrier);
+
+        VkClearColorValue value;
+        value.float32[0] = 0;
+        value.float32[1] = 0;
+        value.float32[2] = 0;
+        value.float32[3] = 1;
+        VkImageSubresourceRange range;
+        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.baseMipLevel = 0;
+        range.levelCount = VK_REMAINING_MIP_LEVELS;
+        range.baseArrayLayer = 0;
+        range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        vkCmdClearColorImage(commandBuffer, m_initHandles.swapchainImages[swapchainIdx], VK_IMAGE_LAYOUT_GENERAL, &value, 
+        1, &range);
+
+        VkImageMemoryBarrier2 swapchainPresentBarrier{};
+        ImageMemoryBarrier(m_initHandles.swapchainImages[swapchainIdx], swapchainPresentBarrier, 
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_NONE, 
+        VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 
+        0, VK_REMAINING_MIP_LEVELS);
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &swapchainPresentBarrier);
+
+        // All commands have ben recorded, the command buffer is submitted
+        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer, 1, fTools.imageAcquiredSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
+        1, fTools.readyToPresentSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence);
+
+        // Presents the swapchain image, so that the rendering results are shown on the window
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &fTools.readyToPresentSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &(m_initHandles.swapchain);
+        presentInfo.pImageIndices = &swapchainIdx;
+        vkQueuePresentKHR(m_presentQueue.handle, &presentInfo);
+
+        // Reset any fences that were not reset
+        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            if(i != m_currentFrame)
+                vkResetFences(m_device, 1, &m_frameToolsList[i].inFlightFence);
+        }
+    }
 }

@@ -7,7 +7,7 @@
 #include "Platform/platform.h"
 #include "Renderer/blitRenderer.h"
 
-#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Opengl
+#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
 
 namespace BlitzenEngine
 {
@@ -75,15 +75,17 @@ namespace BlitzenEngine
             hasRenderer = hasRenderer || CreateVulkanRenderer(pVulkan, m_platformData.windowWidth, m_platformData.windowHeight);
         #endif
 
-        BlitzenGL::OpenglRenderer gl;
-        hasRenderer = CreateOpenglRenderer(gl) || hasRenderer;
+        #if BLITZEN_OPENGL
+            BlitzenGL::OpenglRenderer gl;
+            hasRenderer = CreateOpenglRenderer(gl, m_platformData.windowWidth, m_platformData.windowHeight) || hasRenderer;
+        #endif
 
         // Test if any renderer was initialized
         BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
 
         // Initialize the active renderer and assert if it is available
         ActiveRenderer activeRenderer = BLIT_ACTIVE_RENDERER_ON_BOOT;
-        BLIT_ASSERT(CheckActiveRenderer(activeRenderer))
+        BLIT_ASSERT(SetActiveRenderer(BLIT_ACTIVE_RENDERER_ON_BOOT))
         
         // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
         isRunning = 1;

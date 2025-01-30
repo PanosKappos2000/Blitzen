@@ -5,6 +5,7 @@ project (BlitzenEngine VERSION 0)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 
+#Blitzen Engine 
 add_executable(BlitzenEngine
                 src/Engine/blitzenEngine.cpp
                 src/Engine/blitzenEngine.h
@@ -18,6 +19,7 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanPipelines.cpp
 
                 src/BlitzenGL/openglRenderer.h
+                src/BlitzenGl/openglRenderer.cpp
                 src/BlitzenGL/openglInit.cpp
 
                 src/Renderer/blitRenderingResources.h
@@ -62,6 +64,7 @@ add_executable(BlitzenEngine
                 #src/VendorCode/volk/volk.c
                 )
 
+# Specify directories that hold header files
 target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
@@ -69,6 +72,7 @@ target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src/VendorCode"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include")
 
+# Linker file directories and libraries to link for linux and Windows
 IF(WIN32)
     target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib"
@@ -89,17 +93,24 @@ ENDIF(WIN32)
 
 
 
-#Copy assets folder
+# Copy the assets folder to the binary directory
 add_custom_target(copy_assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets
 )
 add_dependencies(BlitzenEngine copy_assets)
 
+# Copy the glsl shaders to the binary directory
+add_custom_target(copy_glsl_shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/VulkanShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders
+)
+add_dependencies(BlitzenEngine copy_glsl_shaders)
+
 
 #---------------------------------------------------------------------------------------------------
-#Compiling Shaders
+#Compiling glsl Shaders to Spir-v
 #
 
+# Find the GLSL VALIDATOR binary
 IF(WIN32)
     find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
     set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/glslangValidator.exe")
@@ -108,7 +119,7 @@ ELSEIF(UNIX)
     set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixBin/glslangValidator")
 ENDIF(WIN32)
   
-  
+  # Find all glsl shaders files
   file(GLOB_RECURSE GLSL_SOURCE_FILES
       "VulkanShaders/*.glsl"
       )
@@ -131,9 +142,24 @@ ENDIF(WIN32)
   
   add_dependencies(BlitzenEngine VulkanShaders)
   
+  # Copy the spir-v shaders to the target directory
   add_custom_command(TARGET BlitzenEngine POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders/"
       COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${PROJECT_BINARY_DIR}/VulkanShaders"
           "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders"
           )
+
+    # Copy the assets to the target directory
+    add_custom_command(TARGET BlitzenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/Assets/"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${PROJECT_BINARY_DIR}/Assets"
+        "$<TARGET_FILE_DIR:BlitzenEngine>/Assets"
+      )
+
+    # Copy the glsl shaders to the target directory
+    add_custom_command(TARGET BlitzenEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/GlslShaders"
+        "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders")
