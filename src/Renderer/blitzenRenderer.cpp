@@ -275,5 +275,8 @@ namespace BlitzenEngine
     {
         if(gpVulkan)
             gpVulkan->Shutdown();
+
+        if(gpGl)
+            gpGl->Shutdown();
     }
 }

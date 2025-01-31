@@ -14,8 +14,12 @@
 namespace BlitzenGL
 {
     using GraphicsProgram = unsigned int;
+    using ComputeProgram = unsigned int;
+
     using GlBuffer = unsigned int;
     using GlShader = unsigned int;
+
+    using VertexArray = unsigned int;
 
     struct IndirectDrawCommand
     {
@@ -38,23 +42,42 @@ namespace BlitzenGL
         void Shutdown();
 
     private:
+
+        // Program that holds the vertex and fragment shader for drawing opaque geometry
         GraphicsProgram m_opaqueGeometryGraphicsProgram;
 
+        ComputeProgram m_initialDrawCullCompProgram;
+
+        // This is the single vertex buffer that will be used for the scene
         GlBuffer m_vertexBuffer;
-        GlBuffer m_vertexArray;
+
+        // The vertex array will specify the 3 vertex attributes: Position, Normals, UvMapping
+        VertexArray m_vertexArray;
+
+        // This is the single index buffer that will hold indices to the vertex buffer
         GlBuffer m_indexBuffer;
 
+        // This buffer will hold the indirect commands that will be set by the culling compute shader
         GlBuffer m_indirectDrawBuffer;
 
+        // Holds all the transform for every object in the scene
         GlBuffer m_transformBuffer;
 
-        BlitCL::DynamicArray<uint32_t>* pIndices;
+        // Holds all the mesh surface/primitive representations that have been loaded for the current scene
+        GlBuffer m_surfaceBuffer;
+
+        GlBuffer m_cullingDataBuffer;
+
+        // Holds all the render objects that will be retrieved in the shaders to access the surface and transform data for each object
+        GlBuffer m_renderObjectBuffer;
     };
 
     uint8_t CompileShader(GlShader& shader, GLenum shaderType, const char* filepath);
 
     uint8_t CreateGraphicsProgram(const char* verteShaderFilepath, const char* fragmentShaderFilepath, 
     GraphicsProgram& program);
+
+    uint8_t CreateComputeProgram(const char* shaderFilepath, ComputeProgram& program);
 }
 
 namespace BlitzenPlatform
