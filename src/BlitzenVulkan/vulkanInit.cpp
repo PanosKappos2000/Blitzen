@@ -13,6 +13,8 @@
 
 namespace BlitzenVulkan
 {
+    VulkanRenderer* VulkanRenderer::m_pThisRenderer = nullptr;
+
     /*
         These function are used load the function pointer for creating the debug messenger
     */
@@ -49,9 +51,10 @@ namespace BlitzenVulkan
     {
         m_pCustomAllocator = nullptr;
 
-        // Like the assertion message below says, Blitzen will not use Vulkan without indirect
-        BLIT_ASSERT_MESSAGE(BLITZEN_VULKAN_INDIRECT_DRAW, "Blitzen will not support Vulkan without draw indirect going forward.If you want to use Vulkan enable the BLITZEN_VULKAN_INDIRECT_DRAW on vulkanData.h")
+        // Save the renderer's instance 
+        m_pThisRenderer = this;
 
+        // Creates the Vulkan instance
         CreateInstance(m_initHandles.instance);
 
         // A debug messenger for validation layers is created when in debug mode
@@ -841,14 +844,10 @@ namespace BlitzenVulkan
     }
 
 
-    void VulkanRenderer::Shutdown()
+    void VulkanRenderer::Shutdown(MemoryCrucialHandles& crucials)
     {
+        // Wait for the device to finish its work before destroying resources
         vkDeviceWaitIdle(m_device);
-
-        for(size_t i = 0; i < loadedTextures.GetSize(); ++i)
-        {
-            loadedTextures[i].image.CleanupResources(m_allocator, m_device);
-        }
 
         vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
 
@@ -867,9 +866,6 @@ namespace BlitzenVulkan
         vkDestroyPipelineLayout(m_device, m_depthPyramidGenerationPipelineLayout, m_pCustomAllocator);
         vkDestroyDescriptorSetLayout(m_device, m_depthPyramidDescriptorLayout, m_pCustomAllocator);
 
-        m_depthAttachment.CleanupResources(m_allocator, m_device);
-        m_colorAttachment.CleanupResources(m_allocator, m_device);
-        m_depthPyramid.CleanupResources(m_allocator, m_device);
         for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
         {
             vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
@@ -886,19 +882,20 @@ namespace BlitzenVulkan
             vkDestroyFence(m_device, frameTools.inFlightFence, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
             vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
-
-            vmaDestroyBuffer(m_allocator, varBuffers.cullingDataBuffer.buffer, varBuffers.cullingDataBuffer.allocation);
-            vmaDestroyBuffer(m_allocator, varBuffers.globalShaderDataBuffer.buffer, varBuffers.globalShaderDataBuffer.allocation);
-            vmaDestroyBuffer(m_allocator, varBuffers.bufferDeviceAddrsBuffer.buffer, varBuffers.bufferDeviceAddrsBuffer.allocation);
         }
 
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
 
-        vmaDestroyAllocator(m_allocator);
-
-        vkDestroyDevice(m_device, m_pCustomAllocator);
-        vkDestroySurfaceKHR(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator);
         DestroyDebugUtilsMessengerEXT(m_initHandles.instance, m_initHandles.debugMessenger, m_pCustomAllocator);
-        vkDestroyInstance(m_initHandles.instance, m_pCustomAllocator);
+
+        crucials.device = m_device;
+        crucials.surface = m_initHandles.surface;
+        crucials.allocator = m_allocator;
+        crucials.instance = m_initHandles.instance;
+    }
+
+    VulkanRenderer::~VulkanRenderer()
+    {
+        
     }
 }

@@ -4,6 +4,8 @@
 namespace BlitzenEngine
 {
     inline BlitzenVulkan::VulkanRenderer* gpVulkan = nullptr;
+    // For now, the memory crucial handles will be defined here globally. The destructor will be called automatically after the vk renderer is destroyed
+    inline BlitzenVulkan::MemoryCrucialHandles vulkanCrucials;
 
     inline BlitzenGL::OpenglRenderer* gpGl = nullptr;
 
@@ -254,7 +256,7 @@ namespace BlitzenEngine
     void ShutdownRenderers()
     {
         if(gpVulkan)
-            gpVulkan->Shutdown();
+            gpVulkan->Shutdown(vulkanCrucials);
 
         if(gpGl)
             gpGl->Shutdown();

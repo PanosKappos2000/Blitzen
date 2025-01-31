@@ -27,7 +27,7 @@
 // Various hardcoded modes to test the renderer
 #define BLITZEN_GEOMETRY_STRESS_TEST        1
 #define BLITZEN_GLTF_SCENE                  1
-#define BLITZEN_OBJ_AND_GLTF_COMBINE_TEST   1
+#define BLITZEN_OBJ_AND_GLTF_COMBINE_TEST   0
 #define BLITZEN_OBJ_AND_MULTIPLE_GLTF_TEST  1
 
 namespace BlitzenEngine

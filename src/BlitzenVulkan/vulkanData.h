@@ -65,45 +65,6 @@ namespace BlitzenVulkan
         VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
     };
 
-    // Holds everything that needs to be given to the renderer during load and converted to data that will be used by the GPU when drawing a frame
-    struct GPUData
-    {
-        BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices;
-
-        BlitCL::DynamicArray<uint32_t>& indices;
-
-        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets;
-
-        BlitCL::DynamicArray<uint32_t>& meshletData;
-
-        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms;
-
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces;
-
-        BlitzenEngine::GameObject* pGameObjects;// This will be transformed to render objects
-        size_t gameObjectCount;
-
-        BlitzenEngine::RenderObject* pRenderObjects;
-        size_t renderObjectCount;
-
-        BlitzenEngine::Mesh* pMeshes;
-        size_t meshCount;
-
-        BlitzenEngine::TextureStats* pTextures; 
-        size_t textureCount;
-
-        BlitzenEngine::Material* pMaterials;
-        size_t materialCount;
-
-        size_t drawCount = 0;
-
-        inline GPUData(BlitCL::DynamicArray<BlitzenEngine::Vertex>& v, BlitCL::DynamicArray<uint32_t>& i, 
-        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& m, BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& s, 
-        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& t, BlitCL::DynamicArray<uint32_t>& md)
-            :vertices(v), indices(i), meshlets(m), surfaces(s), transforms(t), meshletData(md)
-        {}
-    };
-
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
     struct AllocatedImage
     {
@@ -115,8 +76,11 @@ namespace BlitzenVulkan
 
         VmaAllocation allocation;
 
-        // Implemented in vulkanResoures.cpp
+        // Manually cleanup the resources of an image
         void CleanupResources(VmaAllocator allocator, VkDevice device);
+
+        // Implemented in vulkanResoures.cpp
+        ~AllocatedImage();
     };
 
     struct AllocatedBuffer
@@ -124,6 +88,9 @@ namespace BlitzenVulkan
         VkBuffer buffer;
         VmaAllocation allocation;
         VmaAllocationInfo allocationInfo;
+
+        // Implemented on vulkanResources.cpp
+        ~AllocatedBuffer();
     };
 
     // This struct will be passed to the GPU as uniform descriptor and will give shaders access to the global storage buffers

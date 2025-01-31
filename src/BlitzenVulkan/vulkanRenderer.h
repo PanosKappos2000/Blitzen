@@ -21,6 +21,23 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<VkImageView> swapchainImageViews;
     };
 
+    // When the renderer calls the destructor there are some allocation that need to be destroyed, so it needs to be destroyed after them
+    // To do so the renderer will have to hand the below structures to the engine
+    struct MemoryCrucialHandles
+    {
+        VmaAllocator allocator;
+        VkDevice device;
+        VkSurfaceKHR surface;
+        VkInstance instance;
+
+        inline ~MemoryCrucialHandles(){
+            vmaDestroyAllocator(allocator);
+            vkDestroyDevice(device, nullptr);
+            vkDestroySurfaceKHR(instance, surface, nullptr);
+            vkDestroyInstance(instance, nullptr);
+        }
+    };
+
     struct Queue
     {
         uint32_t index;
@@ -93,23 +110,6 @@ namespace BlitzenVulkan
         VkDescriptorSet textureDescriptorSet;
 
         inline void Cleanup(VmaAllocator allocator, VkDevice device){
-            vmaDestroyBuffer(allocator, renderObjectBuffer.buffer, renderObjectBuffer.allocation);
-            vmaDestroyBuffer(allocator, globalMaterialBuffer.buffer, globalMaterialBuffer.allocation);
-
-            vmaDestroyBuffer(allocator, meshletBuffer.buffer, meshletBuffer.allocation);
-            vmaDestroyBuffer(allocator, meshletDataBuffer.buffer, meshletDataBuffer.allocation);
-
-            vmaDestroyBuffer(allocator, transformBuffer.buffer, transformBuffer.allocation);
-            vmaDestroyBuffer(allocator, surfaceBuffer.buffer, surfaceBuffer.allocation);
-
-            vmaDestroyBuffer(allocator, indirectDrawBuffer.buffer, indirectDrawBuffer.allocation);
-            vmaDestroyBuffer(allocator, indirectTaskBuffer.buffer, indirectTaskBuffer.allocation);
-            vmaDestroyBuffer(allocator, drawIndirectCountBuffer.buffer, drawIndirectCountBuffer.allocation);
-            vmaDestroyBuffer(allocator, drawVisibilityBuffer.buffer, drawVisibilityBuffer.allocation);
-
-            vmaDestroyBuffer(allocator, indexBuffer.buffer, indexBuffer.allocation);
-            vmaDestroyBuffer(allocator, vertexBuffer.buffer, vertexBuffer.allocation);
-
             // Destroy the texture image descriptor set resources
             vkDestroyDescriptorPool(device, textureDescriptorPool, nullptr);
             vkDestroyDescriptorSetLayout(device, textureDescriptorSetlayout, nullptr);
@@ -136,7 +136,10 @@ namespace BlitzenVulkan
         void DrawFrame(BlitzenEngine::RenderContext& pRenderData);
 
         // Kills the renderer and cleans up allocated handles and resources. Implemented on vulkanInit.cpp
-        void Shutdown();
+        void Shutdown(MemoryCrucialHandles& pCrucials);
+
+        // This function destroys the handles that should be left for last (the allocator, the device and the instance)
+        ~VulkanRenderer();
 
     private:
 
@@ -167,16 +170,22 @@ namespace BlitzenVulkan
 
         void ClearFrame();
 
-        // Array of structs that represent the way textures will be pushed to the GPU
-        BlitCL::DynamicArray<TextureData> loadedTextures;
+        inline static VulkanRenderer* GetRendererInstance() {return m_pThisRenderer;}
 
-    private:
+        // Array of structs that represent the way textures will be pushed to the GPU
+        TextureData loadedTextures[BLIT_MAX_TEXTURE_COUNT];
+        size_t textureCount = 0;
+
+        // Used to allocate vulkan resources like buffers and images
+        VmaAllocator m_allocator;
 
         // Handle to the logical device
         VkDevice m_device;
 
-        // Used to allocate vulkan resources like buffers and images
-        VmaAllocator m_allocator;
+    private:
+
+        // This pointer will be used to get access to the renderer for thing like automatic destructors
+        static VulkanRenderer* m_pThisRenderer;
 
         // Custom allocator, don't need it right now
         VkAllocationCallbacks* m_pCustomAllocator = nullptr;
@@ -315,12 +324,13 @@ namespace BlitzenVulkan
 
     // Allocate an image resource to be used specifically as texture. 
     // The 1st parameter should be the loaded image data that should be passed to the image resource
+    // This function should not be used if possible, the one below is overall better
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
     VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels = 1);
 
     // This function is similar to the above but it gives its own buffer and mip levels are required. 
     // The buffer should already hold the texture data in pMappedData
-    void CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
+    uint8_t CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
     VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels);
 
     // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 

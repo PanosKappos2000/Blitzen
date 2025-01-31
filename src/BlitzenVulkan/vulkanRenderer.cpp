@@ -107,7 +107,7 @@ namespace BlitzenVulkan
 
         // Descriptor set layout for textures
         VkDescriptorSetLayoutBinding texturesLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(loadedTextures.GetSize()), 
+        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(textureCount), 
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
         m_currentStaticBuffers.textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
         if(m_currentStaticBuffers.textureDescriptorSetlayout == VK_NULL_HANDLE)
@@ -150,52 +150,58 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format)
     {
-        loadedTextures.Resize(loadedTextures.GetSize() + 1);
-
         CreateTextureImage(reinterpret_cast<void*>(newTexture.pTextureData), m_device, m_allocator, 
-        loadedTextures.Back().image, 
+        loadedTextures[textureCount].image, 
         {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, format, 
         VK_IMAGE_USAGE_SAMPLED_BIT, m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, 1);
         
-        loadedTextures.Back().sampler = m_placeholderSampler;
+        loadedTextures[textureCount].sampler = m_placeholderSampler;
+
+        ++textureCount;
     }
 
     uint8_t VulkanRenderer::UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
     void* pData, const char* filepath)
     {
+        // Create a big buffer to hold the texture data temporarily. It will pass it later
+        // This buffer has a random big size, this is because I need to create it before I can get the size needed for the texture image
         BlitzenVulkan::AllocatedBuffer stagingBuffer;
-        CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VMA_MEMORY_USAGE_CPU_TO_GPU, 128 * 1024 * 1024, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VMA_MEMORY_USAGE_CPU_TO_GPU, 128 * 1024 * 1024, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        {
+            BLIT_ERROR("Failed to create staging buffer for texture data copy")
+            return 0;
+        }
         pData = stagingBuffer.allocationInfo.pMappedData;
 
-        // Call the function to initialize header, header10 for DDS, get the data of the image and the image format
+        // Calls the function to initialize header, header10 for DDS, get the data of the image and the image format
         unsigned int format = VK_FORMAT_UNDEFINED;
-        uint8_t load = BlitzenEngine::LoadDDSImage(filepath, header, header10, format, 1, pData);
-
-        // If the previous function returns successfuly load the texture
-        if(load)
+        if(!BlitzenEngine::LoadDDSImage(filepath, header, header10, format, 1, pData))
         {
-            // Cast the placeholder format to a VkFormat
-            VkFormat vkFormat = static_cast<VkFormat>(format);
-
-            loadedTextures.Resize(loadedTextures.GetSize() + 1);
-
-            CreateTextureImage(stagingBuffer, m_device, m_allocator, loadedTextures.Back().image, 
-            {header.dwWidth, header.dwHeight, 1}, vkFormat, VK_IMAGE_USAGE_SAMPLED_BIT, 
-            m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, header.dwMipMapCount);
-        
-            loadedTextures.Back().sampler = m_placeholderSampler;
-
-            // Destroy the buffer before returning
-            vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
-
-            return 1;
+            BLIT_ERROR("Failed to load texture image")
+            return 0;
         }
+        
+        // Casts the placeholder format to a VkFormat
+        VkFormat vkFormat = static_cast<VkFormat>(format);
 
-        vmaDestroyBuffer(m_allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+        // Creates the texture image for Vulkan. This function also copies the data of the staging buffer to the image
+        if(!CreateTextureImage(stagingBuffer, m_device, m_allocator, loadedTextures[textureCount].image, 
+        {header.dwWidth, header.dwHeight, 1}, vkFormat, VK_IMAGE_USAGE_SAMPLED_BIT, 
+        m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, header.dwMipMapCount))
+        {
+            BLIT_ERROR("Failed to load Vulkan texture image")
+            return 0;
+        }
+        
+        // Add the global sampler at the element in the array that was just porcessed
+        loadedTextures[textureCount].sampler = m_placeholderSampler;
 
-        return 0;
+        textureCount++;
+
+        return 1;
     }
+
 
     uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources)
     {
@@ -473,28 +479,18 @@ namespace BlitzenVulkan
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
-        // Destroy all the staging buffers
-        vmaDestroyBuffer(m_allocator, stagingVertexBuffer.buffer, stagingVertexBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, stagingIndexBuffer.buffer, stagingIndexBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, renderObjectStagingBuffer.buffer, renderObjectStagingBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, surfaceStagingBuffer.buffer, surfaceStagingBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, materialStagingBuffer.buffer, materialStagingBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, transformStagingBuffer.buffer, transformStagingBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, meshletStagingBuffer.buffer, meshletStagingBuffer.allocation);
-        vmaDestroyBuffer(m_allocator, meshletDataStagingBuffer.buffer, meshletDataStagingBuffer.allocation);
-
         // Fails if there are no textures to load
-        if(loadedTextures.GetSize() == 0)
+        if(textureCount == 0)
             return 0;
 
         // The descriptor will have multiple descriptors of combined image sampler type. The count is derived from the amount of textures loaded
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSize.descriptorCount = static_cast<uint32_t>(loadedTextures.GetSize());
+        poolSize.descriptorCount = static_cast<uint32_t>(textureCount);
 
         // Creates the descriptor pool for the textures
         m_currentStaticBuffers.textureDescriptorPool = CreateDescriptorPool(m_device, 1, &poolSize, 
-        static_cast<uint32_t>(loadedTextures.GetSize()));
+        static_cast<uint32_t>(textureCount));
         if(m_currentStaticBuffers.textureDescriptorPool == VK_NULL_HANDLE)
             return 0;
  
@@ -504,7 +500,7 @@ namespace BlitzenVulkan
             return 0;
 
         // Create image infos for every texture to be passed to the VkWriteDescriptorSet
-        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(loadedTextures.GetSize());
+        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(textureCount);
         for(size_t i = 0; i < imageInfos.GetSize(); ++i)
         {
             imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

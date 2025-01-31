@@ -146,8 +146,9 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
-    VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels /*=1*/)
+    void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
+    VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, 
+    VkQueue queue, uint8_t mipLevels /*=1*/)
     {
         // Create a buffer that will hold the data of the texture
         VkDeviceSize imageSize = extent.width * extent.height * extent.depth * 4;
@@ -184,17 +185,15 @@ namespace BlitzenVulkan
         // Submit the command and wait for the queue to finish
         SubmitCommandBuffer(queue, commandBuffer);
         vkQueueWaitIdle(queue);
-
-        // Destroy the buffer, it is no longer needed
-        vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
     }
 
-    void CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
+    uint8_t CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
     VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels)
     {
         // Create an image for the texture data to be copied into. 
         // Adds the VK_IMAGE_USAGE_TRANSFER_DST_BIT, so that it can accept the data transfer from the buffer
-        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels);
+        if(!CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels))
+            return 0;
 
         // Get the initial offset for the first mip level to be copied
         uint32_t bufferOffset = 0;
@@ -237,6 +236,8 @@ namespace BlitzenVulkan
 
         SubmitCommandBuffer(queue, commandBuffer);
         vkQueueWaitIdle(queue);
+
+        return 1;
     }
 
     void CreateTextureSampler(VkDevice device, VkSampler& sampler)
@@ -455,6 +456,30 @@ namespace BlitzenVulkan
     {
         vmaDestroyImage(allocator, image, allocation);
         vkDestroyImageView(device, imageView, nullptr);
+    }
+
+    AllocatedImage::~AllocatedImage()
+    {
+        if(image != VK_NULL_HANDLE)
+        {
+            VmaAllocator vma = VulkanRenderer::GetRendererInstance()->m_allocator;
+            vmaDestroyImage(vma, image, allocation);
+        }
+
+        if(imageView != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyImageView(vdv, imageView, nullptr);
+        }
+    }
+
+    AllocatedBuffer::~AllocatedBuffer()
+    {
+        if(buffer != VK_NULL_HANDLE)
+        {
+            VmaAllocator vma = VulkanRenderer::GetRendererInstance()->m_allocator;
+            vmaDestroyBuffer(vma, buffer, allocation);
+        }
     }
 
     VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets)
