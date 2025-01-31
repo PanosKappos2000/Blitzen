@@ -3,6 +3,7 @@
 #extension GL_NV_gpu_shader5 : enable
 #extension GL_KHR_vulkan_glsl : enable
 #extension GL_ARB_shader_draw_parameters : enable
+#extension GL_NV_uniform_buffer_std430_layout : enable
 
 // Vertex position attribute slot
 layout (location = 0) in vec3 vertexPos;
@@ -29,7 +30,18 @@ layout(std430, binding = 1) readonly buffer TransformBuffer
     Transform transforms[];
 }transformBuffer;
 
-uniform mat4 projectionView;
+// This holds global shader data passed to the GPU at the start of each frame
+layout(std430, binding = 0) uniform ShaderData
+{
+    // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
+    mat4 projectionView;
+    mat4 view;
+
+    vec4 sunColor;
+    vec3 sunDir;
+
+    vec3 viewPosition;// Needed for lighting calculations
+}shaderData;
 
 // Sends the normal to the fragment shader
 layout (location = 0) out vec3 fragNormal;
@@ -44,7 +56,7 @@ void main()
 {
     Transform transform = transformBuffer.transforms[gl_DrawIDARB];
 
-    gl_Position = projectionView * vec4(RotateQuat(
+    gl_Position = shaderData.projectionView * vec4(RotateQuat(
     vertexPos, transform.orientation) * transform.scale + transform.pos, 1);
 
     vec3 normal = vec3(normalX, normalY, normalZ);

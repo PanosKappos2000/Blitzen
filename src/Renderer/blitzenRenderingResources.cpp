@@ -647,13 +647,13 @@ namespace BlitzenEngine
             cgltf_material& cgltf_mat = pData->materials[i];
 
             Material& mat = pResources->materials[pResources->materialCount++];
-            mat.materialId = pResources->materialCount - 1;
+            mat.materialId = static_cast<uint32_t>(pResources->materialCount - 1);
 
-            mat.diffuseTextureTag = mat.diffuseTextureTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
-            previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_metallic_roughness.base_color_texture.texture)
+            mat.diffuseTextureTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
+            uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_metallic_roughness.base_color_texture.texture))
             : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
-            previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture)
-            : previousTextureSize + 0;
+            uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture))
+            : static_cast<uint32_t>(previousTextureSize + 0);
 
         }
 

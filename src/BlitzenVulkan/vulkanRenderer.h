@@ -122,10 +122,8 @@ namespace BlitzenVulkan
 
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
-        /* ---------------------------------------------------------------------------------------------------------
-            2nd part of Vulkan initialization. Setsup buffers, shaders and descriptors for the render loop
-        ------------------------------------------------------------------------------------------------------------ */
-        void SetupForRendering(GPUData& gpuData, BlitzenEngine::CullingData& cullData);
+        // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
 
         // Prototype function for textures, used with stb_image
         void UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format);
@@ -142,18 +140,19 @@ namespace BlitzenVulkan
 
     private:
 
-        void FrameToolsInit();
+        // Defined in vulkanInit
+        uint8_t FrameToolsInit();
 
-        void VarBuffersInit();
+        uint8_t VarBuffersInit();
 
-        void CreateDescriptorLayouts();
+        uint8_t CreateDescriptorLayouts();
 
-        void UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
+        uint8_t UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
         BlitzenEngine::RenderObject* pRenderObjects, size_t renderObjectCount, BlitzenEngine::Material* pMaterials, size_t materialCount, 
         BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData,
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
-        void SetupMainGraphicsPipeline();
+        uint8_t SetupMainGraphicsPipeline();
 
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -189,10 +188,6 @@ namespace BlitzenVulkan
         Queue m_graphicsQueue;
         Queue m_presentQueue;
         Queue m_computeQueue;
-
-        // Temporary command buffer and its command pool, used before the game loop starts
-        VkCommandPool m_placeholderCommandPool;
-        VkCommandBuffer m_placeholderCommands;
 
         // Data for the rendering attachments
         AllocatedImage m_colorAttachment;
@@ -284,7 +279,7 @@ namespace BlitzenVulkan
     VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 
     // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
-    void CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+    uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
     VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
     VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler = 1);
 
@@ -295,8 +290,12 @@ namespace BlitzenVulkan
         Vulkan Resources 
     ------------------------- */
 
+    // Create a allocator from the VMA library
+    uint8_t CreateVmaAllocator(VkDevice device, VkInstance instance, VkPhysicalDevice physicalDevice, VmaAllocator& allocator, 
+    VmaAllocatorCreateFlags flags);
+
     // Allocates a buffer using VMA
-    void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
+    uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
     VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, VmaAllocationCreateFlags allocationFlags);
 
     // Create a gpu only storage buffer and a staging buffer to hold its data. Returns the address of the storage buffer if the caller requests it
@@ -307,12 +306,12 @@ namespace BlitzenVulkan
     // Returns the GPU address of a buffer
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
-    // Allocates an image resourece using VMA. It also creates a default image view for it
-    void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
-    VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels = 1);
+    // Creates and image with VMA and also create an image view for it
+    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
+    VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels = 1, VmaMemoryUsage memoryUsage =VMA_MEMORY_USAGE_GPU_ONLY);
 
-    // Separate image view creation structure. This is useful for something like the depth pyramid where image views need to be created separately
-    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
+    // Creates an image view. Called automatically by CreateImage but can also be used seperately for something like the depth pyramid
+    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
 
     // Allocate an image resource to be used specifically as texture. 
     // The 1st parameter should be the loaded image data that should be passed to the image resource
@@ -356,8 +355,11 @@ namespace BlitzenVulkan
     VkImageAspectFlags aspectMask, uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkDeviceSize bufferOffset, 
     uint32_t bufferImageHeight, uint32_t bufferRowLength);
 
-    // Allocates a descriptor set that is passed without using push descriptors
-    void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
+    // Creates a descriptor pool for descriptor sets whose memory should be managed by one and are not push descriptors (managed by command buffer)
+    VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets);
+
+    // Allocates one or more descriptor sets whose memory will be managed by a descriptor pool
+    uint8_t AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
     uint32_t descriptorSetCount, VkDescriptorSet* pSets);
 
     // Creates VkWriteDescriptorSet for a buffer type descriptor set
@@ -416,11 +418,11 @@ namespace BlitzenVulkan
         It also needs an empty shader stage create info, that will be filled by the function and shoulder later be passed to the pipeline info
         The shader stage and entry point parameters specify the type of shader(eg. compute) and the main function name respectively
     */
-    void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    uint8_t CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, VkSpecializationInfo* pSpecializationInfo = nullptr);
 
-    // Since the creation of a compute pipeline is very simple, the function can be a wrapper around CreateShaderProgram with a bit of extra code
-    void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    // Tries to create a compute pipeline
+    uint8_t CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkPipelineLayout& layout, VkPipeline* pPipeline, VkSpecializationInfo* pSpecializationInfo = nullptr);
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
@@ -445,7 +447,7 @@ namespace BlitzenVulkan
     VkBool32 logicOpEnable, VkLogicOp logicOp);
 
     //Helper function that creates a pipeline layout that will be used by a compute or graphics pipeline
-    void CreatePipelineLayout(VkDevice device, VkPipelineLayout* layout, uint32_t descriptorSetLayoutCount, 
+    uint8_t CreatePipelineLayout(VkDevice device, VkPipelineLayout* layout, uint32_t descriptorSetLayoutCount, 
     VkDescriptorSetLayout* pDescriptorSetLayouts, uint32_t pushConstantRangeCount, VkPushConstantRange* pPushConstantRanges);
 
     //Helper function for pipeline layout creation, takes care of a single set layout binding creation

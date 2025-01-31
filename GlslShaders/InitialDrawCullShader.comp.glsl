@@ -29,7 +29,7 @@ struct Transform
 layout(std430, binding = 1) readonly buffer TransformBuffer
 {
     Transform transforms[];
-}tranformBuffer;
+}transformBuffer;
 
 struct MeshLod
 {
@@ -104,16 +104,59 @@ layout (std430, binding = 0) uniform CullingData
     uint drawCount;
 }cullingData;
 
+// This holds global shader data passed to the GPU at the start of each frame
+layout(std430, binding = 1) uniform ShaderData
+{
+    // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
+    mat4 projectionView;
+    mat4 view;
+
+    vec4 sunColor;
+    vec3 sunDir;
+
+    vec3 viewPosition;// Needed for lighting calculations
+}shaderData;
+
+// This function is used in every vertex shader invocation to give the object its orientation
+vec3 RotateQuat(vec3 v, vec4 quat)
+{
+	return v + 2.0 * cross(quat.xyz, cross(quat.xyz, v) + quat.w * v);
+}
 
 void main()
 {
     uint objectId = gl_GlobalInvocationID.x;
+
+    if(objectId > cullingData.drawCount)
+        return;
+
     RenderObject object = objectBuffer.renders[objectId];
     Surface surface = surfaceBuffer.surfaces[object.surfaceId];
+    Transform transform = transformBuffer.transforms[object.transformId];
 
-    indirect.draws[objectId].indexCount = surface.lod[0].indexCount;
-    indirect.draws[objectId].instanceCount = 1;
-    indirect.draws[objectId].firstIndex = surface.lod[0].firstIndex;
-    indirect.draws[objectId].vertexOffset = surface.vertexOffset;
-    indirect.draws[objectId].firstInstance = 0;
+    // Get the center of the bounding sphere and project it to view coordinates
+    vec3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.pos;
+    center = (shaderData.view * vec4(center, 1)).xyz;
+
+    // Get the radius of the bounding sphere and scale it
+    float radius = surface.radius * transform.scale;
+
+    // Check that the bounding sphere is inside the view frustum(frustum culling)
+	bool visible = true;
+    // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time
+    // Formula taken from Arseny Kapoulkine's Niagara renderer https://github.com/zeux/niagara
+    // It is also referenced in VKguide's GPU driven rendering articles https://vkguide.dev/docs/gpudriven/compute_culling/
+    visible = visible && center.z * cullingData.frustumLeft - abs(center.x) * cullingData.frustumRight > -radius;
+	visible = visible && center.z * cullingData.frustumBottom - abs(center.y) * cullingData.frustumTop > -radius;
+	// the near/far plane culling uses camera space Z directly
+	visible = visible && center.z + radius > cullingData.zNear && center.z - radius < cullingData.zFar;
+
+    if(visible)
+    {
+        indirect.draws[objectId].indexCount = surface.lod[0].indexCount;
+        indirect.draws[objectId].instanceCount = 1;
+        indirect.draws[objectId].firstIndex = surface.lod[0].firstIndex;
+        indirect.draws[objectId].vertexOffset = surface.vertexOffset;
+        indirect.draws[objectId].firstInstance = 0;
+    }
 }

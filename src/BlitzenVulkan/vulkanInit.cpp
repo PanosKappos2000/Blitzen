@@ -76,47 +76,43 @@ namespace BlitzenVulkan
         m_initHandles.swapchain);
 
         // Initialize VMA allocator
-        VmaAllocatorCreateInfo allocatorInfo{};
-        allocatorInfo.device = m_device;
-        allocatorInfo.instance = m_initHandles.instance;
-        allocatorInfo.physicalDevice = m_initHandles.chosenGpu;
-        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-        VK_CHECK(vmaCreateAllocator(&allocatorInfo, &m_allocator));
-        
-        /* Allocating temporary command buffer, since some commands will be needed outside of the draw loop*/
+        if(!CreateVmaAllocator(m_device, m_initHandles.instance, m_initHandles.chosenGpu, m_allocator, 
+        VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT))
         {
-            VkCommandPoolCreateInfo commandPoolCreateInfo{};
-            commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            // This will allow each command buffer created by this pool to be inidividually reset
-            commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-            commandPoolCreateInfo.pNext = nullptr;
-            commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueue.index;
-            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolCreateInfo, nullptr, &m_placeholderCommandPool));
+            BLIT_ERROR("Failed to create the vma allocator")
+            return 0;
+        }
 
-            VkCommandBufferAllocateInfo commandBufferInfo{};
-            commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            commandBufferInfo.pNext = nullptr;
-            commandBufferInfo.commandPool = m_placeholderCommandPool;
-            commandBufferInfo.commandBufferCount = 1;
-            commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBufferInfo, &m_placeholderCommands))
-        }// TODO: Remove this pointless code
-
-        // Create the sync structure and command buffers that need to differ for each frame in flight
-        FrameToolsInit();
+        // Creates the sync structure and command buffers for each set of frame tools in m_frameToolsList
+        if(!FrameToolsInit())
+            return 0;
 
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {windowWidth, windowHeight};
 
-        // Initlize the rendering attachments
-        CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-        CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        // Creates Rendering attachment image resource for color attachment
+        if(!CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+        {
+            BLIT_ERROR("Failed to create color attachment image resource")
+            return 0;
+        }
+
+        // Creates rendering attachment image resource for depth attachment
+        if(!CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))
+        {
+            BLIT_ERROR("Failed to create depth attachment image resource")
+            return 0;
+        }
 
         // Create the depth pyramid image and its mips that will be used for occlusion culling
-        CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
-        m_drawExtent, m_device, m_allocator);
+        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
+        m_drawExtent, m_device, m_allocator))
+        {
+            BLIT_ERROR("Failed to create the depth pyramid")
+            return 0;
+        }
 
         // Texture sampler, for now all textures will use the same one
         CreateTextureSampler(m_device, m_placeholderSampler);
@@ -607,7 +603,7 @@ namespace BlitzenVulkan
             vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
     }
 
-    void CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+    uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
     VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
     VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler /* =1 */)
     {
@@ -633,13 +629,17 @@ namespace BlitzenVulkan
         }
 
         // Create the depth pyramid image which will be used as storage image and to then transfer its data for occlusion culling
-        CreateImage(device, allocator, depthPyramidImage, {depthPyramidExtent.width, depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, depthPyramidMipLevels);
+        if(!CreateImage(device, allocator, depthPyramidImage, {depthPyramidExtent.width, depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, depthPyramidMipLevels))
+            return 0;
 
         for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
         {
-            CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image, VK_FORMAT_R32_SFLOAT, i, 1);
+            if(!CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image, VK_FORMAT_R32_SFLOAT, i, 1))
+                return 0;
         }
+
+        return 1;
     }
 
     void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
@@ -781,7 +781,7 @@ namespace BlitzenVulkan
             VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
     }
 
-    void VulkanRenderer::FrameToolsInit()
+    uint8_t VulkanRenderer::FrameToolsInit()
     {
         VkCommandPoolCreateInfo commandPoolsInfo {};
         commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -799,22 +799,45 @@ namespace BlitzenVulkan
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         fenceInfo.pNext = nullptr;
 
+        // Semaphore will be the same for both semaphores
         VkSemaphoreCreateInfo semaphoresInfo{};
         semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         semaphoresInfo.flags = 0;
         semaphoresInfo.pNext = nullptr;
 
+        // Creates a set of frame tools for each possible frame in flight
         for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];
-            VK_CHECK(vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool)));
-            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
-            VK_CHECK(vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer)));
 
-            VK_CHECK(vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence)))
-            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore)))
-            VK_CHECK(vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore)))
+            // Creates the command pool that manages the command buffer's memory
+            VkResult commandPoolResult = vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool));
+            if(commandPoolResult != VK_SUCCESS)
+                return 0;
+
+            // Allocates the command buffer using the above command pool
+            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
+            VkResult commandBufferResult = vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer));
+            if(commandBufferResult != VK_SUCCESS)
+                return 0;
+
+            // Creates the fence that stops the CPU from acquiring a new swapchain image before the GPU is done with the previous frame
+            VkResult fenceResult = vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence));
+            if(fenceResult != VK_SUCCESS)
+                return 0;
+
+            // Creates the semaphore that stops command buffer submitting before the next swapchain image is acquired
+            VkResult imageSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore));
+            if(imageSemaphoreResult != VK_SUCCESS)
+                return 0;
+
+            // Creates the semaphore that stops presentation before the command buffer is submitted
+            VkResult presentSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore));
+            if(presentSemaphoreResult != VK_SUCCESS)
+                return 0;
         }
+
+        return 1;
     }
 
 
@@ -868,8 +891,6 @@ namespace BlitzenVulkan
             vmaDestroyBuffer(m_allocator, varBuffers.globalShaderDataBuffer.buffer, varBuffers.globalShaderDataBuffer.allocation);
             vmaDestroyBuffer(m_allocator, varBuffers.bufferDeviceAddrsBuffer.buffer, varBuffers.bufferDeviceAddrsBuffer.allocation);
         }
-
-        vkDestroyCommandPool(m_device, m_placeholderCommandPool, m_pCustomAllocator);
 
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
 

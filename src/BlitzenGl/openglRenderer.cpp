@@ -99,8 +99,9 @@ namespace BlitzenGL
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_renderObjectBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-        //glGenBuffers(1, &m_cullingDataBuffer);
-        //glBindBuffer(GL_)
+        // Generate uniform buffers
+        glGenBuffers(1, &m_cullingDataBuffer);
+        glGenBuffers(1, &m_shaderDataBuffer);
 
         if(!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", 
         m_opaqueGeometryGraphicsProgram))
@@ -115,8 +116,18 @@ namespace BlitzenGL
     void OpenglRenderer::DrawFrame(BlitzenEngine::RenderContext& context)
     {
         BlitzenEngine::CullingData& cullData = context.cullingData;
+        BlitzenEngine::GlobalShaderData& shaderData = context.globalShaderData;
 
         glUseProgram(m_initialDrawCullCompProgram);
+
+        glBindBuffer(GL_UNIFORM_BUFFER, m_cullingDataBuffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CullingData), &cullData, GL_STATIC_READ);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_cullingDataBuffer);
+
+        glBindBuffer(GL_UNIFORM_BUFFER, m_shaderDataBuffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::GlobalShaderData), &shaderData, GL_STATIC_READ);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_shaderDataBuffer);
+
         glDispatchCompute(cullData.drawCount / 64 + 1, 1, 1);
 
         glClearColor(0, 0.5f, 0.7f, 1);
@@ -134,12 +145,13 @@ namespace BlitzenGL
         // Bind the indirect draw buffer
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer);
 
-        // Temporary test code
-        int vertexColorLocation = glGetUniformLocation(m_opaqueGeometryGraphicsProgram, "projectionView");
-        glUniformMatrix4fv(vertexColorLocation, 1, GL_FALSE, &context.globalShaderData.projectionView[0]);
+        // Bind the uniform buffer that will hold the shader data and pass it the current shader data
+        glBindBuffer(GL_UNIFORM_BUFFER, m_shaderDataBuffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::GlobalShaderData), &shaderData, GL_STATIC_READ);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_shaderDataBuffer);
 
         // Draw the objects with indirect commands
-        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 5000, sizeof(IndirectDrawCommand));
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, cullData.drawCount, sizeof(IndirectDrawCommand));
 
 	    BlitzenPlatform::OpenglSwapBuffers();
     }
@@ -252,6 +264,9 @@ namespace BlitzenGL
     {
         glDeleteProgram(m_opaqueGeometryGraphicsProgram);
         glDeleteProgram(m_initialDrawCullCompProgram);
+
+        glDeleteBuffers(1, &m_cullingDataBuffer);
+        glDeleteBuffers(1, &m_shaderDataBuffer);
 
         glDeleteBuffers(1, &m_renderObjectBuffer);
         glDeleteBuffers(1, &m_surfaceBuffer);

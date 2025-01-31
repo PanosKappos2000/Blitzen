@@ -2,7 +2,22 @@
 
 namespace BlitzenVulkan
 {
-    void CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
+    uint8_t CreateVmaAllocator(VkDevice device, VkInstance instance, VkPhysicalDevice physicalDevice, VmaAllocator& allocator, 
+    VmaAllocatorCreateFlags flags)
+    {
+        VmaAllocatorCreateInfo allocatorInfo{};
+        allocatorInfo.device = device;
+        allocatorInfo.instance = instance;
+        allocatorInfo.physicalDevice = physicalDevice;
+        allocatorInfo.flags = flags;
+
+        VkResult res = vmaCreateAllocator(&allocatorInfo, &allocator);
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
+    }
+
+    uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
     VmaAllocationCreateFlags allocationFlags)
     {
         VkBufferCreateInfo bufferInfo{};
@@ -16,25 +31,43 @@ namespace BlitzenVulkan
         bufferAllocationInfo.usage = memoryUsage;
         bufferAllocationInfo.flags = allocationFlags;
 
-        VK_CHECK(vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, &(buffer.buffer), &(buffer.allocation), &(buffer.allocationInfo)));
+        VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, 
+        &(buffer.buffer), &(buffer.allocation), &(buffer.allocationInfo));
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
     }
 
     VkDeviceAddress CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
     void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
     VkBufferUsageFlags usage, VkDeviceSize size, uint8_t getBufferDeviceAddress /*=0*/)
     {
-        // Create the storage buffer
-        CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
-        size, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // The function needs to return a device address but it is relevant only if the user requested it
+        // I don't know why I wrote it like this but it doesn't really matter
+        VkDeviceAddress res = {};
 
-        // Create the staging buffer and copy the data to it
-        CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-        size, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+        // Creates the storage buffer
+        if(!CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
+        size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        {
+            // The way this function lets the user know that it failed is by initializing the storage buffer to null
+            storageBuffer.buffer = VK_NULL_HANDLE;
+            return res;
+        }
+
+        // Creates the staging buffer and copy the data to it
+        if(!CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+        size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        {
+            storageBuffer.buffer = VK_NULL_HANDLE;
+            return res;
+        }
+
+        // Gets the persistent mapped pointer to the staging buffer and copy the data to it
         void* pVertexBufferData = stagingBuffer.allocationInfo.pMappedData;
         BlitzenCore::BlitMemCopy(pVertexBufferData, pData, size);
 
         // If a buffer device address is requested, it is retrieved and returned
-        VkDeviceAddress res = {};
         if(getBufferDeviceAddress)
             res = GetBufferAddress(device, storageBuffer.buffer);
         return res;
@@ -49,35 +82,46 @@ namespace BlitzenVulkan
         return vkGetBufferDeviceAddress(device, &indirectBufferAddressInfo);
     }
 
-    void CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
-    uint8_t mipLevels /*= 1*/)
+    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
+    uint8_t mipLevels /*= 1*/, VmaMemoryUsage memoryUsage /*=VMA_MEMORY_USAGE_GPU_ONLY*/)
     {
+        // Save the extent and format of the image in the AllocatedImage structure
         image.extent = extent;
         image.format = format;
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.flags = 0;
+        imageInfo.flags = 0;// Hardcoded, no use case for this for now
         imageInfo.pNext = nullptr;
+
         imageInfo.extent = extent;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;// No MSAA
+        // Pass the mip levels (important for textures and depth pyramid and probably other resources in the future)
         imageInfo.mipLevels  = mipLevels;
+        // Array layers are not used with the current API structure
         imageInfo.arrayLayers = 1;
         imageInfo.format = format;
+        // I will probably need to create a parameter for this if I start using cube maps
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;// I can't see why I would ever use anything other than optimal
         imageInfo.usage = imageUsage;
         
         VmaAllocationCreateInfo imageAllocationInfo{};
-        imageAllocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        imageAllocationInfo.usage = memoryUsage;
         imageAllocationInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        VK_CHECK(vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &(image.image), &(image.allocation), nullptr))
+        VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &(image.image), &(image.allocation), nullptr);
+        if(res != VK_SUCCESS)
+            return 0;
 
-        CreateImageView(device, image.imageView, image.image, format, 0, mipLevels);
+        // Creates an image view for the image by default
+        if(!CreateImageView(device, image.imageView, image.image, format, 0, mipLevels))
+            return 0;
+
+        return 1;
     }
 
-    void CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
+    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
     {
         VkImageViewCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -86,6 +130,8 @@ namespace BlitzenVulkan
         info.image = image;
         info.format = format;
         info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+        // The aspect mask of the subresource is derived from the fromat of the image
         info.subresourceRange.aspectMask = (format == VK_FORMAT_D32_SFLOAT) ? 
         VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
         info.subresourceRange.baseMipLevel = baseMipLevel;
@@ -93,7 +139,11 @@ namespace BlitzenVulkan
         info.subresourceRange.baseArrayLayer = 0;
         info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-        VK_CHECK(vkCreateImageView(device, &info, nullptr, &imageView))
+        // Create the image view
+        VkResult res = vkCreateImageView(device, &info, nullptr, &imageView);
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
     }
 
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
@@ -407,7 +457,26 @@ namespace BlitzenVulkan
         vkDestroyImageView(device, imageView, nullptr);
     }
 
-    void AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets)
+    VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets)
+    {
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.flags = 0;// Hardcoded, there is no use case for descriptor pool flags for now
+        poolInfo.pNext = nullptr;
+        poolInfo.maxSets = maxSets;
+        poolInfo.poolSizeCount = poolSizeCount;
+        poolInfo.pPoolSizes = pPoolSizes;
+
+        // Creates the descriptor pool
+        VkDescriptorPool pool;
+        VkResult res = vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool);
+        if(res != VK_SUCCESS)
+            return VK_NULL_HANDLE;
+        return pool;
+    }
+
+    uint8_t AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
+    uint32_t descriptorSetCount, VkDescriptorSet* pSets)
     {
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -415,7 +484,12 @@ namespace BlitzenVulkan
         allocInfo.descriptorPool = pool;
         allocInfo.pSetLayouts = pLayouts;
         allocInfo.descriptorSetCount = descriptorSetCount;
-        VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, pSets));
+
+        // Allocate the descriptor sets
+        VkResult res = vkAllocateDescriptorSets(device, &allocInfo, pSets);
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
     }
 
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 

@@ -17,9 +17,13 @@ namespace BlitzenEngine
         if(pVulkan.Data())
         {
             // Call the init function and store the result in the systems boolean for Vulkan
-            uint8_t vulkanInitialized =  pVulkan.Data()->Init(windowWidth, windowHeight);
-            gpVulkan = pVulkan.Data();
-            return vulkanInitialized;
+            if(pVulkan.Data()->Init(windowWidth, windowHeight))
+            {
+                gpVulkan = pVulkan.Data();
+                return 1;
+            }
+            
+            return 0;
         }
         else
         {
@@ -109,38 +113,37 @@ namespace BlitzenEngine
             return 0;
         }
 
-        uint8_t isThereRendererOnStandby;
+        /*
+            Setting up data that will be needed by renderers at draw time for culling and other operations
+        */
+        // Pass camera values here so that they are available before the first frame
+        pResources->shaderData.projectionView = camera.projectionViewMatrix;
+        pResources->shaderData.viewPosition = camera.position;
+        pResources->shaderData.view = camera.viewMatrix;
+
+        // Frustum planes
+        BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
+        BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
+        pResources->cullingData.frustumRight = frustumX.x;
+        pResources->cullingData.frustumLeft = frustumX.z;
+        pResources->cullingData.frustumTop = frustumY.y;
+        pResources->cullingData.frustumBottom = frustumY.z;
+
+        // Culling data for occlusion culling
+        pResources->cullingData.proj0 = camera.projectionMatrix[0];
+        pResources->cullingData.proj5 = camera.projectionMatrix[5];
+
+        uint8_t isThereRendererOnStandby = 0;
 
         if(gpVulkan)
         {
-            // The values that were loaded need to be passed to the vulkan renderere so that they can be loaded to GPU buffers
-            BlitzenVulkan::GPUData vulkanData(pResources->vertices, pResources->indices, pResources->meshlets, 
-            pResources->surfaces, pResources->transforms, pResources->meshletData);/* The contructor is needed for values 
-            that are references instead of pointers */
+            if(!gpVulkan->SetupForRendering(pResources))
+            {
+                BLIT_ERROR("Could not initialize Vulkan. If this is the active graphics API, it needs to be swapped")
+                gpVulkan = nullptr;
+                isThereRendererOnStandby = isThereRendererOnStandby || 0;
+            }
 
-            vulkanData.pTextures = pResources->textures;
-            vulkanData.textureCount = pResources->textureCount;
-
-            vulkanData.pMaterials = pResources->materials;
-            vulkanData.materialCount = pResources->materialCount;
-
-            vulkanData.pMeshes = pResources->meshes;
-            vulkanData.meshCount = pResources->meshCount;
-
-            vulkanData.pGameObjects = pResources->objects;
-            vulkanData.gameObjectCount = pResources->objectCount;
-
-            vulkanData.pRenderObjects = pResources->renders;
-            vulkanData.renderObjectCount = pResources->renderObjectCount;
-
-            // Draw count will be used to determine the size of draw and object buffers
-            vulkanData.drawCount = drawCount;
-
-            // Setting this before the other values because it is needed for lod target, which is defined by vulkan
-            pResources->cullingData.proj5 = camera.projectionMatrix[5];
-            gpVulkan->SetupForRendering(vulkanData, pResources->cullingData);
-
-            // This should be the return value of the above function, to check if everything went fine
             isThereRendererOnStandby = 1;
         }
 
@@ -151,37 +154,14 @@ namespace BlitzenEngine
             {
                 BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
                 gpGl = nullptr;
-                isThereRendererOnStandby = isThereRendererOnStandby | 0;
+                isThereRendererOnStandby = isThereRendererOnStandby || 0;
             }
 
             isThereRendererOnStandby = 1;
         }
         #endif
 
-        // If it has succesfully loaded a graphics API, it can move on to uploading culling and global shader data and then return succesfully
-        if(isThereRendererOnStandby)
-        {
-            // Pass camera values here so that they are available before the first frame
-            pResources->shaderData.projectionView = camera.projectionViewMatrix;
-            pResources->shaderData.viewPosition = camera.position;
-            pResources->shaderData.view = camera.viewMatrix;
-
-            // Frustum planes
-            BlitML::vec4 frustumX = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(0)); // x + w < 0
-            BlitML::vec4 frustumY = BlitML::NormalizePlane(camera.projectionTranspose.GetRow(3) + camera.projectionTranspose.GetRow(1)); // y+ w < 0;
-            pResources->cullingData.frustumRight = frustumX.x;
-            pResources->cullingData.frustumLeft = frustumX.z;
-            pResources->cullingData.frustumTop = frustumY.y;
-            pResources->cullingData.frustumBottom = frustumY.z;
-
-            // Culling data for occlusion culling
-            pResources->cullingData.proj0 = camera.projectionMatrix[0];
-            pResources->cullingData.proj5 = camera.projectionMatrix[5];
-
-            return 1;
-        }
-
-        return 0;
+        return isThereRendererOnStandby;
     }
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 

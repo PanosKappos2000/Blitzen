@@ -6,23 +6,32 @@
 
 namespace BlitzenVulkan
 {
-    void CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    uint8_t CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, VkSpecializationInfo* pSpecializationInfo /*=nullptr*/)
     {
+        // Tries to open the file with the provided path
         BlitzenPlatform::FileHandle handle;
-        // If the file did not open, something might be wrong with the filepath, so it needs to be checked
-        BLIT_ASSERT(BlitzenPlatform::OpenFile(filepath, BlitzenPlatform::FileModes::Read, 1, handle))
+        if(!BlitzenPlatform::OpenFile(filepath, BlitzenPlatform::FileModes::Read, 1, handle))
+            return 0;
+        
+        // Reads the shader code in byte format
         size_t filesize = 0;
         uint8_t* pBytes = nullptr;
-        BLIT_ASSERT(BlitzenPlatform::FilesystemReadAllBytes(handle, &pBytes, &filesize))
+        if(!BlitzenPlatform::FilesystemReadAllBytes(handle, &pBytes, &filesize))
+        {
+            BlitzenPlatform::CloseFile(handle);
+            return 0;
+        }
         BlitzenPlatform::CloseFile(handle);
 
-        //Wrap the code in a shader module object
+        //Wraps the code in a shader module object
         VkShaderModuleCreateInfo shaderModuleInfo{};
         shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         shaderModuleInfo.codeSize = static_cast<uint32_t>(filesize);
         shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(pBytes);
-        VK_CHECK(vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule));
+        VkResult res = vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule);
+        if(res != VK_SUCCESS)
+            return 0;
 
         //Adds a new shader stage based on that shader module
         pipelineShaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -30,30 +39,41 @@ namespace BlitzenVulkan
         pipelineShaderStage.stage = shaderStage;
         pipelineShaderStage.pName = entryPointName;
 
-        // Add specialization info if the user requests it (the function assumes that it is properly setup)
+        // Adds specialization info if the user requests it (the function assumes that it is properly setup)
         pipelineShaderStage.pSpecializationInfo = pSpecializationInfo;
+
+        return 1;
     }
 
-    void CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
+    uint8_t CreateComputeShaderProgram(VkDevice device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkPipelineLayout& layout, VkPipeline* pPipeline, VkSpecializationInfo* pSpecializationInfo /*=nullptr*/)
     {
+        // Creates the shader module and the shader stage
+        VkShaderModule computeShaderModule{};
+        VkPipelineShaderStageCreateInfo shaderStageInfo{};
+        if(!CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, computeShaderModule, 
+        shaderStageInfo, pSpecializationInfo))
+            return 0;
+
+        // Sets the pipeline info based on the above
         VkComputePipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
         pipelineInfo.flags = 0;
         pipelineInfo.pNext = nullptr;
-
-        VkShaderModule computeShaderModule{};
-        VkPipelineShaderStageCreateInfo shaderStageInfo{};
-        CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, computeShaderModule, 
-        shaderStageInfo, pSpecializationInfo);
-
         pipelineInfo.stage = shaderStageInfo;
         pipelineInfo.layout = layout;
 
-        VK_CHECK(vkCreateComputePipelines(device, nullptr, 1, &pipelineInfo, nullptr, pPipeline))
+        // Creates the compute pipeline
+        VkResult res = vkCreateComputePipelines(device, nullptr, 1, &pipelineInfo, nullptr, pPipeline);
+        if(res != VK_SUCCESS)
+        {
+            vkDestroyShaderModule(device, computeShaderModule, nullptr);
+            return 0;
+        }
 
         // Beyond this scope, this shader module is not needed
         vkDestroyShaderModule(device, computeShaderModule, nullptr);
+        return 1;
     }
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly()
@@ -159,7 +179,7 @@ namespace BlitzenVulkan
         colorBlending.logicOp = logicOp;
     }
 
-    void CreatePipelineLayout(VkDevice device, VkPipelineLayout* pLayout, uint32_t descriptorSetLayoutCount, 
+    uint8_t CreatePipelineLayout(VkDevice device, VkPipelineLayout* pLayout, uint32_t descriptorSetLayoutCount, 
     VkDescriptorSetLayout* pDescriptorSetLayouts, uint32_t pushConstantRangeCount, VkPushConstantRange* pPushConstantRanges)
     {
         VkPipelineLayoutCreateInfo layoutInfo{};
@@ -168,7 +188,10 @@ namespace BlitzenVulkan
         layoutInfo.pSetLayouts = pDescriptorSetLayouts;
         layoutInfo.pushConstantRangeCount = pushConstantRangeCount;
         layoutInfo.pPushConstantRanges = pPushConstantRanges;
-        VK_CHECK(vkCreatePipelineLayout(device, &layoutInfo, nullptr, pLayout));
+        VkResult res = vkCreatePipelineLayout(device, &layoutInfo, nullptr, pLayout);
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
     }
 
     void CreateDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding& bindingInfo, uint32_t binding, uint32_t descriptorCount, 
@@ -192,7 +215,9 @@ namespace BlitzenVulkan
         info.pBindings = pBindings;
 
         VkDescriptorSetLayout setLayout;
-        VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &setLayout));
+        VkResult res = vkCreateDescriptorSetLayout(device, &info, nullptr, &setLayout);
+        if(res != VK_SUCCESS)
+            return VK_NULL_HANDLE;
         return setLayout;
     }
 
@@ -206,7 +231,7 @@ namespace BlitzenVulkan
 
 
 
-    void VulkanRenderer::SetupMainGraphicsPipeline()
+    uint8_t VulkanRenderer::SetupMainGraphicsPipeline()
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -229,27 +254,40 @@ namespace BlitzenVulkan
         // Create the mesh shader program for vertex shader if mesh shaders are requested and supported
         if(m_stats.meshShaderSupport)
         {
-            CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule, 
-            shaderStages[0]);
+            if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule, 
+            shaderStages[0]))
+                return 0;
         }
         // Create the vertex shader program for vertex processing if mesh shaders were not requested or not supported
         else
         {
-            CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
-            shaderStages[0]);
+            if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
+            shaderStages[0]))
+                return 0;
         }
 
         //Loading the fragment shader
         VkShaderModule fragShaderModule;
-        CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
-        shaderStages[1]);
+        if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
+        shaderStages[1]))
+        {
+            // Destroy the already create shader modules and return 0
+            vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
+            return 0;
+        }
 
         // Loading the task shader if mesh shaders are requested and supported
         VkShaderModule taskShaderModule;
         if(m_stats.meshShaderSupport)
         {
-            CreateShaderProgram(m_device, "VulkanShaders/MeshShader.task.glsl.spv", VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule, 
-            shaderStages[2]);
+            if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.task.glsl.spv", VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule, 
+            shaderStages[2]))
+            {
+                // Destroy the already create shader modules and return 0
+                vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
+                vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
+                return 0;
+            }
         }
 
         // If the pipeline is going to use mesh shaders, the task shader needs to also be supported, so there will be 3 shader stages
@@ -306,7 +344,9 @@ namespace BlitzenVulkan
         pipelineInfo.pVertexInputState = &vertexInput;
 
         //Create the graphics pipeline
-        VK_CHECK(vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGeometryPipeline))
+        VkResult pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGeometryPipeline);
+        if(pipelineCreateFinalResult != VK_SUCCESS)
+            return 0;
 
         // Destroy the shader modules after pipeline has been created
         vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
@@ -315,5 +355,7 @@ namespace BlitzenVulkan
         {
             vkDestroyShaderModule(m_device, taskShaderModule, m_pCustomAllocator);
         }
+
+        return 1;
     }
 }

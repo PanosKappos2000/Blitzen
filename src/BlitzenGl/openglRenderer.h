@@ -68,6 +68,8 @@ namespace BlitzenGL
 
         GlBuffer m_cullingDataBuffer;
 
+        GlBuffer m_shaderDataBuffer;
+
         // Holds all the render objects that will be retrieved in the shaders to access the surface and transform data for each object
         GlBuffer m_renderObjectBuffer;
     };

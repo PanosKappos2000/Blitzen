@@ -174,6 +174,7 @@ namespace BlitzenVulkan
 
 }
 
+
 namespace BlitzenPlatform
 {
     // Creates the surface used by the vulkan renderer. Implemented on Platform.cpp
