@@ -310,4 +310,45 @@ namespace BlitCL
         // Additional destructor function currently fixed type (void(*)(T*))
         DstrPfn m_customDestructor;
     };
+
+    // Allocates a set amount of size on the heap, until the instance goes out of scope (Constructors not called)
+    template<typename T, BlitzenCore::AllocationType A>
+    class StoragePointer
+    {
+    public:
+
+        StoragePointer(size_t size = 0)
+        {
+            if(size > 0)
+            {
+                m_pData = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(A, size * sizeof(T)));
+            }
+            m_size = size;
+        }
+
+        void AllocateStorage(size_t size)
+        {
+            BLIT_ASSERT_MESSAGE(m_size == 0, "The storage has already allocated storage")
+
+            m_pData = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(A, size * sizeof(T)));
+            m_size = size;
+        }
+
+        inline T* Data() { return m_pData; }
+
+        inline uint8_t IsEmpty() { return m_size == 0; }
+
+        ~StoragePointer()
+        {
+            if(m_pData && m_size > 0)
+            {
+                BlitzenCore::BlitFree(A, m_pData, m_size * sizeof(T));
+            }
+        }
+
+    private:
+        T* m_pData = nullptr;
+
+        size_t m_size;
+    };
 }

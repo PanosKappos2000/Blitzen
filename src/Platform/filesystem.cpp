@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "Core/blitLogger.h"
 #include "filesystem.h"
 #include "Core/blitMemory.h"
 
@@ -19,10 +20,11 @@ namespace BlitzenPlatform
         #endif
     }
 
-    uint8_t OpenFile(const char* path, FileModes mode, uint8_t binary, FileHandle& outHandle)
+    uint8_t FileHandle::Open(const char* path, FileModes mode, uint8_t binary)
     {
-        outHandle.isValid = 0;
-        outHandle.pHandle = nullptr;
+        // If the handle already has a valid handle, it asserts
+        BLIT_ASSERT(pHandle == nullptr)
+
         const char* modeStr;
 
         // Try to determine the file mode and turn it into a string
@@ -55,18 +57,21 @@ namespace BlitzenPlatform
         }
 
         // If everything goes well update the file handle and exit successfully
-        outHandle.pHandle = file;
-        outHandle.isValid = 1;
+        pHandle = file;
         return 1;
     }
 
-    void CloseFile(FileHandle& handle)
+    FileHandle::~FileHandle()
     {
-        if (handle.pHandle) 
+        Close();
+    }
+
+    void FileHandle::Close()
+    {
+        if (pHandle) 
         {
-            fclose(reinterpret_cast<FILE*>(handle.pHandle));
-            handle.pHandle = nullptr;
-            handle.isValid = 0;
+            fclose(reinterpret_cast<FILE*>(pHandle));
+            pHandle = nullptr;
         }
     }
 
@@ -144,6 +149,27 @@ namespace BlitzenPlatform
             *pBytesRead = reinterpret_cast<uint8_t*>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::String, sizeof(char) * size));
             *byteCount = fread(*pBytesRead, 1, size, reinterpret_cast<FILE*>(handle.pHandle));
             if (*byteCount != size) 
+            {
+                return 0;
+            }
+            return 1;
+        }
+        return 0;
+    }
+
+    uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::String>& bytes, 
+    size_t* byteCount)
+    {
+        if(handle.pHandle)
+        {
+            // File size
+            fseek(reinterpret_cast<FILE*>(handle.pHandle), 0, SEEK_END);
+            uint64_t size = ftell(reinterpret_cast<FILE*>(handle.pHandle));
+
+            rewind(reinterpret_cast<FILE*>(handle.pHandle));
+            bytes.AllocateStorage(size);
+            *byteCount = fread(bytes.Data(), 1, size, reinterpret_cast<FILE*>(handle.pHandle));
+            if(*byteCount != size)
             {
                 return 0;
             }

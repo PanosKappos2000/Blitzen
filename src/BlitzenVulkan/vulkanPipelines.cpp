@@ -11,24 +11,22 @@ namespace BlitzenVulkan
     {
         // Tries to open the file with the provided path
         BlitzenPlatform::FileHandle handle;
-        if(!BlitzenPlatform::OpenFile(filepath, BlitzenPlatform::FileModes::Read, 1, handle))
+        if(!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
             return 0;
         
         // Reads the shader code in byte format
         size_t filesize = 0;
-        uint8_t* pBytes = nullptr;
-        if(!BlitzenPlatform::FilesystemReadAllBytes(handle, &pBytes, &filesize))
+        BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::String> pBytes;
+        if(!BlitzenPlatform::FilesystemReadAllBytes(handle, pBytes, &filesize))
         {
-            BlitzenPlatform::CloseFile(handle);
             return 0;
         }
-        BlitzenPlatform::CloseFile(handle);
 
         //Wraps the code in a shader module object
         VkShaderModuleCreateInfo shaderModuleInfo{};
         shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         shaderModuleInfo.codeSize = static_cast<uint32_t>(filesize);
-        shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(pBytes);
+        shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(pBytes.Data());
         VkResult res = vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule);
         if(res != VK_SUCCESS)
             return 0;

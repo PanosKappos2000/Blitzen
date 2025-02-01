@@ -214,8 +214,9 @@ namespace BlitzenGL
 
     uint8_t CompileShader(GlShader& shader, GLenum shaderType, const char* filepath)
     {
+        // Open the file using the handle wrapper, fClose should be called by the destructor
         BlitzenPlatform::FileHandle handle;
-        if(!BlitzenPlatform::OpenFile(filepath, BlitzenPlatform::FileModes::Read, 1, handle))
+        if(!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
             return 0;
         
         // This string will hold the final shader source code
