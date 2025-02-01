@@ -266,8 +266,6 @@ namespace BlitzenVulkan
         // culing data values that need to be handled by the renderer itself
         pResources->cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
         pResources->cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
-        // Lod target based on camera / screen space parameters
-        pResources->cullingData.lodTarget = (2 / pResources->cullingData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
 
         return 1;
     }
@@ -541,9 +539,6 @@ namespace BlitzenVulkan
         {
             cullData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
             cullData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
-
-            // Update the lod target as well since it uses window dimensions
-            cullData.lodTarget = (2 / cullData.proj5) * (1.f / float(m_initHandles.swapchainExtent.height));
         }
 
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
@@ -1068,5 +1063,10 @@ namespace BlitzenVulkan
             if(i != m_currentFrame)
                 vkResetFences(m_device, 1, &m_frameToolsList[i].inFlightFence);
         }
+    }
+
+    void VulkanRenderer::SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight)
+    {
+        RecreateSwapchain(windowWidth, windowHeight);
     }
 }

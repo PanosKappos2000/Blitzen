@@ -118,6 +118,7 @@ namespace BlitzenGL
 
     void OpenglRenderer::DrawFrame(BlitzenEngine::RenderContext& context)
     {
+        // Update the viewport if the window has resized
         if(context.windowResize)
         {
             glViewport(0, 0, context.windowWidth, context.windowHeight);
@@ -126,27 +127,36 @@ namespace BlitzenGL
         BlitzenEngine::CullingData& cullData = context.cullingData;
         BlitzenEngine::GlobalShaderData& shaderData = context.globalShaderData;
 
-        glUseProgram(m_initialDrawCullCompProgram);
-
+        // Update the culling data buffer
         glBindBuffer(GL_UNIFORM_BUFFER, m_cullingDataBuffer);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CullingData), &cullData, GL_STATIC_READ);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_cullingDataBuffer);
 
+        // Update the global shader data buffer
         glBindBuffer(GL_UNIFORM_BUFFER, m_shaderDataBuffer);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::GlobalShaderData), &shaderData, GL_STATIC_READ);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_shaderDataBuffer);
 
+        // Switches to the culling compute program
+        glUseProgram(m_initialDrawCullCompProgram);
+
+        // Bind the culling data buffer to uniform binding 0
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_cullingDataBuffer);
+        // Binds the shader data buffer to uniform binding 1
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_shaderDataBuffer);
+        
+        // Dispatches the compute shader to do GPU side culling and create the draw commands
         glDispatchCompute(cullData.drawCount / 64 + 1, 1, 1);
         glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
+        // glClearDepth value needs to be set to 0 since the renderer is using reverse z
         glClearDepth(0.0f);
         glClearColor(0, 0.5f, 0.7f, 1);
+        // Clear the depth buffer and the color buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Bind the graphics shader program
+        // Switch to the graphics program
         glUseProgram(m_opaqueGeometryGraphicsProgram);
 
-        // Bind the vertex attribute array for vertex position
+        // Bind the vertex attribute array to access vertices
         glBindVertexArray(m_vertexArray);
 
         // Bind the index buffer
@@ -155,14 +165,13 @@ namespace BlitzenGL
         // Bind the indirect draw buffer
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer);
 
-        // Bind the uniform buffer that will hold the shader data and pass it the current shader data
-        glBindBuffer(GL_UNIFORM_BUFFER, m_shaderDataBuffer);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::GlobalShaderData), &shaderData, GL_STATIC_READ);
+        // Bind the uniform buffer that will hold the shader data to binding 0
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_shaderDataBuffer);
 
         // Draw the objects with indirect commands
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, cullData.drawCount, sizeof(IndirectDrawCommand));
 
+        // Swaps the framebuffer
 	    BlitzenPlatform::OpenglSwapBuffers();
     }
 

@@ -135,10 +135,14 @@ namespace BlitzenVulkan
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::RenderContext& pRenderData);
 
+        void ClearFrame();
+
+        void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
+
         // Kills the renderer and cleans up allocated handles and resources. Implemented on vulkanInit.cpp
         void Shutdown(MemoryCrucialHandles& pCrucials);
 
-        // This function destroys the handles that should be left for last (the allocator, the device and the instance)
+        // I do not do anything on the destructor, but I leave it here because Cleaning Vulkan is peculiar
         ~VulkanRenderer();
 
     private:
@@ -157,18 +161,18 @@ namespace BlitzenVulkan
 
         uint8_t SetupMainGraphicsPipeline();
 
-        void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
-
         // Dispatches the compute shader that will perform culling on a render object level and will ready the indirect draw commands
         // If it calls the late version it does occlusion culling as well
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
         uint32_t groupCountX, uint8_t lateCulling);
 
+        // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
         void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount);
 
-    public:
+        // Recreates the swapchain when necessary (and other handles that are involved with the window, like the depth pyramid)
+        void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
-        void ClearFrame();
+    public:
 
         inline static VulkanRenderer* GetRendererInstance() {return m_pThisRenderer;}
 

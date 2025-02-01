@@ -151,12 +151,25 @@ void main()
 	// the near/far plane culling uses camera space Z directly
 	visible = visible && center.z + radius > cullingData.zNear && center.z - radius < cullingData.zFar;
 
-    if(visible)
+    uint lodIndex = 0;
+    if(cullingData.lodEnabled == 1)
     {
-        indirect.draws[objectId].indexCount = surface.lod[0].indexCount;
-        indirect.draws[objectId].instanceCount = 1;
-        indirect.draws[objectId].firstIndex = surface.lod[0].firstIndex;
-        indirect.draws[objectId].vertexOffset = surface.vertexOffset;
-        indirect.draws[objectId].firstInstance = 0;
+        // Gets the distance from the camera
+        float distance = max(length(center) - radius, 0);
+        // Create the threshold taking into account the lodTarget and the object's scale
+        float threshold = distance * cullingData.lodTarget / transform.scale;
+        // Get the biggest reduction lod whose error is less than the calculated threshold
+        for(uint i = 0; i < surface.lodCount; ++i)
+        {
+            if(threshold > surface.lod[i].error)
+                lodIndex = i;
+        }
     }
+    MeshLod lod = surface.lod[lodIndex];
+
+    indirect.draws[objectId].indexCount = lod.indexCount;
+    indirect.draws[objectId].instanceCount = visible ? 1 : 0;
+    indirect.draws[objectId].firstIndex = lod.firstIndex;
+    indirect.draws[objectId].vertexOffset = surface.vertexOffset;
+    indirect.draws[objectId].firstInstance = 0;
 }

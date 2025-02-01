@@ -75,6 +75,8 @@ namespace BlitzenEngine
         if(CheckActiveRenderer(ar))
         {
             ClearCurrentActiveRenderer();
+            /*if(ar == ActiveRenderer::Vulkan)
+                gpVulkan->SetupForSwitch();This is supposed to fix a switching to Vulkan bug, but I got bored while writing it*/
             iActive = ar;
             return 1;
         }
@@ -135,6 +137,9 @@ namespace BlitzenEngine
         pResources->cullingData.proj0 = camera.projectionMatrix[0];
         pResources->cullingData.proj5 = camera.projectionMatrix[5];
 
+        // Lod target. Used in the threshold calculation formula along with the target's scale and its distance from the camera
+        pResources->cullingData.lodTarget = (2 / pResources->cullingData.proj5) * (1.f / float(camera.windowHeight));
+
         uint8_t isThereRendererOnStandby = 0;
 
         if(gpVulkan)
@@ -171,7 +176,7 @@ namespace BlitzenEngine
     ActiveRenderer ar, RenderContext& context, RuntimeDebugValues* pDebugValues /*= nullptr*/)
     {
         // Check that the pointer for the active renderer is not Null
-        if(!CheckActiveRenderer(ar))
+        if(!CheckActiveRenderer(iActive))
         {
             // I could throw a warning here but it would fill the screen with the same error message over and over
             return;
@@ -211,6 +216,9 @@ namespace BlitzenEngine
             // Culling data for occlusion culling
             cullingData.proj0 = camera.projectionMatrix[0];
             cullingData.proj5 = camera.projectionMatrix[5];
+
+            // Update the lod target as well since it uses window dimensions
+            cullingData.lodTarget = (2 / cullingData.proj5) * (1.f / float(windowHeight));
         }
 
         // The near and far planes of the frustum will use the camera directly
