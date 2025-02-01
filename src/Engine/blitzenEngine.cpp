@@ -47,8 +47,9 @@ namespace BlitzenEngine
         // Initialize logging
         m_systems.logSystem = BlitzenCore::InitLogging();
 
-        // Initialize the event system 
-        m_systems.eventSystem = BlitzenCore::EventsInit();
+        // Initialize the event system. The pointer to this variable is a placeholder, the event system has an inline pointer in the .cpp file
+        BlitzenCore::EventSystemState* pEventSystemState = nullptr; 
+        m_systems.eventSystem = BlitzenCore::EventSystemInit(pEventSystemState);
 
         // Initialize the input system after the event system
         m_systems.inputSystem = BlitzenCore::InputInit(&m_systems.inputState);
@@ -92,7 +93,7 @@ namespace BlitzenEngine
         isSupended = 0;
 
         SetupCamera(m_mainCamera, BLITZEN_FOV, static_cast<float>(m_platformData.windowWidth), 
-        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(50.f, 0.f, 0.f));
+        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(30.f, 0.f, 0.f));
         m_mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
 
         // Different types of hardcoded scenes to test the renderer, since the engine does not have an editor

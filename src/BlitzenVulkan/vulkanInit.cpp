@@ -55,19 +55,23 @@ namespace BlitzenVulkan
         m_pThisRenderer = this;
 
         // Creates the Vulkan instance
-        CreateInstance(m_initHandles.instance);
-
-        // A debug messenger for validation layers is created when in debug mode
-        #ifndef NDEBUG
-            CreateDebugMessenger(m_initHandles);
-        #endif
+        if(!CreateInstance(m_initHandles.instance, &m_initHandles.debugMessenger))
+        {
+            BLIT_ERROR("Failed to create vulkan instance")
+            return 0;
+        }
 
         // Create the surface depending on the implementation on Platform.cpp
-        BlitzenPlatform::CreateVulkanSurface(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator);
+        if(!BlitzenPlatform::CreateVulkanSurface(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator))
+        {
+            BLIT_ERROR("Failed to create Vulkan window surface")
+            return 0;
+        }
 
         // Call the function to search for a suitable physical device, it it can't find one return 0
         if(!PickPhysicalDevice(m_initHandles, m_graphicsQueue, m_computeQueue, m_presentQueue, m_stats))
         {
+            BLIT_ERROR("Failed to pick suitable physical device")
             return 0;
         }
 
@@ -118,23 +122,28 @@ namespace BlitzenVulkan
         }
 
         // Texture sampler, for now all textures will use the same one
-        CreateTextureSampler(m_device, m_placeholderSampler);
+        if(!CreateTextureSampler(m_device, m_placeholderSampler))
+            return 0;
 
         return 1;
     }
 
-    void CreateInstance(VkInstance& instance)
+    uint8_t CreateInstance(VkInstance& instance, VkDebugUtilsMessengerEXT* pDM /*=nullptr*/)
     {
-        // Check if the driver supports vulkan 1.3. The application only works for vulkan 1.3
+        // Check if the driver supports vulkan 1.3. The engine requires for Vulkan to be in 1.3
         uint32_t apiVersion = 0;
         VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
-        BLIT_ASSERT_MESSAGE(apiVersion > VK_API_VERSION_1_3, "Blitzen needs to use Vulkan API_VERSION 1.3")
+        if(apiVersion < VK_API_VERSION_1_3)
+        {
+            BLIT_ERROR("Blitzen needs to use Vulkan API_VERSION 1.3")
+            return 0;
+        }
 
         //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
         VkApplicationInfo applicationInfo{};
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        applicationInfo.pNext = nullptr; // Not using this
-        applicationInfo.apiVersion = VK_API_VERSION_1_3; // There are some features and extensions Blitzen will use, that exist in Vulkan 1.3
+        applicationInfo.pNext = nullptr; 
+        applicationInfo.apiVersion = VK_API_VERSION_1_3; 
         applicationInfo.pApplicationName = BLITZEN_VULKAN_USER_APPLICATION;
         applicationInfo.applicationVersion = BLITZEN_VULKAN_USER_APPLICATION_VERSION;
         applicationInfo.pEngineName = BLITZEN_VULKAN_USER_ENGINE;
@@ -155,32 +164,36 @@ namespace BlitzenVulkan
         for(size_t i = 0; i < availableExtensions.GetSize(); ++i)
         {
             // Check for surafce extension support
-            if(!strcmp(availableExtensions[i].extensionName,VULKAN_SURFACE_KHR_EXTENSION_NAME) && !extensionSupport[0])
+            if(!extensionSupport[0] && !strcmp(availableExtensions[i].extensionName,VULKAN_SURFACE_KHR_EXTENSION_NAME))
             {
                 extensionSupport[0] = 1;
             }
-            if(!strcmp(availableExtensions[i].extensionName, "VK_KHR_surface") && !extensionSupport[1])
+            if(!extensionSupport[1] && !strcmp(availableExtensions[i].extensionName, "VK_KHR_surface"))
             {
                 extensionSupport[1] = 1;
             }
 
             // Check for validation layer extension support if the validation layers are active
             #if BLITZEN_VULKAN_VALIDATION_LAYERS
-                if(!strcmp(availableExtensions[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) 
-                && !extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1])
+                if(!extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] &&
+                !strcmp(availableExtensions[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
                 {
                     extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] = 1;
                 }
             #endif
         }
 
-        // Check that the number of available extensions is correct compared to the amount that needs to be enabled
+        // Checks that all of the required extensions are supported
         uint8_t allExtensions = 0;
         for(uint8_t i = 0; i < BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT; ++i)
         {
             allExtensions += extensionSupport[i];
         }
-        BLIT_ASSERT_MESSAGE(allExtensions == BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT, "Not all extensions are supported")
+        if(allExtensions != BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT)
+        {
+            BLIT_ERROR("Not all extensions are supported")
+            return 0;
+        }
 
         // Creating an array of required extension names to pass to ppEnabledExtensionNames
         const char* requiredExtensionNames [BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT];
@@ -191,57 +204,64 @@ namespace BlitzenVulkan
 
         //If this is a debug build, the validation layer extension is also needed
         #if BLITZEN_VULKAN_VALIDATION_LAYERS
-
+            // Adds the validation layer extensions to the extensions list
             requiredExtensionNames[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 
-            // Getting all supported validation layers
-            uint32_t availableLayerCount = 0;
-            vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
-            BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
-            vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
-
-            // Checking if the requested validation layers are supported
-            uint8_t layersFound = 0;
-            for(size_t i = 0; i < availableLayers.GetSize(); i++)
-            {
-               if(!strcmp(availableLayers[i].layerName,VALIDATION_LAYER_NAME))
-               {
-                   layersFound = 1;
-                   break;
-               }
-            }
-
-            BLIT_ASSERT_MESSAGE(layersFound, "The vulkan renderer will not be used in debug mode without validation layers")
-
-            // If the above check is passed validation layers can be safely loaded
-            instanceInfo.enabledLayerCount = 1;
-            const char* layerNameRef = VALIDATION_LAYER_NAME;
-            instanceInfo.ppEnabledLayerNames = &layerNameRef;
-
+            uint8_t validationLayersEnabled = 0;
             VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
-            debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-            debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-            debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
-            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            debugMessengerInfo.pfnUserCallback = debugCallback;
-            debugMessengerInfo.pNext = nullptr;// Not using this right now
-            debugMessengerInfo.pUserData = nullptr; // Not using this right now
-
-            // The debug messenger needs to be referenced by the instance
-            instanceInfo.pNext = &debugMessengerInfo;
+            if(EnableInstanceValidation(debugMessengerInfo))
+            {
+                // The debug messenger needs to be referenced by the instance
+                instanceInfo.pNext = &debugMessengerInfo;
+                // The validation layers need to be passed to the layer name as well
+                instanceInfo.enabledLayerCount = 1;
+                const char* layerNameRef = VALIDATION_LAYER_NAME;
+                instanceInfo.ppEnabledLayerNames = &layerNameRef;
+                validationLayersEnabled = 1;
+            }
 
         #endif
 
         instanceInfo.ppEnabledExtensionNames = requiredExtensionNames;
 
-        VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &instance))
+        VkResult res = vkCreateInstance(&instanceInfo, nullptr, &instance);
+        if(res != VK_SUCCESS)
+            return 0;
+
+        #if BLITZEN_VULKAN_VALIDATION_LAYERS
+            if(validationLayersEnabled)
+                CreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, pDM);
+        #endif
+
+        return 1;
     }
 
-    void CreateDebugMessenger(InitializationHandles& initHandles)
+    uint8_t EnableInstanceValidation(VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo)
     {
-        // This is the same as the one loaded to VkInstanceCreateInfo
-        VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
+        // Getting all supported validation layers
+        uint32_t availableLayerCount = 0;
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
+        BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
+
+        // Checking if the requested validation layers are supported
+        uint8_t layersFound = 0;
+        for(size_t i = 0; i < availableLayers.GetSize(); i++)
+        {
+           if(!strcmp(availableLayers[i].layerName,VALIDATION_LAYER_NAME))
+           {
+               layersFound = 1;
+               break;
+           }
+        }
+
+        if(!layersFound)
+        {
+            BLIT_ERROR("The vulkan renderer will not be used in debug mode without validation layers")
+            return 0;
+        }
+        
+        // Create the debug messenger
         debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
         debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
         VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -251,7 +271,7 @@ namespace BlitzenVulkan
         debugMessengerInfo.pNext = nullptr;// Not using this right now
         debugMessengerInfo.pUserData = nullptr; // Not using this right now
 
-        VK_CHECK(CreateDebugUtilsMessengerEXT(initHandles.instance, &debugMessengerInfo, nullptr, &(initHandles.debugMessenger)));
+        return 1;
     }
 
     uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 

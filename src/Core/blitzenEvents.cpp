@@ -4,30 +4,9 @@
 
 namespace BlitzenCore
 {
-    #define BLIT_ENGINE_SHUTDOWN_EXPECTED_EVENTS 1
-    #define BLIT_KEY_PRESSED_EXPECTED_EVENTS 100
-    #define BLIT_KEY_RELEASED_EXPECTED_EVENTS 100
-    #define BLIT_MOUSE_BUTTON_PRESSED_EXPECTED_EVENTS 50
-    #define BLIT_MOUSE_BUTTON_RELEASED_EXPECTED_EVENTS 50
-    #define BLIT_MOUSE_MOVED_EXPECTED_EVENTS  10
-    #define BLIT_MOUSE_WHEEL_EXPECTED_EVENTS  10
-    #define BLIT_WINDOW_RESIZE_EXPECTED_EVENTS  10
-
-    inline uint32_t maxExpectedEvents[static_cast<size_t>(BlitEventType::MaxTypes)] = 
-    {
-        BLIT_ENGINE_SHUTDOWN_EXPECTED_EVENTS, 
-        BLIT_KEY_PRESSED_EXPECTED_EVENTS, 
-        BLIT_KEY_RELEASED_EXPECTED_EVENTS, 
-        BLIT_MOUSE_BUTTON_PRESSED_EXPECTED_EVENTS,
-        BLIT_MOUSE_BUTTON_RELEASED_EXPECTED_EVENTS,
-        BLIT_MOUSE_MOVED_EXPECTED_EVENTS,
-        BLIT_MOUSE_WHEEL_EXPECTED_EVENTS, 
-        BLIT_WINDOW_RESIZE_EXPECTED_EVENTS
-    };
-
     inline EventSystemState* pEventState = nullptr;
 
-    uint8_t EventsInit() 
+    uint8_t EventSystemInit(EventSystemState* pState)
     {
         if(!BlitzenEngine::Engine::GetEngineInstancePointer())
         {
@@ -35,8 +14,11 @@ namespace BlitzenCore
             return 0;
         }
 
-        // Get a pointer to the event state, so that it can be accessed statically by functions in this file
-        pEventState = &(BlitzenEngine::Engine::GetEngineInstancePointer()->GetEngineSystems().eventState);
+        // Allocate the event system state
+        pState = reinterpret_cast<EventSystemState*>(BlitzenCore::BlitConstructAlloc<EventSystemState>(BlitzenCore::AllocationType::Engine));
+
+        // Pass the pointer to the inline pointer in this file
+        pEventState = pState;
 
         return 1;
     }
@@ -48,16 +30,19 @@ namespace BlitzenCore
             BLIT_ERROR("Blitzen has not given permission for events to shutdown")
             return;
         }
-        // The EventSystemState array block should logically be freed on its own when the engine shuts down
+
+        // Free the pState block
+        BlitzenCore::BlitDestroyAlloc<EventSystemState>(BlitzenCore::AllocationType::Engine, pEventState);
     }
 
     uint8_t RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback) 
     {
         BlitCL::DynamicArray<RegisteredEvent>& events = pEventState->eventTypes[static_cast<size_t>(type)];
+
         // If no event of this type has been created before, reserve the maximum expected space for events of this type
         if(events.GetSize() == 0) 
         {
-            events.Reserve(maxExpectedEvents[static_cast<size_t>(type)]);
+            events.Reserve(pEventState->maxExpectedEvents[static_cast<size_t>(type)]);
         }
 
         for(size_t i = 0; i < events.GetSize(); ++i) 

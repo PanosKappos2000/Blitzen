@@ -17,8 +17,11 @@ namespace BlitzenGL
         // Set the viewport
         glViewport(0, 0, windowWidth, windowHeight);
 
-        // Enable depth testing
+        // Configure the depth test	
+        glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
         glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_GEQUAL);
+        glDisable(GL_CULL_FACE);
 
         return 1;
     }
@@ -115,6 +118,11 @@ namespace BlitzenGL
 
     void OpenglRenderer::DrawFrame(BlitzenEngine::RenderContext& context)
     {
+        if(context.windowResize)
+        {
+            glViewport(0, 0, context.windowWidth, context.windowHeight);
+        }
+
         BlitzenEngine::CullingData& cullData = context.cullingData;
         BlitzenEngine::GlobalShaderData& shaderData = context.globalShaderData;
 
@@ -129,7 +137,9 @@ namespace BlitzenGL
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_shaderDataBuffer);
 
         glDispatchCompute(cullData.drawCount / 64 + 1, 1, 1);
+        glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
+        glClearDepth(0.0f);
         glClearColor(0, 0.5f, 0.7f, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

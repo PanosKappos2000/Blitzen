@@ -2,6 +2,15 @@
 
 #include "blitzenContainerLibrary.h"
 
+#define BLIT_ENGINE_SHUTDOWN_EXPECTED_EVENTS 1
+#define BLIT_KEY_PRESSED_EXPECTED_EVENTS 100
+#define BLIT_KEY_RELEASED_EXPECTED_EVENTS 100
+#define BLIT_MOUSE_BUTTON_PRESSED_EXPECTED_EVENTS 50
+#define BLIT_MOUSE_BUTTON_RELEASED_EXPECTED_EVENTS 50
+#define BLIT_MOUSE_MOVED_EXPECTED_EVENTS  10
+#define BLIT_MOUSE_WHEEL_EXPECTED_EVENTS  10
+#define BLIT_WINDOW_RESIZE_EXPECTED_EVENTS  10
+
 namespace BlitzenCore
 {
     // When an event needs to pass some data, this struct will be used to hide the data inside the union. The listener should know how to uncover the data
@@ -52,9 +61,22 @@ namespace BlitzenCore
     struct EventSystemState 
     {
         BlitCL::DynamicArray<RegisteredEvent> eventTypes[MAX_MESSAGE_CODES];
+
+        uint32_t maxExpectedEvents[static_cast<size_t>(BlitEventType::MaxTypes)] = 
+        {
+            BLIT_ENGINE_SHUTDOWN_EXPECTED_EVENTS, 
+            BLIT_KEY_PRESSED_EXPECTED_EVENTS, 
+            BLIT_KEY_RELEASED_EXPECTED_EVENTS, 
+            BLIT_MOUSE_BUTTON_PRESSED_EXPECTED_EVENTS,
+            BLIT_MOUSE_BUTTON_RELEASED_EXPECTED_EVENTS,
+            BLIT_MOUSE_MOVED_EXPECTED_EVENTS,
+            BLIT_MOUSE_WHEEL_EXPECTED_EVENTS, 
+            BLIT_WINDOW_RESIZE_EXPECTED_EVENTS
+        };
     };
 
-    uint8_t EventsInit();
+    uint8_t EventSystemInit(EventSystemState* pState);
+
     void EventsShutdown();
 
     // Adds a new RegisteredEvent to the eventState event types array

@@ -51,7 +51,6 @@ namespace BlitzenEngine
 
         uint8_t eventSystem = 0;
         // The event state is owned by the engine so that the dynamic array inside it, get freed before memory management is shutdown
-        BlitzenCore::EventSystemState eventState;
 
         uint8_t inputSystem = 0;
         // The input state is placed here, so that its memory can be managed by the engine

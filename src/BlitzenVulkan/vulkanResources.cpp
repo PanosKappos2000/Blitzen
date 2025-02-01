@@ -240,7 +240,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void CreateTextureSampler(VkDevice device, VkSampler& sampler)
+    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler)
     {
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -262,7 +262,11 @@ namespace BlitzenVulkan
         samplerInfo.maxLod = 16.f;
         samplerInfo.minLod = 0.f;
 
-        VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
+        
+        VkResult res = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
     }
 
     VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10)
@@ -336,7 +340,8 @@ namespace BlitzenVulkan
         createInfo.pNext = &reductionInfo;
 
 	    VkSampler sampler = VK_NULL_HANDLE;
-	    VK_CHECK(vkCreateSampler(device, &createInfo, 0, &sampler))
+	    if(vkCreateSampler(device, &createInfo, 0, &sampler) != VK_SUCCESS)
+            return VK_NULL_HANDLE;
 	    return sampler;
     }
 

@@ -225,12 +225,16 @@ namespace BlitzenPlatform
             Sleep(static_cast<DWORD>(ms));
         }
 
-        void CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
+        uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
         {
             VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
             info.hinstance = s_pPlatformState.winInstance;
             info.hwnd = s_pPlatformState.winWindow;
-            vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
+
+            VkResult res = vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
+            if(res != VK_SUCCESS)
+                return 0;
+            return 1;
         }
 
         uint8_t CreateOpenglDrawContext()

@@ -270,9 +270,11 @@ namespace BlitzenVulkan
 
 
 
-    void CreateInstance(VkInstance& instance);
+    // Creates the Vulkan instance, required to interface with the Vulkan API
+    uint8_t CreateInstance(VkInstance& instance, VkDebugUtilsMessengerEXT* pDM = nullptr);
 
-    void CreateDebugMessenger(InitializationHandles& m_initHandles);
+    // Checks if the requested validation layers are supported
+    uint8_t EnableInstanceValidation(VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo);
 
     uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
     VulkanStats& stats);
@@ -335,7 +337,7 @@ namespace BlitzenVulkan
 
     // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 
     // TODO: Replace this with a general purpose function
-    void CreateTextureSampler(VkDevice device, VkSampler& sampler);
+    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler);
 
     // Returns VkFormat based on DDS input to correctly load a texture image
     VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10);
