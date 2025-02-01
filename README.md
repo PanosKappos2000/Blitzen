@@ -4,9 +4,12 @@ Game engine focused on the rendering aspect and on implementing acceleration alg
 
 Vulkan is the initial targeted graphics API but OpenGL has been implemented as well. For now OpenGL does not support occlusion culling or textures but it is as performant as Vulkan.
 
-Capable of loading .obj models and .gltf scenes with some constraints. 
+Capable of loading .obj models and .gltf scenes (with some constraints):
+
 -To load obj models it uses the fast_obj library from thisistherk : https://github.com/thisistherk/fast_obj
+
 -To load gltf scenes it uses the surprisingly intuitive cgltf library : https://github.com/jkuhlmann/cgltf
+
 -For the vertices that are loaded, the incredible meshoptimizer library is used to generate indices, LODs, clusters and optimize the vertex cache. Meshoptimizer is written by Arseny Kapoulkine (zeux on github) https://github.com/zeux/meshoptimizer, whose Niagara streams on Youtube have massively influenced the renderer of this Engine (https://www.youtube.com/watch?v=BR2my8OE1Sc&list=PL0JVLUVCkk-l7CWCn3-cdftR0oajugYvd). 
 
 Uses compute shaders to perform frustum and occlusion culling on each surface. It also loads LODs automatically for each surface loaded. With all of these active it is capable of handling scenes with millions of objects (tested on an RTX3060).
