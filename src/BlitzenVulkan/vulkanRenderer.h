@@ -140,7 +140,7 @@ namespace BlitzenVulkan
         void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
 
         // Kills the renderer and cleans up allocated handles and resources. Implemented on vulkanInit.cpp
-        void Shutdown(MemoryCrucialHandles& pCrucials);
+        void Shutdown();
 
         // I do not do anything on the destructor, but I leave it here because Cleaning Vulkan is peculiar
         ~VulkanRenderer();
@@ -283,13 +283,13 @@ namespace BlitzenVulkan
     uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
     VulkanStats& stats);
 
-    void CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
+    uint8_t CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
     Queue& presentQueue, Queue& computeQueue, VulkanStats& stats);
     
     /*Initializes the swapchain handle that is passed in the newSwapchain argument
     Makes the correct tests to create it according to what the device allows
     oldSwapchain can be passed if the swapchain needs to be recreated*/
-    void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
+    uint8_t CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
     Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
     VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 

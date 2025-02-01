@@ -3,15 +3,13 @@
 
 namespace BlitzenEngine
 {
-    inline BlitzenVulkan::VulkanRenderer* gpVulkan = nullptr;
-    // For now, the memory crucial handles will be defined here globally. The destructor will be called automatically after the vk renderer is destroyed
-    inline BlitzenVulkan::MemoryCrucialHandles vulkanCrucials;
+    inline BlitzenVulkan::VulkanRenderer* inl_pVulkan = nullptr;
 
-    inline BlitzenGL::OpenglRenderer* gpGl = nullptr;
+    inline BlitzenGL::OpenglRenderer* inl_pGl = nullptr;
 
-    inline void* gpDx12 = nullptr;
+    inline void* inl_pDx12 = nullptr;
 
-    inline ActiveRenderer iActive = ActiveRenderer::MaxRenderers;
+    inline ActiveRenderer inl_active = ActiveRenderer::MaxRenderers;
 
     uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
     uint32_t windowWidth, uint32_t windowHeight)
@@ -21,7 +19,7 @@ namespace BlitzenEngine
             // Call the init function and store the result in the systems boolean for Vulkan
             if(pVulkan.Data()->Init(windowWidth, windowHeight))
             {
-                gpVulkan = pVulkan.Data();
+                inl_pVulkan = pVulkan.Data();
                 return 1;
             }
             
@@ -41,7 +39,7 @@ namespace BlitzenEngine
         #else
             if(renderer.Init(windowWidth, windowHeight))
             {
-                gpGl = &renderer;
+                inl_pGl = &renderer;
                 return 1;
             }
             else
@@ -51,9 +49,9 @@ namespace BlitzenEngine
         #endif
     }
 
-    uint8_t isVulkanInitialized() { return gpVulkan != nullptr; }
+    uint8_t isVulkanInitialized() { return inl_pVulkan != nullptr; }
 
-    uint8_t IsOpenglInitialized() {return gpGl != nullptr;}
+    uint8_t IsOpenglInitialized() {return inl_pGl != nullptr;}
 
     uint8_t CheckActiveRenderer(ActiveRenderer ar)
     {
@@ -77,7 +75,7 @@ namespace BlitzenEngine
             ClearCurrentActiveRenderer();
             /*if(ar == ActiveRenderer::Vulkan)
                 gpVulkan->SetupForSwitch();This is supposed to fix a switching to Vulkan bug, but I got bored while writing it*/
-            iActive = ar;
+            inl_active = ar;
             return 1;
         }
 
@@ -86,13 +84,13 @@ namespace BlitzenEngine
 
     void ClearCurrentActiveRenderer()
     {
-        switch(iActive)
+        switch(inl_active)
         {
             case ActiveRenderer::Vulkan:
             {
-                if(gpVulkan)
+                if(inl_pVulkan)
                 {
-                    gpVulkan->ClearFrame();
+                    inl_pVulkan->ClearFrame();
                 }
                 break;
             }
@@ -142,12 +140,12 @@ namespace BlitzenEngine
 
         uint8_t isThereRendererOnStandby = 0;
 
-        if(gpVulkan)
+        if(inl_pVulkan)
         {
-            if(!gpVulkan->SetupForRendering(pResources))
+            if(!inl_pVulkan->SetupForRendering(pResources))
             {
                 BLIT_ERROR("Could not initialize Vulkan. If this is the active graphics API, it needs to be swapped")
-                gpVulkan = nullptr;
+                inl_pVulkan = nullptr;
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
             }
 
@@ -155,12 +153,12 @@ namespace BlitzenEngine
         }
 
         #if _MSC_VER
-        if(gpGl)
+        if(inl_pGl)
         {
-            if(!gpGl->SetupForRendering(pResources))
+            if(!inl_pGl->SetupForRendering(pResources))
             {
                 BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
-                gpGl = nullptr;
+                inl_pGl = nullptr;
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
             }
 
@@ -176,7 +174,7 @@ namespace BlitzenEngine
     ActiveRenderer ar, RenderContext& context, RuntimeDebugValues* pDebugValues /*= nullptr*/)
     {
         // Check that the pointer for the active renderer is not Null
-        if(!CheckActiveRenderer(iActive))
+        if(!CheckActiveRenderer(inl_active))
         {
             // I could throw a warning here but it would fill the screen with the same error message over and over
             return;
@@ -227,7 +225,6 @@ namespace BlitzenEngine
 
         cullingData.drawCount = static_cast<uint32_t>(drawCount);
 
-
         context.windowResize = windowResize;
         context.windowWidth = windowWidth;
         context.windowHeight = windowHeight;
@@ -240,19 +237,20 @@ namespace BlitzenEngine
             cullingData.lodEnabled = pDebugValues->m_lodEnabled;// f4 to change
         }
 
-        switch(iActive)
+        // Call draw frame for the active renderer
+        switch(inl_active)
         {
             case ActiveRenderer::Vulkan:
             {
                 // Let Vulkan do its thing
-                gpVulkan->DrawFrame(context);
+                inl_pVulkan->DrawFrame(context);
 
                 break;
             }
             case ActiveRenderer::Opengl:
             {
                 #if _MSC_VER
-                    gpGl->DrawFrame(context);
+                    inl_pGl->DrawFrame(context);
                 #endif
                 break;
             }
@@ -263,10 +261,12 @@ namespace BlitzenEngine
 
     void ShutdownRenderers()
     {
-        if(gpVulkan)
-            gpVulkan->Shutdown(vulkanCrucials);
+        if(inl_pVulkan)
+            inl_pVulkan->Shutdown();
 
-        if(gpGl)
-            gpGl->Shutdown();
+        #if _MSC_VER
+        if(inl_pGl)
+            inl_pGl->Shutdown();
+        #endif
     }
 }

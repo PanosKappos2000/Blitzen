@@ -52,7 +52,8 @@ namespace BlitzenEngine
         m_systems.eventSystem = BlitzenCore::EventSystemInit(pEventSystemState);
 
         // Initialize the input system after the event system
-        m_systems.inputSystem = BlitzenCore::InputInit(&m_systems.inputState);
+        BlitzenCore::InputSystemState* pInputSystemState = nullptr;
+        m_systems.inputSystem = BlitzenCore::InputInit(pInputSystemState);
 
         // Platform specific code initalization. 
         // This should be called after the event system has been initialized because the event function is called.

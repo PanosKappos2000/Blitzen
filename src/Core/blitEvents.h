@@ -238,7 +238,7 @@ namespace BlitzenCore
         uint8_t buttons[static_cast<size_t>(MouseButton::MaxButtons)];
     };
 
-    struct InputState 
+    struct InputSystemState 
     {
         KeyboardState currentKeyboard;
         KeyboardState previousKeyboard;
@@ -246,7 +246,7 @@ namespace BlitzenCore
         MouseState previousMouse;
     };
 
-    uint8_t InputInit(InputState* pInputState);
+    uint8_t InputInit(InputSystemState* pInputState);
 
     void InputShutdown();
     void UpdateInput(double deltaTime);

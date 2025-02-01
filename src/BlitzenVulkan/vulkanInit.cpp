@@ -15,6 +15,9 @@ namespace BlitzenVulkan
 {
     VulkanRenderer* VulkanRenderer::m_pThisRenderer = nullptr;
 
+    // Memory crucial resources handled globally
+    inline MemoryCrucialHandles inl_MemoryCrucials;
+
     /*
         These function are used load the function pointer for creating the debug messenger
     */
@@ -76,11 +79,18 @@ namespace BlitzenVulkan
         }
 
         // Create the device
-        CreateDevice(m_device, m_initHandles, m_graphicsQueue, m_presentQueue, m_computeQueue, m_stats);
+        if(!CreateDevice(m_device, m_initHandles, m_graphicsQueue, m_presentQueue, m_computeQueue, m_stats))
+        {
+            BLIT_ERROR("Failed to pick suitable physical device")
+        }
 
-        //Create the swapchain
-        CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
-        m_initHandles.swapchain);
+        //Creates the swapchain
+        if(!CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
+        m_initHandles.swapchain))
+        {
+            BLIT_ERROR("Failed to create Vulkan swapchain")
+            return 0;
+        }
 
         // Initialize VMA allocator
         if(!CreateVmaAllocator(m_device, m_initHandles.instance, m_initHandles.chosenGpu, m_allocator, 
@@ -89,6 +99,13 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create the vma allocator")
             return 0;
         }
+
+        // Initialize the memory crucials. These handles will exist globally, so that the resources are destroyed after the renderer goes out of scope
+        // This is done so that buffer and images can be destroyed automatically without causing issues for the vma allocator
+        inl_MemoryCrucials.device = m_device;
+        inl_MemoryCrucials.allocator = m_allocator;
+        inl_MemoryCrucials.instance = m_initHandles.instance;
+        inl_MemoryCrucials.surface = m_initHandles.surface;
 
         // Creates the sync structure and command buffers for each set of frame tools in m_frameToolsList
         if(!FrameToolsInit())
@@ -277,9 +294,13 @@ namespace BlitzenVulkan
     uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
     VulkanStats& stats)
     {
+        // Retrieves the physical device count
         uint32_t physicalDeviceCount = 0;
         vkEnumeratePhysicalDevices(initHandles.instance, &physicalDeviceCount, nullptr);
-        BLIT_ASSERT(physicalDeviceCount)
+        if(!physicalDeviceCount)
+            return 0;
+
+        // Pass the available devices to an array to pick the best one
         BlitCL::DynamicArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
         vkEnumeratePhysicalDevices(initHandles.instance, &physicalDeviceCount, physicalDevices.Data());
 
@@ -408,7 +429,7 @@ namespace BlitzenVulkan
         if(!physicalDevices.GetSize())
         {
             BLIT_WARN("Your machine has no physical device that supports vulkan the way Blitzen wants it. \n \
-            Try another graphics specification or disable some features")
+            Try another graphics API")
             return 0;
         }
 
@@ -436,194 +457,198 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
+    uint8_t CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
     Queue& presentQueue, Queue& computeQueue, VulkanStats& stats)
     {
         VkDeviceCreateInfo deviceInfo{};
-            deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-            deviceInfo.flags = 0; // Not using this
-            deviceInfo.enabledLayerCount = 0;//Deprecated
+        deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        deviceInfo.flags = 0; // Not using this
+        deviceInfo.enabledLayerCount = 0;//Deprecated
 
-            // Since mesh shaders are not a required feature, they will be checked separately and if support is not found, the traditional pipeline will be used
-            #if BLITZEN_VULKAN_MESH_SHADER
-                VkPhysicalDeviceFeatures2 features2{};
-                features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
-                meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
-                features2.pNext = &meshFeatures;
-                vkGetPhysicalDeviceFeatures2(initHandles.chosenGpu, &features2);
-                stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
+        // Since mesh shaders are not a required feature, they will be checked separately and if support is not found, the traditional pipeline will be used
+        #if BLITZEN_VULKAN_MESH_SHADER
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
+            meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+            features2.pNext = &meshFeatures;
+            vkGetPhysicalDeviceFeatures2(initHandles.chosenGpu, &features2);
+            stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
 
-                // Check the extensions as well
-                uint32_t dvExtensionCount = 0;
-                vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, nullptr);
-                BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
-                vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
-                uint8_t meshShaderExtension = 0;
-                for(size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
-                {
-                    if(!strcmp(dvExtensionsProps[i].extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME))
-                        meshShaderExtension = 1;
-                }
-                stats.meshShaderSupport = stats.meshShaderSupport && meshShaderExtension;
-
-                if(stats.meshShaderSupport)
-                    BLIT_INFO("Mesh shader support confirmed")
-                else
-                    BLIT_INFO("No mesh shader support, using traditional pipeline")
-            #endif
-
-            // Vulkan should ignore the mesh shader extension if support for it was not found
-            deviceInfo.enabledExtensionCount = 2 + (BLITZEN_VULKAN_MESH_SHADER && stats.meshShaderSupport);
-            // Adding the swapchain extension and mesh shader extension if it was requested
-            const char* extensionsNames[2 + BLITZEN_VULKAN_MESH_SHADER];
-            extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
-            extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
-            #if BLITZEN_VULKAN_MESH_SHADER
-                if(stats.meshShaderSupport)
-                    extensionsNames[2] = VK_EXT_MESH_SHADER_EXTENSION_NAME;
-            #endif
-            deviceInfo.ppEnabledExtensionNames = extensionsNames;
-
-            // Standard device features
-            VkPhysicalDeviceFeatures deviceFeatures{};
-
-            // Allows the renderer to use one vkCmdDrawIndrect type call for multiple objects
-            deviceFeatures.multiDrawIndirect = true;
-
-            // Extended device features
-            VkPhysicalDeviceVulkan11Features vulkan11Features{};
-            vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-
-            vulkan11Features.shaderDrawParameters = true;
-
-            // Allows use of 16 bit types inside storage buffers in the shaders
-            vulkan11Features.storageBuffer16BitAccess = true;
-
-            VkPhysicalDeviceVulkan12Features vulkan12Features{};
-            vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-
-            // Allow the application to get the address of a buffer and pass it to the shaders
-            vulkan12Features.bufferDeviceAddress = true;
-
-            // Allows the shaders to index into array held by descriptors, needed for textures
-            vulkan12Features.descriptorIndexing = true;
-
-            // Allows shaders to use array with undefined size for descriptors, needed for textures
-            vulkan12Features.runtimeDescriptorArray = true;
-
-            // Allows the use of float16_t type in the shaders
-            vulkan12Features.shaderFloat16 = true;
-
-            // Allows the use of 8 bit integers in shaders
-            vulkan12Features.shaderInt8 = true;
-
-            // Allows storage buffers to have 8bit data
-            vulkan12Features.storageBuffer8BitAccess = true;
-
-            // Allows the use of draw indirect count, which has the power to completely removes unneeded draw calls
-            vulkan12Features.drawIndirectCount = true;
-
-            // This is needed to create a sampler for the depth pyramid that will be used for occlusion culling
-            vulkan12Features.samplerFilterMinmax = true;
-
-            VkPhysicalDeviceVulkan13Features vulkan13Features{};
-            vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-
-            // Dynamic rendering removes the need for VkRenderPass and allows the creation of rendering attachmets at draw time
-            vulkan13Features.dynamicRendering = true;
-
-            // Used for PipelineBarrier2, better sync structure API
-            vulkan13Features.synchronization2 = true;
-
-            // This is needed for local size id in shaders
-            vulkan13Features.maintenance4 = true;
-
-            VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
-            vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-            #if BLITZEN_VULKAN_MESH_SHADER
-                if(stats.meshShaderSupport)
-                {
-                    vulkanFeaturesMesh.meshShader = true;
-                    vulkanFeaturesMesh.taskShader = true;
-                }
-            #endif
-
-            VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
-            vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            vulkanExtendedFeatures.features = deviceFeatures;
-
-            // Add all features structs to the pNext chain
-            deviceInfo.pNext = &vulkanExtendedFeatures;
-            vulkanExtendedFeatures.pNext = &vulkan11Features;
-            vulkan11Features.pNext = &vulkan12Features;
-            vulkan12Features.pNext = &vulkan13Features;
-            vulkan13Features.pNext = &vulkanFeaturesMesh;
-
-            BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
-            queueInfos[0].queueFamilyIndex = graphicsQueue.index;
-            VkDeviceQueueCreateInfo deviceQueueInfo{};
-            // If compute has a different index from present, add a new info for it
-            if(graphicsQueue.index != computeQueue.index)
+            // Check the extensions as well
+            uint32_t dvExtensionCount = 0;
+            vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, nullptr);
+            BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
+            vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
+            uint8_t meshShaderExtension = 0;
+            for(size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
             {
-                queueInfos.PushBack(deviceQueueInfo);
-                queueInfos[1].queueFamilyIndex = computeQueue.index;
+                if(!strcmp(dvExtensionsProps[i].extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME))
+                    meshShaderExtension = 1;
             }
-            // If an info was created for compute and present is not equal to compute or graphics, create a new one for present as well
-            if(queueInfos.GetSize() == 2 && queueInfos[0].queueFamilyIndex != presentQueue.index && queueInfos[1].queueFamilyIndex != presentQueue.index)
+            stats.meshShaderSupport = stats.meshShaderSupport && meshShaderExtension;
+
+            if(stats.meshShaderSupport)
+                BLIT_INFO("Mesh shader support confirmed")
+            else
+                BLIT_INFO("No mesh shader support, using traditional pipeline")
+        #endif
+
+        // Vulkan should ignore the mesh shader extension if support for it was not found
+        deviceInfo.enabledExtensionCount = 2 + (BLITZEN_VULKAN_MESH_SHADER && stats.meshShaderSupport);
+        // Adding the swapchain extension and mesh shader extension if it was requested
+        const char* extensionsNames[2 + BLITZEN_VULKAN_MESH_SHADER];
+        extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+        extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
+        #if BLITZEN_VULKAN_MESH_SHADER
+            if(stats.meshShaderSupport)
+                extensionsNames[2] = VK_EXT_MESH_SHADER_EXTENSION_NAME;
+        #endif
+        deviceInfo.ppEnabledExtensionNames = extensionsNames;
+
+        // Standard device features
+        VkPhysicalDeviceFeatures deviceFeatures{};
+
+        // Allows the renderer to use one vkCmdDrawIndrect type call for multiple objects
+        deviceFeatures.multiDrawIndirect = true;
+
+        // Extended device features
+        VkPhysicalDeviceVulkan11Features vulkan11Features{};
+        vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+
+        vulkan11Features.shaderDrawParameters = true;
+
+        // Allows use of 16 bit types inside storage buffers in the shaders
+        vulkan11Features.storageBuffer16BitAccess = true;
+
+        VkPhysicalDeviceVulkan12Features vulkan12Features{};
+        vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+        // Allow the application to get the address of a buffer and pass it to the shaders
+        vulkan12Features.bufferDeviceAddress = true;
+
+        // Allows the shaders to index into array held by descriptors, needed for textures
+        vulkan12Features.descriptorIndexing = true;
+
+        // Allows shaders to use array with undefined size for descriptors, needed for textures
+        vulkan12Features.runtimeDescriptorArray = true;
+
+        // Allows the use of float16_t type in the shaders
+        vulkan12Features.shaderFloat16 = true;
+
+        // Allows the use of 8 bit integers in shaders
+        vulkan12Features.shaderInt8 = true;
+
+        // Allows storage buffers to have 8bit data
+        vulkan12Features.storageBuffer8BitAccess = true;
+
+        // Allows the use of draw indirect count, which has the power to completely removes unneeded draw calls
+        vulkan12Features.drawIndirectCount = true;
+
+        // This is needed to create a sampler for the depth pyramid that will be used for occlusion culling
+        vulkan12Features.samplerFilterMinmax = true;
+
+        VkPhysicalDeviceVulkan13Features vulkan13Features{};
+        vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+        // Dynamic rendering removes the need for VkRenderPass and allows the creation of rendering attachmets at draw time
+        vulkan13Features.dynamicRendering = true;
+
+        // Used for PipelineBarrier2, better sync structure API
+        vulkan13Features.synchronization2 = true;
+
+        // This is needed for local size id in shaders
+        vulkan13Features.maintenance4 = true;
+
+        VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
+        vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+        #if BLITZEN_VULKAN_MESH_SHADER
+            if(stats.meshShaderSupport)
             {
-                queueInfos.PushBack(deviceQueueInfo);
-                queueInfos[2].queueFamilyIndex = presentQueue.index;
+                vulkanFeaturesMesh.meshShader = true;
+                vulkanFeaturesMesh.taskShader = true;
             }
-            // If an info was not created for compute but present has a different index from the other 2, create a new info for it
-            if(queueInfos.GetSize() == 1 && queueInfos[0].queueFamilyIndex != presentQueue.index)
-            {
-                queueInfos.PushBack(deviceQueueInfo);
-                queueInfos[1].queueFamilyIndex = presentQueue.index;
-            }
-            // With the count of the queue infos found and the indices passed, the rest is standard
-            float priority = 1.f;
-            for(size_t i = 0; i < queueInfos.GetSize(); ++i)
-            {
-                queueInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueInfos[i].pNext = nullptr; // Not using this
-                queueInfos[i].flags = 0; // Not using this
-                queueInfos[i].queueCount = 1;
-                queueInfos[i].pQueuePriorities = &priority;
-            }
-            // Pass the queue infos
-            deviceInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.GetSize());
-            deviceInfo.pQueueCreateInfos = queueInfos.Data();
+        #endif
 
-            // Create the device
-            VK_CHECK(vkCreateDevice(initHandles.chosenGpu, &deviceInfo, nullptr, &device));
+        VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
+        vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        vulkanExtendedFeatures.features = deviceFeatures;
 
-            // Retrieve graphics queue handle
-            VkDeviceQueueInfo2 graphicsQueueInfo{};
-            graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-            graphicsQueueInfo.pNext = nullptr; // Not using this
-            graphicsQueueInfo.flags = 0; // Not using this
-            graphicsQueueInfo.queueFamilyIndex = graphicsQueue.index;
-            graphicsQueueInfo.queueIndex = 0;
-            vkGetDeviceQueue2(device, &graphicsQueueInfo, &graphicsQueue.handle);
+        // Add all features structs to the pNext chain
+        deviceInfo.pNext = &vulkanExtendedFeatures;
+        vulkanExtendedFeatures.pNext = &vulkan11Features;
+        vulkan11Features.pNext = &vulkan12Features;
+        vulkan12Features.pNext = &vulkan13Features;
+        vulkan13Features.pNext = &vulkanFeaturesMesh;
 
-            // Retrieve compute queue handle
-            VkDeviceQueueInfo2 computeQueueInfo{};
-            computeQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-            computeQueueInfo.pNext = nullptr; // Not using this
-            computeQueueInfo.flags = 0; // Not using this
-            computeQueueInfo.queueFamilyIndex = computeQueue.index;
-            computeQueueInfo.queueIndex = 0;
-            vkGetDeviceQueue2(device, &computeQueueInfo, &computeQueue.handle);
+        BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
+        queueInfos[0].queueFamilyIndex = graphicsQueue.index;
+        VkDeviceQueueCreateInfo deviceQueueInfo{};
+        // If compute has a different index from present, add a new info for it
+        if(graphicsQueue.index != computeQueue.index)
+        {
+            queueInfos.PushBack(deviceQueueInfo);
+            queueInfos[1].queueFamilyIndex = computeQueue.index;
+        }
+        // If an info was created for compute and present is not equal to compute or graphics, create a new one for present as well
+        if(queueInfos.GetSize() == 2 && queueInfos[0].queueFamilyIndex != presentQueue.index && queueInfos[1].queueFamilyIndex != presentQueue.index)
+        {
+            queueInfos.PushBack(deviceQueueInfo);
+            queueInfos[2].queueFamilyIndex = presentQueue.index;
+        }
+        // If an info was not created for compute but present has a different index from the other 2, create a new info for it
+        if(queueInfos.GetSize() == 1 && queueInfos[0].queueFamilyIndex != presentQueue.index)
+        {
+            queueInfos.PushBack(deviceQueueInfo);
+            queueInfos[1].queueFamilyIndex = presentQueue.index;
+        }
+        // With the count of the queue infos found and the indices passed, the rest is standard
+        float priority = 1.f;
+        for(size_t i = 0; i < queueInfos.GetSize(); ++i)
+        {
+            queueInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueInfos[i].pNext = nullptr; // Not using this
+            queueInfos[i].flags = 0; // Not using this
+            queueInfos[i].queueCount = 1;
+            queueInfos[i].pQueuePriorities = &priority;
+        }
+        // Pass the queue infos
+        deviceInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.GetSize());
+        deviceInfo.pQueueCreateInfos = queueInfos.Data();
 
-            // Retrieve present queue handle
-            VkDeviceQueueInfo2 presentQueueInfo{};
-            presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-            presentQueueInfo.pNext = nullptr; // Not using this
-            presentQueueInfo.flags = 0; // Not using this
-            presentQueueInfo.queueFamilyIndex = presentQueue.index;
-            presentQueueInfo.queueIndex = 0;
-            vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
+        // Create the device
+        VkResult res = vkCreateDevice(initHandles.chosenGpu, &deviceInfo, nullptr, &device);
+        if(res != VK_SUCCESS)
+            return 0;
+
+        // Retrieve graphics queue handle
+        VkDeviceQueueInfo2 graphicsQueueInfo{};
+        graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
+        graphicsQueueInfo.pNext = nullptr; // Not using this
+        graphicsQueueInfo.flags = 0; // Not using this
+        graphicsQueueInfo.queueFamilyIndex = graphicsQueue.index;
+        graphicsQueueInfo.queueIndex = 0;
+        vkGetDeviceQueue2(device, &graphicsQueueInfo, &graphicsQueue.handle);
+
+        // Retrieve compute queue handle
+        VkDeviceQueueInfo2 computeQueueInfo{};
+        computeQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
+        computeQueueInfo.pNext = nullptr; // Not using this
+        computeQueueInfo.flags = 0; // Not using this
+        computeQueueInfo.queueFamilyIndex = computeQueue.index;
+        computeQueueInfo.queueIndex = 0;
+        vkGetDeviceQueue2(device, &computeQueueInfo, &computeQueue.handle);
+
+        // Retrieve present queue handle
+        VkDeviceQueueInfo2 presentQueueInfo{};
+        presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
+        presentQueueInfo.pNext = nullptr; // Not using this
+        presentQueueInfo.flags = 0; // Not using this
+        presentQueueInfo.queueFamilyIndex = presentQueue.index;
+        presentQueueInfo.queueIndex = 0;
+        vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
+
+        return 1;
     }
 
     uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
@@ -665,7 +690,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
+    uint8_t CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
     Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
     VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
     {
@@ -683,29 +708,39 @@ namespace BlitzenVulkan
 
             /* Image format and color space */
             {
-                // Retrieve surface format to check for desired swapchain format and color space
+                // Get the amount of available surface formats
                 uint32_t surfaceFormatsCount = 0; 
-                VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, &surfaceFormatsCount, nullptr))
+                if(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, 
+                &surfaceFormatsCount, nullptr) != VK_SUCCESS)
+                    // Something is seriously wrong if the above function does not work
+                    return 0;
+                
+                // Pass the formats to a dynamic array
                 BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
-                VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, &surfaceFormatsCount, surfaceFormats.Data()))
+                if(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, 
+                &surfaceFormatsCount, surfaceFormats.Data()) != VK_SUCCESS)
+                    // Something is seriously wrong if the above function does not work
+                    return 0;
+
                 // Look for the desired image format
                 uint8_t found = 0;
                 for(size_t i = 0; i < surfaceFormats.GetSize(); ++i)
                 {
-                    // If the desire image format is found assign it to the swapchain info and break out of the loop
+                    // If the desired image format is found, assigns it to the swapchain info and breaks out of the loop
                     if(surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM && 
                     surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
                     {
                         swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
                         swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                        // Save the format to init handles
+                        // Saves the format to init handles
                         initHandles.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
                         found = 1;
                         break;
                     }
                 }
 
-                // If the desired format is not found (unlikely), assign the first one that is supported and hope for the best ( I'm just a chill guy )
+                // If the desired format is not found (unlikely), assigns the first one that is supported and hopes for the best
+                // I could have the function fail but this is not important enough and this function can be called at run time, so...
                 if(!found)
                 {
                     swapchainInfo.imageFormat = surfaceFormats[0].format;
@@ -717,12 +752,19 @@ namespace BlitzenVulkan
 
             /* Present mode */
             {
-                // Retrieve the presentation modes supported, to look for the desired one
+                // Retrieves the amount of presentation modes supported
                 uint32_t presentModeCount = 0;
-                VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, &presentModeCount, nullptr));
+                if(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, 
+                &presentModeCount, nullptr) != VK_SUCCESS)
+                    return 0;
+
+                // Saves the supported present modes to a dynamic array
                 BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
-                VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, &presentModeCount, presentModes.Data()))
-                // Look for the desired presentation mode
+                if(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, 
+                &presentModeCount, presentModes.Data()) != VK_SUCCESS)
+                    return 0;
+
+                // Looks for the desired presentation mode in the array
                 uint8_t found = 0;
                 for(size_t i = 0; i < presentModes.GetSize(); ++i)
                 {
@@ -735,52 +777,54 @@ namespace BlitzenVulkan
                     }
                 }
                 
-                // If it was not found, set it to this random smuck ( Don't worry, I'm a proffesional )
+                // If it was not found, sets it to this random smuck (this is supposed to be supported by everything and it's VSynced)
                 if(!found)
                 {
                     swapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
                 }
             }
 
-            // Set the swapchain extent to the window's width and height
+            // Sets the swapchain extent to the window's width and height
             initHandles.swapchainExtent = {windowWidth, windowHeight};
-            // Retrieve surface capabilities to properly configure some swapchain values
+            // Retrieves surface capabilities to properly configure some swapchain values
             VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(initHandles.chosenGpu, initHandles.surface, &surfaceCapabilities));
+            if(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(initHandles.chosenGpu, initHandles.surface, &surfaceCapabilities) != VK_SUCCESS)
+                return 0;
 
             /* Swapchain extent */
             {
-                // Get the swapchain extent from the surface capabilities, if it is not some weird value
+                // Updates the swapchain extent to the current extent from the surface, if it is not a special value
                 if(surfaceCapabilities.currentExtent.width != UINT32_MAX)
                 {
                     initHandles.swapchainExtent = surfaceCapabilities.currentExtent;
                 }
 
-                // Get the min extent and max extent allowed by the GPU,  to clamp the initial value
+                // Gets the min extent and max extent allowed by the GPU,  to clamp the initial value
                 VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
                 VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
                 initHandles.swapchainExtent.width = BlitCL::Clamp(initHandles.swapchainExtent.width, maxExtent.width, minExtent.width);
                 initHandles.swapchainExtent.height = BlitCL::Clamp(initHandles.swapchainExtent.height, maxExtent.height, minExtent.height);
 
-                // Swapchain extent fully checked and ready to pass to the swapchain info
+                // Swapchain extent fully checked and ready to pass to the swapchain info struct
                 swapchainInfo.imageExtent = initHandles.swapchainExtent;
             }
 
             /* Min image count */
             {
                 uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
-                // Check that image count did not supass max image count
+                // Checks that image count does not supass max image count
                 if(surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.maxImageCount < imageCount )
                 {
                     imageCount = surfaceCapabilities.maxImageCount;
                 }
 
-                // Swapchain image count fully check and ready to be pass to the swapchain info
+                // Swapchain image count fully checked and ready to be pass to the swapchain info
                 swapchainInfo.minImageCount = imageCount;
             }
 
             swapchainInfo.preTransform = surfaceCapabilities.currentTransform;
 
+            // Configure queue settings based on if the graphics queue also supports presentation
             if (graphicsQueue.index != presentQueue.index)
             {
                 uint32_t queueFamilyIndices[] = {graphicsQueue.index, presentQueue.index};
@@ -795,13 +839,22 @@ namespace BlitzenVulkan
             }
 
             // Create the swapchain
-            VK_CHECK(vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &newSwapchain));
+            VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &newSwapchain);
+            if(swapchainResult != VK_SUCCESS)
+                return 0;
 
-            // Retrieve the swapchain images
+            // Retrieve the swapchain image count
             uint32_t swapchainImageCount = 0;
-            VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, nullptr));
+            VkResult imageResult = vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, nullptr);
+            if(imageResult != VK_SUCCESS)
+                return 0;
+
+            // Resize the swapchain images array and pass the swapchain images
             initHandles.swapchainImages.Resize(swapchainImageCount);
-            VK_CHECK(vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data()));
+            imageResult = vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data());
+            if(imageResult != VK_SUCCESS)
+                return 0;
+            return 1;
     }
 
     uint8_t VulkanRenderer::FrameToolsInit()
@@ -864,7 +917,7 @@ namespace BlitzenVulkan
     }
 
 
-    void VulkanRenderer::Shutdown(MemoryCrucialHandles& crucials)
+    void VulkanRenderer::Shutdown()
     {
         // Wait for the device to finish its work before destroying resources
         vkDeviceWaitIdle(m_device);
@@ -907,11 +960,6 @@ namespace BlitzenVulkan
         vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
 
         DestroyDebugUtilsMessengerEXT(m_initHandles.instance, m_initHandles.debugMessenger, m_pCustomAllocator);
-
-        crucials.device = m_device;
-        crucials.surface = m_initHandles.surface;
-        crucials.allocator = m_allocator;
-        crucials.instance = m_initHandles.instance;
     }
 
     VulkanRenderer::~VulkanRenderer()
