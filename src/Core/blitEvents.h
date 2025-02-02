@@ -73,11 +73,15 @@ namespace BlitzenCore
             BLIT_MOUSE_WHEEL_EXPECTED_EVENTS, 
             BLIT_WINDOW_RESIZE_EXPECTED_EVENTS
         };
+
+        EventSystemState();
+
+        ~EventSystemState();
+
+        static EventSystemState* s_pEventSystemState;
+
+        inline static EventSystemState* GetState() { return s_pEventSystemState; }
     };
-
-    uint8_t EventSystemInit(EventSystemState* pState);
-
-    void EventsShutdown();
 
     // Adds a new RegisteredEvent to the eventState event types array
     uint8_t RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback);
@@ -244,11 +248,16 @@ namespace BlitzenCore
         KeyboardState previousKeyboard;
         MouseState currentMouse;
         MouseState previousMouse;
+
+        InputSystemState();
+
+        ~InputSystemState();
+
+        inline static InputSystemState* GetState() { return s_pInputSystemState; }
+
+        static InputSystemState* s_pInputSystemState;
     };
 
-    uint8_t InputInit(InputSystemState* pInputState);
-
-    void InputShutdown();
     void UpdateInput(double deltaTime);
 
     // Keyboard input

@@ -53,8 +53,9 @@ namespace BlitzenPlatform
         uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
         {
             // Platform cannot startup if the engine or the event system have not been initialized first
-            BlitzenEngine::Engine* pEngine = BlitzenEngine::Engine::GetEngineInstancePointer();
-            if(!pEngine || !(pEngine->GetEngineSystems().eventSystem) || !(pEngine->GetEngineSystems().inputSystem))
+            if(!(BlitzenEngine::Engine::GetEngineInstancePointer()) || 
+            !(BlitzenCore::EventSystemState::GetState()) || 
+            !(BlitzenCore::InputSystemState::GetState()))
                 return 0;
 
             s_pPlatformState.winInstance = GetModuleHandleA(0);
@@ -330,9 +331,6 @@ namespace BlitzenPlatform
             wglSwapIntervalEXT(1);
             wglSwapLayerBuffers(GetDC(s_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
         }
-
-
-
 
         LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param)
         {

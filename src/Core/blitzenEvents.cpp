@@ -2,50 +2,34 @@
 
 #include "Engine/blitzenEngine.h"
 
+#define GET_EVENT_SYSTEM_STATE()    EventSystemState::GetState()
+#define GET_INPUT_SYSTEM_STATE()    InputSystemState::GetState()
+
 namespace BlitzenCore
 {
     /*
         Event system
     */
-    inline EventSystemState* pEventState = nullptr;
+    EventSystemState* EventSystemState::s_pEventSystemState = nullptr;
 
-    uint8_t EventSystemInit(EventSystemState* pState)
+    EventSystemState::EventSystemState()
     {
-        if(!BlitzenEngine::Engine::GetEngineInstancePointer())
-        {
-            BLIT_ERROR("The event system cannot be initialized before Blitzen")
-            return 0;
-        }
-
-        // Allocate the event system state
-        pState = reinterpret_cast<EventSystemState*>(BlitzenCore::BlitConstructAlloc<EventSystemState>(BlitzenCore::AllocationType::Engine));
-
-        // Pass the pointer to the inline pointer in this file
-        pEventState = pState;
-
-        return 1;
+        s_pEventSystemState = this;
     }
 
-    void EventsShutdown() 
+    EventSystemState::~EventSystemState()
     {
-        if(BlitzenEngine::Engine::GetEngineInstancePointer()->GetEngineSystems().eventSystem)
-        {
-            BLIT_ERROR("Blitzen has not given permission for events to shutdown")
-            return;
-        }
-
-        // Free the pState block
-        BlitzenCore::BlitDestroyAlloc<EventSystemState>(BlitzenCore::AllocationType::Engine, pEventState);
+        s_pEventSystemState = nullptr;
     }
 
     uint8_t RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback) 
     {
-        BlitCL::DynamicArray<RegisteredEvent>& events = pEventState->eventTypes[static_cast<size_t>(type)];
+        BlitCL::DynamicArray<RegisteredEvent>& events = GET_EVENT_SYSTEM_STATE()->eventTypes[static_cast<size_t>(type)];
 
         // If no event of this type has been created before, reserve the maximum expected space for events of this type
         if(events.GetSize() == 0) 
         {
-            events.Reserve(pEventState->maxExpectedEvents[static_cast<size_t>(type)]);
+            events.Reserve(GET_EVENT_SYSTEM_STATE()->maxExpectedEvents[static_cast<size_t>(type)]);
         }
 
         for(size_t i = 0; i < events.GetSize(); ++i) 
@@ -67,7 +51,7 @@ namespace BlitzenCore
 
     uint8_t UnregisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback) 
     {
-        BlitCL::DynamicArray<RegisteredEvent>& events = pEventState->eventTypes[static_cast<size_t>(type)];
+        BlitCL::DynamicArray<RegisteredEvent>& events = GET_EVENT_SYSTEM_STATE()->eventTypes[static_cast<size_t>(type)];
         // On nothing is registered for the code, boot out.
         if(events.GetSize() == 0) 
         {
@@ -91,7 +75,7 @@ namespace BlitzenCore
     
     uint8_t FireEvent(BlitEventType type, void* pSender, EventContext context)
     {
-        BlitCL::DynamicArray<RegisteredEvent>& events = pEventState->eventTypes[static_cast<size_t>(type)];
+        BlitCL::DynamicArray<RegisteredEvent>& events = GET_EVENT_SYSTEM_STATE()->eventTypes[static_cast<size_t>(type)];
         // If nothing is registered for the code, boot out.
         if(events.GetSize() == 0) 
         {
@@ -117,49 +101,34 @@ namespace BlitzenCore
     /*
         Input System
     */
-    inline InputSystemState* inl_pInputState = nullptr;
+    InputSystemState* InputSystemState::s_pInputSystemState = nullptr;
 
-    uint8_t InputInit(InputSystemState* pInputState) 
+    InputSystemState::InputSystemState() 
     {
-        BlitzenEngine::Engine* pEngine = BlitzenEngine::Engine::GetEngineInstancePointer();
-        if(!pEngine || !pEngine->GetEngineSystems().eventSystem)
-        {
-            BLIT_ERROR("Cannot initialize input system before the event system")
-            return 0;
-        }
-
-        pInputState = BlitzenCore::BlitConstructAlloc<InputSystemState>(BlitzenCore::AllocationType::Engine);
-
-        inl_pInputState = pInputState;
-
-        return 1;
+        s_pInputSystemState = this;
     }
 
-    void InputShutdown() 
+    InputSystemState::~InputSystemState() 
     {
-        if(BlitzenEngine::Engine::GetEngineInstancePointer()->GetEngineSystems().inputSystem)
-        {
-            BLIT_ERROR("Blitzen has not given permission for input to shutdown")
-            return;
-        }
-        
-        BlitzenCore::BlitDestroyAlloc<InputSystemState>(BlitzenCore::AllocationType::Engine, inl_pInputState);
+        s_pInputSystemState = nullptr;
     }
 
     void UpdateInput(double deltaTime) 
     {
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
         // Copy current states to previous states
-        BlitzenCore::BlitMemCopy(&inl_pInputState->previousKeyboard, &inl_pInputState->currentKeyboard, sizeof(KeyboardState));
-        BlitzenCore::BlitMemCopy(&inl_pInputState->previousMouse, &inl_pInputState->currentMouse, sizeof(MouseState));
+        BlitzenCore::BlitMemCopy(&(pState->previousKeyboard), &pState->currentKeyboard, sizeof(KeyboardState));
+        BlitzenCore::BlitMemCopy(&pState->previousMouse, &pState->currentMouse, sizeof(MouseState));
     }
 
     void InputProcessKey(BlitKey key, uint8_t bPressed) 
     {
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
         // Check If the key has not already been flagged as the value of bPressed
-        if (inl_pInputState->currentKeyboard.keys[static_cast<size_t>(key)] != bPressed) 
+        if (pState->currentKeyboard.keys[static_cast<size_t>(key)] != bPressed) 
         {
             // Change the state to bPressed
-            inl_pInputState->currentKeyboard.keys[static_cast<size_t>(key)] = bPressed;
+            pState->currentKeyboard.keys[static_cast<size_t>(key)] = bPressed;
 
             // Fire off an event for immediate processing after saving the data of the input to the event context
             EventContext context;
@@ -170,10 +139,11 @@ namespace BlitzenCore
 
     void InputProcessButton(MouseButton button, uint8_t bPressed) 
     {
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
         // If the state changed, fire an event.
-        if (inl_pInputState->currentMouse.buttons[static_cast<size_t>(button)] != bPressed) 
+        if (pState->currentMouse.buttons[static_cast<size_t>(button)] != bPressed) 
         {
-            inl_pInputState->currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
+            pState->currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
             // Fire the event.
             EventContext context;
             context.data.ui16[0] = static_cast<uint16_t>(button);
@@ -183,16 +153,17 @@ namespace BlitzenCore
 
     void InputProcessMouseMove(int16_t x, int16_t y) 
     {
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
         // Only process if actually different
-        if (inl_pInputState->currentMouse.x != x || inl_pInputState->currentMouse.y != y) 
+        if (pState->currentMouse.x != x || pState->currentMouse.y != y) 
         {
             // The context holds the difference between the new and old mouse position, since that is more useful now
             EventContext context;
-            context.data.si16[0] = x - inl_pInputState->currentMouse.x;
-            context.data.si16[1] = y - inl_pInputState->currentMouse.y;
+            context.data.si16[0] = x - pState->currentMouse.x;
+            context.data.si16[1] = y - pState->currentMouse.y;
             
-            inl_pInputState->currentMouse.x = x;
-            inl_pInputState->currentMouse.y = y;
+            pState->currentMouse.x = x;
+            pState->currentMouse.y = y;
 
             FireEvent(BlitEventType::MouseMoved, nullptr, context);
         }
@@ -208,34 +179,39 @@ namespace BlitzenCore
 
     uint8_t GetCurrentKeyState(BlitKey key) 
     {
-        return inl_pInputState->currentKeyboard.keys[static_cast<size_t>(key)];
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
+        return pState->currentKeyboard.keys[static_cast<size_t>(key)];
     }
 
     uint8_t GetPreviousKeyState(BlitKey key) 
     {
-        return inl_pInputState->currentKeyboard.keys[static_cast<size_t>(key)];
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
+        return pState->currentKeyboard.keys[static_cast<size_t>(key)];
     }
 
     
     uint8_t GetCurrentMouseButtonState(MouseButton button) 
     {
-        return inl_pInputState->currentMouse.buttons[static_cast<size_t>(button)];
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
+        return pState->currentMouse.buttons[static_cast<size_t>(button)];
     }
-
 
     uint8_t GetPreviousMouseButtonState(MouseButton button)
     {
-        return inl_pInputState->previousMouse.buttons[static_cast<size_t>(button)];
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
+        return pState->previousMouse.buttons[static_cast<size_t>(button)];
     }
 
     void GetMousePosition(int32_t* x, int32_t* y) 
     {
-        *x = inl_pInputState->previousMouse.x;
-        *y = inl_pInputState->currentMouse.y;
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
+        *x = pState->previousMouse.x;
+        *y = pState->currentMouse.y;
     }
     void GetPreviousMousePosition(int32_t* x, int32_t* y)
     {
-        *x = inl_pInputState->previousMouse.x;
-        *y = inl_pInputState->previousMouse.y;
+        InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
+        *x = pState->previousMouse.x;
+        *y = pState->previousMouse.y;
     }
 }

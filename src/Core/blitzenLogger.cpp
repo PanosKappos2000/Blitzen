@@ -16,11 +16,7 @@ namespace BlitzenCore
 
     void ShutdownLogging()
     {
-        if(BlitzenEngine::Engine::GetEngineInstancePointer()->GetEngineSystems().logSystem)
-        {
-            BLIT_ERROR("Blitzen has not given permission for logging to shutdown")
-            return;
-        }
+        
     }
 
     void Log(LogLevel level, const char* message, ...)

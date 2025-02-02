@@ -31,7 +31,6 @@ namespace BlitzenEngine
         {
             // Initalize the instance and the system boolean to avoid creating or destroying a 2nd instance
             pEngineInstance = this;
-            m_systems.engine = 1;
             BLIT_INFO("%s Booting", BLITZEN_VERSION)
         }
     }
@@ -46,15 +45,13 @@ namespace BlitzenEngine
     void Engine::Run(uint32_t argc, char* argv[])
     {
         // Initialize logging
-        m_systems.logSystem = BlitzenCore::InitLogging();
+        BlitzenCore::InitLogging();
 
-        // Initialize the event system. The pointer to this variable is a placeholder, the event system has an inline pointer in the .cpp file
-        BlitzenCore::EventSystemState* pEventSystemState = nullptr; 
-        m_systems.eventSystem = BlitzenCore::EventSystemInit(pEventSystemState);
+        // Initialize the event system as a smart pointer
+        BlitCL::SmartPointer<BlitzenCore::EventSystemState> eventSystemState;
 
         // Initialize the input system after the event system
-        BlitzenCore::InputSystemState* pInputSystemState = nullptr;
-        m_systems.inputSystem = BlitzenCore::InputInit(pInputSystemState);
+        BlitCL::SmartPointer<BlitzenCore::InputSystemState> inputSystemState;
 
         // Platform specific code initalization. 
         // This should be called after the event system has been initialized because the event function is called.
@@ -167,26 +164,18 @@ namespace BlitzenEngine
 
     void Engine::Shutdown()
     {
-        if (m_systems.engine)
+        if (pEngineInstance)
         {
             BLIT_WARN("Blitzen is shutting down")
 
-            m_systems.logSystem = 0;
             BlitzenCore::ShutdownLogging();
-
-            m_systems.eventSystem = 0;
-            BlitzenCore::EventsShutdown();
-
-            m_systems.inputSystem = 0;
-            BlitzenCore::InputShutdown();
 
             BlitzenPlatform::PlatformShutdown();
 
-            m_systems.engine = 0;
             pEngineInstance = nullptr;
         }
 
-        // The destructor should not be calle more than once as it will crush the application
+        // The destructor should not be called more than once as it will crush the application
         else
         {
             BLIT_ERROR("Any uninitialized instances of Blitzen will not be explicitly cleaned up")
@@ -228,3 +217,4 @@ int main(int argc, char* argv[])
         engine.Data()->Run(argc, argv);
     }
 }
+//Assets/Scenes/CityLow/scene.gltf ../../GltfTestScenes/Scenes/Plaza/scene.gltf ../../GltfTestScenes/Scenes/Museum/scene.gltf (personal test scenes for copy+paste)

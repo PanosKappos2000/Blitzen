@@ -45,17 +45,6 @@ namespace BlitzenEngine
         double elapsedTime = 0;
     };
 
-    struct EngineSystems
-    {
-        uint8_t engine = 0;
-
-        uint8_t eventSystem = 0;
-
-        uint8_t inputSystem = 0;
-
-        uint8_t logSystem = 0;
-    };
-
     class Engine
     {
     public:
@@ -72,8 +61,6 @@ namespace BlitzenEngine
         inline void RequestShutdown() { isRunning = 0; }
 
         inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }
-
-        inline EngineSystems& GetEngineSystems() { return m_systems; }
 
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 
@@ -106,8 +93,6 @@ namespace BlitzenEngine
 
         Clock m_clock;
         double m_deltaTime;// The clock helps the engine keep track of the delta time
-
-        EngineSystems m_systems;
 
         // Holds all the camera created and an index to the active one
         CameraContainer m_cameraContainer;
