@@ -3,25 +3,28 @@
 #include "Engine/blitzenEngine.h"
 #include "Core/blitzenCore.h"
 
+#define GET_BLITZEN_MEMORY_MANAGER_STATE() BlitzenCore::MemoryManagerState::GetManager();
+
 namespace BlitzenCore
 {
-    // The global allocation stats have access to every allocation size that has occured
-    // When the memory management system shuts down, every allocation should have been freed
-    inline MemoryManagerState* inl_memoryManagerState = nullptr;
+    MemoryManagerState* MemoryManagerState::s_pMemoryManager;
 
-    void MemoryManagementInit(void* pState)
+    MemoryManagerState::MemoryManagerState()
     {
-        inl_memoryManagerState = reinterpret_cast<MemoryManagerState*>(pState);
+        // Memory manager state allocated on the heap
+        s_pMemoryManager = this;
+        BlitzenPlatform::PlatformMemZero(s_pMemoryManager, sizeof(MemoryManagerState));
 
         // Allocate a big block of memory for the linear allocator
-        inl_memoryManagerState->linearAlloc.blockSize = BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE;
-        inl_memoryManagerState->linearAlloc.totalAllocated = 0;
-        inl_memoryManagerState->linearAlloc.pBlock = BlitAlloc(BlitzenCore::AllocationType::LinearAlloc, BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE);
+        s_pMemoryManager->linearAlloc.blockSize = BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE;
+        s_pMemoryManager->linearAlloc.totalAllocated = 0;
+        s_pMemoryManager->linearAlloc.pBlock = BlitAlloc(BlitzenCore::AllocationType::LinearAlloc, BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE);
     }
 
     BlitzenVulkan::MemoryCrucialHandles* GetVulkanMemoryCrucials()
     {
-        return &inl_memoryManagerState->vkCrucial;
+        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+        return &(pState->vkCrucial);
     }
 
     void* BlitAlloc(AllocationType alloc, size_t size)
@@ -31,8 +34,10 @@ namespace BlitzenCore
             BLIT_FATAL("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))
         }
 
-        inl_memoryManagerState->linearAlloc.totalAllocated += size;
-        inl_memoryManagerState->typeAllocations[static_cast<size_t>(alloc)] += size;
+        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+
+        pState->totalAllocated += size;
+        pState->typeAllocations[static_cast<size_t>(alloc)] += size;
 
         return BlitzenPlatform::PlatformMalloc(size, false);
     }
@@ -44,8 +49,10 @@ namespace BlitzenCore
             BLIT_FATAL("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))
         }
 
-        inl_memoryManagerState->totalAllocated -= size;
-        inl_memoryManagerState->typeAllocations[static_cast<size_t>(alloc)] -= size;
+        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+
+        pState->totalAllocated -= size;
+        pState->typeAllocations[static_cast<size_t>(alloc)] -= size;
 
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
@@ -67,17 +74,21 @@ namespace BlitzenCore
 
     void LogAllocation(AllocationType alloc, size_t size)
     {
-        inl_memoryManagerState->totalAllocated += size;
-        inl_memoryManagerState->typeAllocations[static_cast<size_t>(alloc)] += size;
+        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+
+        pState->totalAllocated += size;
+        pState->typeAllocations[static_cast<size_t>(alloc)] += size;
     }
 
     void LogFree(AllocationType alloc, size_t size)
     {
-        inl_memoryManagerState->totalAllocated -= size;
-        inl_memoryManagerState->typeAllocations[static_cast<size_t>(alloc)] -= size;
+        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+
+        pState->totalAllocated -= size;
+        pState->typeAllocations[static_cast<size_t>(alloc)] -= size;
     }
 
-    void MemoryManagementShutdown()
+    MemoryManagerState::~MemoryManagerState()
     {
         // Memory management should not shut down before the Engine
         if (BlitzenEngine::Engine::GetEngineInstancePointer())
@@ -86,12 +97,15 @@ namespace BlitzenCore
             return;
         }
 
+        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+
+        BLIT_ASSERT(pState)
+
         // Free the big block of memory held by the linear allocator
-        BlitFree(BlitzenCore::AllocationType::LinearAlloc, inl_memoryManagerState->linearAlloc.pBlock, 
-        inl_memoryManagerState->linearAlloc.blockSize);
+        BlitFree(BlitzenCore::AllocationType::LinearAlloc, pState->linearAlloc.pBlock, pState->linearAlloc.blockSize);
 
         // Warn the user of any memory leaks to look for
-        if (inl_memoryManagerState->totalAllocated)
+        if (pState->totalAllocated)
         {
             BLIT_WARN("There is still unallocated memory. Total Unallocated Memory: %i \n \
             Unallocated Array Memory: %i \n \
@@ -101,30 +115,30 @@ namespace BlitzenCore
             Unallocated String memory: %i \n \
             Unallocated Engine memory: %i \n \
             Uncallocated Renderer memory: %i \n", \
-            inl_memoryManagerState->totalAllocated, 
-            inl_memoryManagerState->typeAllocations[1], 
-            inl_memoryManagerState->typeAllocations[2], 
-            inl_memoryManagerState->typeAllocations[3], 
-            inl_memoryManagerState->typeAllocations[4], 
-            inl_memoryManagerState->typeAllocations[5], 
-            inl_memoryManagerState->typeAllocations[6], 
-            inl_memoryManagerState->typeAllocations[7],
-            inl_memoryManagerState->typeAllocations[8])
+            pState->totalAllocated, 
+            pState->typeAllocations[1], 
+            pState->typeAllocations[2], 
+            pState->typeAllocations[3], 
+            pState->typeAllocations[4], 
+            pState->typeAllocations[5], 
+            pState->typeAllocations[6], 
+            pState->typeAllocations[7],
+            pState->typeAllocations[8])
         }
     }
 
     void* BlitAllocLinear(AllocationType alloc, size_t size)
     {
-        if(inl_memoryManagerState->linearAlloc.totalAllocated + size > 
-        inl_memoryManagerState->linearAlloc.blockSize)
+        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+
+        if(pState->linearAlloc.totalAllocated + size > pState->linearAlloc.blockSize)
         {
             BLIT_FATAL("Linear allocator depleted, memory not allocated")
             return nullptr;
         }
 
-        void* pBlock = reinterpret_cast<uint8_t*>(inl_memoryManagerState->linearAlloc.pBlock) + 
-        inl_memoryManagerState->linearAlloc.totalAllocated;
-        inl_memoryManagerState->linearAlloc.totalAllocated += size;
+        void* pBlock = reinterpret_cast<uint8_t*>(pState->linearAlloc.pBlock) + pState->linearAlloc.totalAllocated;
+        pState->linearAlloc.totalAllocated += size;
         return pBlock;
     }
 }

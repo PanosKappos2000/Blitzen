@@ -87,7 +87,6 @@ namespace BlitzenEngine
         BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
 
         // Initialize the active renderer and assert if it is available
-        ActiveRenderer activeRenderer = BLIT_ACTIVE_RENDERER_ON_BOOT;
         BLIT_ASSERT(SetActiveRenderer(BLIT_ACTIVE_RENDERER_ON_BOOT))
         
         // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
@@ -156,11 +155,10 @@ namespace BlitzenEngine
                 UpdateCamera(*m_pMovingCamera, (float)m_deltaTime);
 
                 // Draw the frame!!!!
-                RuntimeDebugValues debugValues{0, m_occlusionCulling, m_lodEnabled};
                 RenderContext renderContext(pResources.Data()->cullingData, pResources.Data()->shaderData);
                 DrawFrame(m_mainCamera, m_pMovingCamera, drawCount, 
                 m_platformData.windowWidth, m_platformData.windowHeight, m_platformData.windowResize, 
-                activeRenderer, renderContext, &debugValues);
+                renderContext, 0, m_occlusionCulling, m_lodEnabled);
 
                 // Make sure that the window resize is set to false after the renderer is notified
                 m_platformData.windowResize = 0;
@@ -228,16 +226,14 @@ namespace BlitzenEngine
 
 int main()
 {
+    // Memory management is initialized here. The engine destructor must be called before the memory manager destructor
     BlitzenCore::MemoryManagerState blitzenMemory;
-    BlitzenCore::MemoryManagementInit(&blitzenMemory);
 
-    // Blitzen engine leaves in this scope, it needs to go out of scope before memory management shuts down
+    // Blitzen engine lives in this scope, it needs to go out of scope before memory management shuts down
     {
-        BlitzenEngine::Engine engine;
+        BlitCL::SmartPointer<BlitzenEngine::Engine, BlitzenCore::AllocationType::Engine> engine;
 
         // This is the true main function of the application
-        engine.Run();
+        engine.Data()->Run();
     }
-
-    BlitzenCore::MemoryManagementShutdown();
 }

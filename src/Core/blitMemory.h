@@ -2,7 +2,7 @@
 
 #include "Core/blitAssert.h"
 
-#define BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE         UINT32_MAX * 4
+#define BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE         UINT32_MAX
 
 namespace BlitzenCore
 {
@@ -26,9 +26,6 @@ namespace BlitzenCore
 
         MaxTypes = 14
     };
-
-    // Initializes the different allocators and the allocation stats
-    void MemoryManagementInit(void* pState);
 
     void* BlitAlloc(AllocationType alloc, size_t size);
     void BlitFree(AllocationType alloc, void* pBlock, size_t size);
@@ -56,8 +53,6 @@ namespace BlitzenCore
         LogFree(alloc, sizeof(T));
         delete pToDestroy;
     }
-
-    void MemoryManagementShutdown();
 
     // Allocates memory using the linear allocator
     void* BlitAllocLinear(AllocationType alloc, size_t size);

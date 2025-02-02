@@ -26,5 +26,14 @@ namespace BlitzenCore
 
         // These exist here so that they are destroyed after Vulkan
         BlitzenVulkan::MemoryCrucialHandles vkCrucial;
+
+        static MemoryManagerState* s_pMemoryManager;
+
+        // Defined in blitzenMemory.cpp
+        MemoryManagerState();
+
+        inline static MemoryManagerState* GetManager() {return s_pMemoryManager;}
+
+        ~MemoryManagerState();
     };
 }

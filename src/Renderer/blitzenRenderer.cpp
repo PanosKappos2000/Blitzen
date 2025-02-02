@@ -171,7 +171,8 @@ namespace BlitzenEngine
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
     uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
-    ActiveRenderer ar, RenderContext& context, RuntimeDebugValues* pDebugValues /*= nullptr*/)
+    RenderContext& context, uint8_t isDebugPyramidActive /*=0*/,
+    uint8_t occlusionEnabled /*=1*/, uint8_t lodEnabled /*=1*/ )
     {
         // Check that the pointer for the active renderer is not Null
         if(!CheckActiveRenderer(inl_active))
@@ -229,13 +230,8 @@ namespace BlitzenEngine
         context.windowWidth = windowWidth;
         context.windowHeight = windowHeight;
 
-        // Debug values, controlled by inputs
-        if(pDebugValues)
-        {
-            //cullingData.debugPyramid = pDebugValues->isDebugPyramidActive; // f2 to change (inoperable)
-            cullingData.occlusionEnabled = pDebugValues->m_occlusionCulling; // f3 to change
-            cullingData.lodEnabled = pDebugValues->m_lodEnabled;// f4 to change
-        }
+        cullingData.occlusionEnabled = occlusionEnabled;
+        cullingData.lodEnabled = lodEnabled;
 
         // Call draw frame for the active renderer
         switch(inl_active)

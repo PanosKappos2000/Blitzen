@@ -59,7 +59,8 @@ namespace BlitzenEngine
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
     uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
-    ActiveRenderer ar, RenderContext& renderContext, RuntimeDebugValues* pDebugValues = nullptr);
+    RenderContext& renderContext, uint8_t isDebugPyramidActive = 0,
+    uint8_t m_occlusionCulling = 1, uint8_t m_lodEnabled = 1);
 
     void ShutdownRenderers();
 }
