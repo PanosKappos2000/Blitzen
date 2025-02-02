@@ -63,7 +63,7 @@ namespace BlitzenEngine
         
         Engine(); 
 
-        void Run();
+        void Run(uint32_t argc, char* argv[]);
 
         //~Engine(); Same thing for constructor also goes for destructor
         void Shutdown();

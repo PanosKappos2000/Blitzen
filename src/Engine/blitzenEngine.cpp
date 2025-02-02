@@ -43,7 +43,7 @@ namespace BlitzenEngine
         Its scope owns the memory used by each renderer(only Vulkan for the forseeable future.
         It calls every function needed to draw a frame and other functionality the engine has
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-    void Engine::Run()
+    void Engine::Run(uint32_t argc, char* argv[])
     {
         // Initialize logging
         m_systems.logSystem = BlitzenCore::InitLogging();
@@ -97,32 +97,23 @@ namespace BlitzenEngine
         static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(30.f, 0.f, 0.f));
         m_mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
 
-        // Different types of hardcoded scenes to test the renderer, since the engine does not have an editor
-        #if BLITZEN_OBJ_AND_GLTF_COMBINE_TEST
-            // Load some hardcoded game objects to test the rendering
-            uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
-            LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
+        // Loads obj meshes that will be draw with "random" transforms by the millions to stress the renderer
+        uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
+        LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
+
+        // Loads the gltf files that were specified as command line arguments
+        if(argc == 1)
             LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
-            drawCount = pResources.Data()->renderObjectCount;
-        #elif BLITZEN_OBJ_AND_MULTIPLE_GLTF_TEST
-            BLIT_WARN("This version assumes that we are on the local dev build and attempts to access personal files for testing")
-            uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
-            LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
-            LoadGltfScene(pResources.Data(), "../../GltfTestScenes/Scenes/Museum/scene.gltf", 1, pVulkan.Data());
-            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
-            LoadGltfScene(pResources.Data(), "../../GltfTestScenes/Scenes/Plaza/scene.gltf", 1, pVulkan.Data());
-            drawCount = pResources.Data()->renderObjectCount;
-        #elif BLITZEN_GEOMETRY_STRESS_TEST
-            // Load some hardcoded game objects to test the rendering
-            uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
-            LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
-        #elif BLITZEN_GLTF_SCENE
-            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
-            uint32_t drawCount = pResources.Data()->renderObjectCount;
-        #else
-            // There are no draws if none of the valid modes are active
-            uint32_t drawCount = 0;
-        #endif
+        else
+        {
+            for(uint32_t i = 1; i < argc; ++i)
+            {
+                LoadGltfScene(pResources.Data(), argv[i], 1, pVulkan.Data());
+            }
+        }
+
+        // Set the draw count to the render object count   
+        drawCount = pResources.Data()->renderObjectCount;
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
         BLIT_ASSERT(SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, m_mainCamera));/* I use an assertion here
@@ -224,16 +215,16 @@ namespace BlitzenEngine
 
 
 
-int main()
+int main(int argc, char* argv[])
 {
     // Memory management is initialized here. The engine destructor must be called before the memory manager destructor
     BlitzenCore::MemoryManagerState blitzenMemory;
 
     // Blitzen engine lives in this scope, it needs to go out of scope before memory management shuts down
     {
+        // I could have the Engine be stack allocated, but I am keeping it as a smart pointer for now
         BlitCL::SmartPointer<BlitzenEngine::Engine, BlitzenCore::AllocationType::Engine> engine;
 
-        // This is the true main function of the application
-        engine.Data()->Run();
+        engine.Data()->Run(argc, argv);
     }
 }

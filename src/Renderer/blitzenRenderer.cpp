@@ -148,8 +148,8 @@ namespace BlitzenEngine
                 inl_pVulkan = nullptr;
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
             }
-
-            isThereRendererOnStandby = 1;
+            else
+                isThereRendererOnStandby = 1;
         }
 
         #if _MSC_VER
@@ -161,8 +161,8 @@ namespace BlitzenEngine
                 inl_pGl = nullptr;
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
             }
-
-            isThereRendererOnStandby = 1;
+            else
+                isThereRendererOnStandby = 1;
         }
         #endif
 
