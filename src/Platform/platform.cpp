@@ -707,14 +707,17 @@ namespace BlitzenPlatform
             printf("\033[%sm%s\033[0m", colorStrings[color], message);
         }
 
-        void CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
+        uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
         {
             VkXcbSurfaceCreateInfoKHR info{};
             info.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
             info.connection = s_state.pConnection;
             info.window = s_state.window;
 
-            VK_CHECK(vkCreateXcbSurfaceKHR(instance, &info, pAllocator,&surface));
+            VkResult res = vkCreateXcbSurfaceKHR(instance, &info, pAllocator,&surface);
+            if(res != VK_SUCCESS)
+                return 0;
+            return 1;
         }
 
         double PlatformGetAbsoluteTime() 

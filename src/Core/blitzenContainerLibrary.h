@@ -203,10 +203,6 @@ namespace BlitCL
                 size_t hash = Hash(name);
                 m_pBlock[hash] = pValue ? pValue : nullptr;
             }
-            else
-            {
-                BLIT_WARN("Tried to set an element on a pointer table with 0 capacity")
-            }
         }
 
         T* Get(const char* name, T* pDefault)
@@ -218,7 +214,6 @@ namespace BlitCL
             }
             else
             {
-                BLIT_WARN("Tried to get an element from a pointer table with 0 capacity")
                 return pDefault;
             }
         }

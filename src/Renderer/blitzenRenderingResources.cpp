@@ -18,7 +18,7 @@
 
 // Single file gltf loading https://github.com/jkuhlmann/cgltf
 #define CGLTF_IMPLEMENTATION
-#include "cgltf/cgltf.h"
+#include "Cgltf/cgltf.h"
 
 // Not necessary since I have my own math library, but I use glm for random values in textures
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -224,12 +224,12 @@ namespace BlitzenEngine
                 pResources->meshletData.PushBack(meshletVertices[meshlet.vertex_offset + i]);
             }
 
-            const unsigned int* indexGroups = reinterpret_cast<const unsigned int*>(&meshletTriangles[0] + meshlet.triangle_offset);
+            unsigned int* indexGroups = reinterpret_cast<unsigned int*>(&meshletTriangles[0] + meshlet.triangle_offset);
             unsigned int indexGroupCount = (meshlet.triangle_count * 3 + 3);
 
             for(unsigned int i = 0; i < indexGroupCount; ++i)
             {
-                pResources->meshletData.PushBack(uint32_t(indexGroups[size_t(i)]));
+                pResources->meshletData.PushBack(indexGroups[size_t(i)]);
             }
 
             meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 

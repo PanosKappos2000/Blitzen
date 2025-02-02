@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/BlitzenContainerLibrary.h"
+#include "Core/blitzenContainerLibrary.h"
 
 namespace BlitzenPlatform
 {

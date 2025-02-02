@@ -15,9 +15,6 @@ namespace BlitzenVulkan
 {
     VulkanRenderer* VulkanRenderer::m_pThisRenderer = nullptr;
 
-    // Memory crucial resources handled globally
-    inline MemoryCrucialHandles inl_MemoryCrucials;
-
     /*
         These function are used load the function pointer for creating the debug messenger
     */
@@ -100,12 +97,13 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        // Initialize the memory crucials. These handles will exist globally, so that the resources are destroyed after the renderer goes out of scope
+        // Initialize the memory crucials. These handles are held by the memory manager, so that they are destroyed after the renderer
         // This is done so that buffer and images can be destroyed automatically without causing issues for the vma allocator
-        inl_MemoryCrucials.device = m_device;
-        inl_MemoryCrucials.allocator = m_allocator;
-        inl_MemoryCrucials.instance = m_initHandles.instance;
-        inl_MemoryCrucials.surface = m_initHandles.surface;
+        MemoryCrucialHandles* memoryCrucials = BlitzenCore::GetVulkanMemoryCrucials();
+        memoryCrucials->device = m_device;
+        memoryCrucials->allocator = m_allocator;
+        memoryCrucials->instance = m_initHandles.instance;
+        memoryCrucials->surface = m_initHandles.surface;
 
         // Creates the sync structure and command buffers for each set of frame tools in m_frameToolsList
         if(!FrameToolsInit())

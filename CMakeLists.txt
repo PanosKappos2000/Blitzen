@@ -5,7 +5,8 @@ project (BlitzenEngine VERSION 0)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 
-#Blitzen Engine 
+# Blitzen Engine Windows
+IF(WIN32)
 add_executable(BlitzenEngine
                 src/Engine/blitzenEngine.cpp
                 src/Engine/blitzenEngine.h
@@ -20,7 +21,6 @@ add_executable(BlitzenEngine
 
                 src/BlitzenGL/openglRenderer.h
                 src/BlitzenGl/openglRenderer.cpp
-                src/BlitzenGL/openglInit.cpp
 
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
@@ -34,6 +34,7 @@ add_executable(BlitzenEngine
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
                 
+                src/Core/blitzenCore.h
                 src/Core/blitMemory.h
                 src/Core/blitzenMemory.cpp
                 src/Core/blitzenContainerLibrary.h
@@ -62,7 +63,63 @@ add_executable(BlitzenEngine
                 src/VendorCode/Meshoptimizer/simplifier.cpp
                 src/VendorCode/Cgltf/cgltf.h
                 #src/VendorCode/volk/volk.c
-                )
+)
+ELSEIF(UNIX)
+add_executable(BlitzenEngine
+                src/Engine/blitzenEngine.cpp
+                src/Engine/blitzenEngine.h
+                src/Engine/blitzenDefaultEvents.cpp
+
+                src/BlitzenVulkan/vulkanData.h
+                src/BlitzenVulkan/vulkanRenderer.h
+                src/BlitzenVulkan/vulkanRenderer.cpp
+                src/BlitzenVulkan/vulkanInit.cpp
+                src/BlitzenVulkan/vulkanResources.cpp
+                src/BlitzenVulkan/vulkanPipelines.cpp
+
+                src/Renderer/blitRenderingResources.h
+                src/Renderer/blitzenRenderingResources.cpp
+                src/Renderer/blitRenderer.h
+                src/Renderer/blitzenRenderer.cpp
+                src/Renderer/blitDDSTextures.h
+                src/Renderer/blitzenDDSTextures.cpp
+
+                src/Game/blitObject.h
+                src/Game/blitzenObject.cpp
+                src/Game/blitCamera.h
+                src/Game/blitzenCamera.cpp
+                
+                src/Core/blitzenCore.h
+                src/Core/blitMemory.h
+                src/Core/blitzenMemory.cpp
+                src/Core/blitzenContainerLibrary.h
+                src/Core/blitLogger.h
+                src/Core/blitzenLogger.cpp
+                src/Core/blitAssert.h
+                src/Core/blitEvents.h
+                src/Core/blitzenEvents.cpp
+
+                src/BlitzenMathLibrary/blitML.h
+                src/BlitzenMathLibrary/blitMLTypes.h
+                
+                src/Platform/platform.h
+                src/Platform/platform.cpp
+                src/Platform/filesystem.h
+                src/Platform/filesystem.cpp
+                
+                src/VendorCode/stb_image.h
+                src/VendorCode/fast_obj.h
+                src/VendorCode/objparser.cpp
+                src/VendorCode/Meshoptimizer/indexgenerator.cpp
+                src/VendorCode/Meshoptimizer/quantization.cpp
+                src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp
+                src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
+                src/VendorCode/Meshoptimizer/clusterizer.cpp
+                src/VendorCode/Meshoptimizer/simplifier.cpp
+                src/VendorCode/Cgltf/cgltf.h
+                #src/VendorCode/volk/volk.c
+)
+ENDIF(WIN32)
 
 # Specify directories that hold header files
 target_include_directories(BlitzenEngine PUBLIC

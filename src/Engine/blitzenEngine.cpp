@@ -6,8 +6,9 @@
 #include "Engine/blitzenEngine.h"
 #include "Platform/platform.h"
 #include "Renderer/blitRenderer.h"
+#include "Core/blitzenCore.h"
 
-#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Opengl
+#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
 
 namespace BlitzenEngine
 {
@@ -227,7 +228,8 @@ namespace BlitzenEngine
 
 int main()
 {
-    BlitzenCore::MemoryManagementInit();
+    BlitzenCore::MemoryManagerState blitzenMemory;
+    BlitzenCore::MemoryManagementInit(&blitzenMemory);
 
     // Blitzen engine leaves in this scope, it needs to go out of scope before memory management shuts down
     {

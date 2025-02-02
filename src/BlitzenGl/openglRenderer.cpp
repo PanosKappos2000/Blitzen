@@ -1,5 +1,3 @@
-// Temporarily opengl is only available on WindowsS
-#if _MSC_VER
 #include "openglRenderer.h"
 #include "Platform/filesystem.h"
 #include <string>
@@ -298,4 +296,3 @@ namespace BlitzenGL
         glDeleteVertexArrays(1, &m_vertexArray);
     }
 }
-#endif

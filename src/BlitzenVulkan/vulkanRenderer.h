@@ -494,3 +494,9 @@ namespace BlitzenVulkan
     // The graphics pipeline uses a dynamic viewport and scissor by default, so this needs to be called during the frame loop
     void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
 }
+
+namespace BlitzenCore
+{
+    // Gets the memory crucial handles form the memory manager (defined in blitzenMemory.cpp)
+    BlitzenVulkan::MemoryCrucialHandles* GetVulkanMemoryCrucials();
+}

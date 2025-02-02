@@ -1,5 +1,3 @@
-// Temporarily opengl is only available on windows
-#if _MSC_VER
 #pragma once
 
 #include "Core/blitLogger.h"
@@ -88,4 +86,3 @@ namespace BlitzenPlatform
 
     void OpenglSwapBuffers();
 }
-#endif

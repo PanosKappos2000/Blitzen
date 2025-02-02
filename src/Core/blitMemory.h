@@ -27,17 +27,8 @@ namespace BlitzenCore
         MaxTypes = 14
     };
 
-    // This is used to log every allocation and check if there are any memory leaks in the end
-    struct AllocationStats
-    {
-        size_t totalAllocated = 0;
-
-        // Keeps track of how much memory has been allocated for each type of allocation
-        size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)];
-    };
-
     // Initializes the different allocators and the allocation stats
-    void MemoryManagementInit();
+    void MemoryManagementInit(void* pState);
 
     void* BlitAlloc(AllocationType alloc, size_t size);
     void BlitFree(AllocationType alloc, void* pBlock, size_t size);
@@ -67,15 +58,6 @@ namespace BlitzenCore
     }
 
     void MemoryManagementShutdown();
-
-    // The linear allocator allocates a big amount of memory on boot and places everything it allocates there
-    // It deallocates the whole thing when memory management is shutdown
-    struct LinearAllocator
-    {
-        size_t totalAllocated = 0;
-        void* pBlock;
-        size_t blockSize;
-    };
 
     // Allocates memory using the linear allocator
     void* BlitAllocLinear(AllocationType alloc, size_t size);

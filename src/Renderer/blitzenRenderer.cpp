@@ -33,7 +33,7 @@ namespace BlitzenEngine
 
     uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer, uint32_t windowWidth, uint32_t windowHeight)
     {
-        #if LINUX
+        #ifdef linux
             BLIT_ERROR("Opengl not available for Linux builds at the moment")
             return 0;
         #else
