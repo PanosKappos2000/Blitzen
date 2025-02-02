@@ -20,4 +20,6 @@ The engine only supports DDS textures. Textures with unsupported formats can be 
 
 It has only been tested on Nvidia hardware. It is uncertain, for example, if it works on any type of AMD GPU.
 
-It supports Windows and Linux but it has been a few weeks since it was last tested on linux. It is possible that the addition of OpenGL has broken the UNIX build. Will update this when I get access to a Linux machine.
+It supports Windows and Linux but the Linux build has not been tested as heavily as the Windows build and can only use Vulkan, not OpenGL.
+
+The project can be built and compiled with CMake and run without any command line arguments. In its current state it will load a default scene with meshes and one gltf scene(with textures but no lighting). The Engine can load more files than the default but because it does not have an editor, the filepaths need to be specified in the source code. It also does not have a custom format for its resources yet, so loading takes time and will be unbearably long if has to load too many vertices.
