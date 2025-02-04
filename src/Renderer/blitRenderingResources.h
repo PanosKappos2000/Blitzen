@@ -88,9 +88,6 @@ namespace BlitzenEngine
         uint32_t vertexOffset;
 
         uint32_t materialId;
-
-        // I would like for this to be removed so that it does not get uploaded in the shaders, this struct is already huge
-        //uint32_t surfaceId;
     };
 
     struct Mesh
@@ -253,5 +250,5 @@ namespace BlitzenEngine
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
     uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets = 1, 
-    void* pVulkan = nullptr);
+    void* pVulkan = nullptr, void* pGl = nullptr);
 }

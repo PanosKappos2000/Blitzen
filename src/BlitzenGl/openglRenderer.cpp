@@ -24,6 +24,35 @@ namespace BlitzenGL
         return 1;
     }
 
+    uint8_t OpenglRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
+    const char* filepath)
+    {
+        if(m_textureCount >= BLIT_MAX_TEXTURE_COUNT)
+            return 0;
+        
+        BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::SmartPointer> store(128 * 1024 * 1024);
+
+        // This is a consequence of having a shared Load image function with Vulkan
+        unsigned int placeholder = 0;
+        if(BlitzenEngine::LoadDDSImage(filepath, header, header10, placeholder, 0, nullptr, 1, store.Data()))
+        {
+            // Create and bind the texture
+            glGenTextures(1, &m_textures[m_textureCount]);
+            glBindTexture(GL_TEXTURE_2D, m_textures[m_textureCount]);
+
+            // Pass the data to the texture and generate mipmaps
+            glTexImage2D(GL_TEXTURE_2D, header.dwMipMapCount, GL_RGB, header.dwWidth, 
+            header.dwHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, store.Data());
+            glGenerateMipmap(GL_TEXTURE_2D);
+
+            // Increment the texture count and generate mipmaps
+            m_textureCount++;
+            return 1;
+        }
+        else
+            return 0;
+    }
+
     uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources)
     {
         // Creates the vertex buffer and vertex attributes 
@@ -100,14 +129,23 @@ namespace BlitzenGL
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_renderObjectBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+        // Creates the material buffer as a storage buffer and passes it binding 4
+        glGenBuffers(1, &m_materialBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Material) * pResources->materialCount, pResources->materials, GL_STATIC_READ);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_materialBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
         // Generate uniform buffers
         glGenBuffers(1, &m_cullingDataBuffer);
         glGenBuffers(1, &m_shaderDataBuffer);
 
+        // Create the graphics program that will have the vertex and fragment shader attached
         if(!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", 
         m_opaqueGeometryGraphicsProgram))
             return 0;
 
+        // Create the compute shader program that will perform initial culling operations
         if(!CreateComputeProgram("GlslShaders/InitialDrawCullShader.comp.glsl", m_initialDrawCullCompProgram))
             return 0;
         
@@ -286,6 +324,7 @@ namespace BlitzenGL
         glDeleteBuffers(1, &m_cullingDataBuffer);
         glDeleteBuffers(1, &m_shaderDataBuffer);
 
+        glDeleteBuffers(1, &m_materialBuffer);
         glDeleteBuffers(1, &m_renderObjectBuffer);
         glDeleteBuffers(1, &m_surfaceBuffer);
         glDeleteBuffers(1, &m_transformBuffer);

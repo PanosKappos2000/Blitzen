@@ -100,12 +100,12 @@ namespace BlitzenEngine
 
         // Loads the gltf files that were specified as command line arguments
         if(argc == 1)
-            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data());
+            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data(), &gl);
         else
         {
             for(uint32_t i = 1; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i], 1, pVulkan.Data());
+                LoadGltfScene(pResources.Data(), argv[i], 1, pVulkan.Data(), &gl);
             }
         }
 

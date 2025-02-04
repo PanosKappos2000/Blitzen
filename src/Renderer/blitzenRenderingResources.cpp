@@ -517,7 +517,7 @@ namespace BlitzenEngine
     }
 
     uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets /*=1*/, 
-    void* pVulkan /*=nullptr*/)
+    void* pVulkan /*=nullptr*/, void* pGL /*=nullptr*/)
     {
         if(pResources->renderObjectCount >= BLITZEN_MAX_DRAW_OBJECTS)
         {
@@ -618,22 +618,36 @@ namespace BlitzenEngine
             // Create a placeholder image format
             unsigned int imageFormat = 0;
 
+            // Will be 1 if at least one of the renderers received the textures
+            uint8_t textureLoad = 0;
+
             // Add the texture to the vulkan renderer if a pointer for it was passed
             if(pVulkan)
             {
                 BlitzenVulkan::VulkanRenderer* pRenderer = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
                 if(pRenderer->UploadDDSTexture(header, header10, texture.pTextureData, texturePaths[i].c_str()))
-                {
-                    texture.textureWidth = header.dwWidth;
-                    texture.textureHeight = header.dwHeight;
-                    texture.textureTag = static_cast<uint32_t>(pResources->textureCount);
-
-                    pResources->textureCount++;
-                }
+                    textureLoad = 1;
                 else
-                {
                     BLIT_INFO("GLTF texture from file: %s failed to load for Vulkan", texturePaths[i].c_str())
-                }
+            }
+
+            if(pGL)
+            {
+                BlitzenGL::OpenglRenderer* pRenderer = reinterpret_cast<BlitzenGL::OpenglRenderer*>(pGL);
+                if(pRenderer->UploadTexture(header, header10, texturePaths[i].c_str()))
+                    textureLoad = 1;
+                else
+                    BLIT_INFO("GLTF texture from file: %s failed to load for OpenGL", texturePaths[i].c_str())
+            }
+
+            // As long as the texture was uploaded to at least one of the renderers universal texture stats should be updated
+            if(textureLoad)
+            {
+                texture.textureWidth = header.dwWidth;
+                texture.textureHeight = header.dwHeight;
+                texture.textureTag = static_cast<uint32_t>(pResources->textureCount);
+
+                pResources->textureCount++;
             }
         }
 

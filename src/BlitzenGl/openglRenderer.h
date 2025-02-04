@@ -6,7 +6,7 @@
 #include <GL/glew.h>
 
 #include "Core/blitzenContainerLibrary.h"
-
+#include "Renderer/blitDDSTextures.h"
 #include "Renderer/blitRenderingResources.h"
 
 namespace BlitzenGL
@@ -18,6 +18,8 @@ namespace BlitzenGL
     using GlShader = unsigned int;
 
     using VertexArray = unsigned int;
+
+    using GlTexture = unsigned int;
 
     struct IndirectDrawCommand
     {
@@ -33,9 +35,12 @@ namespace BlitzenGL
     public:
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
-        void DrawFrame(BlitzenEngine::RenderContext& context);
+        uint8_t UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
+        const char* filepath);
 
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
+
+        void DrawFrame(BlitzenEngine::RenderContext& context);
 
         void Shutdown();
 
@@ -64,12 +69,18 @@ namespace BlitzenGL
         // Holds all the mesh surface/primitive representations that have been loaded for the current scene
         GlBuffer m_surfaceBuffer;
 
+        GlBuffer m_materialBuffer;
+
         GlBuffer m_cullingDataBuffer;
 
         GlBuffer m_shaderDataBuffer;
 
         // Holds all the render objects that will be retrieved in the shaders to access the surface and transform data for each object
         GlBuffer m_renderObjectBuffer;
+
+        GlTexture m_textures[BLIT_MAX_TEXTURE_COUNT];
+
+        uint32_t m_textureCount = 0;
     };
 
     uint8_t CompileShader(GlShader& shader, GLenum shaderType, const char* filepath);

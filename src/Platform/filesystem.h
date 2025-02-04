@@ -15,6 +15,8 @@ namespace BlitzenPlatform
     public:
         uint8_t Open(const char* path, FileModes mode, uint8_t binary);
 
+        uint8_t Open(const char* path, const char* mode);
+
         // Close the file manually
         void Close();
 

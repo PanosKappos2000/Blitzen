@@ -1,23 +1,20 @@
 #include "blitDDSTextures.h"
 #include "Core/blitzenContainerLibrary.h"
+#include "Platform/filesystem.h"
 
 #include "BlitzenVulkan/vulkanRenderer.h"
 
 namespace BlitzenEngine
 {
     uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
-	unsigned int& vulkanImageFormat, uint8_t loadForVulkan /*=0*/, void* pDataForVulkan /*=nullptr*/)
+	unsigned int& vulkanImageFormat, uint8_t loadForVulkan /*=0*/, void* pDataForVulkan /*=nullptr*/, 
+	uint8_t loadForGl /*=0*/, void* pDataForGL /*=nullptr*/)
     {
-        FILE* file = fopen(filepath, "rb");
-
-		if (!file)
-		{
+		BlitzenPlatform::FileHandle handle;
+		if(!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
 			return 0;
-		}
 
-        // Create a smart pointer that will call fClose automatically
-        // This is overcomplicating things for no reason of course, I could just call fClose but I am just testing out my smart pointer 
-	    //BlitCL::SmartPointer<FILE, BlitzenCore::AllocationType::SmartPointer, int> filePtr(file, fclose);
+		FILE* file = reinterpret_cast<FILE*>(handle.pHandle);
 
 	    unsigned int magic = 0;
 
@@ -44,9 +41,7 @@ namespace BlitzenEngine
             vulkanImageFormat = (unsigned int)BlitzenVulkan::GetDDSVulkanFormat(header, header10);
 
             if(vulkanImageFormat == VK_FORMAT_UNDEFINED)
-            {
                 return 0;
-            }
 
             unsigned int blockSize =
 		    (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK 
@@ -61,8 +56,20 @@ namespace BlitzenEngine
 	        if (readSize != imageSize)
 		        return 0;
         }
-        
-		fclose(file);// TODO: Temporary I want to use the smart pointer instead of this
+
+		if(loadForGl && pDataForGL)
+		{
+			size_t blockSize = GetDDSBlockSize(header, header10);
+			size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+
+			size_t readSize = fread(pDataForGL, 1, imageSize, file);
+
+			if(!pDataForGL);
+				return 0;
+			
+			if(readSize != imageSize)
+				return 0;
+		}
         return 1;
     }
 
@@ -77,4 +84,40 @@ namespace BlitzenEngine
 	    }
 	    return result;
     }
+
+	size_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10)
+	{
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
+	        return 8;
+	    if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
+	        return 16;
+	    if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
+	        return 16;
+
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
+	    {
+	    	switch (header10.dxgiFormat)
+	    	{
+	    	    case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
+				case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
+				case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
+	    	    	return 8;
+
+	    	    case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
+	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+	    	    	return 16;
+	    	}
+	    }
+        
+	    return VK_FORMAT_UNDEFINED;
+	}
 }

@@ -61,6 +61,22 @@ namespace BlitzenPlatform
         return 1;
     }
 
+    uint8_t FileHandle::Open(const char* path, const char* mode)
+    {
+        // If the previous check is done tries to read the file
+        FILE* file = fopen(path, mode);
+        // If the file cannot be read, write an error message and exit
+        if (!file)
+        {
+            BLIT_ERROR("Error opening file: '%s'", path);
+            return 0;
+        }
+
+        // If everything goes well update the file handle and exit successfully
+        pHandle = file;
+        return 1;
+    }
+
     FileHandle::~FileHandle()
     {
         Close();
