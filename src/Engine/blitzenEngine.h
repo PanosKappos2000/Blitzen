@@ -1,12 +1,6 @@
 #pragma once
 
-#include "Core/blitAssert.h"
-#include "Platform/platform.h"
-#include "Core/blitzenContainerLibrary.h"
 #include "Core/blitEvents.h"
-#include "BlitzenMathLibrary/blitMLTypes.h"
-#include "Game/blitCamera.h"
-
 
 #define BLITZEN_VERSION                 "Blitzen Engine 0"
 
@@ -32,24 +26,10 @@
 
 namespace BlitzenEngine
 {
-    struct PlatformStateData
-    {
-        uint32_t windowWidth = BLITZEN_WINDOW_WIDTH;
-        uint32_t windowHeight = BLITZEN_WINDOW_HEIGHT;
-        uint8_t windowResize = 0;
-    };
-
-    struct Clock
-    {
-        double startTime = 0;
-        double elapsedTime = 0;
-    };
-
     class Engine
     {
     public:
 
-        
         Engine(); 
 
         void Run(uint32_t argc, char* argv[]);
@@ -57,56 +37,29 @@ namespace BlitzenEngine
         //~Engine(); Same thing for constructor also goes for destructor
         void Shutdown();
 
-
         inline void RequestShutdown() { isRunning = 0; }
 
-        inline static Engine* GetEngineInstancePointer() { return pEngineInstance; }
+        inline static Engine* GetEngineInstancePointer() { return s_pEngine; }
 
         void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
-
-        // Returns the main camera
-        inline Camera& GetCamera() { return m_mainCamera; }
-        // Returns the moving camera (in some cases, like detachment, it is differen than the main camera)
-        inline Camera* GetMovingCamera() { return m_pMovingCamera; }
-        // Change the moving camera
-        inline void SetMovingCamera(Camera* pCamera) { m_pMovingCamera = pCamera; }
-        // Return the camera container to get access to all the available cameras
-        inline CameraContainer& GetCameraContainer() { return m_cameraContainer; }
 
         // Returns delta time, crucial for functions that move objects
         inline double GetDeltaTime() { return m_deltaTime; }
 
-        inline void ChangeFreezeFrustumState() { m_freezeFrustum = !m_freezeFrustum; }
-        inline void ChangeDebugPyramidActiveState() { isDebugPyramidActive = !isDebugPyramidActive; }
-        inline void ChangeOcclusionCullingState() { m_occlusionCulling = !m_occlusionCulling; }
-        inline void ChangeLodEnabledState()  { m_lodEnabled = !m_lodEnabled; }
-
     private:
 
         // Makes sure that the engine is only created once and gives access subparts of the engine through static getter
-        static Engine* pEngineInstance;
+        static Engine* s_pEngine;
 
         uint8_t isRunning = 0;
         uint8_t isSupended = 0;
         
-        PlatformStateData m_platformData;
+        uint8_t windowResize = 0;
 
-        Clock m_clock;
-        double m_deltaTime;// The clock helps the engine keep track of the delta time
-
-        // Holds all the camera created and an index to the active one
-        CameraContainer m_cameraContainer;
-
-        // The main camera is the one whose values are used for culling and other operations
-        Camera& m_mainCamera;
-        // The camera that moves around the scene, usually the same as the main camera, unless the user requests detatch
-        Camera* m_pMovingCamera;
-
-        // Debug values, these should probably be held by the renderer and not the engine
-        uint8_t m_freezeFrustum = 0;
-        uint8_t isDebugPyramidActive = 0;
-        uint8_t m_occlusionCulling = 1;
-        uint8_t m_lodEnabled = 1;
+        // Clock / DeltaTime values (will be calulated using platform specific system calls at runtime)
+        double m_clockStartTime = 0;
+        double m_clockElapsedTime = 0;
+        double m_deltaTime;
     };
 
     void RegisterDefaultEvents();

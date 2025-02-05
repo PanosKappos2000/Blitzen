@@ -101,4 +101,14 @@ namespace BlitzenEngine
         camera.fov = fov;
         camera.zNear = zNear;
     }
+
+    // Must Declare the static variable
+    CameraSystem* CameraSystem::m_sThis;
+
+    CameraSystem::CameraSystem()
+        :m_mainCamera{cameraList[BLIT_MAIN_CAMERA_ID]}, // The main camera is the first element in the camera list
+        m_pMovingCamera{&cameraList[BLIT_MAIN_CAMERA_ID]} // The moving camera is a reference to the same camera as the main one initially
+    {
+        m_sThis = this;
+    }
 }

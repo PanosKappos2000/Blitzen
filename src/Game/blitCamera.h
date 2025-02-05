@@ -74,9 +74,36 @@ namespace BlitzenEngine
     // Values that have to do with projection are also updated
     void UpdateProjection(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear);
 
-    // Redundant struct, might want to replace this with an array of cameras held by either the engine or created in the Engine::Run function
-    struct CameraContainer
+    class CameraSystem
     {
+    public:
+        CameraSystem();
+
+        inline static CameraSystem* GetCameraSystem() { return m_sThis; }
+
+        // Returns the main camera
+        inline Camera& GetCamera() { return m_mainCamera; }
+
+        // Returns the moving camera (in some cases, like detachment, it is differen than the main camera)
+        inline Camera* GetMovingCamera() { return m_pMovingCamera; }
+
+        // Change the moving camera
+        inline void SetMovingCamera(Camera* pCamera) { m_pMovingCamera = pCamera; }
+
+        // Return the camera container to get access to all the available cameras
+        inline Camera* GetCameraList() { return cameraList; }
+
+    private:
+
+        static CameraSystem* m_sThis;
+
+        // Holds all the camera created and an index to the active one
         Camera cameraList[BLIT_MAX_CAMERAS_IN_SCENE];
+
+        // The main camera is the one whose values are used for culling and other operations
+        Camera& m_mainCamera;
+
+        // The camera that moves around the scene, usually the same as the main camera, unless the user requests detatch
+        Camera* m_pMovingCamera;
     };
 }

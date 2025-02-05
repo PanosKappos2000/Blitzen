@@ -1,15 +1,21 @@
 #include "blitRenderer.h"
 #include "Engine/blitzenEngine.h"
 
+#define GET_RENDERER() RenderingSystem::GetRenderingSystem();
+
 namespace BlitzenEngine
 {
-    inline BlitzenVulkan::VulkanRenderer* inl_pVulkan = nullptr;
+    RenderingSystem* RenderingSystem::s_pRenderer = nullptr;
 
-    inline BlitzenGL::OpenglRenderer* inl_pGl = nullptr;
+    RenderingSystem::RenderingSystem()
+    {
+        s_pRenderer = this;
+    }
 
-    inline void* inl_pDx12 = nullptr;
-
-    inline ActiveRenderer inl_active = ActiveRenderer::MaxRenderers;
+    RenderingSystem::~RenderingSystem()
+    {
+        s_pRenderer = nullptr;
+    }
 
     uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
     uint32_t windowWidth, uint32_t windowHeight)
@@ -19,7 +25,7 @@ namespace BlitzenEngine
             // Call the init function and store the result in the systems boolean for Vulkan
             if(pVulkan.Data()->Init(windowWidth, windowHeight))
             {
-                inl_pVulkan = pVulkan.Data();
+                RenderingSystem::s_pRenderer->pVulkan = pVulkan.Data();
                 return 1;
             }
             
@@ -39,7 +45,7 @@ namespace BlitzenEngine
         #else
             if(renderer.Init(windowWidth, windowHeight))
             {
-                inl_pGl = &renderer;
+                RenderingSystem::s_pRenderer->pGl = &renderer;
                 return 1;
             }
             else
@@ -49,9 +55,9 @@ namespace BlitzenEngine
         #endif
     }
 
-    uint8_t isVulkanInitialized() { return inl_pVulkan != nullptr; }
+    uint8_t isVulkanInitialized() { return RenderingSystem::s_pRenderer->pVulkan != nullptr; }
 
-    uint8_t IsOpenglInitialized() {return inl_pGl != nullptr;}
+    uint8_t IsOpenglInitialized() {return RenderingSystem::s_pRenderer->pVulkan != nullptr;}
 
     uint8_t CheckActiveRenderer(ActiveRenderer ar)
     {
@@ -75,7 +81,7 @@ namespace BlitzenEngine
             ClearCurrentActiveRenderer();
             /*if(ar == ActiveRenderer::Vulkan)
                 gpVulkan->SetupForSwitch();This is supposed to fix a switching to Vulkan bug, but I got bored while writing it*/
-            inl_active = ar;
+            RenderingSystem::s_pRenderer->activeRenderer = ar;
             return 1;
         }
 
@@ -84,13 +90,14 @@ namespace BlitzenEngine
 
     void ClearCurrentActiveRenderer()
     {
-        switch(inl_active)
+        switch(RenderingSystem::s_pRenderer->activeRenderer)
         {
             case ActiveRenderer::Vulkan:
             {
-                if(inl_pVulkan)
+                BlitzenVulkan::VulkanRenderer* pVulkan = RenderingSystem::s_pRenderer->pVulkan;
+                if(pVulkan)
                 {
-                    inl_pVulkan->ClearFrame();
+                    pVulkan->ClearFrame();
                 }
                 break;
             }
@@ -140,12 +147,13 @@ namespace BlitzenEngine
 
         uint8_t isThereRendererOnStandby = 0;
 
-        if(inl_pVulkan)
+        BlitzenVulkan::VulkanRenderer* pVulkan = RenderingSystem::s_pRenderer->pVulkan;
+        if(pVulkan)
         {
-            if(!inl_pVulkan->SetupForRendering(pResources))
+            if(!pVulkan->SetupForRendering(pResources))
             {
                 BLIT_ERROR("Could not initialize Vulkan. If this is the active graphics API, it needs to be swapped")
-                inl_pVulkan = nullptr;
+                pVulkan = nullptr;
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
             }
             else
@@ -153,12 +161,13 @@ namespace BlitzenEngine
         }
 
         #if _MSC_VER
-        if(inl_pGl)
+        BlitzenGL::OpenglRenderer* pGL = RenderingSystem::s_pRenderer->pGl;
+        if(pGL)
         {
-            if(!inl_pGl->SetupForRendering(pResources))
+            if(!pGL->SetupForRendering(pResources))
             {
                 BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
-                inl_pGl = nullptr;
+                pGL = nullptr;
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
             }
             else
@@ -170,12 +179,11 @@ namespace BlitzenEngine
     }
 
     void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
-    uint32_t windowWidth, uint32_t windowHeight, uint8_t windowResize, 
-    RenderContext& context, uint8_t isDebugPyramidActive /*=0*/,
-    uint8_t occlusionEnabled /*=1*/, uint8_t lodEnabled /*=1*/ )
+    uint8_t windowResize, RenderContext& context)
     {
+        RenderingSystem* pSystem = GET_RENDERER()
         // Check that the pointer for the active renderer is not Null
-        if(!CheckActiveRenderer(inl_active))
+        if(!CheckActiveRenderer(pSystem->activeRenderer))
         {
             // I could throw a warning here but it would fill the screen with the same error message over and over
             return;
@@ -217,7 +225,7 @@ namespace BlitzenEngine
             cullingData.proj5 = camera.projectionMatrix[5];
 
             // Update the lod target as well since it uses window dimensions
-            cullingData.lodTarget = (2 / cullingData.proj5) * (1.f / float(windowHeight));
+            cullingData.lodTarget = (2 / cullingData.proj5) * (1.f / float(camera.windowWidth));
         }
 
         // The near and far planes of the frustum will use the camera directly
@@ -227,26 +235,26 @@ namespace BlitzenEngine
         cullingData.drawCount = static_cast<uint32_t>(drawCount);
 
         context.windowResize = windowResize;
-        context.windowWidth = windowWidth;
-        context.windowHeight = windowHeight;
+        context.windowWidth = static_cast<uint32_t>(camera.windowWidth);
+        context.windowHeight = static_cast<uint32_t>(camera.windowHeight);
 
-        cullingData.occlusionEnabled = occlusionEnabled;
-        cullingData.lodEnabled = lodEnabled;
+        cullingData.occlusionEnabled = pSystem->occlusionCullingOn;
+        cullingData.lodEnabled = pSystem->lodEnabled;
 
         // Call draw frame for the active renderer
-        switch(inl_active)
+        switch(pSystem->activeRenderer)
         {
             case ActiveRenderer::Vulkan:
             {
                 // Let Vulkan do its thing
-                inl_pVulkan->DrawFrame(context);
+                pSystem->pVulkan->DrawFrame(context);
 
                 break;
             }
             case ActiveRenderer::Opengl:
             {
                 #if _MSC_VER
-                    inl_pGl->DrawFrame(context);
+                    pSystem->pGl->DrawFrame(context);
                 #endif
                 break;
             }
@@ -257,12 +265,13 @@ namespace BlitzenEngine
 
     void ShutdownRenderers()
     {
-        if(inl_pVulkan)
-            inl_pVulkan->Shutdown();
+        RenderingSystem* pSystem = GET_RENDERER()
+        if(pSystem->pVulkan)
+            pSystem->pVulkan->Shutdown();
 
         #if _MSC_VER
-        if(inl_pGl)
-            inl_pGl->Shutdown();
+        if(pSystem->pGl)
+            pSystem->pGl->Shutdown();
         #endif
     }
 }

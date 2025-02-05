@@ -7,17 +7,16 @@
 #include "Platform/platform.h"
 #include "Renderer/blitRenderer.h"
 #include "Core/blitzenCore.h"
+#include "Game/blitCamera.h"
 
-#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
+#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Opengl
 
 namespace BlitzenEngine
 {
     // Static member variable needs to be declared in the .cpp file as well
-    Engine* Engine::pEngineInstance;
+    Engine* Engine::s_pEngine;
 
     Engine::Engine()
-        :m_mainCamera{m_cameraContainer.cameraList[BLIT_MAIN_CAMERA_ID]}, // The main camera is the first element in the camera list
-        m_pMovingCamera{&m_cameraContainer.cameraList[BLIT_MAIN_CAMERA_ID]} // The moving camera is a reference to the same camera as the main one initially
     {
         // There should not be a 2nd instance of Blitzen Engine
         if(GetEngineInstancePointer())
@@ -30,7 +29,7 @@ namespace BlitzenEngine
         else
         {
             // Initalize the instance and the system boolean to avoid creating or destroying a 2nd instance
-            pEngineInstance = this;
+            s_pEngine = this;
             BLIT_INFO("%s Booting", BLITZEN_VERSION)
         }
     }
@@ -47,6 +46,9 @@ namespace BlitzenEngine
         // Initialize logging
         BlitzenCore::InitLogging();
 
+        // Initialize the camera stystem
+        BlitzenEngine::CameraSystem cameraSystem;
+
         // Initialize the event system as a smart pointer
         BlitCL::SmartPointer<BlitzenCore::EventSystemState> eventSystemState;
 
@@ -57,10 +59,12 @@ namespace BlitzenEngine
         // This should be called after the event system has been initialized because the event function is called.
         // That will break the application without the event system.
         BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
-        BLITZEN_WINDOW_STARTING_Y, m_platformData.windowWidth, m_platformData.windowHeight))
+        BLITZEN_WINDOW_STARTING_Y, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT))
             
         // With the event and input systems active, register the engine's default events and input bindings
         RegisterDefaultEvents();
+
+        RenderingSystem renderer;
         
         // Allocated the rendering resources on the heap, it is too big for the stack of this function
         BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
@@ -72,12 +76,12 @@ namespace BlitzenEngine
         // Create the vulkan renderer if it's requested
         #if BLITZEN_VULKAN
             BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
-            hasRenderer = CreateVulkanRenderer(pVulkan, m_platformData.windowWidth, m_platformData.windowHeight) || hasRenderer;
+            hasRenderer = CreateVulkanRenderer(pVulkan, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT) || hasRenderer;
         #endif
 
         #if BLITZEN_OPENGL
             BlitzenGL::OpenglRenderer gl;
-            hasRenderer = CreateOpenglRenderer(gl, m_platformData.windowWidth, m_platformData.windowHeight) || hasRenderer;
+            hasRenderer = CreateOpenglRenderer(gl, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT) || hasRenderer;
         #endif
 
         // Test if any renderer was initialized
@@ -90,9 +94,10 @@ namespace BlitzenEngine
         isRunning = 1;
         isSupended = 0;
 
-        SetupCamera(m_mainCamera, BLITZEN_FOV, static_cast<float>(m_platformData.windowWidth), 
-        static_cast<float>(m_platformData.windowHeight), BLITZEN_ZNEAR, BlitML::vec3(30.f, 0.f, 0.f));
-        m_mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
+        Camera& mainCamera = cameraSystem.GetCamera();
+        SetupCamera(mainCamera, BLITZEN_FOV, static_cast<float>(BLITZEN_WINDOW_WIDTH), 
+        static_cast<float>(BLITZEN_WINDOW_HEIGHT), BLITZEN_ZNEAR, BlitML::vec3(30.f, 0.f, 0.f));
+        mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
 
         // Loads obj meshes that will be draw with "random" transforms by the millions to stress the renderer
         uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
@@ -113,13 +118,13 @@ namespace BlitzenEngine
         drawCount = pResources.Data()->renderObjectCount;
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        BLIT_ASSERT(SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, m_mainCamera));/* I use an assertion here
+        BLIT_ASSERT(SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, mainCamera));/* I use an assertion here
         but it could be handled some other way as well */
         
         // Start the clock
-        m_clock.startTime = BlitzenPlatform::PlatformGetAbsoluteTime();
-        m_clock.elapsedTime = 0;
-        double previousTime = m_clock.elapsedTime;// Initialize previous frame time to the elapsed time
+        m_clockStartTime = BlitzenPlatform::PlatformGetAbsoluteTime();
+        m_clockElapsedTime = 0;
+        double previousTime = m_clockElapsedTime;// Initialize previous frame time to the elapsed time
 
         // Main Loop starts
         while(isRunning)
@@ -133,23 +138,24 @@ namespace BlitzenEngine
             if(!isSupended)
             {
                 // Get the elapsed time of the application
-                m_clock.elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clock.startTime;
+                m_clockElapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clockStartTime;
                 // Update the delta time by using the previous elapsed time
-                m_deltaTime = m_clock.elapsedTime - previousTime;
+                m_deltaTime = m_clockElapsedTime - previousTime;
                 // Update the previous elapsed time to the current elapsed time
-                previousTime = m_clock.elapsedTime;
+                previousTime = m_clockElapsedTime;
+
+                // Get the moving camera pointer. If certain debug modes are active, it will differ from the main camera
+                Camera* pMovingCamera = cameraSystem.GetMovingCamera();
 
                 // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
-                UpdateCamera(*m_pMovingCamera, (float)m_deltaTime);
+                UpdateCamera(*pMovingCamera, (float)m_deltaTime);
 
                 // Draw the frame!!!!
                 RenderContext renderContext(pResources.Data()->cullingData, pResources.Data()->shaderData);
-                DrawFrame(m_mainCamera, m_pMovingCamera, drawCount, 
-                m_platformData.windowWidth, m_platformData.windowHeight, m_platformData.windowResize, 
-                renderContext, 0, m_occlusionCulling, m_lodEnabled);
+                DrawFrame(mainCamera, pMovingCamera, drawCount, windowResize, renderContext);
 
                 // Make sure that the window resize is set to false after the renderer is notified
-                m_platformData.windowResize = 0;
+                windowResize = 0;
 
                 BlitzenCore::UpdateInput(m_deltaTime);
             }
@@ -164,7 +170,7 @@ namespace BlitzenEngine
 
     void Engine::Shutdown()
     {
-        if (pEngineInstance)
+        if (s_pEngine)
         {
             BLIT_WARN("Blitzen is shutting down")
 
@@ -172,7 +178,7 @@ namespace BlitzenEngine
 
             BlitzenPlatform::PlatformShutdown();
 
-            pEngineInstance = nullptr;
+            s_pEngine = nullptr;
         }
 
         // The destructor should not be called more than once as it will crush the application
@@ -184,9 +190,8 @@ namespace BlitzenEngine
 
     void Engine::UpdateWindowSize(uint32_t newWidth, uint32_t newHeight) 
     {
-        m_platformData.windowWidth = newWidth; 
-        m_platformData.windowHeight = newHeight;
-        m_platformData.windowResize = 1;
+        
+        windowResize = 1;
         if(newWidth == 0 || newHeight == 0)
         {
             isSupended = 1;
@@ -194,7 +199,8 @@ namespace BlitzenEngine
         }
         isSupended = 0;
 
-        UpdateProjection(m_mainCamera, BLITZEN_FOV, static_cast<float>(newWidth), static_cast<float>(newHeight), BLITZEN_ZNEAR);
+        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        UpdateProjection(camera, BLITZEN_FOV, static_cast<float>(newWidth), static_cast<float>(newHeight), BLITZEN_ZNEAR);
     }
 }
 
