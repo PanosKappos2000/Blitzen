@@ -74,9 +74,15 @@ namespace BlitzenEngine
 	      return (unsigned(str[0]) << 0) | (unsigned(str[1]) << 8) | (unsigned(str[2]) << 16) | (unsigned(str[3]) << 24);
     }
 
+    enum class RendererToLoadDDS : uint8_t
+    {
+        Vulkan = 0,
+        Opengl = 1,
+        Max = 2
+    };
+
     uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
-    unsigned int& vulkanImageFormat, uint8_t loadForVulkan = 0, void* pDataForVulkan = nullptr, 
-    uint8_t loadForGl = 0, void* pGL = nullptr);
+    unsigned int& vulkanImageFormat, RendererToLoadDDS chosenRenderer, void* pData);
 
     size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize);
 

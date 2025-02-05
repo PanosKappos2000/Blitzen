@@ -2,13 +2,13 @@
 #include "Core/blitzenContainerLibrary.h"
 #include "Platform/filesystem.h"
 
+#include "Renderer/blitRenderer.h"
 #include "BlitzenVulkan/vulkanRenderer.h"
 
 namespace BlitzenEngine
 {
     uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
-	unsigned int& vulkanImageFormat, uint8_t loadForVulkan /*=0*/, void* pDataForVulkan /*=nullptr*/, 
-	uint8_t loadForGl /*=0*/, void* pDataForGL /*=nullptr*/)
+	unsigned int& vulkanImageFormat, RendererToLoadDDS chosenRenderer, void* pData)
     {
 		BlitzenPlatform::FileHandle handle;
 		if(!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
@@ -36,41 +36,51 @@ namespace BlitzenEngine
 	    if (header.ddspf.dwFourCC == FourCC("DX10") && header10.resourceDimension != DDS_DIMENSION_TEXTURE2D)
 		    return 0;
 
-        if(loadForVulkan)
-        {
-            vulkanImageFormat = (unsigned int)BlitzenVulkan::GetDDSVulkanFormat(header, header10);
-
-            if(vulkanImageFormat == VK_FORMAT_UNDEFINED)
-                return 0;
-
-            unsigned int blockSize =
-		    (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK 
-			|| vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
-	        size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
-
-            size_t readSize = fread(pDataForVulkan, 1, imageSize, file);
-
-            if(!pDataForVulkan)
-                return 0;
-
-	        if (readSize != imageSize)
-		        return 0;
-        }
-
-		if(loadForGl && pDataForGL)
+		switch (chosenRenderer)
 		{
-			size_t blockSize = GetDDSBlockSize(header, header10);
-			size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+			case RendererToLoadDDS::Vulkan:
+			{
+				vulkanImageFormat = (unsigned int)BlitzenVulkan::GetDDSVulkanFormat(header, header10);
 
-			size_t readSize = fread(pDataForGL, 1, imageSize, file);
+				if (vulkanImageFormat == VK_FORMAT_UNDEFINED)
+					return 0;
 
-			if(!pDataForGL);
-				return 0;
-			
-			if(readSize != imageSize)
+				unsigned int blockSize =
+					(vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK
+						|| vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
+				size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+
+				size_t readSize = fread(pData, 1, imageSize, file);
+
+				if (!pData)
+					return 0;
+
+				if (readSize != imageSize)
+					return 0;
+
+				return 1;
+			}
+
+			case RendererToLoadDDS::Opengl:
+			{
+				size_t blockSize = GetDDSBlockSize(header, header10);
+				size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, 
+				static_cast<unsigned int>(blockSize));
+
+				size_t readSize = fread(pData, 1, imageSize, file);
+
+				if (!pData)
+					return 0;
+
+				if (readSize != imageSize)
+					return 0;
+
+				return 1;
+			}
+
+			default:
 				return 0;
 		}
-        return 1;
     }
 
     size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize)

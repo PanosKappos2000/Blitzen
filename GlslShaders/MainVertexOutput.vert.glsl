@@ -5,18 +5,17 @@
 #extension GL_ARB_shader_draw_parameters : enable
 #extension GL_NV_uniform_buffer_std430_layout : enable
 
-// Vertex position attribute slot
-layout (location = 0) in vec3 vertexPos;
+struct Vertex
+{
+    vec3 position;
+    float16_t uvX, uvY;
+    uint8_t normalX, normalY, normalZ;
+};
 
-layout (location = 1) in float16_t textureMapU;
-
-layout (location = 2) in float16_t texureMapV;
-
-layout (location = 3) in uint8_t normalX;
-
-layout(location = 4) in uint8_t normalY;
-
-layout(location = 5) in uint8_t normalZ;
+layout(std430, binding = 5) readonly buffer VertexBuffer
+{
+    Vertex vertices[];
+}vertexBuffer;
 
 struct Transform
 {
@@ -54,11 +53,12 @@ vec3 RotateQuat(vec3 v, vec4 quat)
 
 void main()
 {
+    Vertex vertex = vertexBuffer.vertices[gl_VertexID];
     Transform transform = transformBuffer.transforms[gl_DrawIDARB];
 
     gl_Position = shaderData.projectionView * vec4(RotateQuat(
-    vertexPos, transform.orientation) * transform.scale + transform.pos, 1);
+    vertex.position, transform.orientation) * transform.scale + transform.pos, 1);
 
-    vec3 normal = vec3(normalX, normalY, normalZ);
+    vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ);
     fragNormal = RotateQuat(normal, transform.orientation);
 }

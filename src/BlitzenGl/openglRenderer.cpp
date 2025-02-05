@@ -34,11 +34,16 @@ namespace BlitzenGL
 
         // This is a consequence of having a shared Load image function with Vulkan
         unsigned int placeholder = 0;
-        if(BlitzenEngine::LoadDDSImage(filepath, header, header10, placeholder, 0, nullptr, 1, store.Data()))
+        if(BlitzenEngine::LoadDDSImage(filepath, header, header10, placeholder, BlitzenEngine::RendererToLoadDDS::Opengl, store.Data()))
         {
             // Create and bind the texture
             glGenTextures(1, &m_textures[m_textureCount]);
             glBindTexture(GL_TEXTURE_2D, m_textures[m_textureCount]);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
             // Pass the data to the texture and generate mipmaps
             glTexImage2D(GL_TEXTURE_2D, header.dwMipMapCount, GL_RGB, header.dwWidth, 
@@ -55,38 +60,17 @@ namespace BlitzenGL
 
     uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources)
     {
-        // Creates the vertex buffer and vertex attributes 
+        // Generates the vertex array. I don't know why this needs to be here since I am not using vertex attributes, 
+        // but if I don't have OpenGL will draw nothing -_-
         glGenVertexArrays(1, &m_vertexArray);
+        // Creates the vertex buffer as a storage buffer and passes it to binding t
         glGenBuffers(1, &m_vertexBuffer);
-
-        // Passes the vertices to the vertex buffer
         BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->vertices;
-        glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), vertices.Data(), GL_STATIC_DRAW);
-
-        // Specify vertex attribute: position at binding 0
-        glBindVertexArray(m_vertexArray);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(BlitzenEngine::Vertex), (void*)0);
-        glEnableVertexAttribArray(0);
-        // Specify vertex attribute: textureMapU at binding 1
-        glVertexAttribPointer(1, 1, GL_HALF_FLOAT, GL_FALSE, sizeof(BlitzenEngine::Vertex), (void*)offsetof(BlitzenEngine::Vertex, uvX));
-        glEnableVertexAttribArray(1);
-        // Specify vertex attribute: textureMapV at binding 2
-        glVertexAttribPointer(2, 1, GL_HALF_FLOAT, GL_FALSE, sizeof(BlitzenEngine::Vertex), (void*)offsetof(BlitzenEngine::Vertex, uvY));
-        glEnableVertexAttribArray(2);
-        // Specify vertex attribute: normalX at binding 3
-        glVertexAttribPointer(3, 1, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(BlitzenEngine::Vertex), (void*)offsetof(BlitzenEngine::Vertex, normalX));
-        glEnableVertexAttribArray(3);
-        // Specify vertex attribute: normalY at binding 4
-        glVertexAttribPointer(4, 1, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(BlitzenEngine::Vertex), (void*)offsetof(BlitzenEngine::Vertex, normalY));
-        glEnableVertexAttribArray(4);
-        // Specify vertex attribute: normalZ at binding 5
-        glVertexAttribPointer(5, 1, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(BlitzenEngine::Vertex), (void*)offsetof(BlitzenEngine::Vertex, normalZ));
-        glEnableVertexAttribArray(5);
-
-        // Unbinds the vertex buffer and the vertex attribute array
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_vertexBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), vertices.Data(), GL_STATIC_READ);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_vertexBuffer);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
-        glBindVertexArray(0);
 
         // Creates the index buffer and pass the indices to it
         glGenBuffers(1, &m_indexBuffer);

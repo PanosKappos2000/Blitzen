@@ -176,7 +176,7 @@ namespace BlitzenVulkan
 
         // Calls the function to initialize header, header10 for DDS, get the data of the image and the image format
         unsigned int format = VK_FORMAT_UNDEFINED;
-        if(!BlitzenEngine::LoadDDSImage(filepath, header, header10, format, 1, pData))
+        if(!BlitzenEngine::LoadDDSImage(filepath, header, header10, format, BlitzenEngine::RendererToLoadDDS::Vulkan, pData))
         {
             BLIT_ERROR("Failed to load texture image")
             return 0;
