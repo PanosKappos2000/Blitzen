@@ -673,6 +673,11 @@ namespace BlitzenEngine
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture))
             : static_cast<uint32_t>(previousTextureSize + 0);
 
+            mat.normalTag =
+            cgltf_mat.normal_texture.texture ? 
+            uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.normal_texture.texture))
+            : 0;
+
         }
 
         BLIT_INFO("Loading meshes and primitives")

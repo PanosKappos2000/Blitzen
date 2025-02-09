@@ -7,24 +7,32 @@
 
 layout(location = 0) in vec2 uv;
 layout(location = 1) in vec3 normal;
-layout(location = 2) in vec3 tangent;
+layout(location = 2) in vec4 tangent;
 layout(location = 3) in flat uint materialTag;
 layout(location = 4) in vec3 modelPos;
 
+// The texture binding is only needed in the fragment shader
 layout(set = 1, binding = 0) uniform sampler2D textures[];
 
-layout (location = 0) out vec4 finalColor;
+// The color that will be calculated for the current fragment
+layout (location = 0) out vec4 outColor;
 
 void main()
 {
     // Get the material from the material buffer based on the material tag that was passed from the vertex shader
     Material material = bufferAddrs.materialBuffer.materials[materialTag];
 
-    vec4 diffuseSampler = texture(textures[nonuniformEXT(material.albedoTag)], uv);
+    vec4 albedoMap = texture(textures[nonuniformEXT(material.albedoTag)], uv);
+    
+    vec4 normalMap = texture(textures[nonuniformEXT(material.normalTag)], uv);
+
+    vec3 bitangent = cross(normal, tangent.xyz) * tangent.w;
+	vec3 nrm = normalize(normalMap.x * tangent.xyz + normalMap.y * bitangent + normalMap.z * normal);
+	float ndotl = max(dot(nrm, normalize(vec3(-1, 1, -1))), 0.0);
 
     // Not optimal but I am going to keep this for the moment
     if(materialTag != 0)
-        finalColor = diffuseSampler;
+        outColor = albedoMap * sqrt(ndotl + 0.05);
     else
-        finalColor = vec4(normal, 1);
+        outColor = vec4(normal, 1);
 }
