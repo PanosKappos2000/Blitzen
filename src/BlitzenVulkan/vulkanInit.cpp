@@ -336,7 +336,7 @@ namespace BlitzenVulkan
             if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
             !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
             !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
-            !features12.samplerFilterMinmax || !features12.shaderInt8 ||
+            !features12.samplerFilterMinmax || !features12.shaderInt8 || !features12.shaderSampledImageArrayNonUniformIndexing ||
             !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
             {
                 physicalDevices.RemoveAtIndex(i);
@@ -545,6 +545,8 @@ namespace BlitzenVulkan
 
         // This is needed to create a sampler for the depth pyramid that will be used for occlusion culling
         vulkan12Features.samplerFilterMinmax = true;
+
+        vulkan12Features.shaderSampledImageArrayNonUniformIndexing = true;
 
         VkPhysicalDeviceVulkan13Features vulkan13Features{};
         vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;

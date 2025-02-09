@@ -539,7 +539,7 @@ namespace BlitzenVulkan
     }
 
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
-    uint32_t descriptorCount, uint32_t binding)
+    uint32_t descriptorCount, uint32_t binding, uint32_t dstArrayElement /*=0*/)
     {
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.pNext = nullptr;
@@ -547,8 +547,8 @@ namespace BlitzenVulkan
         write.dstBinding = binding;
         write.descriptorType = descriptorType;
         write.descriptorCount = descriptorCount;
-        //write.dstArrayElement = 
         write.pImageInfo = pImageInfos;
+        write.dstArrayElement = dstArrayElement;
     }
 
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo, VkDescriptorType descirptorType, VkDescriptorSet dstSet, 

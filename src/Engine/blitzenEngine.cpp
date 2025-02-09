@@ -94,10 +94,10 @@ namespace BlitzenEngine
         isRunning = 1;
         isSupended = 0;
 
+        // Setup the main camera
         Camera& mainCamera = cameraSystem.GetCamera();
         SetupCamera(mainCamera, BLITZEN_FOV, static_cast<float>(BLITZEN_WINDOW_WIDTH), 
-        static_cast<float>(BLITZEN_WINDOW_HEIGHT), BLITZEN_ZNEAR, BlitML::vec3(30.f, 0.f, 0.f));
-        mainCamera.drawDistance = BLITZEN_DRAW_DISTANCE;// Should be added to the constructor but I am kinda lazy
+        static_cast<float>(BLITZEN_WINDOW_HEIGHT), BLITZEN_ZNEAR, BlitML::vec3(30.f, 100.f, 0.f), BLITZEN_DRAW_DISTANCE);
 
         // Loads obj meshes that will be draw with "random" transforms by the millions to stress the renderer
         uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer

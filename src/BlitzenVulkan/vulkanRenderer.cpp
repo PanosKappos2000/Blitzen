@@ -488,7 +488,7 @@ namespace BlitzenVulkan
 
         // Creates the descriptor pool for the textures
         m_currentStaticBuffers.textureDescriptorPool = CreateDescriptorPool(m_device, 1, &poolSize, 
-        static_cast<uint32_t>(textureCount));
+        1);
         if(m_currentStaticBuffers.textureDescriptorPool == VK_NULL_HANDLE)
             return 0;
  

@@ -6,7 +6,8 @@ struct Vertex
 {
     vec3 position;
     float16_t uvX, uvY;
-    uint8_t normalX, normalY, normalZ;
+    uint8_t normalX, normalY, normalZ, normalW;
+    uint8_t tangentX, tangentY, tangentZ, tangentW;
 };
 
 // This is the single vertex buffer for the main graphics pipeline, accessed by draw indirect through index offset, index count and vertex offset
@@ -175,8 +176,8 @@ struct Material
     float shininess;
 
     // Used to access each texture map
-    uint diffuseMapIndex;
-    uint specularMapIndex;
+    uint albedoTag;
+    uint normalTag;
 
     uint materialId;
 };

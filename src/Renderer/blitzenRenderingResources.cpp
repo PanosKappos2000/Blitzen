@@ -93,6 +93,7 @@ namespace BlitzenEngine
         LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture", pVulkan, nullptr);
         LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture2", pVulkan, nullptr);
         LoadTextureFromFile(pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan, nullptr);
+        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", "dds_texture_default", pVulkan, nullptr);
     }
 
 
@@ -105,8 +106,8 @@ namespace BlitzenEngine
         current.diffuseColor = diffuseColor;
         current.shininess = shininess;
 
-        current.diffuseTextureTag = pResources->textureTable.Get(diffuseMapName, &pResources->textures[0])->textureTag;
-        current.specularTextureTag = pResources->textureTable.Get(specularMapName, &pResources->textures[0])->textureTag;
+        current.albedoTag = pResources->textureTable.Get(diffuseMapName, &pResources->textures[0])->textureTag;
+        current.normalTag = pResources->textureTable.Get(specularMapName, &pResources->textures[0])->textureTag;
 
         current.materialId = static_cast<uint32_t>(pResources->materialCount);
 
@@ -118,7 +119,7 @@ namespace BlitzenEngine
     {
         BlitML::vec4 color1(0.1f);
         BlitML::vec4 color2(0.2f);
-        DefineMaterial(pResources, color1, 65.f, "loaded_texture", "spec_texture", "loaded_material");
+        DefineMaterial(pResources, color1, 65.f, "dds_texture_default", "unknown", "loaded_material");
         DefineMaterial(pResources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
     }
     
@@ -170,6 +171,9 @@ namespace BlitzenEngine
             vtx.normalX = static_cast<uint8_t>(normalX * 127.f + 127.5f);
             vtx.normalY = static_cast<uint8_t>(normalY * 127.f + 127.5f);
             vtx.normalZ = static_cast<uint8_t>(normalZ * 127.f + 127.5f);
+
+            vtx.tangentX = vtx.tangentY = vtx.tangentZ = 127;
+            vtx.tangentW = 254;
 
 		    vtx.uvX = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0]);
 		    vtx.uvY = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1]);
@@ -663,7 +667,7 @@ namespace BlitzenEngine
             Material& mat = pResources->materials[pResources->materialCount++];
             mat.materialId = static_cast<uint32_t>(pResources->materialCount - 1);
 
-            mat.diffuseTextureTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
+            mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_metallic_roughness.base_color_texture.texture))
             : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture))
@@ -704,11 +708,15 @@ namespace BlitzenEngine
 			    size_t vertexCount = prim.attributes[0].data->count;
 
 			    BlitCL::DynamicArray<Vertex> vertices(vertexCount);
+
+                // Will temporarily hold each aspect of the vertices (pos, tangent, normals, uvMaps) from the primitive
 			    BlitCL::DynamicArray<float> scratch(vertexCount * 4);
 
 			    if (const cgltf_accessor* pos = findAccessor(&prim, cgltf_attribute_type_position))
 			    {
-				    assert(cgltf_num_components(pos->type) == 3);
+                    // No choice but to assert here, as some data might already have been loaded
+				    BLIT_ASSERT(cgltf_num_components(pos->type) == 3);
+
 				    cgltf_accessor_unpack_floats(pos, scratch.Data(), vertexCount * 3);
 				    for (size_t j = 0; j < vertexCount; ++j)
 				    {
@@ -718,7 +726,8 @@ namespace BlitzenEngine
 
 			    if (const cgltf_accessor* nrm = findAccessor(&prim, cgltf_attribute_type_normal))
 			    {
-			    	assert(cgltf_num_components(nrm->type) == 3);
+			    	BLIT_ASSERT(cgltf_num_components(nrm->type) == 3);
+
 			    	cgltf_accessor_unpack_floats(nrm, scratch.Data(), vertexCount * 3);
 			    	for (size_t j = 0; j < vertexCount; ++j)
 			    	{
@@ -728,9 +737,23 @@ namespace BlitzenEngine
 			    	}
 			    }
 
+                if(const cgltf_accessor* tang = findAccessor(&prim, cgltf_attribute_type_tangent))
+                {
+                    BLIT_ASSERT(cgltf_num_components(tang->type) == 4)
+
+                    cgltf_accessor_unpack_floats(tang, scratch.Data(), vertexCount * 4);
+                    for (size_t j = 0; j < vertexCount; ++j)
+                    {
+                        vertices[j].tangentX = uint8_t(scratch[j * 4 + 0] * 127.f + 127.5f);
+                        vertices[j].tangentY = uint8_t(scratch[j * 4 + 1] * 127.f + 127.5f);
+                        vertices[j].tangentZ = uint8_t(scratch[j * 4 + 2] * 127.f + 127.5f);
+                        vertices[j].tangentW = uint8_t(scratch[j * 4 + 3] * 127.f + 127.5f);
+                    }
+                }
+
 			    if (const cgltf_accessor* tex = findAccessor(&prim, cgltf_attribute_type_texcoord))
 			    {
-				    assert(cgltf_num_components(tex->type) == 2);
+				    BLIT_ASSERT(cgltf_num_components(tex->type) == 2);
 				    cgltf_accessor_unpack_floats(tex, scratch.Data(), vertexCount * 2);
 				    for (size_t j = 0; j < vertexCount; ++j)
 				    {

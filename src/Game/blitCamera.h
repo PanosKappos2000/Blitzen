@@ -62,7 +62,7 @@ namespace BlitzenEngine
 
     // Gives some default values to a new camera so that it does not spawn with a random transform
     void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
-    BlitML::vec3 initialCameraPosition, float initialYawRotation = 0, float initialPitchRotation = 0);
+    BlitML::vec3 initialCameraPosition, float drawDistance, float initialYawRotation = 0, float initialPitchRotation = 0);
 
     // Moves a camera based on the velocity and the rotation matrix. Only works if cameraDirty is 1
     void UpdateCamera(Camera& camera, float deltaTime);

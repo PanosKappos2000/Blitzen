@@ -9,7 +9,8 @@ struct Vertex
 {
     vec3 position;
     float16_t uvX, uvY;
-    uint8_t normalX, normalY, normalZ;
+    uint8_t normalX, normalY, normalZ, normalW;
+    uint8_t tangentX, tangentY, tangentZ, tangentW;
 };
 
 layout(std430, binding = 5) readonly buffer VertexBuffer
@@ -59,6 +60,8 @@ void main()
     gl_Position = shaderData.projectionView * vec4(RotateQuat(
     vertex.position, transform.orientation) * transform.scale + transform.pos, 1);
 
-    vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ);
-    fragNormal = RotateQuat(normal, transform.orientation);
+    // Unpack surface normals
+    vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ) / 127.0 - 1.0;
+    // Pass the normal after promoting it to model coordinates
+    fragNormal =  RotateQuat(normal, transform.orientation);
 }

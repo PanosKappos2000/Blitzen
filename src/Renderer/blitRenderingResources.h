@@ -29,9 +29,14 @@ namespace BlitzenEngine
 
     struct alignas(16) Vertex
     {
+        // Vertex position (3 floats)
         BlitML::vec3 position;
+        // Uv maps (2 halfs floats)
         uint16_t uvX, uvY;
-        uint8_t normalX, normalY, normalZ;
+        // Vertex normals (4 8-bit integers)
+        uint8_t normalX, normalY, normalZ, normalW;
+        // Tangents (4 8-bit integers)
+        uint8_t tangentX, tangentY, tangentZ, tangentW;
     };
 
     struct alignas(16) Meshlet
@@ -55,8 +60,9 @@ namespace BlitzenEngine
         BlitML::vec4 diffuseColor;
         float shininess;
 
-        uint32_t diffuseTextureTag;
-        uint32_t specularTextureTag;
+        uint32_t albedoTag;// Index into the texture array, for the albedo map of the material
+
+        uint32_t normalTag;// Index into the texture array, for the normal map of the material
 
         uint32_t materialId;
     };

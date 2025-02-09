@@ -3,7 +3,8 @@
 namespace BlitzenEngine
 {
     void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
-    BlitML::vec3 initialCameraPosition, float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
+    BlitML::vec3 initialCameraPosition, float drawDistance, 
+    float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
     {
         // Initalize the projection matrix
         camera.projectionMatrix = 
@@ -14,6 +15,8 @@ namespace BlitzenEngine
         camera.zNear = zNear;
         camera.windowWidth = windowWidth;
         camera.windowHeight = windowHeight;
+        // Draw distance is held by the camera
+        camera.drawDistance = drawDistance;
 
         // Setup the camera translation based on the initial position parameter
         camera.position = initialCameraPosition;
