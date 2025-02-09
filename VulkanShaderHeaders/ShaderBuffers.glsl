@@ -178,6 +178,8 @@ struct Material
     // Used to access each texture map
     uint albedoTag;
     uint normalTag;
+    uint specularTag;
+    uint emissiveTag;
 
     uint materialId;
 };

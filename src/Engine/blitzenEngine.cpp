@@ -9,7 +9,7 @@
 #include "Core/blitzenCore.h"
 #include "Game/blitCamera.h"
 
-#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Opengl
+#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
 
 namespace BlitzenEngine
 {

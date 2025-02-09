@@ -26,13 +26,17 @@ void main()
     
     vec4 normalMap = texture(textures[nonuniformEXT(material.normalTag)], uv);
 
+    vec3 emissiveMap = vec3(0.0);
+    if(material.albedoTag != 0)
+        emissiveMap = texture(textures[nonuniformEXT(material.emissiveTag)], uv).rgb;
+
     vec3 bitangent = cross(normal, tangent.xyz) * tangent.w;
-	vec3 nrm = normalize(normalMap.x * tangent.xyz + normalMap.y * bitangent + normalMap.z * normal);
+	vec3 nrm = normalize(normalMap.r * tangent.xyz + normalMap.g * bitangent + normalMap.b * normal);
 	float ndotl = max(dot(nrm, normalize(vec3(-1, 1, -1))), 0.0);
 
     // Not optimal but I am going to keep this for the moment
     if(materialTag != 0)
         outColor = albedoMap * sqrt(ndotl + 0.05);
     else
-        outColor = vec4(normal, 1);
+        outColor = vec4(normal * sqrt(ndotl + 0.05), 1);
 }

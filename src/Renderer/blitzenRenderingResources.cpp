@@ -657,9 +657,9 @@ namespace BlitzenEngine
 
         BLIT_INFO("Loading materials")
 
-        // Save the previous material count
+        // Saves the previous material count
         size_t previousMaterialCount = pResources->materialCount;
-        // Create one BlitzenEngine::Material for each material in the gltf
+        // Creates one BlitzenEngine::Material for each material in the gltf
         for (size_t i = 0; i < pData->materials_count; ++i)
         {
             cgltf_material& cgltf_mat = pData->materials[i];
@@ -676,6 +676,16 @@ namespace BlitzenEngine
             mat.normalTag =
             cgltf_mat.normal_texture.texture ? 
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.normal_texture.texture))
+            : static_cast<uint32_t>(previousTextureSize + 0);
+
+            mat.specularTag = 
+            cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ? 
+            uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture))
+            : static_cast<uint32_t>(previousTextureSize + 0);
+
+            mat.emissiveTag =
+            cgltf_mat.emissive_texture.texture ? 
+            uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.emissive_texture.texture))
             : 0;
 
         }

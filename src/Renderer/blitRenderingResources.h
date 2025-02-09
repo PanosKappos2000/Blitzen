@@ -64,6 +64,10 @@ namespace BlitzenEngine
 
         uint32_t normalTag;// Index into the texture array, for the normal map of the material
 
+        uint32_t specularTag;// Index into the texture array, for the specular map of the material
+
+        uint32_t emissiveTag;// Index into the texture array for the emissive map of the material
+
         uint32_t materialId;
     };
 

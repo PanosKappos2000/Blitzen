@@ -341,7 +341,7 @@ namespace BlitzenVulkan
 
     // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 
     // TODO: Replace this with a general purpose function
-    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler);
+    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler, VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR);
 
     // Returns VkFormat based on DDS input to correctly load a texture image
     VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10);

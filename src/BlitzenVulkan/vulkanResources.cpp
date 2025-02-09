@@ -240,24 +240,28 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler)
+    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler, VkSamplerMipmapMode mipmapMode)
     {
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.flags = 0;
         samplerInfo.pNext = nullptr;
+
         samplerInfo.magFilter = VK_FILTER_LINEAR;
         samplerInfo.minFilter = VK_FILTER_LINEAR;
+
         samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.anisotropyEnable = VK_FALSE;
-        samplerInfo.maxAnisotropy = 4.f;
+
+        samplerInfo.anisotropyEnable = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR);
+        samplerInfo.maxAnisotropy = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR) ? 4.f : 1.f;
+
         samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipmapMode = mipmapMode;
         samplerInfo.mipLodBias = 0.f;
         samplerInfo.maxLod = 16.f;
         samplerInfo.minLod = 0.f;
