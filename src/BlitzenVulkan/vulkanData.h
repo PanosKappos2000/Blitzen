@@ -26,7 +26,11 @@
 #define BLITZEN_VULKAN_USER_ENGINE                              "Blitzen Engine"
 #define BLITZEN_VULKAN_USER_ENGINE_VERSION                      VK_MAKE_VERSION (1, 0, 0)
 
-#define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
+#ifdef BLIT_VSYNC
+    #define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_FIFO_KHR
+#else
+    #define DESIRED_SWAPCHAIN_PRESENTATION_MODE                     VK_PRESENT_MODE_MAILBOX_KHR
+#endif
 
 #ifdef NDEBUG
     #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
@@ -38,7 +42,6 @@
 
 #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
 
-#define BLITZEN_VULKAN_INDIRECT_DRAW            1
 #define BLITZEN_VULKAN_MESH_SHADER              0 // Mesh shaders have output but it is wrong 
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
@@ -68,8 +71,8 @@ namespace BlitzenVulkan
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
     struct AllocatedImage
     {
-        VkImage image;
-        VkImageView imageView;
+        VkImage image = VK_NULL_HANDLE;
+        VkImageView imageView = VK_NULL_HANDLE;
 
         VkExtent3D extent;
         VkFormat format;

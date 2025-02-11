@@ -50,11 +50,13 @@ namespace BlitzenEngine
     ----------------------------------*/
 
     uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
-    void* pVulkan, void* pDirectx12)
+    uint8_t loadForVulkan, uint8_t loadForGL)
     {
         // Don't go over the texture limit, might want to throw a warning here
         if(pResources->textureCount >= BLIT_MAX_TEXTURE_COUNT)
             return 0;
+
+        RenderingSystem* pRenderer = RenderingSystem::GetRenderingSystem();
 
         DDS_HEADER header = {};
         DDS_HEADER_DXT10 header10 = {};
@@ -67,10 +69,10 @@ namespace BlitzenEngine
 
         uint8_t load = 0;
         // Add the texture to the vulkan renderer if a pointer for it was passed
-        if(pVulkan)
+        if(loadForVulkan && pRenderer->pVulkan)
         {
-            BlitzenVulkan::VulkanRenderer* pRenderer = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
-            if(pRenderer->UploadDDSTexture(header, header10, texture.pTextureData, filename))
+            BlitzenVulkan::VulkanRenderer* pVulkan = pRenderer->pVulkan;
+            if(pVulkan->UploadDDSTexture(header, header10, texture.pTextureData, filename))
             {
                 texture.textureWidth = header.dwWidth;
                 texture.textureHeight = header.dwHeight;
@@ -88,12 +90,12 @@ namespace BlitzenEngine
     }
     
 
-    void LoadTestTextures(RenderingResources* pResources, void* pVulkan, void* pDx12)
+    void LoadTestTextures(RenderingResources* pResources, uint8_t loadForVulkan, uint8_t loadForGL)
     {
-        LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture", pVulkan, nullptr);
-        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture2", pVulkan, nullptr);
-        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", pVulkan, nullptr);
-        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", "dds_texture_default", pVulkan, nullptr);
+        LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture", loadForVulkan, loadForGL);
+        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture2", loadForVulkan, loadForGL);
+        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", loadForVulkan, loadForGL);
+        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", "dds_texture_default", loadForVulkan, loadForGL);
     }
 
 
@@ -115,7 +117,7 @@ namespace BlitzenEngine
         pResources->materialCount++;
     }
 
-    void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12)
+    void LoadTestMaterials(RenderingResources* pResources, uint8_t loadForVulkan, uint8_t loadForGL)
     {
         BlitML::vec4 color1(0.1f);
         BlitML::vec4 color2(0.2f);
@@ -512,16 +514,16 @@ namespace BlitzenEngine
     }
 
     // Calls some test functions to load a scene that tests the renderer's geometry rendering
-    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, void* pVulkan, void* pDx12)
+    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, uint8_t loadForVulkan, uint8_t loadForGL)
     {
-        LoadTestTextures(pResources, pVulkan, nullptr);
-        LoadTestMaterials(pResources, pVulkan, nullptr);
+        LoadTestTextures(pResources, loadForVulkan, loadForGL);
+        LoadTestMaterials(pResources, loadForVulkan, loadForGL);
         LoadTestGeometry(pResources);
         CreateTestGameObjects(pResources, drawCount);
     }
 
     uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets /*=1*/, 
-    void* pVulkan /*=nullptr*/, void* pGL /*=nullptr*/)
+    uint8_t loadForVulkan, uint8_t loadForGL)
     {
         if(pResources->renderObjectCount >= BLITZEN_MAX_DRAW_OBJECTS)
         {
@@ -607,6 +609,7 @@ namespace BlitzenEngine
 		    texturePaths[i] = ipath + uri;
 	    }
 
+        RenderingSystem* pRenderer = RenderingSystem::GetRenderingSystem();
         for(size_t i = 0; i < texturePaths.GetSize(); ++i)
         {
             // Don't go over the texture limit, might want to throw a warning here
@@ -626,19 +629,19 @@ namespace BlitzenEngine
             uint8_t textureLoad = 0;
 
             // Add the texture to the vulkan renderer if a pointer for it was passed
-            if(pVulkan)
+            if(loadForVulkan && pRenderer->pVulkan)
             {
-                BlitzenVulkan::VulkanRenderer* pRenderer = reinterpret_cast<BlitzenVulkan::VulkanRenderer*>(pVulkan);
-                if(pRenderer->UploadDDSTexture(header, header10, texture.pTextureData, texturePaths[i].c_str()))
+                BlitzenVulkan::VulkanRenderer* pVulkan = pRenderer->pVulkan;
+                if(pVulkan->UploadDDSTexture(header, header10, texture.pTextureData, texturePaths[i].c_str()))
                     textureLoad = 1;
                 else
                     BLIT_INFO("GLTF texture from file: %s failed to load for Vulkan", texturePaths[i].c_str())
             }
 
-            if(pGL)
+            if(loadForGL && pRenderer->pGl)
             {
-                BlitzenGL::OpenglRenderer* pRenderer = reinterpret_cast<BlitzenGL::OpenglRenderer*>(pGL);
-                if(pRenderer->UploadTexture(header, header10, texturePaths[i].c_str()))
+                BlitzenGL::OpenglRenderer* pGL = pRenderer->pGl;
+                if(pGL->UploadTexture(header, header10, texturePaths[i].c_str()))
                     textureLoad = 1;
                 else
                     BLIT_INFO("GLTF texture from file: %s failed to load for OpenGL", texturePaths[i].c_str())

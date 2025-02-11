@@ -129,6 +129,11 @@ target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src/VendorCode"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include")
 
+target_compile_definitions(BlitzenEngine PUBLIC 
+                            BLITZEN_VULKAN
+                            BLITZEN_OPENGL
+                            BLIT_VSYNC)
+
 # Linker file directories and libraries to link for linux and Windows
 IF(WIN32)
     target_link_directories(BlitzenEngine PUBLIC

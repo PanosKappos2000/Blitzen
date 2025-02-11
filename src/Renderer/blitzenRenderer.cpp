@@ -10,6 +10,25 @@ namespace BlitzenEngine
     RenderingSystem::RenderingSystem()
     {
         s_pRenderer = this;
+
+        #ifdef BLITZEN_VULKAN
+            CreateVulkanRenderer(vulkan, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT);
+        #endif
+
+        #ifdef BLITZEN_OPENGL
+            #if _MSC_VER
+            CreateOpenglRenderer(opengl, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT);
+            #endif
+        #endif
+
+        if(pVulkan)
+            activeRenderer = ActiveRenderer::Vulkan;
+        else if(pGl)
+            activeRenderer = ActiveRenderer::Opengl;
+        else
+            activeRenderer = ActiveRenderer::MaxRenderers;
+
+        BLIT_ASSERT(CheckActiveRenderer(activeRenderer))
     }
 
     RenderingSystem::~RenderingSystem()
@@ -17,24 +36,17 @@ namespace BlitzenEngine
         s_pRenderer = nullptr;
     }
 
-    uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
+    uint8_t CreateVulkanRenderer(BlitzenVulkan::VulkanRenderer& vulkan, 
     uint32_t windowWidth, uint32_t windowHeight)
     {
-        if(pVulkan.Data())
+        
+        // Call the init function and store the result in the systems boolean for Vulkan
+        if(vulkan.Init(windowWidth, windowHeight))
         {
-            // Call the init function and store the result in the systems boolean for Vulkan
-            if(pVulkan.Data()->Init(windowWidth, windowHeight))
-            {
-                RenderingSystem::s_pRenderer->pVulkan = pVulkan.Data();
-                return 1;
-            }
-            
-            return 0;
-        }
-        else
-        {
-            return 0;
-        }
+            RenderingSystem::GetRenderingSystem()->pVulkan = &vulkan;
+            return 1;
+        }   
+        return 0;
     }
 
     uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer, uint32_t windowWidth, uint32_t windowHeight)
@@ -45,7 +57,7 @@ namespace BlitzenEngine
         #else
             if(renderer.Init(windowWidth, windowHeight))
             {
-                RenderingSystem::s_pRenderer->pGl = &renderer;
+                RenderingSystem::GetRenderingSystem()->pGl = &renderer;
                 return 1;
             }
             else
@@ -55,9 +67,9 @@ namespace BlitzenEngine
         #endif
     }
 
-    uint8_t isVulkanInitialized() { return RenderingSystem::s_pRenderer->pVulkan != nullptr; }
+    uint8_t isVulkanInitialized() { return RenderingSystem::GetRenderingSystem()->pVulkan != nullptr; }
 
-    uint8_t IsOpenglInitialized() {return RenderingSystem::s_pRenderer->pVulkan != nullptr;}
+    uint8_t IsOpenglInitialized() {return RenderingSystem::GetRenderingSystem()->pGl != nullptr;}
 
     uint8_t CheckActiveRenderer(ActiveRenderer ar)
     {
@@ -81,7 +93,7 @@ namespace BlitzenEngine
             ClearCurrentActiveRenderer();
             /*if(ar == ActiveRenderer::Vulkan)
                 gpVulkan->SetupForSwitch();This is supposed to fix a switching to Vulkan bug, but I got bored while writing it*/
-            RenderingSystem::s_pRenderer->activeRenderer = ar;
+            RenderingSystem::GetRenderingSystem()->activeRenderer = ar;
             return 1;
         }
 
@@ -90,11 +102,11 @@ namespace BlitzenEngine
 
     void ClearCurrentActiveRenderer()
     {
-        switch(RenderingSystem::s_pRenderer->activeRenderer)
+        switch(RenderingSystem::GetRenderingSystem()->activeRenderer)
         {
             case ActiveRenderer::Vulkan:
             {
-                BlitzenVulkan::VulkanRenderer* pVulkan = RenderingSystem::s_pRenderer->pVulkan;
+                BlitzenVulkan::VulkanRenderer* pVulkan = RenderingSystem::GetRenderingSystem()->pVulkan;
                 if(pVulkan)
                 {
                     pVulkan->ClearFrame();
@@ -147,7 +159,7 @@ namespace BlitzenEngine
 
         uint8_t isThereRendererOnStandby = 0;
 
-        BlitzenVulkan::VulkanRenderer* pVulkan = RenderingSystem::s_pRenderer->pVulkan;
+        BlitzenVulkan::VulkanRenderer* pVulkan = RenderingSystem::GetRenderingSystem()->pVulkan;
         if(pVulkan)
         {
             if(!pVulkan->SetupForRendering(pResources))
@@ -161,7 +173,7 @@ namespace BlitzenEngine
         }
 
         #if _MSC_VER
-        BlitzenGL::OpenglRenderer* pGL = RenderingSystem::s_pRenderer->pGl;
+        BlitzenGL::OpenglRenderer* pGL = RenderingSystem::GetRenderingSystem()->pGl;
         if(pGL)
         {
             if(!pGL->SetupForRendering(pResources))

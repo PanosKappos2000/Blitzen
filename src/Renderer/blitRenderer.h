@@ -27,8 +27,18 @@ namespace BlitzenEngine
         MaxRenderers = 3
     };
 
-    struct RenderingSystem
+    class RenderingSystem
     {
+    public:
+
+        RenderingSystem();
+
+        ~RenderingSystem();
+
+        inline static RenderingSystem* GetRenderingSystem() { return s_pRenderer; }
+
+    public:
+
         BlitzenVulkan::VulkanRenderer* pVulkan = nullptr;
 
         BlitzenGL::OpenglRenderer* pGl = nullptr;
@@ -37,25 +47,30 @@ namespace BlitzenEngine
 
         ActiveRenderer activeRenderer = ActiveRenderer::MaxRenderers;
 
+    private:
+        #ifdef BLITZEN_VULKAN
+            BlitzenVulkan::VulkanRenderer vulkan;
+        #endif
+
+        #ifdef BLITZEN_OPENGL
+            BlitzenGL::OpenglRenderer opengl;
+        #endif
+    
+    public:
+
+        // Debug values 
         uint8_t freezeFrustum = 0;
-
         uint8_t debugPyramidActive = 0;
-
         uint8_t occlusionCullingOn = 1;
-
         uint8_t lodEnabled = 1;
 
-        RenderingSystem();
-
-        ~RenderingSystem();
-
+    private:
+        // Leaky singleton
         static RenderingSystem* s_pRenderer;
-
-        inline static RenderingSystem* GetRenderingSystem() { return s_pRenderer; }
     };
 
     // Takes a smart pointer to a vulkan renderer and initalizes it. Succesfully returns if it gets initialized
-    uint8_t CreateVulkanRenderer(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>& pVulkan, 
+    uint8_t CreateVulkanRenderer(BlitzenVulkan::VulkanRenderer& pVulkan, 
     uint32_t windowWidth, uint32_t windowHeight);
 
     // Small fuction that tells the engine if Vulkan is active

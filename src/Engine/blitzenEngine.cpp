@@ -9,7 +9,13 @@
 #include "Core/blitzenCore.h"
 #include "Game/blitCamera.h"
 
-#define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
+#ifdef BLITZEN_VULKAN
+    #define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
+#elif BLITZEN_GL && _MSC_VER_
+    #define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::OpenGL
+#else
+    #define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::MaxRenderers
+#endif
 
 namespace BlitzenEngine
 {
@@ -64,31 +70,12 @@ namespace BlitzenEngine
         // With the event and input systems active, register the engine's default events and input bindings
         RegisterDefaultEvents();
 
-        RenderingSystem renderer;
+        // Rendering system holds all API specific renderer (Vulkan and Opengl for now)
+        BlitCL::SmartPointer<RenderingSystem, BlitzenCore::AllocationType::Renderer> renderer;
         
         // Allocated the rendering resources on the heap, it is too big for the stack of this function
         BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
         BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadRenderingResourceSystem(pResources.Data()), "Failed to acquire resource system")
-
-        // Checks if at least one of the rendering APIs was initialized
-        uint8_t hasRenderer = 0;
-
-        // Create the vulkan renderer if it's requested
-        #if BLITZEN_VULKAN
-            BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer> pVulkan;
-            hasRenderer = CreateVulkanRenderer(pVulkan, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT) || hasRenderer;
-        #endif
-
-        #if BLITZEN_OPENGL
-            BlitzenGL::OpenglRenderer gl;
-            hasRenderer = CreateOpenglRenderer(gl, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT) || hasRenderer;
-        #endif
-
-        // Test if any renderer was initialized
-        BLIT_ASSERT_MESSAGE(hasRenderer, "Blitzen cannot continue without a renderer")
-
-        // Initialize the active renderer and assert if it is available
-        BLIT_ASSERT(SetActiveRenderer(BLIT_ACTIVE_RENDERER_ON_BOOT))
         
         // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
         isRunning = 1;
@@ -101,16 +88,16 @@ namespace BlitzenEngine
 
         // Loads obj meshes that will be draw with "random" transforms by the millions to stress the renderer
         uint32_t drawCount = BLITZEN_MAX_DRAW_OBJECTS / 2 + 1;// Rendering a large amount of objects to stress test the renderer
-        LoadGeometryStressTest(pResources.Data(), drawCount, pVulkan.Data(), nullptr);
+        LoadGeometryStressTest(pResources.Data(), drawCount, 1, 0);
 
         // Loads the gltf files that were specified as command line arguments
         if(argc == 1)
-            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, pVulkan.Data(), &gl);
+            LoadGltfScene(pResources.Data(), "Assets/Scenes/CityLow/scene.gltf", 1, 1, 1);
         else
         {
             for(uint32_t i = 1; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i], 1, pVulkan.Data(), &gl);
+                LoadGltfScene(pResources.Data(), argv[i], 1, 1, 1);
             }
         }
 

@@ -333,7 +333,8 @@ namespace BlitzenVulkan
             vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
             // Check that all the required features are supported by the device
-            if(!features.multiDrawIndirect || !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
+            if(!features.multiDrawIndirect || !features.samplerAnisotropy ||
+            !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
             !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
             !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
             !features12.samplerFilterMinmax || !features12.shaderInt8 || !features12.shaderSampledImageArrayNonUniformIndexing ||
@@ -509,6 +510,9 @@ namespace BlitzenVulkan
 
         // Allows the renderer to use one vkCmdDrawIndrect type call for multiple objects
         deviceFeatures.multiDrawIndirect = true;
+
+        // Allows sampler anisotropy to be VK_TRUE when creating a VkSampler
+        deviceFeatures.samplerAnisotropy = true;
 
         // Extended device features
         VkPhysicalDeviceVulkan11Features vulkan11Features{};

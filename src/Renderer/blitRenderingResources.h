@@ -224,13 +224,13 @@ namespace BlitzenEngine
     uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
     void* pVulkan, void* pDirectx12);// The renderers are void* so that I do not expose their API in the .h file
 
-    void LoadTestTextures(RenderingResources* pResources, void* pVulkan, void* pDx12);
+    void LoadTestTextures(RenderingResources* pResources, uint8_t loadForVulkan, uint8_t loadForGL);
 
 
     void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName);
 
-    void LoadTestMaterials(RenderingResources* pResources, void* pVulkan, void* pDx12);
+    void LoadTestMaterials(RenderingResources* pResources, uint8_t loadForVulkan, uint8_t loadForGL);
 
 
     // Loads a mesh from an obj file
@@ -253,12 +253,12 @@ namespace BlitzenEngine
 
 
     // Calls some test functions to load a scene that tests the renderer's geometry rendering
-    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, void* pVulkan, void* pDx12);
+    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, uint8_t loadForVulkan, uint8_t loadForGL);
 
 
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets = 1, 
-    void* pVulkan = nullptr, void* pGl = nullptr);
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets, 
+    uint8_t loadForVulkan, uint8_t loadForGL);
 }

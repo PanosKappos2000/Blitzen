@@ -25,7 +25,9 @@ namespace BlitzenCore
         LinearAllocator linearAlloc;
 
         // These exist here so that they are destroyed after Vulkan
-        BlitzenVulkan::MemoryCrucialHandles vkCrucial;
+        #ifdef BLITZEN_VULKAN
+            BlitzenVulkan::MemoryCrucialHandles vkCrucial;
+        #endif
 
         static MemoryManagerState* s_pMemoryManager;
 

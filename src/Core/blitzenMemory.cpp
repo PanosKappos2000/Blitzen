@@ -23,8 +23,12 @@ namespace BlitzenCore
 
     BlitzenVulkan::MemoryCrucialHandles* GetVulkanMemoryCrucials()
     {
-        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
-        return &(pState->vkCrucial);
+        #ifdef BLITZEN_VULKAN
+            MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
+            return &(pState->vkCrucial);
+        #else
+            return nullptr;
+        #endif
     }
 
     void* BlitAlloc(AllocationType alloc, size_t size)

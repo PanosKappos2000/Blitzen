@@ -328,7 +328,11 @@ namespace BlitzenPlatform
 
         void OpenglSwapBuffers()
         {
-            wglSwapIntervalEXT(1);
+            #ifdef BLIT_VSYNC
+                wglSwapIntervalEXT(1);
+            #else
+                wglSwapIntervalEXT(0);
+            #endif
             wglSwapLayerBuffers(GetDC(s_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
         }
 
