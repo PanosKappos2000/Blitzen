@@ -24,7 +24,7 @@ void main()
 
     vec4 albedoMap = texture(textures[nonuniformEXT(material.albedoTag)], uv);
     
-    vec4 normalMap = texture(textures[nonuniformEXT(material.normalTag)], uv);
+    vec3 normalMap = texture(textures[nonuniformEXT(material.normalTag)], uv).rgb * 2 - 1;
 
     vec3 emissiveMap = vec3(0.0);
     if(material.albedoTag != 0)
