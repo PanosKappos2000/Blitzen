@@ -42,10 +42,27 @@ namespace BlitzenVulkan
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) 
     {
-        BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage) 
-        return VK_FALSE;
+        switch (messageSeverity)
+        {
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        {
+            BLIT_INFO("Validation layer: %s", pCallbackData->pMessage)
+                return VK_FALSE;
+        }
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        {
+            BLIT_WARN("Validation layer: %s", pCallbackData->pMessage)
+                return VK_FALSE;
+        }
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        {
+            BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage)
+                return VK_FALSE;
+        }
+        default:
+            return VK_FALSE;
+        }
     }
-    // Validation layers function pointers
 
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
@@ -217,21 +234,28 @@ namespace BlitzenVulkan
         instanceInfo.enabledExtensionCount = BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT;
         instanceInfo.enabledLayerCount = 0; // Validation layers inactive at first, but will be activated if it's a debug build
 
-        //If this is a debug build, the validation layer extension is also needed
+        // If validation layers are requested, the debut utils extension is also needed
         #if BLITZEN_VULKAN_VALIDATION_LAYERS
             // Adds the validation layer extensions to the extensions list
             requiredExtensionNames[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 
             uint8_t validationLayersEnabled = 0;
+            const char* layerNameRef[2] = { VALIDATION_LAYER_NAME, "VK_LAYER_KHRONOS_synchronization2" };
             VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
             if(EnableInstanceValidation(debugMessengerInfo))
             {
                 // The debug messenger needs to be referenced by the instance
                 instanceInfo.pNext = &debugMessengerInfo;
-                // The validation layers need to be passed to the layer name as well
-                instanceInfo.enabledLayerCount = 1;
-                const char* layerNameRef = VALIDATION_LAYER_NAME;
-                instanceInfo.ppEnabledLayerNames = &layerNameRef;
+
+                // If the layer for synchronization 2 is found enable that as well
+                if (EnabledInstanceSynchronizationValidation())
+                    instanceInfo.enabledLayerCount = 2;
+                // If not just enables the other one
+                else
+                    instanceInfo.enabledLayerCount = 1;
+
+
+                instanceInfo.ppEnabledLayerNames = layerNameRef;
                 validationLayersEnabled = 1;
             }
 
@@ -243,6 +267,7 @@ namespace BlitzenVulkan
         if(res != VK_SUCCESS)
             return 0;
 
+        // If validation layers are request and they were succesfully found in the VkInstance earlier, the debug messenger is created
         #if BLITZEN_VULKAN_VALIDATION_LAYERS
             if(validationLayersEnabled)
                 CreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, pDM);
@@ -278,15 +303,42 @@ namespace BlitzenVulkan
         
         // Create the debug messenger
         debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
         debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
         VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
         debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
         VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+        // Debug messenger callback function defined at the top of this file
         debugMessengerInfo.pfnUserCallback = debugCallback;
+
         debugMessengerInfo.pNext = nullptr;// Not using this right now
         debugMessengerInfo.pUserData = nullptr; // Not using this right now
 
         return 1;
+    }
+
+    uint8_t EnabledInstanceSynchronizationValidation()
+    {
+        // Getting all supported validation layers
+        uint32_t availableLayerCount = 0;
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
+        BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
+
+        // Checking if the requested validation layers are supported
+        uint8_t layersFound = 0;
+        for (size_t i = 0; i < availableLayers.GetSize(); i++)
+        {
+            if (!strcmp(availableLayers[i].layerName, "VK_LAYER_KHRONOS_synchronization2"))
+            {
+                layersFound = 1;
+                break;
+            }
+        }
+
+        return layersFound;
     }
 
     uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 

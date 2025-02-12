@@ -280,6 +280,8 @@ namespace BlitzenVulkan
     // Checks if the requested validation layers are supported
     uint8_t EnableInstanceValidation(VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo);
 
+    uint8_t EnabledInstanceSynchronizationValidation();
+
     uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
     VulkanStats& stats);
 

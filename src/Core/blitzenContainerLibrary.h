@@ -258,7 +258,8 @@ namespace BlitCL
 
     template<typename T, // The type of pointer stored
     BlitzenCore::AllocationType A = BlitzenCore::AllocationType::SmartPointer, // The allocation type that the allocator should keep track of
-    typename Ret = void> // The type that the custom destructor returns>
+    typename Ret = void, // The type that the custom destructor returns>
+    typename... P>
     class SmartPointer
     {
     public:
@@ -277,6 +278,13 @@ namespace BlitCL
                 // Redirect the pointer, in case the user wants to use it again
                 pDataToCopy = m_pData;
             }
+
+            m_customDestructor = customDestructor;
+        }
+
+        SmartPointer(DstrPfn customDestructor, P&... params)
+        {
+            m_pData = BlitzenCore::BlitCOnstructAlloc<T>(A, params...);
 
             m_customDestructor = customDestructor;
         }

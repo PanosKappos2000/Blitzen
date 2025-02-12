@@ -39,11 +39,11 @@ namespace BlitzenCore
     void LogFree(AllocationType alloc, size_t size);
 
     // This allocation function calls the constructor of the object that gets allocated(the constructor must have no parameters)
-    template<typename T> 
-    T* BlitConstructAlloc(AllocationType alloc)
+    template<typename T, typename... P> 
+    T* BlitConstructAlloc(AllocationType alloc, P&... params)
     {
         LogAllocation(alloc, sizeof(T));
-        return new T();
+        return new T(params...);
     }
 
     // This free function calls the constructor of the object that get freed
