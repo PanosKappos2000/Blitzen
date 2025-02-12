@@ -679,7 +679,7 @@ namespace BlitzenEngine
             mat.normalTag =
             cgltf_mat.normal_texture.texture ? 
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.normal_texture.texture))
-            : static_cast<uint32_t>(previousTextureSize + 0);
+            : 0;
 
             mat.specularTag = 
             cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ? 

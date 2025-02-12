@@ -24,7 +24,9 @@ void main()
 
     vec4 albedoMap = texture(textures[nonuniformEXT(material.albedoTag)], uv);
     
-    vec3 normalMap = texture(textures[nonuniformEXT(material.normalTag)], uv).rgb * 2 - 1;
+    vec3 normalMap = vec3(0, 0, 1);
+    if(material.normalTag != 0)
+        normalMap = texture(textures[nonuniformEXT(material.normalTag)], uv).rgb * 2 - 1;
 
     vec3 emissiveMap = vec3(0.0);
     if(material.albedoTag != 0)
@@ -34,9 +36,13 @@ void main()
 	vec3 nrm = normalize(normalMap.r * tangent.xyz + normalMap.g * bitangent + normalMap.b * normal);
 	float ndotl = max(dot(nrm, normalize(vec3(-1, 1, -1))), 0.0);
 
-    // Not optimal but I am going to keep this for the moment
+    // The if statement is a bad idea but I am keeping it for the time being
     if(materialTag != 0)
         outColor = albedoMap * sqrt(ndotl + 0.05);
     else
         outColor = vec4(normal * sqrt(ndotl + 0.05), 1);
+
+    /*// Bad for performance and does not do anything for now, will be fixed later
+    if(albedoMap.a < 0.5)
+        discard;*/
 }
