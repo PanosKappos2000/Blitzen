@@ -17,11 +17,11 @@ layout(location = 4) out vec3 outModel;
 void main()
 {
     // Access the current vertex
-    Vertex vertex = bufferAddrs.vertexBuffer.vertices[gl_VertexIndex];
+    Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
 
     // Access the current object data
-    RenderObject object = bufferAddrs.objectBuffer.objects[bufferAddrs.indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
-    MeshInstance transform = bufferAddrs.transformBuffer.instances[object.meshInstanceId];
+    RenderObject object = objectBuffer.objects[indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
+    Transform transform = transformBuffer.instances[object.meshInstanceId];
 
     // Calculate the model position by using the current transform data(the model position will be passed to the fragment shader and for gl_position)
     vec3 modelPosition = RotateQuat(vertex.position, transform.orientation) * transform.scale + transform.pos;
@@ -31,7 +31,7 @@ void main()
     // Create a vec2 from the uvMap halfFloats to be passed to the fragment shader
     outUv = vec2(float(vertex.uvX), float(vertex.uvY));
 
-    outMaterialTag = bufferAddrs.surfaceBuffer.surfaces[object.surfaceId].materialTag;
+    outMaterialTag = surfaceBuffer.surfaces[object.surfaceId].materialTag;
     
     // Unpack surface normals
     vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ) / 127.0 - 1.0;

@@ -20,7 +20,7 @@ layout (location = 0) out vec4 outColor;
 void main()
 {
     // Get the material from the material buffer based on the material tag that was passed from the vertex shader
-    Material material = bufferAddrs.materialBuffer.materials[materialTag];
+    Material material = materialBuffer.materials[materialTag];
 
     vec4 albedoMap = texture(textures[nonuniformEXT(material.albedoTag)], uv);
     

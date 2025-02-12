@@ -11,11 +11,11 @@ struct Vertex
 };
 
 // This is the single vertex buffer for the main graphics pipeline, accessed by draw indirect through index offset, index count and vertex offset
-layout(buffer_reference, std430) readonly buffer VertexBuffer
+layout(set = 0, binding = 1, std430) readonly buffer VertexBuffer
 {
     // An array of vertices of undefined size
     Vertex vertices[];
-};
+}vertexBuffer;
 
 // Meshlet used in the mesh shader to draw a surface or mesh
 struct Meshlet
@@ -34,15 +34,15 @@ struct Meshlet
 };
 
 // The single buffer that holds all meshlet data in the scene
-layout(buffer_reference, std430) readonly buffer MeshletBuffer
+layout(set = 0, binding = 12, std430) readonly buffer MeshletBuffer
 {
     Meshlet meshlets[];
-};
+}meshletBuffer;
 
-layout(buffer_reference, std430) readonly buffer MeshletDataBuffer
+layout(set = 0, binding = 13, std430) readonly buffer MeshletDataBuffer
 {
     uint data[];
-};
+}meshletDataBuffer;
 
 // Holds a specific level of detail's index offset and count (as well as the according data for mesh shaders)
 struct MeshLod
@@ -75,10 +75,10 @@ struct Surface
     uint materialTag;
 };
 
-layout(buffer_reference, std430) readonly buffer SurfaceBuffer
+layout(set = 0, binding = 11, std430) readonly buffer SurfaceBuffer
 {
     Surface surfaces[];
-};
+}surfaceBuffer;
 
 // Draw indirect struct. Accessed by the vkCmdDrawIndexedIndirectCount command, but also written into by the culling compute shader
 struct IndirectDraw
@@ -109,39 +109,27 @@ struct IndirectTask
 // The below are the same buffer but it is defined differently in the compute pipeline
 // This will be the final buffer used by vkCmdDrawIndexedIndirect and will be filled by a compute shader after doing culling and other operations
 #ifdef COMPUTE_PIPELINE
-    layout(buffer_reference, std430) writeonly buffer IndirectDrawBuffer
+    layout(set = 0, binding = 7, std430) writeonly buffer IndirectDrawBuffer
     {
         IndirectDraw draws[];
-    };
+    }indirectDrawBuffer;
 
-    layout(buffer_reference, std430) writeonly buffer IndirectTasksBuffer
+    layout(set = 0, binding = 8, std430) writeonly buffer IndirectTasksBuffer
     {
         IndirectTask tasks[];
-    };
+    }indirectTaskBuffer;
 #else
     // In the graphics pipeline, this needs to be accessed to retrieve the object ID
-    layout(buffer_reference, std430) readonly buffer IndirectDrawBuffer
+    layout(set = 0, binding = 7, std430) readonly buffer IndirectDrawBuffer
     {
         IndirectDraw draws[];
-    };
+    }indirectDrawBuffer;
 
-    layout(buffer_reference, std430) readonly buffer IndirectTasksBuffer
+    layout(set = 0, binding = 8, std430) readonly buffer IndirectTasksBuffer
     {
         IndirectTask tasks[];
-    };
+    }indirectTaskBuffer;
 #endif
-
-// The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
-// Will be incremented when necessary by a compute shader
-layout(buffer_reference, std430) writeonly buffer IndirectCount
-{
-    uint drawCount;
-};
-
-layout(buffer_reference, std430) buffer VisibilityBuffer
-{
-    uint visibilities[];
-};
 
 // Every possible draw call has one of these structs
 struct RenderObject
@@ -151,22 +139,22 @@ struct RenderObject
 };
 
 // Holds an array of the above structs for every object in the scene. Passed to the GPU during load. Accessed using the objectId in the FinalIndirect buffer
-layout(buffer_reference, std430) readonly buffer ObjectBuffer
+layout(set = 0, binding = 4, std430) readonly buffer ObjectBuffer
 {
     RenderObject objects[];
-};
+}objectBuffer;
 
-struct MeshInstance
+struct Transform
 {
     vec3 pos;
     float scale;
     vec4 orientation;
 };
 
-layout(buffer_reference, std430) readonly buffer MeshInstanceBuffer
+layout(set = 0, binding = 5, std430) readonly buffer TransformBuffer
 {
-    MeshInstance instances[];
-};
+    Transform instances[];
+}transformBuffer;
 
 // Holds data that defines the material of a surface
 struct Material
@@ -184,10 +172,10 @@ struct Material
     uint materialId;
 };
 
-layout (buffer_reference, std430) readonly buffer MaterialBuffer
+layout (set = 0, binding = 6, std430) readonly buffer MaterialBuffer
 {
     Material materials[];
-};
+}materialBuffer;
 
 // This holds global shader data passed to the GPU at the start of each frame
 layout(set = 0, binding = 0) uniform ShaderData
@@ -201,43 +189,6 @@ layout(set = 0, binding = 0) uniform ShaderData
 
     vec3 viewPosition;// Needed for lighting calculations
 }shaderData;
-
-// Holds the address of every buffer that needs to be accessed in the shader and is passed to the GPU as uniform buffer at the start of each frame
-layout(set = 0, binding = 1) uniform BufferAddrs
-{
-    // Global Vertex buffer address
-    VertexBuffer vertexBuffer;
-
-    // Render object buffer(accessed by vertex shader and compute shaders)
-    ObjectBuffer objectBuffer;
-
-    // Material buffer (accessed by fragment shader)
-    MaterialBuffer materialBuffer;
-
-    // meshlet buffer (accessed by mesh shader)
-    MeshletBuffer meshletBuffer;
-
-    // Meshlet data buffer (accessed by mesh shader)
-    MeshletDataBuffer meshletDataBuffer;
-
-    // Initial indirect data buffer (accessed by compute to create the final indirect buffer)
-    SurfaceBuffer surfaceBuffer;
-
-    // Accessed by compute and vertex shader
-    MeshInstanceBuffer transformBuffer;
-
-    // Accessed by compute, vertex shader and the cpu when command recording for vkCmdDrawIndexedIndirectCount
-    IndirectDrawBuffer indirectDrawBuffer;
-
-    // Accessed by compute, mesh shader, task shader and the cpu when command recording for vkCmdDrawMeshTasksIndirectCountEXT
-    IndirectTasksBuffer indirectTaskBuffer;
-
-    // Incremented by compute and used by vkCmdDrawIndexedIndirectCount
-    IndirectCount indirectCount;
-    
-    // Accessed by compute, and each element switched to 1 or 0 based on culling test results
-    VisibilityBuffer visibilityBuffer;
-}bufferAddrs;
 
 // This function is used in every vertex shader invocation to give the object its orientation
 vec3 RotateQuat(vec3 v, vec4 quat)

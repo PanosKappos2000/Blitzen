@@ -20,12 +20,12 @@ void main()
     uint threadIndex = gl_LocalInvocationID.x;
 	uint meshletGroupIndex = gl_WorkGroupID.x;
 
-	uint drawId = bufferAddrs.indirectDrawBuffer.draws[gl_DrawIDARB].objectId;
-    RenderObject currentObject = bufferAddrs.objectBuffer.objects[drawId];
-	MeshInstance meshDraw = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
-    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
+	uint drawId = indirectDrawBuffer.draws[gl_DrawIDARB].objectId;
+    RenderObject currentObject = objectBuffer.objects[drawId];
+	Transform meshDraw = transformBuffer.instances[currentObject.meshInstanceId];
+    Surface currentSurface = surfaceBuffer.surfaces[currentObject.surfaceId];
 
-    uint meshletIndex = meshletGroupIndex * 32 + threadIndex + bufferAddrs.indirectTaskBuffer.tasks[gl_DrawIDARB].taskId;
+    uint meshletIndex = meshletGroupIndex * 32 + threadIndex + indirectTaskBuffer.tasks[gl_DrawIDARB].taskId;
 
     payload.drawId = drawId;
     payload.meshletIndices[threadIndex] = meshletIndex;

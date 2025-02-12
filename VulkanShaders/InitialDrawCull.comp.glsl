@@ -21,13 +21,13 @@ void main()
         return;
 
     // This culling shader also returns if the current object was not visible last frame
-    if(bufferAddrs.visibilityBuffer.visibilities[objectIndex] == 0)
+    if(visibilityBuffer.visibilities[objectIndex] == 0)
         return;
 
     // Gets the current object using the global invocation ID. It also retrieves the surface that the objects points to and the transform data
-    RenderObject currentObject = bufferAddrs.objectBuffer.objects[objectIndex];
-    MeshInstance currentInstance = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
-    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
+    RenderObject currentObject = objectBuffer.objects[objectIndex];
+    Transform currentInstance = transformBuffer.instances[currentObject.meshInstanceId];
+    Surface currentSurface = surfaceBuffer.surfaces[currentObject.surfaceId];
 
     // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
     vec3 center = RotateQuat(currentSurface.center, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
@@ -50,7 +50,7 @@ void main()
     if(visible)
     {
         // With each element that is added to the draw list, increment the count buffer
-        uint drawIndex = atomicAdd(bufferAddrs.indirectCount.drawCount, 1);
+        uint drawIndex = atomicAdd(indirectCountBuffer.drawCount, 1);
 
         // The lod index is declared here. if LODs are not enabled the most detailed version of an object will be used by default
         uint lodIndex = 0;
@@ -72,14 +72,14 @@ void main()
         MeshLod currentLod = currentSurface.lod[lodIndex];
 
         // The object index is needed to know which element to access in the per object data buffer
-        bufferAddrs.indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
+        indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
 
         // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface
-        bufferAddrs.indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
-        bufferAddrs.indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
-        bufferAddrs.indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
-        bufferAddrs.indirectDrawBuffer.draws[drawIndex].vertexOffset = currentSurface.vertexOffset;
-        bufferAddrs.indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
+        indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
+        indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
+        indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
+        indirectDrawBuffer.draws[drawIndex].vertexOffset = currentSurface.vertexOffset;
+        indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
 
         // Indirect task commands
         /*bufferAddrs.indirectTaskBuffer.tasks[drawIndex].taskId = currentLod.firstMeshlet;

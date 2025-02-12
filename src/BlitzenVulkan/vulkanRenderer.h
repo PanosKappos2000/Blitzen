@@ -101,9 +101,6 @@ namespace BlitzenVulkan
         // Holds an array of integers with an element for each object. The integer is 0 or 1, depending on if the associated object was visible last frame
         AllocatedBuffer drawVisibilityBuffer;
 
-        // Holds the addresses of each one of the above buffers(except global shader data buffer)
-        BufferDeviceAddresses bufferAddresses;
-
         // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
         VkDescriptorPool textureDescriptorPool;
         VkDescriptorSetLayout textureDescriptorSetlayout;
