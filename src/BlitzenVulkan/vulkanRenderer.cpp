@@ -39,26 +39,28 @@ namespace BlitzenVulkan
             VarBuffers& buffers = m_varBuffers[i];
 
             // Tries to create the global shader data uniform buffer
-            if(!CreateBuffer(m_allocator, buffers.globalShaderDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            if(!CreateBuffer(m_allocator, buffers.globalShaderDataBuffer.buffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(BlitzenEngine::GlobalShaderData), VMA_ALLOCATION_CREATE_MAPPED_BIT))
                 return 0;
             // If everything went fine, get the persistent mapped pointer to the buffer
-            buffers.pGlobalShaderData = reinterpret_cast<BlitzenEngine::GlobalShaderData*>(
-            buffers.globalShaderDataBuffer.allocation->GetMappedData());
-
-            // Tries to create the culling data uniform buffer
-            if(!CreateBuffer(m_allocator, buffers.bufferDeviceAddrsBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(BufferDeviceAddresses), VMA_ALLOCATION_CREATE_MAPPED_BIT))
-                return 0;
-            // If everything went fine, get the persistent mapped pointer to the buffer
-            buffers.pBufferAddrs = reinterpret_cast<BufferDeviceAddresses*>(buffers.bufferDeviceAddrsBuffer.allocation->GetMappedData());
+            buffers.globalShaderDataBuffer.pData = reinterpret_cast<BlitzenEngine::GlobalShaderData*>(
+            buffers.globalShaderDataBuffer.buffer.allocation->GetMappedData());
+            // Creates the VkWriteDescriptor for this buffer here, as it will reamain constant 
+            WriteBufferDescriptorSets(buffers.globalShaderDataBuffer.descriptorWrite, buffers.globalShaderDataBuffer.bufferInfo, 
+            buffers.globalShaderDataBuffer.descriptorType, buffers.globalShaderDataBuffer.descriptorBinding, 
+            buffers.globalShaderDataBuffer.buffer.buffer);
 
             // Tries create the buffer address uniform buffer
-            if(!CreateBuffer(m_allocator, buffers.cullingDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            if(!CreateBuffer(m_allocator, buffers.cullingDataBuffer.buffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             sizeof(BlitzenEngine::CullingData), VMA_ALLOCATION_CREATE_MAPPED_BIT))
                 return 0;
             // If everything went fine, get the persistent mapped pointer to the buffer
-            buffers.pCullingData = reinterpret_cast<BlitzenEngine::CullingData*>(buffers.cullingDataBuffer.allocation->GetMappedData());
+            buffers.cullingDataBuffer.pData = reinterpret_cast<BlitzenEngine::CullingData*>(
+            buffers.cullingDataBuffer.buffer.allocation->GetMappedData());
+            // Creates the VkWriteDescriptor for this buffer here, as it will remain constant
+            WriteBufferDescriptorSets(buffers.cullingDataBuffer.descriptorWrite, buffers.cullingDataBuffer.bufferInfo, 
+            buffers.cullingDataBuffer.descriptorType, buffers.cullingDataBuffer.descriptorBinding, 
+            buffers.cullingDataBuffer.buffer.buffer);
         }
 
         return 1;
@@ -82,79 +84,86 @@ namespace BlitzenVulkan
         // If mesh shaders are used the bindings needs to be accessed by mesh shaders, otherwise they will be accessed by vertex shader stage
         if(m_stats.meshShaderSupport)
         {
-            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, m_varBuffers[0].globalShaderDataBuffer.descriptorBinding, 
+            1, m_varBuffers[0].globalShaderDataBuffer.descriptorType, 
             VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-            CreateDescriptorSetLayoutBinding(vertexBufferBinding, 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
+            CreateDescriptorSetLayoutBinding(vertexBufferBinding, m_currentStaticBuffers.vertexBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.vertexBuffer.descriptorType, 
             VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_TASK_BIT_EXT);
 
-            CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, 8, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
+            CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.indirectTaskBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
             
-            CreateDescriptorSetLayoutBinding(surfaceBufferBinding, 11, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
+            CreateDescriptorSetLayoutBinding(surfaceBufferBinding, m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.surfaceBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
+
+            CreateDescriptorSetLayoutBinding(meshletBufferBinding, m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.meshletBuffer.descriptorType, 
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
 
-            CreateDescriptorSetLayoutBinding(meshletBufferBinding, 12, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
-
-            CreateDescriptorSetLayoutBinding(meshletDataBinding, 13, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
+            CreateDescriptorSetLayoutBinding(meshletDataBinding, m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.meshletDataBuffer.descriptorType, 
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT);
         }
         else
         {
-            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+            CreateDescriptorSetLayoutBinding(shaderDataLayoutBinding, m_varBuffers[0].globalShaderDataBuffer.descriptorBinding,
+            1, m_varBuffers[0].globalShaderDataBuffer.descriptorType, 
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-            CreateDescriptorSetLayoutBinding(vertexBufferBinding, 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-            VK_SHADER_STAGE_VERTEX_BIT);
+            CreateDescriptorSetLayoutBinding(vertexBufferBinding, m_currentStaticBuffers.vertexBuffer.descriptorBinding, 1, 
+            m_currentStaticBuffers.vertexBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT);
 
             // This is never used if mesh shading is not supported, this is simply a placeholder
-            CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, 8, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.indirectTaskBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
+
+            CreateDescriptorSetLayoutBinding(surfaceBufferBinding, m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.surfaceBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
+
+            CreateDescriptorSetLayoutBinding(meshletBufferBinding, m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.meshletBuffer.descriptorType, 
             VK_SHADER_STAGE_COMPUTE_BIT);
 
-            CreateDescriptorSetLayoutBinding(surfaceBufferBinding, 11, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
-
-            CreateDescriptorSetLayoutBinding(meshletBufferBinding, 12, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-            VK_SHADER_STAGE_COMPUTE_BIT);
-
-            CreateDescriptorSetLayoutBinding(meshletDataBinding, 13, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-            VK_SHADER_STAGE_COMPUTE_BIT);
+            CreateDescriptorSetLayoutBinding(meshletDataBinding, m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
+            1, m_currentStaticBuffers.meshletDataBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
         }
 
-        // Binding for the push descriptor layout, used by culling shaders to do occlusion and frustum culling 
+        // Sets the binding for the culling data
         VkDescriptorSetLayoutBinding cullingDataLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(cullingDataLayoutBinding, 2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-        VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(cullingDataLayoutBinding, m_varBuffers[0].cullingDataBuffer.descriptorBinding, 
+        1, m_varBuffers[0].cullingDataBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        // Binding for the push descriptor layout, used by culling shaders to access the depth pyramid
+        // Sets the binding for the depth image
         VkDescriptorSetLayoutBinding depthImageBinding{};
         CreateDescriptorSetLayoutBinding(depthImageBinding, 3, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
         VK_SHADER_STAGE_COMPUTE_BIT);
 
+        // Sets the binding for the render object buffer
         VkDescriptorSetLayoutBinding renderObjectBufferBinding{};
-        CreateDescriptorSetLayoutBinding(renderObjectBufferBinding, 4, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(renderObjectBufferBinding, m_currentStaticBuffers.renderObjectBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.renderObjectBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
         VkDescriptorSetLayoutBinding transformBufferBinding{};
-        CreateDescriptorSetLayoutBinding(transformBufferBinding, 5, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(transformBufferBinding, m_currentStaticBuffers.transformBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.renderObjectBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
         VkDescriptorSetLayoutBinding materialBufferBinding{};
-        CreateDescriptorSetLayoutBinding(materialBufferBinding, 6, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-        VK_SHADER_STAGE_FRAGMENT_BIT);
+        CreateDescriptorSetLayoutBinding(materialBufferBinding, m_currentStaticBuffers.materialBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.materialBuffer.descriptorType, VK_SHADER_STAGE_FRAGMENT_BIT);
 
         VkDescriptorSetLayoutBinding indirectDrawBufferBinding{};
-        CreateDescriptorSetLayoutBinding(indirectDrawBufferBinding, 7, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
+        CreateDescriptorSetLayoutBinding(indirectDrawBufferBinding, m_currentStaticBuffers.indirectDrawBuffer.descriptorBinding,
+        1, m_currentStaticBuffers.indirectDrawBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
 
         VkDescriptorSetLayoutBinding indirectDrawCountBinding{};
-        CreateDescriptorSetLayoutBinding(indirectDrawCountBinding, 9, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-        VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(indirectDrawCountBinding, m_currentStaticBuffers.indirectCountBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.indirectCountBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
 
         VkDescriptorSetLayoutBinding visibilityBufferBinding{};
-        CreateDescriptorSetLayoutBinding(visibilityBufferBinding, 10, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 
-        VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(visibilityBufferBinding, m_currentStaticBuffers.visibilityBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.visibilityBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
         
         // All bindings combined to create the global shader data descriptor set layout
         VkDescriptorSetLayoutBinding shaderDataBindings[14] = {shaderDataLayoutBinding, vertexBufferBinding, 
@@ -266,17 +275,17 @@ namespace BlitzenVulkan
 
     uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources)
     {
-        // Creates the uniform buffers
-        if(!VarBuffersInit())
-        {
-            BLIT_ERROR("Failed to create uniform buffers")
-            return 0;
-        }
-
         // Creates all know descriptor layouts for all known pipelines
         if(!CreateDescriptorLayouts())
         {
             BLIT_ERROR("Failed to create descriptor set layouts")
+            return 0;
+        }
+
+        // Creates the uniform buffers
+        if(!VarBuffersInit())
+        {
+            BLIT_ERROR("Failed to create uniform buffers")
             return 0;
         }
 
@@ -343,10 +352,9 @@ namespace BlitzenVulkan
             return 0;
         // Creates a staging buffer to hold the vertex data and pass it to the vertex buffer later
         AllocatedBuffer stagingVertexBuffer;
-        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, vertices.Data(), m_currentStaticBuffers.vertexBuffer, 
-        stagingVertexBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexBufferSize);
-        // Checks if the above function failed
-        if(m_currentStaticBuffers.vertexBuffer.buffer == VK_NULL_HANDLE)
+        // Initializes the push descritpor buffer struct that holds the vertex buffer
+        if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.vertexBuffer, stagingVertexBuffer, 
+        vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertices.Data()))
             return 0;
 
         // Creates an index buffer that will hold all the loaded indices
@@ -368,10 +376,8 @@ namespace BlitzenVulkan
             return 0;
         // Creates a staging buffer to hold the render object data and pass it to the render object buffer later
         AllocatedBuffer renderObjectStagingBuffer;
-        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pRenderObjects, m_currentStaticBuffers.renderObjectBuffer, 
-        renderObjectStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, renderObjectBufferSize);
-        // Checks if the above function failed
-        if(m_currentStaticBuffers.renderObjectBuffer.buffer == VK_NULL_HANDLE)
+        if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.renderObjectBuffer, renderObjectStagingBuffer, 
+        renderObjectBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, pRenderObjects))
             return 0;
 
         // Creates an SSBO that will hold all the mesh surfaces / primitives that were loaded to the scene
@@ -380,10 +386,9 @@ namespace BlitzenVulkan
             return 0;
         // Creates a staging buffer that will hold the surface data and pass it to the surface buffer later
         AllocatedBuffer surfaceStagingBuffer;
-        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, surfaces.Data(), m_currentStaticBuffers.surfaceBuffer, 
-        surfaceStagingBuffer, VK_BUFFER_USAGE_TRANSFER_DST_BIT |VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, surfaceBufferSize);
-        // Checks if the above function failed
-        if(m_currentStaticBuffers.surfaceBuffer.buffer == VK_NULL_HANDLE)
+        // Initializes the push descriptor buffer that holds the surface buffer
+        if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.surfaceBuffer, surfaceStagingBuffer, 
+        surfaceBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, surfaces.Data()))
             return 0;
 
         // Creates an SSBO that will hold all the materials that were loaded for the scene
@@ -392,10 +397,9 @@ namespace BlitzenVulkan
             return 0;
         // Creates a staging buffer that will hold the material data and pass it to the material buffer later
         AllocatedBuffer materialStagingBuffer; 
-        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pMaterials, m_currentStaticBuffers.globalMaterialBuffer, 
-        materialStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, materialBufferSize);
-        // Checks if the above function failed
-        if(m_currentStaticBuffers.globalMaterialBuffer.buffer == VK_NULL_HANDLE)
+        // Initializes the push descriptor buffer that holds the material buffer
+        if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.materialBuffer, materialStagingBuffer, 
+        materialBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, pMaterials))
             return 0;
 
         // Create an SSBO that will hold all the object transforms that were loaded for the scene
@@ -404,10 +408,8 @@ namespace BlitzenVulkan
             return 0;
         // Creates a staging buffer that will hold the transform data and pass it to the transform buffer later
         AllocatedBuffer transformStagingBuffer; 
-        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, transforms.Data(), m_currentStaticBuffers.transformBuffer, 
-        transformStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, transformBufferSize);
-        // Checks if the above function failed
-        if(m_currentStaticBuffers.transformBuffer.buffer == VK_NULL_HANDLE)
+        if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.transformBuffer, transformStagingBuffer, 
+        transformBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, transforms.Data()))
             return 0;
 
         // Creates an SSBO that will hold all clusters / meshlets that were loaded for the scene
@@ -416,10 +418,9 @@ namespace BlitzenVulkan
             return 0;
         // Creates a staging buffer that will hold the cluster data and pass it to the cluster buffer later
         AllocatedBuffer meshletStagingBuffer;
-        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, meshlets.Data(), m_currentStaticBuffers.meshletBuffer, 
-        meshletStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, meshletBufferSize);
-        // Checks if the above function failed
-        if(m_currentStaticBuffers.meshletBuffer.buffer == VK_NULL_HANDLE)
+        // Initializes the push descriptor buffer that holds the meshlet buffer
+        if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.meshletBuffer, meshletStagingBuffer, 
+        meshletBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, meshlets.Data()))
             return 0;
 
         // Creates an SSBO that will hold all the meshlet indices to the index buffer
@@ -428,39 +429,41 @@ namespace BlitzenVulkan
             return 0;
         // Creates a staging buffer that will hold the meshlet indices and pass it to meshlet data buffer later
         AllocatedBuffer meshletDataStagingBuffer;
-        CreateStorageBufferWithStagingBuffer(m_allocator, m_device, meshletData.Data(), m_currentStaticBuffers.meshletDataBuffer, 
-        meshletDataStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, meshletDataBufferSize);
-        // Checks if the above function failed
-        if(m_currentStaticBuffers.meshletDataBuffer.buffer == VK_NULL_HANDLE)
+        // Initializes the push descriptor buffer that holds the meshlet data buffer
+        if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer, 
+        meshletDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, meshletData.Data()))
             return 0;
 
         // Creates the buffer that will hold the indirect draw commands. It is set as an SSBO as well so that it can be written by the culling shaders
         VkDeviceSize indirectDrawBufferSize = sizeof(IndirectDrawData) * renderObjectCount;
         if(indirectDrawBufferSize == 0)
             return 0;
-        if(!CreateBuffer(m_allocator, m_currentStaticBuffers.indirectDrawBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, indirectDrawBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        // Initializes the push descriptor buffer that holds the indirect draw buffer
+        if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, m_currentStaticBuffers.indirectDrawBuffer, 
+        indirectDrawBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
             return 0;
 
         // This is the same thing as the above but for mesh shaders, which do not work for the time being
         VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
-        if(!CreateBuffer(m_allocator, m_currentStaticBuffers.indirectTaskBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, indirectTaskBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        if(indirectTaskBufferSize == 0)
+            return 0;
+        // Initializes the push descriptor buffer that holds the indirect task buffer
+        if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, m_currentStaticBuffers.indirectTaskBuffer, 
+        indirectTaskBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
             return 0;
 
-        // Creates an SSBO that will hold one integer that indicates the amount of draw commands created by the culling shaders
-        if(!CreateBuffer(m_allocator, m_currentStaticBuffers.drawIndirectCountBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, sizeof(uint32_t), 
-        VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        // Initializes the push descriptor buffer that holds the indirect count buffer
+        if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, m_currentStaticBuffers.indirectCountBuffer, 
+        sizeof(uint32_t), VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
             return 0;
 
         // Creates an SSBO that will hold one integer for each object indicating if they were visible or not on the previous frame
         VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * renderObjectCount;
         if(visibilityBufferSize == 0)
             return 0;
-        if(!CreateBuffer(m_allocator, m_currentStaticBuffers.drawVisibilityBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY, visibilityBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            return 0;
+        if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, m_currentStaticBuffers.visibilityBuffer, 
+        visibilityBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+                return 0;
 
         VkCommandBuffer& commandBuffer = m_frameToolsList[0].commandBuffer;
 
@@ -469,7 +472,7 @@ namespace BlitzenVulkan
 
         // Copies the data held by the staging buffer to the vertex buffer
         CopyBufferToBuffer(commandBuffer, stagingVertexBuffer.buffer, 
-        m_currentStaticBuffers.vertexBuffer.buffer, vertexBufferSize, 
+        m_currentStaticBuffers.vertexBuffer.buffer.buffer, vertexBufferSize, 
         0, 0);
 
         // Copies the index data held by the staging buffer to the index buffer
@@ -479,35 +482,35 @@ namespace BlitzenVulkan
 
         // Copies the render object data held by the staging buffer to the render object buffer
         CopyBufferToBuffer(commandBuffer, renderObjectStagingBuffer.buffer, 
-        m_currentStaticBuffers.renderObjectBuffer.buffer, renderObjectBufferSize, 
+        m_currentStaticBuffers.renderObjectBuffer.buffer.buffer, renderObjectBufferSize, 
         0, 0);
 
         // Copies the surface data held by the staging buffer to the surface buffer
         CopyBufferToBuffer(commandBuffer, surfaceStagingBuffer.buffer, 
-        m_currentStaticBuffers.surfaceBuffer.buffer, surfaceBufferSize, 
+        m_currentStaticBuffers.surfaceBuffer.buffer.buffer, surfaceBufferSize, 
         0, 0);
 
         // Copies the material data held by the staging buffer to the material buffer
         CopyBufferToBuffer(commandBuffer, materialStagingBuffer.buffer, 
-        m_currentStaticBuffers.globalMaterialBuffer.buffer, materialBufferSize, 
+        m_currentStaticBuffers.materialBuffer.buffer.buffer, materialBufferSize, 
         0, 0);
 
         // Copies the transform data held by the staging buffer to the transform buffer
         CopyBufferToBuffer(commandBuffer, transformStagingBuffer.buffer,
-        m_currentStaticBuffers.transformBuffer.buffer, transformBufferSize, 
+        m_currentStaticBuffers.transformBuffer.buffer.buffer, transformBufferSize, 
         0, 0);
 
         // Copies the cluster data held by the staging buffer to the meshlet buffer
         CopyBufferToBuffer(commandBuffer, meshletStagingBuffer.buffer, 
-        m_currentStaticBuffers.meshletBuffer.buffer, meshletBufferSize, 
+        m_currentStaticBuffers.meshletBuffer.buffer.buffer, meshletBufferSize, 
         0, 0);
 
         CopyBufferToBuffer(commandBuffer, meshletDataStagingBuffer.buffer, 
-        m_currentStaticBuffers.meshletDataBuffer.buffer, meshletDataBufferSize, 
+        m_currentStaticBuffers.meshletDataBuffer.buffer.buffer, meshletDataBufferSize, 
         0, 0);
 
         // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
-        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.drawVisibilityBuffer.buffer, 0, visibilityBufferSize, 0);
+        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.visibilityBuffer.buffer.buffer, 0, visibilityBufferSize, 0);
         
         // Submit the commands and wait for the queue to finish
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
@@ -577,58 +580,34 @@ namespace BlitzenVulkan
             cullData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
         }
 
-        // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
-        VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
-        VkWriteDescriptorSet globalShaderDataWrite{};
-        WriteBufferDescriptorSets(globalShaderDataWrite, globalShaderDataDescriptorBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        VK_NULL_HANDLE, 0, 1, vBuffers.globalShaderDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+        // Transparent objects will only be renderered on the 2nd pass
+        cullData.postPass = 0;
 
-        // Write to the buffer address binding (binding 1) of the uniform buffer descriptor set
-        VkDescriptorBufferInfo vertexBufferInfo{};
-        VkWriteDescriptorSet vertexBufferWrite{};
-        WriteBufferDescriptorSets(vertexBufferWrite, vertexBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        1, 1, m_currentStaticBuffers.vertexBuffer.buffer, 0, VK_WHOLE_SIZE);
+        // This descriptor write will be given to pushDescriptors before the graphics pipeline is called
+        VkWriteDescriptorSet pushDescriptorWritesGraphics[7] = {
+        vBuffers.globalShaderDataBuffer.descriptorWrite, 
+        m_currentStaticBuffers.vertexBuffer.descriptorWrite, 
+        m_currentStaticBuffers.renderObjectBuffer.descriptorWrite, 
+        m_currentStaticBuffers.transformBuffer.descriptorWrite, 
+        m_currentStaticBuffers.materialBuffer.descriptorWrite, 
+        m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite, 
+        m_currentStaticBuffers.surfaceBuffer.descriptorWrite};
 
-        // Create the write stuct for the culling data binding (binding 2) of the uniform buffer descriptor set
-        VkDescriptorBufferInfo cullingDataBufferInfo{};
-        VkWriteDescriptorSet cullingDataWrite{};
-        WriteBufferDescriptorSets(cullingDataWrite, cullingDataBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_NULL_HANDLE, 
-        2, 1, vBuffers.cullingDataBuffer.buffer, 0, VK_WHOLE_SIZE);
+        // The depth pyramid write will not be used in the first pass culling shader. It will later be set by the late culling shader
+        VkDescriptorImageInfo depthPyramidImageInfo{};
+        VkWriteDescriptorSet depthPyramidWrite{};
 
-        VkDescriptorBufferInfo renderObjectBufferInfo{};
-        VkWriteDescriptorSet renderObjectBufferWrite{};
-        WriteBufferDescriptorSets(renderObjectBufferWrite, renderObjectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        4, 1, m_currentStaticBuffers.renderObjectBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-        VkDescriptorBufferInfo transformBufferInfo{};
-        VkWriteDescriptorSet transformBufferWrite{};
-        WriteBufferDescriptorSets(transformBufferWrite, transformBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        5, 1, m_currentStaticBuffers.transformBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-        VkDescriptorBufferInfo materialBufferInfo{};
-        VkWriteDescriptorSet materialBufferWrite{};
-        WriteBufferDescriptorSets(materialBufferWrite, materialBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        6, 1, m_currentStaticBuffers.globalMaterialBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-        VkDescriptorBufferInfo indirectBufferInfo{};
-        VkWriteDescriptorSet indirectBufferWrite{};
-        WriteBufferDescriptorSets(indirectBufferWrite, indirectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        7, 1, m_currentStaticBuffers.indirectDrawBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-        VkDescriptorBufferInfo indirectDrawCountInfo{};
-        VkWriteDescriptorSet indirectDrawCountWrite{};
-        WriteBufferDescriptorSets(indirectDrawCountWrite, indirectDrawCountInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        9, 1, m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-        VkDescriptorBufferInfo visibilityBufferInfo{};
-        VkWriteDescriptorSet visibilityBufferWrite{};
-        WriteBufferDescriptorSets(visibilityBufferWrite, visibilityBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        10, 1, m_currentStaticBuffers.drawVisibilityBuffer.buffer, 0, VK_WHOLE_SIZE);
-
-        VkDescriptorBufferInfo surfaceBufferInfo{};
-        VkWriteDescriptorSet surfaceBufferWrite{};
-        WriteBufferDescriptorSets(surfaceBufferWrite, surfaceBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
-        11, 1, m_currentStaticBuffers.surfaceBuffer.buffer, 0, VK_WHOLE_SIZE);
+        // VkWriteDescriptor array that will be used for the push descriptor layout for the culling compute shaders
+        VkWriteDescriptorSet pushDescriptorWritesCompute[9] = {
+        vBuffers.globalShaderDataBuffer.descriptorWrite, 
+        vBuffers.cullingDataBuffer.descriptorWrite, 
+        m_currentStaticBuffers.renderObjectBuffer.descriptorWrite, 
+        m_currentStaticBuffers.transformBuffer.descriptorWrite, 
+        m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite, 
+        m_currentStaticBuffers.indirectCountBuffer.descriptorWrite, 
+        m_currentStaticBuffers.visibilityBuffer.descriptorWrite, 
+        m_currentStaticBuffers.surfaceBuffer.descriptorWrite, 
+        depthPyramidWrite}; 
 
         
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
@@ -636,8 +615,8 @@ namespace BlitzenVulkan
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
 
         // Write the data to the buffer pointers
-        *(vBuffers.pGlobalShaderData) = shaderData;
-        *(vBuffers.pCullingData) = cullData;
+        *(vBuffers.globalShaderDataBuffer.pData) = shaderData;
+        *(vBuffers.cullingDataBuffer.pData) = cullData;
         
 
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
@@ -648,25 +627,15 @@ namespace BlitzenVulkan
         // The commands start being recorder here (stop when submit is called)
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
-        // The depth pyramid write will not be used in the first pass culling shader. It will later be set by the late culling shader
-        VkDescriptorImageInfo depthPyramidImageInfo{};
-        VkWriteDescriptorSet depthPyramidWrite{};
-
-        // Create a new write descriptor set array and add the depth pyramid image info binding to it
-        VkWriteDescriptorSet pushDescriptorWritesCompute[9] = {globalShaderDataWrite, cullingDataWrite, 
-        renderObjectBufferWrite, transformBufferWrite, indirectBufferWrite, indirectDrawCountWrite, visibilityBufferWrite, 
-        surfaceBufferWrite, depthPyramidWrite}; 
-
-        // Push every the shader data, culling data and buffer address uniform buffers to the compute shaders
-        PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
-        0, 8, pushDescriptorWritesCompute);
-
         // Dispatch the compute shader to do early culling 
         //(only perform  frustum culling and LOD selection on objects that were visible on the previous frame)
         DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline, 
-        (cullData.drawCount / 64) + 1, 0);
+        (cullData.drawCount / 64) + 1, 0, pushDescriptorWritesCompute);
 
 
+
+        // The viewport and scissor are dynamic, so they should be set here
+        DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
 
         // Before beginning the first render pass, the rendering attachment need to transition to a suitable layout
         // First the color attachment
@@ -690,28 +659,9 @@ namespace BlitzenVulkan
         VkImageMemoryBarrier2 memoryBarriers[2] = { colorAttachmentTransitionBarrier, depthAttachmentTransitionBarrier };
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, memoryBarriers);
 
-        // Creates info for the color attachment 
-        VkRenderingAttachmentInfo colorAttachmentEarlyPassInfo{};
-        CreateRenderingAttachmentInfo(colorAttachmentEarlyPassInfo, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
-        // Creates info for the depth attachment
-        VkRenderingAttachmentInfo depthAttachmentEarlyPassInfo{};
-        CreateRenderingAttachmentInfo(depthAttachmentEarlyPassInfo, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
-        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, {0.f, 0});
-
-        // Once the barrier is finished with the rendering atatchment, rendering begins
-        BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachmentEarlyPassInfo, 
-        &depthAttachmentEarlyPassInfo, nullptr);
-
-        // The viewport and scissor are dynamic, so they should be set here
-        DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
-
-        VkWriteDescriptorSet pushDescriptorWritesGraphics[7] = {globalShaderDataWrite, 
-        vertexBufferWrite, renderObjectBufferWrite, transformBufferWrite, materialBufferWrite, indirectBufferWrite, 
-        surfaceBufferWrite};
         // Draws the object that passed the first culling compute shader
         // (Specifically the objects that passed frustum culling and were visible last frame)
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount);
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount, 0);
 
         // The first render pass ends here
         vkCmdEndRendering(fTools.commandBuffer);
@@ -787,16 +737,12 @@ namespace BlitzenVulkan
         3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
 
         pushDescriptorWritesCompute[8] = depthPyramidWrite;
-        
-        // Pushes all the previous descriptor bindings + the 
-        PushDescriptors(m_initHandles.instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
-        0, 9, pushDescriptorWritesCompute);
 
         // Dispatches the compute shader to do culling on objects that were not visible last frame. 
         // It will do both occusion and frustum culling and LOD selection
         // It also performs these operations on objects that were visible last frame, but it only updates their visibility buffer
         DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
-        cullData.drawCount / 64 + 1, 1);
+        cullData.drawCount / 64 + 1, 1, pushDescriptorWritesCompute);
 
 
         /*
@@ -810,20 +756,8 @@ namespace BlitzenVulkan
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthAttachmentReadBarrier);
 
-        // Create a rending attachemnt infos for the late render pass
-        VkRenderingAttachmentInfo latePassColorAttachmentInfo{};
-        CreateRenderingAttachmentInfo(latePassColorAttachmentInfo, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
-        VkRenderingAttachmentInfo latePassDepthAttachmentInfo{};
-        CreateRenderingAttachmentInfo(latePassDepthAttachmentInfo, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
-        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE);
-
-        //Start the late render pass
-        BeginRendering(fTools.commandBuffer, m_drawExtent, {0, 0}, 1, &latePassColorAttachmentInfo, 
-        &latePassDepthAttachmentInfo, nullptr);
-
         // Draws the objects that passed the late culling compute shader
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount);
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount, 1);
 
         // End of late render pass
         vkCmdEndRendering(fTools.commandBuffer);
@@ -892,21 +826,24 @@ namespace BlitzenVulkan
     }
 
     void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline,
-    uint32_t groupCountX, uint8_t lateCulling)
+    uint32_t groupCountX, uint8_t lateCulling, VkWriteDescriptorSet* pWrites)
     {
+        PushDescriptors(m_initHandles.instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
+        0, lateCulling ? 9 : 8, pWrites);
+
         // Wait for previous frame later pass to be done with the indirect count buffer before zeroing it
         VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
-        BufferMemoryBarrier(m_currentStaticBuffers.drawIndirectCountBuffer.buffer, waitBeforeZeroingCountBuffer,
+        BufferMemoryBarrier(m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, waitBeforeZeroingCountBuffer,
         VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         PipelineBarrier(commandBuffer, 0, nullptr, 1, &waitBeforeZeroingCountBuffer, 0, nullptr);
 
         // Initialize the indirect count buffer as zero
-        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0, sizeof(uint32_t), 0);
+        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, 0, sizeof(uint32_t), 0);
 
         // Before dispatching the compute shader, create a pipeline barrier so that the buffer is filled with 0, before it's processed
         VkBufferMemoryBarrier2 fillBufferBarrier{};
-        BufferMemoryBarrier(m_currentStaticBuffers.drawIndirectCountBuffer.buffer, fillBufferBarrier, VK_PIPELINE_STAGE_2_TRANSFER_BIT, 
+        BufferMemoryBarrier(m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, fillBufferBarrier, VK_PIPELINE_STAGE_2_TRANSFER_BIT, 
         VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 
         0, VK_WHOLE_SIZE);
         PipelineBarrier(commandBuffer, 0, nullptr, 1, &fillBufferBarrier, 0, nullptr);
@@ -923,8 +860,21 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
     }
 
-    void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount)
+    void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, uint8_t latePass)
     {
+        // Creates info for the color attachment 
+        VkRenderingAttachmentInfo colorAttachmentInfo{};
+        CreateRenderingAttachmentInfo(colorAttachmentInfo, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+        latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
+        // Creates info for the depth attachment
+        VkRenderingAttachmentInfo depthAttachmentInfo{};
+        CreateRenderingAttachmentInfo(depthAttachmentInfo, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
+        latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
+
+        // Render pass begins here, the function expects that proper barriers were setup before
+        BeginRendering(commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachmentInfo, 
+        &depthAttachmentInfo, nullptr);
+
         // Pushes all uniform buffer descriptors but the culling data one to the graphics pipelines
         PushDescriptors(m_initHandles.instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
         m_opaqueGeometryPipelineLayout, 0, 7, pDescriptorWrites);
@@ -940,14 +890,14 @@ namespace BlitzenVulkan
         // Use draw indirect to draw the objects(mesh shading or vertex shader)
         if(m_stats.meshShaderSupport)
         {
-            DrawMeshTasks(m_initHandles.instance, commandBuffer, m_currentStaticBuffers.indirectTaskBuffer.buffer, 
-            offsetof(IndirectTaskData, drawIndirectTasks), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
+            DrawMeshTasks(m_initHandles.instance, commandBuffer, m_currentStaticBuffers.indirectTaskBuffer.buffer.buffer, 
+            offsetof(IndirectTaskData, drawIndirectTasks), m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, 0,
             drawCount, sizeof(IndirectTaskData));
         }
         else
         {
-            vkCmdDrawIndexedIndirectCount(commandBuffer, m_currentStaticBuffers.indirectDrawBuffer.buffer, 
-            offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.drawIndirectCountBuffer.buffer, 0,
+            vkCmdDrawIndexedIndirectCount(commandBuffer, m_currentStaticBuffers.indirectDrawBuffer.buffer.buffer, 
+            offsetof(IndirectDrawData, drawIndirect), m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, 0,
             drawCount, sizeof(IndirectDrawData));
         }
     }

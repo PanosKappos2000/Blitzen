@@ -73,6 +73,8 @@ struct Surface
     uint vertexOffset;
 
     uint materialTag;
+
+    uint8_t postPass;
 };
 
 layout(set = 0, binding = 11, std430) readonly buffer SurfaceBuffer

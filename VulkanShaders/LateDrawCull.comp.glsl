@@ -64,7 +64,8 @@ void main()
 	}
 
     // The late culling shader creates draw commands for the objects that passed late culling and were not tagged as visible last frame
-    if(visible && visibilityBuffer.visibilities[objectIndex] == 0)
+    // It handles transparent objects a little bit differently as this is the only shader that will cull them
+    if(visible && (visibilityBuffer.visibilities[objectIndex] == 0 || cullingData.postPass != 0))
     {
         // With each element that is added to the draw list, increment the count buffer
         uint drawIndex = atomicAdd(indirectCountBuffer.drawCount, 1);

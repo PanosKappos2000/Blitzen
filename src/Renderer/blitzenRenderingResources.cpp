@@ -790,6 +790,9 @@ namespace BlitzenEngine
                 {
                     pResources->surfaces.Back().materialId = 
                     pResources->materials[previousMaterialCount + cgltf_material_index(pData, prim.material)].materialId;
+
+                    if(prim.material->alpha_mode != cgltf_alpha_mode_opaque)
+                        pResources->surfaces.Back().postPass = 1;
                 }
             }
         }

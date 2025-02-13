@@ -18,9 +18,12 @@ namespace BlitzenEngine
 {
     struct TextureStats
     {
+        // These things might not be necessary, since textures are immediately passed to the renderer that is requested
         int32_t textureWidth = 0;
         int32_t textureHeight = 0;
         int32_t textureChannels = 0;
+
+        // TODO: this is no longer used, might want to remove later
         uint8_t* pTextureData;
 
         // This tag is for the shaders to know which image memory to access, when a material uses this texture
@@ -57,6 +60,7 @@ namespace BlitzenEngine
     // Passed to the GPU as a unified storage buffer. Part of Material stats
     struct alignas(16) Material
     {
+        // Not using these 2 right now, might remove them when I'm not bored, but they (or something similar) will be used in the future
         BlitML::vec4 diffuseColor;
         float shininess;
 
@@ -68,6 +72,7 @@ namespace BlitzenEngine
 
         uint32_t emissiveTag;// Index into the texture array for the emissive map of the material
 
+        // TODO: I need to try removing this, it's a waster of space
         uint32_t materialId;
     };
 
@@ -97,7 +102,10 @@ namespace BlitzenEngine
         // With the way obj files are loaded, this will be needed to index into the vertex buffer
         uint32_t vertexOffset;
 
+        // Index into the material array to tell the fragment shader what material this primitive uses
         uint32_t materialId;
+
+        uint8_t postPass = 0;
     };
 
     struct Mesh
@@ -133,7 +141,7 @@ namespace BlitzenEngine
         BlitML::vec3 viewPosition;
     };
 
-    // Struct to be constructed in drawFrame function so that it can be passed to the graphics API
+    // This struct will hold global data needed by the culling shaders to perform their operations. Passed as uniform buffer
     struct alignas(16) CullingData
     {
         // frustum planes
@@ -160,6 +168,9 @@ namespace BlitzenEngine
         uint32_t lodEnabled = 1;
 
         uint32_t drawCount;
+
+        // The culling shaders need 
+        uint8_t postPass;
     };
 
     // This struct holds every loaded resource that will be used for rendering all game objects

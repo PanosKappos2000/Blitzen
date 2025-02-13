@@ -26,15 +26,19 @@ void main()
 
     // Gets the current object using the global invocation ID. It also retrieves the surface that the objects points to and the transform data
     RenderObject currentObject = objectBuffer.objects[objectIndex];
-    Transform currentInstance = transformBuffer.instances[currentObject.meshInstanceId];
-    Surface currentSurface = surfaceBuffer.surfaces[currentObject.surfaceId];
+    Transform transform = transformBuffer.instances[currentObject.meshInstanceId];
+    Surface surface = surfaceBuffer.surfaces[currentObject.surfaceId];
+
+    // The initial culling pass does not touch transparent objects
+    if(surface.postPass == 1)
+        return;
 
     // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
-    vec3 center = RotateQuat(currentSurface.center, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
+    vec3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.pos;
     center = (shaderData.view * vec4(center, 1)).xyz;
 
     // The bounding sphere's radius only needs to be multiplied by the object's scale
-	float radius = currentSurface.radius * currentInstance.scale;
+	float radius = surface.radius * transform.scale;
 
     // Check that the bounding sphere is inside the view frustum(frustum culling)
 	bool visible = true;
@@ -62,14 +66,14 @@ void main()
         if (cullingData.lodEnabled == 1)
 		{
 			float distance = max(length(center) - radius, 0);
-			float threshold = distance * cullingData.lodTarget / currentInstance.scale;
-			for (uint i = 1; i < currentSurface.lodCount; ++i)
-				if (currentSurface.lod[i].error < threshold)
+			float threshold = distance * cullingData.lodTarget / transform.scale;
+			for (uint i = 1; i < surface.lodCount; ++i)
+				if (surface.lod[i].error < threshold)
 					lodIndex = i;
 		}
 
         // Get the selected LOD
-        MeshLod currentLod = currentSurface.lod[lodIndex];
+        MeshLod currentLod = surface.lod[lodIndex];
 
         // The object index is needed to know which element to access in the per object data buffer
         indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
@@ -78,7 +82,7 @@ void main()
         indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
         indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
         indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
-        indirectDrawBuffer.draws[drawIndex].vertexOffset = currentSurface.vertexOffset;
+        indirectDrawBuffer.draws[drawIndex].vertexOffset = surface.vertexOffset;
         indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
 
         // Indirect task commands

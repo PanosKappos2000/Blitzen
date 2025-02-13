@@ -56,50 +56,85 @@ namespace BlitzenVulkan
         VkSemaphore readyToPresentSemaphore;        
     };
 
+    // Holds a buffer that is bound to a descriptor binding using push descriptors
+    template<typename T>
+    struct PushDescriptorBuffer
+    {
+        AllocatedBuffer buffer;
+
+        // Most buffers have a VkWriteDescriptor struct that remains static at runtime
+        VkDescriptorBufferInfo bufferInfo;
+        VkWriteDescriptorSet descriptorWrite;
+
+        // Set these up so that they are defined on the constructor and not hardcoded for every descriptor struct
+        uint32_t descriptorBinding;
+        VkDescriptorType descriptorType;
+
+        // Persistently mapped pointer, useful for uniform buffers
+        T* pData;
+
+        inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type): descriptorBinding{binding}, descriptorType{type} {}
+    };
+
     struct VarBuffers
     {
-        AllocatedBuffer globalShaderDataBuffer;
-        // Persistently mapped pointer to the uniform buffer for shader data. Dereferenced and updated each frame
-        BlitzenEngine::GlobalShaderData* pGlobalShaderData;
+        // The global shader data buffer is a uniform buffer that will be part of the push descriptor layout at binding 0
+        // It will hold general data like the view matrix or sunlight values
+        PushDescriptorBuffer<BlitzenEngine::GlobalShaderData> globalShaderDataBuffer{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
 
-        AllocatedBuffer bufferDeviceAddrsBuffer;
-        // Persistently mapped pointer to the uniform buffer for buffer addresses. Dereferenced and updated each frame
-        BufferDeviceAddresses* pBufferAddrs;
-
-        AllocatedBuffer cullingDataBuffer;
-        BlitzenEngine::CullingData* pCullingData;
+        // The culling data buffer is a uniform buffer that will be part of the push descriptor layout at binding 2
+        // It will hold global data needed by the culling shaders like view frustum data
+        PushDescriptorBuffer<BlitzenEngine::CullingData> cullingDataBuffer{2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
     };
 
     // Holds data for buffers that will be loaded once and will be used for every object
     struct StaticBuffers
     {
-        AllocatedBuffer vertexBuffer;
+        // The vertex buffer is a storage buffer that will be part of the push descriptor layout at binding 1
+        // It will hold all vertices for all the objects on the scene
+        PushDescriptorBuffer<void> vertexBuffer{1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
         AllocatedBuffer indexBuffer;
 
-        AllocatedBuffer meshletBuffer;
+        // The meshlet / cluster buffer is a storage buffer that will be part of the push descirptor layout at binding 12
+        // It will hold all meshlets for all the primitives on the scene
+        PushDescriptorBuffer<void> meshletBuffer{12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        AllocatedBuffer meshletDataBuffer;
+        // The meshlet data buffer is a storage buffer that will be part of the push descirptor layout at binding 13
+        // It will hold indices to access the correct cluster in the meshlet buffer
+        PushDescriptorBuffer<void> meshletDataBuffer{13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        AllocatedBuffer globalMaterialBuffer;
+        // The material buffer is a storage buffer that will be part of the push descriptor layout at binding 6
+        // It will hold all the materials used in the scene
+        PushDescriptorBuffer<void> materialBuffer{6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        // Array of per object data (StaticRenderObject, got to change that variable name). 1 element for every object
-        AllocatedBuffer renderObjectBuffer;
+        // The render object buffer is a storage buffer that will be part of the push descriptor layout at binding 4
+        // It will holds indices to the primitive and transform of all the render object in the the scene
+        PushDescriptorBuffer<void> renderObjectBuffer{4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        AllocatedBuffer surfaceBuffer;
+        // The surface buffer is a storage buffer that will be part of the push descriptor layout at binding 11
+        // It will hold the data for all the primitive surfaces that will be used in the scene
+        PushDescriptorBuffer<void> surfaceBuffer{11, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        AllocatedBuffer transformBuffer;
+        // The transform buffer is a storage buffer that will be part of the push descriptor layout at bidning 5
+        // It will hold the transforms of all the objects in the scene
+        PushDescriptorBuffer<void> transformBuffer{5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        // Holds all the command for draw indirect to draw everything on a scene
-        AllocatedBuffer indirectDrawBuffer;
+        // The indirect draw buffer is a storage buffer that will be part of the push descriptor layout at binding 7
+        // It will hold all the indirect draw commands for each frame
+        PushDescriptorBuffer<void> indirectDrawBuffer{7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        AllocatedBuffer indirectTaskBuffer;
+        // The indirect task buffer is a storage buffer that will be part of the push descriptor layout at binding 8
+        // It will hold all the indirect task commands for each frame
+        PushDescriptorBuffer<void> indirectTaskBuffer{8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        // Counts how many objects have actually been added to the final draw indirect buffer(helps avoid empty draw calls)
-        AllocatedBuffer drawIndirectCountBuffer;
+        // The indirect draw count buffer is a storage buffer that will be part of the push descriptor layout at binding 9
+        // It will hold one integer that will tell the graphics pipeline how many elements it should access in the indirect draw buffer
+        PushDescriptorBuffer<void> indirectCountBuffer{9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        // Holds an array of integers with an element for each object. The integer is 0 or 1, depending on if the associated object was visible last frame
-        AllocatedBuffer drawVisibilityBuffer;
+        // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
+        // It will hold either 1 or 0 for each object based on if they were visible last frame or not
+        PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
         // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
         VkDescriptorPool textureDescriptorPool;
@@ -161,10 +196,10 @@ namespace BlitzenVulkan
         // Dispatches the compute shader that will perform culling on a render object level and will ready the indirect draw commands
         // If it calls the late version it does occlusion culling as well
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
-        uint32_t groupCountX, uint8_t lateCulling);
+        uint32_t groupCountX, uint8_t lateCulling, VkWriteDescriptorSet* pWrites);
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
-        void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount);
+        void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, uint8_t latePass);
 
         // Recreates the swapchain when necessary (and other handles that are involved with the window, like the depth pyramid)
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
@@ -317,6 +352,37 @@ namespace BlitzenVulkan
     void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
     VkBufferUsageFlags usage, VkDeviceSize size, uint8_t getBufferDeviceAddress = 0);
 
+    template <typename T = void>
+    uint8_t SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, 
+    PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer, 
+    VkDeviceSize bufferSize, VkBufferUsageFlags usage, void* pData)
+    {
+        // Creates the storage buffer and the staging buffer that will hold its data
+        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
+        stagingBuffer, usage, bufferSize);
+        // Checks if the above function failed
+        if(pushBuffer.buffer.buffer == VK_NULL_HANDLE)
+            return 0;
+        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
+        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
+        return 1;
+    }
+
+    template <typename T = void>
+    uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
+    PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, VkBufferUsageFlags usage)
+    {
+        // Creates the storage buffer and the staging buffer that will hold its data
+        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            return 0;
+        
+        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
+        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
+        return 1;
+    }
+
     // Returns the GPU address of a buffer
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
@@ -379,8 +445,9 @@ namespace BlitzenVulkan
 
     // Creates VkWriteDescriptorSet for a buffer type descriptor set
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, 
-    VkDescriptorType descriptorType, VkDescriptorSet dstSet, uint32_t dstBinding, uint32_t descriptorCount, 
-    VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+    VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, 
+    VkDescriptorSet dstSet = VK_NULL_HANDLE,  VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
+    VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
 
     // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
