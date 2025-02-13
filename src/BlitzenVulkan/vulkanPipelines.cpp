@@ -342,13 +342,36 @@ namespace BlitzenVulkan
         pipelineInfo.pVertexInputState = &vertexInput;
 
         //Create the graphics pipeline
-        VkResult pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, &m_opaqueGeometryPipeline);
+        VkResult pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, 
+        &m_opaqueGeometryPipeline);
+        if(pipelineCreateFinalResult != VK_SUCCESS)
+            return 0;
+
+        // Compile the spir-v again but with post pass specialization info
+        VkSpecializationMapEntry postPassSpecializationMapEntry{};
+        postPassSpecializationMapEntry.constantID = 0;
+        postPassSpecializationMapEntry.offset = 0;
+        postPassSpecializationMapEntry.size = sizeof(uint32_t);
+        VkSpecializationInfo postPassSpecialization{};
+        postPassSpecialization.dataSize = sizeof(uint32_t);
+        postPassSpecialization.mapEntryCount = 1;
+        postPassSpecialization.pMapEntries = &postPassSpecializationMapEntry;
+        uint32_t postPass = 1;
+        postPassSpecialization.pData = &postPass;
+        VkShaderModule postPassFragShaderModule;
+        if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", 
+        postPassFragShaderModule, shaderStages[1], &postPassSpecialization))
+            return 0;
+
+        pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, 
+        &m_postPassGeometryPipeline);
         if(pipelineCreateFinalResult != VK_SUCCESS)
             return 0;
 
         // Destroy the shader modules after pipeline has been created
         vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
         vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
+        vkDestroyShaderModule(m_device, postPassFragShaderModule, m_pCustomAllocator);
         if(m_stats.meshShaderSupport)
         {
             vkDestroyShaderModule(m_device, taskShaderModule, m_pCustomAllocator);

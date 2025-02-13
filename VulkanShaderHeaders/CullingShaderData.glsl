@@ -27,8 +27,6 @@ layout (set = 0, binding = 2) uniform CullingData
     uint lodEnabled;
 
     uint drawCount;
-
-    uint8_t postPass;
 }cullingData;
 
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013

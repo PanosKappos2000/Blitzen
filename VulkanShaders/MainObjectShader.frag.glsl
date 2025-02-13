@@ -5,6 +5,9 @@
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
+// Specialization constant. Its value changes for the post pass pipeline. This should theoritically allow for gpu compiler optimizations
+layout (constant_id = 0) const uint POST_PASS = 0;
+
 layout(location = 0) in vec2 uv;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec4 tangent;
@@ -42,7 +45,7 @@ void main()
     else
         outColor = vec4(normal * sqrt(ndotl + 0.05), 1);
 
-    /*// Bad for performance and does not do anything for now, will be fixed later
-    if(albedoMap.a < 0.5)
-        discard;*/
+    
+    if(POST_PASS != 0 && albedoMap.a < 0.5)
+        discard;
 }

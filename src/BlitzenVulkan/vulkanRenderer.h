@@ -196,10 +196,11 @@ namespace BlitzenVulkan
         // Dispatches the compute shader that will perform culling on a render object level and will ready the indirect draw commands
         // If it calls the late version it does occlusion culling as well
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
-        uint32_t groupCountX, uint8_t lateCulling, VkWriteDescriptorSet* pWrites);
+        uint32_t groupCountX, VkWriteDescriptorSet* pWrites, uint8_t lateCulling = 0, uint32_t postPass = 0);
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
-        void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, uint8_t latePass);
+        void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
+        uint8_t latePass, VkPipeline pipeline);
 
         // Recreates the swapchain when necessary (and other handles that are involved with the window, like the depth pyramid)
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
@@ -270,6 +271,7 @@ namespace BlitzenVulkan
 
         // This pipeline Draws opaque objects using the indirect commands create by culling compute shaders
         VkPipeline m_opaqueGeometryPipeline;
+        VkPipeline m_postPassGeometryPipeline;
         VkPipelineLayout m_opaqueGeometryPipelineLayout;
 
         // These are compute pipelines that hold the shaders that will perform culling operations on render object level

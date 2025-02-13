@@ -996,6 +996,7 @@ namespace BlitzenVulkan
         vkDestroyPipeline(m_device, m_initialDrawCullPipeline, m_pCustomAllocator);
 
         vkDestroyPipeline(m_device, m_opaqueGeometryPipeline, m_pCustomAllocator);
+        vkDestroyPipeline(m_device, m_postPassGeometryPipeline, m_pCustomAllocator);
         vkDestroyPipelineLayout(m_device, m_opaqueGeometryPipelineLayout, m_pCustomAllocator);
 
         vkDestroyPipeline(m_device, m_depthPyramidGenerationPipeline, m_pCustomAllocator);

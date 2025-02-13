@@ -13,6 +13,11 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
 
+layout (push_constant) uniform constants
+{
+    uint32_t postPass;
+};
+
 void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x;
@@ -22,16 +27,20 @@ void main()
         return;
 
     // Access the object's data
-    RenderObject currentObject = objectBuffer.objects[objectIndex];
-    Transform currentInstance = transformBuffer.instances[currentObject.meshInstanceId];
-    Surface currentSurface = surfaceBuffer.surfaces[currentObject.surfaceId];
+    RenderObject object = objectBuffer.objects[objectIndex];
+    Transform transform = transformBuffer.instances[object.meshInstanceId];
+    Surface surface = surfaceBuffer.surfaces[object.surfaceId];
+
+    // If the late culling shader does not match the pass of the current surface it exits
+    if(surface.postPass != postPass)
+        return;
     
     // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
-    vec3 center = RotateQuat(currentSurface.center, currentInstance.orientation) * currentInstance.scale + currentInstance.pos;
+    vec3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.pos;
     center = (shaderData.view * vec4(center, 1)).xyz;
 
     // The bounding sphere's radius only needs to be multiplied by the object's scale
-	float radius = currentSurface.radius * currentInstance.scale;
+	float radius = surface.radius * transform.scale;
 
     // Check that the bounding sphere is inside the view frustum(frustum culling)
 	bool visible = true;
@@ -65,7 +74,7 @@ void main()
 
     // The late culling shader creates draw commands for the objects that passed late culling and were not tagged as visible last frame
     // It handles transparent objects a little bit differently as this is the only shader that will cull them
-    if(visible && (visibilityBuffer.visibilities[objectIndex] == 0 || cullingData.postPass != 0))
+    if(visible && (visibilityBuffer.visibilities[objectIndex] == 0 || postPass != 0))
     {
         // With each element that is added to the draw list, increment the count buffer
         uint drawIndex = atomicAdd(indirectCountBuffer.drawCount, 1);
@@ -80,14 +89,14 @@ void main()
         if (cullingData.lodEnabled == 1)
 		{
 			float distance = max(length(center) - radius, 0);
-			float threshold = distance * cullingData.lodTarget / currentInstance.scale;
-			for (uint i = 1; i < currentSurface.lodCount; ++i)
-				if (currentSurface.lod[i].error < threshold)
+			float threshold = distance * cullingData.lodTarget / transform.scale;
+			for (uint i = 1; i < surface.lodCount; ++i)
+				if (surface.lod[i].error < threshold)
 					lodIndex = i;
 		}
 
         // Get the selected LOD
-        MeshLod currentLod = currentSurface.lod[lodIndex];
+        MeshLod currentLod = surface.lod[lodIndex];
 
         // The object index is needed to know which element to access in the per object data buffer
         indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
@@ -96,7 +105,7 @@ void main()
         indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
         indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
         indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
-        indirectDrawBuffer.draws[drawIndex].vertexOffset = currentSurface.vertexOffset;
+        indirectDrawBuffer.draws[drawIndex].vertexOffset = surface.vertexOffset;
         indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
 
         // Indirect task commands

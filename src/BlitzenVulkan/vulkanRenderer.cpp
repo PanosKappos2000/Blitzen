@@ -204,7 +204,9 @@ namespace BlitzenVulkan
             return 0;
 
         // The layout for culling shaders uses the push descriptor layout but accesses more bindings for culling data and the depth pyramid
-        if(!CreatePipelineLayout(m_device, &m_drawCullPipelineLayout, 1, &m_pushDescriptorBufferLayout, 0, nullptr))
+        VkPushConstantRange lateCullShaderPostPassPushConstant{};
+        CreatePushConstantRange(lateCullShaderPostPassPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t));
+        if(!CreatePipelineLayout(m_device, &m_drawCullPipelineLayout, 1, &m_pushDescriptorBufferLayout, 1, &lateCullShaderPostPassPushConstant))
             return 0;
 
         // The depth pyramid shader uses the set with depth pyramid images and depth attachment image, 
@@ -630,7 +632,7 @@ namespace BlitzenVulkan
         // Dispatch the compute shader to do early culling 
         //(only perform  frustum culling and LOD selection on objects that were visible on the previous frame)
         DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline, 
-        (cullData.drawCount / 64) + 1, 0, pushDescriptorWritesCompute);
+        (cullData.drawCount / 64) + 1, pushDescriptorWritesCompute);
 
 
 
@@ -661,7 +663,7 @@ namespace BlitzenVulkan
 
         // Draws the object that passed the first culling compute shader
         // (Specifically the objects that passed frustum culling and were visible last frame)
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount, 0);
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount, 0, m_opaqueGeometryPipeline);
 
         // The first render pass ends here
         vkCmdEndRendering(fTools.commandBuffer);
@@ -732,22 +734,17 @@ namespace BlitzenVulkan
         }
 
 
-
+        // Add the depth image to the push descriptors for the culling shader
         WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 
         3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
-
         pushDescriptorWritesCompute[8] = depthPyramidWrite;
 
         // Dispatches the compute shader to do culling on objects that were not visible last frame. 
         // It will do both occusion and frustum culling and LOD selection
         // It also performs these operations on objects that were visible last frame, but it only updates their visibility buffer
         DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
-        cullData.drawCount / 64 + 1, 1, pushDescriptorWritesCompute);
+        cullData.drawCount / 64 + 1, pushDescriptorWritesCompute, 1, 0);
 
-
-        /*
-            Late render pass
-        */
         // Wait for the culling compute shader to be done with the depth attachment and transition it to depth attahcment layout
         VkImageMemoryBarrier2 depthAttachmentReadBarrier{};
         ImageMemoryBarrier(m_depthAttachment.image, depthAttachmentReadBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
@@ -757,9 +754,21 @@ namespace BlitzenVulkan
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &depthAttachmentReadBarrier);
 
         // Draws the objects that passed the late culling compute shader
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount, 1);
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount, 1, m_opaqueGeometryPipeline);
 
         // End of late render pass
+        vkCmdEndRendering(fTools.commandBuffer);
+
+
+
+        // Dispatch the late culling shader again, tihis time to cull transparent objects
+        //vBuffers.cullingDataBuffer.pData->postPass = 1;
+        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
+        cullData.drawCount / 64 + 1, pushDescriptorWritesCompute, 1, 1);
+
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, cullData.drawCount, 1, m_postPassGeometryPipeline);
+        
+        // End of post pass
         vkCmdEndRendering(fTools.commandBuffer);
 
 
@@ -826,7 +835,7 @@ namespace BlitzenVulkan
     }
 
     void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline,
-    uint32_t groupCountX, uint8_t lateCulling, VkWriteDescriptorSet* pWrites)
+    uint32_t groupCountX, VkWriteDescriptorSet* pWrites, uint8_t lateCulling /*=0*/, uint32_t postPass /*=0*/)
     {
         PushDescriptors(m_initHandles.instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
         0, lateCulling ? 9 : 8, pWrites);
@@ -850,6 +859,8 @@ namespace BlitzenVulkan
 
         // Binds the shader's pipeline and dispatches the shader to cull the render objects
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+        if(lateCulling)
+            vkCmdPushConstants(commandBuffer, m_drawCullPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &postPass);
         vkCmdDispatch(commandBuffer, groupCountX, 1, 1);
 
         // Stops the indirect stage from reading commands until the compute shader completes
@@ -860,7 +871,8 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
     }
 
-    void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, uint8_t latePass)
+    void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
+    uint8_t latePass, VkPipeline pipeline)
     {
         // Creates info for the color attachment 
         VkRenderingAttachmentInfo colorAttachmentInfo{};
@@ -884,7 +896,7 @@ namespace BlitzenVulkan
         1, &m_currentStaticBuffers.textureDescriptorSet, 0, nullptr);
 
         // Bind the graphics pipeline and the index buffer
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGeometryPipeline);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         vkCmdBindIndexBuffer(commandBuffer, m_currentStaticBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         // Use draw indirect to draw the objects(mesh shading or vertex shader)
