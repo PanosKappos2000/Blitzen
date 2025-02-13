@@ -110,6 +110,8 @@ namespace BlitzenEngine
 
         current.albedoTag = pResources->textureTable.Get(diffuseMapName, &pResources->textures[0])->textureTag;
         current.normalTag = pResources->textureTable.Get(specularMapName, &pResources->textures[0])->textureTag;
+        current.specularTag = 0;
+        current.emissiveTag = 0;
 
         current.materialId = static_cast<uint32_t>(pResources->materialCount);
 
@@ -119,10 +121,9 @@ namespace BlitzenEngine
 
     void LoadTestMaterials(RenderingResources* pResources, uint8_t loadForVulkan, uint8_t loadForGL)
     {
+        // Creating one default material for now
         BlitML::vec4 color1(0.1f);
-        BlitML::vec4 color2(0.2f);
         DefineMaterial(pResources, color1, 65.f, "dds_texture_default", "unknown", "loaded_material");
-        DefineMaterial(pResources, color2, 65.f, "loaded_texture2", "unknown", "loaded_material2");
     }
     
 
@@ -674,7 +675,7 @@ namespace BlitzenEngine
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_metallic_roughness.base_color_texture.texture))
             : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture))
-            : static_cast<uint32_t>(previousTextureSize + 0);
+            : 0;
 
             mat.normalTag =
             cgltf_mat.normal_texture.texture ? 
@@ -684,7 +685,7 @@ namespace BlitzenEngine
             mat.specularTag = 
             cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ? 
             uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture))
-            : static_cast<uint32_t>(previousTextureSize + 0);
+            : 0;
 
             mat.emissiveTag =
             cgltf_mat.emissive_texture.texture ? 

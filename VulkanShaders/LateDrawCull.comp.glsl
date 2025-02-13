@@ -3,6 +3,8 @@
 #extension GL_GOOGLE_include_directive : require
 
 #define COMPUTE_PIPELINE
+#define LOD_ENABLED
+#define OCCLUSION_ENABLED
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
@@ -53,7 +55,8 @@ void main()
 	visible = visible && center.z + radius > cullingData.zNear && center.z - radius < cullingData.zFar;
 
     // Later draw culling also does occlusion culling on objects that passed the frustum culling test above
-    if (visible && uint(cullingData.occlusionEnabled) == 1)
+    #ifdef OCCLUSION_ENABLED
+    if (visible)
 	{
 		vec4 aabb;
 		if (projectSphere(center, radius, cullingData.zNear, cullingData.proj0, cullingData.proj5, aabb))
@@ -71,6 +74,7 @@ void main()
 			visible = visible && depthSphere > depth;
 		}
 	}
+    #endif
 
     // The late culling shader creates draw commands for the objects that passed late culling and were not tagged as visible last frame
     // It handles transparent objects a little bit differently as this is the only shader that will cull them
@@ -86,14 +90,13 @@ void main()
             surface is taken and the minimum error that would result in acceptable
             screen-space deviation is computed based on camera parameters
         */
-        if (cullingData.lodEnabled == 1)
-		{
-			float distance = max(length(center) - radius, 0);
-			float threshold = distance * cullingData.lodTarget / transform.scale;
-			for (uint i = 1; i < surface.lodCount; ++i)
-				if (surface.lod[i].error < threshold)
-					lodIndex = i;
-		}
+        #ifdef LOD_ENABLED
+		float distance = max(length(center) - radius, 0);
+		float threshold = distance * cullingData.lodTarget / transform.scale;
+		for (uint i = 1; i < surface.lodCount; ++i)
+			if (surface.lod[i].error < threshold)
+				lodIndex = i;
+		#endif
 
         // Get the selected LOD
         MeshLod currentLod = surface.lod[lodIndex];
