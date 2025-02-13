@@ -46,7 +46,15 @@ namespace BlitzenCore
         return new T(params...);
     }
 
-    // This free function calls the constructor of the object that get freed
+    // This version takes no parameters
+    template<typename T, AllocationType A>
+    T* BlitConstructAlloc(size_t size)
+    {
+        LogAllocation(A, size * sizeof(T));
+        return new T[size];
+    }
+
+    // This free function calls the constructor of the object that gets freed
     template<typename T>
     void BlitDestroyAlloc(AllocationType alloc, T* pToDestroy)
     {

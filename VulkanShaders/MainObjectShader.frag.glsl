@@ -36,7 +36,7 @@ void main()
 	vec3 nrm = normalize(normalMap.r * tangent.xyz + normalMap.g * bitangent + normalMap.b * normal);
 	float ndotl = max(dot(nrm, normalize(vec3(-1, 1, -1))), 0.0);
 
-    // The if statement is a bad idea but I am keeping it for the time being
+    // The if statement is temporary
     if(materialTag != 0)
         outColor = albedoMap * sqrt(ndotl + 0.05);
     else

@@ -132,7 +132,8 @@ target_include_directories(BlitzenEngine PUBLIC
 target_compile_definitions(BlitzenEngine PUBLIC 
                             BLITZEN_VULKAN
                             BLITZEN_OPENGL
-                            BLIT_VSYNC)
+                            BLIT_VSYNC
+                            )
 
 # Linker file directories and libraries to link for linux and Windows
 IF(WIN32)

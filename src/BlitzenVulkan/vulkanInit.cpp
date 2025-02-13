@@ -439,6 +439,8 @@ namespace BlitzenVulkan
             }
             // Store the queue family properties to query for their indices
             BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(static_cast<size_t>(queueFamilyPropertyCount));
+            // Vulkan will throw an exception if I do not zero out all elements in the array
+            BlitzenCore::BlitZeroMemory(queueFamilyProperties.Data(), queueFamilyProperties.GetSize() * sizeof(VkQueueFamilyProperties2));
             for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
             {
                 queueFamilyProperties[j].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;

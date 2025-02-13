@@ -577,24 +577,6 @@ namespace BlitzenVulkan
             cullData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
         }
 
-        // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
-        vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
-        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
-
-        // Write the data to the buffer pointers
-        *(vBuffers.pGlobalShaderData) = shaderData;
-        *(vBuffers.pCullingData) = cullData;
-        
-
-        // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
-        uint32_t swapchainIdx;
-        vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
-
-
-        // The commands start being recorder here (stop when submit is called)
-        BeginCommandBuffer(fTools.commandBuffer, 0);
-    
-
         // Write to the shader data binding (binding 0) of the uniform buffer descriptor set
         VkDescriptorBufferInfo globalShaderDataDescriptorBufferInfo{};
         VkWriteDescriptorSet globalShaderDataWrite{};
@@ -647,6 +629,24 @@ namespace BlitzenVulkan
         VkWriteDescriptorSet surfaceBufferWrite{};
         WriteBufferDescriptorSets(surfaceBufferWrite, surfaceBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_NULL_HANDLE, 
         11, 1, m_currentStaticBuffers.surfaceBuffer.buffer, 0, VK_WHOLE_SIZE);
+
+        
+        // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
+        vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
+        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
+
+        // Write the data to the buffer pointers
+        *(vBuffers.pGlobalShaderData) = shaderData;
+        *(vBuffers.pCullingData) = cullData;
+        
+
+        // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
+        uint32_t swapchainIdx;
+        vkAcquireNextImageKHR(m_device, m_initHandles.swapchain, 1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
+
+
+        // The commands start being recorder here (stop when submit is called)
+        BeginCommandBuffer(fTools.commandBuffer, 0);
 
         // The depth pyramid write will not be used in the first pass culling shader. It will later be set by the late culling shader
         VkDescriptorImageInfo depthPyramidImageInfo{};

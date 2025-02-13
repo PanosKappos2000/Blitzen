@@ -25,10 +25,7 @@ namespace BlitCL
         {
             if (m_size > 0)
             {
-                m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
-
-                // TODO: I want to try removing this but it will break the application. Maybe I will create a branch at some point
-                BlitzenCore::BlitZeroMemory(m_pBlock, m_size * sizeof(T));
+                m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::DynamicArray>(m_capacity);
             }
         }
 
@@ -134,7 +131,7 @@ namespace BlitCL
         {
             if(m_capacity > 0)
             {
-                delete m_pBlock;
+                delete [] m_pBlock;
                 BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T));
             }
         }
@@ -158,7 +155,10 @@ namespace BlitCL
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_size * sizeof(T));
             }
             if(temp != 0)
-                BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTemp, temp * sizeof(T));
+            {
+                delete [] pTemp;
+                BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, temp * sizeof(T));
+            }
         }
     };
 
