@@ -22,22 +22,22 @@ void main()
 	uint meshletId = payload.meshletIndices[gl_WorkGroupID.x];
 
     // Access the current object data
-    RenderObject currentObject = bufferAddrs.objectBuffer.objects[payload.drawId];
-    MeshInstance currentInstance = bufferAddrs.transformBuffer.instances[currentObject.meshInstanceId];
-    Surface currentSurface = bufferAddrs.surfaceBuffer.surfaces[currentObject.surfaceId];
+    RenderObject currentObject = objectBuffer.objects[payload.drawId];
+    Transform currentInstance = transformBuffer.instances[currentObject.meshInstanceId];
+    Surface currentSurface = surfaceBuffer.surfaces[currentObject.surfaceId];
 
     // Meshlet data
-    uint vertexCount = uint(bufferAddrs.meshletBuffer.meshlets[meshletId].vertexCount);
-	uint triangleCount = uint(bufferAddrs.meshletBuffer.meshlets[meshletId].triangleCount);
+    uint vertexCount = uint(meshletBuffer.meshlets[meshletId].vertexCount);
+	uint triangleCount = uint(meshletBuffer.meshlets[meshletId].triangleCount);
 
-    uint dataOffset = bufferAddrs.meshletBuffer.meshlets[meshletId].dataOffset;
+    uint dataOffset = meshletBuffer.meshlets[meshletId].dataOffset;
 	uint vertexOffset = dataOffset;
 	uint indexOffset = dataOffset + vertexCount;
 
     for(uint i = threadId; i < vertexCount; i += 64)
     {
-        uint vertexIndex = bufferAddrs.meshletDataBuffer.data[vertexOffset + i] + currentSurface.vertexOffset;
-        Vertex currentVertex = bufferAddrs.vertexBuffer.vertices[vertexIndex];
+        uint vertexIndex = meshletDataBuffer.data[vertexOffset + i] + currentSurface.vertexOffset;
+        Vertex currentVertex = vertexBuffer.vertices[vertexIndex];
 
         vec3 position = currentVertex.position;
         vec3 n = vec3(currentVertex.normalX, currentVertex.normalY, currentVertex.normalZ);
@@ -52,7 +52,7 @@ void main()
 
     for(uint i = threadId; i < triangleCount; i += 64)
     {
-        uint triangle = bufferAddrs.meshletDataBuffer.data[indexOffset + i];
+        uint triangle = meshletDataBuffer.data[indexOffset + i];
         gl_PrimitiveTriangleIndicesEXT[i] = uvec3((triangle >> 16) & 0xff, (triangle >> 8) & 0xff, triangle & 0xff);
     }
 
