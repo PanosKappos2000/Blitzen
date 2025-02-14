@@ -22,4 +22,4 @@ It has only been tested on Nvidia hardware. It is uncertain, for example, if it 
 
 It supports Windows and Linux but the Linux build has not been tested as heavily as the Windows build and can only use Vulkan, not OpenGL.
 
-The project can be built and compiled with CMake and run without any command line arguments. In its current state it will load a default scene with meshes and one gltf scene(with textures but no lighting). The Engine does not have an editor, so it takes command line arguments for gltf filepaths. It also does not have a custom format for its resources yet, so loading takes time and will be unbearably long if multiple large gltf files are specified.
+The project can be built and compiled with CMake. In its current state it will load a default scene with multiple instances of 4 different meshes at random positions. The Engine does not have an editor, so it takes command line arguments for gltf filepaths. It also does not have a custom format for its resources yet, so loading takes time and will be unbearably long if multiple large gltf files are specified.
