@@ -179,8 +179,8 @@ namespace BlitzenVulkan
         VkDescriptorSetLayoutBinding texturesLayoutBinding{};
         CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(textureCount), 
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-        m_currentStaticBuffers.textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
-        if(m_currentStaticBuffers.textureDescriptorSetlayout == VK_NULL_HANDLE)
+        m_textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
+        if(m_textureDescriptorSetlayout == VK_NULL_HANDLE)
             return 0;
 
         // Binding for input image in depth pyramid creation shader
@@ -199,7 +199,7 @@ namespace BlitzenVulkan
             return 0;
 
         // The graphics pipeline will use 2 layouts, the one for push desciptors and the constant one for textures
-        VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout, m_currentStaticBuffers.textureDescriptorSetlayout };
+        VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout, m_textureDescriptorSetlayout };
         if(!CreatePipelineLayout(m_device, &m_opaqueGeometryPipelineLayout, 2, layouts, 0, nullptr))
             return 0;
 
@@ -299,7 +299,8 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to upload data to the GPU")
             return 0;
         }
-    
+        
+        #ifdef NDEBUG
         // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
         // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -308,6 +309,16 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
             return 0;
         }
+        #else
+        // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
+        // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCullDebug.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_drawCullPipelineLayout, &m_initialDrawCullPipeline))
+        {
+            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
+            return 0;
+        }
+        #endif
         
         // Creates pipeline for the depth pyramid generation shader which will be dispatched before the late culling compute shader
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -317,6 +328,7 @@ namespace BlitzenVulkan
             return 0;
         }
         
+        #ifdef NDEBUG
         // Creates pipeline for the late culling shader that will be dispatched before the 2nd render pass.
         // It performs frustum culling and occlusion culling on all objects.
         // It creates a draw command for the objects that were not tested by the previous shader
@@ -327,6 +339,14 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
             return 0;
         }
+        #else
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCullDebug.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+        m_drawCullPipelineLayout, &m_lateDrawCullPipeline))
+        {
+            BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
+            return 0;
+        }
+        #endif
         
         // Create the graphics pipeline object 
         if(!SetupMainGraphicsPipeline())
@@ -338,6 +358,25 @@ namespace BlitzenVulkan
         // culing data values that need to be handled by the renderer itself
         pResources->cullingData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
         pResources->cullingData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+
+        // Since most of these descriptor writes are static they can be initialized here
+        pushDescriptorWritesGraphics[0] = {};// This will be where the global shader data write will be, but this one is not always static
+        pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
+        pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
+        pushDescriptorWritesGraphics[3] = m_currentStaticBuffers.transformBuffer.descriptorWrite;
+        pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite; 
+        pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+        pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+
+        pushDescriptorWritesCompute[0] = {};// This will be where the global shader data write will be, but this one is not always static
+        pushDescriptorWritesCompute[1] = {};
+        pushDescriptorWritesCompute[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite; 
+        pushDescriptorWritesCompute[3] = m_currentStaticBuffers.transformBuffer.descriptorWrite; 
+        pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+        pushDescriptorWritesCompute[5] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite; 
+        pushDescriptorWritesCompute[6] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite; 
+        pushDescriptorWritesCompute[7] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite; 
+        pushDescriptorWritesCompute[8] = {};
 
         return 1;
     }
@@ -528,14 +567,14 @@ namespace BlitzenVulkan
         poolSize.descriptorCount = static_cast<uint32_t>(textureCount);
 
         // Creates the descriptor pool for the textures
-        m_currentStaticBuffers.textureDescriptorPool = CreateDescriptorPool(m_device, 1, &poolSize, 
+        m_textureDescriptorPool = CreateDescriptorPool(m_device, 1, &poolSize, 
         1);
-        if(m_currentStaticBuffers.textureDescriptorPool == VK_NULL_HANDLE)
+        if(m_textureDescriptorPool == VK_NULL_HANDLE)
             return 0;
  
         // Allocates the descriptor set that will be used to bind the textures
-        if(!AllocateDescriptorSets(m_device, m_currentStaticBuffers.textureDescriptorPool, &m_currentStaticBuffers.textureDescriptorSetlayout, 
-        1, &m_currentStaticBuffers.textureDescriptorSet))
+        if(!AllocateDescriptorSets(m_device, m_textureDescriptorPool, &m_textureDescriptorSetlayout, 
+        1, &m_textureDescriptorSet))
             return 0;
 
         // Create image infos for every texture to be passed to the VkWriteDescriptorSet
@@ -549,7 +588,7 @@ namespace BlitzenVulkan
 
         // Update every descriptor set so that it is available at draw time
         VkWriteDescriptorSet write{};
-        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_currentStaticBuffers.textureDescriptorSet, 
+        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_textureDescriptorSet, 
         static_cast<uint32_t>(imageInfos.GetSize()), 0);
         vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
 
@@ -585,32 +624,10 @@ namespace BlitzenVulkan
         // Transparent objects will only be renderered on the 2nd pass
         cullData.postPass = 0;
 
-        // This descriptor write will be given to pushDescriptors before the graphics pipeline is called
-        VkWriteDescriptorSet pushDescriptorWritesGraphics[7] = {
-        vBuffers.globalShaderDataBuffer.descriptorWrite, 
-        m_currentStaticBuffers.vertexBuffer.descriptorWrite, 
-        m_currentStaticBuffers.renderObjectBuffer.descriptorWrite, 
-        m_currentStaticBuffers.transformBuffer.descriptorWrite, 
-        m_currentStaticBuffers.materialBuffer.descriptorWrite, 
-        m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite, 
-        m_currentStaticBuffers.surfaceBuffer.descriptorWrite};
-
-        // The depth pyramid write will not be used in the first pass culling shader. It will later be set by the late culling shader
-        VkDescriptorImageInfo depthPyramidImageInfo{};
-        VkWriteDescriptorSet depthPyramidWrite{};
-
-        // VkWriteDescriptor array that will be used for the push descriptor layout for the culling compute shaders
-        VkWriteDescriptorSet pushDescriptorWritesCompute[9] = {
-        vBuffers.globalShaderDataBuffer.descriptorWrite, 
-        vBuffers.cullingDataBuffer.descriptorWrite, 
-        m_currentStaticBuffers.renderObjectBuffer.descriptorWrite, 
-        m_currentStaticBuffers.transformBuffer.descriptorWrite, 
-        m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite, 
-        m_currentStaticBuffers.indirectCountBuffer.descriptorWrite, 
-        m_currentStaticBuffers.visibilityBuffer.descriptorWrite, 
-        m_currentStaticBuffers.surfaceBuffer.descriptorWrite, 
-        depthPyramidWrite}; 
-
+        // Specifies the descriptor writes that are not static again
+        pushDescriptorWritesGraphics[0] = vBuffers.globalShaderDataBuffer.descriptorWrite;
+        pushDescriptorWritesCompute[0] = vBuffers.globalShaderDataBuffer.descriptorWrite;
+        pushDescriptorWritesCompute[1] = vBuffers.cullingDataBuffer.descriptorWrite;
         
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
@@ -733,7 +750,8 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &dispatchWriteBarrier);
         }
 
-
+        VkWriteDescriptorSet depthPyramidWrite{};
+        VkDescriptorImageInfo depthPyramidImageInfo{};
         // Add the depth image to the push descriptors for the culling shader
         WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 
         3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
@@ -893,7 +911,7 @@ namespace BlitzenVulkan
 
         // Bind the texture descriptor set. This one was allocated and written to in the UploadDataToGPU function
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGeometryPipelineLayout, 1,
-        1, &m_currentStaticBuffers.textureDescriptorSet, 0, nullptr);
+        1, &m_textureDescriptorSet, 0, nullptr);
 
         // Bind the graphics pipeline and the index buffer
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);

@@ -27,16 +27,30 @@ namespace BlitzenCore
         MaxTypes = 14
     };
 
-    void* BlitAlloc(AllocationType alloc, size_t size);
-    void BlitFree(AllocationType alloc, void* pBlock, size_t size);
-    void  BlitMemCopy(void* pDst, void* pSrc, size_t size);
-    void BlitMemSet(void* pDst, int32_t value, size_t size);
-    void BlitZeroMemory(void* pBlock, size_t size);
-
     // Log all allocations to catch memory leaks
     void LogAllocation(AllocationType alloc, size_t size);
     // Unlog allocations when freed, to catch memory leaks
     void LogFree(AllocationType alloc, size_t size);
+
+    template<typename T>
+    T* BlitAlloc(AllocationType alloc, size_t size)
+    {
+        BLIT_ASSERT(alloc != AllocationType::Unkown && alloc != AllocationType::MaxTypes)
+
+        LogAllocation(alloc, size * sizeof(T));
+
+        return reinterpret_cast<T*>(BlitzenPlatform::PlatformMalloc(size * sizeof(T), false));
+    }
+
+    template<typename T>
+    void BlitFree(AllocationType alloc, void* pBlock, size_t size)
+    {
+        BLIT_ASSERT(alloc != AllocationType::Unkown && alloc != AllocationType::MaxTypes)
+
+        LogFree(alloc, size * sizeof(T));
+
+        BlitzenPlatform::PlatformFree(pBlock, false);
+    }
 
     // This allocation function calls the constructor of the object that gets allocated(the constructor must have no parameters)
     template<typename T, typename... P> 
@@ -44,6 +58,20 @@ namespace BlitzenCore
     {
         LogAllocation(alloc, sizeof(T));
         return new T(params...);
+    }
+
+    template<typename T, AllocationType A>
+    T* BlitConstructAlloc(const T& data)
+    {
+        LogAllocation(A, sizeof(T));
+        return new T(data);
+    }
+
+    template<typename T, AllocationType A>
+    T* BlitConstructAlloc(T&& data)
+    {
+        LogAllocation(A, sizeof(T));
+        return new T(std::move(data));
     }
 
     // This version takes no parameters
@@ -64,4 +92,18 @@ namespace BlitzenCore
 
     // Allocates memory using the linear allocator
     void* BlitAllocLinear(AllocationType alloc, size_t size);
+
+    void  BlitMemCopy(void* pDst, void* pSrc, size_t size);
+    void BlitMemSet(void* pDst, int32_t value, size_t size);
+    void BlitZeroMemory(void* pBlock, size_t size);
+}
+
+namespace BlitzenPlatform
+{
+    // Called only by the memory manager
+    void* PlatformMalloc(size_t size, uint8_t aligned);
+    void PlatformFree(void* pBlock, uint8_t aligned);
+    void* PlatformMemZero(void* pBlock, size_t size);
+    void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
+    void* PlatformMemSet(void* pDst, int32_t value, size_t size);
 }

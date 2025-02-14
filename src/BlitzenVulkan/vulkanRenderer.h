@@ -134,18 +134,7 @@ namespace BlitzenVulkan
 
         // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
         // It will hold either 1 or 0 for each object based on if they were visible last frame or not
-        PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // A single descriptor pool will allocate a big set with one binding to hold all the textures that are loaded
-        VkDescriptorPool textureDescriptorPool;
-        VkDescriptorSetLayout textureDescriptorSetlayout;
-        VkDescriptorSet textureDescriptorSet;
-
-        inline void Cleanup(VmaAllocator allocator, VkDevice device){
-            // Destroy the texture image descriptor set resources
-            vkDestroyDescriptorPool(device, textureDescriptorPool, nullptr);
-            vkDestroyDescriptorSetLayout(device, textureDescriptorSetlayout, nullptr);
-        }
+        PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};  
     };
 
     class VulkanRenderer
@@ -157,7 +146,7 @@ namespace BlitzenVulkan
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
 
-        // Prototype function for textures, used with stb_image
+        // Prototype function for textures, used with stb_image. Might want to remove this, since Blitzen works with DDS textures now
         void UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format);
 
         // Function for DDS texture loading
@@ -167,6 +156,7 @@ namespace BlitzenVulkan
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::RenderContext& pRenderData);
 
+        // This is an incomplete function that attempts to clear anything Vulkan has drawn to swith to a different renderer. It does not work
         void ClearFrame();
 
         void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
@@ -177,19 +167,30 @@ namespace BlitzenVulkan
         // I do not do anything on the destructor, but I leave it here because Cleaning Vulkan is peculiar
         ~VulkanRenderer();
 
+        VulkanRenderer operator = (VulkanRenderer) = delete;
+
     private:
 
-        // Defined in vulkanInit
+        // Defined in vulkanInit. Initializes the frame tools which are handles that need to have one instance for each frame in flight
         uint8_t FrameToolsInit();
 
+        // Initializes the buffers that are included in frame tools
         uint8_t VarBuffersInit();
 
+        // Creates the descriptor set latyouts that are not constant and need to have one instance for each frame in flight
         uint8_t CreateDescriptorLayouts();
 
-        uint8_t UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-        BlitzenEngine::RenderObject* pRenderObjects, size_t renderObjectCount, BlitzenEngine::Material* pMaterials, size_t materialCount, 
-        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData,
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
+        // Takes the data that is to be used in the scene (vertices, primitives, textures etc.) and uploads to the appropriate resource struct
+        uint8_t UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, 
+        BlitCL::DynamicArray<uint32_t>& indices, 
+        BlitzenEngine::RenderObject* pRenderObjects, 
+        size_t renderObjectCount, 
+        BlitzenEngine::Material* pMaterials, 
+        size_t materialCount, 
+        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, 
+        BlitCL::DynamicArray<uint32_t>& meshletData,
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
+        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
         uint8_t SetupMainGraphicsPipeline();
 
@@ -207,6 +208,7 @@ namespace BlitzenVulkan
 
     public:
 
+        // Static function that allows access to vulkan renderer at any scope
         inline static VulkanRenderer* GetRendererInstance() {return m_pThisRenderer;}
 
         // Array of structs that represent the way textures will be pushed to the GPU
@@ -221,7 +223,7 @@ namespace BlitzenVulkan
 
     private:
 
-        // This pointer will be used to get access to the renderer for thing like automatic destructors
+        // This pointer will be used to get access to the renderer for things like automatic destructors
         static VulkanRenderer* m_pThisRenderer;
 
         // Custom allocator, don't need it right now
@@ -239,7 +241,6 @@ namespace BlitzenVulkan
         AllocatedImage m_colorAttachment;
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;
-        VkSampler m_depthAttachmentSampler;// This is needed for depth pyramid and occlusion tests
 
         // The depth pyramid is generated for occlusion culling based on the depth buffer of an initial render pass
         // It has a maximum fo 16 mip levels, but the actual count is based on the window width and height
@@ -247,19 +248,29 @@ namespace BlitzenVulkan
         VkImageView m_depthPyramidMips[16];
         uint8_t m_depthPyramidMipLevels = 0;
         VkExtent2D m_depthPyramidExtent;
+        VkSampler m_depthAttachmentSampler;
 
         StaticBuffers m_currentStaticBuffers;
+
+    /*
+        Descriptor section
+    */
+    private:
 
         /*
             Descriptor set layout for uniform buffers used by multiple shaders. 
             This includes general data, buffer addresses, culling data etc.
             Use pushes descriptors.
-            #binding [0]: global shader data used by both compute and graphics pipelines
-            #binding [1]: buffer addresses used by both compute and graphics pipelines
-            #binding [3]: culling data used by culling compute shaders
-            #binding [4]: depth pyramid combined image sampler used by culling compute shaders for occlusion culling
+            #binding [0]: global shader data uniform buffer
+            #binding [1]: vertex buffer SSBO
+            #binding [3]: culling data uniform buffer
+            #binding [4]: depth pyramid sampler
         */
         VkDescriptorSetLayout m_pushDescriptorBufferLayout;
+
+        VkWriteDescriptorSet pushDescriptorWritesGraphics[7];
+        VkWriteDescriptorSet pushDescriptorWritesCompute[9];
+
         /*
             Descriptor set layout for depth pyramid construction. 
             Used by the depth reduce compute pipeline. 
@@ -268,6 +279,21 @@ namespace BlitzenVulkan
             # binding[1]: combined image sampler for input image
         */
         VkDescriptorSetLayout m_depthPyramidDescriptorLayout;
+
+        /*
+            Descriptor set layout for all textures accessed by the fragment shader
+            # binding[0]: non-uniform sampler that will be indexed into in the fragment shader to retrieve textures
+        */
+        VkDescriptorSetLayout m_textureDescriptorSetlayout;
+
+        // This descriptor set does not use push descriptors and thus it needs to be allocated with a descriptor pool
+        VkDescriptorPool m_textureDescriptorPool;
+        VkDescriptorSet m_textureDescriptorSet;
+
+    /*
+        Pipelines section
+    */
+    private:
 
         // This pipeline Draws opaque objects using the indirect commands create by culling compute shaders
         VkPipeline m_opaqueGeometryPipeline;
@@ -289,6 +315,11 @@ namespace BlitzenVulkan
         // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 
         VkPipeline m_depthPyramidGenerationPipeline;
         VkPipelineLayout m_depthPyramidGenerationPipelineLayout;
+    
+    /*
+        Runtime section
+    */
+    private:
 
         // This holds tools that need to be unique for each frame in flight
         FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];

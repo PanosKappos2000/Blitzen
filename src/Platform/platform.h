@@ -15,13 +15,7 @@ namespace BlitzenPlatform
 
     uint8_t PlatformPumpMessages();
 
-    // Called only by the memory manager
-    void* PlatformMalloc(size_t size, uint8_t aligned);
-    void PlatformFree(void* pBlock, uint8_t aligned);
-    void* PlatformMemZero(void* pBlock, size_t size);
-    void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
-    void* PlatformMemSet(void* pDst, int32_t value, size_t size);
-
+    
     void PlatformConsoleWrite(const char* message, uint8_t color);
     void PlatformConsoleError(const char* message, uint8_t color);
 

@@ -18,7 +18,7 @@ namespace BlitzenCore
         // Allocate a big block of memory for the linear allocator
         s_pMemoryManager->linearAlloc.blockSize = BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE;
         s_pMemoryManager->linearAlloc.totalAllocated = 0;
-        s_pMemoryManager->linearAlloc.pBlock = BlitAlloc(BlitzenCore::AllocationType::LinearAlloc, BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE);
+        s_pMemoryManager->linearAlloc.pBlock = BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE);
     }
 
     BlitzenVulkan::MemoryCrucialHandles* GetVulkanMemoryCrucials()
@@ -29,36 +29,6 @@ namespace BlitzenCore
         #else
             return nullptr;
         #endif
-    }
-
-    void* BlitAlloc(AllocationType alloc, size_t size)
-    {
-        if(alloc == AllocationType::Unkown || alloc == AllocationType::MaxTypes)
-        {
-            BLIT_FATAL("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))
-        }
-
-        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
-
-        pState->totalAllocated += size;
-        pState->typeAllocations[static_cast<size_t>(alloc)] += size;
-
-        return BlitzenPlatform::PlatformMalloc(size, false);
-    }
-
-    void BlitFree(AllocationType alloc, void* pBlock, size_t size)
-    {
-        if(alloc == AllocationType::Unkown || alloc == AllocationType::MaxTypes)
-        {
-            BLIT_FATAL("Allocation type: %i, A valid allocation type must be specified!", static_cast<uint8_t>(alloc))
-        }
-
-        MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
-
-        pState->totalAllocated -= size;
-        pState->typeAllocations[static_cast<size_t>(alloc)] -= size;
-
-        BlitzenPlatform::PlatformFree(pBlock, false);
     }
 
     void BlitMemCopy(void* pDst, void* pSrc, size_t size)
@@ -106,7 +76,7 @@ namespace BlitzenCore
         BLIT_ASSERT(pState)
 
         // Free the big block of memory held by the linear allocator
-        BlitFree(BlitzenCore::AllocationType::LinearAlloc, pState->linearAlloc.pBlock, pState->linearAlloc.blockSize);
+        BlitFree<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, pState->linearAlloc.pBlock, pState->linearAlloc.blockSize);
 
         // Warn the user of any memory leaks to look for
         if (pState->totalAllocated)

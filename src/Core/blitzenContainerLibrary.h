@@ -29,12 +29,34 @@ namespace BlitCL
             }
         }
 
+        DynamicArray(size_t initialSize, T& data)
+            :m_size{ initialSize }, m_capacity(initialSize* BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+        {
+            if (m_size > 0)
+            {
+                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+                for (size_t i = 0; i < initialSize)
+                    BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
+            }
+        }
+
+        DynamicArray(size_t initialSize, T&& data)
+            :m_size{ initialSize }, m_capacity(initialSize* BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+        {
+            if (m_size > 0)
+            {
+                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+                for (size_t i = 0; i < initialSize; ++i)
+                    BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
+            }
+        }
+
         DynamicArray(DynamicArray<T>& array)
             :m_size(array.GetSize()), m_capacity(array.GetSize() * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
         {
             if (m_size > 0)
             {
-                m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
                 BlitzenCore::BlitMemCopy(m_pBlock, array.Data(), array.GetSize() * sizeof(T));
             }
         }
@@ -105,15 +127,37 @@ namespace BlitCL
             m_size += blockSize;
         }
 
+        void AppendArray(DynamicArray<T>& array)
+        {
+            size_t additional = array.GetSize();
+
+            // If there is not enough space allocates more first
+            if (m_size + additional > m_capacity)
+            {
+                RearrangeCapacity(m_size + additional);
+            }
+
+            // Copies the new array's data to this array
+            Memcpy(m_pBlock + additional, array.Data(), additional * sizeof(T));
+            // Adds this array's size to m_size
+            m_size += additional;
+        }
+        
+
         void RemoveAtIndex(size_t index)
         {
             if(index < m_size && index >= 0)
             {
                 T* pTempBlock = m_pBlock;
-                m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+
+                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+
                 BlitzenCore::BlitMemCopy(m_pBlock, pTempBlock, (index) * sizeof(T));
+
                 BlitzenCore::BlitMemCopy(m_pBlock + index, pTempBlock + index + 1, (m_size - index) * sizeof(T));
-                BlitzenCore::BlitFree(BlitzenCore::AllocationType::DynamicArray, pTempBlock, m_size * sizeof(T));
+
+                BlitzenCore::BlitFree<T>(BlitzenCore::AllocationType::DynamicArray, pTempBlock, m_size);
+
                 m_size--;
             }
         }
@@ -149,7 +193,7 @@ namespace BlitCL
             size_t temp = m_capacity;
             m_capacity = newSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER;
             T* pTemp = m_pBlock;
-            m_pBlock = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T)));
+            m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
             if (m_size != 0)
             {
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_size * sizeof(T));
@@ -160,6 +204,45 @@ namespace BlitCL
                 BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, temp * sizeof(T));
             }
         }
+    };
+
+    template<typename T, size_t S>
+    class StaticArray
+    {
+    public:
+        StaticArray()
+        {
+            static_assert(S > 0);
+        }
+
+        StaticArray(T& data)
+        {
+            static_assert(S > 0);
+
+            for(size_t i = 0; i < S; ++i)
+                BlitzenCore::BlitMemCopy(&m_pData[i], &data, sizeof(T));
+        }
+
+        StaticArray(T&& data)
+        {
+            static_assert(S > 0);
+
+            for(size_t i = 0; i < S; ++i)
+                BlitzenCore::BlitMemCopy(&m_pData[i], &data, sizeof(T));
+        }
+
+        inline T& operator [] (size_t idx) { BLIT_ASSERT(idx >= 0 && idx < S) return m_pData[idx]; }
+
+        inline T* Data() { return m_pData; }
+
+        inline size_t Size() { return S; }
+
+        ~StaticArray()
+        {
+        
+        }
+    private:
+        T m_pData[S];
     };
 
 
@@ -282,6 +365,16 @@ namespace BlitCL
             m_customDestructor = customDestructor;
         }
 
+        SmartPointer(const T& data)
+        {
+            m_pData = BlitzenCore::BlitConstructAlloc<T, A>(data);
+        }
+
+        SmartPointer(T&& data)
+        {
+            m_pData = BlitzenCore::BlitConstructAlloc<T, A>(std::move(data));
+        }
+
         SmartPointer(DstrPfn customDestructor, P&... params)
         {
             m_pData = BlitzenCore::BlitCOnstructAlloc<T>(A, params...);
@@ -324,7 +417,7 @@ namespace BlitCL
         {
             if(size > 0)
             {
-                m_pData = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(A, size * sizeof(T)));
+                m_pData = BlitzenCore::BlitAlloc<T>(A, size);
             }
             m_size = size;
         }
@@ -333,7 +426,7 @@ namespace BlitCL
         {
             BLIT_ASSERT_MESSAGE(m_size == 0, "The storage has already allocated storage")
 
-            m_pData = reinterpret_cast<T*>(BlitzenCore::BlitAlloc(A, size * sizeof(T)));
+            m_pData = BlitzenCore::BlitAlloc<T>(A, size);
             m_size = size;
         }
 
@@ -345,7 +438,7 @@ namespace BlitCL
         {
             if(m_pData && m_size > 0)
             {
-                BlitzenCore::BlitFree(A, m_pData, m_size * sizeof(T));
+                BlitzenCore::BlitFree<T>(A, m_pData, m_size);
             }
         }
 

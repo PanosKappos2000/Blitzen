@@ -40,9 +40,18 @@
     #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
 #endif
 
-#define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
+#ifdef BLIT_DOUBLE_BUFFERING
+    #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     2
+#else
+    #define BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT     1 // This is used for double(+) buffering
+#endif
 
-#define BLITZEN_VULKAN_MESH_SHADER              0 // Mesh shaders have output but it is wrong 
+#ifdef  BLIT_VK_MESH_EXT
+    #define BLITZEN_VULKAN_MESH_SHADER              1 // Mesh shaders do not work at the moment, do not activate them
+#else
+    #define BLITZEN_VULKAN_MESH_SHADER              0 
+#endif
+ 
 
 #define BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT     2 + BLITZEN_VULKAN_VALIDATION_LAYERS
 

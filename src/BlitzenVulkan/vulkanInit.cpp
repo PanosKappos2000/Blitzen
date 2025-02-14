@@ -439,9 +439,8 @@ namespace BlitzenVulkan
                 continue;
             }
             // Store the queue family properties to query for their indices
-            BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(static_cast<size_t>(queueFamilyPropertyCount));
-            // Vulkan will throw an exception if I do not zero out all elements in the array
-            BlitzenCore::BlitZeroMemory(queueFamilyProperties.Data(), queueFamilyProperties.GetSize() * sizeof(VkQueueFamilyProperties2));
+            BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(
+            static_cast<size_t>(queueFamilyPropertyCount), std::move(VkQueueFamilyProperties2({})));
             for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
             {
                 queueFamilyProperties[j].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
@@ -987,7 +986,9 @@ namespace BlitzenVulkan
 
         vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
 
-        m_currentStaticBuffers.Cleanup(m_allocator, m_device);
+        // Destroys the resources used for the texture descriptors
+        vkDestroyDescriptorPool(m_device, m_textureDescriptorPool, nullptr);
+        vkDestroyDescriptorSetLayout(m_device, m_textureDescriptorSetlayout, nullptr);
 
         vkDestroyDescriptorSetLayout(m_device, m_pushDescriptorBufferLayout, m_pCustomAllocator);
 

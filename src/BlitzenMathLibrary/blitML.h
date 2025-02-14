@@ -79,13 +79,13 @@ namespace BlitML
     ------------------------*/
 
     // Does not return the true length but is adequate if a comparison or something similar is needed, where a square root operation can be avoided
-    inline float LengthSquared(vec2& vec) { return vec.x * vec.x + vec.y * vec.y; }
-    inline float LengthSquared(vec3& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z; }
-    inline float LengthSquared(vec4& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z, vec.w * vec.w; }
+    inline float LengthSquared(const vec2& vec) { return vec.x * vec.x + vec.y * vec.y; }
+    inline float LengthSquared(const vec3& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z; }
+    inline float LengthSquared(const vec4& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z, vec.w * vec.w; }
 
-    inline float Length(vec2 vec) { return Sqrt(LengthSquared(vec)); }
-    inline float Length(vec3 vec) { return Sqrt(LengthSquared(vec)); }
-    inline float Length(vec4 vec) { return Sqrt(LengthSquared(vec)); } 
+    inline float Length(const vec2& vec) { return Sqrt(LengthSquared(vec)); }
+    inline float Length(const vec3& vec) { return Sqrt(LengthSquared(vec)); }
+    inline float Length(const vec4& vec) { return Sqrt(LengthSquared(vec)); } 
     
 
     inline void Normalize(vec2& vec) {
@@ -107,35 +107,35 @@ namespace BlitML
         vec.w /= len;
     }
 
-    inline vec2 GetNormalized(vec2& vec){
+    inline vec2 GetNormalized(const vec2& vec){
         float len = Length(vec);
         return vec2(vec.x / len, vec.y / len);
     }
-    inline vec3 GetNormalized(vec3& vec){
+    inline vec3 GetNormalized(const vec3& vec){
         float len = Length(vec);
         return vec3(vec.x / len, vec.y / len, vec.z / len);
     }
-    inline vec4 GetNormalized(vec4& vec){
+    inline vec4 GetNormalized(const vec4& vec){
         float len = Length(vec);
         return vec4(vec.x / len, vec.y / len, vec.z / len, vec.w / len);
     }
 
-    inline float Distance(vec2 v1, vec2 v2){
+    inline float Distance(const vec2& v1, const vec2& v2){
         vec2 d(v1 - v2);
         return Length(d);
     }
-    inline float Distance(vec3 v1, vec3 v2){
+    inline float Distance(const vec3& v1, const vec3& v2){
         vec3 d(v1 - v2);
         return Length(d);
     }
-    inline float Distance(vec4& v1, vec4& v2){
+    inline float Distance(const vec4& v1, const vec4& v2){
         vec4 d(v1 - v2);
         return Length(d);
     }
 
-    inline vec3 ToVec3(vec4& vec) { return vec3(vec.x, vec.y, vec.z); }
+    inline vec3 ToVec3(const vec4& vec) { return vec3(vec.x, vec.y, vec.z); }
 
-    inline uint8_t Compare(vec2& v1, vec2& v2, float tolerance)
+    inline uint8_t Compare(const vec2& v1, const vec2& v2, float tolerance)
     {
         if (Abs(v1.x - v2.x) > tolerance) 
         {
@@ -148,7 +148,7 @@ namespace BlitML
         return 1;
     }
 
-    inline uint8_t Compare(vec3& v1, vec3& v2, float tolerance)
+    inline uint8_t Compare(const vec3& v1, const vec3& v2, float tolerance)
     {
         if (Abs(v1.x - v2.x) > tolerance) 
         {
@@ -165,7 +165,7 @@ namespace BlitML
         return 1;
     }
 
-    inline float Dot(vec3& v1, vec3& v2) 
+    inline float Dot(const vec3& v1, const vec3& v2) 
     {
         float f = 0;
         f += v1.x * v2.x;
@@ -174,7 +174,7 @@ namespace BlitML
         return f;
     }
 
-    inline float Dot(vec4& v1, vec4& v2){
+    inline float Dot(const vec4& v1, const vec4& v2){
         float f = 0;
         f += v1.x * v2.x;
         f += v1.y * v2.y;
@@ -183,11 +183,11 @@ namespace BlitML
         return f;
     }
 
-    inline vec3 Cross(vec3& v1, vec3& v2){
+    inline vec3 Cross(const vec3& v1, const vec3& v2){
         return vec3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
     }
 
-    inline vec4 NormalizePlane(vec4 p){ return p / Length(ToVec3(p));}
+    inline vec4 NormalizePlane(const vec4& p){ return p / Length(ToVec3(p));}
 
 
 
@@ -243,7 +243,7 @@ namespace BlitML
     }
 
     // Creates and returns a look-at matrix, or a matrix looking at target from the perspective of position.
-    inline mat4 LookAt(vec3& position, vec3& target, vec3& up)
+    inline mat4 LookAt(const vec3& position, const vec3& target, const vec3& up)
     {
         mat4 res;
         vec3 zAxis;
@@ -274,7 +274,7 @@ namespace BlitML
     }
 
     // Returns a transposed copy of the provided matrix (rows->colums)
-    inline mat4 Transpose(mat4& matrix)
+    inline mat4 Transpose(const mat4& matrix)
     {
         mat4 res;
         res.data[0] = matrix.data[0];
@@ -298,7 +298,7 @@ namespace BlitML
 
 
     // Creates and returns an inverse of the provided matrix.
-    inline mat4 Mat4Inverse(mat4 matrix) 
+    inline mat4 Mat4Inverse(const mat4& matrix) 
     {
         const float* m = matrix.data;
         float t0 = m[10] * m[15];
@@ -351,7 +351,7 @@ namespace BlitML
         return res;
     }
 
-    inline mat4 Translate(vec3& translation)
+    inline mat4 Translate(const vec3& translation)
     {
         mat4 res;
         res.data[12] = translation.x;
@@ -360,7 +360,7 @@ namespace BlitML
         return res;
     }
 
-    inline mat4 Scale(vec3& scale) 
+    inline mat4 Scale(const vec3& scale) 
     {
         mat4 res;
         res.data[0] = scale.x;
@@ -413,7 +413,7 @@ namespace BlitML
     }
 
     // Derives a forward vector from a provided matrix
-    inline vec3 Mat4Forward(mat4& matrix) 
+    inline vec3 Mat4Forward(const mat4& matrix) 
     {
         vec3 forward;
         forward.x = -matrix.data[2];
@@ -424,7 +424,7 @@ namespace BlitML
     }
 
     // Derives a backward vector from a derived matrix
-    inline vec3 Mat4Backward(mat4& matrix) 
+    inline vec3 Mat4Backward(const mat4& matrix) 
     {
         vec3 backward;
         backward.x = matrix.data[2];
@@ -435,7 +435,7 @@ namespace BlitML
     }
 
     // Derives an up vector from a derived matrix
-    inline vec3 Mat4Up(mat4& matrix) 
+    inline vec3 Mat4Up(const mat4& matrix) 
     {
         vec3 up;
         up.x = matrix.data[1];
@@ -446,7 +446,7 @@ namespace BlitML
     }
 
     // You get the idea
-    inline vec3 Mat4Down(mat4& matrix) 
+    inline vec3 Mat4Down(const mat4& matrix) 
     {
         vec3 down;
         down.x = -matrix.data[1];
@@ -456,7 +456,7 @@ namespace BlitML
         return down;
     }
 
-    inline vec3 Mat4Left(mat4& matrix) 
+    inline vec3 Mat4Left(const mat4& matrix) 
     {
         vec3 left;
         left.x = -matrix.data[0];
@@ -466,7 +466,7 @@ namespace BlitML
         return left;
     }
 
-    inline vec3 Mat4Right(mat4& matrix) 
+    inline vec3 Mat4Right(const mat4& matrix) 
     {
         vec3 right;
         right.x = matrix.data[0];
@@ -483,18 +483,18 @@ namespace BlitML
         Quaternion operations
     ---------------------------*/
 
-    inline float QuatNormal(quat& q){ return Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w); }
+    inline float QuatNormal(const quat& q){ return Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w); }
 
-    inline quat NormalizeQuat(quat q) {
+    inline quat NormalizeQuat(const quat& q) {
         float normal = QuatNormal(q);
         return quat(q.x / normal, q.y / normal , q.z / normal, q.w / normal);
     }
 
-    inline quat QuatConjugate(quat& q) { return quat(-q.x, -q.y, -q.z, q.w); }
+    inline quat QuatConjugate(const quat& q) { return quat(-q.x, -q.y, -q.z, q.w); }
 
-    inline quat QuatInverse(quat& q) { return NormalizeQuat(QuatConjugate(q)); }
+    inline quat QuatInverse(const quat& q) { return NormalizeQuat(QuatConjugate(q)); }
 
-    inline quat MulitplyQuat(quat& q1, quat& q2) 
+    inline quat MulitplyQuat(const quat& q1, const quat& q2) 
     {
         quat res;
         res.x = q1.x * q2.w + q1.y * q2.z - q1.z * q2.y + q1.w * q2.x;
@@ -504,9 +504,9 @@ namespace BlitML
         return res;
     }
 
-    inline float QuatDot(quat& q1, quat& q2) { return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w; }
+    inline float QuatDot(const quat& q1, const quat& q2) { return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w; }
 
-    inline mat4 QuatToMat4(quat& q) 
+    inline mat4 QuatToMat4(const quat& q) 
     {
         mat4 res;
         quat n = NormalizeQuat(q);
@@ -522,7 +522,7 @@ namespace BlitML
         return res;
     }
 
-    inline mat4 QuatToRotationMatrix(quat& q, vec3& center) 
+    inline mat4 QuatToRotationMatrix(const quat& q, const vec3& center) 
     {
         mat4 res;
         float* f = res.data;
@@ -545,7 +545,7 @@ namespace BlitML
         return res;
     }
 
-    inline quat QuatFromAngleAxis(vec3& axis, float angle, uint8_t normalize) 
+    inline quat QuatFromAngleAxis(const vec3& axis, float angle, uint8_t normalize) 
     {
         const float half_angle = 0.5f * angle;
         float s = Sin(half_angle);
@@ -559,7 +559,7 @@ namespace BlitML
     }
 
     // Spherical linear interpolation
-    inline quat QuatSlerp(quat q_0, quat q_1, float percentage) 
+    inline quat QuatSlerp(const quat& q_0, const quat& q_1, float percentage) 
     {
         quat res;
         // Source: https://en.wikipedia.org/wiki/Slerp
