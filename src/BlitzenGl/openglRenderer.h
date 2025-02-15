@@ -11,6 +11,20 @@
 
 namespace BlitzenGL
 {
+    struct alignas(16) DrawContext
+    {
+        void* pCamera;
+        void* pMovingCamera;
+
+        uint32_t drawCount;
+
+        uint8_t bOcclusionCulling;
+        uint8_t bLOD;
+
+        inline DrawContext(void* pCam, void* pMC, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
+        : pCamera(pCam), pMovingCamera(pMovingCamera), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
+    };
+
     using GraphicsProgram = unsigned int;
     using ComputeProgram = unsigned int;
 
@@ -30,6 +44,15 @@ namespace BlitzenGL
         uint32_t  firstInstance;
     };
 
+    struct CullData
+    {
+        uint32_t drawCount;
+        uint8_t occlusionEnabled;
+        uint8_t lodEnabled;
+
+        inline CullData(uint32_t dc, uint8_t oc, uint8_t lod) :drawCount{dc}, occlusionEnabled{oc}, lodEnabled{lod} {}
+    };
+
     class OpenglRenderer
     {
     public:
@@ -40,7 +63,7 @@ namespace BlitzenGL
 
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
 
-        void DrawFrame(BlitzenEngine::RenderContext& context);
+        void DrawFrame(DrawContext& context);
 
         void Shutdown();
 
@@ -71,9 +94,9 @@ namespace BlitzenGL
 
         GlBuffer m_materialBuffer;
 
-        GlBuffer m_cullingDataBuffer;
+        GlBuffer m_cullDataBuffer;
 
-        GlBuffer m_shaderDataBuffer;
+        GlBuffer m_viewDataBuffer;
 
         // Holds all the render objects that will be retrieved in the shaders to access the surface and transform data for each object
         GlBuffer m_renderObjectBuffer;

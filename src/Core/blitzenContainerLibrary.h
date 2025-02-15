@@ -63,9 +63,9 @@ namespace BlitCL
 
         inline size_t GetSize() { return m_size; }
 
-        inline T& operator [] (size_t index) { BLIT_ASSERT_DEBUG(index >= 0 && index < m_size) return m_pBlock[index]; }
-        inline T& Front() { BLIT_ASSERT_DEBUG(m_size) m_pBlock[0]; }
-        inline T& Back() { BLIT_ASSERT_DEBUG(m_size) return m_pBlock[m_size - 1]; }
+        inline T& operator [] (size_t index) { BLIT_ASSERT(index >= 0 && index < m_size) return m_pBlock[index]; }
+        inline T& Front() { BLIT_ASSERT(m_size) m_pBlock[0]; }
+        inline T& Back() { BLIT_ASSERT(m_size) return m_pBlock[m_size - 1]; }
         inline T* Data() {return m_pBlock; }
 
         void Fill(T value)
@@ -102,11 +102,11 @@ namespace BlitCL
 
         void Reserve(size_t size)
         {
-            BLIT_ASSERT_DEBUG(size)
+            BLIT_ASSERT(size > m_capacity)
             RearrangeCapacity(size / BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER);
         }
 
-        void PushBack(T& newElement)
+        void PushBack(const T& newElement)
         {
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
             if(m_size + 1 > m_capacity)
@@ -182,8 +182,11 @@ namespace BlitCL
 
     private:
 
+        // The array size that is currently being worked with
         size_t m_size;
+        // The actual size of the allocation
         size_t m_capacity;
+        // Pointer to the start of the array
         T* m_pBlock;
 
     private:
@@ -383,6 +386,8 @@ namespace BlitCL
         }
 
         inline T* Data() { return m_pData; }
+
+        inline T* operator ->() {return m_pData; }
 
         ~SmartPointer()
         {

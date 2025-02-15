@@ -37,24 +37,48 @@ namespace BlitzenEngine
 
         inline static RenderingSystem* GetRenderingSystem() { return s_pRenderer; }
 
+        inline const BlitzenVulkan::VulkanRenderer& GetVulkan() { return vulkan; }
+        inline uint8_t IsVulkanAvailable() { return bVk; }
+
+        inline const BlitzenGL::OpenglRenderer& GetOpengl() { return opengl; }
+        inline uint8_t IsOpenglAvailable() { return bGl; }
+
+        void ShutdownRenderers();
+
     public:
 
-        BlitzenVulkan::VulkanRenderer* pVulkan = nullptr;
+        // This is here because the UploadDDSTexture function cannot be called by const reference
+        inline uint8_t GiveTextureToVulkan(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
+        void* pData, const char* filepath) { return vulkan.UploadDDSTexture(header, header10, pData, filepath); }
 
-        BlitzenGL::OpenglRenderer* pGl = nullptr;
+        // Same as the above
+        inline uint8_t GiveTextureToOpengl(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
+        const char* filepath) { return opengl.UploadTexture(header, header10, filepath); }
+
+        // The parameters for this functions will be tidied up later
+        uint8_t SetupRequestedRenderersForDrawing(RenderingResources* pResources, uint32_t drawCount, Camera& camera);
+
+        void DrawFrame(Camera& camera, Camera* pMovingCamera, uint32_t drawCount);
+
+        // Pointless feature that doesn't work
+        uint8_t SetActiveAPI(ActiveRenderer newActiveAPI);
+        void ClearCurrentActiveRenderer();
 
         void* pDx12 = nullptr;
-
-        ActiveRenderer activeRenderer = ActiveRenderer::MaxRenderers;
 
     private:
         #ifdef BLITZEN_VULKAN
             BlitzenVulkan::VulkanRenderer vulkan;
+            uint8_t bVk = 0;
         #endif
 
         #ifdef BLITZEN_OPENGL
             BlitzenGL::OpenglRenderer opengl;
+            uint8_t bGl = 0;
         #endif
+
+        ActiveRenderer activeRenderer = ActiveRenderer::MaxRenderers;
+        uint8_t CheckActiveAPI();
     
     public:
 
@@ -69,32 +93,6 @@ namespace BlitzenEngine
         static RenderingSystem* s_pRenderer;
     };
 
-    // Takes a smart pointer to a vulkan renderer and initalizes it. Succesfully returns if it gets initialized
-    uint8_t CreateVulkanRenderer(BlitzenVulkan::VulkanRenderer& pVulkan, 
-    uint32_t windowWidth, uint32_t windowHeight);
-
-    // Small fuction that tells the engine if Vulkan is active
-    uint8_t isVulkanInitialized();
-
-    // Create the opengl renderer
-    uint8_t CreateOpenglRenderer(BlitzenGL::OpenglRenderer& renderer, uint32_t windowWidth, uint32_t windowHeight);
-
-    // Checks if opengl is initialized
-    uint8_t IsOpenglInitialized();
-
-    // When changing the renderer mid flight, the previous renderer might need to clear the frame
-    void ClearCurrentActiveRenderer();
-    // Sets the renderer / graphics API that will be used when drawing
-    uint8_t SetActiveRenderer(ActiveRenderer ar);
-    // This function checks if the requested active renderer is available
-    uint8_t CheckActiveRenderer(ActiveRenderer ar);
-
-    // The parameters for this functions will be tidied up later
-    uint8_t SetupRequestedRenderersForDrawing(RenderingResources* pResources, size_t drawCount, Camera& camera);
-
-    void DrawFrame(Camera& camera, Camera* pMovingCamera, size_t drawCount, 
-    uint8_t windowResize, RenderContext& renderContext);
-
     // Switch the renderer debug values
     inline void ChangeFreezeFrustumState() { 
         RenderingSystem::GetRenderingSystem()->freezeFrustum = !RenderingSystem::GetRenderingSystem()->freezeFrustum; 
@@ -108,6 +106,4 @@ namespace BlitzenEngine
     inline void ChangeLodEnabledState()  { 
         RenderingSystem::GetRenderingSystem()->lodEnabled  = !RenderingSystem::GetRenderingSystem()->lodEnabled; 
     }
-
-    void ShutdownRenderers();
 }

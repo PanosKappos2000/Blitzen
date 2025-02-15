@@ -390,7 +390,7 @@ namespace BlitzenVulkan
             !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
             !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
             !features12.samplerFilterMinmax || !features12.shaderInt8 || !features12.shaderSampledImageArrayNonUniformIndexing ||
-            !features12.uniformAndStorageBuffer8BitAccess ||
+            !features12.uniformAndStorageBuffer8BitAccess || !features12.storagePushConstant8 ||
             !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
             {
                 physicalDevices.RemoveAtIndex(i);
@@ -597,6 +597,9 @@ namespace BlitzenVulkan
 
         // Allows storage buffers to have 8bit data
         vulkan12Features.storageBuffer8BitAccess = true;
+
+        // Allows push constants to have 8bit data
+        vulkan12Features.storagePushConstant8 = true;
 
         // Allows the use of draw indirect count, which has the power to completely removes unneeded draw calls
         vulkan12Features.drawIndirectCount = true;

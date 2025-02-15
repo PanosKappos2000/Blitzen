@@ -44,7 +44,7 @@ void main()
 		vec3 normal = RotateQuat(n, currentInstance.orientation);
 		vec2 uv = vec2(currentVertex.uvX, currentVertex.uvY);
 
-        gl_MeshVerticesEXT[i].gl_Position = shaderData.projectionView * 
+        gl_MeshVerticesEXT[i].gl_Position = viewData.projectionView * 
         vec4(RotateQuat(position, currentInstance.orientation) * currentInstance.scale + currentInstance.pos, 1);
 
         outNormal[i] = normal;

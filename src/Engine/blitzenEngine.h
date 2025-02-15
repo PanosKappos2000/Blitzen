@@ -48,8 +48,6 @@ namespace BlitzenEngine
 
         uint8_t isRunning = 0;
         uint8_t isSupended = 0;
-        
-        uint8_t windowResize = 0;
 
         // Clock / DeltaTime values (will be calulated using platform specific system calls at runtime)
         double m_clockStartTime = 0;

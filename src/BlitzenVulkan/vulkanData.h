@@ -105,6 +105,34 @@ namespace BlitzenVulkan
         ~AllocatedBuffer();
     };
 
+    struct alignas(16) DrawCullShaderPushConstant
+    {
+        uint32_t drawCount;
+
+        uint8_t bOcclusionCulling;
+        uint8_t bLOD;
+
+        uint8_t bPostPass;
+
+        inline DrawCullShaderPushConstant(uint32_t dc, uint8_t bPP, uint8_t bOC = 1, uint8_t bLod = 1)
+        :drawCount{dc}, bPostPass{bPP}, bOcclusionCulling{bOC}, bLOD{bLod} {}
+    };
+
+    // The data needed for Vulkan to draw the frame, passed to draw frame function
+    struct DrawContext
+    {
+        void* pCamera;
+        void* pMovingCamera;
+
+        uint32_t drawCount;
+
+        uint8_t bOcclusionCulling;
+        uint8_t bLOD;
+
+        inline DrawContext(void* pCam, void* pMC, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
+        : pCamera(pCam), pMovingCamera(pMovingCamera), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
+    };
+
     // This struct will be passed to the GPU as uniform descriptor and will give shaders access to the global storage buffers
     struct alignas(16) BufferDeviceAddresses
     {

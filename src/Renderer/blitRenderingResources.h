@@ -129,57 +129,9 @@ namespace BlitzenEngine
         uint32_t surfaceId;
     };
 
-    // Holds universal, shader data that will be passed at the beginning of each frame to the shaders as a uniform buffer
-    struct alignas(16) GlobalShaderData
-    {
-        BlitML::mat4 projectionView;
-        BlitML::mat4 view;
-
-        BlitML::vec4 sunlightColor;
-        BlitML::vec3 sunlightDir;// directional light direction vector
-
-        BlitML::vec3 viewPosition;
-    };
-
-    // This struct will hold global data needed by the culling shaders to perform their operations. Passed as uniform buffer
-    struct alignas(16) CullingData
-    {
-        // frustum planes
-        float frustumRight;
-        float frustumLeft;
-        float frustumTop;
-        float frustumBottom;
-
-        float proj0;// The 1st element of the projection matrix
-        float proj5;// The 12th element of the projection matrix
-
-        // The draw distance and zNear, needed for both occlusion and frustum culling
-        float zNear;
-        float zFar;
-
-        // Occulusion culling depth pyramid data
-        float pyramidWidth;
-        float pyramidHeight;
-
-        float lodTarget;
-
-        // Debug values
-        uint32_t occlusionEnabled = 1;
-        uint32_t lodEnabled = 1;
-
-        uint32_t drawCount;
-
-        // The culling shaders need 
-        uint8_t postPass;
-    };
-
     // This struct holds every loaded resource that will be used for rendering all game objects
     struct RenderingResources
     {
-        // These hold values that need to be passed to the shaders. Some values change constantly as they depend on camera and window values
-        GlobalShaderData shaderData;
-        CullingData cullingData;
-
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
         BlitCL::PointerTable<TextureStats> textureTable;
         size_t textureCount = 0;
@@ -211,21 +163,6 @@ namespace BlitzenEngine
         // All render objects are located here
         RenderObject renders[BLIT_MAX_OBJECTS];
         uint32_t renderObjectCount;        
-    };
-
-    // Passed to the renderer every time draw frame is called, to handle special events and update shader data
-    struct RenderContext
-    {
-        // Some graphics APIs may need to handle window resizing by themselves
-        uint8_t windowResize = 0;
-        uint32_t windowWidth;
-        uint32_t windowHeight;
-
-        CullingData& cullingData;
-
-        GlobalShaderData& globalShaderData;
-
-        inline RenderContext(CullingData& cd, GlobalShaderData& sd) :cullingData(cd), globalShaderData(sd) {}
     };
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources);

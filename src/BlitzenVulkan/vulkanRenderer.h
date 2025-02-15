@@ -2,6 +2,7 @@
 
 #include "vulkanData.h"
 #include "Renderer/blitDDSTextures.h"
+#include "Game/blitCamera.h"
 
 namespace BlitzenVulkan
 {
@@ -78,13 +79,9 @@ namespace BlitzenVulkan
 
     struct VarBuffers
     {
-        // The global shader data buffer is a uniform buffer that will be part of the push descriptor layout at binding 0
-        // It will hold general data like the view matrix or sunlight values
-        PushDescriptorBuffer<BlitzenEngine::GlobalShaderData> globalShaderDataBuffer{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
-
-        // The culling data buffer is a uniform buffer that will be part of the push descriptor layout at binding 2
-        // It will hold global data needed by the culling shaders like view frustum data
-        PushDescriptorBuffer<BlitzenEngine::CullingData> cullingDataBuffer{2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
+        // The global view data buffer is a uniform buffer that will be part of the push descriptor layout at binding 0
+        // It will hold view data like the view matrix or frustum planes data
+        PushDescriptorBuffer<BlitzenEngine::CameraViewData> viewDataBuffer{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
     };
 
     // Holds data for buffers that will be loaded once and will be used for every object
@@ -112,9 +109,9 @@ namespace BlitzenVulkan
         // It will holds indices to the primitive and transform of all the render object in the the scene
         PushDescriptorBuffer<void> renderObjectBuffer{4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-        // The surface buffer is a storage buffer that will be part of the push descriptor layout at binding 11
+        // The surface buffer is a storage buffer that will be part of the push descriptor layout at binding 2
         // It will hold the data for all the primitive surfaces that will be used in the scene
-        PushDescriptorBuffer<void> surfaceBuffer{11, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+        PushDescriptorBuffer<void> surfaceBuffer{2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
         // The transform buffer is a storage buffer that will be part of the push descriptor layout at bidning 5
         // It will hold the transforms of all the objects in the scene
@@ -144,7 +141,7 @@ namespace BlitzenVulkan
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
 
         // Prototype function for textures, used with stb_image. Might want to remove this, since Blitzen works with DDS textures now
         void UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format);
@@ -154,7 +151,7 @@ namespace BlitzenVulkan
         void* pData, const char* filepath);
 
         // Called each frame to draw the scene that is requested by the engine
-        void DrawFrame(BlitzenEngine::RenderContext& pRenderData);
+        void DrawFrame(DrawContext& context);
 
         // This is an incomplete function that attempts to clear anything Vulkan has drawn to swith to a different renderer. It does not work
         void ClearFrame();
@@ -192,12 +189,14 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
         BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
+        // Since the way the graphics pipelines work is fixed and there are only 2 of them, the code is collected in this fixed function
         uint8_t SetupMainGraphicsPipeline();
 
         // Dispatches the compute shader that will perform culling on a render object level and will ready the indirect draw commands
         // If it calls the late version it does occlusion culling as well
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
-        uint32_t groupCountX, VkWriteDescriptorSet* pWrites, uint8_t lateCulling = 0, uint32_t postPass = 0);
+        uint32_t groupCountX, VkWriteDescriptorSet* pWrites, uint32_t drawCount,
+        uint8_t lateCulling = 0, uint8_t postPass = 0, uint8_t bOcclusionEnabled = 1, uint8_t bLODs = 1);
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
         void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
@@ -269,7 +268,7 @@ namespace BlitzenVulkan
         VkDescriptorSetLayout m_pushDescriptorBufferLayout;
 
         VkWriteDescriptorSet pushDescriptorWritesGraphics[7];
-        VkWriteDescriptorSet pushDescriptorWritesCompute[9];
+        VkWriteDescriptorSet pushDescriptorWritesCompute[8];
 
         /*
             Descriptor set layout for depth pyramid construction. 

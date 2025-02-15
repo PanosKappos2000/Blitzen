@@ -26,7 +26,7 @@ void main()
     // Calculate the model position by using the current transform data(the model position will be passed to the fragment shader and for gl_position)
     vec3 modelPosition = RotateQuat(vertex.position, transform.orientation) * transform.scale + transform.pos;
     // Calculate final gl_position by projecting model position to clip coordinates
-    gl_Position = shaderData.projectionView * vec4(modelPosition, 1.0);
+    gl_Position = viewData.projectionView * vec4(modelPosition, 1.0);
 
     // Create a vec2 from the uvMap halfFloats to be passed to the fragment shader
     outUv = vec2(float(vertex.uvX), float(vertex.uvY));

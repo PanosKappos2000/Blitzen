@@ -1,6 +1,7 @@
 #include "openglRenderer.h"
 #include "Platform/filesystem.h"
 #include <string>
+#include "Game/blitCamera.h"
 
 namespace BlitzenGL
 {
@@ -25,7 +26,7 @@ namespace BlitzenGL
     }
 
     uint8_t OpenglRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
-    const char* filepath)
+    const char* filepath) 
     {
         if(m_textureCount >= BLIT_MAX_TEXTURE_COUNT)
             return 0;
@@ -121,8 +122,8 @@ namespace BlitzenGL
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         // Generate uniform buffers
-        glGenBuffers(1, &m_cullingDataBuffer);
-        glGenBuffers(1, &m_shaderDataBuffer);
+        glGenBuffers(1, &m_viewDataBuffer);
+        glGenBuffers(1, &m_cullDataBuffer);
 
         // Create the graphics program that will have the vertex and fragment shader attached
         if(!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", 
@@ -136,35 +137,33 @@ namespace BlitzenGL
         return 1;
     }
 
-    void OpenglRenderer::DrawFrame(BlitzenEngine::RenderContext& context)
+    void OpenglRenderer::DrawFrame(DrawContext& context)
     {
+        BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
         // Update the viewport if the window has resized
-        if(context.windowResize)
+        if(pCamera->transformData.windowResize)
         {
-            glViewport(0, 0, context.windowWidth, context.windowHeight);
+            glViewport(0, 0, pCamera->transformData.windowWidth, pCamera->transformData.windowHeight);
         }
 
-        BlitzenEngine::CullingData& cullData = context.cullingData;
-        BlitzenEngine::GlobalShaderData& shaderData = context.globalShaderData;
-
         // Update the culling data buffer
-        glBindBuffer(GL_UNIFORM_BUFFER, m_cullingDataBuffer);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CullingData), &cullData, GL_STATIC_READ);
+        glBindBuffer(GL_UNIFORM_BUFFER, m_viewDataBuffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CameraViewData), &(pCamera->viewData), GL_STATIC_READ);
 
-        // Update the global shader data buffer
-        glBindBuffer(GL_UNIFORM_BUFFER, m_shaderDataBuffer);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::GlobalShaderData), &shaderData, GL_STATIC_READ);
+        CullData cull(context.drawCount, context.bOcclusionCulling, context.bLOD);
+        glBindBuffer(GL_UNIFORM_BUFFER, m_cullDataBuffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(CullData), &(cull), GL_STATIC_READ);
 
         // Switches to the culling compute program
         glUseProgram(m_initialDrawCullCompProgram);
 
         // Bind the culling data buffer to uniform binding 0
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_cullingDataBuffer);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_viewDataBuffer);
         // Binds the shader data buffer to uniform binding 1
-        glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_shaderDataBuffer);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_cullDataBuffer);
         
         // Dispatches the compute shader to do GPU side culling and create the draw commands
-        glDispatchCompute(cullData.drawCount / 64 + 1, 1, 1);
+        glDispatchCompute(context.drawCount / 64 + 1, 1, 1);
         glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
         // glClearDepth value needs to be set to 0 since the renderer is using reverse z
@@ -186,10 +185,10 @@ namespace BlitzenGL
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer);
 
         // Bind the uniform buffer that will hold the shader data to binding 0
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_shaderDataBuffer);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_viewDataBuffer);
 
         // Draw the objects with indirect commands
-        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, cullData.drawCount, sizeof(IndirectDrawCommand));
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, context.drawCount, sizeof(IndirectDrawCommand));
 
         // Swaps the framebuffer
 	    BlitzenPlatform::OpenglSwapBuffers();
@@ -305,8 +304,8 @@ namespace BlitzenGL
         glDeleteProgram(m_opaqueGeometryGraphicsProgram);
         glDeleteProgram(m_initialDrawCullCompProgram);
 
-        glDeleteBuffers(1, &m_cullingDataBuffer);
-        glDeleteBuffers(1, &m_shaderDataBuffer);
+        glDeleteBuffers(1, &m_viewDataBuffer);
+        glDeleteBuffers(1, &m_cullDataBuffer);
 
         glDeleteBuffers(1, &m_materialBuffer);
         glDeleteBuffers(1, &m_renderObjectBuffer);

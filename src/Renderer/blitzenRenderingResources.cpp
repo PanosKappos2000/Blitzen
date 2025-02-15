@@ -69,10 +69,9 @@ namespace BlitzenEngine
 
         uint8_t load = 0;
         // Add the texture to the vulkan renderer if a pointer for it was passed
-        if(loadForVulkan && pRenderer->pVulkan)
+        if(pRenderer->IsVulkanAvailable())
         {
-            BlitzenVulkan::VulkanRenderer* pVulkan = pRenderer->pVulkan;
-            if(pVulkan->UploadDDSTexture(header, header10, texture.pTextureData, filename))
+            if(pRenderer->GiveTextureToVulkan(header, header10, texture.pTextureData, filename))
             {
                 texture.textureWidth = header.dwWidth;
                 texture.textureHeight = header.dwHeight;
@@ -630,19 +629,17 @@ namespace BlitzenEngine
             uint8_t textureLoad = 0;
 
             // Add the texture to the vulkan renderer if a pointer for it was passed
-            if(loadForVulkan && pRenderer->pVulkan)
+            if(pRenderer->IsVulkanAvailable())
             {
-                BlitzenVulkan::VulkanRenderer* pVulkan = pRenderer->pVulkan;
-                if(pVulkan->UploadDDSTexture(header, header10, texture.pTextureData, texturePaths[i].c_str()))
+                if(pRenderer->GiveTextureToVulkan(header, header10, texture.pTextureData, texturePaths[i].c_str()))
                     textureLoad = 1;
                 else
                     BLIT_INFO("GLTF texture from file: %s failed to load for Vulkan", texturePaths[i].c_str())
             }
 
-            if(loadForGL && pRenderer->pGl)
+            if(pRenderer->IsOpenglAvailable())
             {
-                BlitzenGL::OpenglRenderer* pGL = pRenderer->pGl;
-                if(pGL->UploadTexture(header, header10, texturePaths[i].c_str()))
+                if(pRenderer->GiveTextureToOpengl(header, header10, texturePaths[i].c_str()))
                     textureLoad = 1;
                 else
                     BLIT_INFO("GLTF texture from file: %s failed to load for OpenGL", texturePaths[i].c_str())
@@ -743,7 +740,7 @@ namespace BlitzenEngine
 				    }
 			    }
 
-			    if (const cgltf_accessor* nrm = findAccessor(&prim, cgltf_attribute_type_normal))
+			    if (const cgltf_accessor* nrm = cgltf_find_accessor(&prim, cgltf_attribute_type_normal, 0))
 			    {
 			    	BLIT_ASSERT(cgltf_num_components(nrm->type) == 3);
 

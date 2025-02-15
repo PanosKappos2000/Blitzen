@@ -31,17 +31,34 @@ layout(std430, binding = 1) readonly buffer TransformBuffer
 }transformBuffer;
 
 // This holds global shader data passed to the GPU at the start of each frame
-layout(std430, binding = 0) uniform ShaderData
+layout(std430, binding = 0) uniform ViewData
 {
-    // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
-    mat4 projectionView;
+    // The view matrix is the most important responsibility of the camera and crucial for rendering
     mat4 view;
 
-    vec4 sunColor;
-    vec3 sunDir;
+    // The result of projection * view, recalculated when either of the values changes
+    mat4 projectionView;
 
-    vec3 viewPosition;// Needed for lighting calculations
-}shaderData;
+    // Position of the camera, used to change the translation matrix which becomes part of the view matrix
+    vec3 position;
+
+    float frustumRight;
+    float frustumLeft;
+    float frustumTop;
+    float frustumBottom;
+
+    float proj0;// The 1st element of the projection matrix
+    float proj5;// The 12th element of the projection matrix
+
+    // The values below are used to create the projection matrix. Stored to recreate the projection matrix if necessary
+    float zNear;
+    float zFar;
+
+    float pyramidWidth;
+    float pyramidHeight;
+
+    float lodTarget;
+}viewData;
 
 // Sends the normal to the fragment shader
 layout (location = 0) out vec3 fragNormal;
@@ -57,7 +74,7 @@ void main()
     Vertex vertex = vertexBuffer.vertices[gl_VertexID];
     Transform transform = transformBuffer.transforms[gl_DrawIDARB];
 
-    gl_Position = shaderData.projectionView * vec4(RotateQuat(
+    gl_Position = viewData.projectionView * vec4(RotateQuat(
     vertex.position, transform.orientation) * transform.scale + transform.pos, 1);
 
     // Unpack surface normals

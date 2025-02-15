@@ -103,7 +103,7 @@ namespace BlitzenEngine
         drawCount = pResources.Data()->renderObjectCount;
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        BLIT_ASSERT(SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, mainCamera));/* I use an assertion here
+        BLIT_ASSERT(renderer->SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, mainCamera));/* I use an assertion here
         but it could be handled some other way as well */
         
         // Start the clock
@@ -136,18 +136,17 @@ namespace BlitzenEngine
                 UpdateCamera(*pMovingCamera, (float)m_deltaTime);
 
                 // Draw the frame!!!!
-                RenderContext renderContext(pResources.Data()->cullingData, pResources.Data()->shaderData);
-                DrawFrame(mainCamera, pMovingCamera, drawCount, windowResize, renderContext);
+                renderer->DrawFrame(mainCamera, pMovingCamera, drawCount);
 
                 // Make sure that the window resize is set to false after the renderer is notified
-                windowResize = 0;
+                mainCamera.transformData.windowResize = 0;
 
                 BlitzenCore::UpdateInput(m_deltaTime);
             }
         }
 
         // Shutdown the renderers before the engine is shutdown
-        ShutdownRenderers();
+        renderer->ShutdownRenderers();
 
         // With the main loop done, Blitzen calls Shutdown on itself
         Shutdown();
@@ -175,16 +174,14 @@ namespace BlitzenEngine
 
     void Engine::UpdateWindowSize(uint32_t newWidth, uint32_t newHeight) 
     {
-        
-        windowResize = 1;
+        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        camera.transformData.windowResize = 1;
         if(newWidth == 0 || newHeight == 0)
         {
             isSupended = 1;
             return;
         }
         isSupended = 0;
-
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         UpdateProjection(camera, BLITZEN_FOV, static_cast<float>(newWidth), static_cast<float>(newHeight), BLITZEN_ZNEAR);
     }
 }

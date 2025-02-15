@@ -1,33 +1,16 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
-layout (set = 0, binding = 2) uniform CullingData
+layout (push_constant) uniform CullingConstants
 {
-    // frustum planes
-    float frustumRight;
-    float frustumLeft;
-    float frustumTop;
-    float frustumBottom;
-
-    float proj0;// The 1st element of the projection matrix
-    float proj5;// The 12th element of the projection matrix
-
-    // The draw distance and zNear, needed for both occlusion and frustum culling
-    float zNear;
-    float zFar;
-
-    // Occulusion culling depth pyramid data
-    float pyramidWidth;
-    float pyramidHeight;
-
-    float lodTarget;
+    uint drawCount;
 
     // Debug values
-    uint occlusionEnabled;
-    uint lodEnabled;
+    uint8_t occlusionEnabled;
+    uint8_t lodEnabled;
 
-    uint drawCount;
-}cullingData;
+    uint8_t postPass;
+}cullPC;
 
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
 // Basically, this will be used to turn each object's bounding spere into an AABB to be used for occlusion culling

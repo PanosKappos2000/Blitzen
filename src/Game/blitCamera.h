@@ -10,54 +10,73 @@
 
 namespace BlitzenEngine
 {
-    // Temporary camera struct, I am going to make it more robust in the future
-    struct Camera
+    // This is struct that is needed for camera movement logic and window size stats
+    struct CameraTransformData
     {
-        /* The renderer assumes that the camera includes the following values:
-        BlitML::mat4 projectionMatrix
-        BlitML::mat4 viewMatrix
-        BlitML::mat4 projectionView
-        BlitML::vec3 viewPosition;
-        BlitML::mat4 projectionTranspose
-        float zNear
-        float drawDistance */
+        BlitML::mat4 rotation = BlitML::mat4();
+        BlitML::mat4 translation = BlitML::mat4();
+
+        // Keeps track of the movement of the camera
+        BlitML::vec3 velocity = BlitML::vec3(0.f);
 
         // When this is 1 the UpdateCamera function will proceed normally
         uint8_t cameraDirty = 0;
-
-        // The view matrix is the most important responsibility of the camera and crucial for rendering
-        BlitML::mat4 viewMatrix;
-
-        // The camera also owns the projection matrix
-        BlitML::mat4 projectionMatrix;
-
-        // The result of projection * view, recalculated when either of the values changes
-        BlitML::mat4 projectionViewMatrix;
-
-        // Needed for frustum culling (probably does not need to be managed by the camera)
-        BlitML::mat4 projectionTranspose;
-
-        // Position of the camera, used to change the translation matrix which becomes part of the view matrix
-        BlitML::vec3 position;
 
         // Keep track of the rotation of the camera. 
         // When rotation occurs, they each generate a quaternion. Then the two quats change the roation matrix
         float yawRotation = 0.f;
         float pitchRotation = 0.f;
 
-        // The values below are used to create the projection matrix. Stored to recreate the projection matrix if necessary
-        float fov;
-        float zNear;
         float windowWidth;
         float windowHeight;
+        uint8_t windowResize;
 
-        float drawDistance;
+        // Projection matrix data
+        float fov;
+        BlitML::mat4 projectionMatrix;
+        BlitML::mat4 projectionTranspose;
+    };
 
-        BlitML::mat4 rotation = BlitML::mat4();
-        BlitML::mat4 translation = BlitML::mat4();
+    // This struct will hold data important for rendering (view frustum, projection matrix, view matrix), 
+    // It needs to be alinged with what is passed to the shader
+    struct alignas(16) CameraViewData
+    {
+        // The view matrix is the most important responsibility of the camera and crucial for rendering
+        BlitML::mat4 viewMatrix;
 
-        // Keeps track of the movement of the camera
-        BlitML::vec3 velocity = BlitML::vec3(0.f);
+        // The result of projection * view, recalculated when either of the values changes
+        BlitML::mat4 projectionViewMatrix;
+
+        // Position of the camera, used to change the translation matrix which becomes part of the view matrix
+        BlitML::vec3 position;
+
+        // Frustum data created using the transpose of the porjection matrix, 
+        float frustumRight;
+        float frustumLeft;
+        float frustumTop;
+        float frustumBottom;
+
+        // Crucial for occlusion culling
+        float proj0;// The 1st element of the projection matrix
+        float proj5;// The 12th element of the projection matrix
+
+        // zNear and zFar, important for frustum culling. zNear is also used for occlusion culling and projection matrix creation
+        float zNear;
+        float zFar;
+
+        float pyramidWidth;
+        float pyramidHeight;
+
+        // Used to adapt the lod threshold to screen / view settings
+        float lodTarget;
+    };
+
+    // Temporary camera struct, I am going to make it more robust in the future
+    struct Camera
+    {
+        CameraViewData viewData;
+
+        CameraTransformData transformData;
     };
 
     // Gives some default values to a new camera so that it does not spawn with a random transform

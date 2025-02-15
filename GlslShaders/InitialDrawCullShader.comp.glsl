@@ -76,9 +76,17 @@ layout(std430, binding = 3) readonly buffer RenderObjectBuffer
     RenderObject renders[];
 }objectBuffer;
 
-layout (std430, binding = 0) uniform CullingData
+layout (std430, binding = 0) uniform ViewData
 {
-    // frustum planes
+    // The view matrix is the most important responsibility of the camera and crucial for rendering
+    mat4 view;
+
+    // The result of projection * view, recalculated when either of the values changes
+    mat4 projectionView;
+
+    // Position of the camera, used to change the translation matrix which becomes part of the view matrix
+    vec3 position;
+
     float frustumRight;
     float frustumLeft;
     float frustumTop;
@@ -87,35 +95,22 @@ layout (std430, binding = 0) uniform CullingData
     float proj0;// The 1st element of the projection matrix
     float proj5;// The 12th element of the projection matrix
 
-    // The draw distance and zNear, needed for both occlusion and frustum culling
+    // The values below are used to create the projection matrix. Stored to recreate the projection matrix if necessary
     float zNear;
     float zFar;
 
-    // Occulusion culling depth pyramid data
     float pyramidWidth;
     float pyramidHeight;
 
     float lodTarget;
+}viewData;
 
-    // Debug values
-    uint occlusionEnabled;
-    uint lodEnabled;
-
-    uint drawCount;
-}cullingData;
-
-// This holds global shader data passed to the GPU at the start of each frame
-layout(std430, binding = 1) uniform ShaderData
+layout(std430, binding = 1) uniform CullingData
 {
-    // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
-    mat4 projectionView;
-    mat4 view;
-
-    vec4 sunColor;
-    vec3 sunDir;
-
-    vec3 viewPosition;// Needed for lighting calculations
-}shaderData;
+    uint32_t drawCount;
+    uint8_t occlusionEnabled;
+    uint8_t lodEnabled;
+}cullingData;
 
 // This function is used in every vertex shader invocation to give the object its orientation
 vec3 RotateQuat(vec3 v, vec4 quat)
@@ -136,7 +131,7 @@ void main()
 
     // Get the center of the bounding sphere and project it to view coordinates
     vec3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.pos;
-    center = (shaderData.view * vec4(center, 1)).xyz;
+    center = (viewData.view * vec4(center, 1)).xyz;
 
     // Get the radius of the bounding sphere and scale it
     float radius = surface.radius * transform.scale;
@@ -146,18 +141,18 @@ void main()
     // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time
     // Formula taken from Arseny Kapoulkine's Niagara renderer https://github.com/zeux/niagara
     // It is also referenced in VKguide's GPU driven rendering articles https://vkguide.dev/docs/gpudriven/compute_culling/
-    visible = visible && center.z * cullingData.frustumLeft - abs(center.x) * cullingData.frustumRight > -radius;
-	visible = visible && center.z * cullingData.frustumBottom - abs(center.y) * cullingData.frustumTop > -radius;
+    visible = visible && center.z * viewData.frustumLeft - abs(center.x) * viewData.frustumRight > -radius;
+	visible = visible && center.z * viewData.frustumBottom - abs(center.y) * viewData.frustumTop > -radius;
 	// the near/far plane culling uses camera space Z directly
-	visible = visible && center.z + radius > cullingData.zNear && center.z - radius < cullingData.zFar;
+	visible = visible && center.z + radius > viewData.zNear && center.z - radius < viewData.zFar;
 
     uint lodIndex = 0;
-    if(cullingData.lodEnabled == 1)
+    if(int(cullingData.lodEnabled) == 1)
     {
         // Gets the distance from the camera
         float distance = max(length(center) - radius, 0);
         // Create the threshold taking into account the lodTarget and the object's scale
-        float threshold = distance * cullingData.lodTarget / transform.scale;
+        float threshold = distance * viewData.lodTarget / transform.scale;
         // Get the biggest reduction lod whose error is less than the calculated threshold
         for(uint i = 0; i < surface.lodCount; ++i)
         {

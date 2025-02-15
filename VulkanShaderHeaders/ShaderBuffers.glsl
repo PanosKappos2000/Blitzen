@@ -77,7 +77,7 @@ struct Surface
     uint8_t postPass;
 };
 
-layout(set = 0, binding = 11, std430) readonly buffer SurfaceBuffer
+layout(set = 0, binding = 2, std430) readonly buffer SurfaceBuffer
 {
     Surface surfaces[];
 }surfaceBuffer;
@@ -179,18 +179,35 @@ layout (set = 0, binding = 6, std430) readonly buffer MaterialBuffer
     Material materials[];
 }materialBuffer;
 
-// This holds global shader data passed to the GPU at the start of each frame
-layout(set = 0, binding = 0) uniform ShaderData
+// Temporary camera struct, I am going to make it more robust in the future
+layout(set = 0, binding = 0) uniform ViewData
 {
-    // This is the result of the mulitplication of projection * view, to avoid calculating for every vertex shader invocation
-    mat4 projectionView;
+    // The view matrix is the most important responsibility of the camera and crucial for rendering
     mat4 view;
 
-    vec4 sunColor;
-    vec3 sunDir;
+    // The result of projection * view, recalculated when either of the values changes
+    mat4 projectionView;
 
-    vec3 viewPosition;// Needed for lighting calculations
-}shaderData;
+    // Position of the camera, used to change the translation matrix which becomes part of the view matrix
+    vec3 position;
+
+    float frustumRight;
+    float frustumLeft;
+    float frustumTop;
+    float frustumBottom;
+
+    float proj0;// The 1st element of the projection matrix
+    float proj5;// The 12th element of the projection matrix
+
+    // The values below are used to create the projection matrix. Stored to recreate the projection matrix if necessary
+    float zNear;
+    float zFar;
+
+    float pyramidWidth;
+    float pyramidHeight;
+
+    float lodTarget;
+}viewData;
 
 // This function is used in every vertex shader invocation to give the object its orientation
 vec3 RotateQuat(vec3 v, vec4 quat)

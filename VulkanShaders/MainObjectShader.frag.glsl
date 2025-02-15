@@ -42,6 +42,7 @@ void main()
 	float ndotl = max(dot(nrm, normalize(vec3(-1, 1, -1))), 0.0);
 
     outColor = vec4(albedoMap.rgb * sqrt(ndotl + 0.05) + emissiveMap, albedoMap.a);
+    //outColor = vec4(normal.xyz, 1);
 
     
     if(POST_PASS != 0 && albedoMap.a < 0.5)

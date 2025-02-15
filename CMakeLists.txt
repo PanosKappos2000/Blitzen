@@ -131,6 +131,7 @@ target_include_directories(BlitzenEngine PUBLIC
 
 target_compile_definitions(BlitzenEngine PUBLIC 
                             BLITZEN_VULKAN
+                            BLIT_VK_ACTIVE_GRAPHICS_API
                             BLITZEN_OPENGL
                             BLIT_VSYNC
                             )

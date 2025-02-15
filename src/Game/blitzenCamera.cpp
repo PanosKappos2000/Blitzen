@@ -7,58 +7,72 @@ namespace BlitzenEngine
     float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
     {
         // Initalize the projection matrix
-        camera.projectionMatrix = 
+        camera.transformData.projectionMatrix = 
         BlitML::InfiniteZPerspective(fov, windowWidth / windowHeight, zNear);
 
         // Save these values for later use
-        camera.fov = fov;
-        camera.zNear = zNear;
-        camera.windowWidth = windowWidth;
-        camera.windowHeight = windowHeight;
+        camera.transformData.fov = fov;
+        camera.viewData.zNear = zNear;
+        camera.transformData.windowWidth = windowWidth;
+        camera.transformData.windowHeight = windowHeight;
         // Draw distance is held by the camera
-        camera.drawDistance = drawDistance;
+        camera.viewData.zFar = drawDistance;
 
         // Setup the camera translation based on the initial position parameter
-        camera.position = initialCameraPosition;
-        camera.translation = BlitML::Translate(initialCameraPosition);
+        camera.viewData.position = initialCameraPosition;
+        camera.transformData.translation = BlitML::Translate(initialCameraPosition);
 
         // Find the yaw orientation of the camera using quaternions
-        camera.yawRotation = initialYawRotation;
+        camera.transformData.yawRotation = initialYawRotation;
         BlitML::vec3 yAxis(0.f, -1.f, 0.f);
-        BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
+        BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.transformData.yawRotation, 0);
 
         // Find the pitch orientation of the camera using quaternions
-        camera.pitchRotation = initialPitchRotation;
+        camera.transformData.pitchRotation = initialPitchRotation;
         BlitML::vec3 xAxis(1.f, 0.f, 0.f);
-        BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
+        BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.transformData.pitchRotation, 0);
 
         // Turn the quaternions to matrices and multiply them to get the new rotation matrix
         BlitML::mat4 yawRot = BlitML::QuatToMat4(yawOrientation);
         BlitML::mat4 pitchRot = BlitML::QuatToMat4(pitchOrientation);
-        camera.rotation = yawRot * pitchRot;
+        camera.transformData.rotation = yawRot * pitchRot;
 
-        camera.viewMatrix = BlitML::Mat4Inverse(camera.translation * camera.rotation);
+        camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
 
         // This is calculated here so that the shaders don't need to calculate this for every invocation
-        camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
+        camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
 
         // The transpose of the projection matrix will be used for frustum culling
-        camera.projectionTranspose = BlitML::Transpose(camera.projectionMatrix);
+        camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
+        // Frustum planes
+        BlitML::vec4 frustumX = BlitML::NormalizePlane(
+        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(0)); // x + w < 0
+        BlitML::vec4 frustumY = BlitML::NormalizePlane(
+        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(1));
+        camera.viewData.frustumRight = frustumX.x;
+        camera.viewData.frustumLeft = frustumX.z;
+        camera.viewData.frustumTop = frustumY.y;
+        camera.viewData.frustumBottom = frustumY.z;
+
+        camera.viewData.proj0 = camera.transformData.projectionMatrix[0];
+        camera.viewData.proj5 = camera.transformData.projectionMatrix[5];
+
+        camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / float(camera.transformData.windowHeight));
     }
 
     // This will move from here once I add a camera system
     void UpdateCamera(Camera& camera, float deltaTime)
     {
-        if (camera.cameraDirty)
+        if (camera.transformData.cameraDirty)
         {
             // I haven't overloaded the += operator
-            BlitML::vec3 finalVelocity = camera.velocity * deltaTime * 40.f;
-            BlitML::vec4 directionalVelocity = camera.rotation * BlitML::vec4(finalVelocity);
-            camera.position = camera.position + BlitML::ToVec3(directionalVelocity);
-            camera.translation = BlitML::Translate(camera.position);
+            BlitML::vec3 finalVelocity = camera.transformData.velocity * deltaTime * 40.f;
+            BlitML::vec4 directionalVelocity = camera.transformData.rotation * BlitML::vec4(finalVelocity);
+            camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
+            camera.transformData.translation = BlitML::Translate(camera.viewData.position);
 
-            camera.viewMatrix = BlitML::Mat4Inverse(camera.translation * camera.rotation);
-            camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
+            camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
+            camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
         }
     }
 
@@ -67,42 +81,63 @@ namespace BlitzenEngine
         // find how much the camera's yaw moved
         if(yawRotation < 100.f && yawRotation > -100.f)
         {
-            camera.yawRotation += yawRotation * 10.f * deltaTime / 100.f;
+            camera.transformData.yawRotation += yawRotation * 10.f * deltaTime / 100.f;
         }
         // Find how much the camera's pitch moved
         if(pitchRotation < 100.f && pitchRotation > -100.f)
         {
-            camera.pitchRotation -= pitchRotation * 10.f * deltaTime / 100.f;
+            camera.transformData.pitchRotation -= pitchRotation * 10.f * deltaTime / 100.f;
         }
 
         // Find the yaw orientation of the camera using quaternions
         BlitML::vec3 yAxis(0.f, -1.f, 0.f);
-        BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.yawRotation, 0);
+        BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, camera.transformData.yawRotation, 0);
 
         // Find the pitch orientation of the camera using quaternions
         BlitML::vec3 xAxis(1.f, 0.f, 0.f);
-        BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.pitchRotation, 0);
+        BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, camera.transformData.pitchRotation, 0);
 
         // Turn the quaternions to matrices and multiply them to get the new rotation matrix
         BlitML::mat4 yawRot = BlitML::QuatToMat4(yawOrientation);
         BlitML::mat4 pitchRot = BlitML::QuatToMat4(pitchOrientation);
-        camera.rotation = yawRot * pitchRot;
+        camera.transformData.rotation = yawRot * pitchRot;
     }
 
     void UpdateProjection(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear)
     {
-        // Change the projection according to the parameters
-        camera.projectionMatrix = BlitML::InfiniteZPerspective(fov, windowWidth/ windowHeight, zNear);
+        // Changes the projection according to the parameters
+        camera.transformData.projectionMatrix = BlitML::InfiniteZPerspective(fov, windowWidth/ windowHeight, zNear);
 
-        // Update the values that depend on the projection matrix
-        camera.projectionViewMatrix = camera.projectionMatrix * camera.viewMatrix;
-        camera.projectionTranspose = BlitML::Transpose(camera.projectionMatrix);
+        // Updates the view * projection matrix results, as the projection matrix changed
+        camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
 
-        // Update these values so they can be accessed if the camera system needs them separately
-        camera.windowWidth = windowWidth;
-        camera.windowHeight = windowHeight;
-        camera.fov = fov;
-        camera.zNear = zNear;
+        // Updates the transpose of the projection as well
+        camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
+
+        // Updates the values that made the projection matrix change
+        camera.transformData.windowWidth = windowWidth;
+        camera.transformData.windowHeight = windowHeight;
+        camera.transformData.fov = fov;
+
+        // Updates view frustum values as they are dependent on the projection matrix
+        BlitML::vec4 frustumX = BlitML::NormalizePlane(
+        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(0)); // x + w < 0
+        BlitML::vec4 frustumY = BlitML::NormalizePlane(
+        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(1));
+        camera.viewData.frustumRight = frustumX.x;
+        camera.viewData.frustumLeft = frustumX.z;
+        camera.viewData.frustumTop = frustumY.y;
+        camera.viewData.frustumBottom = frustumY.z;
+    
+        // Updates the the parts of the projection matrix needed for occlusion culling
+        camera.viewData.proj0 = camera.transformData.projectionMatrix[0];
+        camera.viewData.proj5 = camera.transformData.projectionMatrix[5];
+    
+        // Updates the lod target threshold multiplier, as it is also dependent on projection
+        camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / float(camera.transformData.windowHeight));
+
+        // Updates the zNear (zFar is static and is actually the set draw distance)
+        camera.viewData.zNear = zNear;
     }
 
     // Must Declare the static variable
