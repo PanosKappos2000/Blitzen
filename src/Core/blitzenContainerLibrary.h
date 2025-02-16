@@ -4,6 +4,8 @@
 
 #define BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER   2
 
+#define BLIT_ARRAY_SIZE(array)   sizeof(array) / sizeof(array[0])
+
 namespace BlitCL
 {
 

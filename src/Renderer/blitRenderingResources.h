@@ -182,14 +182,17 @@ namespace BlitzenEngine
 
 
     // Loads a mesh from an obj file
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, uint8_t buildMeshlets = 1);
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename);
 
     // Generates meshlet for a mesh or surface loaded using meshOptimizer library and converts it to the renderer's format
-    size_t LoadMeshlet(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
+    size_t GenerateClusters(RenderingResources* pResources, 
+    BlitCL::DynamicArray<Vertex>& vertices, 
+    BlitCL::DynamicArray<uint32_t>& indices);
 
     // Takes the vertices and indices loaded for a mesh primitive from a file and converts the data to the renderer's format
-    void LoadSurface(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-    uint8_t buildMeshlets);
+    void LoadPrimitiveSurface(RenderingResources* pResources, 
+    BlitCL::DynamicArray<Vertex>& vertices, 
+    BlitCL::DynamicArray<uint32_t>& indices);
 
 
     // Placeholder to load some default resources while testing the systems
@@ -207,6 +210,5 @@ namespace BlitzenEngine
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets, 
-    uint8_t loadForVulkan, uint8_t loadForGL);
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t loadForVulkan, uint8_t loadForGL);
 }

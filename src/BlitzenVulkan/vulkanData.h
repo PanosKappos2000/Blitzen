@@ -97,7 +97,7 @@ namespace BlitzenVulkan
 
     struct AllocatedBuffer
     {
-        VkBuffer buffer;
+        VkBuffer buffer = VK_NULL_HANDLE;
         VmaAllocation allocation;
         VmaAllocationInfo allocationInfo;
 

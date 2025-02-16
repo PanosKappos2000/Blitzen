@@ -213,6 +213,8 @@ namespace BlitzenVulkan
         // Static function that allows access to vulkan renderer at any scope
         inline static VulkanRenderer* GetRendererInstance() {return m_pThisRenderer;}
 
+        inline VulkanStats GetStats() const {return m_stats;}
+
         // Array of structs that represent the way textures will be pushed to the GPU
         TextureData loadedTextures[BLIT_MAX_TEXTURE_COUNT];
         size_t textureCount = 0;

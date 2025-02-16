@@ -13,12 +13,6 @@
 #define BLITZEN_FOV                     BlitML::Radians(70.f)
 #define BLITZEN_DRAW_DISTANCE           600.f
 
-// Various hardcoded modes to test the renderer
-#define BLITZEN_GEOMETRY_STRESS_TEST        1
-#define BLITZEN_GLTF_SCENE                  1
-#define BLITZEN_OBJ_AND_GLTF_COMBINE_TEST   0
-#define BLITZEN_OBJ_AND_MULTIPLE_GLTF_TEST  1
-
 namespace BlitzenEngine
 {
     class Engine
@@ -29,7 +23,6 @@ namespace BlitzenEngine
 
         void Run(uint32_t argc, char* argv[]);
 
-        //~Engine(); Same thing for constructor also goes for destructor
         void Shutdown();
 
         inline void RequestShutdown() { isRunning = 0; }

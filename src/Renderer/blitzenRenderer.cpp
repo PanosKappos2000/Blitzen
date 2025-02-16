@@ -106,6 +106,7 @@ namespace BlitzenEngine
             {
                 BLIT_ERROR("Could not initialize Vulkan. If this is the active graphics API, it needs to be swapped")
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
+                bVk = 0;
             }
             else
                 isThereRendererOnStandby = 1;
@@ -118,6 +119,7 @@ namespace BlitzenEngine
             {
                 BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
                 isThereRendererOnStandby = isThereRendererOnStandby || 0;
+                bGl = 0;
             }
             else
                 isThereRendererOnStandby = 1;

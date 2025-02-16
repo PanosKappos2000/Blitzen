@@ -3,7 +3,6 @@
 #extension GL_GOOGLE_include_directive : require
 
 #define COMPUTE_PIPELINE
-#define LOD_ENABLED
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
@@ -22,8 +21,10 @@ void main()
         return;
 
     // This culling shader also returns if the current object was not visible last frame
+    #ifdef OCCLUSION_ENABLED
     if(visibilityBuffer.visibilities[objectIndex] == 0)
         return;
+    #endif
 
     // Gets the current object using the global invocation ID. It also retrieves the surface that the objects points to and the transform data
     RenderObject currentObject = objectBuffer.objects[objectIndex];

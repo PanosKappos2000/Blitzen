@@ -128,7 +128,7 @@ namespace BlitzenEngine
 
 
 
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, uint8_t buildMeshlets /*= 0*/)
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename)
     {
         // The function should return if the engine will go over the max allowed mesh assets
         if(pResources->meshCount > BLIT_MAX_MESH_COUNT)
@@ -191,7 +191,7 @@ namespace BlitzenEngine
 		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
 
         BLIT_INFO("Creating surface")
-        LoadSurface(pResources, vertices, indices, buildMeshlets);
+        LoadPrimitiveSurface(pResources, vertices, indices);
 
         currentMesh.surfaceCount++;// Increment the surface count
         ++(pResources->meshCount);// Increment the mesh count
@@ -200,7 +200,7 @@ namespace BlitzenEngine
     }
 
     // The code for this function is taken from Arseny's niagara streams. It uses his meshoptimizer library which I am not that familiar with
-    size_t LoadMeshlet(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, 
+    size_t GenerateClusters(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
         const size_t maxVertices = 64;
@@ -259,8 +259,9 @@ namespace BlitzenEngine
         return akMeshlets.GetSize();
     }
 
-    void LoadSurface(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-    uint8_t buildMeshlets)
+    void LoadPrimitiveSurface(RenderingResources* pResources, 
+    BlitCL::DynamicArray<Vertex>& vertices, 
+    BlitCL::DynamicArray<uint32_t>& indices)
     {
         // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a mesh
         meshopt_optimizeVertexCache(indices.Data(), indices.Data(), indices.GetSize(), vertices.GetSize());
@@ -293,6 +294,8 @@ namespace BlitzenEngine
         // Pass the original loaded indices of the surface to the new lod indices
         BlitCL::DynamicArray<uint32_t> lodIndices(indices);
 
+        uint8_t buildMeshlets = RenderingSystem::GetRenderingSystem()->GetVulkan().GetStats().meshShaderSupport;
+
         while(newSurface.lodCount < BLIT_MAX_MESH_LOD)
         {
             // Get current element in the LOD array and increment the count
@@ -304,7 +307,7 @@ namespace BlitzenEngine
 
             // Save the meshlets that will be used for the current lod level
             lod.firstMeshlet = static_cast<uint32_t>(pResources->meshlets.GetSize());
-            lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(LoadMeshlet(pResources, vertices, indices)) : 0;
+            lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(GenerateClusters(pResources, vertices, indices)) : 0;
 
             // Add the new indices that were loaded for this lod level to the global index buffer
             pResources->indices.AddBlockAtBack(lodIndices.Data(), lodIndices.GetSize());
@@ -381,10 +384,10 @@ namespace BlitzenEngine
 
     void LoadTestGeometry(RenderingResources* pResources)
     {
-        LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj", 1);
-        LoadMeshFromObj(pResources, "Assets/Meshes/kitten.obj", 1);
-        LoadMeshFromObj(pResources, "Assets/Meshes/bunny.obj", 1);
-        LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj", 1);
+        LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj");
+        LoadMeshFromObj(pResources, "Assets/Meshes/kitten.obj");
+        LoadMeshFromObj(pResources, "Assets/Meshes/bunny.obj");
+        LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj");
     }
 
 
@@ -522,8 +525,7 @@ namespace BlitzenEngine
         CreateTestGameObjects(pResources, drawCount);
     }
 
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t buildMeshlets /*=1*/, 
-    uint8_t loadForVulkan, uint8_t loadForGL)
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t loadForVulkan, uint8_t loadForGL)
     {
         if(pResources->renderObjectCount >= BLITZEN_MAX_DRAW_OBJECTS)
         {
@@ -781,7 +783,7 @@ namespace BlitzenEngine
                 BlitCL::DynamicArray<uint32_t> indices(prim.indices->count);
 			    cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
 
-                LoadSurface(pResources, vertices, indices, buildMeshlets);
+                LoadPrimitiveSurface(pResources, vertices, indices);
 
                 // Get the material index and pass it to the surface if there is material index
                 if(prim.material)

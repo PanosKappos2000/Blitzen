@@ -323,8 +323,13 @@ namespace BlitzenVulkan
 
         // Depth buffer for reverse z
         VkPipelineDepthStencilStateCreateInfo depthState{};
-        SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
-        nullptr, nullptr);
+        //SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
+        //nullptr, nullptr);
+        depthState.depthTestEnable = VK_TRUE;
+        depthState.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+        depthState.depthWriteEnable = VK_TRUE;
+        depthState.stencilTestEnable = VK_FALSE;
+        depthState.depthBoundsTestEnable = VK_FALSE;
         pipelineInfo.pDepthStencilState = &depthState;
 
         // Color blending. This pipeline is for opaque objects so it is left as default

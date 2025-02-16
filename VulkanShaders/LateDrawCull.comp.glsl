@@ -3,8 +3,6 @@
 #extension GL_GOOGLE_include_directive : require
 
 #define COMPUTE_PIPELINE
-#define LOD_ENABLED
-#define OCCLUSION_ENABLED
 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
@@ -17,6 +15,7 @@ layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
 
 void main()
 {
+#ifdef OCCLUSION_ENABLED
     uint objectIndex = gl_GlobalInvocationID.x;
 
     // This a guard so that the compute shader does not go over the draw count
@@ -50,7 +49,6 @@ void main()
 	visible = visible && center.z + radius > viewData.zNear && center.z - radius < viewData.zFar;
 
     // Later draw culling also does occlusion culling on objects that passed the frustum culling test above
-    #ifdef OCCLUSION_ENABLED
     if (visible)
 	{
 		vec4 aabb;
@@ -69,7 +67,6 @@ void main()
 			visible = visible && depthSphere > depth;
 		}
 	}
-    #endif
 
     // The late culling shader creates draw commands for the objects that passed late culling and were not tagged as visible last frame
     // It handles transparent objects a little bit differently as this is the only shader that will cull them
@@ -116,4 +113,5 @@ void main()
     // Any object that passed both occlusion and frustum culling, will have its visibility set to 1 for next frame
     // That means that the early culling shader will perform furstum culling on them
     visibilityBuffer.visibilities[objectIndex] = visible ? 1 : 0;
+#endif
 }

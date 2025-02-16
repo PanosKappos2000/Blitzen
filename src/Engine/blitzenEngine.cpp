@@ -87,15 +87,21 @@ namespace BlitzenEngine
         static_cast<float>(BLITZEN_WINDOW_HEIGHT), BLITZEN_ZNEAR, BlitML::vec3(30.f, 100.f, 0.f), BLITZEN_DRAW_DISTANCE);
 
         // Loads obj meshes that will be draw with "random" transforms by the millions to stress the renderer
-        uint32_t drawCount = 2'500'000;// Rendering a large amount of objects to stress test the renderer
-        LoadGeometryStressTest(pResources.Data(), drawCount, 1, 0);
+        #ifdef BLITZEN_RENDERING_STRESS_TEST
+            uint32_t drawCount = 4'500'000;// Rendering a large amount of objects to stress test the renderer
+            LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
+        #else
+            uint32_t drawCount = 500'000;
+            LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
+        #endif
+
 
         // Loads the gltf files that were specified as command line arguments
         if(argc != 1)
         {
             for(uint32_t i = 1; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i], 1, 1, 1);
+                LoadGltfScene(pResources.Data(), argv[i], renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
             }
         }
 
