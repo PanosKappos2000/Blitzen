@@ -633,7 +633,7 @@ namespace BlitzenVulkan
 
         // Dispatch the culling shader for the intial pass. This will perform frustum culling and LOD selection for objects that were visible last frame
         DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline, 
-        (context.drawCount / 64) + 1, pushDescriptorWritesCompute, context.drawCount, 0, 0, 
+        BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 0, 0, 
         context.bOcclusionCulling, context.bLOD);
 
         // The viewport and scissor are dynamic, so they should be set here
@@ -670,7 +670,7 @@ namespace BlitzenVulkan
         // Dispatches the late culling compute shader which does frustum culling, occlusion culling and LOD selection on everything
         // It only draws the objects that were not visible last frame and updates the visibility buffer for all objects
         DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
-        context.drawCount / 64 + 1, pushDescriptorWritesCompute, context.drawCount, 1, 0, 
+        BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 0, 
         context.bOcclusionCulling, context.bLOD);
 
         // Draw the objects based on the indirect draw buffer and indirect count buffer that were written by the culling shader
@@ -681,7 +681,7 @@ namespace BlitzenVulkan
 
         // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution will be found)
         DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
-        context.drawCount / 64 + 1, pushDescriptorWritesCompute, context.drawCount, 1, 1, 
+        BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 1, 
         context.bOcclusionCulling, context.bLOD);
 
         // Draw the transparent objects
@@ -752,7 +752,7 @@ namespace BlitzenVulkan
     }
 
     void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline,
-    uint32_t groupCountX, VkWriteDescriptorSet* pWrites, uint32_t drawCount, 
+    uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
     uint8_t lateCulling /*=0*/, uint8_t postPass /*=0*/, uint8_t bOcclusionEnabled /*=1*/, uint8_t bLODs /*=1*/)
     {
         // If this is after the first render pass, the shader will also need the depth pyramid image sampler to do occlusion culling
@@ -762,12 +762,12 @@ namespace BlitzenVulkan
             VkDescriptorImageInfo depthPyramidImageInfo{};
             WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 
             3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
-            pushDescriptorWritesCompute[7] = depthPyramidWrite;
+            pushDescriptorWritesCompute[descriptorWriteCount - 1] = depthPyramidWrite;
         }
 
         // Push the descriptor that need to be bound
         PushDescriptors(m_initHandles.instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
-        0, lateCulling ? 8 : 7, pWrites);
+        0, lateCulling ? descriptorWriteCount : descriptorWriteCount - 1, pDescriptorWrites);
 
         // Wait for previous render pass to be done with the indirect count buffer before zeroing it
         VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
@@ -779,8 +779,8 @@ namespace BlitzenVulkan
         // Initialize the indirect count buffer as zero
         vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, 0, sizeof(uint32_t), 0);
 
-        VkBufferMemoryBarrier2 waitBeforeDispatchingShaders[2] = {};
-        // Before dispatching the compute shader, it needs to wait for the transfer command above to 0 out the indirect count buffer
+        VkBufferMemoryBarrier2 waitBeforeDispatchingShaders[3] = {};
+        // Before dispatching the compute shader, it needs to wait for the transfer command above to Zero out the indirect count buffer
         BufferMemoryBarrier(m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, waitBeforeDispatchingShaders[0], 
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 
@@ -793,6 +793,13 @@ namespace BlitzenVulkan
         VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
 
+        // Before the compute shader can be dispatched, the previous fream needs to be done with the visibility buffer
+        // TODO: this barrier could be more specific depending on if I am in late or early stage
+        BufferMemoryBarrier(m_currentStaticBuffers.visibilityBuffer.buffer.buffer, waitBeforeDispatchingShaders[2], 
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
+        0, VK_WHOLE_SIZE);
+
         // The late culling shader needs to wait for the 2 barriers above but it also needs to wait for the depth pyramid to be generated
         if(lateCulling)
         {
@@ -804,12 +811,12 @@ namespace BlitzenVulkan
             VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, 
             VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
             // Adds the 2 barriers above and the image memory barrier
-            PipelineBarrier(commandBuffer, 0, nullptr, 2, waitBeforeDispatchingShaders, 1, &waitForDepthPyramidGeneration);
+            PipelineBarrier(commandBuffer, 0, nullptr, 3, waitBeforeDispatchingShaders, 1, &waitForDepthPyramidGeneration);
         }
         // If this is the initial culling stage, simply adds the 2 barriers
         else
         {
-            PipelineBarrier(commandBuffer, 0, nullptr, 2, waitBeforeDispatchingShaders, 0, nullptr);
+            PipelineBarrier(commandBuffer, 0, nullptr, 3, waitBeforeDispatchingShaders, 0, nullptr);
         }
 
         // Binds the shader's pipeline
@@ -818,9 +825,9 @@ namespace BlitzenVulkan
         DrawCullShaderPushConstant pc{drawCount, postPass, bOcclusionEnabled, bLODs};
         vkCmdPushConstants(commandBuffer, m_drawCullPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
         sizeof(DrawCullShaderPushConstant), &pc);
-        vkCmdDispatch(commandBuffer, groupCountX, 1, 1);
+        vkCmdDispatch(commandBuffer, (drawCount / 64) + 1, 1, 1);
 
-        VkBufferMemoryBarrier2 waitForCullingShader[2] = {};
+        VkBufferMemoryBarrier2 waitForCullingShader[3] = {};
         // Wait for the culling shader to write the indirect count buffer before reading in draw indirect stage
         BufferMemoryBarrier(m_currentStaticBuffers.indirectCountBuffer.buffer.buffer, waitForCullingShader[0], 
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
@@ -833,6 +840,12 @@ namespace BlitzenVulkan
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
         VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
         VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
+
+        // Wait for the culling shader to read and write to the visibility buffer, before the next shader does the same
+        BufferMemoryBarrier(m_currentStaticBuffers.visibilityBuffer.buffer.buffer, waitForCullingShader[2], 
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
+        0, VK_WHOLE_SIZE);
         
         // Add the above barriers
         PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
@@ -908,23 +921,22 @@ namespace BlitzenVulkan
         // Call the depth pyramid creation compute shader for every mip level in the depth pyramid
         for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
         {
+            VkWriteDescriptorSet srcAndDstDepthImageDescriptors[2] = {};
             // Pass the depth attachment image view or the previous image view of the depth pyramid as the image to be read by the shader
             VkDescriptorImageInfo sourceImageInfo{};
-            VkWriteDescriptorSet write{};
-            WriteImageDescriptorSets(write, sourceImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 1, 
+            WriteImageDescriptorSets(srcAndDstDepthImageDescriptors[0], sourceImageInfo, 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 1, 
             (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL, 
             (i == 0) ? m_depthAttachment.imageView : m_depthPyramidMips[i - 1], m_depthAttachmentSampler);
 
             // Pass the current depth pyramid image view to the shader as the output
             VkDescriptorImageInfo outImageInfo{};
-            VkWriteDescriptorSet write2{};
-            WriteImageDescriptorSets(write2, outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0, 
-            VK_IMAGE_LAYOUT_GENERAL, m_depthPyramidMips[i]);
-            VkWriteDescriptorSet writes[2] = {write, write2};
+            WriteImageDescriptorSets(srcAndDstDepthImageDescriptors[1], outImageInfo, 
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramidMips[i]);
 
             // Push the descriptor sets
             PushDescriptors(m_initHandles.instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthPyramidGenerationPipelineLayout, 
-            0, 2, writes);
+            0, 2, srcAndDstDepthImageDescriptors);
 
             // Calculate the extent of the current depth pyramid mip level
             uint32_t levelWidth = BlitML::Max(1u, (m_depthPyramidExtent.width) >> i);
@@ -934,7 +946,7 @@ namespace BlitzenVulkan
             vkCmdPushConstants(commandBuffer, m_depthPyramidGenerationPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
             sizeof(BlitML::vec2), &pyramidLevelExtentPushConstant);
 
-            // Dispatch the shader
+            // Dispatch the shader to generate the current mip level of the depth pyramid
             vkCmdDispatch(commandBuffer, levelWidth / 32 + 1, levelHeight / 32 + 1, 1);
 
             // Wait for the shader to finish before the next loop calls it again (or before the culing shader accesses it if the loop ends)

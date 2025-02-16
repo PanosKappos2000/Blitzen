@@ -130,7 +130,7 @@ target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include")
 
 target_compile_definitions(BlitzenEngine PUBLIC 
-                            #BLITZEN_RENDERING_STRESS_TEST
+                            BLITZEN_RENDERING_STRESS_TEST
                             BLITZEN_VULKAN
                             BLIT_VK_ACTIVE_GRAPHICS_API
                             BLITZEN_OPENGL

@@ -401,9 +401,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
-            (float(rand()) / RAND_MAX) * 1'500 - 50,//y
-            (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
+            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
+            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
             transform.pos = translation;
             transform.scale = 0.1f;
 
@@ -426,9 +426,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
-            (float(rand()) / RAND_MAX) * 1'500 - 50,//y
-            (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
+            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
+            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
             transform.pos = translation;
             transform.scale = 1.f;
 
@@ -451,9 +451,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1'500 - 50,//y
-                (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
+                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
+                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
             transform.pos = translation;
             transform.scale = 0.1f;
 
@@ -476,9 +476,9 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * 1'500 - 50,//x 
-                (float(rand()) / RAND_MAX) * 1'500 - 50,//y
-                (float(rand()) / RAND_MAX) * 1'500 - 50);//z
+            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
+                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
+                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
             transform.pos = translation;
             transform.scale = 5.f;
 

@@ -165,10 +165,12 @@ namespace BlitzenEngine
     void RenderingSystem::ShutdownRenderers()
     {
         RenderingSystem* pSystem = GET_RENDERER()
-        vulkan.Shutdown();
+        if(bVk)
+            vulkan.Shutdown();
 
         #if _MSC_VER
-            opengl.Shutdown();
+            if(bGl)
+                opengl.Shutdown();
         #endif
     }
 }

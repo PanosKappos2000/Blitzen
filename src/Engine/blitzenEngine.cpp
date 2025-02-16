@@ -91,7 +91,7 @@ namespace BlitzenEngine
             uint32_t drawCount = 4'500'000;// Rendering a large amount of objects to stress test the renderer
             LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
         #else
-            uint32_t drawCount = 500'000;
+            uint32_t drawCount = 999;
             LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
         #endif
 
