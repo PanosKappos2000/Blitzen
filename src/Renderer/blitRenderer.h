@@ -58,7 +58,7 @@ namespace BlitzenEngine
         // The parameters for this functions will be tidied up later
         uint8_t SetupRequestedRenderersForDrawing(RenderingResources* pResources, uint32_t drawCount, Camera& camera);
 
-        void DrawFrame(Camera& camera, Camera* pMovingCamera, uint32_t drawCount);
+        void DrawFrame(Camera& camera, uint32_t drawCount);
 
         // Pointless feature that doesn't work
         uint8_t SetActiveAPI(ActiveRenderer newActiveAPI);

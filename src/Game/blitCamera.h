@@ -35,6 +35,8 @@ namespace BlitzenEngine
         float fov;
         BlitML::mat4 projectionMatrix;
         BlitML::mat4 projectionTranspose;
+
+        uint8_t freezeFrustum = 0;
     };
 
     // This struct will hold data important for rendering (view frustum, projection matrix, view matrix), 
@@ -103,12 +105,6 @@ namespace BlitzenEngine
         // Returns the main camera
         inline Camera& GetCamera() { return m_mainCamera; }
 
-        // Returns the moving camera (in some cases, like detachment, it is differen than the main camera)
-        inline Camera* GetMovingCamera() { return m_pMovingCamera; }
-
-        // Change the moving camera
-        inline void SetMovingCamera(Camera* pCamera) { m_pMovingCamera = pCamera; }
-
         // Return the camera container to get access to all the available cameras
         inline Camera* GetCameraList() { return cameraList; }
 
@@ -121,8 +117,5 @@ namespace BlitzenEngine
 
         // The main camera is the one whose values are used for culling and other operations
         Camera& m_mainCamera;
-
-        // The camera that moves around the scene, usually the same as the main camera, unless the user requests detatch
-        Camera* m_pMovingCamera;
     };
 }

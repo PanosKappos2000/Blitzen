@@ -42,55 +42,37 @@ namespace BlitzenEngine
                 // The four keys below control basic camera movement. They set a velocity and tell it that it should be updated based on that velocity
                 case BlitzenCore::BlitKey::__W:
                 {
-                    Camera* pCamera = CameraSystem::GetCameraSystem()->GetMovingCamera();
-                    pCamera->transformData.cameraDirty = 1;
-                    pCamera->transformData.velocity = BlitML::vec3(0.f, 0.f, 1.f);
+                    Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+                    camera.transformData.cameraDirty = 1;
+                    camera.transformData.velocity = BlitML::vec3(0.f, 0.f, 1.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__S:
                 {
-                    Camera* pCamera = CameraSystem::GetCameraSystem()->GetMovingCamera();
-                    pCamera->transformData.cameraDirty = 1;
-                    pCamera->transformData.velocity = BlitML::vec3(0.f, 0.f, -1.f);
+                    Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+                    camera.transformData.cameraDirty = 1;
+                    camera.transformData.velocity = BlitML::vec3(0.f, 0.f, -1.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__A:
                 {
-                    Camera* pCamera = CameraSystem::GetCameraSystem()->GetMovingCamera();
-                    pCamera->transformData.cameraDirty = 1;
-                    pCamera->transformData.velocity = BlitML::vec3(-1.f, 0.f, 0.f);
+                    Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+                    camera.transformData.cameraDirty = 1;
+                    camera.transformData.velocity = BlitML::vec3(-1.f, 0.f, 0.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__D:
                 {
-                    Camera* pCamera = CameraSystem::GetCameraSystem()->GetMovingCamera();
-                    pCamera->transformData.cameraDirty = 1;
-                    pCamera->transformData.velocity = BlitML::vec3(1.f, 0.f, 0.f);
+                    Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+                    camera.transformData.cameraDirty = 1;
+                    camera.transformData.velocity = BlitML::vec3(1.f, 0.f, 0.f);
                     break;
                 }
                 case BlitzenCore::BlitKey::__F1:
                 {
-                    CameraSystem* pSystem = CameraSystem::GetCameraSystem()->GetCameraSystem();
-                    Camera& main = pSystem->GetCamera();
-                    Camera* cameraList = pSystem->GetCameraList();
+                    Camera& cam = CameraSystem::GetCameraSystem()->GetCamera();
 
-                    // If the moving camera not detatched from the main, detatches it
-                    if(pSystem->GetMovingCamera() == &(cameraList[BLIT_MAIN_CAMERA_ID]))
-                    {
-                        Camera& detatched = cameraList[BLIT_DETATCHED_CAMERA_ID];
-                        SetupCamera(detatched, main.transformData.fov, main.transformData.windowWidth, 
-                        main.transformData.windowHeight, main.viewData.zNear, main.viewData.position, 
-                        main.transformData.yawRotation, main.transformData.pitchRotation);
-                        CameraSystem::GetCameraSystem()->SetMovingCamera(&detatched);
-                    }
-                    // Otherwise, does the opposite
-                    else
-                    {
-                        CameraSystem::GetCameraSystem()->SetMovingCamera(&main);
-                        // Tell the renderer to change the camera without waiting for movement
-                        main.transformData.cameraDirty = 1;// This might break some logic in some cases, but it can easily be fixed
-                    }
-                    break;
+                    cam.transformData.freezeFrustum = !cam.transformData.freezeFrustum;
                 }
                 case BlitzenCore::BlitKey::__F2:
                 {
@@ -131,22 +113,22 @@ namespace BlitzenEngine
                 case BlitzenCore::BlitKey::__W:
                 case BlitzenCore::BlitKey::__S:
                 {
-                    Camera* pCamera = CameraSystem::GetCameraSystem()->GetMovingCamera();
-                    pCamera->transformData.velocity.z = 0.f;
-                    if(pCamera->transformData.velocity.y == 0.f && pCamera->transformData.velocity.x == 0.f)
+                    Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+                    camera.transformData.velocity.z = 0.f;
+                    if(camera.transformData.velocity.y == 0.f && camera.transformData.velocity.x == 0.f)
                     {
-                        pCamera->transformData.cameraDirty = 0;
+                        camera.transformData.cameraDirty = 0;
                     }
                     break;
                 }
                 case BlitzenCore::BlitKey::__A:
                 case BlitzenCore::BlitKey::__D:
                 {
-                    Camera* pCamera = CameraSystem::GetCameraSystem()->GetMovingCamera();
-                    pCamera->transformData.velocity.x = 0.f;
-                    if (pCamera->transformData.velocity.y == 0.f && pCamera->transformData.velocity.z == 0.f)
+                    Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+                    camera.transformData.velocity.x = 0.f;
+                    if (camera.transformData.velocity.y == 0.f && camera.transformData.velocity.z == 0.f)
                     {
-                        pCamera->transformData.cameraDirty = 0;
+                        camera.transformData.cameraDirty = 0;
                     }
                     break;
                 }
@@ -167,7 +149,7 @@ namespace BlitzenEngine
 
     uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, BlitzenCore::EventContext data)
     {
-        Camera& camera = *(CameraSystem::GetCameraSystem()->GetMovingCamera());
+        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         float deltaTime = static_cast<float>(Engine::GetEngineInstancePointer()->GetDeltaTime());
 
         camera.transformData.cameraDirty = 1;

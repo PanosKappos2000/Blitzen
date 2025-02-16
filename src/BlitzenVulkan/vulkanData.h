@@ -122,15 +122,14 @@ namespace BlitzenVulkan
     struct DrawContext
     {
         void* pCamera;
-        void* pMovingCamera;
 
         uint32_t drawCount;
 
         uint8_t bOcclusionCulling;
         uint8_t bLOD;
 
-        inline DrawContext(void* pCam, void* pMC, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
-        : pCamera(pCam), pMovingCamera(pMovingCamera), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
+        inline DrawContext(void* pCam, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
+        : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
     };
 
     // This struct will be passed to the GPU as uniform descriptor and will give shaders access to the global storage buffers

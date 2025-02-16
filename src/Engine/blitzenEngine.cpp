@@ -129,14 +129,11 @@ namespace BlitzenEngine
                 // Update the previous elapsed time to the current elapsed time
                 previousTime = m_clockElapsedTime;
 
-                // Get the moving camera pointer. If certain debug modes are active, it will differ from the main camera
-                Camera* pMovingCamera = cameraSystem.GetMovingCamera();
-
                 // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
-                UpdateCamera(*pMovingCamera, (float)m_deltaTime);
+                UpdateCamera(mainCamera, (float)m_deltaTime);
 
                 // Draw the frame!!!!
-                renderer->DrawFrame(mainCamera, pMovingCamera, drawCount);
+                renderer->DrawFrame(mainCamera, drawCount);
 
                 // Make sure that the window resize is set to false after the renderer is notified
                 mainCamera.transformData.windowResize = 0;

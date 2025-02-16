@@ -202,6 +202,9 @@ namespace BlitzenVulkan
         void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
         uint8_t latePass, VkPipeline pipeline);
 
+        // For occlusion culling to be possible a depth pyramid needs to be generated based on the depth attachment
+        void GenerateDepthPyramid(VkCommandBuffer commandBuffer);
+
         // Recreates the swapchain when necessary (and other handles that are involved with the window, like the depth pyramid)
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 

@@ -127,7 +127,7 @@ namespace BlitzenEngine
         return isThereRendererOnStandby;
     }
 
-    void RenderingSystem::DrawFrame(Camera& camera, Camera* pMovingCamera, uint32_t drawCount)
+    void RenderingSystem::DrawFrame(Camera& camera, uint32_t drawCount)
     {
         // Check that the pointer for the active renderer is not Null
         if(!CheckActiveAPI())
@@ -141,7 +141,7 @@ namespace BlitzenEngine
         {
             case ActiveRenderer::Vulkan:
             {
-                BlitzenVulkan::DrawContext vkContext{ &camera, pMovingCamera, drawCount, occlusionCullingOn, lodEnabled };
+                BlitzenVulkan::DrawContext vkContext{ &camera, drawCount, occlusionCullingOn, lodEnabled };
                 // Let Vulkan do its thing
                 vulkan.DrawFrame(vkContext);
 
@@ -150,7 +150,7 @@ namespace BlitzenEngine
             case ActiveRenderer::Opengl:
             {
                 #if _MSC_VER
-                    BlitzenGL::DrawContext glContext{&camera, pMovingCamera, drawCount, occlusionCullingOn, lodEnabled};
+                    BlitzenGL::DrawContext glContext{&camera, drawCount, occlusionCullingOn, lodEnabled};
                     opengl.DrawFrame(glContext);
                 #endif
                 break;

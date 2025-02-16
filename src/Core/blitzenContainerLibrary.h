@@ -14,6 +14,45 @@ namespace BlitCL
     }
 
 
+    template<typename T>
+    class DynamicArrayIterator
+    {
+    public:
+        DynamicArrayIterator(T* ptr) :m_pElement{ptr}{}
+
+        inline bool operator !=(DynamicArrayIterator<T>& l) { return m_pElement != l.m_pElement; }
+
+        inline DynamicArrayIterator<T>& operator ++() { 
+            m_pElement++; 
+            return *this; 
+        }
+
+        inline DynamicArrayIterator<T>& operator ++(int) {
+            DynamicArrayIterator<T> temp = *this;
+            ++(*this);
+            return temp;
+        }
+
+        inline DynamicArrayIterator<T>& operator --() {
+            m_pElement--;
+            return *this;
+        }
+
+        inline DynamicArrayIterator<T>& operator --(int) {
+            DynamicArrayIterator<T> temp = *this;
+            --(*this);
+            return temp;
+        }
+
+        inline T& operator [](size_t idx) { return m_pElement[idx]; }
+
+        inline T& operator *() { return *m_pElement; }
+
+        inline T* operator ->() { return m_pElement; }
+
+    private:
+        T* m_pElement;
+    };
 
     template<typename T>
     class DynamicArray
@@ -61,6 +100,10 @@ namespace BlitCL
             }
         }
 
+        using Iterator = DynamicArrayIterator<T>;
+        inline Iterator begin() { return Iterator(m_pBlock); }
+        inline Iterator end() { return Iterator(m_pBlock + size); }
+
         inline size_t GetSize() { return m_size; }
 
         inline T& operator [] (size_t index) { BLIT_ASSERT(index >= 0 && index < m_size) return m_pBlock[index]; }
@@ -68,10 +111,11 @@ namespace BlitCL
         inline T& Back() { BLIT_ASSERT(m_size) return m_pBlock[m_size - 1]; }
         inline T* Data() {return m_pBlock; }
 
-        void Fill(T value)
+        void Fill(const T& val)
         {
             if(m_size > 0)
-                BlitzenCore::BlitMemSet(m_pBlock, value, m_size * sizeof(T));
+                for(size_t i = 0; i < m_size; ++i)
+                    Memcpy(&m_pBlock[i], &val, sizeof(T))
         }
 
         void Resize(size_t newSize)
@@ -209,6 +253,9 @@ namespace BlitCL
         }
     };
 
+
+
+
     template<typename T, size_t S>
     class StaticArray
     {
@@ -223,7 +270,7 @@ namespace BlitCL
             static_assert(S > 0);
 
             for(size_t i = 0; i < S; ++i)
-                BlitzenCore::BlitMemCopy(&m_pData[i], &data, sizeof(T));
+                BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
         }
 
         StaticArray(T&& data)
@@ -231,12 +278,12 @@ namespace BlitCL
             static_assert(S > 0);
 
             for(size_t i = 0; i < S; ++i)
-                BlitzenCore::BlitMemCopy(&m_pData[i], &data, sizeof(T));
+                BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
         }
 
-        inline T& operator [] (size_t idx) { BLIT_ASSERT(idx >= 0 && idx < S) return m_pData[idx]; }
+        inline T& operator [] (size_t idx) { BLIT_ASSERT(idx >= 0 && idx < S) return m_array[idx]; }
 
-        inline T* Data() { return m_pData; }
+        inline T* Data() { return m_array; }
 
         inline size_t Size() { return S; }
 
@@ -245,8 +292,15 @@ namespace BlitCL
         
         }
     private:
-        T m_pData[S];
+        T m_array[S];
     };
+
+
+    inline void FillArray(DynamicArray<uint32_t>& arr, uint32_t val)
+    {
+        if (arr.GetSize() > 0)
+            BlitzenCore::BlitMemSet(arr.Data(), val, arr.GetSize());
+    }
 
 
 
