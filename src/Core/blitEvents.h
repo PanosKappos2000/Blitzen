@@ -2,17 +2,17 @@
 
 #include "blitzenContainerLibrary.h"
 
-#define BLIT_ENGINE_SHUTDOWN_EXPECTED_EVENTS 1
-#define BLIT_KEY_PRESSED_EXPECTED_EVENTS 100
-#define BLIT_KEY_RELEASED_EXPECTED_EVENTS 100
-#define BLIT_MOUSE_BUTTON_PRESSED_EXPECTED_EVENTS 50
-#define BLIT_MOUSE_BUTTON_RELEASED_EXPECTED_EVENTS 50
-#define BLIT_MOUSE_MOVED_EXPECTED_EVENTS  10
-#define BLIT_MOUSE_WHEEL_EXPECTED_EVENTS  10
-#define BLIT_WINDOW_RESIZE_EXPECTED_EVENTS  10
-
 namespace BlitzenCore
 {
+    constexpr uint8_t ce_blitShutdownEventCount = 1;
+    constexpr uint8_t ce_blitKeyPressEventCount = 1;
+    constexpr uint8_t ce_blitKeyReleasedEventCount = 1;
+    constexpr uint8_t ce_blitMouseButtonPressedEventCount = 1;
+    constexpr uint8_t ce_blitMouseButtonReleasedEventCount = 1;
+    constexpr uint8_t ce_blitMouseMovedEventCount = 1;
+    constexpr uint8_t ce_blitMouseWheelEventCount = 1;
+    constexpr uint8_t ce_blitWindowResizeCount = 1;
+
     // When an event needs to pass some data, this struct will be used to hide the data inside the union. The listener should know how to uncover the data
     struct EventContext 
     {
@@ -47,31 +47,19 @@ namespace BlitzenCore
         MaxTypes = 8
     };
 
-    typedef uint8_t (*pfnOnEvent)(BlitEventType type, void* pSender, void* pListener, EventContext data);
+    typedef uint8_t (*pfnOnEvent)(BlitEventType type, void* pSender, void* pListener, const EventContext& data);
 
     struct RegisteredEvent 
     {
         void* pListener;
-        pfnOnEvent callback;
+        pfnOnEvent callback = 0;
     };
     
     #define MAX_MESSAGE_CODES 16384
 
     struct EventSystemState 
     {
-        BlitCL::DynamicArray<RegisteredEvent> eventTypes[MAX_MESSAGE_CODES];
-
-        uint32_t maxExpectedEvents[static_cast<size_t>(BlitEventType::MaxTypes)] = 
-        {
-            BLIT_ENGINE_SHUTDOWN_EXPECTED_EVENTS, 
-            BLIT_KEY_PRESSED_EXPECTED_EVENTS, 
-            BLIT_KEY_RELEASED_EXPECTED_EVENTS, 
-            BLIT_MOUSE_BUTTON_PRESSED_EXPECTED_EVENTS,
-            BLIT_MOUSE_BUTTON_RELEASED_EXPECTED_EVENTS,
-            BLIT_MOUSE_MOVED_EXPECTED_EVENTS,
-            BLIT_MOUSE_WHEEL_EXPECTED_EVENTS, 
-            BLIT_WINDOW_RESIZE_EXPECTED_EVENTS
-        };
+        RegisteredEvent eventTypes[MAX_MESSAGE_CODES];
 
         EventSystemState();
 
@@ -83,12 +71,42 @@ namespace BlitzenCore
     };
 
     // Adds a new RegisteredEvent to the eventState event types array
-    uint8_t RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback);
+    inline void RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback)
+    {
+        static uint8_t bKR;
+        static uint8_t bKP;
+        static uint8_t bSH;
 
-    uint8_t UnregisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback);
+        if(type == BlitEventType::KeyPressed)
+        {
+            if(bKP)
+                return;
+            else
+                bKP = 1;
+        }
+
+        if(type == BlitEventType::KeyReleased)
+        {
+            if(bKR)
+                return;
+            else
+                bKR = 1;
+        }
+
+        if(type == BlitEventType::EngineShutdown)
+        {
+            if(bSH)
+                return;
+            else
+                bSH = 1;
+        }
+        
+        RegisteredEvent* pEvents = EventSystemState::GetState()->eventTypes;
+        pEvents[size_t(type)] = {pListener, eventCallback};
+    }
 
     // When an event has been processed, this will get called automatically to go through all the listeners and call their callbacks for a specific event
-    uint8_t FireEvent(BlitEventType type, void* pSender, EventContext context);
+    uint8_t FireEvent(BlitEventType type, void* pSender, const EventContext& context);
 
 
 
@@ -229,9 +247,15 @@ namespace BlitzenCore
         MAX_KEYS
     };
 
-    struct KeyboardState 
+    // This is the type that the key press functions will have
+    using BlitPfnKeyPressCallback = void (*)();
+    using BlitPfnKeyReleaseCallback = void (*)();
+
+    // A key can have a press callback, a release callback, both or none
+    struct RegisteredKeyCallback
     {
-        uint8_t keys[256];
+        BlitPfnKeyPressCallback pfnPressCallback = 0;
+        BlitPfnKeyReleaseCallback pfnReleaseCallback = 0;
     };
 
     struct MouseState 
@@ -243,8 +267,11 @@ namespace BlitzenCore
 
     struct InputSystemState 
     {
-        KeyboardState currentKeyboard;
-        KeyboardState previousKeyboard;
+        // Each key will have registered callback struct and a boolean representing if it is currently pressed
+        BlitCL::StaticArray<RegisteredKeyCallback, 256> keyInputCallbacks;
+        uint8_t currentKeyboard[256];
+        uint8_t previousKeyboard[256];
+
         MouseState currentMouse;
         MouseState previousMouse;
 
@@ -256,6 +283,32 @@ namespace BlitzenCore
 
         static InputSystemState* s_pInputSystemState;
     };
+
+    inline void RegisterKeyPressCallback(BlitKey key, BlitPfnKeyPressCallback callback) {
+        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnPressCallback = callback;
+    }
+    
+    inline void RegisterKeyReleaseCallback(BlitKey key, BlitPfnKeyReleaseCallback callback){
+        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnReleaseCallback = callback;
+    }
+
+    inline void RegisterKeyPressAndReleaseCallback(BlitKey key,
+    BlitPfnKeyPressCallback press, BlitPfnKeyReleaseCallback release){
+        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnPressCallback = press;
+        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnReleaseCallback = release;
+    }
+
+    inline void CallKeyPressFunction(BlitKey key){
+        auto func = InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnPressCallback;
+        if(func)
+            func();
+    }
+
+    inline void CallKeyReleaseFunction(BlitKey key){
+        auto func = InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnReleaseCallback;
+        if(func)
+            func();
+    }
 
     void UpdateInput(double deltaTime);
 

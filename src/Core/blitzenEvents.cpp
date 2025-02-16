@@ -21,77 +21,12 @@ namespace BlitzenCore
     {
         s_pEventSystemState = nullptr;
     }
-
-    uint8_t RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback) 
-    {
-        BlitCL::DynamicArray<RegisteredEvent>& events = GET_EVENT_SYSTEM_STATE()->eventTypes[static_cast<size_t>(type)];
-
-        // If no event of this type has been created before, reserve the maximum expected space for events of this type
-        if(events.GetSize() == 0) 
-        {
-            events.Reserve(GET_EVENT_SYSTEM_STATE()->maxExpectedEvents[static_cast<size_t>(type)]);
-        }
-
-        for(size_t i = 0; i < events.GetSize(); ++i) 
-        {
-            // A listener should not have multiple event callbacks for the same type of event
-            if(events[i].pListener == pListener) 
-            {
-                return 0;
-            }
-        }
-
-        // If at this point, no duplicate was found. Proceed with registration.
-        RegisteredEvent event;
-        event.pListener = pListener;
-        event.callback = eventCallback;
-        events.PushBack(event);
-        return 1;
-    }
-
-    uint8_t UnregisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback) 
-    {
-        BlitCL::DynamicArray<RegisteredEvent>& events = GET_EVENT_SYSTEM_STATE()->eventTypes[static_cast<size_t>(type)];
-        // On nothing is registered for the code, boot out.
-        if(events.GetSize() == 0) 
-        {
-            // TODO: warn
-            return 0;
-        }
-
-        for(size_t i = 0; i < events.GetSize(); ++i) 
-        {
-            // Find the listener and remove the function pointer
-            if(events[i].pListener == pListener && events[i].callback == eventCallback) 
-            {
-                events.RemoveAtIndex(i);
-                return 1;
-            }
-        }
-
-        // Not found
-        return 0;
-    }
     
-    uint8_t FireEvent(BlitEventType type, void* pSender, EventContext context)
+    uint8_t FireEvent(BlitEventType type, void* pSender, const EventContext& context)
     {
-        BlitCL::DynamicArray<RegisteredEvent>& events = GET_EVENT_SYSTEM_STATE()->eventTypes[static_cast<size_t>(type)];
-        // If nothing is registered for the code, boot out.
-        if(events.GetSize() == 0) 
-        {
-            // TODO: warn
-            return 0;
-        }
-        
-        for(size_t i = 0; i < events.GetSize(); ++i) 
-        {
-            RegisteredEvent& event = events[i];
-            if(event.callback && event.callback(type, pSender, event.pListener, context)) 
-            {
-                // Event handled
-                return 1;
-            }
-        }
+        RegisteredEvent event = EventSystemState::GetState()->eventTypes[static_cast<size_t>(type)];
+        if(event.callback)
+            return event.callback(type, pSender, event.pListener, context);
 
         return 0;
     }
@@ -116,8 +51,9 @@ namespace BlitzenCore
     void UpdateInput(double deltaTime) 
     {
         InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
+        
         // Copy current states to previous states
-        BlitzenCore::BlitMemCopy(&(pState->previousKeyboard), &pState->currentKeyboard, sizeof(KeyboardState));
+        BlitzenCore::BlitMemCopy(&(pState->previousKeyboard), &pState->currentKeyboard, sizeof(pState->currentKeyboard));
         BlitzenCore::BlitMemCopy(&pState->previousMouse, &pState->currentMouse, sizeof(MouseState));
     }
 
@@ -125,10 +61,10 @@ namespace BlitzenCore
     {
         InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
         // Check If the key has not already been flagged as the value of bPressed
-        if (pState->currentKeyboard.keys[static_cast<size_t>(key)] != bPressed) 
+        if (pState->currentKeyboard[static_cast<size_t>(key)] != bPressed) 
         {
             // Change the state to bPressed
-            pState->currentKeyboard.keys[static_cast<size_t>(key)] = bPressed;
+            pState->currentKeyboard[static_cast<size_t>(key)] = bPressed;
 
             // Fire off an event for immediate processing after saving the data of the input to the event context
             EventContext context;
@@ -180,13 +116,13 @@ namespace BlitzenCore
     uint8_t GetCurrentKeyState(BlitKey key) 
     {
         InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
-        return pState->currentKeyboard.keys[static_cast<size_t>(key)];
+        return pState->currentKeyboard[static_cast<size_t>(key)];
     }
 
     uint8_t GetPreviousKeyState(BlitKey key) 
     {
         InputSystemState* pState = GET_INPUT_SYSTEM_STATE();
-        return pState->currentKeyboard.keys[static_cast<size_t>(key)];
+        return pState->currentKeyboard[static_cast<size_t>(key)];
     }
 
     
