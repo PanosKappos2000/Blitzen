@@ -75,7 +75,7 @@ namespace BlitCL
             if (m_size > 0)
             {
                 m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
-                for (size_t i = 0; i < initialSize)
+                for (size_t i = 0; i < initialSize; ++i)
                     BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
             }
         }
@@ -103,7 +103,7 @@ namespace BlitCL
 
         using Iterator = DynamicArrayIterator<T>;
         inline Iterator begin() { return Iterator(m_pBlock); }
-        inline Iterator end() { return Iterator(m_pBlock + size); }
+        inline Iterator end() { return Iterator(m_pBlock + m_size); }
 
         inline size_t GetSize() { return m_size; }
 
@@ -116,7 +116,7 @@ namespace BlitCL
         {
             if(m_size > 0)
                 for(size_t i = 0; i < m_size; ++i)
-                    Memcpy(&m_pBlock[i], &val, sizeof(T))
+                    Memcpy(&m_pBlock[i], &val, sizeof(T));
         }
 
         void Resize(size_t newSize)
@@ -435,7 +435,7 @@ namespace BlitCL
 
         SmartPointer(DstrPfn customDestructor, P&... params)
         {
-            m_pData = BlitzenCore::BlitCOnstructAlloc<T>(A, params...);
+            m_pData = BlitzenCore::BlitConstructAlloc<T>(A, params...);
 
             m_customDestructor = customDestructor;
         }

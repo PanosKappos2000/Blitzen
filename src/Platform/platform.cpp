@@ -484,7 +484,7 @@ namespace BlitzenPlatform
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);
 
-        uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
+        uint8_t PlatformStartup(const char* appName)
         {
             s_state.pDisplay = XOpenDisplay(nullptr);
 
@@ -530,8 +530,10 @@ namespace BlitzenPlatform
 
             // Create the window
             xcb_void_cookie_t cookie = xcb_create_window(s_state.pConnection,XCB_COPY_FROM_PARENT/* depth */, s_state.window,
-            s_state.pScreen->root/* parent */,x, y, width, height, 0/* No border */, XCB_WINDOW_CLASS_INPUT_OUTPUT,
-            s_state.pScreen->root_visual, eventMask, valueList);
+            s_state.pScreen->root/* parent */,
+            BlitzenEngine::ce_windowStartingX, BlitzenEngine::ce_windowStartingY, 
+            BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, 0/* No border */, 
+            XCB_WINDOW_CLASS_INPUT_OUTPUT, s_state.pScreen->root_visual, eventMask, valueList);
 
             // Change the title
             xcb_change_property( s_state.pConnection, XCB_PROP_MODE_REPLACE, s_state.window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING,

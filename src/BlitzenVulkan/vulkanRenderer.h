@@ -368,37 +368,6 @@ namespace BlitzenVulkan
     void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
     VkBufferUsageFlags usage, VkDeviceSize size, uint8_t getBufferDeviceAddress = 0);
 
-    template <typename T = void>
-    uint8_t SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, 
-    PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer, 
-    VkDeviceSize bufferSize, VkBufferUsageFlags usage, void* pData)
-    {
-        // Creates the storage buffer and the staging buffer that will hold its data
-        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
-        stagingBuffer, usage, bufferSize);
-        // Checks if the above function failed
-        if(pushBuffer.buffer.buffer == VK_NULL_HANDLE)
-            return 0;
-        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
-        return 1;
-    }
-
-    template <typename T = void>
-    uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
-    PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, VkBufferUsageFlags usage)
-    {
-        // Creates the storage buffer and the staging buffer that will hold its data
-        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            return 0;
-        
-        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
-        return 1;
-    }
-
     // Returns the GPU address of a buffer
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
@@ -464,6 +433,37 @@ namespace BlitzenVulkan
     VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, 
     VkDescriptorSet dstSet = VK_NULL_HANDLE,  VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
     VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
+
+    template <typename T = void>
+    uint8_t SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, 
+    PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer, 
+    VkDeviceSize bufferSize, VkBufferUsageFlags usage, void* pData)
+    {
+        // Creates the storage buffer and the staging buffer that will hold its data
+        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
+        stagingBuffer, usage, bufferSize);
+        // Checks if the above function failed
+        if(pushBuffer.buffer.buffer == VK_NULL_HANDLE)
+            return 0;
+        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
+        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
+        return 1;
+    }
+
+    template <typename T = void>
+    uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
+    PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, VkBufferUsageFlags usage)
+    {
+        // Creates the storage buffer and the staging buffer that will hold its data
+        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            return 0;
+        
+        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
+        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
+        return 1;
+    }
 
     // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 

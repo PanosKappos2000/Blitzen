@@ -10,6 +10,10 @@
 // The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
+#ifndef __WIN32
+    #undef BLITZEN_OPENGL
+#endif
+
 namespace BlitzenEngine
 {
     enum class ActiveRenderer : uint8_t
@@ -52,7 +56,7 @@ namespace BlitzenEngine
         }
         #endif
 
-        #ifdef BLITZEN_OPENGL
+        #ifdef BLITZEN_OPENGL && _WIN32
         inline const BlitzenGL::OpenglRenderer& GetOpengl() { return opengl; }
         #else
         inline const BlitzenGL::OpenglRenderer& GetOpengl() {
@@ -62,7 +66,7 @@ namespace BlitzenEngine
         }
         #endif
 
-        #ifdef BLITZEN_OPENGL
+        #ifdef BLITZEN_OPENGL && _WIN32
         inline uint8_t IsOpenglAvailable() {
             return bGl;
         }

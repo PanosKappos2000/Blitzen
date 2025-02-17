@@ -1,6 +1,18 @@
 #pragma once
 
 #include "Core/blitAssert.h"
+#include <utility>
+
+// Platform specific code, needed to allocate on the heap
+namespace BlitzenPlatform
+{
+    // Called only by the memory manager
+    void* PlatformMalloc(size_t size, uint8_t aligned);
+    void PlatformFree(void* pBlock, uint8_t aligned);
+    void* PlatformMemZero(void* pBlock, size_t size);
+    void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
+    void* PlatformMemSet(void* pDst, int32_t value, size_t size);
+}
 
 namespace BlitzenCore
 {
@@ -96,14 +108,4 @@ namespace BlitzenCore
     void  BlitMemCopy(void* pDst, void* pSrc, size_t size);
     void BlitMemSet(void* pDst, int32_t value, size_t size);
     void BlitZeroMemory(void* pBlock, size_t size);
-}
-
-namespace BlitzenPlatform
-{
-    // Called only by the memory manager
-    void* PlatformMalloc(size_t size, uint8_t aligned);
-    void PlatformFree(void* pBlock, uint8_t aligned);
-    void* PlatformMemZero(void* pBlock, size_t size);
-    void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
-    void* PlatformMemSet(void* pDst, int32_t value, size_t size);
 }
