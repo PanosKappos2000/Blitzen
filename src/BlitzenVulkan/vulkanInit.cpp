@@ -2,17 +2,18 @@
 #include "Platform/platform.h"
 #include <cstring> // For strcmp
 
-#if _MSC_VER
-    #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_win32_surface"
-    #define VALIDATION_LAYER_NAME                   "VK_LAYER_KHRONOS_validation"
-#elif linux
-    #define VULKAN_SURFACE_KHR_EXTENSION_NAME       "VK_KHR_xcb_surface"
-    #define VALIDATION_LAYER_NAME                   "VK_LAYER_NV_optimus"
-    #define VK_USE_PLATFORM_XCB_KHR
-#endif
-
 namespace BlitzenVulkan
 {
+    // Platform specific expressions
+    #if _MSC_VER
+        constexpr char* ce_surfaceExtensionName  = "VK_KHR_win32_surface";
+        constexpr char* ce_baseValidationLayerName =  "VK_LAYER_KHRONOS_validation";                 
+    #elif linux
+        constexpr char* ce_surfaceExtensionName = "VK_KHR_xcb_surface";      
+        constexpr char* ce_baseValidationLayerName = "VK_LAYER_NV_optimus";                  
+        #define VK_USE_PLATFORM_XCB_KHR
+    #endif
+
     VulkanRenderer* VulkanRenderer::m_pThisRenderer = nullptr;
 
     /*
@@ -72,90 +73,44 @@ namespace BlitzenVulkan
         m_pThisRenderer = this;
 
         // Creates the Vulkan instance
-        if(!CreateInstance(m_initHandles.instance, &m_initHandles.debugMessenger))
+        if(!CreateInstance(m_instance, &m_debugMessenger))
         {
             BLIT_ERROR("Failed to create vulkan instance")
             return 0;
         }
 
         // Create the surface depending on the implementation on Platform.cpp
-        if(!BlitzenPlatform::CreateVulkanSurface(m_initHandles.instance, m_initHandles.surface, m_pCustomAllocator))
+        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface, m_pCustomAllocator))
         {
             BLIT_ERROR("Failed to create Vulkan window surface")
             return 0;
         }
 
         // Call the function to search for a suitable physical device, it it can't find one return 0
-        if(!PickPhysicalDevice(m_initHandles, m_graphicsQueue, m_computeQueue, m_presentQueue, m_stats))
+        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface, 
+        m_graphicsQueue, m_computeQueue, m_presentQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device")
             return 0;
         }
 
         // Create the device
-        if(!CreateDevice(m_device, m_initHandles, m_graphicsQueue, m_presentQueue, m_computeQueue, m_stats))
+        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, m_presentQueue, m_computeQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device")
         }
 
-        //Creates the swapchain
-        if(!CreateSwapchain(m_device, m_initHandles, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, m_pCustomAllocator, 
-        m_initHandles.swapchain))
+        // Creates the swapchain
+        if(!CreateSwapchain(m_device, m_surface, m_physicalDevice, 
+        windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
+        m_pCustomAllocator, m_swapchainValues))
         {
             BLIT_ERROR("Failed to create Vulkan swapchain")
             return 0;
         }
 
-        // Initialize VMA allocator
-        if(!CreateVmaAllocator(m_device, m_initHandles.instance, m_initHandles.chosenGpu, m_allocator, 
-        VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT))
-        {
-            BLIT_ERROR("Failed to create the vma allocator")
-            return 0;
-        }
-
-        // Initialize the memory crucials. These handles are held by the memory manager, so that they are destroyed after the renderer
-        // This is done so that buffer and images can be destroyed automatically without causing issues for the vma allocator
-        MemoryCrucialHandles* memoryCrucials = BlitzenCore::GetVulkanMemoryCrucials();
-        memoryCrucials->device = m_device;
-        memoryCrucials->allocator = m_allocator;
-        memoryCrucials->instance = m_initHandles.instance;
-        memoryCrucials->surface = m_initHandles.surface;
-
-        // Creates the sync structure and command buffers for each set of frame tools in m_frameToolsList
-        if(!FrameToolsInit())
-            return 0;
-
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {windowWidth, windowHeight};
-
-        // Creates Rendering attachment image resource for color attachment
-        if(!CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))
-        {
-            BLIT_ERROR("Failed to create color attachment image resource")
-            return 0;
-        }
-
-        // Creates rendering attachment image resource for depth attachment
-        if(!CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))
-        {
-            BLIT_ERROR("Failed to create depth attachment image resource")
-            return 0;
-        }
-
-        // Create the depth pyramid image and its mips that will be used for occlusion culling
-        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
-        m_drawExtent, m_device, m_allocator))
-        {
-            BLIT_ERROR("Failed to create the depth pyramid")
-            return 0;
-        }
-
-        // Texture sampler, for now all textures will use the same one
-        if(!CreateTextureSampler(m_device, m_placeholderSampler))
-            return 0;
 
         return 1;
     }
@@ -176,10 +131,10 @@ namespace BlitzenVulkan
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         applicationInfo.pNext = nullptr; 
         applicationInfo.apiVersion = VK_API_VERSION_1_3; 
-        applicationInfo.pApplicationName = BLITZEN_VULKAN_USER_APPLICATION;
-        applicationInfo.applicationVersion = BLITZEN_VULKAN_USER_APPLICATION_VERSION;
-        applicationInfo.pEngineName = BLITZEN_VULKAN_USER_ENGINE;
-        applicationInfo.engineVersion = BLITZEN_VULKAN_USER_ENGINE_VERSION;
+        applicationInfo.pApplicationName = ce_userApp;
+        applicationInfo.applicationVersion = ce_appVersion;
+        applicationInfo.pEngineName = ce_hostEngine;
+        applicationInfo.engineVersion = ce_userEngineVersion;
 
         VkInstanceCreateInfo instanceInfo {};
         instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -192,11 +147,11 @@ namespace BlitzenVulkan
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr);
         BlitCL::DynamicArray<VkExtensionProperties> availableExtensions(static_cast<size_t>(extensionsCount));
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, availableExtensions.Data());
-        uint8_t extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT] = {0};
+        uint8_t extensionSupport[ce_extensionCount] = {0};
         for(size_t i = 0; i < availableExtensions.GetSize(); ++i)
         {
             // Check for surafce extension support
-            if(!extensionSupport[0] && !strcmp(availableExtensions[i].extensionName,VULKAN_SURFACE_KHR_EXTENSION_NAME))
+            if(!extensionSupport[0] && !strcmp(availableExtensions[i].extensionName,ce_surfaceExtensionName))
             {
                 extensionSupport[0] = 1;
             }
@@ -207,40 +162,40 @@ namespace BlitzenVulkan
 
             // Check for validation layer extension support if the validation layers are active
             #if BLITZEN_VULKAN_VALIDATION_LAYERS
-                if(!extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] &&
+                if(!extensionSupport[ce_extensionCount - 1] &&
                 !strcmp(availableExtensions[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
                 {
-                    extensionSupport[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] = 1;
+                    extensionSupport[ce_extensionCount - 1] = 1;
                 }
             #endif
         }
 
         // Checks that all of the required extensions are supported
         uint8_t allExtensions = 0;
-        for(uint8_t i = 0; i < BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT; ++i)
+        for(uint8_t i = 0; i < ce_extensionCount; ++i)
         {
             allExtensions += extensionSupport[i];
         }
-        if(allExtensions != BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT)
+        if(allExtensions != ce_extensionCount)
         {
             BLIT_ERROR("Not all extensions are supported")
             return 0;
         }
 
         // Creating an array of required extension names to pass to ppEnabledExtensionNames
-        const char* requiredExtensionNames [BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT];
-        requiredExtensionNames[0] =  VULKAN_SURFACE_KHR_EXTENSION_NAME;
+        const char* requiredExtensionNames [ce_extensionCount];
+        requiredExtensionNames[0] =  ce_surfaceExtensionName;
         requiredExtensionNames[1] = "VK_KHR_surface";        
-        instanceInfo.enabledExtensionCount = BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT;
+        instanceInfo.enabledExtensionCount = ce_extensionCount;
         instanceInfo.enabledLayerCount = 0; // Validation layers inactive at first, but will be activated if it's a debug build
 
         // If validation layers are requested, the debut utils extension is also needed
         #if BLITZEN_VULKAN_VALIDATION_LAYERS
             // Adds the validation layer extensions to the extensions list
-            requiredExtensionNames[BLITZEN_VULKAN_ENABLED_EXTENSION_COUNT - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+            requiredExtensionNames[ce_extensionCount - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 
             uint8_t validationLayersEnabled = 0;
-            const char* layerNameRef[2] = { VALIDATION_LAYER_NAME, "VK_LAYER_KHRONOS_synchronization2" };
+            const char* layerNameRef[2] = { ce_baseValidationLayerName, "VK_LAYER_KHRONOS_synchronization2" };
             VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
             if(EnableInstanceValidation(debugMessengerInfo))
             {
@@ -288,7 +243,7 @@ namespace BlitzenVulkan
         uint8_t layersFound = 0;
         for(size_t i = 0; i < availableLayers.GetSize(); i++)
         {
-           if(!strcmp(availableLayers[i].layerName,VALIDATION_LAYER_NAME))
+           if(!strcmp(availableLayers[i].layerName,ce_baseValidationLayerName))
            {
                layersFound = 1;
                break;
@@ -341,18 +296,19 @@ namespace BlitzenVulkan
         return layersFound;
     }
 
-    uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
+    uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface,
+    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
     VulkanStats& stats)
     {
         // Retrieves the physical device count
         uint32_t physicalDeviceCount = 0;
-        vkEnumeratePhysicalDevices(initHandles.instance, &physicalDeviceCount, nullptr);
+        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
         if(!physicalDeviceCount)
             return 0;
 
         // Pass the available devices to an array to pick the best one
         BlitCL::DynamicArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-        vkEnumeratePhysicalDevices(initHandles.instance, &physicalDeviceCount, physicalDevices.Data());
+        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.Data());
 
         // Goes through the available devices, to eliminate the ones that are completely inadequate
         for(size_t i = 0; i < physicalDevices.GetSize(); ++i)
@@ -463,7 +419,7 @@ namespace BlitzenVulkan
                 }
 
                 VkBool32 supportsPresent = VK_FALSE;
-                VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, static_cast<uint32_t>(j), initHandles.surface, &supportsPresent))
+                VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, static_cast<uint32_t>(j), surface, &supportsPresent))
                 if(supportsPresent == VK_TRUE && !presentQueue.hasIndex)
                 {
                     presentQueue.index = static_cast<uint32_t>(j);
@@ -495,14 +451,14 @@ namespace BlitzenVulkan
             // Prefer discrete gpu if there is one
             if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
             {
-                initHandles.chosenGpu = pdv;
+                gpu = pdv;
                 stats.hasDiscreteGPU = 1;
             }
         }
 
         // If a discrete GPU is not found, the renderer chooses the 1st device. This will change the way the renderer goes forward
         if(!stats.hasDiscreteGPU)
-            initHandles.chosenGpu = physicalDevices[0];
+            gpu = physicalDevices[0];
         else
             BLIT_INFO("Discrete GPU found")
 
@@ -510,7 +466,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
+    uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, 
     Queue& presentQueue, Queue& computeQueue, VulkanStats& stats)
     {
         VkDeviceCreateInfo deviceInfo{};
@@ -519,7 +475,7 @@ namespace BlitzenVulkan
         deviceInfo.enabledLayerCount = 0;//Deprecated
 
         // Since mesh shaders are not a required feature, they will be checked separately and if support is not found, the traditional pipeline will be used
-        #if BLITZEN_VULKAN_MESH_SHADER
+        #ifdef BLIT_VK_MESH_EXT
             VkPhysicalDeviceFeatures2 features2{};
             features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
             VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
@@ -548,9 +504,9 @@ namespace BlitzenVulkan
         #endif
 
         // Vulkan should ignore the mesh shader extension if support for it was not found
-        deviceInfo.enabledExtensionCount = 2 + (BLITZEN_VULKAN_MESH_SHADER && stats.meshShaderSupport);
+        deviceInfo.enabledExtensionCount = 2 + (ce_bMeshShaders && stats.meshShaderSupport);
         // Adding the swapchain extension and mesh shader extension if it was requested
-        const char* extensionsNames[2 + BLITZEN_VULKAN_MESH_SHADER];
+        const char* extensionsNames[2 + ce_bMeshShaders];
         extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
         extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
         #if BLITZEN_VULKAN_MESH_SHADER
@@ -682,7 +638,7 @@ namespace BlitzenVulkan
         deviceInfo.pQueueCreateInfos = queueInfos.Data();
 
         // Create the device
-        VkResult res = vkCreateDevice(initHandles.chosenGpu, &deviceInfo, nullptr, &device);
+        VkResult res = vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
         if(res != VK_SUCCESS)
             return 0;
 
@@ -716,48 +672,9 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
-    VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
-    VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler /* =1 */)
-    {
-        // This will fail if mip levels do not start from 0
-        depthPyramidMipLevels = 0;
-
-        // Create the sampler only if it is requested. In case where the depth pyramid is recreated on window resize, this is not needed
-        if(createSampler)
-            depthAttachmentSampler = CreateSampler(device, VK_SAMPLER_REDUCTION_MODE_MIN);
-
-        // Get a conservative starting extent for the depth pyramid image, by getting the previous power of 2 of the draw extent
-        depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
-        depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
-
-        // Get the amount of mip levels for the depth pyramid by dividing the extent by 2, until both width and height are not over 1
-        uint32_t width = depthPyramidExtent.width;
-        uint32_t height = depthPyramidExtent.height;
-        while(width > 1 || height > 1)
-        {
-            depthPyramidMipLevels++;
-            width /= 2;
-            height /= 2;
-        }
-
-        // Create the depth pyramid image which will be used as storage image and to then transfer its data for occlusion culling
-        if(!CreateImage(device, allocator, depthPyramidImage, {depthPyramidExtent.width, depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, depthPyramidMipLevels))
-            return 0;
-
-        for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
-        {
-            if(!CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image, VK_FORMAT_R32_SFLOAT, i, 1))
-                return 0;
-        }
-
-        return 1;
-    }
-
-    uint8_t CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
-    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
-    VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
+    uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
+    uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
+    VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
     {
             VkSwapchainCreateInfoKHR swapchainInfo{};
             swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -766,7 +683,7 @@ namespace BlitzenVulkan
             swapchainInfo.imageArrayLayers = 1;
             swapchainInfo.clipped = VK_TRUE;// Don't present things renderer out of bounds
             swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;// Might not be supported in some cases, so I might want to guard against this
-            swapchainInfo.surface = initHandles.surface;
+            swapchainInfo.surface = surface;
             swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
             // Used when the swapchain is recreated
             swapchainInfo.oldSwapchain = oldSwapchain;
@@ -775,14 +692,14 @@ namespace BlitzenVulkan
             {
                 // Get the amount of available surface formats
                 uint32_t surfaceFormatsCount = 0; 
-                if(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, 
+                if(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, 
                 &surfaceFormatsCount, nullptr) != VK_SUCCESS)
                     // Something is seriously wrong if the above function does not work
                     return 0;
                 
                 // Pass the formats to a dynamic array
                 BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
-                if(vkGetPhysicalDeviceSurfaceFormatsKHR(initHandles.chosenGpu, initHandles.surface, 
+                if(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, 
                 &surfaceFormatsCount, surfaceFormats.Data()) != VK_SUCCESS)
                     // Something is seriously wrong if the above function does not work
                     return 0;
@@ -798,7 +715,7 @@ namespace BlitzenVulkan
                         swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
                         swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
                         // Saves the format to init handles
-                        initHandles.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                        newSwapchain.swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
                         found = 1;
                         break;
                     }
@@ -810,7 +727,7 @@ namespace BlitzenVulkan
                 {
                     swapchainInfo.imageFormat = surfaceFormats[0].format;
                     // Save the image format
-                    initHandles.swapchainFormat = swapchainInfo.imageFormat;
+                    newSwapchain.swapchainFormat = swapchainInfo.imageFormat;
                     swapchainInfo.imageColorSpace = surfaceFormats[0].colorSpace;
                 }
             }
@@ -819,13 +736,13 @@ namespace BlitzenVulkan
             {
                 // Retrieves the amount of presentation modes supported
                 uint32_t presentModeCount = 0;
-                if(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, 
+                if(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, 
                 &presentModeCount, nullptr) != VK_SUCCESS)
                     return 0;
 
                 // Saves the supported present modes to a dynamic array
                 BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
-                if(vkGetPhysicalDeviceSurfacePresentModesKHR(initHandles.chosenGpu, initHandles.surface, 
+                if(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, 
                 &presentModeCount, presentModes.Data()) != VK_SUCCESS)
                     return 0;
 
@@ -834,9 +751,9 @@ namespace BlitzenVulkan
                 for(size_t i = 0; i < presentModes.GetSize(); ++i)
                 {
                     // If the desired presentation mode is found, set the swapchain info to that
-                    if(presentModes[i] == DESIRED_SWAPCHAIN_PRESENTATION_MODE)
+                    if(presentModes[i] == ce_desiredPresentMode)
                     {
-                        swapchainInfo.presentMode = DESIRED_SWAPCHAIN_PRESENTATION_MODE;
+                        swapchainInfo.presentMode = ce_desiredPresentMode;
                         found = 1;
                         break;
                     }
@@ -850,10 +767,10 @@ namespace BlitzenVulkan
             }
 
             // Sets the swapchain extent to the window's width and height
-            initHandles.swapchainExtent = {windowWidth, windowHeight};
+            newSwapchain.swapchainExtent = {windowWidth, windowHeight};
             // Retrieves surface capabilities to properly configure some swapchain values
             VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-            if(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(initHandles.chosenGpu, initHandles.surface, &surfaceCapabilities) != VK_SUCCESS)
+            if(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities) != VK_SUCCESS)
                 return 0;
 
             /* Swapchain extent */
@@ -861,17 +778,21 @@ namespace BlitzenVulkan
                 // Updates the swapchain extent to the current extent from the surface, if it is not a special value
                 if(surfaceCapabilities.currentExtent.width != UINT32_MAX)
                 {
-                    initHandles.swapchainExtent = surfaceCapabilities.currentExtent;
+                    newSwapchain.swapchainExtent = surfaceCapabilities.currentExtent;
                 }
 
                 // Gets the min extent and max extent allowed by the GPU,  to clamp the initial value
                 VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
                 VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
-                initHandles.swapchainExtent.width = BlitCL::Clamp(initHandles.swapchainExtent.width, maxExtent.width, minExtent.width);
-                initHandles.swapchainExtent.height = BlitCL::Clamp(initHandles.swapchainExtent.height, maxExtent.height, minExtent.height);
+
+                newSwapchain.swapchainExtent.width = 
+                BlitCL::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
+
+                newSwapchain.swapchainExtent.height = 
+                BlitCL::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
 
                 // Swapchain extent fully checked and ready to pass to the swapchain info struct
-                swapchainInfo.imageExtent = initHandles.swapchainExtent;
+                swapchainInfo.imageExtent = newSwapchain.swapchainExtent;
             }
 
             /* Min image count */
@@ -904,81 +825,25 @@ namespace BlitzenVulkan
             }
 
             // Create the swapchain
-            VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, &newSwapchain);
+            VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, 
+            &newSwapchain.swapchainHandle);
             if(swapchainResult != VK_SUCCESS)
                 return 0;
 
             // Retrieve the swapchain image count
             uint32_t swapchainImageCount = 0;
-            VkResult imageResult = vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, nullptr);
+            VkResult imageResult = vkGetSwapchainImagesKHR(device, 
+            newSwapchain.swapchainHandle, &swapchainImageCount, nullptr);
             if(imageResult != VK_SUCCESS)
                 return 0;
 
             // Resize the swapchain images array and pass the swapchain images
-            initHandles.swapchainImages.Resize(swapchainImageCount);
-            imageResult = vkGetSwapchainImagesKHR(device, newSwapchain, &swapchainImageCount, initHandles.swapchainImages.Data());
+            newSwapchain.swapchainImages.Resize(swapchainImageCount);
+            imageResult = vkGetSwapchainImagesKHR(device, 
+            newSwapchain.swapchainHandle, &swapchainImageCount, newSwapchain.swapchainImages.Data());
             if(imageResult != VK_SUCCESS)
                 return 0;
             return 1;
-    }
-
-    uint8_t VulkanRenderer::FrameToolsInit()
-    {
-        VkCommandPoolCreateInfo commandPoolsInfo {};
-        commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allow each individual command buffer to be reset
-        commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
-
-        VkCommandBufferAllocateInfo commandBuffersInfo{};
-        commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        commandBuffersInfo.pNext = nullptr;
-        commandBuffersInfo.commandBufferCount = 1;
-        commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        fenceInfo.pNext = nullptr;
-
-        // Semaphore will be the same for both semaphores
-        VkSemaphoreCreateInfo semaphoresInfo{};
-        semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoresInfo.flags = 0;
-        semaphoresInfo.pNext = nullptr;
-
-        // Creates a set of frame tools for each possible frame in flight
-        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
-        {
-            FrameTools& frameTools = m_frameToolsList[i];
-
-            // Creates the command pool that manages the command buffer's memory
-            VkResult commandPoolResult = vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool));
-            if(commandPoolResult != VK_SUCCESS)
-                return 0;
-
-            // Allocates the command buffer using the above command pool
-            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
-            VkResult commandBufferResult = vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer));
-            if(commandBufferResult != VK_SUCCESS)
-                return 0;
-
-            // Creates the fence that stops the CPU from acquiring a new swapchain image before the GPU is done with the previous frame
-            VkResult fenceResult = vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence));
-            if(fenceResult != VK_SUCCESS)
-                return 0;
-
-            // Creates the semaphore that stops command buffer submitting before the next swapchain image is acquired
-            VkResult imageSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore));
-            if(imageSemaphoreResult != VK_SUCCESS)
-                return 0;
-
-            // Creates the semaphore that stops presentation before the command buffer is submitted
-            VkResult presentSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore));
-            if(presentSemaphoreResult != VK_SUCCESS)
-                return 0;
-        }
-
-        return 1;
     }
 
 
@@ -1013,7 +878,7 @@ namespace BlitzenVulkan
         }
         vkDestroySampler(m_device, m_depthAttachmentSampler, m_pCustomAllocator);
 
-        for(size_t i = 0; i < BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT; ++i)
+        for(size_t i = 0; i < ce_framesInFlight; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];
             VarBuffers& varBuffers = m_varBuffers[i];
@@ -1025,9 +890,11 @@ namespace BlitzenVulkan
             vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
         }
 
-        vkDestroySwapchainKHR(m_device, m_initHandles.swapchain, m_pCustomAllocator);
+        vkDestroySwapchainKHR(m_device, m_swapchainValues.swapchainHandle, m_pCustomAllocator);
 
-        DestroyDebugUtilsMessengerEXT(m_initHandles.instance, m_initHandles.debugMessenger, m_pCustomAllocator);
+        DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_pCustomAllocator);
+
+        vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     }
 
     VulkanRenderer::~VulkanRenderer()

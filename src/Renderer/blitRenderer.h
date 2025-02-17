@@ -10,12 +10,6 @@
 // The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
-// Max draw calls allowed, if render objects go above this, the application will fail
-#define BLITZEN_MAX_DRAW_OBJECTS    5'000'000
-
-// Cluster rendering is not yet implemented, but I really wish I can try it out soon
-#define BLITZEN_CLUSTER_RENDERING   0
-
 namespace BlitzenEngine
 {
     enum class ActiveRenderer : uint8_t
@@ -37,23 +31,79 @@ namespace BlitzenEngine
 
         inline static RenderingSystem* GetRenderingSystem() { return s_pRenderer; }
 
+        #ifdef BLITZEN_VULKAN
         inline const BlitzenVulkan::VulkanRenderer& GetVulkan() { return vulkan; }
-        inline uint8_t IsVulkanAvailable() { return bVk; }
+        #else
+        inline const BlitzenVulkan::VulkanRenderer& GetVulkan() {
+            BLIT_FATAL("Vulkan was never requested")
+            BlitzenVulkan::VulkanRenderer dummy;
+            return dummy;
+        }
+        #endif
 
+        #ifdef BLITZEN_VULKAN
+        inline uint8_t IsVulkanAvailable() { 
+            return bVk; 
+        }
+        #else
+        inline uint8_t IsVulkanAvailable() {
+            BLIT_INFO("Vulkan not requested")
+            return 0;
+        }
+        #endif
+
+        #ifdef BLITZEN_OPENGL
         inline const BlitzenGL::OpenglRenderer& GetOpengl() { return opengl; }
-        inline uint8_t IsOpenglAvailable() { return bGl; }
+        #else
+        inline const BlitzenGL::OpenglRenderer& GetOpengl() {
+            BLIT_FATAL("Vulkan was never requested")
+            BlitzenGL::OpenglRenderer dummy; 
+            return dummy;
+        }
+        #endif
+
+        #ifdef BLITZEN_OPENGL
+        inline uint8_t IsOpenglAvailable() {
+            return bGl;
+        }
+        #else
+        inline uint8_t IsOpenglAvailable() {
+            BLIT_INFO("Opengl not requested")
+            return 0;
+        }
+        #endif
 
         void ShutdownRenderers();
 
     public:
 
         // This is here because the UploadDDSTexture function cannot be called by const reference
+        #ifdef BLITZEN_VULKAN
         inline uint8_t GiveTextureToVulkan(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
-        void* pData, const char* filepath) { return vulkan.UploadDDSTexture(header, header10, pData, filepath); }
+        void* pData, const char* filepath) {
+            return vulkan.UploadDDSTexture(header, header10, pData, filepath);
+        }
+        #else
+        inline uint8_t GiveTextureToVulkan(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
+            void* pData, const char* filepath) {
+            BLIT_ERROR("Vulkan was never requested")
+            return 0;
+        }
+        #endif
 
         // Same as the above
+        #ifdef BLITZEN_OPENGL
         inline uint8_t GiveTextureToOpengl(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
-        const char* filepath) { return opengl.UploadTexture(header, header10, filepath); }
+        const char* filepath) { 
+            return opengl.UploadTexture(header, header10, filepath);
+        }
+        #else
+        inline uint8_t GiveTextureToOpengl(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
+            const char* filepath) {
+            BLIT_ERROR("Opengl was never requested")
+            return 0;
+        }
+        #endif 
 
         // The parameters for this functions will be tidied up later
         uint8_t SetupRequestedRenderersForDrawing(RenderingResources* pResources, uint32_t drawCount, Camera& camera);

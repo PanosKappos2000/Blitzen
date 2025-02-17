@@ -24,11 +24,22 @@ namespace BlitzenEngine
         // Automatically starts with vulkan, I will change this later
         #ifdef BLIT_VK_ACTIVE_GRAPHICS_API
         activeRenderer = ActiveRenderer::Vulkan;
-        #elif BLIT_GL_ACTIVE_GRAHPICS_API
+        #elif BLIT_GL_ACTIVE_GRAHPICS_API && _MSC_VER
         activeRenderer = ActiveRenderer::Opengl;
         #endif
 
-        BLIT_ASSERT(CheckActiveAPI())
+        if (!CheckActiveAPI())
+        {
+            #ifdef BLITZEN_VULKAN
+                bVk = 0;
+            #endif
+
+            #ifdef BLITZEN_OPENGL
+                bGl = 0;
+            #endif
+
+            BLIT_ERROR("No graphics API available")
+        }
     }
 
     RenderingSystem::~RenderingSystem()
@@ -41,9 +52,20 @@ namespace BlitzenEngine
         switch(activeRenderer)
         {
             case ActiveRenderer::Vulkan:
+                #ifdef BLITZEN_VULKAN
                 return bVk;
+                #else
+                BLIT_INFO("Vulkan not requested")
+                return 0;
+                #endif  
             case ActiveRenderer::Opengl:
+                #ifdef BLITZEN_OPENGL
                 return bGl;
+                #else
+                BLIT_INFO("Opengl not requested")
+                return 0;
+                #endif
+                    
             case ActiveRenderer::Directx12:
                 return 0;
             default:
@@ -71,10 +93,10 @@ namespace BlitzenEngine
         {
             case ActiveRenderer::Vulkan:
             {
-                if(bVk)
+                /*if (bVk)
                 {
                     vulkan.ClearFrame();
-                }
+                }*/
                 break;
             }
             default:
@@ -92,38 +114,42 @@ namespace BlitzenEngine
             return 0;
         }
 
-        if(drawCount > BLITZEN_MAX_DRAW_OBJECTS)
+        if(drawCount > ce_maxRenderObjects)
         {
-            BLIT_ERROR("The render object count %i is higher than the current maximum allowed by the engine: %i", drawCount, BLITZEN_MAX_DRAW_OBJECTS)
+            BLIT_ERROR("The render object count %i is higher than the current maximum allowed by the engine: %i", drawCount, ce_maxRenderObjects)
             return 0;
         }
 
         uint8_t isThereRendererOnStandby = 0;
 
-        if(bVk)
-        {
-            if(!vulkan.SetupForRendering(pResources, camera.viewData.pyramidWidth, camera.viewData.pyramidHeight))
+        #ifdef BLITZEN_VULKAN
+            if(bVk)
             {
-                BLIT_ERROR("Could not initialize Vulkan. If this is the active graphics API, it needs to be swapped")
-                isThereRendererOnStandby = isThereRendererOnStandby || 0;
-                bVk = 0;
+                if(!vulkan.SetupForRendering(pResources, camera.viewData.pyramidWidth, camera.viewData.pyramidHeight))
+                {
+                    BLIT_ERROR("Could not initialize Vulkan. If this is the active graphics API, it needs to be swapped")
+                    isThereRendererOnStandby = isThereRendererOnStandby || 0;
+                    bVk = 0;
+                }
+                else
+                    isThereRendererOnStandby = 1;
             }
-            else
-                isThereRendererOnStandby = 1;
-        }
+        #endif
 
+        #ifdef BLITZEN_OPENGL
         #if _MSC_VER
-        if(bGl)
-        {
-            if(!opengl.SetupForRendering(pResources))
+            if(bGl)
             {
-                BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
-                isThereRendererOnStandby = isThereRendererOnStandby || 0;
-                bGl = 0;
+                if(!opengl.SetupForRendering(pResources))
+                {
+                    BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
+                    isThereRendererOnStandby = isThereRendererOnStandby || 0;
+                    bGl = 0;
+                }
+                else
+                    isThereRendererOnStandby = 1;
             }
-            else
-                isThereRendererOnStandby = 1;
-        }
+        #endif
         #endif
 
         return isThereRendererOnStandby;
@@ -143,17 +169,21 @@ namespace BlitzenEngine
         {
             case ActiveRenderer::Vulkan:
             {
-                BlitzenVulkan::DrawContext vkContext{ &camera, drawCount, occlusionCullingOn, lodEnabled };
-                // Let Vulkan do its thing
-                vulkan.DrawFrame(vkContext);
+                #ifdef BLITZEN_VULKAN
+                    BlitzenVulkan::DrawContext vkContext{ &camera, drawCount, occlusionCullingOn, lodEnabled };
+                    // Let Vulkan do its thing
+                    vulkan.DrawFrame(vkContext);
+                #endif
 
                 break;
             }
             case ActiveRenderer::Opengl:
             {
+                #ifdef BLITZEN_OPENGL
                 #if _MSC_VER
                     BlitzenGL::DrawContext glContext{&camera, drawCount, occlusionCullingOn, lodEnabled};
                     opengl.DrawFrame(glContext);
+                #endif
                 #endif
                 break;
             }
@@ -164,13 +194,16 @@ namespace BlitzenEngine
 
     void RenderingSystem::ShutdownRenderers()
     {
-        RenderingSystem* pSystem = GET_RENDERER()
+        #ifdef BLITZEN_VULKAN
         if(bVk)
             vulkan.Shutdown();
+        #endif
 
+        #ifdef BLITZEN_OPENGL
         #if _MSC_VER
             if(bGl)
                 opengl.Shutdown();
+        #endif
         #endif
     }
 }

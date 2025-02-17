@@ -6,46 +6,6 @@
 
 namespace BlitzenVulkan
 {
-    struct InitializationHandles
-    {
-        VkInstance instance;
-        VkDebugUtilsMessengerEXT debugMessenger;
-
-        VkSurfaceKHR surface;
-
-        VkPhysicalDevice chosenGpu;
-
-        VkSwapchainKHR swapchain;
-        VkExtent2D swapchainExtent;
-        VkFormat swapchainFormat;
-        BlitCL::DynamicArray<VkImage> swapchainImages;
-        BlitCL::DynamicArray<VkImageView> swapchainImageViews;
-    };
-
-    // When the renderer calls the destructor there are some allocation that need to be destroyed, so it needs to be destroyed after them
-    // To do so the renderer will have to hand the below structures to the engine
-    struct MemoryCrucialHandles
-    {
-        VmaAllocator allocator;
-        VkDevice device;
-        VkSurfaceKHR surface;
-        VkInstance instance;
-
-        inline ~MemoryCrucialHandles(){
-            vmaDestroyAllocator(allocator);
-            vkDestroyDevice(device, nullptr);
-            vkDestroySurfaceKHR(instance, surface, nullptr);
-            vkDestroyInstance(instance, nullptr);
-        }
-    };
-
-    struct Queue
-    {
-        uint32_t index;
-        VkQueue handle;
-        uint8_t hasIndex = 0;
-    };
-
     // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
     struct FrameTools
     {
@@ -138,6 +98,7 @@ namespace BlitzenVulkan
     {
     public:
 
+        // Initalizes the Vulkan API. Creates the instance, finds a suitable device for the application's needs, creates surface and swapchain
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
@@ -167,6 +128,12 @@ namespace BlitzenVulkan
         VulkanRenderer operator = (VulkanRenderer) = delete;
 
     private:
+
+        // This pointer will be used to get access to the renderer for things like automatic destructors
+        static VulkanRenderer* m_pThisRenderer;
+
+        // Creates structures that allow Vulkan to allocate resources (command buffers, allocator, texture sampler) 
+        void SetupResourceManagement();
 
         // Defined in vulkanInit. Initializes the frame tools which are handles that need to have one instance for each frame in flight
         uint8_t FrameToolsInit();
@@ -215,7 +182,7 @@ namespace BlitzenVulkan
         inline VulkanStats GetStats() const {return m_stats;}
 
         // Array of structs that represent the way textures will be pushed to the GPU
-        TextureData loadedTextures[BLIT_MAX_TEXTURE_COUNT];
+        TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
         size_t textureCount = 0;
 
         // Used to allocate vulkan resources like buffers and images
@@ -224,21 +191,33 @@ namespace BlitzenVulkan
         // Handle to the logical device
         VkDevice m_device;
 
+    /*
+        API initialization handles section
+    */
     private:
-
-        // This pointer will be used to get access to the renderer for things like automatic destructors
-        static VulkanRenderer* m_pThisRenderer;
 
         // Custom allocator, don't need it right now
         VkAllocationCallbacks* m_pCustomAllocator = nullptr;
 
-        // Holds objects crucial to the renderer that are initalized on the 1st init stage but will not be mentioned that often
-        InitializationHandles m_initHandles;
+        VkInstance m_instance;
+
+        VkDebugUtilsMessengerEXT m_debugMessenger;
+
+        VkSurfaceKHR m_surface;
+
+        VkPhysicalDevice m_physicalDevice;
+
+        Swapchain m_swapchainValues;
 
         // All the queue handles and indices retrieved from the device on initialization
         Queue m_graphicsQueue;
         Queue m_presentQueue;
         Queue m_computeQueue;
+
+    /*
+        Image resources section
+    */
+    private:
 
         // Data for the rendering attachments
         AllocatedImage m_colorAttachment;
@@ -325,12 +304,12 @@ namespace BlitzenVulkan
     private:
 
         // This holds tools that need to be unique for each frame in flight
-        FrameTools m_frameToolsList[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
+        FrameTools m_frameToolsList[ce_framesInFlight];
 
-        VarBuffers m_varBuffers[BLITZEN_VULKAN_MAX_FRAMES_IN_FLIGHT];
+        VarBuffers m_varBuffers[ce_framesInFlight];
 
         // Used to access the right frame tools depending on which ones are already being used
-        size_t m_currentFrame = 0;
+        uint8_t m_currentFrame = 0;
 
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
@@ -350,18 +329,19 @@ namespace BlitzenVulkan
 
     uint8_t EnabledInstanceSynchronizationValidation();
 
-    uint8_t PickPhysicalDevice(InitializationHandles& initHandles, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
+    // Picks a suitable physical device (GPU) for the application and passes the handle to the first argument.
+    // Returns 1 if if finds a fitting device. Expects the instance and surface arguments to be valid
+    uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface,
+    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
     VulkanStats& stats);
 
-    uint8_t CreateDevice(VkDevice& device, InitializationHandles& initHandles, Queue& graphicsQueue, 
+    uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, 
     Queue& presentQueue, Queue& computeQueue, VulkanStats& stats);
     
-    /*Initializes the swapchain handle that is passed in the newSwapchain argument
-    Makes the correct tests to create it according to what the device allows
-    oldSwapchain can be passed if the swapchain needs to be recreated*/
-    uint8_t CreateSwapchain(VkDevice device, InitializationHandles& initHandles, uint32_t windowWidth, uint32_t windowHeight, 
-    Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, VkSwapchainKHR& newSwapchain, 
-    VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
+    // Creates the swapchain
+    uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
+    uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
+    VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 
     // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
     uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 

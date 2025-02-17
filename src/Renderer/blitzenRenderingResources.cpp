@@ -34,7 +34,6 @@
 
 namespace BlitzenEngine
 {
-
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources)
     {
         return 1;
@@ -50,7 +49,7 @@ namespace BlitzenEngine
     uint8_t loadForVulkan, uint8_t loadForGL)
     {
         // Don't go over the texture limit, might want to throw a warning here
-        if(pResources->textureCount >= BLIT_MAX_TEXTURE_COUNT)
+        if(pResources->textureCount >= ce_maxTextureCount)
             return 0;
 
         RenderingSystem* pRenderer = RenderingSystem::GetRenderingSystem();
@@ -128,9 +127,9 @@ namespace BlitzenEngine
     uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename)
     {
         // The function should return if the engine will go over the max allowed mesh assets
-        if(pResources->meshCount > BLIT_MAX_MESH_COUNT)
+        if(pResources->meshCount > ce_maxMeshCount)
         {
-            BLIT_ERROR("Max mesh count: ( %i ) reached!", BLIT_MAX_MESH_COUNT)
+            BLIT_ERROR("Max mesh count: ( %i ) reached!", ce_maxMeshCount)
             BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
             return 0;
         }
@@ -293,7 +292,7 @@ namespace BlitzenEngine
 
         uint8_t buildMeshlets = RenderingSystem::GetRenderingSystem()->GetVulkan().GetStats().meshShaderSupport;
 
-        while(newSurface.lodCount < BLIT_MAX_MESH_LOD)
+        while(newSurface.lodCount < ce_primitiveSurfaceMaxLODCount)
         {
             // Get current element in the LOD array and increment the count
             MeshLod& lod = newSurface.meshLod[newSurface.lodCount++];
@@ -312,7 +311,7 @@ namespace BlitzenEngine
             // Save the current lod error
             lod.error = lodError * lodScale;
 
-            if(newSurface.lodCount < BLIT_MAX_MESH_LOD)
+            if(newSurface.lodCount < ce_primitiveSurfaceMaxLODCount)
             {
                 // Specify the next target index count (simplify by 65% each time)
                 size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
@@ -388,19 +387,31 @@ namespace BlitzenEngine
     }
 
 
-    void CreateTestGameObjects(RenderingResources* pResources, uint32_t drawCount)
+    void CreateTestGameObjects(RenderingResources* pResources, uint32_t dc)
     {
+        constexpr float ce_stressTestRandomTransformMultiplier = 3'000.f;
+        #ifdef BLITZEN_RENDERING_STRESS_TEST
+        constexpr uint32_t drawCount = 4'500'000;
+        #else
+        uint32_t drawCount = dc;
+        #endif
+
+        BLIT_INFO("Loading Renderer Stress test with %i objects", drawCount)
+        BLIT_WARN("If your machine cannot withstand this many objects, decrease the draw count or undef the stress test macro")
+
         pResources->objectCount = drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
         pResources->transforms.Resize(pResources->objectCount);// Every object has a different transform
+
         // Hardcode a large amount of male model mesh
         for(size_t i = 0; i < pResources->objectCount / 10; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
-            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
-            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
+            BlitML::vec3 translation(
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
             transform.pos = translation;
             transform.scale = 0.1f;
 
@@ -423,9 +434,10 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
-            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
-            (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
+            BlitML::vec3 translation(
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
             transform.pos = translation;
             transform.scale = 1.f;
 
@@ -448,9 +460,10 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
-                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
-                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
+            BlitML::vec3 translation(
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
             transform.pos = translation;
             transform.scale = 0.1f;
 
@@ -473,9 +486,10 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation((float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//x 
-                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1),//y
-                (float(rand()) / RAND_MAX) * BlitML::Max(drawCount / 1'000, 1));//z
+            BlitML::vec3 translation(
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
+            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
             transform.pos = translation;
             transform.scale = 5.f;
 
@@ -524,7 +538,7 @@ namespace BlitzenEngine
 
     uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t loadForVulkan, uint8_t loadForGL)
     {
-        if(pResources->renderObjectCount >= BLITZEN_MAX_DRAW_OBJECTS)
+        if(pResources->renderObjectCount >= ce_maxRenderObjects)
         {
             BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. GLTF LOADING FAILED!")
             return 0;
@@ -612,7 +626,7 @@ namespace BlitzenEngine
         for(size_t i = 0; i < texturePaths.GetSize(); ++i)
         {
             // Don't go over the texture limit, might want to throw a warning here
-            if(pResources->textureCount >= BLIT_MAX_TEXTURE_COUNT)
+            if(pResources->textureCount >= ce_maxTextureCount)
                 break;
 
             DDS_HEADER header = {};
@@ -826,7 +840,7 @@ namespace BlitzenEngine
 			    for (unsigned int j = 0; j < node->mesh->primitives_count; ++j)
 			    {
                     // If the gltf goes over BLITZEN_MAX_DRAW_OBJECTS after already loading resources, I have no choice but to assert
-                    BLIT_ASSERT_MESSAGE(pResources->renderObjectCount <= BLITZEN_MAX_DRAW_OBJECTS, "While Loading a GLTF, \
+                    BLIT_ASSERT_MESSAGE(pResources->renderObjectCount <= ce_maxRenderObjects, "While Loading a GLTF, \
                     additional geometry was loaded which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value")
 
                     RenderObject& current = pResources->renders[pResources->renderObjectCount];

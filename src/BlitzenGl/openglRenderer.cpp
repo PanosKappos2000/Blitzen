@@ -28,7 +28,7 @@ namespace BlitzenGL
     uint8_t OpenglRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
     const char* filepath) 
     {
-        if(m_textureCount >= BLIT_MAX_TEXTURE_COUNT)
+        if(m_textureCount >= BlitzenEngine::ce_maxTextureCount)
             return 0;
         
         BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::SmartPointer> store(128 * 1024 * 1024);

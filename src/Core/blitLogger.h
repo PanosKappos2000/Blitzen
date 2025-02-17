@@ -1,6 +1,5 @@
 #pragma once
 
-// standard c header files
 #include <stdio.h>
 #include <cstdint>
 #include <cstddef>

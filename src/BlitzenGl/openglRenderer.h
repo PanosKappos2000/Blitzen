@@ -100,7 +100,7 @@ namespace BlitzenGL
         // Holds all the render objects that will be retrieved in the shaders to access the surface and transform data for each object
         GlBuffer m_renderObjectBuffer;
 
-        GlTexture m_textures[BLIT_MAX_TEXTURE_COUNT];
+        GlTexture m_textures[BlitzenEngine::ce_maxTextureCount];
 
         uint32_t m_textureCount = 0;
     };

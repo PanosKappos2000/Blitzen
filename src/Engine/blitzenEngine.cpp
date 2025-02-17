@@ -7,15 +7,8 @@
 #include "Platform/platform.h"
 #include "Renderer/blitRenderer.h"
 #include "Core/blitzenCore.h"
+#include "Core/blitEvents.h"
 #include "Game/blitCamera.h"
-
-#ifdef BLITZEN_VULKAN
-    #define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::Vulkan
-#elif BLITZEN_GL && _MSC_VER_
-    #define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::OpenGL
-#else
-    #define BLIT_ACTIVE_RENDERER_ON_BOOT      BlitzenEngine::ActiveRenderer::MaxRenderers
-#endif
 
 namespace BlitzenEngine
 {
@@ -72,11 +65,10 @@ namespace BlitzenEngine
         
         // Allocated the rendering resources on the heap, it is too big for the stack of this function
         BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
-        BLIT_ASSERT_MESSAGE(BlitzenEngine::LoadRenderingResourceSystem(pResources.Data()), "Failed to acquire resource system")
         
         // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
-        isRunning = 1;
-        isSupended = 0;
+        bRunning = 1;
+        bSuspended = 0;
 
         // Setup the main camera
         Camera& mainCamera = cameraSystem.GetCamera();
@@ -84,14 +76,11 @@ namespace BlitzenEngine
         static_cast<float>(ce_initialWindowWidth), static_cast<float>(ce_initialWindowHeight), 
         ce_znear, BlitML::vec3(ce_initialCameraX, ce_initialCameraY, ce_initialCameraZ), ce_initialDrawDistance);
 
-        // Loads obj meshes that will be draw with "random" transforms by the millions to stress the renderer
-        #ifdef BLITZEN_RENDERING_STRESS_TEST
-            uint32_t drawCount = 4'500'000;// Rendering a large amount of objects to stress test the renderer
-            LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
-        #else
-            uint32_t drawCount = 1'000'000;
-            LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
-        #endif
+        // Loads obj meshes that will be drawn with "random" transforms by the millions to stress the renderer
+        // If BLITZEN_RENDERING_STRESS_TEST is defined, this number will be ignored. 
+        // The renderer will create an amount of objects close to the max allowed
+        uint32_t drawCount = 1'000'000;
+        LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
 
 
         // Loads the gltf files that were specified as command line arguments
@@ -107,24 +96,24 @@ namespace BlitzenEngine
         drawCount = pResources.Data()->renderObjectCount;
 
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        BLIT_ASSERT(renderer->SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, mainCamera));/* I use an assertion here
-        but it could be handled some other way as well */
+        if(!renderer->SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, mainCamera))
+            BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline")
         
-        // Start the clock
+        // Starts the clock
         m_clockStartTime = BlitzenPlatform::PlatformGetAbsoluteTime();
         m_clockElapsedTime = 0;
         double previousTime = m_clockElapsedTime;// Initialize previous frame time to the elapsed time
 
         // Main Loop starts
-        while(isRunning)
+        while(bRunning)
         {
-            // Always returns 1 (not sure if I want messages to stop the application ever)
+            // Captures events
             if(!BlitzenPlatform::PlatformPumpMessages())
             {
-                isRunning = 0;
+                bRunning = 0;
             }
 
-            if(!isSupended)
+            if(!bSuspended)
             {
                 // Get the elapsed time of the application
                 m_clockElapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_clockStartTime;
@@ -149,41 +138,14 @@ namespace BlitzenEngine
         // Shutdown the renderers before the engine is shutdown
         renderer->ShutdownRenderers();
 
-        // With the main loop done, Blitzen calls Shutdown on itself
-        Shutdown();
-    }
+        // Shutdown the last few systems
+        BLIT_WARN("Blitzen is shutting down")
 
-    void Engine::Shutdown()
-    {
-        if (s_pEngine)
-        {
-            BLIT_WARN("Blitzen is shutting down")
+        BlitzenCore::ShutdownLogging();
 
-            BlitzenCore::ShutdownLogging();
+        BlitzenPlatform::PlatformShutdown();
 
-            BlitzenPlatform::PlatformShutdown();
-
-            s_pEngine = nullptr;
-        }
-
-        // The destructor should not be called more than once as it will crush the application
-        else
-        {
-            BLIT_ERROR("Any uninitialized instances of Blitzen will not be explicitly cleaned up")
-        }
-    }
-
-    void Engine::UpdateWindowSize(uint32_t newWidth, uint32_t newHeight) 
-    {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        camera.transformData.windowResize = 1;
-        if(newWidth == 0 || newHeight == 0)
-        {
-            isSupended = 1;
-            return;
-        }
-        isSupended = 0;
-        UpdateProjection(camera, static_cast<float>(newWidth), static_cast<float>(newHeight));
+        s_pEngine = nullptr;
     }
 }
 

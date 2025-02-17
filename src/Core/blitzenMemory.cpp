@@ -16,9 +16,10 @@ namespace BlitzenCore
         BlitzenPlatform::PlatformMemZero(s_pMemoryManager, sizeof(MemoryManagerState));
 
         // Allocate a big block of memory for the linear allocator
-        s_pMemoryManager->linearAlloc.blockSize = BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE;
+        s_pMemoryManager->linearAlloc.blockSize = ce_linearAllocatorBlockSize;
         s_pMemoryManager->linearAlloc.totalAllocated = 0;
-        s_pMemoryManager->linearAlloc.pBlock = BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE);
+        s_pMemoryManager->linearAlloc.pBlock = 
+        BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, ce_linearAllocatorBlockSize);
     }
 
     BlitzenVulkan::MemoryCrucialHandles* GetVulkanMemoryCrucials()

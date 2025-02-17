@@ -4,18 +4,18 @@
 #include "Core/blitzenContainerLibrary.h"
 #include "Game/blitObject.h" // I probably do not want to include this here
 
-#define BLIT_MAX_TEXTURE_COUNT      5000
-#define BLIT_TEXTURE_NAME_MAX_SIZE  512
-
-#define BLIT_MAX_MATERIAL_COUNT     10000
-
-#define BLIT_MAX_MESH_LOD           8
-#define BLIT_MAX_MESH_COUNT         100'000
-
-#define BLIT_MAX_OBJECTS            5'000'000
-
 namespace BlitzenEngine
 {
+    constexpr uint32_t ce_maxTextureCount = 5'000;
+
+    constexpr uint32_t ce_maxMaterialCount = 10'000;
+
+    constexpr uint8_t ce_primitiveSurfaceMaxLODCount = 8;
+
+    constexpr uint32_t ce_maxMeshCount = 1'000'000; 
+
+    constexpr uint32_t ce_maxRenderObjects = 5'000'000;
+
     struct TextureStats
     {
         // These things might not be necessary, since textures are immediately passed to the renderer that is requested
@@ -96,7 +96,7 @@ namespace BlitzenEngine
         BlitML::vec3 center;
         float radius;
 
-        MeshLod meshLod[BLIT_MAX_MESH_LOD];
+        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
         uint8_t lodCount = 0;
 
         // With the way obj files are loaded, this will be needed to index into the vertex buffer
@@ -132,11 +132,11 @@ namespace BlitzenEngine
     // This struct holds every loaded resource that will be used for rendering all game objects
     struct RenderingResources
     {
-        TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
+        TextureStats textures[ce_maxTextureCount];
         BlitCL::HashMap<TextureStats> textureTable;
         size_t textureCount = 0;
 
-        Material materials[BLIT_MAX_MATERIAL_COUNT];
+        Material materials[ce_maxMaterialCount];
         BlitCL::HashMap<Material> materialTable;
         size_t materialCount = 0;
 
@@ -147,7 +147,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> meshletData;
 
         // The data of every mesh allowed is in this fixed size array and the currentMeshIndex holds the current amount of loaded meshes
-        Mesh meshes[BLIT_MAX_MESH_COUNT];
+        Mesh meshes[ce_maxMeshCount];
         size_t meshCount = 0;
 
         // Each render object has a different transform held by this array 
@@ -157,11 +157,11 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
 
         // TODO: This is not a rendering resource, it should not be part of this struct
-        GameObject objects[BLIT_MAX_OBJECTS];
+        GameObject objects[ce_maxRenderObjects];
         uint32_t objectCount;
 
         // All render objects are located here
-        RenderObject renders[BLIT_MAX_OBJECTS];
+        RenderObject renders[ce_maxRenderObjects];
         uint32_t renderObjectCount;        
     };
 

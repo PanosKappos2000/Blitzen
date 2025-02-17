@@ -1,4 +1,5 @@
 #include "blitzenEngine.h"
+#include "Core/blitEvents.h"
 #include "Renderer/blitRenderer.h"
 
 namespace BlitzenEngine
@@ -9,7 +10,7 @@ namespace BlitzenEngine
         if(eventType == BlitzenCore::BlitEventType::EngineShutdown)
         {
             BLIT_WARN("Engine shutdown event encountered!")
-            BlitzenEngine::Engine::GetEngineInstancePointer()->RequestShutdown();
+            BlitzenEngine::Engine::GetEngineInstancePointer()->Shutdown();
             return 1; 
         }
 
@@ -113,12 +114,27 @@ namespace BlitzenEngine
         return 1;
     }
 
+    void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight)
+    {
+        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        Engine* pEngine = Engine::GetEngineInstancePointer();
+
+        camera.transformData.windowResize = 1;
+        if (newWidth == 0 || newHeight == 0)
+        {
+            pEngine->Suspend();
+            return;
+        }
+        pEngine->ReActivate();
+        UpdateProjection(camera, static_cast<float>(newWidth), static_cast<float>(newHeight));
+    }
+
     uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, const BlitzenCore::EventContext& data)
     {
         uint32_t newWidth = data.data.ui32[0];
         uint32_t newHeight = data.data.ui32[1];
 
-        Engine::GetEngineInstancePointer()->UpdateWindowSize(newWidth, newHeight);
+        UpdateWindowSize(newWidth, newHeight);
 
         return 1;
     }

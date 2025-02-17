@@ -2,8 +2,6 @@
 
 #include "Core/blitAssert.h"
 
-#define BLIT_LINEAR_ALLOCATOR_MEMORY_BLOCK_SIZE         UINT32_MAX
-
 namespace BlitzenCore
 {
     enum class AllocationType : uint8_t
@@ -26,6 +24,8 @@ namespace BlitzenCore
 
         MaxTypes = 14
     };
+
+    constexpr size_t ce_linearAllocatorBlockSize = UINT32_MAX;
 
     // Log all allocations to catch memory leaks
     void LogAllocation(AllocationType alloc, size_t size);

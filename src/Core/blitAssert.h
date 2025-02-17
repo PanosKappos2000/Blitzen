@@ -4,15 +4,13 @@
 #include <cstdint>
 #include <cstddef>
 
-#define BLITZEN_ASSERTION_ENABLED   1
-
 namespace BlitzenCore
 {
-    #if BLITZEN_ASSERTION_ENABLED
+    #ifdef BLIT_ASSERTIONS_ENABLED
         #if _MSC_VER
-            #define BDB_BREAK __debugbreak();
+            #define BDB_BREAK() __debugbreak();
         #else
-            #define BDB_BREAK __builtin_trap();
+            #define BDB_BREAK() __builtin_trap();
         #endif
 
         //Implemented in blitzenLogger.cpp
@@ -23,7 +21,7 @@ namespace BlitzenCore
                                     else                                                                        \
                                     {                                                                           \
                                         BlitzenCore::ReportAssertionFailure(#expr, "", __FILE__, __LINE__);     \
-                                        BDB_BREAK                                                               \
+                                        BDB_BREAK()                                                               \
                                     }                                                                           \
 
         #define BLIT_ASSERT_MESSAGE(expr, message)                                                                      \
@@ -32,7 +30,7 @@ namespace BlitzenCore
                                     else                                                                                \
                                     {                                                                                   \
                                         BlitzenCore::ReportAssertionFailure(#expr, message, __FILE__, __LINE__);        \
-                                        BDB_BREAK                                                                       \
+                                        BDB_BREAK()                                                                       \
                                     }                                                                                   \
                                 }
 
@@ -43,15 +41,15 @@ namespace BlitzenCore
                                     else                                                                        \
                                     {                                                                           \
                                         BlitzenCore::ReportAssertionFailure(#expr, "", __FILE__, __LINE__);     \
-                                        BDB_BREAK                                                               \
+                                        BDB_BREAK()                                                               \
                                     }                                                                           \
                                 }
         #else
             #define BLIT_ASSERT_DEBUG(expr)
         #endif
     #else
-        #define BLIT_ASSERT(expr)
-        #define BLIT_ASSERT_MESSAGE(expr, message)
-        #define BLIT_ASSERT_DEBUG(expr)
+        #define BLIT_ASSERT(expr)                   expr;
+        #define BLIT_ASSERT_MESSAGE(expr, message)  expr;
+        #define BLIT_ASSERT_DEBUG(expr)         
     #endif
 }

@@ -14,10 +14,11 @@ add_executable(BlitzenEngine
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
-                src/BlitzenVulkan/vulkanRenderer.cpp
                 src/BlitzenVulkan/vulkanInit.cpp
                 src/BlitzenVulkan/vulkanResources.cpp
                 src/BlitzenVulkan/vulkanPipelines.cpp
+                src/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/BlitzenVulkan/vulkanDraw.cpp
 
                 src/BlitzenGL/openglRenderer.h
                 src/BlitzenGl/openglRenderer.cpp
@@ -72,10 +73,11 @@ add_executable(BlitzenEngine
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
-                src/BlitzenVulkan/vulkanRenderer.cpp
                 src/BlitzenVulkan/vulkanInit.cpp
                 src/BlitzenVulkan/vulkanResources.cpp
                 src/BlitzenVulkan/vulkanPipelines.cpp
+                src/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/BlitzenVulkan/vulkanDraw.cpp
 
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
@@ -136,6 +138,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLITZEN_OPENGL
                             BLIT_GL_ACTIVE_GRAPHICS_API
                             BLIT_VSYNC
+                            BLIT_ASSERTIONS_ENABLED
                             )
 
 # Linker file directories and libraries to link for linux and Windows

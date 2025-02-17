@@ -47,7 +47,8 @@ namespace BlitzenCore
         MaxTypes = 8
     };
 
-    typedef uint8_t (*pfnOnEvent)(BlitEventType type, void* pSender, void* pListener, const EventContext& data);
+    // Function type used for event callbacks
+    using pfnOnEvent =  uint8_t (*)(BlitEventType type, void* pSender, void* pListener, const EventContext& data);
 
     struct RegisteredEvent 
     {

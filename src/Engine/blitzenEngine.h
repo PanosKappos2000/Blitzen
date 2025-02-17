@@ -1,6 +1,8 @@
 #pragma once
 
-#include "Core/blitEvents.h"
+#include <stdio.h>
+#include <cstdint>
+#include <cstddef>
 
 namespace BlitzenEngine
 {
@@ -19,6 +21,7 @@ namespace BlitzenEngine
     constexpr float ce_initialDrawDistance = 600.f;
 
     constexpr char* ce_blitzenVersion = "Blitzen Engine 0";
+    constexpr uint32_t ce_blitzenMajor = 0;
 
     // Honestly, this class does not need to exist, the only important thing it has is the Run function.
     // But it started off as the most important thing in the codebase and I don't really want to erase it
@@ -30,13 +33,13 @@ namespace BlitzenEngine
 
         void Run(uint32_t argc, char* argv[]);
 
-        void Shutdown();
+        inline void Suspend() { bSuspended = 1; }
 
-        inline void RequestShutdown() { isRunning = 0; }
+        inline void ReActivate() { bSuspended = 0; }
+
+        inline void Shutdown() { bRunning = 0; }
 
         inline static Engine* GetEngineInstancePointer() { return s_pEngine; }
-
-        void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight);
 
         // Returns delta time, crucial for functions that move objects
         inline double GetDeltaTime() { return m_deltaTime; }
@@ -46,8 +49,8 @@ namespace BlitzenEngine
         // Makes sure that the engine is only created once and gives access subparts of the engine through static getter
         static Engine* s_pEngine;
 
-        uint8_t isRunning = 0;
-        uint8_t isSupended = 0;
+        uint8_t bRunning = 0;
+        uint8_t bSuspended = 0;
 
         // Clock / DeltaTime values (will be calulated using platform specific system calls at runtime)
         double m_clockStartTime = 0;
