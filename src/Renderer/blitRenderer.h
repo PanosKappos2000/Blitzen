@@ -56,7 +56,7 @@ namespace BlitzenEngine
         }
         #endif
 
-        #ifdef BLITZEN_OPENGL && _WIN32
+        #ifdef BLITZEN_OPENGL 
         inline const BlitzenGL::OpenglRenderer& GetOpengl() { return opengl; }
         #else
         inline const BlitzenGL::OpenglRenderer& GetOpengl() {
@@ -66,7 +66,7 @@ namespace BlitzenEngine
         }
         #endif
 
-        #ifdef BLITZEN_OPENGL && _WIN32
+        #ifdef BLITZEN_OPENGL
         inline uint8_t IsOpenglAvailable() {
             return bGl;
         }

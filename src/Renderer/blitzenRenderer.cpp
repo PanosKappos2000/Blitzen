@@ -15,14 +15,14 @@ namespace BlitzenEngine
             bVk = vulkan.Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight);
         #endif
 
-        #ifdef BLITZEN_OPENGL && _WIN32
+        #ifdef BLITZEN_OPENGL
             bGl = opengl.Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight);
         #endif
 
         // Automatically starts with vulkan, I will change this later
         #ifdef BLIT_VK_ACTIVE_GRAPHICS_API
         activeRenderer = ActiveRenderer::Vulkan;
-        #elif BLIT_GL_ACTIVE_GRAHPICS_API && _MSC_VER
+        #elif BLIT_GL_ACTIVE_GRAHPICS_API
         activeRenderer = ActiveRenderer::Opengl;
         #endif
 
@@ -57,7 +57,7 @@ namespace BlitzenEngine
                 return 0;
                 #endif  
             case ActiveRenderer::Opengl:
-                #ifdef BLITZEN_OPENGL && __WIN32
+                #ifdef BLITZEN_OPENGL
                 return bGl;
                 #else
                 BLIT_INFO("Opengl not requested")
@@ -134,7 +134,7 @@ namespace BlitzenEngine
             }
         #endif
 
-        #ifdef BLITZEN_OPENGL && _WIN32
+        #ifdef BLITZEN_OPENGL
             if(bGl)
             {
                 if(!opengl.SetupForRendering(pResources))
@@ -175,7 +175,7 @@ namespace BlitzenEngine
             }
             case ActiveRenderer::Opengl:
             {
-                #ifdef BLITZEN_OPENGL && _WIN32
+                #ifdef BLITZEN_OPENGL
                     BlitzenGL::DrawContext glContext{&camera, drawCount, occlusionCullingOn, lodEnabled};
                     opengl.DrawFrame(glContext);
                 #endif
@@ -193,7 +193,7 @@ namespace BlitzenEngine
             vulkan.Shutdown();
         #endif
 
-        #ifdef BLITZEN_OPENGL && _WIN32
+        #ifdef BLITZEN_OPENGL
             if(bGl)
                 opengl.Shutdown();
         #endif

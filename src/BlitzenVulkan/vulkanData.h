@@ -33,9 +33,9 @@
 namespace BlitzenVulkan
 {
     // These macros will be used to initalize VkApplicationInfo which will be passed to VkInstanceCreateInfo
-    constexpr char* ce_userApp = "Blitzen Game";
+    constexpr const char* ce_userApp = "Blitzen Game";
     constexpr uint32_t ce_appVersion = VK_MAKE_VERSION (1, 0, 0);
-    constexpr char* ce_hostEngine =  "Blitzen Engine";                             
+    constexpr const char* ce_hostEngine =  "Blitzen Engine";                             
     constexpr uint32_t ce_userEngineVersion = VK_MAKE_VERSION (BlitzenEngine::ce_blitzenMajor, 0, 0);
 
     #ifdef BLIT_VSYNC

@@ -20,7 +20,7 @@ namespace BlitzenEngine
     constexpr float ce_initialFOV = 70.f;
     constexpr float ce_initialDrawDistance = 600.f;
 
-    constexpr char* ce_blitzenVersion = "Blitzen Engine 0";
+    constexpr const char* ce_blitzenVersion = "Blitzen Engine 0";
     constexpr uint32_t ce_blitzenMajor = 0;
 
     // Honestly, this class does not need to exist, the only important thing it has is the Run function.
