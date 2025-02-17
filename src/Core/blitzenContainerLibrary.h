@@ -2,12 +2,11 @@
 
 #include "blitMemory.h"
 
-#define BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER   2
-
 #define BLIT_ARRAY_SIZE(array)   sizeof(array) / sizeof(array[0])
 
 namespace BlitCL
 {
+    constexpr uint8_t ce_blitDynamiArrayCapacityMultiplier = 2;
 
     inline uint32_t Clamp(uint32_t initial, uint32_t upper, uint32_t lower) { 
         return (initial >= upper) ? upper /* return upper if the value is above it */ 
@@ -62,7 +61,7 @@ namespace BlitCL
     public:
 
         DynamicArray(size_t initialSize = 0)
-            :m_size{initialSize}, m_capacity(initialSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+            :m_size{initialSize}, m_capacity(initialSize * ce_blitDynamiArrayCapacityMultiplier)
         {
             if (m_size > 0)
             {
@@ -71,7 +70,7 @@ namespace BlitCL
         }
 
         DynamicArray(size_t initialSize, T& data)
-            :m_size{ initialSize }, m_capacity(initialSize* BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+            :m_size{ initialSize }, m_capacity(initialSize* ce_blitDynamiArrayCapacityMultiplier)
         {
             if (m_size > 0)
             {
@@ -82,7 +81,7 @@ namespace BlitCL
         }
 
         DynamicArray(size_t initialSize, T&& data)
-            :m_size{ initialSize }, m_capacity(initialSize* BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+            :m_size{ initialSize }, m_capacity(initialSize* ce_blitDynamiArrayCapacityMultiplier)
         {
             if (m_size > 0)
             {
@@ -93,7 +92,7 @@ namespace BlitCL
         }
 
         DynamicArray(DynamicArray<T>& array)
-            :m_size(array.GetSize()), m_capacity(array.GetSize() * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER)
+            :m_size(array.GetSize()), m_capacity(array.GetSize() * ce_blitDynamiArrayCapacityMultiplier)
         {
             if (m_size > 0)
             {
@@ -149,13 +148,13 @@ namespace BlitCL
         void Reserve(size_t size)
         {
             BLIT_ASSERT(size > m_capacity)
-            RearrangeCapacity(size / BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER);
+            RearrangeCapacity(size / ce_blitDynamiArrayCapacityMultiplier);
         }
 
         void PushBack(const T& newElement)
         {
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
-            if(m_size + 1 > m_capacity)
+            if(m_size >= m_capacity)
             {
                 RearrangeCapacity(m_size + 1);
             }
@@ -240,7 +239,7 @@ namespace BlitCL
         void RearrangeCapacity(size_t newSize)
         {
             size_t temp = m_capacity;
-            m_capacity = newSize * BLIT_DYNAMIC_ARRAY_CAPACITY_MULTIPLIER;
+            m_capacity = newSize * ce_blitDynamiArrayCapacityMultiplier;
             T* pTemp = m_pBlock;
             m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
             if (m_size != 0)
@@ -312,68 +311,51 @@ namespace BlitCL
         It also only accepts names for keys. Better hash tables will be created at a later time
     ---------------------------------------------------------------------------------------------*/
     template<typename T>
-    class PointerTable
+    class HashMap
     {
     public:
 
-        PointerTable(size_t fixedCapacity = 0)
-            :m_capacity(fixedCapacity)
+        HashMap(size_t initialCapacity = 10)
+            :m_capacity(initialCapacity)
         {
             if(m_capacity > 0)
             {
-                m_pBlock = reinterpret_cast<T**>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::Hashmap, sizeof(T*) * m_capacity));
-                BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T*) * m_capacity);
-                m_hasMemory = 1;
+                m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::Hashmap>(m_capacity);
             }
         }
 
-        void SetCapacity(size_t capacity)
+        void Insert(const char* name, const T& value)
         {
-            if(capacity > 0 && !m_hasMemory)
+            if(m_capacity <= m_elementCount)
             {
-                m_capacity = capacity;
-                m_pBlock = reinterpret_cast<T**>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::Hashmap, sizeof(T*) * m_capacity));
-                BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T*) * m_capacity);
-                m_hasMemory = 1;
+                IncreaseCapacity(m_capacity + 1);
             }
+
+            size_t hash = Hash(name);
+            m_pBlock[hash] = value;
+            ++m_elementCount;
         }
 
-        void Set(const char* name, T* pValue)
-        {
-            if(m_hasMemory)
-            {
-                size_t hash = Hash(name);
-                m_pBlock[hash] = pValue ? pValue : nullptr;
-            }
+        inline T& operator [](const char* name){
+            size_t  hash = Hash(name);
+            return m_pBlock[hash];
         }
 
-        T* Get(const char* name, T* pDefault)
-        {
-            if(m_hasMemory)
-            {
-                size_t  hash = Hash(name);
-                return m_pBlock[hash] ? m_pBlock[hash] : pDefault;
-            }
-            else
-            {
-                return pDefault;
-            }
-        }
-
-        ~PointerTable()
+        ~HashMap()
         {
             if(m_capacity > 0)
             {
-                BlitzenCore::BlitZeroMemory(m_pBlock, sizeof(T**) * m_capacity);
+                delete [] m_pBlock;
+                BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T));
             }
         }
 
     private:
 
         size_t m_capacity;
-        // Since this can only take pointers, the memory block will be a pointer to pointers
-        T** m_pBlock;
-        uint8_t m_hasMemory = 0;
+        size_t m_elementCount;
+
+        T* m_pBlock;
 
     private:
 
@@ -393,6 +375,23 @@ namespace BlitCL
             hash %= m_capacity;
 
             return hash;
+        }
+
+    private:
+        void IncreaseCapacity(size_t newSize)
+        {
+            size_t temp = m_capacity;
+            m_capacity = newSize * ce_blitDynamiArrayCapacityMultiplier;
+            
+            T* pTemp = m_pBlock;
+            m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::Hashmap, m_capacity);
+
+            if (temp != 0)
+            {
+                BlitzenCore::BlitMemCopy(m_pBlock, pTemp, temp * sizeof(T));
+                delete [] pTemp;
+                BlitzenCore::LogFree(BlitzenCore::AllocationType::Hashmap, temp * sizeof(T));
+            }
         }
     };
 

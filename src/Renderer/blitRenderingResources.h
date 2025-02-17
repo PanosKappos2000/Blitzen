@@ -133,11 +133,11 @@ namespace BlitzenEngine
     struct RenderingResources
     {
         TextureStats textures[BLIT_MAX_TEXTURE_COUNT];
-        BlitCL::PointerTable<TextureStats> textureTable;
+        BlitCL::HashMap<TextureStats> textureTable;
         size_t textureCount = 0;
 
         Material materials[BLIT_MAX_MATERIAL_COUNT];
-        BlitCL::PointerTable<Material> materialTable;
+        BlitCL::HashMap<Material> materialTable;
         size_t materialCount = 0;
 
         // Arrays that hold all necessary geometry data

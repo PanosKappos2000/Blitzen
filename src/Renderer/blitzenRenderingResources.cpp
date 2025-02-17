@@ -37,9 +37,6 @@ namespace BlitzenEngine
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources)
     {
-        pResources->textureTable.SetCapacity(BLIT_MAX_TEXTURE_COUNT);
-        pResources->materialTable.SetCapacity(BLIT_MAX_MATERIAL_COUNT);
-
         return 1;
     }
 
@@ -107,14 +104,14 @@ namespace BlitzenEngine
         current.diffuseColor = diffuseColor;
         current.shininess = shininess;
 
-        current.albedoTag = pResources->textureTable.Get(diffuseMapName, &pResources->textures[0])->textureTag;
-        current.normalTag = pResources->textureTable.Get(specularMapName, &pResources->textures[0])->textureTag;
+        current.albedoTag = 0; //pResources->textureTable[diffuseMapName].textureTag;
+        current.normalTag = 0; //pResources->textureTable[specularMapName].textureTag;
         current.specularTag = 0;
         current.emissiveTag = 0;
 
         current.materialId = static_cast<uint32_t>(pResources->materialCount);
 
-        pResources->materialTable.Set(materialName, &current);
+        pResources->materialTable.Insert(materialName, current);
         pResources->materialCount++;
     }
 
