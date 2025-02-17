@@ -2,19 +2,26 @@
 
 #include "Core/blitEvents.h"
 
-#define BLITZEN_VERSION                 "Blitzen Engine 0"
-
-// Window macros
-#define BLITZEN_WINDOW_STARTING_X       100
-#define BLITZEN_WINDOW_STARTING_Y       100
-#define BLITZEN_WINDOW_WIDTH            1280
-#define BLITZEN_WINDOW_HEIGHT           768
-#define BLITZEN_ZNEAR                   0.01f
-#define BLITZEN_FOV                     BlitML::Radians(70.f)
-#define BLITZEN_DRAW_DISTANCE           600.f
-
 namespace BlitzenEngine
 {
+    // Window constants
+    constexpr uint32_t ce_windowStartingX = 100;
+    constexpr uint32_t ce_windowStartingY = 100;
+    constexpr uint32_t ce_initialWindowWidth = 1280;
+    constexpr uint32_t ce_initialWindowHeight = 768;
+
+    // Camera values
+    constexpr float ce_initialCameraX = 20.f;
+    constexpr float ce_initialCameraY = 70.f;
+    constexpr float ce_initialCameraZ = 0.f;
+    constexpr float ce_znear = 0.1f;
+    constexpr float ce_initialFOV = 70.f;
+    constexpr float ce_initialDrawDistance = 600.f;
+
+    constexpr char* ce_blitzenVersion = "Blitzen Engine 0";
+
+    // Honestly, this class does not need to exist, the only important thing it has is the Run function.
+    // But it started off as the most important thing in the codebase and I don't really want to erase it
     class Engine
     {
     public:

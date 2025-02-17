@@ -8,7 +8,7 @@ namespace BlitzenPlatform
     size_t GetPlatformMemoryRequirements();
 
     // Called when the engine start to get a window and other related systems that are platform specific
-    uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height);
+    uint8_t PlatformStartup(const char* appName);
 
     // Called when engine shuts down to shutdown the platform system
     void PlatformShutdown();

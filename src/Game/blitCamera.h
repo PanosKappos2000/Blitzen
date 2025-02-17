@@ -93,7 +93,7 @@ namespace BlitzenEngine
 
     // Since the main camera is also responsible for the projection matrix, whenever it needs to be updated the main camera is passed to this functions
     // Values that have to do with projection are also updated
-    void UpdateProjection(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear);
+    void UpdateProjection(Camera& camera, float newWidth, float newHeight);
 
     class CameraSystem
     {

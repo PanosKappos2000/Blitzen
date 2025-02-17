@@ -36,19 +36,17 @@ namespace BlitzenEngine
         {
             // Initalize the instance and the system boolean to avoid creating or destroying a 2nd instance
             s_pEngine = this;
-            BLIT_INFO("%s Booting", BLITZEN_VERSION)
+            BLIT_INFO("%s Booting", ce_blitzenVersion)
         }
     }
 
 
 
-    /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        This function currently holds the majority of the functionality called during runtime.
-        Its scope owns the memory used by each renderer(only Vulkan for the forseeable future.
-        It calls every function needed to draw a frame and other functionality the engine has
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+    // Everything besides the engine itself lives inside this scope
     void Engine::Run(uint32_t argc, char* argv[])
     {
+        BlitzenCore::MemoryManagerState blitzenMemory;
+
         // Initialize logging
         BlitzenCore::InitLogging();
 
@@ -64,8 +62,7 @@ namespace BlitzenEngine
         // Platform specific code initalization. 
         // This should be called after the event system has been initialized because the event function is called.
         // That will break the application without the event system.
-        BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BLITZEN_VERSION, BLITZEN_WINDOW_STARTING_X, 
-        BLITZEN_WINDOW_STARTING_Y, BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT))
+        BLIT_ASSERT(BlitzenPlatform::PlatformStartup(ce_blitzenVersion))
             
         // With the event and input systems active, register the engine's default events and input bindings
         RegisterDefaultEvents();
@@ -83,8 +80,9 @@ namespace BlitzenEngine
 
         // Setup the main camera
         Camera& mainCamera = cameraSystem.GetCamera();
-        SetupCamera(mainCamera, BLITZEN_FOV, static_cast<float>(BLITZEN_WINDOW_WIDTH), 
-        static_cast<float>(BLITZEN_WINDOW_HEIGHT), BLITZEN_ZNEAR, BlitML::vec3(30.f, 100.f, 0.f), BLITZEN_DRAW_DISTANCE);
+        SetupCamera(mainCamera, BlitML::Radians(ce_initialFOV), 
+        static_cast<float>(ce_initialWindowWidth), static_cast<float>(ce_initialWindowHeight), 
+        ce_znear, BlitML::vec3(ce_initialCameraX, ce_initialCameraY, ce_initialCameraZ), ce_initialDrawDistance);
 
         // Loads obj meshes that will be draw with "random" transforms by the millions to stress the renderer
         #ifdef BLITZEN_RENDERING_STRESS_TEST
@@ -185,7 +183,7 @@ namespace BlitzenEngine
             return;
         }
         isSupended = 0;
-        UpdateProjection(camera, BLITZEN_FOV, static_cast<float>(newWidth), static_cast<float>(newHeight), BLITZEN_ZNEAR);
+        UpdateProjection(camera, static_cast<float>(newWidth), static_cast<float>(newHeight));
     }
 }
 
@@ -197,15 +195,7 @@ namespace BlitzenEngine
 
 int main(int argc, char* argv[])
 {
-    // Memory management is initialized here. The engine destructor must be called before the memory manager destructor
-    BlitzenCore::MemoryManagerState blitzenMemory;
-
-    // Blitzen engine lives in this scope, it needs to go out of scope before memory management shuts down
-    {
-        // I could have the Engine be stack allocated, but I am keeping it as a smart pointer for now
-        BlitCL::SmartPointer<BlitzenEngine::Engine, BlitzenCore::AllocationType::Engine> engine;
-
-        engine.Data()->Run(argc, argv);
-    }
+    BlitzenEngine::Engine engine;
+    engine.Run(argc, argv);
 }
 //Assets/Scenes/CityLow/scene.gltf ../../GltfTestScenes/Scenes/Plaza/scene.gltf ../../GltfTestScenes/Scenes/Museum/scene.gltf (personal test scenes for copy+paste)

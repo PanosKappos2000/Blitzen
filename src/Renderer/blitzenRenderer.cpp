@@ -12,12 +12,12 @@ namespace BlitzenEngine
         s_pRenderer = this;
 
         #ifdef BLITZEN_VULKAN
-            bVk = vulkan.Init(BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT);
+            bVk = vulkan.Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight);
         #endif
 
         #ifdef BLITZEN_OPENGL
             #if _MSC_VER
-                bGl = opengl.Init(BLITZEN_WINDOW_WIDTH, BLITZEN_WINDOW_HEIGHT);
+                bGl = opengl.Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight);
             #endif
         #endif
 

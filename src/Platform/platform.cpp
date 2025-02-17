@@ -50,7 +50,7 @@ namespace BlitzenPlatform
             return sizeof(PlatformState);
         }
 
-        uint8_t PlatformStartup(const char* appName, int32_t x, int32_t y, uint32_t width, uint32_t height)
+        uint8_t PlatformStartup(const char* appName)
         {
             // Platform cannot startup if the engine or the event system have not been initialized first
             if(!(BlitzenEngine::Engine::GetEngineInstancePointer()) || 
@@ -83,10 +83,10 @@ namespace BlitzenPlatform
             }
 
             // Set the window's client size
-            uint32_t clientX = x;
-            uint32_t clientY = y;
-            uint32_t clientWidth = width;
-            uint32_t clientHeight = height;
+            uint32_t clientX = BlitzenEngine::ce_windowStartingX;
+            uint32_t clientY = BlitzenEngine::ce_windowStartingY;
+            uint32_t clientWidth = BlitzenEngine::ce_initialWindowWidth;
+            uint32_t clientHeight = BlitzenEngine::ce_initialWindowHeight;
 
             // Set the size of the window to be the same as the client momentarily
             uint32_t windowX = clientX;

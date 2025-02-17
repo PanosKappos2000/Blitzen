@@ -103,10 +103,11 @@ namespace BlitzenEngine
         camera.transformData.rotation = yawRot * pitchRot;
     }
 
-    void UpdateProjection(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear)
+    void UpdateProjection(Camera& camera, float newWidth, float newHeight)
     {
         // Changes the projection according to the parameters
-        camera.transformData.projectionMatrix = BlitML::InfiniteZPerspective(fov, windowWidth/ windowHeight, zNear);
+        camera.transformData.projectionMatrix = 
+        BlitML::InfiniteZPerspective(camera.transformData.fov, newWidth/ newHeight, camera.viewData.zNear);
 
         // Updates the view * projection matrix results, as the projection matrix changed
         camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
@@ -115,9 +116,8 @@ namespace BlitzenEngine
         camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
 
         // Updates the values that made the projection matrix change
-        camera.transformData.windowWidth = windowWidth;
-        camera.transformData.windowHeight = windowHeight;
-        camera.transformData.fov = fov;
+        camera.transformData.windowWidth = newWidth;
+        camera.transformData.windowHeight = newHeight;
 
         // Updates view frustum values as they are dependent on the projection matrix
         BlitML::vec4 frustumX = BlitML::NormalizePlane(
@@ -135,9 +135,6 @@ namespace BlitzenEngine
     
         // Updates the lod target threshold multiplier, as it is also dependent on projection
         camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / float(camera.transformData.windowHeight));
-
-        // Updates the zNear (zFar is static and is actually the set draw distance)
-        camera.viewData.zNear = zNear;
     }
 
     // Must Declare the static variable
