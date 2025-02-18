@@ -21,13 +21,12 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/quaternion.hpp"
 
-// Request validation layers on debug mode
+// Deactivate validation layers on debug mode even if they are requested
 #ifdef NDEBUG
-    #define BLITZEN_VULKAN_VALIDATION_LAYERS                        0
-    #define VK_CHECK(expr)                                          expr;
+#undef BLIT_VK_VALIDATION_LAYERS
+#define VK_CHECK(expr)              expr;
 #else
-    #define BLITZEN_VULKAN_VALIDATION_LAYERS                        1
-    #define VK_CHECK(expr)                                          BLIT_ASSERT(expr == VK_SUCCESS)
+#define VK_CHECK(expr)              BLIT_ASSERT(expr == VK_SUCCESS)                                          
 #endif
 
 namespace BlitzenVulkan
@@ -44,8 +43,13 @@ namespace BlitzenVulkan
         constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     #endif
 
-    constexpr uint32_t ce_extensionCount = 2 + BLITZEN_VULKAN_VALIDATION_LAYERS;
-    constexpr uint32_t ce_maxRequiredExtensions = 4;
+    #ifdef BLIT_VK_VALIDATION_LAYERS
+        constexpr uint8_t ce_bValidationLayersRequested = 1;
+    #else
+        constexpr uint8_t ce_bValidationLayersRequested = 0;
+    #endif
+
+    constexpr uint32_t ce_maxRequiredExtensions = 3;
 
     #ifdef BLIT_DOUBLE_BUFFERING
         constexpr uint8_t ce_framesInFlight = 2;

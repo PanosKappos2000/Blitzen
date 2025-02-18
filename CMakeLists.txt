@@ -131,13 +131,22 @@ target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/src/VendorCode"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include")
 
-target_compile_definitions(BlitzenEngine PUBLIC 
+target_compile_definitions(BlitzenEngine PUBLIC
+
+                            # General rendering preprocessor macros
                             BLITZEN_RENDERING_STRESS_TEST
+                            BLIT_VSYNC
+
+                            # Vulkan specific preprocessor macros
                             BLITZEN_VULKAN
                             BLIT_VK_ACTIVE_GRAPHICS_API
+                            BLIT_VK_VALIDATION_LAYERS
+
+                            # Opengl preprocessor marcors
                             BLITZEN_OPENGL
                             BLIT_GL_ACTIVE_GRAPHICS_API
-                            BLIT_VSYNC
+
+                            # Engine core preprocessor macros
                             BLIT_ASSERTIONS_ENABLED
                             )
 

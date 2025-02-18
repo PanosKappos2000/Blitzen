@@ -148,18 +148,25 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<VkExtensionProperties> availableExtensions(static_cast<size_t>(availableExtensionCount));
         vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, availableExtensions.Data());
 
-        // Store a boolean for each extension needed
+        // Store the names of all possible extensions to be used
         const char* possibleRequestedExtensions[ce_maxRequiredExtensions] = {
-            ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME, "unknown"
+            ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         };
-        uint8_t extensionsSupportRequested[ce_maxRequiredExtensions] = {1, 1, BLITZEN_VULKAN_VALIDATION_LAYERS, 0};
-        uint8_t extensionSupportRequired[ce_maxRequiredExtensions] = {1, 1, 0, 0};
+        // Stores a boolean for each extension, telling the application if they were requested, if they are required and if they were found
+        uint8_t extensionsSupportRequested[ce_maxRequiredExtensions] = {1, 1, 0};
+        uint8_t extensionSupportRequired[ce_maxRequiredExtensions] = {1, 1, 0};
+        uint8_t extensionSupportFound[ce_maxRequiredExtensions] = { 0, 0, 0 };
 
+        // Final extension count
         const char* extensionNames[ce_maxRequiredExtensions];
         uint32_t extensionCount = 0;
+        uint8_t bDebugMessengerSupport = 0;
 
         for(size_t i = 0; i < ce_maxRequiredExtensions; ++i)
         {
+            if(!extensionsSupportRequested[i])
+                continue;
+                
             uint8_t supportFound = 0;
             for(auto& extension : availableExtensions)
             {
@@ -168,6 +175,7 @@ namespace BlitzenVulkan
                 {
                     supportFound = 1;
                     extensionNames[extensionCount++] = extension.extensionName;
+                    extensionSupportFound[i] = 1;
                 }
             }
             if(!supportFound && extensionSupportRequired[i])
@@ -180,41 +188,43 @@ namespace BlitzenVulkan
         }
 
         instanceInfo.ppEnabledExtensionNames = extensionNames;        
-        instanceInfo.enabledExtensionCount = ce_extensionCount;
+        instanceInfo.enabledExtensionCount = extensionCount;
         instanceInfo.enabledLayerCount = 0; // Validation layers inactive at first, but will be activated if it's a debug build
 
+        // Keeps the debug messenger info and the validation layers enabled boolean here, they will be needed later
+        uint8_t validationLayersEnabled = 0;
+        VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
         // If validation layers are requested, the debut utils extension is also needed
-        #if BLITZEN_VULKAN_VALIDATION_LAYERS
-            uint8_t validationLayersEnabled = 0;
-            const char* layerNameRef[2] = { ce_baseValidationLayerName, "VK_LAYER_KHRONOS_synchronization2" };
-            VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
-            if(EnableInstanceValidation(debugMessengerInfo))
+        if (ce_bValidationLayersRequested)
+        {
+            if (extensionSupportFound[ce_maxRequiredExtensions - 1])
             {
-                // The debug messenger needs to be referenced by the instance
-                instanceInfo.pNext = &debugMessengerInfo;
+                const char* layerNameRef[2] = { ce_baseValidationLayerName, "VK_LAYER_KHRONOS_synchronization2" };
+                if (EnableInstanceValidation(debugMessengerInfo))
+                {
+                    // The debug messenger needs to be referenced by the instance
+                    instanceInfo.pNext = &debugMessengerInfo;
 
-                // If the layer for synchronization 2 is found enable that as well
-                if (EnabledInstanceSynchronizationValidation())
-                    instanceInfo.enabledLayerCount = 2;
-                // If not just enables the other one
-                else
-                    instanceInfo.enabledLayerCount = 1;
+                    // If the layer for synchronization 2 is found enable that as well
+                    if (EnabledInstanceSynchronizationValidation())
+                        instanceInfo.enabledLayerCount = 2;
+                    // If not just enables the other one
+                    else
+                        instanceInfo.enabledLayerCount = 1;
 
-
-                instanceInfo.ppEnabledLayerNames = layerNameRef;
-                validationLayersEnabled = 1;
+                    instanceInfo.ppEnabledLayerNames = layerNameRef;
+                    validationLayersEnabled = 1;
+                }
             }
-        #endif
+        }
 
         VkResult res = vkCreateInstance(&instanceInfo, nullptr, &instance);
         if(res != VK_SUCCESS)
             return 0;
 
         // If validation layers are request and they were succesfully found in the VkInstance earlier, the debug messenger is created
-        #if BLITZEN_VULKAN_VALIDATION_LAYERS
-            if(validationLayersEnabled)
-                CreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, pDM);
-        #endif
+        if(validationLayersEnabled)
+            CreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, pDM);
 
         return 1;
     }
@@ -355,6 +365,34 @@ namespace BlitzenVulkan
                 if(!strcmp(dvExtensionsProps[j].extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
                     extensionSupport = 1;  
             }
+
+            // Since mesh shaders are not a required feature, they will be checked separately and if support is not found, the traditional pipeline will be used
+            if (ce_bMeshShaders)
+            {
+                VkPhysicalDeviceFeatures2 features2{};
+                features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
+                meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+                features2.pNext = &meshFeatures;
+                vkGetPhysicalDeviceFeatures2(pdv, &features2);
+                stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
+                
+                uint8_t meshShaderExtension = 0;
+                for (size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
+                {
+                    if (!strcmp(dvExtensionsProps[i].extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME))
+                        meshShaderExtension = 1;
+                }
+                stats.meshShaderSupport = stats.meshShaderSupport && meshShaderExtension;
+
+                if (stats.meshShaderSupport)
+                {
+                    BLIT_INFO("Mesh shader support confirmed")
+                    #undef BLIT_VK_MESH_EXT
+                }
+                else
+                    BLIT_INFO("No mesh shader support, using traditional pipeline")
+            }
                 
             if(!extensionSupport)
             {
@@ -462,45 +500,14 @@ namespace BlitzenVulkan
         deviceInfo.flags = 0; // Not using this
         deviceInfo.enabledLayerCount = 0;//Deprecated
 
-        // Since mesh shaders are not a required feature, they will be checked separately and if support is not found, the traditional pipeline will be used
-        #ifdef BLIT_VK_MESH_EXT
-            VkPhysicalDeviceFeatures2 features2{};
-            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
-            meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
-            features2.pNext = &meshFeatures;
-            vkGetPhysicalDeviceFeatures2(initHandles.chosenGpu, &features2);
-            stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
-
-            // Check the extensions as well
-            uint32_t dvExtensionCount = 0;
-            vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, nullptr);
-            BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
-            vkEnumerateDeviceExtensionProperties(initHandles.chosenGpu, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
-            uint8_t meshShaderExtension = 0;
-            for(size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
-            {
-                if(!strcmp(dvExtensionsProps[i].extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME))
-                    meshShaderExtension = 1;
-            }
-            stats.meshShaderSupport = stats.meshShaderSupport && meshShaderExtension;
-
-            if(stats.meshShaderSupport)
-                BLIT_INFO("Mesh shader support confirmed")
-            else
-                BLIT_INFO("No mesh shader support, using traditional pipeline")
-        #endif
-
         // Vulkan should ignore the mesh shader extension if support for it was not found
         deviceInfo.enabledExtensionCount = 2 + (ce_bMeshShaders && stats.meshShaderSupport);
         // Adding the swapchain extension and mesh shader extension if it was requested
-        const char* extensionsNames[2 + ce_bMeshShaders];
+        const char* extensionsNames[3];
         extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
         extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
-        #if BLITZEN_VULKAN_MESH_SHADER
-            if(stats.meshShaderSupport)
-                extensionsNames[2] = VK_EXT_MESH_SHADER_EXTENSION_NAME;
-        #endif
+        if(stats.meshShaderSupport)
+            extensionsNames[2] = VK_EXT_MESH_SHADER_EXTENSION_NAME;
         deviceInfo.ppEnabledExtensionNames = extensionsNames;
 
         // Standard device features
@@ -571,7 +578,7 @@ namespace BlitzenVulkan
 
         VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
         vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-        #if BLITZEN_VULKAN_MESH_SHADER
+        #ifdef BLIT_VK_MESH_EXT
             if(stats.meshShaderSupport)
             {
                 vulkanFeaturesMesh.meshShader = true;
