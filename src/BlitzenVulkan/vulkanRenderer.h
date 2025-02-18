@@ -329,6 +329,8 @@ namespace BlitzenVulkan
 
     uint8_t EnabledInstanceSynchronizationValidation();
 
+
+
     // Picks a suitable physical device (GPU) for the application and passes the handle to the first argument.
     // Returns 1 if if finds a fitting device. Expects the instance and surface arguments to be valid
     uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface,
@@ -343,19 +345,24 @@ namespace BlitzenVulkan
     // Looks for extensions in a physical device, returns 1 if everything goes well, and uploads data to stats and the extension count
     uint8_t LookForRequestedExtensions(VkPhysicalDevice gpu, VulkanStats& stats);
 
+    // Creates the logical device, after activating required extensions and features
     uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, 
     Queue& presentQueue, Queue& computeQueue, VulkanStats& stats);
     
+
+
     // Creates the swapchain
     uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
     uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
     VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 
-    // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
-    uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
-    VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
-    VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler = 1);
+    uint8_t FindSwapchainSurfaceFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, 
+    VkFormat& swapchainFormat);
 
+    uint8_t FindSwapchainPresentMode(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info);
+
+    uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, 
+    Swapchain& swapchain);
 
 
 
@@ -366,6 +373,11 @@ namespace BlitzenVulkan
     // Create a allocator from the VMA library
     uint8_t CreateVmaAllocator(VkDevice device, VkInstance instance, VkPhysicalDevice physicalDevice, VmaAllocator& allocator, 
     VmaAllocatorCreateFlags flags);
+
+    // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
+    uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+    VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
+    VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler = 1);
 
     // Allocates a buffer using VMA
     uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
