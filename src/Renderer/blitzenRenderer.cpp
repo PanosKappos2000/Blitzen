@@ -126,7 +126,6 @@ namespace BlitzenEngine
                 if(!vulkan.SetupForRendering(pResources, camera.viewData.pyramidWidth, camera.viewData.pyramidHeight))
                 {
                     BLIT_ERROR("Could not initialize Vulkan. If this is the active graphics API, it needs to be swapped")
-                    isThereRendererOnStandby = isThereRendererOnStandby || 0;
                     bVk = 0;
                 }
                 else
@@ -140,7 +139,6 @@ namespace BlitzenEngine
                 if(!opengl.SetupForRendering(pResources))
                 {
                     BLIT_ERROR("Could not initialize OPENGL. If this is the active graphics API, it needs to be swapped")
-                    isThereRendererOnStandby = isThereRendererOnStandby || 0;
                     bGl = 0;
                 }
                 else

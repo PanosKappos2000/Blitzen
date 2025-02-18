@@ -62,7 +62,7 @@ namespace BlitzenVulkan
         pipelineInfo.layout = layout;
 
         // Creates the compute pipeline
-        VkResult res = vkCreateComputePipelines(device, nullptr, 1, &pipelineInfo, nullptr, pPipeline);
+        VkResult res = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
         if(res != VK_SUCCESS)
         {
             vkDestroyShaderModule(device, computeShaderModule, nullptr);
@@ -347,7 +347,7 @@ namespace BlitzenVulkan
         pipelineInfo.pVertexInputState = &vertexInput;
 
         //Create the graphics pipeline
-        VkResult pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, m_pCustomAllocator, 
+        VkResult pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, m_pCustomAllocator, 
         &m_opaqueGeometryPipeline);
         if(pipelineCreateFinalResult != VK_SUCCESS)
             return 0;

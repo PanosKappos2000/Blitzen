@@ -1,7 +1,6 @@
+#define VMA_IMPLEMENTATION// Implements vma funcions. Header file included in vulkanData.h
 #include "vulkanRenderer.h"
 
-#define VMA_IMPLEMENTATION
-#include "vma/vk_mem_alloc.h"
 
 namespace BlitzenVulkan
 {

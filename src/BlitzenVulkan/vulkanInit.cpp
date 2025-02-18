@@ -5,7 +5,7 @@
 namespace BlitzenVulkan
 {
     // Platform specific expressions
-    #if _MSC_VER
+    #ifdef _WIN32
         constexpr const char* ce_surfaceExtensionName  = "VK_KHR_win32_surface";
         constexpr const char* ce_baseValidationLayerName =  "VK_LAYER_KHRONOS_validation";                 
     #elif linux

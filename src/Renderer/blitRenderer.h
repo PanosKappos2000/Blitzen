@@ -10,7 +10,7 @@
 // The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
-#ifndef __WIN32
+#ifndef _WIN32
     #undef BLITZEN_OPENGL
 #endif
 

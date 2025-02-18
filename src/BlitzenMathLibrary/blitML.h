@@ -81,7 +81,7 @@ namespace BlitML
     // Does not return the true length but is adequate if a comparison or something similar is needed, where a square root operation can be avoided
     inline float LengthSquared(const vec2& vec) { return vec.x * vec.x + vec.y * vec.y; }
     inline float LengthSquared(const vec3& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z; }
-    inline float LengthSquared(const vec4& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z, vec.w * vec.w; }
+    inline float LengthSquared(const vec4& vec) { return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z + vec.w * vec.w; }
 
     inline float Length(const vec2& vec) { return Sqrt(LengthSquared(vec)); }
     inline float Length(const vec3& vec) { return Sqrt(LengthSquared(vec)); }
