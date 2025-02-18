@@ -437,6 +437,8 @@ namespace BlitzenVulkan
                 presentQueue.index = queueIndex;
                 presentQueue.hasIndex = 1;
             }
+
+            ++queueIndex;
         }
 
         // If one of the required queue families has no index, then it gets removed from the candidates
@@ -742,7 +744,7 @@ namespace BlitzenVulkan
         // The color attachment will transfer its contents to the swapchain image when rendering is done
         swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         // Used when the swapchain is recreated
-        swapchainInfo.oldSwapchain = oldSwapchain;
+        //swapchainInfo.oldSwapchain = oldSwapchain;
 
         // Finds the surface format, updates the swapchain info and swapchain struct if it succeeds
         if(!FindSwapchainSurfaceFormat(physicalDevice, surface, swapchainInfo, newSwapchain.swapchainFormat))
@@ -759,10 +761,10 @@ namespace BlitzenVulkan
         if(!FindSwapchainSurfaceCapabilities(physicalDevice, surface, swapchainInfo, newSwapchain))
             return 0;
 
+        uint32_t queueFamilyIndices[] = { graphicsQueue.index, presentQueue.index };
         // Configure queue settings based on if the graphics queue also supports presentation
         if (graphicsQueue.index != presentQueue.index)
         {
-            uint32_t queueFamilyIndices[] = {graphicsQueue.index, presentQueue.index};
             swapchainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
             swapchainInfo.queueFamilyIndexCount = 2;
             swapchainInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -771,11 +773,13 @@ namespace BlitzenVulkan
         {
             swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
             swapchainInfo.queueFamilyIndexCount = 0;// Unnecessary if the indices are the same
+            swapchainInfo.pQueueFamilyIndices = queueFamilyIndices;// Some devices fail if I do not do this.
+            // But with queueFamilyIndexCount being 0, this should be fine
         }
 
         // Create the swapchain
-        VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, pCustomAllocator, 
-        &newSwapchain.swapchainHandle);
+        VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, nullptr, 
+        &(newSwapchain.swapchainHandle));
         if(swapchainResult != VK_SUCCESS)
             return 0;
 
