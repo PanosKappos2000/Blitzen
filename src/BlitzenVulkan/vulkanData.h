@@ -45,6 +45,7 @@ namespace BlitzenVulkan
     #endif
 
     constexpr uint32_t ce_extensionCount = 2 + BLITZEN_VULKAN_VALIDATION_LAYERS;
+    constexpr uint32_t ce_maxRequiredExtensions = 4;
 
     #ifdef BLIT_DOUBLE_BUFFERING
         constexpr uint8_t ce_framesInFlight = 2;

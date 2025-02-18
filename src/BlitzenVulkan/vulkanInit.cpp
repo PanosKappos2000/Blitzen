@@ -143,57 +143,48 @@ namespace BlitzenVulkan
         instanceInfo.pApplicationInfo = &applicationInfo;
 
         // Checking that all required instance extensions are supported
-        uint32_t extensionsCount = 0;
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr);
-        BlitCL::DynamicArray<VkExtensionProperties> availableExtensions(static_cast<size_t>(extensionsCount));
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, availableExtensions.Data());
-        uint8_t extensionSupport[ce_extensionCount] = {0};
-        for(size_t i = 0; i < availableExtensions.GetSize(); ++i)
-        {
-            // Check for surafce extension support
-            if(!extensionSupport[0] && !strcmp(availableExtensions[i].extensionName,ce_surfaceExtensionName))
-            {
-                extensionSupport[0] = 1;
-            }
-            if(!extensionSupport[1] && !strcmp(availableExtensions[i].extensionName, "VK_KHR_surface"))
-            {
-                extensionSupport[1] = 1;
-            }
+        uint32_t availableExtensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, nullptr);
+        BlitCL::DynamicArray<VkExtensionProperties> availableExtensions(static_cast<size_t>(availableExtensionCount));
+        vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, availableExtensions.Data());
 
-            // Check for validation layer extension support if the validation layers are active
-            #if BLITZEN_VULKAN_VALIDATION_LAYERS
-                if(!extensionSupport[ce_extensionCount - 1] &&
-                !strcmp(availableExtensions[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
+        // Store a boolean for each extension needed
+        const char* possibleRequestedExtensions[ce_maxRequiredExtensions] = {
+            ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME, "unknown"
+        };
+        uint8_t extensionsSupportRequested[ce_maxRequiredExtensions] = {1, 1, BLITZEN_VULKAN_VALIDATION_LAYERS, 0};
+        uint8_t extensionSupportRequired[ce_maxRequiredExtensions] = {1, 1, 0, 0};
+
+        const char* extensionNames[ce_maxRequiredExtensions];
+        uint32_t extensionCount = 0;
+
+        for(size_t i = 0; i < ce_maxRequiredExtensions; ++i)
+        {
+            uint8_t supportFound = 0;
+            for(auto& extension : availableExtensions)
+            {
+                // Check for surafce extension support
+                if(!strcmp(extension.extensionName, possibleRequestedExtensions[i]))
                 {
-                    extensionSupport[ce_extensionCount - 1] = 1;
+                    supportFound = 1;
+                    extensionNames[extensionCount++] = extension.extensionName;
                 }
-            #endif
+            }
+            if(!supportFound && extensionSupportRequired[i])
+            {
+                BLIT_ERROR("Vulkan instance exetension with name: %s was not found", possibleRequestedExtensions[i])
+                return 0;
+            }
+            // TODO: I could throw a warning for non required extension that were not found
+
         }
 
-        // Checks that all of the required extensions are supported
-        uint8_t allExtensions = 0;
-        for(uint8_t i = 0; i < ce_extensionCount; ++i)
-        {
-            allExtensions += extensionSupport[i];
-        }
-        if(allExtensions != ce_extensionCount)
-        {
-            BLIT_ERROR("Not all extensions are supported")
-            return 0;
-        }
-
-        // Creating an array of required extension names to pass to ppEnabledExtensionNames
-        const char* requiredExtensionNames [ce_extensionCount];
-        requiredExtensionNames[0] =  ce_surfaceExtensionName;
-        requiredExtensionNames[1] = "VK_KHR_surface";        
+        instanceInfo.ppEnabledExtensionNames = extensionNames;        
         instanceInfo.enabledExtensionCount = ce_extensionCount;
         instanceInfo.enabledLayerCount = 0; // Validation layers inactive at first, but will be activated if it's a debug build
 
         // If validation layers are requested, the debut utils extension is also needed
         #if BLITZEN_VULKAN_VALIDATION_LAYERS
-            // Adds the validation layer extensions to the extensions list
-            requiredExtensionNames[ce_extensionCount - 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
-
             uint8_t validationLayersEnabled = 0;
             const char* layerNameRef[2] = { ce_baseValidationLayerName, "VK_LAYER_KHRONOS_synchronization2" };
             VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
@@ -213,10 +204,7 @@ namespace BlitzenVulkan
                 instanceInfo.ppEnabledLayerNames = layerNameRef;
                 validationLayersEnabled = 1;
             }
-
         #endif
-
-        instanceInfo.ppEnabledExtensionNames = requiredExtensionNames;
 
         VkResult res = vkCreateInstance(&instanceInfo, nullptr, &instance);
         if(res != VK_SUCCESS)

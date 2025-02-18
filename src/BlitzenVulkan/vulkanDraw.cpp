@@ -30,9 +30,7 @@ glm::vec4 glm_NormalizePlane(glm::vec4& plane)
 
 namespace BlitzenVulkan
 {
-    /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        Every operation needed for drawing a single frame is put here
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
+
     void VulkanRenderer::DrawFrame(DrawContext& context)
     {
         BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
