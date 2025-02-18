@@ -141,6 +141,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLITZEN_VULKAN
                             BLIT_VK_ACTIVE_GRAPHICS_API
                             BLIT_VK_VALIDATION_LAYERS
+                            BLIT_VK_RAYTRACING
 
                             # Opengl preprocessor marcors
                             BLITZEN_OPENGL

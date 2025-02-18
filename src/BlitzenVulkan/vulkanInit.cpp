@@ -149,36 +149,33 @@ namespace BlitzenVulkan
         vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, availableExtensions.Data());
 
         // Store the names of all possible extensions to be used
-        const char* possibleRequestedExtensions[ce_maxRequiredExtensions] = {
+        const char* possibleRequestedExtensions[ce_maxRequestedInstanceExtensions] = {
             ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         };
         // Stores a boolean for each extension, telling the application if they were requested, if they are required and if they were found
-        uint8_t extensionsSupportRequested[ce_maxRequiredExtensions] = {1, 1, 0};
-        uint8_t extensionSupportRequired[ce_maxRequiredExtensions] = {1, 1, 0};
-        uint8_t extensionSupportFound[ce_maxRequiredExtensions] = { 0, 0, 0 };
+        uint8_t extensionsSupportRequested[ce_maxRequestedInstanceExtensions] = {1, 1, ce_bValidationLayersRequested};
+        uint8_t extensionSupportRequired[ce_maxRequestedInstanceExtensions] = {1, 1, 0};
+        uint8_t extensionSupportFound[ce_maxRequestedInstanceExtensions] = { 0, 0, 0 };
 
         // Final extension count
-        const char* extensionNames[ce_maxRequiredExtensions];
+        const char* extensionNames[ce_maxRequestedInstanceExtensions];
         uint32_t extensionCount = 0;
-        uint8_t bDebugMessengerSupport = 0;
 
-        for(size_t i = 0; i < ce_maxRequiredExtensions; ++i)
+        for(size_t i = 0; i < ce_maxRequestedInstanceExtensions; ++i)
         {
             if(!extensionsSupportRequested[i])
                 continue;
                 
-            uint8_t supportFound = 0;
             for(auto& extension : availableExtensions)
             {
                 // Check for surafce extension support
                 if(!strcmp(extension.extensionName, possibleRequestedExtensions[i]))
                 {
-                    supportFound = 1;
                     extensionNames[extensionCount++] = extension.extensionName;
                     extensionSupportFound[i] = 1;
                 }
             }
-            if(!supportFound && extensionSupportRequired[i])
+            if(!extensionSupportFound[i] && extensionSupportRequired[i])
             {
                 BLIT_ERROR("Vulkan instance exetension with name: %s was not found", possibleRequestedExtensions[i])
                 return 0;
@@ -197,7 +194,7 @@ namespace BlitzenVulkan
         // If validation layers are requested, the debut utils extension is also needed
         if (ce_bValidationLayersRequested)
         {
-            if (extensionSupportFound[ce_maxRequiredExtensions - 1])
+            if (extensionSupportFound[ce_maxRequestedInstanceExtensions - 1])
             {
                 const char* layerNameRef[2] = { ce_baseValidationLayerName, "VK_LAYER_KHRONOS_synchronization2" };
                 if (EnableInstanceValidation(debugMessengerInfo))
@@ -308,187 +305,243 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
         vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.Data());
 
+        uint32_t extensionCount = 0;
+
         // Goes through the available devices, to eliminate the ones that are completely inadequate
-        for(size_t i = 0; i < physicalDevices.GetSize(); ++i)
+        for(auto& pdv : physicalDevices)
         {
-            VkPhysicalDevice& pdv = physicalDevices[i];
-
-            // Get core physical device features
-            VkPhysicalDeviceFeatures features{};
-            vkGetPhysicalDeviceFeatures(pdv, &features);
-
-            // Get newer version physical Device Features
-            VkPhysicalDeviceFeatures2 features2{};
-            VkPhysicalDeviceVulkan11Features features11{};
-            features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            // Add Vulkan 1.1 features to the pNext chain
-            features2.pNext = &features11;
-            VkPhysicalDeviceVulkan12Features features12{};
-            features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            // Add Vulkan 1.2 features to the pNext chain
-            features11.pNext = &features12;
-            VkPhysicalDeviceVulkan13Features features13{};
-            features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            // Add Vulkan 1.3 features to the pNext chain
-            features12.pNext = &features13;
-            VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh{};
-            featuresMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-            // Add Nvidia mesh shader features to the pNext chain
-            features13.pNext = &featuresMesh;
-            vkGetPhysicalDeviceFeatures2(pdv, &features2);
-
-            // Check that all the required features are supported by the device
-            if(!features.multiDrawIndirect || !features.samplerAnisotropy ||
-            !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
-            !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
-            !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
-            !features12.samplerFilterMinmax || !features12.shaderInt8 || !features12.shaderSampledImageArrayNonUniformIndexing ||
-            !features12.uniformAndStorageBuffer8BitAccess || !features12.storagePushConstant8 ||
-            !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
-            {
-                physicalDevices.RemoveAtIndex(i);
-                --i;
-                continue;
-            }
-
-            // Checking if the device supports all extensions that will be requested from Vulkan
-            uint32_t dvExtensionCount = 0;
-            vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, nullptr);
-            BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
-            vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
-            // For now the device only needs to look for one extension
-            uint8_t extensionSupport  = 0;
-            // Check for the required extension name with strcmp
-            for(size_t j = 0; j < dvExtensionsProps.GetSize(); ++j)
-            {
-                if(!strcmp(dvExtensionsProps[j].extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
-                    extensionSupport = 1;  
-            }
-
-            // Since mesh shaders are not a required feature, they will be checked separately and if support is not found, the traditional pipeline will be used
-            if (ce_bMeshShaders)
-            {
-                VkPhysicalDeviceFeatures2 features2{};
-                features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
-                meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
-                features2.pNext = &meshFeatures;
-                vkGetPhysicalDeviceFeatures2(pdv, &features2);
-                stats.meshShaderSupport = meshFeatures.meshShader && meshFeatures.taskShader;
-                
-                uint8_t meshShaderExtension = 0;
-                for (size_t i = 0; i < dvExtensionsProps.GetSize(); ++i)
-                {
-                    if (!strcmp(dvExtensionsProps[i].extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME))
-                        meshShaderExtension = 1;
-                }
-                stats.meshShaderSupport = stats.meshShaderSupport && meshShaderExtension;
-
-                if (stats.meshShaderSupport)
-                {
-                    BLIT_INFO("Mesh shader support confirmed")
-                    #undef BLIT_VK_MESH_EXT
-                }
-                else
-                    BLIT_INFO("No mesh shader support, using traditional pipeline")
-            }
-                
-            if(!extensionSupport)
-            {
-                physicalDevices.RemoveAtIndex(i);
-                --i;
-                continue;
-            }
-
             VkPhysicalDeviceProperties props{};
             vkGetPhysicalDeviceProperties(pdv, &props);
-            if (props.apiVersion < VK_API_VERSION_1_3)
-            {
-                physicalDevices.RemoveAtIndex(i);
-                --i;
+            // Only choose discrete GPUs at first
+            if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
                 continue;
-            }
-
-            //Retrieve queue families from device
-            uint32_t queueFamilyPropertyCount = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, nullptr);
-            // Remove this device from the candidates, if no queue families were retrieved
-            if(!queueFamilyPropertyCount)
-            {
-                physicalDevices.RemoveAtIndex(i);
-                --i;
-                continue;
-            }
-            // Store the queue family properties to query for their indices
-            BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(
-            static_cast<size_t>(queueFamilyPropertyCount), std::move(VkQueueFamilyProperties2({})));
-            for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
-            {
-                queueFamilyProperties[j].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
-            }
-            vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
-            for(size_t j = 0; j < queueFamilyProperties.GetSize(); ++j)
-            {
-                // Checks for a graphics queue index, if one has not already been found 
-                if(queueFamilyProperties[j].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && !graphicsQueue.hasIndex)
-                {
-                    graphicsQueue.index = static_cast<uint32_t>(j);
-                    graphicsQueue.hasIndex = 1;
-                }
-
-                // Checks for a compute queue index, if one has not already been found 
-                if(queueFamilyProperties[j].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT && !computeQueue.hasIndex)
-                {
-                    computeQueue.index = static_cast<uint32_t>(j);
-                    computeQueue.hasIndex = 1;
-                }
-
-                VkBool32 supportsPresent = VK_FALSE;
-                VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, static_cast<uint32_t>(j), surface, &supportsPresent))
-                if(supportsPresent == VK_TRUE && !presentQueue.hasIndex)
-                {
-                    presentQueue.index = static_cast<uint32_t>(j);
-                    presentQueue.hasIndex = 1;
-                }
-            }
-
-            // If one of the required queue families has no index, then it gets removed from the candidates
-            if(!presentQueue.hasIndex || !graphicsQueue.hasIndex || !computeQueue.hasIndex)
-            {
-                physicalDevices.RemoveAtIndex(i);
-                --i;
-            }
-        }
-
-        if(!physicalDevices.GetSize())
-        {
-            BLIT_WARN("Your machine has no physical device that supports vulkan the way Blitzen wants it. \n \
-            Try another graphics API")
-            return 0;
-        }
-
-        for(size_t i = 0; i < physicalDevices.GetSize(); ++i)
-        {
-            VkPhysicalDevice& pdv = physicalDevices[i];
-            // Retrieve properties from device
-            VkPhysicalDeviceProperties props{};
-            vkGetPhysicalDeviceProperties(pdv, &props);
-            // Prefer discrete gpu if there is one
-            if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+            // Checks if the discrete gpu is suitable
+            if(ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, computeQueue, presentQueue, stats))
             {
                 gpu = pdv;
                 stats.hasDiscreteGPU = 1;
+                BLIT_INFO("Discrete GPU found")
+                return 1;
+            }
+
+            // Reset the extension count, in case it was touched by the previous device before it was rejected
+            stats.deviceExtensionCount = 0;
+        }
+
+        BLIT_INFO("Discrete GPU not found, looking for fallback")
+        for(auto& pdv : physicalDevices)
+        {
+            // Checks for possible non discrete GPUs
+            if(!ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, computeQueue, presentQueue, stats))
+            {
+                gpu = pdv;
+                return 1;
+            }
+
+            // Reset the extension count, in case it was touched by the previous device before it was rejected
+            stats.deviceExtensionCount = 0;
+        }
+
+        // If the function has reached this point, it means that it has failed
+        return 0;
+    }
+
+    uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface, 
+    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
+    VulkanStats& stats)
+    {
+        // Get core physical device features
+        VkPhysicalDeviceFeatures features{};
+        vkGetPhysicalDeviceFeatures(pdv, &features);
+
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(pdv, &props);
+        if (props.apiVersion < VK_API_VERSION_1_3)
+            return 0;
+
+        // Get newer version physical Device Features
+        VkPhysicalDeviceFeatures2 features2{};
+        VkPhysicalDeviceVulkan11Features features11{};
+        features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        // Add Vulkan 1.1 features to the pNext chain
+        features2.pNext = &features11;
+        VkPhysicalDeviceVulkan12Features features12{};
+        features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        // Add Vulkan 1.2 features to the pNext chain
+        features11.pNext = &features12;
+        VkPhysicalDeviceVulkan13Features features13{};
+        features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        // Add Vulkan 1.3 features to the pNext chain
+        features12.pNext = &features13;
+        VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh{};
+        featuresMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+        // Add Nvidia mesh shader features to the pNext chain
+        features13.pNext = &featuresMesh;
+        vkGetPhysicalDeviceFeatures2(pdv, &features2);
+
+        // Check that all the required features are supported by the device
+        if(!features.multiDrawIndirect || !features.samplerAnisotropy ||
+        !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
+        !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
+        !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
+        !features12.samplerFilterMinmax || !features12.shaderInt8 || !features12.shaderSampledImageArrayNonUniformIndexing ||
+        !features12.uniformAndStorageBuffer8BitAccess || !features12.storagePushConstant8 ||
+        !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
+            return 0;
+        
+        // Looks for the requested extensions. Fails if the required ones are not found
+        if(!LookForRequestedExtensions(pdv, stats))
+            return 0;
+
+        //Retrieve queue families from device
+        uint32_t queueFamilyPropertyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, nullptr);
+        // Remove this device from the candidates, if no queue families were retrieved
+        if(!queueFamilyPropertyCount)
+            return 0;
+
+        // Store the queue family properties to query for their indices
+        BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(
+        static_cast<size_t>(queueFamilyPropertyCount), std::move(VkQueueFamilyProperties2({})));
+
+        for(auto& queueProps : queueFamilyProperties)
+        {
+            queueProps.sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
+        }
+
+        vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
+
+        uint32_t queueIndex = 0;
+        for(auto& queueProps : queueFamilyProperties)
+        {
+            // Checks for a graphics queue index, if one has not already been found 
+            if(queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && !graphicsQueue.hasIndex)
+            {
+                graphicsQueue.index = queueIndex;
+                graphicsQueue.hasIndex = 1;
+            }
+
+            // Checks for a compute queue index, if one has not already been found 
+            if(queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT && !computeQueue.hasIndex)
+            {
+                computeQueue.index = queueIndex;
+                computeQueue.hasIndex = 1;
+            }
+
+            // Checks for presentation queue, if one was not already found
+            VkBool32 supportsPresent = VK_FALSE;
+            VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, queueIndex, surface, &supportsPresent))
+            if(supportsPresent == VK_TRUE && !presentQueue.hasIndex)
+            {
+                presentQueue.index = queueIndex;
+                presentQueue.hasIndex = 1;
             }
         }
 
-        // If a discrete GPU is not found, the renderer chooses the 1st device. This will change the way the renderer goes forward
-        if(!stats.hasDiscreteGPU)
-            gpu = physicalDevices[0];
-        else
-            BLIT_INFO("Discrete GPU found")
+        // If one of the required queue families has no index, then it gets removed from the candidates
+        if(!presentQueue.hasIndex || !graphicsQueue.hasIndex || !computeQueue.hasIndex)
+            return 0;
 
-        // If the function has reached this point, it means it found a physical device
+        return 1;
+        
+    }
+
+    uint8_t LookForRequestedExtensions(VkPhysicalDevice pdv, VulkanStats& stats)
+    {
+        // Checking if the device supports all extensions that will be requested from Vulkan
+        uint32_t dvExtensionCount = 0;
+        vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, nullptr);
+        BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
+        vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
+
+        // Store the names of all possible extensions to be used
+        const char* possibleRequestedExtensions[ce_maxRequestedDeviceExtensions] = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, 
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, VK_KHR_RAY_QUERY_EXTENSION_NAME, 
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_EXT_MESH_SHADER_EXTENSION_NAME
+        };
+        // Stores a boolean for each extension, telling the application if they were requested, if they are required and if they were found
+        uint8_t extensionsSupportRequested[ce_maxRequestedDeviceExtensions] = {1, 1, 
+        ce_bRaytracing, ce_bRaytracing, ce_bRaytracing, ce_bMeshShaders
+        };
+        uint8_t extensionSupportRequired[ce_maxRequestedDeviceExtensions] = {1, 1, 0, 0, 0, 0};
+        uint8_t extensionSupportFound[ce_maxRequestedDeviceExtensions] = {0, 0, 0, 0, 0, 0};
+
+        // Check for the required extension name with strcmp
+        for(size_t i = 0; i < ce_maxRequestedDeviceExtensions; ++i)
+        {
+            // If the extensions was never requested, it does not bother checking for it
+            if(!extensionsSupportRequested[i])
+                continue;
+
+            for(auto& extension : dvExtensionsProps)
+            {
+                if(!strcmp(extension.extensionName, possibleRequestedExtensions[i]))
+                {
+                    extensionSupportFound[i] = 1;
+                    stats.deviceExtensionNames[stats.deviceExtensionCount++] = possibleRequestedExtensions[i];
+                }  
+            }
+
+            if(!extensionSupportFound[i] && extensionSupportRequired[i])
+            {
+                BLIT_ERROR("Device extension with name: %s, not supported", possibleRequestedExtensions[i])
+                return 0;
+            }
+        }
+
+        // Check for mesh shaders features and extensions
+        if (ce_bMeshShaders)
+        {
+
+            // Check for mesh shader feature in available features
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
+            meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+            features2.pNext = &meshFeatures;
+            vkGetPhysicalDeviceFeatures2(pdv, &features2);
+            
+            // Mesh shaders are supported if both the feature and the extensions are found
+            stats.meshShaderSupport = extensionSupportFound[5] 
+            && meshFeatures.meshShader && meshFeatures.taskShader;
+
+            if (stats.meshShaderSupport)
+                BLIT_INFO("Mesh shader support confirmed")    
+            else
+            {
+                BLIT_INFO("No mesh shader support, using traditional pipeline")
+                #undef BLIT_VK_MESH_EXT
+            }
+        }
+
+        // Checks for raytracing extensions and features
+        if(ce_bRaytracing)
+        {
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            VkPhysicalDeviceRayQueryFeaturesKHR rayQuery{};
+            rayQuery.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+            features2.pNext = &rayQuery;
+            VkPhysicalDeviceAccelerationStructureFeaturesKHR ASfeats{};
+            ASfeats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+            rayQuery.pNext = &ASfeats;
+            vkGetPhysicalDeviceFeatures2(pdv, &features2);
+
+            stats.bRayTracingSupported = 
+            extensionSupportFound[2] && extensionSupportFound[3] && extensionSupportFound[4] &&
+            rayQuery.rayQuery && ASfeats.accelerationStructure;
+
+            if(stats.bRayTracingSupported)
+                BLIT_INFO("Ray tracing support confirmed")
+            else
+            {
+                BLIT_INFO("No ray tracing support found, using traditional raster")
+                #undef BLIT_VK_RAYTRACING
+            }
+        }
+
         return 1;
     }
 
@@ -501,14 +554,8 @@ namespace BlitzenVulkan
         deviceInfo.enabledLayerCount = 0;//Deprecated
 
         // Vulkan should ignore the mesh shader extension if support for it was not found
-        deviceInfo.enabledExtensionCount = 2 + (ce_bMeshShaders && stats.meshShaderSupport);
-        // Adding the swapchain extension and mesh shader extension if it was requested
-        const char* extensionsNames[3];
-        extensionsNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
-        extensionsNames[1] = VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME;
-        if(stats.meshShaderSupport)
-            extensionsNames[2] = VK_EXT_MESH_SHADER_EXTENSION_NAME;
-        deviceInfo.ppEnabledExtensionNames = extensionsNames;
+        deviceInfo.enabledExtensionCount = stats.deviceExtensionCount;
+        deviceInfo.ppEnabledExtensionNames = stats.deviceExtensionNames;
 
         // Standard device features
         VkPhysicalDeviceFeatures deviceFeatures{};
@@ -579,12 +626,21 @@ namespace BlitzenVulkan
         VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
         vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
         #ifdef BLIT_VK_MESH_EXT
-            if(stats.meshShaderSupport)
-            {
-                vulkanFeaturesMesh.meshShader = true;
-                vulkanFeaturesMesh.taskShader = true;
-            }
+            vulkanFeaturesMesh.meshShader = true;
+            vulkanFeaturesMesh.taskShader = true;
         #endif
+
+        VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
+        rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
+        accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        if(stats.bRayTracingSupported)
+        {
+            rayQueryFeatures.rayQuery = true;
+            accelerationStructureFeatures.accelerationStructure = true;
+        }
+        
+
 
         VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
         vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -596,6 +652,8 @@ namespace BlitzenVulkan
         vulkan11Features.pNext = &vulkan12Features;
         vulkan12Features.pNext = &vulkan13Features;
         vulkan13Features.pNext = &vulkanFeaturesMesh;
+        vulkanFeaturesMesh.pNext = &rayQueryFeatures;
+        rayQueryFeatures.pNext = &accelerationStructureFeatures;
 
         BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
         queueInfos[0].queueFamilyIndex = graphicsQueue.index;

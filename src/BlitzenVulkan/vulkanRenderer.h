@@ -335,6 +335,14 @@ namespace BlitzenVulkan
     Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
     VulkanStats& stats);
 
+    // Validates the suitability of a GPU for the application
+    uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface, 
+    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
+    VulkanStats& stats);
+
+    // Looks for extensions in a physical device, returns 1 if everything goes well, and uploads data to stats and the extension count
+    uint8_t LookForRequestedExtensions(VkPhysicalDevice gpu, VulkanStats& stats);
+
     uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, 
     Queue& presentQueue, Queue& computeQueue, VulkanStats& stats);
     

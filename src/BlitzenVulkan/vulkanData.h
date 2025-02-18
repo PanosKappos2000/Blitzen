@@ -49,7 +49,15 @@ namespace BlitzenVulkan
         constexpr uint8_t ce_bValidationLayersRequested = 0;
     #endif
 
-    constexpr uint32_t ce_maxRequiredExtensions = 3;
+    constexpr uint32_t ce_maxRequestedInstanceExtensions = 3;
+
+    #ifdef BLIT_VK_RAYTRACING
+        constexpr uint8_t ce_bRaytracing = 1;
+    #else
+        constexpr uint8_t ce_bRaytracing = 0;
+    #endif
+
+    constexpr uint32_t ce_maxRequestedDeviceExtensions = 6;
 
     #ifdef BLIT_DOUBLE_BUFFERING
         constexpr uint8_t ce_framesInFlight = 2;
@@ -85,8 +93,16 @@ namespace BlitzenVulkan
 
     struct VulkanStats
     {
-        uint8_t hasDiscreteGPU = 0;// If a discrete GPU is found, it will be chosen
+        uint8_t hasDiscreteGPU = 0;
+
         uint8_t meshShaderSupport = 0;
+
+        uint8_t bRayTracingSupported = 0;
+
+        uint32_t deviceExtensionCount = 0;
+        const char* deviceExtensionNames[ce_maxRequestedDeviceExtensions];
+
+        // Tells some independent function like texture loaders, if their resources are ready to be allocated
         uint8_t bResourceManagementReady = 0;
     };
 
