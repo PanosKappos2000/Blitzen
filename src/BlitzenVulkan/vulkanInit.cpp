@@ -744,7 +744,7 @@ namespace BlitzenVulkan
         // The color attachment will transfer its contents to the swapchain image when rendering is done
         swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         // Used when the swapchain is recreated
-        //swapchainInfo.oldSwapchain = oldSwapchain;
+        swapchainInfo.oldSwapchain = oldSwapchain;
 
         // Finds the surface format, updates the swapchain info and swapchain struct if it succeeds
         if(!FindSwapchainSurfaceFormat(physicalDevice, surface, swapchainInfo, newSwapchain.swapchainFormat))

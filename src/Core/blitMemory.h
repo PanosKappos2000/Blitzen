@@ -64,7 +64,7 @@ namespace BlitzenCore
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
 
-    // This allocation function calls the constructor of the object that gets allocated(the constructor must have no parameters)
+    // Allows call to new with parameters
     template<typename T, typename... P> 
     T* BlitConstructAlloc(AllocationType alloc, P&... params)
     {
@@ -100,6 +100,13 @@ namespace BlitzenCore
     {
         LogFree(alloc, sizeof(T));
         delete pToDestroy;
+    }
+
+    template<typename T>
+    void BlitDestroyAlloc(AllocationType alloc, T* pToDestroy, size_t size)
+    {
+        LogFree(alloc, size * sizeof(T));
+        delete [] pToDestroy;
     }
 
     // Allocates memory using the linear allocator

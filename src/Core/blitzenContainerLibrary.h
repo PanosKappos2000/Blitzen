@@ -220,8 +220,7 @@ namespace BlitCL
         {
             if(m_capacity > 0)
             {
-                delete [] m_pBlock;
-                BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T));
+                BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity);
             }
         }
 
@@ -248,8 +247,7 @@ namespace BlitCL
             }
             if(temp != 0)
             {
-                delete [] pTemp;
-                BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, temp * sizeof(T));
+                BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::DynamicArray, pTemp, temp);
             }
         }
     };
@@ -266,7 +264,7 @@ namespace BlitCL
             static_assert(S > 0);
         }
 
-        StaticArray(T& data)
+        StaticArray(const T& data)
         {
             static_assert(S > 0);
 
@@ -281,6 +279,10 @@ namespace BlitCL
             for(size_t i = 0; i < S; ++i)
                 BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
         }
+
+        using Iterator = DynamicArrayIterator<T>;
+        Iterator begin() { return Iterator(m_array); }
+        Iterator end() { return Iterator(m_array * S); }
 
         inline T& operator [] (size_t idx) { BLIT_ASSERT(idx >= 0 && idx < S) return m_array[idx]; }
 
@@ -397,17 +399,14 @@ namespace BlitCL
 
     
 
-    template<typename T, // The type of pointer stored
-    BlitzenCore::AllocationType A = BlitzenCore::AllocationType::SmartPointer, // The allocation type that the allocator should keep track of
-    typename Ret = void, // The type that the custom destructor returns>
-    typename... P>
+    template<typename T, BlitzenCore::AllocationType A = BlitzenCore::AllocationType::SmartPointer>
     class SmartPointer
     {
     public:
 
-        typedef Ret(*DstrPfn)(T*);
+        using Dstr =  void(*)(T*);
 
-        SmartPointer(T* pDataToCopy = nullptr, DstrPfn customDestructor = nullptr)
+        SmartPointer(T* pDataToCopy = nullptr)
         {
             // Allocated on the heap
             m_pData = BlitzenCore::BlitConstructAlloc<T>(A);
@@ -419,8 +418,6 @@ namespace BlitCL
                 // Redirect the pointer, in case the user wants to use it again
                 pDataToCopy = m_pData;
             }
-
-            m_customDestructor = customDestructor;
         }
 
         SmartPointer(const T& data)
@@ -433,12 +430,14 @@ namespace BlitCL
             m_pData = BlitzenCore::BlitConstructAlloc<T, A>(std::move(data));
         }
 
-        SmartPointer(DstrPfn customDestructor, P&... params)
+        // This should not be a member function, but I am not using it now, so I will change it later
+        template<typename... P>
+        T* MakeSmartPointer(P... params)
         {
             m_pData = BlitzenCore::BlitConstructAlloc<T>(A, params...);
-
-            m_customDestructor = customDestructor;
         }
+
+        inline void SetCustomDestructor(Dstr func) { m_pfnDstr = func; }
 
         inline T* Data() { return m_pData; }
 
@@ -447,10 +446,10 @@ namespace BlitCL
         ~SmartPointer()
         {
             // Call the additional destructor function if it was given on construction
-            if(m_customDestructor)
+            if(m_pfnDstr)
             {
                 if(m_pData)
-                    m_customDestructor(m_pData);
+                    m_pfnDstr(m_pData);
 
                 // The smart pointer trusts that the custom destructor did its job and free the block of memory
                 BlitzenCore::LogFree(A, sizeof(T));
@@ -464,7 +463,7 @@ namespace BlitCL
         T* m_pData;
 
         // Additional destructor function currently fixed type (void(*)(T*))
-        DstrPfn m_customDestructor;
+        Dstr m_pfnDstr = 0;
     };
 
     // Allocates a set amount of size on the heap, until the instance goes out of scope (Constructors not called)

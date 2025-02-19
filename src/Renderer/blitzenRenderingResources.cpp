@@ -558,7 +558,8 @@ namespace BlitzenEngine
 		    return 0;
         }
 
-        BlitCL::SmartPointer<cgltf_data> gltfData(pData, cgltf_free);
+        BlitCL::SmartPointer<cgltf_data> gltfData(pData);
+        gltfData.SetCustomDestructor(cgltf_free);
 
         res = cgltf_load_buffers(&options, pData, path);
 	    if (res != cgltf_result_success)
