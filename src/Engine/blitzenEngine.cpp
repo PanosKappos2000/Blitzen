@@ -76,12 +76,11 @@ namespace BlitzenEngine
         static_cast<float>(ce_initialWindowWidth), static_cast<float>(ce_initialWindowHeight), 
         ce_znear, BlitML::vec3(ce_initialCameraX, ce_initialCameraY, ce_initialCameraZ), ce_initialDrawDistance);
 
-        // Loads obj meshes that will be drawn with "random" transforms by the millions to stress the renderer
+        // Loads obj meshes that will be drawn with "random" transforms by the millions to stress test the renderer
         // If BLITZEN_RENDERING_STRESS_TEST is defined, this number will be ignored. 
         // The renderer will create an amount of objects close to the max allowed
         uint32_t drawCount = 1'000'000;
         LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
-
 
         // Loads the gltf files that were specified as command line arguments
         if(argc != 1)

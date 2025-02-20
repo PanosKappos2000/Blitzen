@@ -119,6 +119,7 @@ namespace BlitCL
                     Memcpy(&m_pBlock[i], &val, sizeof(T));
         }
 
+        // TODO: I should have this be for both resize and downsize, I do not know what I was thinking
         void Resize(size_t newSize)
         {
             // A different function will be used for downsizing
@@ -183,12 +184,12 @@ namespace BlitCL
             }
 
             // Copies the new array's data to this array
-            Memcpy(m_pBlock + additional, array.Data(), additional * sizeof(T));
+            BlitzenCore::BlitMemCopy(m_pBlock + m_size, array.Data(), additional * sizeof(T));
             // Adds this array's size to m_size
             m_size += additional;
         }
         
-
+        // This one's terrible, should fix it when I am not bored
         void RemoveAtIndex(size_t index)
         {
             if(index < m_size && index >= 0)
@@ -348,7 +349,7 @@ namespace BlitCL
             if(m_capacity > 0)
             {
                 delete [] m_pBlock;
-                BlitzenCore::LogFree(BlitzenCore::AllocationType::DynamicArray, m_capacity * sizeof(T));
+                BlitzenCore::LogFree(BlitzenCore::AllocationType::Hashmap, m_capacity * sizeof(T));
             }
         }
 
@@ -399,45 +400,31 @@ namespace BlitCL
 
     
 
-    template<typename T, BlitzenCore::AllocationType A = BlitzenCore::AllocationType::SmartPointer>
+    template<typename T, BlitzenCore::AllocationType alloc = BlitzenCore::AllocationType::SmartPointer>
     class SmartPointer
     {
     public:
 
-        using Dstr =  void(*)(T*);
-
-        SmartPointer(T* pDataToCopy = nullptr)
+        SmartPointer(T* pDataToCopy)
         {
-            // Allocated on the heap
-            m_pData = BlitzenCore::BlitConstructAlloc<T>(A);
-
-            if(pDataToCopy)
-            {
-                // Copy the data over to the member variable
-                BlitzenCore::BlitMemCopy(m_pData, pDataToCopy, sizeof(T));
-                // Redirect the pointer, in case the user wants to use it again
-                pDataToCopy = m_pData;
-            }
+            m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(pDataToCopy);
         }
 
         SmartPointer(const T& data)
         {
-            m_pData = BlitzenCore::BlitConstructAlloc<T, A>(data);
+            m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(data);
         }
 
         SmartPointer(T&& data)
         {
-            m_pData = BlitzenCore::BlitConstructAlloc<T, A>(std::move(data));
+            m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(std::move(data));
         }
 
-        // This should not be a member function, but I am not using it now, so I will change it later
         template<typename... P>
-        T* MakeSmartPointer(P... params)
+        SmartPointer(const P&... params)
         {
-            m_pData = BlitzenCore::BlitConstructAlloc<T>(A, params...);
+            m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
         }
-
-        inline void SetCustomDestructor(Dstr func) { m_pfnDstr = func; }
 
         inline T* Data() { return m_pData; }
 
@@ -445,25 +432,13 @@ namespace BlitCL
 
         ~SmartPointer()
         {
-            // Call the additional destructor function if it was given on construction
-            if(m_pfnDstr)
+            if(m_pData)
             {
-                if(m_pData)
-                    m_pfnDstr(m_pData);
-
-                // The smart pointer trusts that the custom destructor did its job and free the block of memory
-                BlitzenCore::LogFree(A, sizeof(T));
+                BlitzenCore::BlitDestroyAlloc(alloc, m_pData);
             }
-
-            // Does the job using delete, if the user did not provide a custom destructor
-            else
-                BlitzenCore::BlitDestroyAlloc(A, m_pData);
         }
     private:
         T* m_pData;
-
-        // Additional destructor function currently fixed type (void(*)(T*))
-        Dstr m_pfnDstr = 0;
     };
 
     // Allocates a set amount of size on the heap, until the instance goes out of scope (Constructors not called)

@@ -17,24 +17,21 @@ namespace BlitzenPlatform
 namespace BlitzenCore
 {
     enum class AllocationType : uint8_t
-    {
-        Unkown = 0, 
-        Array = 1, 
-        DynamicArray = 2,
-        Hashmap = 3,
-        Queue = 4, 
-        Bst = 5,
-        String = 6, 
-        Engine = 7, 
-        Renderer = 8, 
-        Entity = 9,
-        EntityNode = 10,
-        Scene = 11,
-        SmartPointer = 12,
+    {  
+        DynamicArray = 0,
+        Hashmap = 1,
+        Queue = 2, 
+        Bst = 3,
+        String = 4, 
+        Engine = 5, 
+        Renderer = 6, 
+        Entity = 7,
+        EntityNode = 8,
+        Scene = 9,
+        SmartPointer = 10,
+        LinearAlloc = 11,
 
-        LinearAlloc = 13,
-
-        MaxTypes = 14
+        MaxTypes = 12
     };
 
     constexpr size_t ce_linearAllocatorBlockSize = UINT32_MAX;
@@ -47,7 +44,7 @@ namespace BlitzenCore
     template<typename T>
     T* BlitAlloc(AllocationType alloc, size_t size)
     {
-        BLIT_ASSERT(alloc != AllocationType::Unkown && alloc != AllocationType::MaxTypes)
+        BLIT_ASSERT(alloc != AllocationType::MaxTypes)
 
         LogAllocation(alloc, size * sizeof(T));
 
@@ -57,41 +54,51 @@ namespace BlitzenCore
     template<typename T>
     void BlitFree(AllocationType alloc, void* pBlock, size_t size)
     {
-        BLIT_ASSERT(alloc != AllocationType::Unkown && alloc != AllocationType::MaxTypes)
+        BLIT_ASSERT(alloc != AllocationType::MaxTypes)
 
         LogFree(alloc, size * sizeof(T));
 
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
 
-    // Allows call to new with parameters
+    // Allow call to new with parameter's for the objects constructors. Allocation type is used as a parameter for deduction safety
     template<typename T, typename... P> 
-    T* BlitConstructAlloc(AllocationType alloc, P&... params)
+    T* BlitConstructAlloc(AllocationType alloc, const P&... params)
     {
         LogAllocation(alloc, sizeof(T));
         return new T(params...);
     }
 
-    template<typename T, AllocationType A>
+    template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(const T& data)
     {
         LogAllocation(A, sizeof(T));
         return new T(data);
     }
 
-    template<typename T, AllocationType A>
+    template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(T&& data)
     {
-        LogAllocation(A, sizeof(T));
+        LogAllocation(alloc, sizeof(T));
         return new T(std::move(data));
     }
 
     // This version takes no parameters
-    template<typename T, AllocationType A>
+    template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(size_t size)
     {
-        LogAllocation(A, size * sizeof(T));
+        LogAllocation(alloc, size * sizeof(T));
         return new T[size];
+    }
+
+    // Returns allocated memory of type T, after copyting data from the pointer parameter
+    template<typename T, AllocationType alloc>
+    T* BlitConstructAlloc(T* pData)
+    {
+        LogAllocation(alloc, sizeof(T));
+        T* res = new T;
+        BlitzenPlatform::PlatformMemCopy(res, pData, sizeof(T));
+        return res;
     }
 
     // This free function calls the constructor of the object that gets freed

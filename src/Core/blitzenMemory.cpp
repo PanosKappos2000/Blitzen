@@ -52,7 +52,7 @@ namespace BlitzenCore
         MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
 
         pState->totalAllocated += size;
-        pState->typeAllocations[static_cast<size_t>(alloc)] += size;
+        pState->typeAllocations[static_cast<uint8_t>(alloc)] += size;
     }
 
     void LogFree(AllocationType alloc, size_t size)
@@ -60,7 +60,7 @@ namespace BlitzenCore
         MemoryManagerState* pState = GET_BLITZEN_MEMORY_MANAGER_STATE();
 
         pState->totalAllocated -= size;
-        pState->typeAllocations[static_cast<size_t>(alloc)] -= size;
+        pState->typeAllocations[static_cast<uint8_t>(alloc)] -= size;
     }
 
     MemoryManagerState::~MemoryManagerState()
@@ -82,23 +82,23 @@ namespace BlitzenCore
         // Warn the user of any memory leaks to look for
         if (pState->totalAllocated)
         {
-            BLIT_WARN("There is still unallocated memory. Total Unallocated Memory: %i \n \
-            Unallocated Array Memory: %i \n \
-            Unallocated Dynamic Array memory: %i \n \
-            Unallocated Hashmap memory: %i \n Unallocated Queue memory: %i \n \
-            Unallocated BST memory: %i \n \
-            Unallocated String memory: %i \n \
-            Unallocated Engine memory: %i \n \
-            Uncallocated Renderer memory: %i \n", \
+            BLIT_WARN("There is still unfreed memory.") /*Total: %i \n \
+            Unfreed Dynamic Array memory: %i \n \
+            Unfreed Hashmap memory: %i \n \
+            Unfreed Queue memory: %i \n \
+            Unfreed BST memory: %i \n \
+            Unfreed String memory: %i \n \
+            Unfreed Engine memory: %i \n \
+            Unfreed Renderer memory: %i", \
             pState->totalAllocated, 
+            pState->typeAllocations[0], 
             pState->typeAllocations[1], 
             pState->typeAllocations[2], 
             pState->typeAllocations[3], 
             pState->typeAllocations[4], 
             pState->typeAllocations[5], 
-            pState->typeAllocations[6], 
-            pState->typeAllocations[7],
-            pState->typeAllocations[8])
+            pState->typeAllocations[6],
+            )*/
         }
     }
 

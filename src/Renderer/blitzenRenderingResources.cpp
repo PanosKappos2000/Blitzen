@@ -269,7 +269,7 @@ namespace BlitzenEngine
         newSurface.vertexOffset = static_cast<uint32_t>(pResources->vertices.GetSize());
 
         // Since the vertices will be global for all shaders and objects, new elements will be added to the one vertex array
-        pResources->vertices.AddBlockAtBack(vertices.Data(), vertices.GetSize());
+        pResources->vertices.AppendArray(vertices);
 
         // Create the normal array to be used with the meshoptimizer function for lod generation
         BlitCL::DynamicArray<BlitML::vec3> normals(vertices.GetSize());
@@ -306,7 +306,7 @@ namespace BlitzenEngine
             lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(GenerateClusters(pResources, vertices, indices)) : 0;
 
             // Add the new indices that were loaded for this lod level to the global index buffer
-            pResources->indices.AddBlockAtBack(lodIndices.Data(), lodIndices.GetSize());
+            pResources->indices.AppendArray(lodIndices);
 
             // Save the current lod error
             lod.error = lodError * lodScale;
@@ -546,9 +546,6 @@ namespace BlitzenEngine
 
         cgltf_options options = {};
 
-        // Use a smart pointer so that the cgltf_data gets freed automatically whenever the function returns
-        // Might be possible to just have this on the stack though, I don't know why I put it on the heap
-        // TODO: Test
         cgltf_data* pData = nullptr;
 
 	    cgltf_result res = cgltf_parse_file(&options, path, &pData);
@@ -558,8 +555,15 @@ namespace BlitzenEngine
 		    return 0;
         }
 
-        BlitCL::SmartPointer<cgltf_data> gltfData(pData);
-        gltfData.SetCustomDestructor(cgltf_free);
+        // Struct only used for cgltf_data pointer, will call its specialized free function when done
+        struct CgltfScope
+        {
+            cgltf_data* pData;
+
+            inline ~CgltfScope(){ cgltf_free(pData); }
+        };
+
+        CgltfScope cgltfScope{pData};
 
         res = cgltf_load_buffers(&options, pData, path);
 	    if (res != cgltf_result_success)
