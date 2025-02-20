@@ -132,37 +132,56 @@ namespace BlitzenEngine
     // This struct holds every loaded resource that will be used for rendering all game objects
     struct RenderingResources
     {
+        // Holds all textures. No dynamic allocation.
         TextureStats textures[ce_maxTextureCount];
         BlitCL::HashMap<TextureStats> textureTable;
         size_t textureCount = 0;
 
+        // Holds all materials. No dynamic allocation. Includes hashmap for separate access
         Material materials[ce_maxMaterialCount];
         BlitCL::HashMap<Material> materialTable;
         size_t materialCount = 0;
 
-        // Arrays that hold all necessary geometry data
+
+        /*
+            Per primitive data
+        */
+        // Holds all the primitives / surfaces
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
+
+        // Holds the vertex count of each primitive. This does not need to be passed to shader for now. But I do need it for ray tracing
+        BlitCL::DynamicArray<uint32_t> primitiveVertexCounts;
+
+        // Holds the vertices of all the primitives that were loaded
         BlitCL::DynamicArray<Vertex> vertices;
+
+        // Holds the indices of all the primitives that were loaded
         BlitCL::DynamicArray<uint32_t> indices;
+
+        // Holds all clusters for all the primitives that were loaded
         BlitCL::DynamicArray<Meshlet> meshlets;
+
+        // Holds the meshlet indices to index into the clusters above
         BlitCL::DynamicArray<uint32_t> meshletData;
 
-        // The data of every mesh allowed is in this fixed size array and the currentMeshIndex holds the current amount of loaded meshes
-        Mesh meshes[ce_maxMeshCount];
-        size_t meshCount = 0;
 
-        // Each render object has a different transform held by this array 
+        /*
+            Per instance data
+        */
+        // Holds the transforms of every render object / instance on the scene 
         BlitCL::DynamicArray<MeshTransform> transforms;
 
-        // Each mesh points to a continuous pack of elements of this surface array
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
+        // Holds all the render objects / primitives. They index into one primitive and one transform each
+        RenderObject renders[ce_maxRenderObjects];
+        uint32_t renderObjectCount; 
+        
+        // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives. TODO: Put these on a separate struct (maybe)
+        Mesh meshes[ce_maxMeshCount];
+        size_t meshCount = 0;
 
         // TODO: This is not a rendering resource, it should not be part of this struct
         GameObject objects[ce_maxRenderObjects];
         uint32_t objectCount;
-
-        // All render objects are located here
-        RenderObject renders[ce_maxRenderObjects];
-        uint32_t renderObjectCount;        
     };
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources);

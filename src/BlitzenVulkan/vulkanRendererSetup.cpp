@@ -693,6 +693,9 @@ namespace BlitzenVulkan
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
+        //if(!BuildBlas(surfaces, ))
+            //return 0; TODO: Change the parameter of this whole function to be RenderingResources, instead of the huge blob of arrays
+
         // Fails if there are no textures to load
         if(textureCount == 0)
             return 0;
@@ -727,6 +730,64 @@ namespace BlitzenVulkan
         WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_textureDescriptorSet, 
         static_cast<uint32_t>(imageInfos.GetSize()), 0);
         vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+
+        return 1;
+    }
+
+    uint8_t VulkanRenderer::BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
+    BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts)
+    {
+        if(!surfaces.GetSize())
+            return 0;
+
+        BlitCL::DynamicArray<uint32_t> primitiveCounts(surfaces.GetSize());
+        BlitCL::DynamicArray<VkAccelerationStructureGeometryKHR> geometries(surfaces.GetSize());
+	    BlitCL::DynamicArray<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos(surfaces.GetSize());
+        BlitCL::DynamicArray<size_t> accelerationOffsets(surfaces.GetSize());
+	    BlitCL::DynamicArray<size_t> accelerationSizes(surfaces.GetSize());
+	    BlitCL::DynamicArray<size_t> scratchOffsets(surfaces.GetSize());
+
+        constexpr size_t ce_alignment = 256; // required by spec for acceleration structures
+
+        size_t totalAllocationSize = 0;
+        size_t totalScratchSize = 0;
+
+        VkDeviceAddress vertexBufferAddress = GetBufferAddress(m_device, 
+        m_currentStaticBuffers.vertexBuffer.buffer.bufferHandle);
+	    VkDeviceAddress indexBufferAddress = GetBufferAddress(m_device, 
+        m_currentStaticBuffers.indexBuffer.bufferHandle);
+
+        for(size_t i = 0; i < surfaces.GetSize(); ++i)
+        {
+            const auto& surface = surfaces[i];
+            VkAccelerationStructureGeometryKHR& geometry = geometries[i];
+            VkAccelerationStructureBuildGeometryInfoKHR& buildInfo = buildInfos[i];
+
+            geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+            geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+            geometry.pNext = nullptr;
+            geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+
+            geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            geometry.geometry.triangles.pNext = nullptr;
+
+            // Passing vertex data
+            geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+            // Get the precise address of the vertex data of the current surface (needs to be incremented by the vertex offset)
+            geometry.geometry.triangles.vertexData.deviceAddress = 
+            static_cast<VkDeviceAddress>(vertexBufferAddress + surface.vertexOffset * sizeof(BlitzenEngine::Vertex));
+            geometry.geometry.triangles.vertexStride = sizeof(BlitzenEngine::Vertex);
+            geometry.geometry.triangles.maxVertex = primitiveVertexCounts[i];
+
+            // Passing index data
+            geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
+            geometry.geometry.triangles.indexData.deviceAddress = 
+            static_cast<VkDeviceAddress>(indexBufferAddress + surface.meshLod[0].firstIndex * sizeof(uint32_t));
+            
+
+            buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+            buildInfo.pNext = nullptr;
+        }
 
         return 1;
     }

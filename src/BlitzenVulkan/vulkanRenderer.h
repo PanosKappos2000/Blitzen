@@ -71,6 +71,9 @@ namespace BlitzenVulkan
         // Since the way the graphics pipelines work is fixed and there are only 2 of them, the code is collected in this fixed function
         uint8_t SetupMainGraphicsPipeline();
 
+        uint8_t BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
+        BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts);
+
         // Dispatches the compute shader that will perform culling and LOD selection and will write to the indirect draw buffer.
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
         uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount,

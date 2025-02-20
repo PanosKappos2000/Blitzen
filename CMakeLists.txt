@@ -138,8 +138,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VSYNC
 
                             # Vulkan specific preprocessor macros
-                            #BLITZEN_VULKAN
-                            #BLIT_VK_ACTIVE_GRAPHICS_API
+                            BLITZEN_VULKAN
+                            BLIT_VK_ACTIVE_GRAPHICS_API
                             BLIT_VK_VALIDATION_LAYERS
                             BLIT_VK_RAYTRACING
 

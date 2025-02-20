@@ -259,7 +259,7 @@ namespace BlitzenEngine
     BlitCL::DynamicArray<Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
-        // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a mesh
+        // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a primitive
         meshopt_optimizeVertexCache(indices.Data(), indices.Data(), indices.GetSize(), vertices.GetSize());
 	    meshopt_optimizeVertexFetch(vertices.Data(), indices.Data(), indices.GetSize(), vertices.Data(), 
         vertices.GetSize(), sizeof(Vertex));
@@ -374,6 +374,7 @@ namespace BlitzenEngine
 
         // Add the resources to the global surface array so that it is added to the GPU buffer
         pResources->surfaces.PushBack(newSurface);
+        pResources->primitiveVertexCounts.PushBack(static_cast<uint32_t>(vertices.GetSize()));
     }
 
 
