@@ -896,10 +896,10 @@ namespace BlitzenVulkan
         VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
 
         newSwapchain.swapchainExtent.width = 
-        BlitCL::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
+        BlitML::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
 
         newSwapchain.swapchainExtent.height = 
-        BlitCL::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
+        BlitML::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
 
         // Swapchain extent fully checked and ready to pass to the swapchain info struct
         info.imageExtent = newSwapchain.swapchainExtent;
@@ -926,6 +926,7 @@ namespace BlitzenVulkan
         // Wait for the device to finish its work before destroying resources
         vkDeviceWaitIdle(m_device);
 
+        // Destroys the texture sampler
         vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
 
         // Destroys the resources used for the texture descriptors

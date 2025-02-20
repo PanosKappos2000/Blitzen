@@ -143,7 +143,9 @@ namespace BlitzenGL
         // Update the viewport if the window has resized
         if(pCamera->transformData.windowResize)
         {
-            glViewport(0, 0, pCamera->transformData.windowWidth, pCamera->transformData.windowHeight);
+            glViewport(0, 0, 
+            static_cast<GLsizei>(pCamera->transformData.windowWidth), 
+            static_cast<GLsizei>(pCamera->transformData.windowHeight));
         }
 
         // Update the culling data buffer

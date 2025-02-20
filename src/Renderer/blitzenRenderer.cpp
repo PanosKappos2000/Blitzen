@@ -11,6 +11,11 @@ namespace BlitzenEngine
     {
         s_pRenderer = this;
 
+        // Opengl is only available on windows
+        #ifndef _WIN32
+            #undef BLITZEN_OPENGL
+        #endif
+
         #ifdef BLITZEN_VULKAN
             bVk = vulkan.Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight);
         #endif
@@ -22,7 +27,7 @@ namespace BlitzenEngine
         // Automatically starts with vulkan, I will change this later
         #ifdef BLIT_VK_ACTIVE_GRAPHICS_API
         activeRenderer = ActiveRenderer::Vulkan;
-        #elif BLIT_GL_ACTIVE_GRAHPICS_API
+        #elif BLIT_GL_ACTIVE_GRAPHICS_API
         activeRenderer = ActiveRenderer::Opengl;
         #endif
 

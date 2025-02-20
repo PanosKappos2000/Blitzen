@@ -71,6 +71,27 @@ namespace BlitzenVulkan
         constexpr uint8_t ce_bMeshShaders = 0; 
     #endif
 
+
+
+
+    struct VulkanStats
+    {
+        uint8_t hasDiscreteGPU = 0;
+
+        uint8_t meshShaderSupport = 0;
+
+        uint8_t bRayTracingSupported = 0;
+
+        uint32_t deviceExtensionCount = 0;
+        const char* deviceExtensionNames[ce_maxRequestedDeviceExtensions];
+
+        // Tells some independent function like texture loaders, if their resources are ready to be allocated
+        uint8_t bResourceManagementReady = 0;
+    };
+
+
+
+
     struct Swapchain
     {
         VkSwapchainKHR swapchainHandle;
@@ -91,33 +112,23 @@ namespace BlitzenVulkan
         uint8_t hasIndex = 0;
     };
 
-    struct VulkanStats
+
+
+
+    // Because resources get destroyed automatically, when the Vulkan Renderer destructor is called, 
+    // It needs to be made certain that the instance, the device and -most importanlty- the allocator are destroyed last
+    // So one instance of this struct will be owned by the engine's memory allocator
+    struct MemoryCrucialHandles
     {
-        uint8_t hasDiscreteGPU = 0;
+        VmaAllocator allocator;
+        VkDevice device;
+        VkInstance instance;
 
-        uint8_t meshShaderSupport = 0;
-
-        uint8_t bRayTracingSupported = 0;
-
-        uint32_t deviceExtensionCount = 0;
-        const char* deviceExtensionNames[ce_maxRequestedDeviceExtensions];
-
-        // Tells some independent function like texture loaders, if their resources are ready to be allocated
-        uint8_t bResourceManagementReady = 0;
-    };
-
-    // Holds the command struct for a call to vkCmdDrawIndexedIndirectCount, as well as a draw Id to access the correct RenderObject
-    struct IndirectDrawData
-    {
-        uint32_t drawId;
-        VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
-    };
-
-    // Holds the command struct for a call to vkCmdDrawMeshTasksIndirectCountExt, as well as a task Id to access the correct task
-    struct IndirectTaskData
-    {
-        uint32_t taskId;
-        VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
+        inline ~MemoryCrucialHandles(){
+            vmaDestroyAllocator(allocator);
+            vkDestroyDevice(device, nullptr);
+            vkDestroyInstance(instance, nullptr);
+        }
     };
 
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
@@ -138,15 +149,59 @@ namespace BlitzenVulkan
         ~AllocatedImage();
     };
 
+    // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once
+    struct TextureData
+    {
+        AllocatedImage image;
+        VkSampler sampler;
+    };
+
     // Represents a buffer allocated by VMA
     struct AllocatedBuffer
     {
-        VkBuffer buffer = VK_NULL_HANDLE;
+        VkBuffer bufferHandle = VK_NULL_HANDLE;
         VmaAllocation allocation;
         VmaAllocationInfo allocationInfo;
 
         // Implemented on vulkanResources.cpp
         ~AllocatedBuffer();
+    };
+
+    // Holds a buffer that is bound to a descriptor binding using push descriptors
+    template<typename T>
+    struct PushDescriptorBuffer
+    {
+        AllocatedBuffer buffer;
+
+        // Most buffers have a VkWriteDescriptor struct that remains static at runtime
+        VkDescriptorBufferInfo bufferInfo;
+        VkWriteDescriptorSet descriptorWrite;
+
+        // Set these up so that they are defined on the constructor and not hardcoded for every descriptor struct
+        uint32_t descriptorBinding;
+        VkDescriptorType descriptorType;
+
+        // Persistently mapped pointer, useful for uniform buffers
+        T* pData;
+
+        inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type): descriptorBinding{binding}, descriptorType{type} {}
+    };
+
+
+
+
+    // Holds the command struct for a call to vkCmdDrawIndexedIndirectCount, as well as a draw Id to access the correct RenderObject
+    struct IndirectDrawData
+    {
+        uint32_t drawId;
+        VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
+    };
+
+    // Holds the command struct for a call to vkCmdDrawMeshTasksIndirectCountExt, as well as a task Id to access the correct task
+    struct IndirectTaskData
+    {
+        uint32_t taskId;
+        VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
     };
 
     // Culling shaders receive this shader as a push constant
@@ -185,30 +240,6 @@ namespace BlitzenVulkan
         inline DrawContext(void* pCam, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
         : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
     };
-
-    // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once
-    struct TextureData
-    {
-        AllocatedImage image;
-        VkSampler sampler;
-    };
-
-    // Because resources get destroyed automatically, when the Vulkan Renderer destructor is called, 
-    // It needs to be made certain that the instance, the device and -most importanlty- the allocator are destroyed last
-    // So one instance of this struct will be owned by the engine's memory allocator
-    struct MemoryCrucialHandles
-    {
-        VmaAllocator allocator;
-        VkDevice device;
-        VkInstance instance;
-
-        inline ~MemoryCrucialHandles(){
-            vmaDestroyAllocator(allocator);
-            vkDestroyDevice(device, nullptr);
-            vkDestroyInstance(instance, nullptr);
-        }
-    };
-
 }
 
 

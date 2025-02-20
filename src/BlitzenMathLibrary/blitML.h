@@ -5,19 +5,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define BLIT_PI                         3.14159265358979323846f
-#define BLIT_PI_2                       2.0f * BLIT_PI
-#define BLIT_HALF_PI                    0.5f * BLIT_PI
-#define BLIT_QUARTER_PI                 0.25f * BLIT_PI
-#define BLIT_ONE_OVER_PI                1.0f / BLIT_PI
-#define BLIT_ONVER_OVER_2_PI            1.0f / BLIT_PI_2
-#define BLIT_SQRT_TWO                   1.41421356237309504880f
-#define BLIT_SQRT_THREE                 1.73205080756887729352f
-#define BLIT_SQRT_ONE_OVER_TWO          0.70710678118654752440f
-#define BLIT_SQRT_ONE_OVER_THREE        0.57735026918962576450f
-#define BLIT_DEG2RAD_MULTIPLIER         BLIT_PI / 180.0f
-#define BLIT_RAD2DEG_MULTIPLIER         180.0f / BLIT_PI
-
 #define BLIT_SEC_TO_MS_MULTIPLIER       1000.f
 #define BLIT_MS_TO_SEC_MULTIPLIER       0.001f
 
@@ -26,6 +13,24 @@
 
 namespace BlitML
 {
+    constexpr float blit_pi = 3.14159265358979323846f;
+    constexpr float blit_pi2 = 2.f * blit_pi;
+    constexpr float blit_halfPi = 0.5f * blit_pi;
+    constexpr float blit_quarterPi = 0.25f * blit_pi;
+    constexpr float blit_oneOverPi = 1.f / blit_pi;
+    constexpr float blit_oneOverTwoPi = 1.f / blit_pi2;
+
+
+    constexpr float blit_sqrtTwo = 1.41421356237309504880f;
+    constexpr float blit_sqrtThree = 1.73205080756887729352f;
+    constexpr float blit_sqrtOneOverTwo = 0.70710678118654752440f;
+    constexpr float blit_sqrtOneOverThree = 0.57735026918962576450f;
+
+
+    constexpr float ce_degreesToRadiansMultiplier = blit_pi / 180.f;
+    constexpr float ce_radiansToDegreesMultiplier = 180.f / blit_pi;
+
+    
     /* ------------------------------------------
         General math functions
     ------------------------------------------ */
@@ -37,6 +42,12 @@ namespace BlitML
     inline float Abs(float x) {return fabsf(x);}
     inline float Max(float x, float y) { return (x > y) ? x : y; }
     inline uint32_t Max(uint32_t x, uint32_t y) { return (x > y) ? x : y; }
+
+    inline uint32_t Clamp(uint32_t initial, uint32_t upper, uint32_t lower) { 
+        return (initial >= upper) ? upper
+        : (initial <= lower) ? lower 
+        : initial; 
+    }
 
     inline uint8_t IsPowerOf2(uint64_t value) { return (value != 0) && ((value & (value - 1)) == 0); }
 
@@ -598,8 +609,9 @@ namespace BlitML
         return quat((v0.x * s0) + (v1.x * s1), (v0.y * s0) + (v1.y * s1), (v0.z * s0) + (v1.z * s1), (v0.w * s0) + (v1.w * s1));
     }
 
-    inline float Radians(float degrees) { return degrees * BLIT_DEG2RAD_MULTIPLIER; }  
-    inline float Degrees(float radians) {return radians * BLIT_RAD2DEG_MULTIPLIER; }
+    // Could make these constexpr functions, but there might be some functionality with the field of view in the future that does not allow them to be
+    inline float Radians(float degrees) { return degrees * ce_degreesToRadiansMultiplier; }  
+    inline float Degrees(float radians) {return radians * ce_radiansToDegreesMultiplier; }
 
 
     inline void decomposeTransform(float translation[3], float rotation[4], float scale[3], const float* transform)

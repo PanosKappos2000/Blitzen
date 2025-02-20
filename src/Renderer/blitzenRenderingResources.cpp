@@ -746,7 +746,7 @@ namespace BlitzenEngine
                 // Will temporarily hold each aspect of the vertices (pos, tangent, normals, uvMaps) from the primitive
 			    BlitCL::DynamicArray<float> scratch(vertexCount * 4);
 
-			    if (const cgltf_accessor* pos = findAccessor(&prim, cgltf_attribute_type_position))
+			    if (const cgltf_accessor* pos = cgltf_find_accessor(&prim, cgltf_attribute_type_position, 0))
 			    {
                     // No choice but to assert here, as some data might already have been loaded
 				    BLIT_ASSERT(cgltf_num_components(pos->type) == 3);
@@ -771,7 +771,7 @@ namespace BlitzenEngine
 			    	}
 			    }
 
-                if(const cgltf_accessor* tang = findAccessor(&prim, cgltf_attribute_type_tangent))
+                if(const cgltf_accessor* tang = cgltf_find_accessor(&prim, cgltf_attribute_type_tangent, 0))
                 {
                     BLIT_ASSERT(cgltf_num_components(tang->type) == 4)
 
@@ -785,7 +785,7 @@ namespace BlitzenEngine
                     }
                 }
 
-			    if (const cgltf_accessor* tex = findAccessor(&prim, cgltf_attribute_type_texcoord))
+			    if (const cgltf_accessor* tex = cgltf_find_accessor(&prim, cgltf_attribute_type_texcoord, 0))
 			    {
 				    BLIT_ASSERT(cgltf_num_components(tex->type) == 2);
 				    cgltf_accessor_unpack_floats(tex, scratch.Data(), vertexCount * 2);

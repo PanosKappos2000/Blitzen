@@ -6,94 +6,6 @@
 
 namespace BlitzenVulkan
 {
-    // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
-    struct FrameTools
-    {
-        VkCommandPool mainCommandPool;
-        VkCommandBuffer commandBuffer;
-
-        VkFence inFlightFence;
-        VkSemaphore imageAcquiredSemaphore;
-        VkSemaphore readyToPresentSemaphore;        
-    };
-
-    // Holds a buffer that is bound to a descriptor binding using push descriptors
-    template<typename T>
-    struct PushDescriptorBuffer
-    {
-        AllocatedBuffer buffer;
-
-        // Most buffers have a VkWriteDescriptor struct that remains static at runtime
-        VkDescriptorBufferInfo bufferInfo;
-        VkWriteDescriptorSet descriptorWrite;
-
-        // Set these up so that they are defined on the constructor and not hardcoded for every descriptor struct
-        uint32_t descriptorBinding;
-        VkDescriptorType descriptorType;
-
-        // Persistently mapped pointer, useful for uniform buffers
-        T* pData;
-
-        inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type): descriptorBinding{binding}, descriptorType{type} {}
-    };
-
-    struct VarBuffers
-    {
-        // The global view data buffer is a uniform buffer that will be part of the push descriptor layout at binding 0
-        // It will hold view data like the view matrix or frustum planes data
-        PushDescriptorBuffer<BlitzenEngine::CameraViewData> viewDataBuffer{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
-    };
-
-    // Holds data for buffers that will be loaded once and will be used for every object
-    struct StaticBuffers
-    {
-        // The vertex buffer is a storage buffer that will be part of the push descriptor layout at binding 1
-        // It will hold all vertices for all the objects on the scene
-        PushDescriptorBuffer<void> vertexBuffer{1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        AllocatedBuffer indexBuffer;
-
-        // The meshlet / cluster buffer is a storage buffer that will be part of the push descirptor layout at binding 12
-        // It will hold all meshlets for all the primitives on the scene
-        PushDescriptorBuffer<void> meshletBuffer{12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The meshlet data buffer is a storage buffer that will be part of the push descirptor layout at binding 13
-        // It will hold indices to access the correct cluster in the meshlet buffer
-        PushDescriptorBuffer<void> meshletDataBuffer{13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The material buffer is a storage buffer that will be part of the push descriptor layout at binding 6
-        // It will hold all the materials used in the scene
-        PushDescriptorBuffer<void> materialBuffer{6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The render object buffer is a storage buffer that will be part of the push descriptor layout at binding 4
-        // It will holds indices to the primitive and transform of all the render object in the the scene
-        PushDescriptorBuffer<void> renderObjectBuffer{4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The surface buffer is a storage buffer that will be part of the push descriptor layout at binding 2
-        // It will hold the data for all the primitive surfaces that will be used in the scene
-        PushDescriptorBuffer<void> surfaceBuffer{2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The transform buffer is a storage buffer that will be part of the push descriptor layout at bidning 5
-        // It will hold the transforms of all the objects in the scene
-        PushDescriptorBuffer<void> transformBuffer{5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The indirect draw buffer is a storage buffer that will be part of the push descriptor layout at binding 7
-        // It will hold all the indirect draw commands for each frame
-        PushDescriptorBuffer<void> indirectDrawBuffer{7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The indirect task buffer is a storage buffer that will be part of the push descriptor layout at binding 8
-        // It will hold all the indirect task commands for each frame
-        PushDescriptorBuffer<void> indirectTaskBuffer{8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The indirect draw count buffer is a storage buffer that will be part of the push descriptor layout at binding 9
-        // It will hold one integer that will tell the graphics pipeline how many elements it should access in the indirect draw buffer
-        PushDescriptorBuffer<void> indirectCountBuffer{9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-        // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
-        // It will hold either 1 or 0 for each object based on if they were visible last frame or not
-        PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};  
-    };
-
     class VulkanRenderer
     {
     public:
@@ -232,7 +144,69 @@ namespace BlitzenVulkan
         VkExtent2D m_depthPyramidExtent;
         VkSampler m_depthAttachmentSampler;
 
+    /*
+        Buffer resources section
+    */
+    private:
+
+        // Holds data for buffers that will be loaded once and will be used for every object
+        struct StaticBuffers
+        {
+            // The vertex buffer is a storage buffer that will be part of the push descriptor layout at binding 1
+            // It will hold all vertices for all the objects on the scene
+            PushDescriptorBuffer<void> vertexBuffer{1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            AllocatedBuffer indexBuffer;
+
+            // The meshlet / cluster buffer is a storage buffer that will be part of the push descirptor layout at binding 12
+            // It will hold all meshlets for all the primitives on the scene
+            PushDescriptorBuffer<void> meshletBuffer{12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The meshlet data buffer is a storage buffer that will be part of the push descirptor layout at binding 13
+            // It will hold indices to access the correct cluster in the meshlet buffer
+            PushDescriptorBuffer<void> meshletDataBuffer{13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The material buffer is a storage buffer that will be part of the push descriptor layout at binding 6
+            // It will hold all the materials used in the scene
+            PushDescriptorBuffer<void> materialBuffer{6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The render object buffer is a storage buffer that will be part of the push descriptor layout at binding 4
+            // It will holds indices to the primitive and transform of all the render object in the the scene
+            PushDescriptorBuffer<void> renderObjectBuffer{4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The surface buffer is a storage buffer that will be part of the push descriptor layout at binding 2
+            // It will hold the data for all the primitive surfaces that will be used in the scene
+            PushDescriptorBuffer<void> surfaceBuffer{2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The transform buffer is a storage buffer that will be part of the push descriptor layout at bidning 5
+            // It will hold the transforms of all the objects in the scene
+            PushDescriptorBuffer<void> transformBuffer{5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The indirect draw buffer is a storage buffer that will be part of the push descriptor layout at binding 7
+            // It will hold all the indirect draw commands for each frame
+            PushDescriptorBuffer<void> indirectDrawBuffer{7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The indirect task buffer is a storage buffer that will be part of the push descriptor layout at binding 8
+            // It will hold all the indirect task commands for each frame
+            PushDescriptorBuffer<void> indirectTaskBuffer{8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The indirect draw count buffer is a storage buffer that will be part of the push descriptor layout at binding 9
+            // It will hold one integer that will tell the graphics pipeline how many elements it should access in the indirect draw buffer
+            PushDescriptorBuffer<void> indirectCountBuffer{9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
+            // It will hold either 1 or 0 for each object based on if they were visible last frame or not
+            PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};  
+        };
         StaticBuffers m_currentStaticBuffers;
+
+        struct VarBuffers
+        {
+            // The global view data buffer is a uniform buffer that will be part of the push descriptor layout at binding 0
+            // It will hold view data like the view matrix or frustum planes data
+            PushDescriptorBuffer<BlitzenEngine::CameraViewData> viewDataBuffer{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
+        };
+        VarBuffers m_varBuffers[ce_framesInFlight];
 
     /*
         Descriptor section
@@ -303,10 +277,17 @@ namespace BlitzenVulkan
     */
     private:
 
-        // This holds tools that need to be unique for each frame in flight
-        FrameTools m_frameToolsList[ce_framesInFlight];
+        // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
+        struct FrameTools
+        {
+            VkCommandPool mainCommandPool;
+            VkCommandBuffer commandBuffer;
 
-        VarBuffers m_varBuffers[ce_framesInFlight];
+            VkFence inFlightFence;
+            VkSemaphore imageAcquiredSemaphore;
+            VkSemaphore readyToPresentSemaphore;        
+        };
+        FrameTools m_frameToolsList[ce_framesInFlight];
 
         // Used to access the right frame tools depending on which ones are already being used
         uint8_t m_currentFrame = 0;
@@ -454,6 +435,7 @@ namespace BlitzenVulkan
     VkDescriptorSet dstSet = VK_NULL_HANDLE,  VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
     VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
 
+    // Sets up a buffer that is going to be in the push descriptor layout. Copies the data that it will hold to a staging buffer
     template <typename T = void>
     uint8_t SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, 
     PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer, 
@@ -463,14 +445,15 @@ namespace BlitzenVulkan
         CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
         stagingBuffer, usage, bufferSize);
         // Checks if the above function failed
-        if(pushBuffer.buffer.buffer == VK_NULL_HANDLE)
+        if(pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
             return 0;
         // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
         WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
+        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.bufferHandle);
         return 1;
     }
 
+    // Sets up a buffer that is going to be in the push descriptor layout. Unlike the above, it does not create a staging buffer
     template <typename T = void>
     uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
     PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, VkBufferUsageFlags usage)
@@ -481,7 +464,7 @@ namespace BlitzenVulkan
         
         // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
         WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.buffer);
+        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.bufferHandle);
         return 1;
     }
 

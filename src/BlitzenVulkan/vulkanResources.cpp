@@ -32,7 +32,7 @@ namespace BlitzenVulkan
         bufferAllocationInfo.flags = allocationFlags;
 
         VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, 
-        &(buffer.buffer), &(buffer.allocation), &(buffer.allocationInfo));
+        &(buffer.bufferHandle), &(buffer.allocation), &(buffer.allocationInfo));
         if(res != VK_SUCCESS)
             return 0;
         return 1;
@@ -51,7 +51,7 @@ namespace BlitzenVulkan
         size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             // The way this function lets the user know that it failed is by initializing the storage buffer to null
-            storageBuffer.buffer = VK_NULL_HANDLE;
+            storageBuffer.bufferHandle = VK_NULL_HANDLE;
             return res;
         }
 
@@ -59,7 +59,7 @@ namespace BlitzenVulkan
         if(!CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
         size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
-            storageBuffer.buffer = VK_NULL_HANDLE;
+            storageBuffer.bufferHandle = VK_NULL_HANDLE;
             return res;
         }
 
@@ -69,7 +69,7 @@ namespace BlitzenVulkan
 
         // If a buffer device address is requested, it is retrieved and returned
         if(getBufferDeviceAddress)
-            res = GetBufferAddress(device, storageBuffer.buffer);
+            res = GetBufferAddress(device, storageBuffer.bufferHandle);
         return res;
     }
 
@@ -172,7 +172,7 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
         // Copy the buffer to the image
-        CopyBufferToImage(commandBuffer, stagingBuffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, extent);
+        CopyBufferToImage(commandBuffer, stagingBuffer.bufferHandle, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, extent);
 
         // Trasition the layout of the image to be used as a texture
         VkImageMemoryBarrier2 secondTransitionBarrier{};
@@ -226,7 +226,7 @@ namespace BlitzenVulkan
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &transitionToTransferDSToptimal);
 
-        CopyBufferToImage(commandBuffer, buffer.buffer, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, copyRegions.Data());
+        CopyBufferToImage(commandBuffer, buffer.bufferHandle, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, copyRegions.Data());
 
         VkImageMemoryBarrier2 transitionImageToShaderReadOptimal{};
         ImageMemoryBarrier(image.image, transitionImageToShaderReadOptimal, VK_PIPELINE_STAGE_2_COPY_BIT, 
@@ -484,10 +484,10 @@ namespace BlitzenVulkan
 
     AllocatedBuffer::~AllocatedBuffer()
     {
-        if(buffer != VK_NULL_HANDLE)
+        if(bufferHandle != VK_NULL_HANDLE)
         {
             VmaAllocator vma = VulkanRenderer::GetRendererInstance()->m_allocator;
-            vmaDestroyBuffer(vma, buffer, allocation);
+            vmaDestroyBuffer(vma, bufferHandle, allocation);
         }
     }
 

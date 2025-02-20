@@ -10,10 +10,6 @@
 // The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
-#ifndef _WIN32
-    #undef BLITZEN_OPENGL
-#endif
-
 namespace BlitzenEngine
 {
     enum class ActiveRenderer : uint8_t

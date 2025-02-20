@@ -506,7 +506,7 @@ namespace BlitzenVulkan
             // Creates the VkWriteDescriptor for this buffer here, as it will reamain constant 
             WriteBufferDescriptorSets(buffers.viewDataBuffer.descriptorWrite, buffers.viewDataBuffer.bufferInfo, 
             buffers.viewDataBuffer.descriptorType, buffers.viewDataBuffer.descriptorBinding, 
-            buffers.viewDataBuffer.buffer.buffer);
+            buffers.viewDataBuffer.buffer.bufferHandle);
         }
 
         return 1;
@@ -539,7 +539,7 @@ namespace BlitzenVulkan
         CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), m_currentStaticBuffers.indexBuffer, 
         stagingIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize);
         // Checks if the above function failed
-        if(m_currentStaticBuffers.indexBuffer.buffer == VK_NULL_HANDLE)
+        if(m_currentStaticBuffers.indexBuffer.bufferHandle == VK_NULL_HANDLE)
             return 0;
 
         // Creates an SSBO that will hold all the render objects that were loaded for the scene
@@ -645,49 +645,49 @@ namespace BlitzenVulkan
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         // Copies the data held by the staging buffer to the vertex buffer
-        CopyBufferToBuffer(commandBuffer, stagingVertexBuffer.buffer, 
-        m_currentStaticBuffers.vertexBuffer.buffer.buffer, vertexBufferSize, 
+        CopyBufferToBuffer(commandBuffer, stagingVertexBuffer.bufferHandle, 
+        m_currentStaticBuffers.vertexBuffer.buffer.bufferHandle, vertexBufferSize, 
         0, 0);
 
         // Copies the index data held by the staging buffer to the index buffer
-        CopyBufferToBuffer(commandBuffer, stagingIndexBuffer.buffer, 
-        m_currentStaticBuffers.indexBuffer.buffer, indexBufferSize, 
+        CopyBufferToBuffer(commandBuffer, stagingIndexBuffer.bufferHandle, 
+        m_currentStaticBuffers.indexBuffer.bufferHandle, indexBufferSize, 
         0, 0);
 
         // Copies the render object data held by the staging buffer to the render object buffer
-        CopyBufferToBuffer(commandBuffer, renderObjectStagingBuffer.buffer, 
-        m_currentStaticBuffers.renderObjectBuffer.buffer.buffer, renderObjectBufferSize, 
+        CopyBufferToBuffer(commandBuffer, renderObjectStagingBuffer.bufferHandle, 
+        m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle, renderObjectBufferSize, 
         0, 0);
 
         // Copies the surface data held by the staging buffer to the surface buffer
-        CopyBufferToBuffer(commandBuffer, surfaceStagingBuffer.buffer, 
-        m_currentStaticBuffers.surfaceBuffer.buffer.buffer, surfaceBufferSize, 
+        CopyBufferToBuffer(commandBuffer, surfaceStagingBuffer.bufferHandle, 
+        m_currentStaticBuffers.surfaceBuffer.buffer.bufferHandle, surfaceBufferSize, 
         0, 0);
 
         // Copies the material data held by the staging buffer to the material buffer
-        CopyBufferToBuffer(commandBuffer, materialStagingBuffer.buffer, 
-        m_currentStaticBuffers.materialBuffer.buffer.buffer, materialBufferSize, 
+        CopyBufferToBuffer(commandBuffer, materialStagingBuffer.bufferHandle, 
+        m_currentStaticBuffers.materialBuffer.buffer.bufferHandle, materialBufferSize, 
         0, 0);
 
         // Copies the transform data held by the staging buffer to the transform buffer
-        CopyBufferToBuffer(commandBuffer, transformStagingBuffer.buffer,
-        m_currentStaticBuffers.transformBuffer.buffer.buffer, transformBufferSize, 
+        CopyBufferToBuffer(commandBuffer, transformStagingBuffer.bufferHandle,
+        m_currentStaticBuffers.transformBuffer.buffer.bufferHandle, transformBufferSize, 
         0, 0);
         
         if(m_stats.meshShaderSupport)
         {
             // Copies the cluster data held by the staging buffer to the meshlet buffer
-            CopyBufferToBuffer(commandBuffer, meshletStagingBuffer.buffer, 
-            m_currentStaticBuffers.meshletBuffer.buffer.buffer, meshletBufferSize, 
+            CopyBufferToBuffer(commandBuffer, meshletStagingBuffer.bufferHandle, 
+            m_currentStaticBuffers.meshletBuffer.buffer.bufferHandle, meshletBufferSize, 
             0, 0);
 
-            CopyBufferToBuffer(commandBuffer, meshletDataStagingBuffer.buffer, 
-            m_currentStaticBuffers.meshletDataBuffer.buffer.buffer, meshletDataBufferSize, 
+            CopyBufferToBuffer(commandBuffer, meshletDataStagingBuffer.bufferHandle, 
+            m_currentStaticBuffers.meshletDataBuffer.buffer.bufferHandle, meshletDataBufferSize, 
             0, 0);
         }
 
         // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
-        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.visibilityBuffer.buffer.buffer, 0, visibilityBufferSize, 0);
+        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, 0, visibilityBufferSize, 0);
         
         // Submit the commands and wait for the queue to finish
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
