@@ -190,7 +190,7 @@ namespace BlitCL
             {
                 T* pTempBlock = m_pBlock;
 
-                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+                m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::DynamicArray>(m_capacity);
 
                 BlitzenCore::BlitMemCopy(m_pBlock, pTempBlock, (index) * sizeof(T));
 
@@ -211,12 +211,21 @@ namespace BlitCL
             }
         }
 
-        ~DynamicArray()
+        void DestroyManually()
         {
             if(m_capacity > 0)
             {
                 BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity);
+                m_pBlock = nullptr;
+                m_size = 0;
+                m_capacity = 0;
             }
+        }
+
+        ~DynamicArray()
+        {
+            if(m_capacity > 0)
+                BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity);
         }
 
     private:
@@ -235,7 +244,7 @@ namespace BlitCL
             size_t temp = m_capacity;
             m_capacity = newSize * ce_blitDynamiArrayCapacityMultiplier;
             T* pTemp = m_pBlock;
-            m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+            m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::DynamicArray>(m_capacity);
             if (m_size != 0)
             {
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_size * sizeof(T));

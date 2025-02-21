@@ -91,9 +91,13 @@ namespace BlitzenVulkan
         TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
         size_t textureCount = 0;
 
+        /*
+            TODO: Switch this to memory crucial handle pointer, to the memory manager
+        */
+        // The Vulkan API instance
+        VkInstance m_instance;
         // Used to allocate vulkan resources like buffers and images
         VmaAllocator m_allocator;
-
         // Handle to the logical device
         VkDevice m_device;
 
@@ -104,8 +108,6 @@ namespace BlitzenVulkan
 
         // Custom allocator, don't need it right now
         VkAllocationCallbacks* m_pCustomAllocator = nullptr;
-
-        VkInstance m_instance;
 
         VkDebugUtilsMessengerEXT m_debugMessenger;
 
@@ -193,7 +195,7 @@ namespace BlitzenVulkan
             PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
             
             AllocatedBuffer blasBuffer;
-            BlitCL::DynamicArray<VkAccelerationStructureKHR> blasData;
+            BlitCL::DynamicArray<AccelerationStructure> blasData;
         };
         StaticBuffers m_currentStaticBuffers;
 

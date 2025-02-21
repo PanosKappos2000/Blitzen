@@ -112,6 +112,16 @@ namespace BlitzenVulkan
         uint8_t hasIndex = 0;
     };
 
+    struct AccelerationStructure
+    {
+        VkAccelerationStructureKHR handle = VK_NULL_HANDLE;
+
+        ~AccelerationStructure();
+
+        // I have this here if I were want to handle this type of thing like this, but just saying handle is probably better
+        inline VkAccelerationStructureKHR get() {return handle;}
+    };
+
 
 
 

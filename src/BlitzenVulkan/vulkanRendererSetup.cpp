@@ -3,7 +3,7 @@
 
 namespace BlitzenVulkan
 {
-    VkResult CreateAccelerationStructureKHR(VkInstance instance, VkDevice device, 
+    static VkResult CreateAccelerationStructureKHR(VkInstance instance, VkDevice device, 
     const VkAccelerationStructureCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator,
     VkAccelerationStructureKHR* pAccelerationStructure)
     {
@@ -12,10 +12,12 @@ namespace BlitzenVulkan
         if (func != nullptr) 
         {
             return func(device, pCreateInfo, pAllocator, pAccelerationStructure);
-        } 
+        }
+
+        return VK_NOT_READY;
     }
 
-    void BuildAccelerationStructureKHR(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t infoCount, 
+    static void BuildAccelerationStructureKHR(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t infoCount, 
     const VkAccelerationStructureBuildGeometryInfoKHR* buildInfos, const VkAccelerationStructureBuildRangeInfoKHR* const *ppRangeInfos)
     {
         auto func = (PFN_vkCmdBuildAccelerationStructuresKHR) vkGetInstanceProcAddr(
@@ -26,7 +28,7 @@ namespace BlitzenVulkan
         }
     }
 
-    void GetAccelerationStructureBuildSizesKHR(VkInstance instance, VkDevice device, 
+    static void GetAccelerationStructureBuildSizesKHR(VkInstance instance, VkDevice device, 
     VkAccelerationStructureBuildTypeKHR buildType, const VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo, 
     const uint32_t* pMaxPrimitiveCounts, VkAccelerationStructureBuildSizesInfoKHR* pBuildSizes)
     {
@@ -751,8 +753,9 @@ namespace BlitzenVulkan
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
-        /*if(!BuildBlas(surfaces, pResources->primitiveVertexCounts))
-            return 0; Commenting out because it is broken at the moment*/
+        if(m_stats.bRayTracingSupported)
+            if(!BuildBlas(surfaces, pResources->primitiveVertexCounts))
+                return 0;
 
         // Fails if there are no textures to load
         if(textureCount == 0)
@@ -799,8 +802,8 @@ namespace BlitzenVulkan
             return 0;
 
         BlitCL::DynamicArray<uint32_t> primitiveCounts(surfaces.GetSize());
-        BlitCL::DynamicArray<VkAccelerationStructureGeometryKHR> geometries(surfaces.GetSize());
-	    BlitCL::DynamicArray<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos(surfaces.GetSize());
+        BlitCL::DynamicArray<VkAccelerationStructureGeometryKHR> geometries(surfaces.GetSize(), {});
+	    BlitCL::DynamicArray<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos(surfaces.GetSize(), {});
 
         BlitCL::DynamicArray<size_t> accelerationOffsets(surfaces.GetSize());
 	    BlitCL::DynamicArray<size_t> accelerationSizes(surfaces.GetSize());
@@ -822,6 +825,7 @@ namespace BlitzenVulkan
             VkAccelerationStructureGeometryKHR& geometry = geometries[i];
             VkAccelerationStructureBuildGeometryInfoKHR& buildInfo = buildInfos[i];
 
+            // Specifies the geometry for this accelration structure
             geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
             geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
             geometry.pNext = nullptr;
@@ -832,19 +836,21 @@ namespace BlitzenVulkan
 
             // Passing vertex data
             geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-            // Get the precise address of the vertex data of the current surface (needs to be incremented by the vertex offset)
+            // Get the precise address of the vertex buffer for the current surface (needs to be incremented by the vertex offset)
             geometry.geometry.triangles.vertexData.deviceAddress = 
             static_cast<VkDeviceAddress>(vertexBufferAddress + surface.vertexOffset * sizeof(BlitzenEngine::Vertex));
             geometry.geometry.triangles.vertexStride = sizeof(BlitzenEngine::Vertex);
+            // Primitive vertex count (at the moment), is an array created for this one, optinal line of code
             geometry.geometry.triangles.maxVertex = primitiveVertexCounts[i];
 
             // Passing index data
             geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
+            // Precise address of the index buffer
             geometry.geometry.triangles.indexData.deviceAddress = 
             static_cast<VkDeviceAddress>(indexBufferAddress + surface.meshLod[0].firstIndex * sizeof(uint32_t));
             
 
-            // build info for the above, it is possible that I can specify only one of these for all of the geometries
+            // Build info for the acceleration structu. Takes the geometry struct from above and some other configs
             buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             buildInfo.pNext = nullptr;
             buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
@@ -858,7 +864,6 @@ namespace BlitzenVulkan
 
             VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
             sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-            // TODO: This POS fails for some reason, but I am tired to do anything about it today
 		    GetAccelerationStructureBuildSizesKHR(m_instance, m_device, 
             VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &primitiveCounts[i], &sizeInfo);
 
@@ -885,7 +890,8 @@ namespace BlitzenVulkan
 
         m_currentStaticBuffers.blasData.Resize(surfaces.GetSize());
 
-        BlitCL::DynamicArray<VkAccelerationStructureBuildRangeInfoKHR> buildRanges(surfaces.GetSize());
+        // Need to empty-brace initialize every damned struct otherwise Vulkan breaks
+        BlitCL::DynamicArray<VkAccelerationStructureBuildRangeInfoKHR> buildRanges(surfaces.GetSize(), {});
 	    BlitCL::DynamicArray<const VkAccelerationStructureBuildRangeInfoKHR*> buildRangePtrs(surfaces.GetSize());
 
         for (size_t i = 0; i < surfaces.GetSize(); ++i)
@@ -898,23 +904,37 @@ namespace BlitzenVulkan
 		    accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
 		    if(CreateAccelerationStructureKHR(m_instance, m_device, &accelerationInfo, nullptr, 
-            &m_currentStaticBuffers.blasData[i]) != VK_SUCCESS)
+            &m_currentStaticBuffers.blasData[i].handle) != VK_SUCCESS)
                 return 0;
 
-		    buildInfos[i].dstAccelerationStructure = m_currentStaticBuffers.blasData[i];
+		    buildInfos[i].dstAccelerationStructure = m_currentStaticBuffers.blasData[i].handle;
 		    buildInfos[i].scratchData.deviceAddress = blasStagingBufferAddress + scratchOffsets[i];
 
+            VkAccelerationStructureBuildRangeInfoKHR& buildRange = buildRanges[i];
 		    buildRanges[i].primitiveCount = primitiveCounts[i];
 		    buildRangePtrs[i] = &buildRanges[i];
         }
 
         VkCommandBuffer commandBuffer = m_frameToolsList[0].commandBuffer;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
         BuildAccelerationStructureKHR(m_instance, commandBuffer, static_cast<uint32_t>(surfaces.GetSize()), 
         buildInfos.Data(), buildRangePtrs.Data());
-        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
-        vkQueueWaitIdle(m_graphicsQueue.handle);
 
+        VkFence accelerationStructureFence;
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        if(vkCreateFence(m_device, &fenceInfo, nullptr, &accelerationStructureFence) != VK_SUCCESS)
+            return 0;
+
+        // Putting a fence on submit, because device wait idle and queue wait idle did not work
+        SubmitCommandBuffer(m_computeQueue.handle, commandBuffer, 0, VK_NULL_HANDLE, 
+        VK_PIPELINE_STAGE_2_NONE, 0, VK_NULL_HANDLE, VK_PIPELINE_STAGE_2_NONE, accelerationStructureFence);
+        VkResult fenceWaitResult = vkWaitForFences(m_device, 1, &accelerationStructureFence, VK_TRUE, UINT64_MAX);
+        if (fenceWaitResult != VK_SUCCESS)
+            return 0;
+
+        vkDestroyFence(m_device, accelerationStructureFence, nullptr);
         return 1;
     }
 }

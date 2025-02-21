@@ -461,36 +461,6 @@ namespace BlitzenVulkan
         result.bufferRowLength = bufferRowLength;
     }
 
-    void AllocatedImage::CleanupResources(VmaAllocator allocator, VkDevice device)
-    {
-        vmaDestroyImage(allocator, image, allocation);
-        vkDestroyImageView(device, imageView, nullptr);
-    }
-
-    AllocatedImage::~AllocatedImage()
-    {
-        if(image != VK_NULL_HANDLE)
-        {
-            VmaAllocator vma = VulkanRenderer::GetRendererInstance()->m_allocator;
-            vmaDestroyImage(vma, image, allocation);
-        }
-
-        if(imageView != VK_NULL_HANDLE)
-        {
-            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
-            vkDestroyImageView(vdv, imageView, nullptr);
-        }
-    }
-
-    AllocatedBuffer::~AllocatedBuffer()
-    {
-        if(bufferHandle != VK_NULL_HANDLE)
-        {
-            VmaAllocator vma = VulkanRenderer::GetRendererInstance()->m_allocator;
-            vmaDestroyBuffer(vma, bufferHandle, allocation);
-        }
-    }
-
     VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets)
     {
         VkDescriptorPoolCreateInfo poolInfo{};
@@ -632,5 +602,59 @@ namespace BlitzenVulkan
         barrier.srcAccessMask = firstAccessStage;
         barrier.dstStageMask = secondSyncStage;
         barrier.dstAccessMask = secondAccessStage;
+    }
+
+
+
+
+    void AllocatedImage::CleanupResources(VmaAllocator allocator, VkDevice device)
+    {
+        vmaDestroyImage(allocator, image, allocation);
+        vkDestroyImageView(device, imageView, nullptr);
+    }
+
+    AllocatedImage::~AllocatedImage()
+    {
+        if(image != VK_NULL_HANDLE)
+        {
+            VmaAllocator vma = VulkanRenderer::GetRendererInstance()->m_allocator;
+            vmaDestroyImage(vma, image, allocation);
+        }
+
+        if(imageView != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyImageView(vdv, imageView, nullptr);
+        }
+    }
+
+    AllocatedBuffer::~AllocatedBuffer()
+    {
+        if(bufferHandle != VK_NULL_HANDLE)
+        {
+            VmaAllocator vma = VulkanRenderer::GetRendererInstance()->m_allocator;
+            vmaDestroyBuffer(vma, bufferHandle, allocation);
+        }
+    }
+
+    static void DestroyAccelerationStructureKHR(VkInstance instance, VkDevice device, 
+    VkAccelerationStructureKHR as, const VkAllocationCallbacks* pAllocator)
+    {
+        auto func = (PFN_vkDestroyAccelerationStructureKHR) vkGetInstanceProcAddr(
+        instance, "vkDestroyAccelerationStructureKHR");
+        if(func != nullptr)
+        {
+            func(device, as, pAllocator);
+        }
+    }
+
+    AccelerationStructure::~AccelerationStructure()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            VkInstance inst = VulkanRenderer::GetRendererInstance()->m_instance;
+            DestroyAccelerationStructureKHR(inst, vdv, handle, nullptr);
+        }
     }
 }
