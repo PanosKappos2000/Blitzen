@@ -3,6 +3,44 @@
 
 namespace BlitzenVulkan
 {
+    VkResult CreateAccelerationStructureKHR(VkInstance instance, VkDevice device, 
+    const VkAccelerationStructureCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator,
+    VkAccelerationStructureKHR* pAccelerationStructure)
+    {
+        auto func = (PFN_vkCreateAccelerationStructureKHR) vkGetInstanceProcAddr(
+        instance, "vkCreateAccelerationStructureKHR");
+        if (func != nullptr) 
+        {
+            return func(device, pCreateInfo, pAllocator, pAccelerationStructure);
+        } 
+    }
+
+    void BuildAccelerationStructureKHR(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t infoCount, 
+    const VkAccelerationStructureBuildGeometryInfoKHR* buildInfos, const VkAccelerationStructureBuildRangeInfoKHR* const *ppRangeInfos)
+    {
+        auto func = (PFN_vkCmdBuildAccelerationStructuresKHR) vkGetInstanceProcAddr(
+        instance, "vkCmdBuildAccelerationStructuresKHR");
+        if(func != nullptr)
+        {
+            func(commandBuffer, infoCount, buildInfos, ppRangeInfos);
+        }
+    }
+
+    void GetAccelerationStructureBuildSizesKHR(VkInstance instance, VkDevice device, 
+    VkAccelerationStructureBuildTypeKHR buildType, const VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo, 
+    const uint32_t* pMaxPrimitiveCounts, VkAccelerationStructureBuildSizesInfoKHR* pBuildSizes)
+    {
+        auto func = (PFN_vkGetAccelerationStructureBuildSizesKHR) vkGetInstanceProcAddr(
+        instance, "vkGetAccelerationStructureBuildSizesKHR");
+        if(func != nullptr)
+        {
+            func(device, buildType, pBuildInfo, pMaxPrimitiveCounts, pBuildSizes);
+        }
+    }
+
+
+
+
     void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format)
     {
         CreateTextureImage(reinterpret_cast<void*>(newTexture.pTextureData), m_device, m_allocator, 
@@ -155,9 +193,7 @@ namespace BlitzenVulkan
         }
 
         // Upload static data to gpu (though some of these might not be static in the future)
-        if(!UploadDataToGPU(pResources->vertices, pResources->indices, pResources->renders, pResources->renderObjectCount,
-        pResources->materials, pResources->materialCount, pResources->meshlets, pResources->meshletData, 
-        pResources->surfaces, pResources->transforms))
+        if(!UploadDataToGPU(pResources))
         {
             BLIT_ERROR("Failed to upload data to the GPU")
             return 0;
@@ -512,11 +548,31 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, 
-    BlitzenEngine::RenderObject* pRenderObjects, size_t renderObjectCount, BlitzenEngine::Material* pMaterials, size_t materialCount, 
-    BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, BlitCL::DynamicArray<uint32_t>& meshletData, 
-    BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms)
+    uint8_t VulkanRenderer::UploadDataToGPU(BlitzenEngine::RenderingResources* pResources)
     {
+        BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->vertices;
+        BlitCL::DynamicArray<uint32_t>& indices = pResources->indices;
+
+        BlitzenEngine::RenderObject* pRenderObjects = pResources->renders;
+        uint32_t renderObjectCount = pResources->renderObjectCount;
+
+        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces = pResources->surfaces;
+
+        BlitzenEngine::Material* pMaterials = pResources->materials;
+        uint32_t materialCount = static_cast<uint32_t>(pResources->materialCount);
+
+        // TODO: Why the hell are transforms stored dynamically
+        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms = pResources->transforms;
+
+        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets = pResources->meshlets;
+        BlitCL::DynamicArray<uint32_t>& meshletData = pResources->meshletData;
+
+
+        uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        : 0;
+
+
         // Creates a storage buffer that will hold the vertices
         VkDeviceSize vertexBufferSize = sizeof(BlitzenEngine::Vertex) * vertices.GetSize();
         // Fails if there are no vertices
@@ -526,7 +582,8 @@ namespace BlitzenVulkan
         AllocatedBuffer stagingVertexBuffer;
         // Initializes the push descritpor buffer struct that holds the vertex buffer
         if(!SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.vertexBuffer, stagingVertexBuffer, 
-        vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertices.Data()))
+        vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        geometryBuffersRaytracingFlags, vertices.Data()))
             return 0;
 
         // Creates an index buffer that will hold all the loaded indices
@@ -537,7 +594,8 @@ namespace BlitzenVulkan
         // Creates a staging buffer to hold the index data and pass it to the index buffer later
         AllocatedBuffer stagingIndexBuffer;
         CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), m_currentStaticBuffers.indexBuffer, 
-        stagingIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize);
+        stagingIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+        geometryBuffersRaytracingFlags, indexBufferSize);
         // Checks if the above function failed
         if(m_currentStaticBuffers.indexBuffer.bufferHandle == VK_NULL_HANDLE)
             return 0;
@@ -693,8 +751,8 @@ namespace BlitzenVulkan
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
-        //if(!BuildBlas(surfaces, ))
-            //return 0; TODO: Change the parameter of this whole function to be RenderingResources, instead of the huge blob of arrays
+        /*if(!BuildBlas(surfaces, pResources->primitiveVertexCounts))
+            return 0; Commenting out because it is broken at the moment*/
 
         // Fails if there are no textures to load
         if(textureCount == 0)
@@ -743,13 +801,14 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<uint32_t> primitiveCounts(surfaces.GetSize());
         BlitCL::DynamicArray<VkAccelerationStructureGeometryKHR> geometries(surfaces.GetSize());
 	    BlitCL::DynamicArray<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos(surfaces.GetSize());
+
         BlitCL::DynamicArray<size_t> accelerationOffsets(surfaces.GetSize());
 	    BlitCL::DynamicArray<size_t> accelerationSizes(surfaces.GetSize());
 	    BlitCL::DynamicArray<size_t> scratchOffsets(surfaces.GetSize());
 
         constexpr size_t ce_alignment = 256; // required by spec for acceleration structures
 
-        size_t totalAllocationSize = 0;
+        size_t totalAccelerationSize = 0;
         size_t totalScratchSize = 0;
 
         VkDeviceAddress vertexBufferAddress = GetBufferAddress(m_device, 
@@ -785,9 +844,76 @@ namespace BlitzenVulkan
             static_cast<VkDeviceAddress>(indexBufferAddress + surface.meshLod[0].firstIndex * sizeof(uint32_t));
             
 
+            // build info for the above, it is possible that I can specify only one of these for all of the geometries
             buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             buildInfo.pNext = nullptr;
+            buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+            buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+            buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+            buildInfo.geometryCount = 1;
+            buildInfo.pGeometries = &geometry;
+
+
+            primitiveCounts[i] = surface.meshLod[0].indexCount / 3;
+
+            VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
+            sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+            // TODO: This POS fails for some reason, but I am tired to do anything about it today
+		    GetAccelerationStructureBuildSizesKHR(m_instance, m_device, 
+            VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &primitiveCounts[i], &sizeInfo);
+
+    		accelerationOffsets[i] = totalAccelerationSize;
+            accelerationSizes[i] = sizeInfo.accelerationStructureSize;
+            scratchOffsets[i] = totalScratchSize;
+
+		    totalAccelerationSize = (totalAccelerationSize + sizeInfo.accelerationStructureSize + 
+            ce_alignment - 1) & ~(ce_alignment - 1);
+            totalScratchSize = (totalScratchSize + sizeInfo.buildScratchSize + ce_alignment - 1) & ~(ce_alignment - 1);
         }
+
+        if(!CreateBuffer(m_allocator, m_currentStaticBuffers.blasBuffer, 
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, totalAccelerationSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            return 0;
+
+        AllocatedBuffer stagingBuffer;
+        if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, totalScratchSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            return 0;
+
+        VkDeviceAddress blasStagingBufferAddress = GetBufferAddress(m_device, stagingBuffer.bufferHandle);
+
+        m_currentStaticBuffers.blasData.Resize(surfaces.GetSize());
+
+        BlitCL::DynamicArray<VkAccelerationStructureBuildRangeInfoKHR> buildRanges(surfaces.GetSize());
+	    BlitCL::DynamicArray<const VkAccelerationStructureBuildRangeInfoKHR*> buildRangePtrs(surfaces.GetSize());
+
+        for (size_t i = 0; i < surfaces.GetSize(); ++i)
+	    {
+		    VkAccelerationStructureCreateInfoKHR accelerationInfo {};
+            accelerationInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+		    accelerationInfo.buffer = m_currentStaticBuffers.blasBuffer.bufferHandle;
+		    accelerationInfo.offset = accelerationOffsets[i];
+		    accelerationInfo.size = accelerationSizes[i];
+		    accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+
+		    if(CreateAccelerationStructureKHR(m_instance, m_device, &accelerationInfo, nullptr, 
+            &m_currentStaticBuffers.blasData[i]) != VK_SUCCESS)
+                return 0;
+
+		    buildInfos[i].dstAccelerationStructure = m_currentStaticBuffers.blasData[i];
+		    buildInfos[i].scratchData.deviceAddress = blasStagingBufferAddress + scratchOffsets[i];
+
+		    buildRanges[i].primitiveCount = primitiveCounts[i];
+		    buildRangePtrs[i] = &buildRanges[i];
+        }
+
+        VkCommandBuffer commandBuffer = m_frameToolsList[0].commandBuffer;
+        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        BuildAccelerationStructureKHR(m_instance, commandBuffer, static_cast<uint32_t>(surfaces.GetSize()), 
+        buildInfos.Data(), buildRangePtrs.Data());
+        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
+        vkQueueWaitIdle(m_graphicsQueue.handle);
 
         return 1;
     }

@@ -57,16 +57,7 @@ namespace BlitzenVulkan
         uint8_t CreateDescriptorLayouts();
 
         // Takes the data that is to be used in the scene (vertices, primitives, textures etc.) and uploads to the appropriate resource struct
-        uint8_t UploadDataToGPU(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, 
-        BlitCL::DynamicArray<uint32_t>& indices, 
-        BlitzenEngine::RenderObject* pRenderObjects, 
-        size_t renderObjectCount, 
-        BlitzenEngine::Material* pMaterials, 
-        size_t materialCount, 
-        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets, 
-        BlitCL::DynamicArray<uint32_t>& meshletData,
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
-        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
+        uint8_t UploadDataToGPU(BlitzenEngine::RenderingResources* pResources);
 
         // Since the way the graphics pipelines work is fixed and there are only 2 of them, the code is collected in this fixed function
         uint8_t SetupMainGraphicsPipeline();
@@ -199,7 +190,10 @@ namespace BlitzenVulkan
 
             // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
             // It will hold either 1 or 0 for each object based on if they were visible last frame or not
-            PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};  
+            PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+            
+            AllocatedBuffer blasBuffer;
+            BlitCL::DynamicArray<VkAccelerationStructureKHR> blasData;
         };
         StaticBuffers m_currentStaticBuffers;
 
