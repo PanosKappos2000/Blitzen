@@ -205,7 +205,7 @@ namespace BlitzenVulkan
         // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
         // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullPipelineLayout, &m_initialDrawCullPipeline))
+        m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
         {
             BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
             return 0;
@@ -235,7 +235,7 @@ namespace BlitzenVulkan
         // It creates a draw command for the objects that were not tested by the previous shader
         // It also sets the visibility of each object for this frame, so that it can be accessed next frame
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullPipelineLayout, &m_lateDrawCullPipeline))
+        m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle))
         {
             BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
             return 0;
