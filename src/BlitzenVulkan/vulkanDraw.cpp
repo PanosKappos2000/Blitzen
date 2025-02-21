@@ -55,8 +55,8 @@ namespace BlitzenVulkan
         pushDescriptorWritesCompute[0] = vBuffers.viewDataBuffer.descriptorWrite;
         
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
-        vkWaitForFences(m_device, 1, &(fTools.inFlightFence), VK_TRUE, 1000000000);
-        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence)))
+        vkWaitForFences(m_device, 1, &(fTools.inFlightFence.handle), VK_TRUE, 1000000000);
+        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
         // Write the data to the buffer pointers
         #ifdef NDEBUG
@@ -72,13 +72,13 @@ namespace BlitzenVulkan
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, 
-        1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
+        1000000000, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
 
         // The command buffer recording begin here (stops when submit is called)
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
         // Dispatch the culling shader for the intial pass. This will perform frustum culling and LOD selection for objects that were visible last frame
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline, 
+        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
         BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 0, 0, 
         context.bOcclusionCulling, context.bLOD);
 
@@ -105,7 +105,7 @@ namespace BlitzenVulkan
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderingAttachmentDefinitionBarriers);
 
         // Draw the objects based on the indirect draw buffer and indirect count buffer that were written by the culling shader
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, context.drawCount, 0, m_opaqueGeometryPipeline);
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, context.drawCount, 0, m_opaqueGeometryPipeline.handle);
 
 
         // Before the late culling shader the depth pyramid needs to be generated based on the early pass depth attachment
@@ -113,21 +113,23 @@ namespace BlitzenVulkan
 
         // Dispatches the late culling compute shader which does frustum culling, occlusion culling and LOD selection on everything
         // It only draws the objects that were not visible last frame and updates the visibility buffer for all objects
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
+        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
         BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 0, 
         context.bOcclusionCulling, context.bLOD);
 
-        // Draw the objects based on the indirect draw buffer and indirect count buffer that were written by the culling shader
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, context.drawCount, 1, m_opaqueGeometryPipeline);
+        // Draw the objects based on the indirect draw buffer and indirect count buffer
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
+        context.drawCount, 1, m_opaqueGeometryPipeline.handle);
 
 
         // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution will be found)
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline, 
+        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
         BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 1, 
         context.bOcclusionCulling, context.bLOD);
 
-        // Draw the transparent objects
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, context.drawCount, 1, m_postPassGeometryPipeline);
+        // Draws the transparent objects
+        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
+        context.drawCount, 1, m_postPassGeometryPipeline.handle);
         
 
 
@@ -182,14 +184,14 @@ namespace BlitzenVulkan
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
 
         // All commands have ben recorded, the command buffer is submitted
-        SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 1, fTools.imageAcquiredSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-        1, fTools.readyToPresentSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence);
+        SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 1, fTools.imageAcquiredSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
+        1, fTools.readyToPresentSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence.handle);
 
         // Presents the swapchain image, so that the rendering results are shown on the window
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &fTools.readyToPresentSemaphore;
+        presentInfo.pWaitSemaphores = &fTools.readyToPresentSemaphore.handle;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &(m_swapchainValues.swapchainHandle);
         presentInfo.pImageIndices = &swapchainIdx;
@@ -209,13 +211,9 @@ namespace BlitzenVulkan
             VkWriteDescriptorSet depthPyramidWrite{};
             VkDescriptorImageInfo depthPyramidImageInfo{};
             WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 
-            3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler);
+            3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler.handle);
             pushDescriptorWritesCompute[descriptorWriteCount - 1] = depthPyramidWrite;
         }
-
-        // Push the descriptor that need to be bound
-        PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullPipelineLayout, 
-        0, lateCulling ? descriptorWriteCount : descriptorWriteCount - 1, pDescriptorWrites);
 
         // Wait for previous render pass to be done with the indirect count buffer before zeroing it
         VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
@@ -270,11 +268,14 @@ namespace BlitzenVulkan
             PipelineBarrier(commandBuffer, 0, nullptr, 3, waitBeforeDispatchingShaders, 0, nullptr);
         }
 
+        // Push the descriptor that need to be bound
+        PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullLayout.handle, 
+        0, lateCulling ? descriptorWriteCount : descriptorWriteCount - 1, pDescriptorWrites);
         // Binds the shader's pipeline
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
         // Pass the push constant value
         DrawCullShaderPushConstant pc{drawCount, postPass, bOcclusionEnabled, bLODs};
-        vkCmdPushConstants(commandBuffer, m_drawCullPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
+        vkCmdPushConstants(commandBuffer, m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
         sizeof(DrawCullShaderPushConstant), &pc);
         vkCmdDispatch(commandBuffer, (drawCount / 64) + 1, 1, 1);
 
@@ -323,10 +324,10 @@ namespace BlitzenVulkan
 
         // Pushes all uniform buffer descriptors but the culling data one to the graphics pipelines
         PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-        m_opaqueGeometryPipelineLayout, 0, 7, pDescriptorWrites);
+        m_graphicsPipelineLayout.handle, 0, 7, pDescriptorWrites);
 
         // Bind the texture descriptor set. This one was allocated and written to in the UploadDataToGPU function
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_opaqueGeometryPipelineLayout, 1,
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipelineLayout.handle, 1,
         1, &m_textureDescriptorSet, 0, nullptr);
 
         // Binds the graphics pipeline before the draw call
@@ -377,7 +378,7 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 2, depthTransitionBarriers);
 
         // Bind the compute pipeline, the depth pyramid will be called for as many depth pyramid mip levels there are
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthPyramidGenerationPipeline);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthPyramidGenerationPipeline.handle);
 
         // Call the depth pyramid creation compute shader for every mip level in the depth pyramid
         for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
@@ -388,7 +389,7 @@ namespace BlitzenVulkan
             WriteImageDescriptorSets(srcAndDstDepthImageDescriptors[0], sourceImageInfo, 
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 1, 
             (i == 0) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL, 
-            (i == 0) ? m_depthAttachment.imageView : m_depthPyramidMips[i - 1], m_depthAttachmentSampler);
+            (i == 0) ? m_depthAttachment.imageView : m_depthPyramidMips[i - 1], m_depthAttachmentSampler.handle);
 
             // Pass the current depth pyramid image view to the shader as the output
             VkDescriptorImageInfo outImageInfo{};
@@ -396,15 +397,15 @@ namespace BlitzenVulkan
             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramidMips[i]);
 
             // Push the descriptor sets
-            PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_depthPyramidGenerationPipelineLayout, 
-            0, 2, srcAndDstDepthImageDescriptors);
+            PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+            m_depthPyramidGenerationLayout.handle, 0, 2, srcAndDstDepthImageDescriptors);
 
             // Calculate the extent of the current depth pyramid mip level
             uint32_t levelWidth = BlitML::Max(1u, (m_depthPyramidExtent.width) >> i);
             uint32_t levelHeight = BlitML::Max(1u, (m_depthPyramidExtent.height) >> i);
             // Pass the extent to the push constant
             BlitML::vec2 pyramidLevelExtentPushConstant(static_cast<float>(levelWidth), static_cast<float>(levelHeight));
-            vkCmdPushConstants(commandBuffer, m_depthPyramidGenerationPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
+            vkCmdPushConstants(commandBuffer, m_depthPyramidGenerationLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
             sizeof(BlitML::vec2), &pyramidLevelExtentPushConstant);
 
             // Dispatch the shader to generate the current mip level of the depth pyramid
@@ -545,7 +546,8 @@ namespace BlitzenVulkan
         }
 
         // ReCreate the depth pyramid after the old one has been destroyed
-        CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
+        CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
+        m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler.handle, 
         m_drawExtent, m_device, m_allocator, 0);
     }
 
@@ -555,12 +557,12 @@ namespace BlitzenVulkan
         FrameTools& fTools = m_frameToolsList[m_currentFrame];
         VkCommandBuffer commandBuffer = m_frameToolsList[m_currentFrame].commandBuffer;
 
-        vkWaitForFences(m_device, 1, &fTools.inFlightFence, VK_TRUE, 1000000000);
-        vkResetFences(m_device, 1, &fTools.inFlightFence);
+        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, 1000000000);
+        vkResetFences(m_device, 1, &fTools.inFlightFence.handle);
 
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
-        1000000000, fTools.imageAcquiredSemaphore, VK_NULL_HANDLE, &swapchainIdx);
+        1000000000, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
 
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -593,14 +595,14 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &swapchainPresentBarrier);
 
         // All commands have ben recorded, the command buffer is submitted
-        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer, 1, fTools.imageAcquiredSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-        1, fTools.readyToPresentSemaphore, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence);
+        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer, 1, fTools.imageAcquiredSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
+        1, fTools.readyToPresentSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence.handle);
 
         // Presents the swapchain image, so that the rendering results are shown on the window
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &fTools.readyToPresentSemaphore;
+        presentInfo.pWaitSemaphores = &fTools.readyToPresentSemaphore.handle;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &(m_swapchainValues.swapchainHandle);
         presentInfo.pImageIndices = &swapchainIdx;
@@ -610,7 +612,7 @@ namespace BlitzenVulkan
         for(size_t i = 0; i < ce_framesInFlight; ++i)
         {
             if(i != m_currentFrame)
-                vkResetFences(m_device, 1, &m_frameToolsList[i].inFlightFence);
+                vkResetFences(m_device, 1, &m_frameToolsList[i].inFlightFence.handle);
         }
     }
 

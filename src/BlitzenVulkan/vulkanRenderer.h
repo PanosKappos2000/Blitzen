@@ -10,6 +10,8 @@ namespace BlitzenVulkan
     {
     public:
 
+        VulkanRenderer();
+
         // Initalizes the Vulkan API. Creates the instance, finds a suitable device for the application's needs, creates surface and swapchain
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -87,10 +89,6 @@ namespace BlitzenVulkan
 
         inline VulkanStats GetStats() const {return m_stats;}
 
-        // Array of structs that represent the way textures will be pushed to the GPU
-        TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
-        size_t textureCount = 0;
-
         /*
             TODO: Switch this to memory crucial handle pointer, to the memory manager
         */
@@ -137,8 +135,14 @@ namespace BlitzenVulkan
         AllocatedImage m_depthPyramid;
         VkImageView m_depthPyramidMips[16];
         uint8_t m_depthPyramidMipLevels = 0;
+
         VkExtent2D m_depthPyramidExtent;
-        VkSampler m_depthAttachmentSampler;
+        ImageSampler m_depthAttachmentSampler;
+
+        // Array of structs that represent the way textures will be pushed to the GPU
+        TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
+        size_t textureCount = 0;
+        ImageSampler m_textureSampler;
 
     /*
         Buffer resources section
@@ -212,34 +216,17 @@ namespace BlitzenVulkan
     */
     private:
 
-        /*
-            Descriptor set layout for uniform buffers used by multiple shaders. 
-            This includes general data, buffer addresses, culling data etc.
-            Use pushes descriptors.
-            #binding [0]: global shader data uniform buffer
-            #binding [1]: vertex buffer SSBO
-            #binding [3]: culling data uniform buffer
-            #binding [4]: depth pyramid sampler
-        */
-        VkDescriptorSetLayout m_pushDescriptorBufferLayout;
+        // Layout for descriptors that will be using PushDescriptor extension. Has 10+ bindings
+        DescriptorSetLayout m_pushDescriptorBufferLayout;
 
         VkWriteDescriptorSet pushDescriptorWritesGraphics[7];
         VkWriteDescriptorSet pushDescriptorWritesCompute[8];
 
-        /*
-            Descriptor set layout for depth pyramid construction. 
-            Used by the depth reduce compute pipeline. 
-            Uses push descriptors
-            # binding[0]: storage image for output image
-            # binding[1]: combined image sampler for input image
-        */
-        VkDescriptorSetLayout m_depthPyramidDescriptorLayout;
+        // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
+        DescriptorSetLayout m_depthPyramidDescriptorLayout;
 
-        /*
-            Descriptor set layout for all textures accessed by the fragment shader
-            # binding[0]: non-uniform sampler that will be indexed into in the fragment shader to retrieve textures
-        */
-        VkDescriptorSetLayout m_textureDescriptorSetlayout;
+        // Descriptor layout for the texture descriptors. 1 binding that holds an array of textures
+        DescriptorSetLayout m_textureDescriptorSetlayout;
 
         // This descriptor set does not use push descriptors and thus it needs to be allocated with a descriptor pool
         VkDescriptorPool m_textureDescriptorPool;
@@ -250,10 +237,16 @@ namespace BlitzenVulkan
     */
     private:
 
-        // This pipeline Draws opaque objects using the indirect commands create by culling compute shaders
-        VkPipeline m_opaqueGeometryPipeline;
-        VkPipeline m_postPassGeometryPipeline;
-        VkPipelineLayout m_opaqueGeometryPipelineLayout;
+        // graphics pipeline object and lyaouts
+        PipelineObject m_opaqueGeometryPipeline;
+        PipelineObject m_postPassGeometryPipeline;
+        PipelineLayout m_graphicsPipelineLayout;
+
+        // Draws opaque geometries. Uses opaque geometry pipline object and graphics pipline layout
+        PipelineProgram m_opaqueGeometryProgram;
+
+        // Draw post pass geometries(geometries with alpha discard). Uses post pass geometry pipline and graphics pipeline layout
+        PipelineProgram m_postPassGeometryProgram;
 
         // These are compute pipelines that hold the shaders that will perform culling operations on render object level
         // @InitialDrawCull
@@ -262,14 +255,22 @@ namespace BlitzenVulkan
         // The late culling shader will do both frustum and occlusion culling on all objects
         // For objects that were not accessed by the initial shader, it will create draw commands (if the are not culled away)
         // It will also set the frame visibility of each object. This data will be accessed by the initial cull shader next frame
-        VkPipeline m_initialDrawCullPipeline;
-        VkPipeline m_lateDrawCullPipeline;
-        VkPipelineLayout m_drawCullPipelineLayout;
+        PipelineObject m_initialDrawCullPipeline;
+        PipelineObject m_lateDrawCullPipeline;
+        PipelineLayout m_drawCullLayout;
+
+        // Performs furstum culling and LOD selection on object that were tagged visible last frame by the late draw cull
+        // Sets up an indirect draw command buffer and indirect count buffer for the graphics programs to use
+        PipelineProgram m_initialDrawCullProgram;
+
+        // Performs frustum culling and occlusion culling and LOD selection on all objects
+        // Sets up an indirect draw command buffer and indirect count buffer for objects that were not tagged as visible last frame
+        PipelineProgram m_lateDrawCullProgram;
 
         // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
         // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 
-        VkPipeline m_depthPyramidGenerationPipeline;
-        VkPipelineLayout m_depthPyramidGenerationPipelineLayout;
+        PipelineObject m_depthPyramidGenerationPipeline;
+        PipelineLayout m_depthPyramidGenerationLayout;
     
     /*
         Runtime section
@@ -282,9 +283,9 @@ namespace BlitzenVulkan
             VkCommandPool mainCommandPool;
             VkCommandBuffer commandBuffer;
 
-            VkFence inFlightFence;
-            VkSemaphore imageAcquiredSemaphore;
-            VkSemaphore readyToPresentSemaphore;        
+            SyncFence inFlightFence;
+            Semaphore imageAcquiredSemaphore;
+            Semaphore readyToPresentSemaphore;        
         };
         FrameTools m_frameToolsList[ce_framesInFlight];
 
@@ -293,9 +294,6 @@ namespace BlitzenVulkan
 
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
-
-        // I do not need a sampler for each texture and there is a limit for each device, so I'll need to create only a few samlplers
-        VkSampler m_placeholderSampler;
     };
 
 

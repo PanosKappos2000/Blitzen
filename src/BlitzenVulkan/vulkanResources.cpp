@@ -637,6 +637,71 @@ namespace BlitzenVulkan
         }
     }
 
+    PipelineObject::~PipelineObject()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyPipeline(vdv, handle, nullptr);
+        }
+    }
+
+    PipelineLayout::~PipelineLayout()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyPipelineLayout(vdv, handle, nullptr);
+        }
+    }
+
+    ShaderModule::~ShaderModule()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyShaderModule(vdv, handle, nullptr);
+        }
+    }
+
+    DescriptorSetLayout::~DescriptorSetLayout()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyDescriptorSetLayout(vdv, handle, nullptr);
+        }
+    }
+
+    ImageSampler::~ImageSampler()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroySampler(vdv, handle, nullptr);
+        }
+    }
+
+    Semaphore::~Semaphore()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroySemaphore(vdv, handle, nullptr);
+        }
+    }
+
+    SyncFence::~SyncFence()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyFence(vdv, handle, nullptr);
+        }
+    }
+
+
+    // Acceleration structure is an extensions so it needs to load the destroy function as well
     static void DestroyAccelerationStructureKHR(VkInstance instance, VkDevice device, 
     VkAccelerationStructureKHR as, const VkAllocationCallbacks* pAllocator)
     {
@@ -647,7 +712,6 @@ namespace BlitzenVulkan
             func(device, as, pAllocator);
         }
     }
-
     AccelerationStructure::~AccelerationStructure()
     {
         if(handle != VK_NULL_HANDLE)

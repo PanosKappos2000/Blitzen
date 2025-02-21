@@ -50,7 +50,7 @@ namespace BlitzenVulkan
         {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, format, 
         VK_IMAGE_USAGE_SAMPLED_BIT, m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, 1);
         
-        loadedTextures[textureCount].sampler = m_placeholderSampler;
+        loadedTextures[textureCount].sampler = m_textureSampler.handle;
 
         ++textureCount;
     }
@@ -102,7 +102,7 @@ namespace BlitzenVulkan
         }
         
         // Add the global sampler at the element in the array that was just porcessed
-        loadedTextures[textureCount].sampler = m_placeholderSampler;
+        loadedTextures[textureCount].sampler = m_textureSampler.handle;
 
         textureCount++;
 
@@ -127,7 +127,7 @@ namespace BlitzenVulkan
     
         // This sampler will be used by all textures for now
         // Initialized here since textures can and will be given to Vulkan before the renderer is set up
-        if(!CreateTextureSampler(m_device, m_placeholderSampler))
+        if(!CreateTextureSampler(m_device, m_textureSampler.handle))
             return;
 
         // Creates command buffers and synchronization structures in the frame tools struct
@@ -173,8 +173,8 @@ namespace BlitzenVulkan
         }
 
         // Create the depth pyramid image and its mips that will be used for occlusion culling
-        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler, 
-        m_drawExtent, m_device, m_allocator))
+        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, 
+        m_depthAttachmentSampler.handle, m_drawExtent, m_device, m_allocator))
         {
             BLIT_ERROR("Failed to create the depth pyramid")
             return 0;
@@ -214,7 +214,7 @@ namespace BlitzenVulkan
         // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
         // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCullDebug.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullPipelineLayout, &m_initialDrawCullPipeline))
+        m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
         {
             BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
             return 0;
@@ -223,7 +223,7 @@ namespace BlitzenVulkan
         
         // Creates pipeline for the depth pyramid generation shader which will be dispatched before the late culling compute shader
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_depthPyramidGenerationPipelineLayout, &m_depthPyramidGenerationPipeline))
+        m_depthPyramidGenerationLayout.handle, &m_depthPyramidGenerationPipeline.handle))
         {
             BLIT_ERROR("Failed to create DepthPyramidGeneration.comp shader program")
             return 0;
@@ -242,7 +242,7 @@ namespace BlitzenVulkan
         }
         #else
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCullDebug.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullPipelineLayout, &m_lateDrawCullPipeline))
+        m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle))
         {
             BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
             return 0;
@@ -322,17 +322,20 @@ namespace BlitzenVulkan
                 return 0;
 
             // Creates the fence that stops the CPU from acquiring a new swapchain image before the GPU is done with the previous frame
-            VkResult fenceResult = vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator, &(frameTools.inFlightFence));
+            VkResult fenceResult = vkCreateFence(m_device, &fenceInfo, 
+            m_pCustomAllocator, &(frameTools.inFlightFence.handle));
             if(fenceResult != VK_SUCCESS)
                 return 0;
 
             // Creates the semaphore that stops command buffer submitting before the next swapchain image is acquired
-            VkResult imageSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore));
+            VkResult imageSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, 
+            m_pCustomAllocator, &(frameTools.imageAcquiredSemaphore.handle));
             if(imageSemaphoreResult != VK_SUCCESS)
                 return 0;
 
             // Creates the semaphore that stops presentation before the command buffer is submitted
-            VkResult presentSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator, &(frameTools.readyToPresentSemaphore));
+            VkResult presentSemaphoreResult = vkCreateSemaphore(m_device, &semaphoresInfo, 
+            m_pCustomAllocator, &(frameTools.readyToPresentSemaphore.handle));
             if(presentSemaphoreResult != VK_SUCCESS)
                 return 0;
         }
@@ -394,54 +397,44 @@ namespace BlitzenVulkan
         // Binding used for meshlet indices
         VkDescriptorSetLayoutBinding meshletDataBinding{};
 
+        // Descriptor set layout binding for view data uniform buffer descriptor
+        VkShaderStageFlags viewDataShaderStageFlags = m_stats.meshShaderSupport ? 
+        VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT :
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+        CreateDescriptorSetLayoutBinding(viewDataLayoutBinding, m_varBuffers[0].viewDataBuffer.descriptorBinding, 
+        1, m_varBuffers[0].viewDataBuffer.descriptorType, viewDataShaderStageFlags);
+
+        // Descriptor set layout binding for vertex buffer
+        VkShaderStageFlags vertexBufferShaderStageFlags = m_stats.meshShaderSupport ? 
+        VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+        VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(vertexBufferBinding, m_currentStaticBuffers.vertexBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.vertexBuffer.descriptorType, vertexBufferShaderStageFlags);
+
+        // Descriptor set layout binding for surface SSBO
+        VkShaderStageFlags surfaceBufferShaderStageFlags = m_stats.meshShaderSupport ?
+        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(surfaceBufferBinding, m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.surfaceBuffer.descriptorType, surfaceBufferShaderStageFlags);
+
+        // Descriptor set layout binding for cluster / meshlet SSBO
+        VkShaderStageFlags clusterBufferShaderStageFlags = m_stats.meshShaderSupport ?
+        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(meshletBufferBinding, m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.meshletBuffer.descriptorType, clusterBufferShaderStageFlags);
+
+        VkShaderStageFlags clusterDataBufferShaderStageFlags = m_stats.meshShaderSupport ? 
+        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(meshletDataBinding, m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
+        1, m_currentStaticBuffers.meshletDataBuffer.descriptorType, clusterDataBufferShaderStageFlags);
+
         // If mesh shaders are used the bindings needs to be accessed by mesh shaders, otherwise they will be accessed by vertex shader stage
         if(m_stats.meshShaderSupport)
-        {
-            CreateDescriptorSetLayoutBinding(viewDataLayoutBinding, m_varBuffers[0].viewDataBuffer.descriptorBinding, 
-            1, m_varBuffers[0].viewDataBuffer.descriptorType, 
-            VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
-
-            CreateDescriptorSetLayoutBinding(vertexBufferBinding, m_currentStaticBuffers.vertexBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.vertexBuffer.descriptorType, 
-            VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_TASK_BIT_EXT);
-
             CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.indirectTaskBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
-            
-            CreateDescriptorSetLayoutBinding(surfaceBufferBinding, m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.surfaceBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
-
-            CreateDescriptorSetLayoutBinding(meshletBufferBinding, m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.meshletBuffer.descriptorType, 
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
-
-            CreateDescriptorSetLayoutBinding(meshletDataBinding, m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.meshletDataBuffer.descriptorType, 
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT);
-        }
-        else
-        {
-            CreateDescriptorSetLayoutBinding(viewDataLayoutBinding, m_varBuffers[0].viewDataBuffer.descriptorBinding,
-            1, m_varBuffers[0].viewDataBuffer.descriptorType, 
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
-
-            CreateDescriptorSetLayoutBinding(vertexBufferBinding, m_currentStaticBuffers.vertexBuffer.descriptorBinding, 1, 
-            m_currentStaticBuffers.vertexBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT);
-
-            // This is never used if mesh shading is not supported, this is simply a placeholder
-            CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.indirectTaskBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
-
-            CreateDescriptorSetLayoutBinding(surfaceBufferBinding, m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.surfaceBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
-
-            CreateDescriptorSetLayoutBinding(meshletBufferBinding, m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.meshletBuffer.descriptorType, 
-            VK_SHADER_STAGE_COMPUTE_BIT);
-
-            CreateDescriptorSetLayoutBinding(meshletDataBinding, m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.meshletDataBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
-        }
+            1, m_currentStaticBuffers.indirectTaskBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT); 
 
         // Sets the binding for the depth image
         VkDescriptorSetLayoutBinding depthImageBinding{};
@@ -476,19 +469,19 @@ namespace BlitzenVulkan
         // All bindings combined to create the global shader data descriptor set layout
         VkDescriptorSetLayoutBinding shaderDataBindings[13] = {viewDataLayoutBinding, vertexBufferBinding, 
         depthImageBinding, renderObjectBufferBinding, transformBufferBinding, materialBufferBinding, 
-        indirectDrawBufferBinding, indirectTaskBufferBinding, indirectDrawCountBinding, visibilityBufferBinding, 
-        surfaceBufferBinding, meshletBufferBinding, meshletDataBinding};
-        m_pushDescriptorBufferLayout = CreateDescriptorSetLayout(m_device, 13, shaderDataBindings, 
+        indirectDrawBufferBinding, indirectDrawCountBinding, visibilityBufferBinding, 
+        surfaceBufferBinding, meshletBufferBinding, meshletDataBinding, indirectTaskBufferBinding};
+        m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(m_device, 12, shaderDataBindings, 
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-        if(m_pushDescriptorBufferLayout == VK_NULL_HANDLE)
+        if(m_pushDescriptorBufferLayout.handle == VK_NULL_HANDLE)
             return 0;
 
         // Descriptor set layout for textures
         VkDescriptorSetLayoutBinding texturesLayoutBinding{};
         CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(textureCount), 
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-        m_textureDescriptorSetlayout = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
-        if(m_textureDescriptorSetlayout == VK_NULL_HANDLE)
+        m_textureDescriptorSetlayout.handle = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
+        if(m_textureDescriptorSetlayout.handle == VK_NULL_HANDLE)
             return 0;
 
         // Binding for input image in depth pyramid creation shader
@@ -501,28 +494,31 @@ namespace BlitzenVulkan
 
         // Combine the bindings for the final descriptor layout
         VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
-        m_depthPyramidDescriptorLayout = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
+        m_depthPyramidDescriptorLayout.handle = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-        if(m_depthPyramidDescriptorLayout == VK_NULL_HANDLE)
+        if(m_depthPyramidDescriptorLayout.handle == VK_NULL_HANDLE)
             return 0;
 
         // The graphics pipeline will use 2 layouts, the one for push desciptors and the constant one for textures
-        VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout, m_textureDescriptorSetlayout };
-        if(!CreatePipelineLayout(m_device, &m_opaqueGeometryPipelineLayout, 2, layouts, 0, nullptr))
+        VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle };
+        if(!CreatePipelineLayout(m_device, &m_graphicsPipelineLayout.handle, 2, layouts, 0, nullptr))
             return 0;
 
         // The layout for culling shaders uses the push descriptor layout but accesses more bindings for culling data and the depth pyramid
         VkPushConstantRange lateCullShaderPostPassPushConstant{};
-        CreatePushConstantRange(lateCullShaderPostPassPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
-        if(!CreatePipelineLayout(m_device, &m_drawCullPipelineLayout, 1, &m_pushDescriptorBufferLayout, 1, &lateCullShaderPostPassPushConstant))
+        CreatePushConstantRange(lateCullShaderPostPassPushConstant, 
+        VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
+        if(!CreatePipelineLayout(m_device, &m_drawCullLayout.handle, 1, 
+        &m_pushDescriptorBufferLayout.handle, 1, &lateCullShaderPostPassPushConstant))
             return 0;
 
         // The depth pyramid shader uses the set with depth pyramid images and depth attachment image, 
         // It also needs a push constant for the width and height of the current mip level of the depth pyramid
         VkPushConstantRange depthPyramidMipExtentPushConstant{};
-        CreatePushConstantRange(depthPyramidMipExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
-        if(!CreatePipelineLayout(m_device, &m_depthPyramidGenerationPipelineLayout, 1, &m_depthPyramidDescriptorLayout, 
-        1, &depthPyramidMipExtentPushConstant))
+        CreatePushConstantRange(depthPyramidMipExtentPushConstant, 
+        VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
+        if(!CreatePipelineLayout(m_device, &m_depthPyramidGenerationLayout.handle, 
+        1, &m_depthPyramidDescriptorLayout.handle, 1, &depthPyramidMipExtentPushConstant))
             return 0;
 
         return 1;
@@ -773,7 +769,7 @@ namespace BlitzenVulkan
             return 0;
  
         // Allocates the descriptor set that will be used to bind the textures
-        if(!AllocateDescriptorSets(m_device, m_textureDescriptorPool, &m_textureDescriptorSetlayout, 
+        if(!AllocateDescriptorSets(m_device, m_textureDescriptorPool, &m_textureDescriptorSetlayout.handle, 
         1, &m_textureDescriptorSet))
             return 0;
 
@@ -921,20 +917,10 @@ namespace BlitzenVulkan
         BuildAccelerationStructureKHR(m_instance, commandBuffer, static_cast<uint32_t>(surfaces.GetSize()), 
         buildInfos.Data(), buildRangePtrs.Data());
 
-        VkFence accelerationStructureFence;
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        if(vkCreateFence(m_device, &fenceInfo, nullptr, &accelerationStructureFence) != VK_SUCCESS)
-            return 0;
-
         // Putting a fence on submit, because device wait idle and queue wait idle did not work
-        SubmitCommandBuffer(m_computeQueue.handle, commandBuffer, 0, VK_NULL_HANDLE, 
-        VK_PIPELINE_STAGE_2_NONE, 0, VK_NULL_HANDLE, VK_PIPELINE_STAGE_2_NONE, accelerationStructureFence);
-        VkResult fenceWaitResult = vkWaitForFences(m_device, 1, &accelerationStructureFence, VK_TRUE, UINT64_MAX);
-        if (fenceWaitResult != VK_SUCCESS)
-            return 0;
+        SubmitCommandBuffer(m_computeQueue.handle, commandBuffer);
+        vkQueueWaitIdle(m_computeQueue.handle);
 
-        vkDestroyFence(m_device, accelerationStructureFence, nullptr);
         return 1;
     }
 }

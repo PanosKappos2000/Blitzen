@@ -47,9 +47,9 @@ namespace BlitzenVulkan
     VkPipelineLayout& layout, VkPipeline* pPipeline, VkSpecializationInfo* pSpecializationInfo /*=nullptr*/)
     {
         // Creates the shader module and the shader stage
-        VkShaderModule computeShaderModule{};
+        ShaderModule module{};
         VkPipelineShaderStageCreateInfo shaderStageInfo{};
-        if(!CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, computeShaderModule, 
+        if(!CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, module.handle, 
         shaderStageInfo, pSpecializationInfo))
             return 0;
 
@@ -64,13 +64,8 @@ namespace BlitzenVulkan
         // Creates the compute pipeline
         VkResult res = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
         if(res != VK_SUCCESS)
-        {
-            vkDestroyShaderModule(device, computeShaderModule, nullptr);
             return 0;
-        }
-
-        // Beyond this scope, this shader module is not needed
-        vkDestroyShaderModule(device, computeShaderModule, nullptr);
+        
         return 1;
     }
 
@@ -235,7 +230,7 @@ namespace BlitzenVulkan
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.flags = 0;
         pipelineInfo.renderPass = VK_NULL_HANDLE; // Using dynamic rendering
-        pipelineInfo.layout = m_opaqueGeometryPipelineLayout;// The layout is expected to have been created earlier
+        pipelineInfo.layout = m_graphicsPipelineLayout.handle;// The layout is expected to have been created earlier
 
         // Setting up dynamic rendering info for graphics pipeline
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
@@ -247,45 +242,36 @@ namespace BlitzenVulkan
         pipelineInfo.pNext = &dynamicRenderingInfo;
 
         // Loading the vertex shader code (or mesh shading shader if mesh shading is used)
-        VkShaderModule vertexShaderModule;
+        ShaderModule vertexShaderModule;
         VkPipelineShaderStageCreateInfo shaderStages[3] = {};
         // Create the mesh shader program for vertex shader if mesh shaders are requested and supported
         if(m_stats.meshShaderSupport)
         {
-            if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule, 
-            shaderStages[0]))
+            if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", 
+            VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule.handle, shaderStages[0]))
                 return 0;
         }
         // Create the vertex shader program for vertex processing if mesh shaders were not requested or not supported
         else
         {
-            if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule,
-            shaderStages[0]))
+            if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", 
+            VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
                 return 0;
         }
 
         //Loading the fragment shader
-        VkShaderModule fragShaderModule;
-        if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule, 
-        shaderStages[1]))
-        {
-            // Destroy the already create shader modules and return 0
-            vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
+        ShaderModule fragShaderModule;
+        if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv",
+        VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
             return 0;
-        }
 
         // Loading the task shader if mesh shaders are requested and supported
-        VkShaderModule taskShaderModule;
+        ShaderModule taskShaderModule;
         if(m_stats.meshShaderSupport)
         {
-            if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.task.glsl.spv", VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule, 
-            shaderStages[2]))
-            {
-                // Destroy the already create shader modules and return 0
-                vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
-                vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
+            if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.task.glsl.spv", 
+            VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule.handle, shaderStages[2]))
                 return 0;
-            }
         }
 
         // If the pipeline is going to use mesh shaders, the task shader needs to also be supported, so there will be 3 shader stages
@@ -348,7 +334,7 @@ namespace BlitzenVulkan
 
         //Create the graphics pipeline
         VkResult pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, m_pCustomAllocator, 
-        &m_opaqueGeometryPipeline);
+        &m_opaqueGeometryPipeline.handle);
         if(pipelineCreateFinalResult != VK_SUCCESS)
             return 0;
 
@@ -363,24 +349,17 @@ namespace BlitzenVulkan
         postPassSpecialization.pMapEntries = &postPassSpecializationMapEntry;
         uint32_t postPass = 1;
         postPassSpecialization.pData = &postPass;
-        VkShaderModule postPassFragShaderModule;
-        if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", 
-        postPassFragShaderModule, shaderStages[1], &postPassSpecialization))
+        
+        ShaderModule postPassFragShaderModule;
+        if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", 
+        VK_SHADER_STAGE_FRAGMENT_BIT, "main", postPassFragShaderModule.handle, 
+        shaderStages[1], &postPassSpecialization))
             return 0;
 
         pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, 
-        &m_postPassGeometryPipeline);
+        &m_postPassGeometryPipeline.handle);
         if(pipelineCreateFinalResult != VK_SUCCESS)
             return 0;
-
-        // Destroy the shader modules after pipeline has been created
-        vkDestroyShaderModule(m_device, vertexShaderModule, m_pCustomAllocator);
-        vkDestroyShaderModule(m_device, fragShaderModule, m_pCustomAllocator);
-        vkDestroyShaderModule(m_device, postPassFragShaderModule, m_pCustomAllocator);
-        if(m_stats.meshShaderSupport)
-        {
-            vkDestroyShaderModule(m_device, taskShaderModule, m_pCustomAllocator);
-        }
 
         return 1;
     }

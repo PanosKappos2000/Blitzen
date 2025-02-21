@@ -65,6 +65,13 @@ namespace BlitzenVulkan
         }
     }
 
+    VulkanRenderer::VulkanRenderer() :
+    m_opaqueGeometryProgram(m_opaqueGeometryPipeline, m_graphicsPipelineLayout), 
+    m_postPassGeometryProgram(m_postPassGeometryPipeline, m_graphicsPipelineLayout), 
+    m_initialDrawCullProgram(m_initialDrawCullPipeline, m_drawCullLayout), 
+    m_lateDrawCullProgram(m_lateDrawCullPipeline, m_drawCullLayout)
+    {}
+
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
         m_pCustomAllocator = nullptr;
@@ -926,43 +933,18 @@ namespace BlitzenVulkan
         // Wait for the device to finish its work before destroying resources
         vkDeviceWaitIdle(m_device);
 
-        // Destroys the texture sampler
-        vkDestroySampler(m_device, m_placeholderSampler, m_pCustomAllocator);
-
         // Destroys the resources used for the texture descriptors
         vkDestroyDescriptorPool(m_device, m_textureDescriptorPool, nullptr);
-        vkDestroyDescriptorSetLayout(m_device, m_textureDescriptorSetlayout, nullptr);
-
-        vkDestroyDescriptorSetLayout(m_device, m_pushDescriptorBufferLayout, m_pCustomAllocator);
-
-        vkDestroyPipeline(m_device, m_lateDrawCullPipeline, m_pCustomAllocator);
-        vkDestroyPipelineLayout(m_device, m_drawCullPipelineLayout, m_pCustomAllocator);
-        vkDestroyPipeline(m_device, m_initialDrawCullPipeline, m_pCustomAllocator);
-
-        vkDestroyPipeline(m_device, m_opaqueGeometryPipeline, m_pCustomAllocator);
-        vkDestroyPipeline(m_device, m_postPassGeometryPipeline, m_pCustomAllocator);
-        vkDestroyPipelineLayout(m_device, m_opaqueGeometryPipelineLayout, m_pCustomAllocator);
-
-        vkDestroyPipeline(m_device, m_depthPyramidGenerationPipeline, m_pCustomAllocator);
-        vkDestroyPipelineLayout(m_device, m_depthPyramidGenerationPipelineLayout, m_pCustomAllocator);
-        vkDestroyDescriptorSetLayout(m_device, m_depthPyramidDescriptorLayout, m_pCustomAllocator);
 
         for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
         {
             vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
         }
-        vkDestroySampler(m_device, m_depthAttachmentSampler, m_pCustomAllocator);
 
         for(size_t i = 0; i < ce_framesInFlight; ++i)
         {
             FrameTools& frameTools = m_frameToolsList[i];
-            VarBuffers& varBuffers = m_varBuffers[i];
-
             vkDestroyCommandPool(m_device, frameTools.mainCommandPool, m_pCustomAllocator);
-
-            vkDestroyFence(m_device, frameTools.inFlightFence, m_pCustomAllocator);
-            vkDestroySemaphore(m_device, frameTools.imageAcquiredSemaphore, m_pCustomAllocator);
-            vkDestroySemaphore(m_device, frameTools.readyToPresentSemaphore, m_pCustomAllocator);
         }
 
         vkDestroySwapchainKHR(m_device, m_swapchainValues.swapchainHandle, m_pCustomAllocator);

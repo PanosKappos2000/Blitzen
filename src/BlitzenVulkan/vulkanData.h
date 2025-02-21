@@ -112,6 +112,56 @@ namespace BlitzenVulkan
         uint8_t hasIndex = 0;
     };
 
+    struct PipelineObject
+    {   
+        VkPipeline handle = VK_NULL_HANDLE;
+
+        ~PipelineObject();
+    };
+
+    struct PipelineLayout
+    {
+        VkPipelineLayout handle = VK_NULL_HANDLE;
+
+        ~PipelineLayout();
+    };
+
+    struct ShaderModule
+    {
+        VkShaderModule handle = VK_NULL_HANDLE;
+
+        ~ShaderModule();
+    };
+
+    struct DescriptorSetLayout
+    {
+        VkDescriptorSetLayout handle = VK_NULL_HANDLE;
+
+        ~DescriptorSetLayout();
+    };
+
+    struct PipelineProgram
+    {
+        PipelineObject& pipeline;
+        PipelineLayout& layout;
+
+        inline PipelineProgram(PipelineObject& p, PipelineLayout& l) :pipeline(p), layout(l) {}
+    };
+
+    struct Semaphore
+    {
+        VkSemaphore handle = VK_NULL_HANDLE;
+        
+        ~Semaphore();
+    };
+
+    struct SyncFence
+    {
+        VkFence handle = VK_NULL_HANDLE;
+
+        ~SyncFence();
+    };
+
     struct AccelerationStructure
     {
         VkAccelerationStructureKHR handle = VK_NULL_HANDLE;
@@ -157,6 +207,13 @@ namespace BlitzenVulkan
 
         // Implemented in vulkanResoures.cpp
         ~AllocatedImage();
+    };
+
+    struct ImageSampler
+    {
+        VkSampler handle = VK_NULL_HANDLE;
+
+        ~ImageSampler();
     };
 
     // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once
