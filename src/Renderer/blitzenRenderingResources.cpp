@@ -36,6 +36,14 @@ namespace BlitzenEngine
 {
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources)
     {
+        RenderingSystem* pSystem = RenderingSystem::GetRenderingSystem();
+        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", 
+        "dds_texture_default", pSystem->IsVulkanAvailable(), pSystem->IsOpenglAvailable());
+
+        // Creating one default material for now
+            BlitML::vec4 color1(0.1f);
+        DefineMaterial(pResources, color1, 65.f, "dds_texture_default", "unknown", "loaded_material");
+
         return 1;
     }
 
@@ -83,15 +91,6 @@ namespace BlitzenEngine
         }
         return load;
     }
-    
-
-    void LoadTestTextures(RenderingResources* pResources, uint8_t loadForVulkan, uint8_t loadForGL)
-    {
-        LoadTextureFromFile(pResources, "Assets/Textures/texture.jpg", "loaded_texture", loadForVulkan, loadForGL);
-        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone.png", "loaded_texture2", loadForVulkan, loadForGL);
-        LoadTextureFromFile(pResources, "Assets/Textures/cobblestone_SPEC.jpg", "spec_texture", loadForVulkan, loadForGL);
-        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", "dds_texture_default", loadForVulkan, loadForGL);
-    }
 
 
 
@@ -112,13 +111,6 @@ namespace BlitzenEngine
 
         pResources->materialTable.Insert(materialName, current);
         pResources->materialCount++;
-    }
-
-    void LoadTestMaterials(RenderingResources* pResources, uint8_t loadForVulkan, uint8_t loadForGL)
-    {
-        // Creating one default material for now
-        BlitML::vec4 color1(0.1f);
-        DefineMaterial(pResources, color1, 65.f, "dds_texture_default", "unknown", "loaded_material");
     }
     
 
@@ -531,8 +523,6 @@ namespace BlitzenEngine
     // Calls some test functions to load a scene that tests the renderer's geometry rendering
     void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, uint8_t loadForVulkan, uint8_t loadForGL)
     {
-        LoadTestTextures(pResources, loadForVulkan, loadForGL);
-        LoadTestMaterials(pResources, loadForVulkan, loadForGL);
         LoadTestGeometry(pResources);
         CreateTestGameObjects(pResources, drawCount);
     }

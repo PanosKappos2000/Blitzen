@@ -65,6 +65,8 @@ namespace BlitzenEngine
         
         // Allocated the rendering resources on the heap, it is too big for the stack of this function
         BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
+
+        LoadRenderingResourceSystem(pResources.Data());
         
         // If the engine passes the above assertion, then it means that it can run the main loop (unless some less fundamental stuff makes it fail)
         bRunning = 1;
