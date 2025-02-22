@@ -13,6 +13,8 @@ add_executable(BlitzenEngine
                 src/Engine/blitzenDefaultEvents.cpp
 
                 src/BlitzenDX12/dx12Data.h
+                src/BlitzenDX12/dx12Renderer.h
+                src/BlitzenDX12/dx12Init.cpp
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
@@ -139,6 +141,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLITZEN_RENDERING_STRESS_TEST
                             BLIT_VSYNC
 
+                            BLITZEN_DX12
+
                             # Vulkan specific preprocessor macros
                             BLITZEN_VULKAN
                             BLIT_VK_ACTIVE_GRAPHICS_API
@@ -161,6 +165,7 @@ IF(WIN32)
     target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1
                         D3d12
+                        DXGI
                         glew32s
                         OpenGL32)
 ELSEIF(UNIX)

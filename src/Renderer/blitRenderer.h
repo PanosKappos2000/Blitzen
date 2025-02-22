@@ -3,7 +3,7 @@
 #include "BlitzenVulkan/vulkanRenderer.h"
 #include "BlitzenGl/openglRenderer.h"
 #ifdef _WIN32
-#include "BlitzenDX12/dx12Data.h"
+#include "BlitzenDX12/dx12Renderer.h"
 #endif
 #include "Renderer/blitRenderingResources.h"
 #include "Game/blitCamera.h"
@@ -80,6 +80,10 @@ namespace BlitzenEngine
     private:
         #ifdef BLITZEN_VULKAN
             BlitzenVulkan::VulkanRenderer vulkan;
+        #endif
+
+        #if defined(_WIN32) && defined(BLITZEN_DX12)
+            BlitzenDX12::Dx12Renderer dx12;
         #endif
 
         #ifdef BLITZEN_OPENGL

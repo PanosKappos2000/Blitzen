@@ -22,6 +22,10 @@ namespace BlitzenEngine
             #define BLIT_DX12_ACTIVE_GRAPHICS_API
         #endif
 
+        #if defined(BLITZEN_DX12)
+            bDx12 = dx12.Init();
+        #endif
+
         #ifdef BLITZEN_VULKAN
             bVk = vulkan.Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight);
         #endif
