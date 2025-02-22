@@ -3,6 +3,7 @@
 #include "BlitzenMathLibrary/blitML.h"
 #include "Core/blitzenContainerLibrary.h"
 #include "Game/blitObject.h" // I probably do not want to include this here
+#include <string>
 
 namespace BlitzenEngine
 {
@@ -24,10 +25,7 @@ namespace BlitzenEngine
 
     struct TextureStats
     {
-        // These things might not be necessary, since textures are immediately passed to the renderer that is requested
-        int32_t textureWidth = 0;
-        int32_t textureHeight = 0;
-        int32_t textureChannels = 0;
+        std::string filepath;
 
         // TODO: this is no longer used, might want to remove later
         uint8_t* pTextureData;
@@ -190,17 +188,28 @@ namespace BlitzenEngine
         uint32_t objectCount;
     };
 
+    // Draw context needs to be given to draw frame function, so that it can update uniform values
+    struct DrawContext
+    {
+        // The shaders have a struct that aligns with one of the structs of the camera class.
+        // It holds crucial data for culling and rendering like view matrix, frustum planes, screen coordinate lodTarget and more
+        void* pCamera;
+
+        // Vulkan needs to know how many objects are being drawn
+        uint32_t drawCount;
+
+        // Debug values
+        uint8_t bOcclusionCulling;
+        uint8_t bLOD;
+
+        inline DrawContext(void* pCam, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
+        : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
+    };
+
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources);
-
-
-    // Takes a filename and loads at texture from it, and passes it to each renderer parameter that is not null
-    uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
-    uint8_t loadForVulkan, uint8_t loadForGL);// The renderers are void* so that I do not expose their API in the .h file
-
 
     void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName);
-
 
     // Loads a mesh from an obj file
     uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename);
@@ -215,21 +224,19 @@ namespace BlitzenEngine
     BlitCL::DynamicArray<Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices);
 
-
     // Placeholder to load some default resources while testing the systems
     void LoadTestGeometry(RenderingResources* pResources);
-
 
     // This function is used to load a default scene
     void CreateTestGameObjects(RenderingResources* pResources, uint32_t drawCount);
 
-
     // Calls some test functions to load a scene that tests the renderer's geometry rendering
-    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount, uint8_t loadForVulkan, uint8_t loadForGL);
-
+    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount);
+    
+    uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName);
 
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, uint8_t loadForVulkan, uint8_t loadForGL);
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path);
 }

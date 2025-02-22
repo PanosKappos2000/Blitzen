@@ -16,6 +16,7 @@ add_executable(BlitzenEngine
                 src/BlitzenDX12/dx12Renderer.h
                 src/BlitzenDX12/dx12Init.cpp
                 src/BlitzenDX12/dx12RendererSetup.cpp
+                src/BlitzenDX12/dx12Draw.cpp
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
@@ -138,20 +139,18 @@ target_include_directories(BlitzenEngine PUBLIC
 
 target_compile_definitions(BlitzenEngine PUBLIC
 
+                            BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros
                             BLITZEN_RENDERING_STRESS_TEST
                             BLIT_VSYNC
 
-                            BLITZEN_DX12
-
                             # Vulkan specific preprocessor macros
-                            BLITZEN_VULKAN
                             BLIT_VK_ACTIVE_GRAPHICS_API
                             BLIT_VK_VALIDATION_LAYERS
                             BLIT_VK_RAYTRACING
 
                             # Opengl preprocessor marcors
-                            #BLITZEN_OPENGL
+                            #BLIT_GL_LEGACY_OVERRIDE
                             BLIT_GL_ACTIVE_GRAPHICS_API
 
                             # Engine core preprocessor macros

@@ -26,7 +26,7 @@ namespace BlitzenGL
     }
 
     uint8_t OpenglRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
-    const char* filepath) 
+    void* pData, const char* filepath) 
     {
         if(m_textureCount >= BlitzenEngine::ce_maxTextureCount)
             return 0;
@@ -59,10 +59,10 @@ namespace BlitzenGL
             return 0;
     }
 
-    uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources)
+    uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight)
     {
         // Generates the vertex array. I don't know why this needs to be here since I am not using vertex attributes, 
-        // but if I don't have OpenGL will draw nothing -_-
+        // but if I don't have it, OpenGL will draw nothing -_-
         glGenVertexArrays(1, &m_vertexArray);
         // Creates the vertex buffer as a storage buffer and passes it to binding t
         glGenBuffers(1, &m_vertexBuffer);
@@ -137,7 +137,7 @@ namespace BlitzenGL
         return 1;
     }
 
-    void OpenglRenderer::DrawFrame(DrawContext& context)
+    void OpenglRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
         BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
         // Update the viewport if the window has resized

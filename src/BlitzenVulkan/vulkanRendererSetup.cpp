@@ -43,19 +43,8 @@ namespace BlitzenVulkan
 
 
 
-    void VulkanRenderer::UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format)
-    {
-        CreateTextureImage(reinterpret_cast<void*>(newTexture.pTextureData), m_device, m_allocator, 
-        loadedTextures[textureCount].image, 
-        {(uint32_t)newTexture.textureWidth, (uint32_t)newTexture.textureHeight, 1}, format, 
-        VK_IMAGE_USAGE_SAMPLED_BIT, m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, 1);
-        
-        loadedTextures[textureCount].sampler = m_textureSampler.handle;
 
-        ++textureCount;
-    }
-
-    uint8_t VulkanRenderer::UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
+    uint8_t VulkanRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
     void* pData, const char* filepath) 
     {
         // Checks if resource management has been setup

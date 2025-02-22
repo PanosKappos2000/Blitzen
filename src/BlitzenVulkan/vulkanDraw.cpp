@@ -31,7 +31,7 @@ glm::vec4 glm_NormalizePlane(glm::vec4& plane)
 namespace BlitzenVulkan
 {
 
-    void VulkanRenderer::DrawFrame(DrawContext& context)
+    void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
         BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
         if(pCamera->transformData.windowResize)

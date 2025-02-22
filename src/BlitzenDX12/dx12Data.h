@@ -3,6 +3,7 @@
 
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
+#include "Renderer/blitDDSTextures.h"
 #include "Core/blitLogger.h"
 
 namespace BlitzenDX12

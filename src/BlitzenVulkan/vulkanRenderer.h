@@ -18,15 +18,12 @@ namespace BlitzenVulkan
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
 
-        // Prototype function for textures, used with stb_image. Might want to remove this, since Blitzen works with DDS textures now
-        void UploadTexture(BlitzenEngine::TextureStats& newTexture, VkFormat format);
-
         // Function for DDS texture loading
-        uint8_t UploadDDSTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
+        uint8_t UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
         void* pData, const char* filepath);
 
         // Called each frame to draw the scene that is requested by the engine
-        void DrawFrame(DrawContext& context);
+        void DrawFrame(BlitzenEngine::DrawContext& context);
 
         // This is an incomplete function that attempts to clear anything Vulkan has drawn to swith to a different renderer. It does not work
         void ClearFrame();

@@ -289,24 +289,6 @@ namespace BlitzenVulkan
         inline DrawCullShaderPushConstant(uint32_t dc, uint8_t bPP, uint8_t bOC = 1, uint8_t bLod = 1)
         :drawCount{dc}, bPostPass{bPP}, bOcclusionCulling{bOC}, bLOD{bLod} {}
     };
-
-    // Draw context needs to be given to draw frame function, so that it can update uniform values
-    struct DrawContext
-    {
-        // The shaders have a struct that aligns with one of the structs of the camera class.
-        // It holds crucial data for culling and rendering like view matrix, frustum planes, screen coordinate lodTarget and more
-        void* pCamera;
-
-        // Vulkan needs to know how many objects are being drawn
-        uint32_t drawCount;
-
-        // Debug values
-        uint8_t bOcclusionCulling;
-        uint8_t bLOD;
-
-        inline DrawContext(void* pCam, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
-        : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
-    };
 }
 
 

@@ -19,98 +19,88 @@ namespace BlitzenEngine
         MaxRenderers = 3
     };
 
+    template<typename T>
     class RenderingSystem
     {
     public:
 
-        RenderingSystem();
+        RenderingSystem()
+        {
+            m_bBackendActive = m_backend.Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight);
+        }
 
-        ~RenderingSystem();
+        ~RenderingSystem()
+        {
+            if (m_bBackendActive)
+                m_backend.Shutdown();
+        }
 
-        inline static RenderingSystem* GetRenderingSystem() { return s_pRenderer; }
+        // The parameters for this functions will be tidied up later
+        uint8_t SetupBackendRenderer(RenderingResources* pResources, uint32_t drawCount, Camera& camera)
+        {
+            if (!m_bBackendActive)
+                return 0;
 
-        inline uint8_t IsVulkanAvailable() { return bVk; }
-        
-        inline uint8_t IsOpenglAvailable() { return bGl; }
+            if (drawCount <= 0)
+            {
+                BLIT_ERROR("Nothing to draw, Renderer not setup")
+                    return 0;
+            }
 
-        inline uint8_t IsDx12Avaiblable() { return bDx12; }
+            if (drawCount > ce_maxRenderObjects)
+            {
+                BLIT_ERROR("The render object count %i is higher than the current maximum allowed by the engine: %i", drawCount, ce_maxRenderObjects)
+                    return 0;
+            }
 
-        void ShutdownRenderers();
+            //T::SetupData vkData{}
+            if (!m_backend.SetupForRendering(pResources, camera.viewData.pyramidWidth, camera.viewData.pyramidHeight))
+                return 0;
+
+            return 1;
+        }
+
+        void DrawFrame(Camera& camera, uint32_t drawCount)
+        {
+            if (!m_bBackendActive)
+                return;
+
+            DrawContext context{ &camera, drawCount, occlusionCullingOn, lodEnabled };
+            // Let Vulkan do its thing
+            m_backend.DrawFrame(context);
+        }
+
+
 
     public:
 
-        // This is here because the UploadDDSTexture function cannot be called by const reference
-        #ifdef BLITZEN_VULKAN
-        inline uint8_t GiveTextureToVulkan(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
-        void* pData, const char* filepath) {
-            return vulkan.UploadDDSTexture(header, header10, pData, filepath);
-        }
-        #else
-        inline uint8_t GiveTextureToVulkan(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
-            void* pData, const char* filepath) {
-            BLIT_ERROR("Vulkan was never requested")
-            return 0;
-        }
-        #endif
+        uint8_t UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
+        void* pData, const char* filepath) 
+        {
+            if(!m_bBackendActive)
+                return 0;
 
-        // Same as the above
-        #if  defined(BLITZEN_OPENGL) && defined(_WIN32)
-        inline uint8_t GiveTextureToOpengl(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
-        const char* filepath) { 
-            return opengl.UploadTexture(header, header10, filepath);
+            return m_backend.UploadTexture(header, header10, pData, filepath);
         }
-        #else
-        inline uint8_t GiveTextureToOpengl(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
-            const char* filepath) {
-            BLIT_ERROR("Opengl was never requested")
-            return 0;
-        }
-        #endif 
 
-        // The parameters for this functions will be tidied up later
-        uint8_t SetupRequestedRenderersForDrawing(RenderingResources* pResources, uint32_t drawCount, Camera& camera);
-
-        void DrawFrame(Camera& camera, uint32_t drawCount);
-
-        // Pointless feature that doesn't work
-        uint8_t SetActiveAPI(ActiveRenderer newActiveAPI);
-        void ClearCurrentActiveRenderer();
 
     private:
-        #ifdef BLITZEN_VULKAN
-            BlitzenVulkan::VulkanRenderer vulkan;
-        #endif
-
-        #if defined(_WIN32) && defined(BLITZEN_DX12)
-            BlitzenDX12::Dx12Renderer dx12;
-        #endif
-
-        #ifdef BLITZEN_OPENGL
-            BlitzenGL::OpenglRenderer opengl;
-        #endif
-
-        uint8_t bVk = 0;
-        uint8_t bGl = 0;
-        uint8_t bDx12 = 0;
-
-        ActiveRenderer activeRenderer = ActiveRenderer::MaxRenderers;
-        uint8_t CheckActiveAPI();
+        T m_backend;
+        uint8_t m_bBackendActive = 0;
     
     public:
 
-        // Debug values 
+        // Debug values, these have no place here
         uint8_t freezeFrustum = 0;
         uint8_t debugPyramidActive = 0;
         uint8_t occlusionCullingOn = 1;
         uint8_t lodEnabled = 1;
-
-    private:
-        // Leaky singleton
-        static RenderingSystem* s_pRenderer;
     };
 
+
+    
     // Switch the renderer debug values
-    inline void ChangeFreezeFrustumState() { 
+    /*inline void ChangeFreezeFrustumState() {
         RenderingSystem::GetRenderingSystem()->freezeFrustum = !RenderingSystem::GetRenderingSystem()->freezeFrustum; 
     }
     inline void ChangeDebugPyramidActiveState() { 
@@ -121,5 +111,5 @@ namespace BlitzenEngine
     }
     inline void ChangeLodEnabledState()  { 
         RenderingSystem::GetRenderingSystem()->lodEnabled  = !RenderingSystem::GetRenderingSystem()->lodEnabled; 
-    }
+    }*/
 }

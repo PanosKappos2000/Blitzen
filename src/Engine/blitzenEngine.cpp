@@ -60,8 +60,17 @@ namespace BlitzenEngine
         // With the event and input systems active, register the engine's default events and input bindings
         RegisterDefaultEvents();
 
-        // Rendering system holds all API specific renderer (Vulkan and Opengl for now)
-        BlitCL::SmartPointer<RenderingSystem, BlitzenCore::AllocationType::Renderer> renderer;
+        // Decides which rendering API is going to be used
+        #if defined(BLIT_GL_LEGACY_OVERRIDE) && defined(BLITZEN_VULKAN_OVERRIDE) && defined(_WIN32)
+            BlitCL::SmartPointer<RenderingSystem<BlitzenGL::OpenglRenderer>,
+            BlitzenCore::AllocationType::Renderer> renderer;
+        #elif defined(BLITZEN_VULKAN_OVERRIDE) && defined(_WIN32)
+            BlitCL::SmartPointer<RenderingSystem<BlitzenDX12::Dx12Renderer>,
+            BlitzenCore::AllocationType::Renderer> renderer;
+        #else
+            BlitCL::SmartPointer<RenderingSystem<BlitzenVulkan::VulkanRenderer>, 
+            BlitzenCore::AllocationType::Renderer> renderer;
+        #endif
         
         // Allocated the rendering resources on the heap, it is too big for the stack of this function
         BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
@@ -82,22 +91,30 @@ namespace BlitzenEngine
         // If BLITZEN_RENDERING_STRESS_TEST is defined, this number will be ignored. 
         // The renderer will create an amount of objects close to the max allowed
         uint32_t drawCount = 1'000'000;
-        LoadGeometryStressTest(pResources.Data(), drawCount, renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
+        LoadGeometryStressTest(pResources.Data(), drawCount);
 
         // Loads the gltf files that were specified as command line arguments
         if(argc != 1)
         {
             for(uint32_t i = 1; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i], renderer->IsVulkanAvailable(), renderer->IsOpenglAvailable());
+                LoadGltfScene(pResources.Data(), argv[i]);
             }
         }
 
         // Set the draw count to the render object count   
         drawCount = pResources.Data()->renderObjectCount;
 
+        for (uint32_t i = 0; i < pResources->textureCount; ++i)
+        {
+            TextureStats& texture = pResources->textures[i];
+            DDS_HEADER header{};
+            DDS_HEADER_DXT10 header10{};
+            renderer->UploadTexture(header, header10, texture.pTextureData, texture.filepath.c_str());
+        }
+
         // Pass the resources and pointers to any of the renderers that might be used for rendering
-        if(!renderer->SetupRequestedRenderersForDrawing(pResources.Data(), drawCount, mainCamera))
+        if(!renderer->SetupBackendRenderer(pResources.Data(), drawCount, mainCamera))
             BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline")
         
         // Starts the clock
@@ -135,9 +152,6 @@ namespace BlitzenEngine
                 BlitzenCore::UpdateInput(m_deltaTime);
             }
         }
-
-        // Shutdown the renderers before the engine is shutdown
-        renderer->ShutdownRenderers();
 
         // Shutdown the last few systems
         BLIT_WARN("Blitzen is shutting down")

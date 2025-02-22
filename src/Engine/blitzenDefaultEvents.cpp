@@ -174,9 +174,9 @@ namespace BlitzenEngine
         // When F1 is frustum culling freezes (debug functionality)
         BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback);
         // When F3 is pressed shaders stop performing occlusion culling (debug functionality, does not work on Release)
-        BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F3, ChangeOcclusionCullingState);
+        //BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F3, ChangeOcclusionCullingState);
         // When F4 is pressed, shader stop performing LOD selection (debug functionality, does not work on Release)
-        BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F4, ChangeLodEnabledState);    
+        //BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F4, ChangeLodEnabledState);    
 
         BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
 

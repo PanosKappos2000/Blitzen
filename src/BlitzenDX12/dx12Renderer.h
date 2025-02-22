@@ -6,13 +6,25 @@ namespace BlitzenDX12
     class Dx12Renderer
     {
     public:
+
         Dx12Renderer();
 
-        uint8_t Init();
+        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
         void SetupResourceManagement();
 
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
+        uint8_t UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
+        void* pData, const char* filepath);
+
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
+        float& pyramidWidth, float& pyramidHeight);
+
+        void DrawFrame(BlitzenEngine::DrawContext& context);
+
+        void Shutdown();
+
+        ~Dx12Renderer();
+
     public:
         IDXGIFactory4* factory;
 

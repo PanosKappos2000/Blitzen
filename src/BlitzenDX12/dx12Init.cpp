@@ -8,7 +8,7 @@ namespace BlitzenDX12
 
     }
 
-    uint8_t Dx12Renderer::Init()
+    uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
         uint32_t dxgiFactoryFlags = 0;
         if(ce_bDebugController)
@@ -71,5 +71,15 @@ namespace BlitzenDX12
     uint8_t ValidateAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice)
     {
         return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(ppDevice)));
+    }
+
+    void Dx12Renderer::Shutdown()
+    {
+
+    }
+
+    Dx12Renderer::~Dx12Renderer()
+    {
+
     }
 }

@@ -11,18 +11,6 @@
 
 namespace BlitzenGL
 {
-    struct alignas(16) DrawContext
-    {
-        void* pCamera;
-
-        uint32_t drawCount;
-
-        uint8_t bOcclusionCulling;
-        uint8_t bLOD;
-
-        inline DrawContext(void* pCam, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
-        : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
-    };
 
     using GraphicsProgram = unsigned int;
     using ComputeProgram = unsigned int;
@@ -58,11 +46,11 @@ namespace BlitzenGL
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
         uint8_t UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
-        const char* filepath);
+        void* pData, const char* filepath);
 
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources);
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
 
-        void DrawFrame(DrawContext& context);
+        void DrawFrame(BlitzenEngine::DrawContext& context);
 
         void Shutdown();
 
