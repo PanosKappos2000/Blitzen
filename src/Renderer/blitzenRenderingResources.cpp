@@ -282,8 +282,6 @@ namespace BlitzenEngine
         // Pass the original loaded indices of the surface to the new lod indices
         BlitCL::DynamicArray<uint32_t> lodIndices(indices);
 
-        uint8_t buildMeshlets = RenderingSystem::GetRenderingSystem()->GetVulkan().GetStats().meshShaderSupport;
-
         while(newSurface.lodCount < ce_primitiveSurfaceMaxLODCount)
         {
             // Get current element in the LOD array and increment the count
@@ -295,7 +293,7 @@ namespace BlitzenEngine
 
             // Save the meshlets that will be used for the current lod level
             lod.firstMeshlet = static_cast<uint32_t>(pResources->meshlets.GetSize());
-            lod.meshletCount = buildMeshlets ? static_cast<uint32_t>(GenerateClusters(pResources, vertices, indices)) : 0;
+            lod.meshletCount = ce_buildClusters ? static_cast<uint32_t>(GenerateClusters(pResources, vertices, indices)) : 0;
 
             // Add the new indices that were loaded for this lod level to the global index buffer
             pResources->indices.AppendArray(lodIndices);

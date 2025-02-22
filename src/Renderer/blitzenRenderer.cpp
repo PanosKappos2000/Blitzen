@@ -14,6 +14,12 @@ namespace BlitzenEngine
         // Opengl is only available on windows
         #ifndef _WIN32
             #undef BLITZEN_OPENGL
+            #undef BLITZEN_DX12
+        #endif
+
+        // Automatically sets dx12 as the active api when on windows
+        #ifdef _WIN32
+            #define BLIT_DX12_ACTIVE_GRAPHICS_API
         #endif
 
         #ifdef BLITZEN_VULKAN
@@ -55,22 +61,11 @@ namespace BlitzenEngine
         switch(activeRenderer)
         {
             case ActiveRenderer::Vulkan:
-                #ifdef BLITZEN_VULKAN
-                return bVk;
-                #else
-                BLIT_INFO("Vulkan not requested")
-                return 0;
-                #endif  
+                return bVk; 
             case ActiveRenderer::Opengl:
-                #ifdef BLITZEN_OPENGL
-                return bGl;
-                #else
-                BLIT_INFO("Opengl not requested")
-                return 0;
-                #endif
-                    
-            case ActiveRenderer::Directx12:
-                return 0;
+                return bGl;     
+            case ActiveRenderer::Direct3D12:
+                return bDx12;
             default:
                 return 0;
         }
@@ -169,9 +164,9 @@ namespace BlitzenEngine
             case ActiveRenderer::Vulkan:
             {
                 #ifdef BLITZEN_VULKAN
-                    BlitzenVulkan::DrawContext vkContext{ &camera, drawCount, occlusionCullingOn, lodEnabled };
-                    // Let Vulkan do its thing
-                    vulkan.DrawFrame(vkContext);
+                BlitzenVulkan::DrawContext vkContext{ &camera, drawCount, occlusionCullingOn, lodEnabled };
+                // Let Vulkan do its thing
+                vulkan.DrawFrame(vkContext);
                 #endif
 
                 break;
@@ -179,8 +174,8 @@ namespace BlitzenEngine
             case ActiveRenderer::Opengl:
             {
                 #ifdef BLITZEN_OPENGL
-                    BlitzenGL::DrawContext glContext{&camera, drawCount, occlusionCullingOn, lodEnabled};
-                    opengl.DrawFrame(glContext);
+                BlitzenGL::DrawContext glContext{&camera, drawCount, occlusionCullingOn, lodEnabled};
+                opengl.DrawFrame(glContext);
                 #endif
                 break;
             }
@@ -197,8 +192,8 @@ namespace BlitzenEngine
         #endif
 
         #ifdef BLITZEN_OPENGL
-            if(bGl)
-                opengl.Shutdown();
+        if(bGl)
+            opengl.Shutdown();
         #endif
     }
 }

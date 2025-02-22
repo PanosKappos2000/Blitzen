@@ -16,6 +16,12 @@ namespace BlitzenEngine
 
     constexpr uint32_t ce_maxRenderObjects = 5'000'000;
 
+    #ifdef BLITZEN_CLUSTER_CULLING
+        constexpr uint8_t ce_buildClusters = 1;
+    #else
+        constexpr uint8_t ce_buildClusters = 0;
+    #endif 
+
     struct TextureStats
     {
         // These things might not be necessary, since textures are immediately passed to the renderer that is requested

@@ -1,13 +1,11 @@
 #pragma once
 
 #include "BlitzenVulkan/vulkanRenderer.h"
-
 #include "BlitzenGl/openglRenderer.h"
-
-// The rendering resources are passed to the renderers to set up their global buffers
+#ifdef _WIN32
+#include "BlitzenDX12/dx12Data.h"
+#endif
 #include "Renderer/blitRenderingResources.h"
-
-// The camera file is needed as it is passed on some functions for the renderers to access its values
 #include "Game/blitCamera.h"
 
 namespace BlitzenEngine
@@ -15,7 +13,7 @@ namespace BlitzenEngine
     enum class ActiveRenderer : uint8_t
     {
         Vulkan = 0,
-        Directx12 = 1,
+        Direct3D12 = 1,
         Opengl = 2,
 
         MaxRenderers = 3
@@ -31,47 +29,10 @@ namespace BlitzenEngine
 
         inline static RenderingSystem* GetRenderingSystem() { return s_pRenderer; }
 
-        #ifdef BLITZEN_VULKAN
-        inline const BlitzenVulkan::VulkanRenderer& GetVulkan() { return vulkan; }
-        #else
-        inline const BlitzenVulkan::VulkanRenderer& GetVulkan() {
-            BLIT_FATAL("Vulkan was never requested")
-            BlitzenVulkan::VulkanRenderer dummy;
-            return dummy;
-        }
-        #endif
+        inline uint8_t IsVulkanAvailable() { return bVk; }
 
-        #ifdef BLITZEN_VULKAN
-        inline uint8_t IsVulkanAvailable() { 
-            return bVk; 
-        }
-        #else
-        inline uint8_t IsVulkanAvailable() {
-            BLIT_INFO("Vulkan not requested")
-            return 0;
-        }
-        #endif
-
-        #ifdef BLITZEN_OPENGL 
-        inline const BlitzenGL::OpenglRenderer& GetOpengl() { return opengl; }
-        #else
-        inline const BlitzenGL::OpenglRenderer& GetOpengl() {
-            BLIT_FATAL("Vulkan was never requested")
-            BlitzenGL::OpenglRenderer dummy; 
-            return dummy;
-        }
-        #endif
-
-        #ifdef BLITZEN_OPENGL
-        inline uint8_t IsOpenglAvailable() {
-            return bGl;
-        }
-        #else
-        inline uint8_t IsOpenglAvailable() {
-            BLIT_INFO("Opengl not requested")
-            return 0;
-        }
-        #endif
+        
+        inline uint8_t IsOpenglAvailable() { return bGl; }
 
         void ShutdownRenderers();
 
@@ -119,13 +80,15 @@ namespace BlitzenEngine
     private:
         #ifdef BLITZEN_VULKAN
             BlitzenVulkan::VulkanRenderer vulkan;
-            uint8_t bVk = 0;
         #endif
 
         #ifdef BLITZEN_OPENGL
             BlitzenGL::OpenglRenderer opengl;
-            uint8_t bGl = 0;
         #endif
+
+        uint8_t bVk = 0;
+        uint8_t bGl = 0;
+        uint8_t bDx12 = 0;
 
         ActiveRenderer activeRenderer = ActiveRenderer::MaxRenderers;
         uint8_t CheckActiveAPI();

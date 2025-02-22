@@ -12,6 +12,8 @@ add_executable(BlitzenEngine
                 src/Engine/blitzenEngine.h
                 src/Engine/blitzenDefaultEvents.cpp
 
+                src/BlitzenDX12/dx12Data.h
+
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
                 src/BlitzenVulkan/vulkanInit.cpp
@@ -144,7 +146,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VK_RAYTRACING
 
                             # Opengl preprocessor marcors
-                            BLITZEN_OPENGL
+                            #BLITZEN_OPENGL
                             BLIT_GL_ACTIVE_GRAPHICS_API
 
                             # Engine core preprocessor macros
@@ -158,6 +160,7 @@ IF(WIN32)
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/lib/Release/x64")
     target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1
+                        D3d12
                         glew32s
                         OpenGL32)
 ELSEIF(UNIX)
