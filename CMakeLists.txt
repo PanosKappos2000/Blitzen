@@ -15,6 +15,7 @@ add_executable(BlitzenEngine
                 src/BlitzenDX12/dx12Data.h
                 src/BlitzenDX12/dx12Renderer.h
                 src/BlitzenDX12/dx12Init.cpp
+                src/BlitzenDX12/dx12RendererSetup.cpp
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h

@@ -35,10 +35,15 @@ namespace BlitzenEngine
         #endif
 
         // Automatically starts with vulkan, I will change this later
-        #ifdef BLIT_VK_ACTIVE_GRAPHICS_API
+        #if defined(BLIT_VK_ACTIVE_GRAPHICS_API)
         activeRenderer = ActiveRenderer::Vulkan;
-        #elif BLIT_GL_ACTIVE_GRAPHICS_API
+
+        #elif defined(BLIT_DX12_ACTIVE_GRAPHICS_API) && defined(_WIN32)
+        activeRenderer = ActiveRenderer::Dx12;
+
+        #elif  defined(BLIT_GL_ACTIVE_GRAPHICS_API) && define(_WIN32)
         activeRenderer = ActiveRenderer::Opengl;
+
         #endif
 
         if (!CheckActiveAPI())
@@ -136,6 +141,20 @@ namespace BlitzenEngine
                     isThereRendererOnStandby = 1;
             }
         #endif
+
+        #if defined(BLITZEN_DX12) && defined(_WIN32)
+            if (bDx12)
+            {
+                if (!dx12.SetupForRendering(pResources))
+                {
+                    BLIT_ERROR("Could not initialize Direct3D. If this is the active graphics API, it needs to be swapped")
+                    bDx12 = 0;
+                }
+                else
+                    isThereRendererOnStandby = 1;
+            }
+        #endif
+
 
         #ifdef BLITZEN_OPENGL
             if(bGl)

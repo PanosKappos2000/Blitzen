@@ -286,7 +286,7 @@ namespace BlitCL
 
         using Iterator = DynamicArrayIterator<T>;
         Iterator begin() { return Iterator(m_array); }
-        Iterator end() { return Iterator(m_array * S); }
+        Iterator end() { return Iterator(m_array + S); }
 
         inline T& operator [] (size_t idx) { BLIT_ASSERT(idx >= 0 && idx < S) return m_array[idx]; }
 

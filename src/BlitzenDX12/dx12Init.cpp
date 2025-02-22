@@ -15,6 +15,7 @@ namespace BlitzenDX12
         {
             ID3D12Debug* dc;
 
+            // Probably shouldn't do this for debug functionality
             if(D3D12GetDebugInterface(IID_PPV_ARGS(&dc)) != S_OK)
                 return 0;
 
@@ -32,14 +33,17 @@ namespace BlitzenDX12
         if(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)) != S_OK)
             return 0;
 
-        if(!PickAdapter(m_adapter, device, factory))
+        if(!PickAdapter(m_adapter, &device, factory))
             return 0;
+
+        if(ce_bDebugController)
+            device->QueryInterface(&m_debugDevice);
 
         BLIT_INFO("DX12 success")
         return 1;
     }
 
-    uint8_t PickAdapter(IDXGIAdapter1* adapter, ID3D12Device* device, IDXGIFactory4* factory)
+    uint8_t PickAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice, IDXGIFactory4* factory)
     {
         uint32_t adapterIndex = 0;
         while(factory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND)
@@ -54,7 +58,7 @@ namespace BlitzenDX12
                 continue;
             }
             
-            if(ValidateAdapter(adapter, device))
+            if(ValidateAdapter(adapter, ppDevice))
                 return 1;
 
             adapter->Release();
@@ -64,8 +68,8 @@ namespace BlitzenDX12
         return 0;
     }
 
-    uint8_t ValidateAdapter(IDXGIAdapter1* adapter, ID3D12Device* device)
+    uint8_t ValidateAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice)
     {
-        return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device)));
+        return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(ppDevice)));
     }
 }

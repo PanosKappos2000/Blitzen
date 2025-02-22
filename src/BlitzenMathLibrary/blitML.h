@@ -208,42 +208,42 @@ namespace BlitML
     --------------------------*/
 
     // Creates and returns an orthographic projection matrix. Typically used to render flat or 2D scenes
-    inline mat4 Orthographic(float left, float right, float bottom, float top, float near, float far) 
+    inline mat4 Orthographic(float left, float right, float bottom, float top, float znear, float zfar) 
     {
         mat4 res;
         float lr = 1.0f / (left - right);
         float bt = 1.0f / (bottom - top);
-        float nf = 1.0f / (near - far);
+        float nf = 1.0f / (znear - zfar);
         res.data[0] = -2.0f * lr;
         res.data[5] = -2.0f * bt;
         res.data[10] = 2.0f * nf;
         res.data[12] = (left + right) * lr;
         res.data[13] = (top + bottom) * bt;
-        res.data[14] = (far + near) * nf;
+        res.data[14] = (zfar + znear) * nf;
         return res;
     }
 
     // Creates and returns a perspective matrix, typically used to render 3d scenes.
-    inline mat4 Perspective(float fov, float aspectRatio, float near, float far) 
+    inline mat4 Perspective(float fov, float aspectRatio, float znear, float zfar) 
     {
         float halfTanFov = Tan(fov * 0.5f);
         mat4 res(0);
         res.data[0] = 1.0f / (aspectRatio * halfTanFov);
         res.data[5] = 1.0f / halfTanFov;
-        res.data[10] = far / (near - far);
+        res.data[10] = zfar / (znear - zfar);
         res.data[11] = -1.0f;
-        res.data[14] = -((far * near) / (far - near));
+        res.data[14] = -((zfar * znear) / (zfar - znear));
         return res;
     }
 
-    inline mat4 InfiniteZPerspective(float fov, float aspectRatio, float near)
+    inline mat4 InfiniteZPerspective(float fov, float aspectRatio, float znear)
     {
 	    float halfTanFov = 1.0f / tanf(fov / 2.0f);
         mat4 res(0);
         res.data[0] = halfTanFov / aspectRatio;
         res.data[5] = halfTanFov;
         res.data[11] = 1.0f;
-        res.data[14] = near;
+        res.data[14] = znear;
         return res;
 
 	    /*return glm::mat4(

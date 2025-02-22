@@ -30,9 +30,10 @@ namespace BlitzenEngine
         inline static RenderingSystem* GetRenderingSystem() { return s_pRenderer; }
 
         inline uint8_t IsVulkanAvailable() { return bVk; }
-
         
         inline uint8_t IsOpenglAvailable() { return bGl; }
+
+        inline uint8_t IsDx12Avaiblable() { return bDx12; }
 
         void ShutdownRenderers();
 
@@ -53,7 +54,7 @@ namespace BlitzenEngine
         #endif
 
         // Same as the above
-        #ifdef BLITZEN_OPENGL
+        #if  defined(BLITZEN_OPENGL) && defined(_WIN32)
         inline uint8_t GiveTextureToOpengl(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
         const char* filepath) { 
             return opengl.UploadTexture(header, header10, filepath);
@@ -74,8 +75,6 @@ namespace BlitzenEngine
         // Pointless feature that doesn't work
         uint8_t SetActiveAPI(ActiveRenderer newActiveAPI);
         void ClearCurrentActiveRenderer();
-
-        void* pDx12 = nullptr;
 
     private:
         #ifdef BLITZEN_VULKAN
