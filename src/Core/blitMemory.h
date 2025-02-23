@@ -72,7 +72,7 @@ namespace BlitzenCore
     template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(const T& data)
     {
-        LogAllocation(A, sizeof(T));
+        LogAllocation(alloc, sizeof(T));
         return new T(data);
     }
 
