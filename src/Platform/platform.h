@@ -23,4 +23,6 @@ namespace BlitzenPlatform
     double PlatformGetAbsoluteTime();
 
     void PlatformSleep(uint64_t ms);
+
+    void* GetWindowHandle();
 }

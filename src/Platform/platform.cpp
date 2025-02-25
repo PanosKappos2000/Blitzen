@@ -40,6 +40,8 @@ namespace BlitzenPlatform
 
         inline PlatformState s_pPlatformState;
 
+        void* GetWindowHandle() {return s_pPlatformState.winWindow;}
+
         inline double clockFrequency;
         inline LARGE_INTEGER startTime;
 

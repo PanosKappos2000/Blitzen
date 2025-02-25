@@ -141,7 +141,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros
-                            #BLITZEN_RENDERING_STRESS_TEST
+                            BLITZEN_RENDERING_STRESS_TEST
                             BLIT_VSYNC
 
                             # Vulkan specific preprocessor macros

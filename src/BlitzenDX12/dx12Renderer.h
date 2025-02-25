@@ -37,21 +37,30 @@ namespace BlitzenDX12
 
         ID3D12DebugDevice* m_debugDevice;
 
+        Swapchain m_swapchain;
+
     private:
         struct FrameTools
         {
-            ID3D12CommandQueue* commandQueue;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
             ID3D12CommandAllocator* commandAllocator;
+
+            ID3D12Fence* inFlightFence;
         };
         BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
 
     private:
 
         Dx12Stats m_stats;
+
+        uint32_t m_currentFrame = 0;
     };
 
 
     uint8_t PickAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice, IDXGIFactory4* factory);
 
     uint8_t ValidateAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice);
+
+    uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
+    IDXGIFactory4* factory, ID3D12CommandQueue* commandQueue);
 }

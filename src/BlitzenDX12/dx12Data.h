@@ -1,5 +1,6 @@
 #include <D3d12.h>
 #include <dxgi1_4.h>
+#include <wrl.h>
 
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
@@ -25,5 +26,11 @@ namespace BlitzenDX12
         uint8_t ce_bDiscreteGPU = 0;
 
         uint8_t ce_bResourceManagement = 0;
+    };
+
+    struct Swapchain
+    {
+        Microsoft::WRL::ComPtr<IDXGISwapChain3> handle;
+        D3D12_RECT extent;
     };
 }

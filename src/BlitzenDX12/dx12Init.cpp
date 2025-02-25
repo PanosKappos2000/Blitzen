@@ -16,10 +16,10 @@ namespace BlitzenDX12
             ID3D12Debug* dc;
 
             // Probably shouldn't do this for debug functionality
-            if(D3D12GetDebugInterface(IID_PPV_ARGS(&dc)) != S_OK)
+            if(FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&dc))))
                 return 0;
 
-            if(dc->QueryInterface(IID_PPV_ARGS(&m_debugController)) != S_OK)
+            if(FAILED(dc->QueryInterface(IID_PPV_ARGS(&m_debugController))))
                 return 0;
 
             m_debugController->EnableDebugLayer();
@@ -30,7 +30,7 @@ namespace BlitzenDX12
             dc = nullptr;
         }
 
-        if(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)) != S_OK)
+        if(FAILED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory))))
             return 0;
 
         if(!PickAdapter(m_adapter, &device, factory))
@@ -39,7 +39,11 @@ namespace BlitzenDX12
         if(ce_bDebugController)
             device->QueryInterface(&m_debugDevice);
 
-        BLIT_INFO("DX12 success")
+        m_swapchain.extent.left = 0;
+        m_swapchain.extent.bottom = 0;
+        m_swapchain.extent.right = windowWidth;
+        m_swapchain.extent.top = windowHeight;
+
         return 1;
     }
 
@@ -70,7 +74,7 @@ namespace BlitzenDX12
 
     uint8_t ValidateAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice)
     {
-        return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(ppDevice)));
+        return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(ppDevice)));
     }
 
     void Dx12Renderer::Shutdown()
