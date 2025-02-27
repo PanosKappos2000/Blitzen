@@ -1,6 +1,7 @@
 #include <D3d12.h>
-#include <dxgi1_4.h>
+#include <dxgi1_6.h>
 #include <wrl.h>
+#include <d3d12sdklayers.h>
 
 #include "Core/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
@@ -23,9 +24,9 @@ namespace BlitzenDX12
 
     struct Dx12Stats
     {
-        uint8_t ce_bDiscreteGPU = 0;
+        uint8_t bDiscreteGPU = 0;
 
-        uint8_t ce_bResourceManagement = 0;
+        uint8_t bResourceManagement = 0;
     };
 
     struct Swapchain

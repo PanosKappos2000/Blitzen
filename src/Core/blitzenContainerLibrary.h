@@ -433,6 +433,10 @@ namespace BlitCL
 
         inline T* operator ->() {return m_pData; }
 
+        inline T& operator *() { return *m_pData; }
+
+        inline T** operator &() { return &m_pData; }
+
         ~SmartPointer()
         {
             if(m_pData)

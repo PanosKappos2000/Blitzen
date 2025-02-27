@@ -1,4 +1,5 @@
 #include "dx12Renderer.h"
+#include "Engine/blitzenEngine.h"
 
 
 namespace BlitzenDX12
@@ -10,71 +11,158 @@ namespace BlitzenDX12
 
     uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
-        uint32_t dxgiFactoryFlags = 0;
-        if(ce_bDebugController)
-        {
-            ID3D12Debug* dc;
-
-            // Probably shouldn't do this for debug functionality
-            if(FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&dc))))
-                return 0;
-
-            if(FAILED(dc->QueryInterface(IID_PPV_ARGS(&m_debugController))))
-                return 0;
-
-            m_debugController->EnableDebugLayer();
-            m_debugController->SetEnableGPUBasedValidation(true);
-
-            dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-            dc->Release();
-            dc = nullptr;
-        }
-
-        if(FAILED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory))))
+        if(!CreateFactory(m_factory.GetAddressOf()))
             return 0;
 
-        if(!PickAdapter(m_adapter, &device, factory))
+        if(!GetAdapterFromFactory(m_factory.Get(), m_adapter.GetAddressOf()))
             return 0;
 
-        if(ce_bDebugController)
-            device->QueryInterface(&m_debugDevice);
+        if(FAILED(D3D12CreateDevice(m_adapter.Get(), D3D_FEATURE_LEVEL_12_1, 
+        IID_PPV_ARGS(m_device.GetAddressOf()))))
+            return 0;
 
-        m_swapchain.extent.left = 0;
-        m_swapchain.extent.bottom = 0;
-        m_swapchain.extent.right = windowWidth;
-        m_swapchain.extent.top = windowHeight;
+        SetupResourceManagement();
+        if(!m_stats.bResourceManagement)
+            return 0;
+
+        if(!CreateSwapchain(m_swapchain, windowWidth, windowHeight, 
+        m_factory.Get(), m_frameTools[0].commandQueue.Get()))
+            return 0;
 
         return 1;
     }
 
-    uint8_t PickAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice, IDXGIFactory4* factory)
+    uint8_t CreateFactory(IDXGIFactory2** ppFactory)
     {
-        uint32_t adapterIndex = 0;
-        while(factory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND)
+        UINT dxgiFactoryFlags = 0;
+        if(ce_bDebugController)
         {
-            DXGI_ADAPTER_DESC1 desc;
-            adapter->GetDesc1(&desc);
-
-            // Only querries for discrete GPUs for now
-            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+            //UINT debugFlags = D3D12_DEBUG_FEATURE_ENABLE_GPU_ASSISTED;
+            Microsoft::WRL::ComPtr<ID3D12Debug1> dc; 
+            if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&dc))))
             {
-                ++adapterIndex;
-                continue;
+                dc->EnableDebugLayer();
+                dc->SetEnableGPUBasedValidation(true);
+                /*dc->SetDebugParameter(D3D12_DEBUG_PARAMETER_NAME_GPU_BASED_VALIDATION_SETTINGS, 
+                &debugFlags, sizeof(debugFlags));*/
+                dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }
-            
-            if(ValidateAdapter(adapter, ppDevice))
-                return 1;
-
-            adapter->Release();
-            ++adapterIndex;
         }
 
-        return 0;
+        if(FAILED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(ppFactory))))
+            return 0;
+
+        return 1;
     }
 
-    uint8_t ValidateAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice)
+    uint8_t GetAdapterFromFactory(IDXGIFactory2* pFactory, IDXGIAdapter** ppAdapter)
     {
-        return SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(ppDevice)));
+        Microsoft::WRL::ComPtr<IDXGIFactory6> fac6;
+
+		if (pFactory->QueryInterface(IID_PPV_ARGS(&fac6)) == S_OK)
+        {
+			return SUCCEEDED(fac6->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, 
+            IID_PPV_ARGS(ppAdapter))); 
+		}
+        else
+        {
+            return 0;
+        }
+    }
+
+    void Dx12Renderer::SetupResourceManagement()
+	{
+		for (auto& tools : m_frameTools)
+		{
+			D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+			queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+			queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+			if (FAILED(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&tools.commandQueue))))
+			{
+				m_stats.bResourceManagement = 0;
+				return;
+			}
+
+			if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&tools.commandAllocator))))
+			{
+				m_stats.bResourceManagement = 0;
+				return;
+			}
+
+			if(FAILED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&tools.inFlightFence))))
+			{
+				m_stats.bResourceManagement = 0;
+				return;
+			}
+		}
+		m_stats.bResourceManagement = 1;
+	}
+
+    uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
+    IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue)
+    {
+        swapchain.extent.left = 0;
+        swapchain.extent.bottom = 0;
+        swapchain.extent.right = windowWidth;
+        swapchain.extent.top = windowHeight;
+
+        D3D12_VIEWPORT viewport;
+        
+        viewport.TopLeftX = 0;
+        viewport.TopLeftY = 0;
+        
+        viewport.Width = static_cast<float>(windowWidth);
+        viewport.Height = static_cast<float>(windowHeight);
+        
+        viewport.MinDepth = BlitzenEngine::ce_znear;
+        viewport.MaxDepth = BlitzenEngine::ce_initialDrawDistance;
+        
+        if(swapchain.handle != nullptr)
+        {
+            if(swapchain.handle->ResizeBuffers(2, windowWidth, windowHeight, 
+            DXGI_FORMAT_R8G8_B8G8_UNORM, 0) != S_OK)
+                return 0;
+        }
+        else
+        {
+            DXGI_SWAP_CHAIN_DESC1 swapDesc{};
+            swapDesc.BufferCount = 2;// I think this is about double buffering, not sure
+            swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+            swapDesc.SampleDesc.Count = 1;
+            swapDesc.SampleDesc.Quality = 0;
+            swapDesc.Width = windowWidth;
+            swapDesc.Height = windowHeight;
+            swapDesc.Format = DXGI_FORMAT_R8G8_B8G8_UNORM;// Hardcoding this, I don't need anything else for now
+            swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            swapDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED; 
+            swapDesc.Scaling = DXGI_SCALING_STRETCH; 
+            swapDesc.Stereo = FALSE; 
+                    
+            Microsoft::WRL::ComPtr<IDXGISwapChain1> newSwapchain;
+            HWND hwnd = reinterpret_cast<HWND>(BlitzenPlatform::GetWindowHandle());
+    
+            // Validate HWND
+            if (!IsWindow(hwnd))
+            {
+                BLIT_ERROR("Invalid HWND");
+                return 0;
+            }
+    
+            // Validate Command Queue
+            if (!commandQueue)
+            {
+                BLIT_ERROR("Invalid Command Queue");
+                return 0;
+            }
+    
+            if(FAILED(factory->CreateSwapChainForHwnd(commandQueue, hwnd, 
+            &swapDesc, nullptr, nullptr, &newSwapchain)))
+                return 0;
+    
+            newSwapchain.As(&swapchain.handle);
+        }
+        return 1;
     }
 
     void Dx12Renderer::Shutdown()

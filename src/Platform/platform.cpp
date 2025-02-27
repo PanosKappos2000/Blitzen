@@ -75,7 +75,7 @@ namespace BlitzenPlatform
             wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
             wc.hbrBackground = nullptr;
 
-            // !This must be the exact same as the 2nd parameter of CreateWindowExA
+            // This must be the exact same as the 2nd parameter of CreateWindowExA
             wc.lpszClassName = "BlitzenWindowClass";
 
             if(!RegisterClassA(&wc))

@@ -26,14 +26,13 @@ namespace BlitzenDX12
         ~Dx12Renderer();
 
     public:
-        IDXGIFactory4* factory;
+        Microsoft::WRL::ComPtr<IDXGIFactory2> m_factory;
 
-        ID3D12Device* device;
+        Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 
     private:
-        ID3D12Debug1* m_debugController;
 
-        IDXGIAdapter1* m_adapter;
+        Microsoft::WRL::ComPtr<IDXGIAdapter> m_adapter;
 
         ID3D12DebugDevice* m_debugDevice;
 
@@ -57,10 +56,10 @@ namespace BlitzenDX12
     };
 
 
-    uint8_t PickAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice, IDXGIFactory4* factory);
+    uint8_t CreateFactory(IDXGIFactory2** ppFactory);
 
-    uint8_t ValidateAdapter(IDXGIAdapter1* adapter, ID3D12Device** ppDevice);
+    uint8_t GetAdapterFromFactory(IDXGIFactory2* pFactory, IDXGIAdapter** ppAdapter);
 
     uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
-    IDXGIFactory4* factory, ID3D12CommandQueue* commandQueue);
+    IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue);
 }
