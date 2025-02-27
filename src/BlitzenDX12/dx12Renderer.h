@@ -66,5 +66,5 @@ namespace BlitzenDX12
     uint8_t CreateCommandQueue(ID3D12CommandQueue** ppQueue, ID3D12Device* pDevice);
 
     uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
-    IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue);
+    IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue, ID3D12Device* pDevice);
 }

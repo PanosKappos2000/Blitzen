@@ -29,7 +29,7 @@ namespace BlitzenDX12
             return 0;
 
         if(!CreateSwapchain(m_swapchain, windowWidth, windowHeight, 
-        m_factory.Get(), m_commandQueue.Get()))
+        m_factory.Get(), m_commandQueue.Get(), m_device.Get()))
             return 0;
 
         return 1;
@@ -113,7 +113,7 @@ namespace BlitzenDX12
 	}
 
     uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
-    IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue)
+    IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue, ID3D12Device* pDevice)
     {
         swapchain.extent.left = 0;
         swapchain.extent.bottom = 0;
@@ -121,54 +121,50 @@ namespace BlitzenDX12
         swapchain.extent.top = windowHeight;
 
         D3D12_VIEWPORT viewport;
-        
         viewport.TopLeftX = 0;
         viewport.TopLeftY = 0;
-        
         viewport.Width = static_cast<float>(windowWidth);
         viewport.Height = static_cast<float>(windowHeight);
-        
         viewport.MinDepth = BlitzenEngine::ce_znear;
         viewport.MaxDepth = BlitzenEngine::ce_initialDrawDistance;
+
+        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		rtvHeapDesc.NumDescriptors = ce_framesInFlight; 
+		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		rtvHeapDesc.NodeMask = 0;
+		if(FAILED(pDevice->CreateDescriptorHeap(&rtvHeapDesc, 
+        IID_PPV_ARGS(swapchain.m_renderTargetViewDescriptor.GetAddressOf()))))
+            return 0;
+		swapchain.m_heapIncrement = pDevice->GetDescriptorHandleIncrementSize(rtvHeapDesc.Type);
         
-        if(swapchain.handle != nullptr)
-        {
-            if(swapchain.handle->ResizeBuffers(2, windowWidth, windowHeight, 
-            DXGI_FORMAT_R8G8_B8G8_UNORM, 0) != S_OK)
-                return 0;
-        }
-        else
-        {
-            DXGI_SWAP_CHAIN_DESC1 swapDesc{};
-            swapDesc.BufferCount = 2;// I think this is about double buffering, not sure
-            swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            swapDesc.SampleDesc.Count = 1;
-            swapDesc.SampleDesc.Quality = 0;
-            swapDesc.Width = windowWidth;
-            swapDesc.Height = windowHeight;
-            swapDesc.Format = DXGI_FORMAT_R8G8_B8G8_UNORM;// Hardcoding this, I don't need anything else for now
-            swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-            swapDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED; 
-            swapDesc.Scaling = DXGI_SCALING_STRETCH; 
-            swapDesc.Stereo = FALSE; 
-                    
-            Microsoft::WRL::ComPtr<IDXGISwapChain1> newSwapchain;
-            HWND hwnd = reinterpret_cast<HWND>(BlitzenPlatform::GetWindowHandle());
+        DXGI_SWAP_CHAIN_DESC1 description = {};
+		description.Width = windowWidth;
+		description.Height = windowHeight;
+		description.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		description.Stereo = false;
+		description.SampleDesc = { 1,0 };
+		description.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		description.BufferCount = ce_framesInFlight;
+		description.Scaling = DXGI_SCALING_NONE;
+		description.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		description.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+		description.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+
+        HWND hwnd = reinterpret_cast<HWND>(BlitzenPlatform::GetWindowHandle());
     
-            // Validates HWND
-            if (!IsWindow(hwnd))
-                return 0;
+        // Validates HWND
+        if (!IsWindow(hwnd))
+            return 0;
     
-            // Validates Command Queue
-            if (!commandQueue)
-                return 0;
+        // Validates Command Queue
+        if (!commandQueue)
+            return 0;
     
-            if((factory->CreateSwapChainForHwnd(commandQueue, hwnd, 
-            &swapDesc, nullptr, nullptr, newSwapchain.GetAddressOf())) == DXGI_ERROR_INVALID_CALL)
-                return 0;
-    
-            newSwapchain.As(&swapchain.handle);
-        }
+        if(FAILED(factory->CreateSwapChainForHwnd(commandQueue, hwnd, 
+        &description, nullptr, nullptr, swapchain.handle.GetAddressOf())))
+            return 0;
+        
         return 1;
     }
 
