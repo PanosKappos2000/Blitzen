@@ -21,12 +21,15 @@ namespace BlitzenDX12
         IID_PPV_ARGS(m_device.GetAddressOf()))))
             return 0;
 
+        if(!CreateCommandQueue(m_commandQueue.GetAddressOf(), m_device.Get()))
+            return 0;
+
         SetupResourceManagement();
         if(!m_stats.bResourceManagement)
             return 0;
 
         if(!CreateSwapchain(m_swapchain, windowWidth, windowHeight, 
-        m_factory.Get(), m_frameTools[0].commandQueue.Get()))
+        m_factory.Get(), m_commandQueue.Get()))
             return 0;
 
         return 1;
@@ -35,11 +38,13 @@ namespace BlitzenDX12
     uint8_t CreateFactory(IDXGIFactory2** ppFactory)
     {
         UINT dxgiFactoryFlags = 0;
+
+        // Enables debug controller on debug builds
         if(ce_bDebugController)
         {
             //UINT debugFlags = D3D12_DEBUG_FEATURE_ENABLE_GPU_ASSISTED;
             Microsoft::WRL::ComPtr<ID3D12Debug1> dc; 
-            if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&dc))))
+            if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(dc.GetAddressOf()))))
             {
                 dc->EnableDebugLayer();
                 dc->SetEnableGPUBasedValidation(true);
@@ -49,10 +54,7 @@ namespace BlitzenDX12
             }
         }
 
-        if(FAILED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(ppFactory))))
-            return 0;
-
-        return 1;
+        return (SUCCEEDED(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(ppFactory))));
     }
 
     uint8_t GetAdapterFromFactory(IDXGIFactory2* pFactory, IDXGIAdapter** ppAdapter)
@@ -70,27 +72,38 @@ namespace BlitzenDX12
         }
     }
 
+    uint8_t CreateCommandQueue(ID3D12CommandQueue** ppQueue, ID3D12Device* pDevice)
+    {
+        D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+        queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH;
+        queueDesc.NodeMask = 0;
+
+		return SUCCEEDED(pDevice->CreateCommandQueue(&queueDesc, 
+        IID_PPV_ARGS(ppQueue)));
+    }
+
     void Dx12Renderer::SetupResourceManagement()
 	{
 		for (auto& tools : m_frameTools)
 		{
-			D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-			queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-			queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-
-			if (FAILED(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&tools.commandQueue))))
+			if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, 
+            IID_PPV_ARGS(tools.commandAllocator.GetAddressOf()))))
 			{
 				m_stats.bResourceManagement = 0;
 				return;
 			}
 
-			if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&tools.commandAllocator))))
-			{
+            if(FAILED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, tools.commandAllocator.Get(), 
+            nullptr, IID_PPV_ARGS(tools.commandList.GetAddressOf()))))
+            {
 				m_stats.bResourceManagement = 0;
 				return;
 			}
 
-			if(FAILED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&tools.inFlightFence))))
+			if(FAILED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, 
+            IID_PPV_ARGS(tools.inFlightFence.GetAddressOf()))))
 			{
 				m_stats.bResourceManagement = 0;
 				return;
@@ -142,22 +155,16 @@ namespace BlitzenDX12
             Microsoft::WRL::ComPtr<IDXGISwapChain1> newSwapchain;
             HWND hwnd = reinterpret_cast<HWND>(BlitzenPlatform::GetWindowHandle());
     
-            // Validate HWND
+            // Validates HWND
             if (!IsWindow(hwnd))
-            {
-                BLIT_ERROR("Invalid HWND");
                 return 0;
-            }
     
-            // Validate Command Queue
+            // Validates Command Queue
             if (!commandQueue)
-            {
-                BLIT_ERROR("Invalid Command Queue");
                 return 0;
-            }
     
-            if(FAILED(factory->CreateSwapChainForHwnd(commandQueue, hwnd, 
-            &swapDesc, nullptr, nullptr, &newSwapchain)))
+            if((factory->CreateSwapChainForHwnd(commandQueue, hwnd, 
+            &swapDesc, nullptr, nullptr, newSwapchain.GetAddressOf())) == DXGI_ERROR_INVALID_CALL)
                 return 0;
     
             newSwapchain.As(&swapchain.handle);
@@ -172,6 +179,6 @@ namespace BlitzenDX12
 
     Dx12Renderer::~Dx12Renderer()
     {
-
+        
     }
 }

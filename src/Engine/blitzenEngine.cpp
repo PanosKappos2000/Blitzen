@@ -143,7 +143,7 @@ namespace BlitzenEngine
                 // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
                 UpdateCamera(mainCamera, (float)m_deltaTime);
 
-                // Draw the frame!!!!
+                // Draw the frame
                 renderer->DrawFrame(mainCamera, drawCount);
 
                 // Make sure that the window resize is set to false after the renderer is notified

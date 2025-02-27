@@ -36,15 +36,18 @@ namespace BlitzenDX12
 
         ID3D12DebugDevice* m_debugDevice;
 
+        Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
+
         Swapchain m_swapchain;
 
     private:
         struct FrameTools
         {
-            Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
-            ID3D12CommandAllocator* commandAllocator;
+            Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
 
-            ID3D12Fence* inFlightFence;
+            Microsoft::WRL::ComPtr<ID3D12CommandList> commandList;
+
+            Microsoft::WRL::ComPtr<ID3D12Fence> inFlightFence;
         };
         BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
 
@@ -59,6 +62,8 @@ namespace BlitzenDX12
     uint8_t CreateFactory(IDXGIFactory2** ppFactory);
 
     uint8_t GetAdapterFromFactory(IDXGIFactory2* pFactory, IDXGIAdapter** ppAdapter);
+
+    uint8_t CreateCommandQueue(ID3D12CommandQueue** ppQueue, ID3D12Device* pDevice);
 
     uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
     IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue);
