@@ -77,11 +77,6 @@ namespace BlitzenVulkan
         // The command buffer recording begin here (stops when submit is called)
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
-        // Dispatch the culling shader for the intial pass. This will perform frustum culling and LOD selection for objects that were visible last frame
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
-        BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 0, 0, 
-        context.bOcclusionCulling, context.bLOD);
-
         // The viewport and scissor are dynamic, so they should be set here
         DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
 
@@ -104,32 +99,56 @@ namespace BlitzenVulkan
         // Places the 2 image barriers
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderingAttachmentDefinitionBarriers);
 
-        // Draw the objects based on the indirect draw buffer and indirect count buffer that were written by the culling shader
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, context.drawCount, 0, m_opaqueGeometryPipeline.handle);
 
+        if(context.drawCount == 0)
+        {
+            VkClearColorValue val{};
+            float color[4] = {0.1f, 0.2f, 0.3f, 0};
+            BlitzenCore::BlitMemCopy(val.float32, color, sizeof(float) * 4);
 
-        // Before the late culling shader the depth pyramid needs to be generated based on the early pass depth attachment
-        GenerateDepthPyramid(fTools.commandBuffer);
+            VkImageSubresourceRange range{};
+            range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            range.baseMipLevel = 0;
+            range.levelCount = VK_REMAINING_MIP_LEVELS;
+            range.baseArrayLayer = 0;
+            range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-        // Dispatches the late culling compute shader which does frustum culling, occlusion culling and LOD selection on everything
-        // It only draws the objects that were not visible last frame and updates the visibility buffer for all objects
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
-        BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 0, 
-        context.bOcclusionCulling, context.bLOD);
+            // This does not work with color attachment optimal but it is only temporary anyway, so I will not be fixing it
+            vkCmdClearColorImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+            &val, 1, &range);
+        }
+        else
+        {
+            // Dispatch the culling shader for the intial pass. This will perform frustum culling and LOD selection for objects that were visible last frame
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
+            BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 0, 0, 
+            context.bOcclusionCulling, context.bLOD);
 
-        // Draw the objects based on the indirect draw buffer and indirect count buffer
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
-        context.drawCount, 1, m_opaqueGeometryPipeline.handle);
+            // Draw the objects based on the indirect draw buffer and indirect count buffer that were written by the culling shader
+            DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, context.drawCount, 0, m_opaqueGeometryPipeline.handle);
 
+            // Before the late culling shader the depth pyramid needs to be generated based on the early pass depth attachment
+            GenerateDepthPyramid(fTools.commandBuffer);
 
-        // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution will be found)
-        DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
-        BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 1, 
-        context.bOcclusionCulling, context.bLOD);
+            // Dispatches the late culling compute shader which does frustum culling, occlusion culling and LOD selection on everything
+            // It only draws the objects that were not visible last frame and updates the visibility buffer for all objects
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
+            BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 0, 
+            context.bOcclusionCulling, context.bLOD);
 
-        // Draws the transparent objects
-        DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
-        context.drawCount, 1, m_postPassGeometryPipeline.handle);
+            // Draw the objects based on the indirect draw buffer and indirect count buffer
+            DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
+            context.drawCount, 1, m_opaqueGeometryPipeline.handle);
+
+            // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution will be found)
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
+            BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 1, 
+            context.bOcclusionCulling, context.bLOD);
+
+            // Draws the transparent objects
+            DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
+            context.drawCount, 1, m_postPassGeometryPipeline.handle);
+        }
         
 
 

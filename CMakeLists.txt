@@ -139,7 +139,7 @@ target_include_directories(BlitzenEngine PUBLIC
 
 target_compile_definitions(BlitzenEngine PUBLIC
 
-                            BLITZEN_VULKAN_OVERRIDE
+                            #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros
                             BLITZEN_RENDERING_STRESS_TEST
                             BLIT_VSYNC

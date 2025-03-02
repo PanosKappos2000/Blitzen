@@ -537,6 +537,13 @@ namespace BlitzenVulkan
 
     uint8_t VulkanRenderer::UploadDataToGPU(BlitzenEngine::RenderingResources* pResources)
     {
+        // The renderer is allow to continue even without render objects but this function should not do anything
+        if(pResources->renderObjectCount == 0)
+        {
+            BLIT_WARN("No objects given to the renderer")
+            return 1;
+        }
+
         BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->vertices;
         BlitCL::DynamicArray<uint32_t>& indices = pResources->indices;
 
