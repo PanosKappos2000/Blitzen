@@ -80,13 +80,16 @@ namespace BlitzenVulkan
         // The viewport and scissor are dynamic, so they should be set here
         DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
 
+        VkImageLayout colorAttachmentWorkingLayout = context.drawCount ? 
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+
         // Create image barrier to transition color attachment image layout from undefined to optimal.
         // It needs to wait for the previous frame and then stop the color attachment stage
         VkImageMemoryBarrier2 renderingAttachmentDefinitionBarriers[2] = {};
         ImageMemoryBarrier(m_colorAttachment.image, renderingAttachmentDefinitionBarriers[0], 
         VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE, 
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+        VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, 
         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
 
         // Similar thing for the depth atatchment
@@ -102,20 +105,25 @@ namespace BlitzenVulkan
 
         if(context.drawCount == 0)
         {
-            VkClearColorValue val{};
-            float color[4] = {0.1f, 0.2f, 0.3f, 0};
-            BlitzenCore::BlitMemCopy(val.float32, color, sizeof(float) * 4);
+	        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, 
+            m_basicBackgroundPipeline.handle);
+            VkWriteDescriptorSet backgroundImageWrite{};
+            VkDescriptorImageInfo backgroundImageInfo{};
+            WriteImageDescriptorSets(backgroundImageWrite, backgroundImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 
+            VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, m_colorAttachment.imageView);
 
-            VkImageSubresourceRange range{};
-            range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            range.baseMipLevel = 0;
-            range.levelCount = VK_REMAINING_MIP_LEVELS;
-            range.baseArrayLayer = 0;
-            range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+	        PushDescriptors(m_instance, 
+            fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_basicBackgroundLayout.handle, 
+            0, 1, &backgroundImageWrite);
 
-            // This does not work with color attachment optimal but it is only temporary anyway, so I will not be fixing it
-            vkCmdClearColorImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-            &val, 1, &range);
+	        BackgroundShaderPushConstant pc;
+	        pc.data1 = BlitML::vec4(1, 0, 0, 1);
+	        pc.data2 = BlitML::vec4(0, 0, 1, 1);
+	        vkCmdPushConstants(fTools.commandBuffer, m_basicBackgroundLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
+            sizeof(BackgroundShaderPushConstant), &pc);
+
+	        vkCmdDispatch(fTools.commandBuffer, uint32_t(std::ceil(m_drawExtent.width / 16.0)), 
+            uint32_t(std::ceil(m_drawExtent.height / 16.0)), 1);
         }
         else
         {
@@ -161,7 +169,7 @@ namespace BlitzenVulkan
         ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentTransferBarriers[0], 
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
         VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+        colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
         VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
 
         // Create an image barrier for the swapchain image to transition its layout to transfer dst optimal
@@ -546,7 +554,7 @@ namespace BlitzenVulkan
     {
         // Create a new swapchain by passing an empty swapchain handle to the new swapchain argument and the old swapchain to oldSwapchain
         VkSwapchainKHR oldSwapchain = m_swapchainValues.swapchainHandle;
-        CreateSwapchain(m_device, m_surface, m_physicalDevice,  windowWidth, windowHeight, m_graphicsQueue, 
+        CreateSwapchain(m_device, m_surface.handle, m_physicalDevice,  windowWidth, windowHeight, m_graphicsQueue, 
         m_presentQueue, m_computeQueue, m_pCustomAllocator, m_swapchainValues, oldSwapchain);
 
         // The draw extent should also be updated depending on if the swapchain got bigger or smaller

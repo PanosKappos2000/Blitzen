@@ -1,0 +1,30 @@
+#version 450
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1)in;
+
+layout (rgba16f, set = 0, binding = 0) uniform image2D store;
+
+layout(push_constant) uniform constants
+{
+    vec4 data1;
+    vec4 data2;
+    vec4 data3;
+    vec4 data4;
+};
+
+void main()
+{
+    ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+	ivec2 size = imageSize(store);
+
+    vec4 topColor = data1;
+    vec4 bottomColor = data2;
+
+    if(texelCoord.x < size.x && texelCoord.y < size.y)
+    {
+        float blend = float(texelCoord.y) / (size.y); 
+    
+        imageStore(store, texelCoord, mix(topColor,bottomColor, blend));
+    }
+}

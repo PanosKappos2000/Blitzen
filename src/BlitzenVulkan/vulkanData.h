@@ -92,6 +92,13 @@ namespace BlitzenVulkan
 
 
 
+    struct SurfaceKHR
+    {
+        VkSurfaceKHR handle = VK_NULL_HANDLE;
+
+        ~SurfaceKHR();
+    };
+
     struct Swapchain
     {
         VkSwapchainKHR swapchainHandle;
@@ -103,6 +110,8 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<VkImage> swapchainImages;
 
         BlitCL::DynamicArray<VkImageView> swapchainImageViews;
+
+        ~Swapchain();
     };
 
     struct Queue
@@ -140,12 +149,26 @@ namespace BlitzenVulkan
         ~DescriptorSetLayout();
     };
 
+    struct DescriptorPool
+    {
+        VkDescriptorPool handle = VK_NULL_HANDLE;
+
+        ~DescriptorPool();
+    };
+
     struct PipelineProgram
     {
         PipelineObject& pipeline;
         PipelineLayout& layout;
 
         inline PipelineProgram(PipelineObject& p, PipelineLayout& l) :pipeline(p), layout(l) {}
+    };
+
+    struct CommandPool
+    {
+        VkCommandPool handle = VK_NULL_HANDLE;
+
+        ~CommandPool();
     };
 
     struct Semaphore
@@ -288,6 +311,14 @@ namespace BlitzenVulkan
         // Constructor
         inline DrawCullShaderPushConstant(uint32_t dc, uint8_t bPP, uint8_t bOC = 1, uint8_t bLod = 1)
         :drawCount{dc}, bPostPass{bPP}, bOcclusionCulling{bOC}, bLOD{bLod} {}
+    };
+
+    struct BackgroundShaderPushConstant
+    {
+        BlitML::vec4 data1;
+        BlitML::vec4 data2;
+        BlitML::vec4 data3;
+        BlitML::vec4 data4;
     };
 }
 

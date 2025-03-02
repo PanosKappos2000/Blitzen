@@ -106,7 +106,7 @@ namespace BlitzenVulkan
 
         VkDebugUtilsMessengerEXT m_debugMessenger;
 
-        VkSurfaceKHR m_surface;
+        SurfaceKHR m_surface;
 
         VkPhysicalDevice m_physicalDevice;
 
@@ -226,8 +226,10 @@ namespace BlitzenVulkan
         DescriptorSetLayout m_textureDescriptorSetlayout;
 
         // This descriptor set does not use push descriptors and thus it needs to be allocated with a descriptor pool
-        VkDescriptorPool m_textureDescriptorPool;
+        DescriptorPool m_textureDescriptorPool;
         VkDescriptorSet m_textureDescriptorSet;
+
+        DescriptorSetLayout m_backgroundImageSetLayout;
 
     /*
         Pipelines section
@@ -268,6 +270,10 @@ namespace BlitzenVulkan
         // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 
         PipelineObject m_depthPyramidGenerationPipeline;
         PipelineLayout m_depthPyramidGenerationLayout;
+
+        // Used when draw count is 0 to generate a default background (might use it with normal drawing as well in the future)
+        PipelineObject m_basicBackgroundPipeline;
+        PipelineLayout m_basicBackgroundLayout;
     
     /*
         Runtime section
@@ -277,7 +283,7 @@ namespace BlitzenVulkan
         // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
         struct FrameTools
         {
-            VkCommandPool mainCommandPool;
+            CommandPool mainCommandPool;
             VkCommandBuffer commandBuffer;
 
             SyncFence inFlightFence;
@@ -467,7 +473,8 @@ namespace BlitzenVulkan
     uint32_t descriptorCount, uint32_t binding, uint32_t dstArrayElement = 0);
 
     // Creates VkDescriptorImageInfo and uses it to create a VkWriteDescriptorSet for images. DescriptorCount is set to 1 by default
-    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo, VkDescriptorType descirptorType, VkDescriptorSet dstSet, 
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo, 
+    VkDescriptorType descirptorType, VkDescriptorSet dstSet, 
     uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler = VK_NULL_HANDLE);
 
 

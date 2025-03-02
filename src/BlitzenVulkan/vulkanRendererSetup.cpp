@@ -237,6 +237,15 @@ namespace BlitzenVulkan
             return 0;
         }
         #endif
+
+        // Create the background shader in case the renderer has not objects
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/BasicBackground.comp.glsl.spv", 
+        VK_SHADER_STAGE_COMPUTE_BIT, "main", m_basicBackgroundLayout.handle, &m_basicBackgroundPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create BasicBackground.comp shader program")
+            if(pResources->renderObjectCount == 0)
+                return 0;
+        }
         
         // Create the graphics pipeline object 
         if(!SetupMainGraphicsPipeline())
@@ -300,12 +309,13 @@ namespace BlitzenVulkan
             FrameTools& frameTools = m_frameToolsList[i];
 
             // Creates the command pool that manages the command buffer's memory
-            VkResult commandPoolResult = vkCreateCommandPool(m_device, &commandPoolsInfo, m_pCustomAllocator, &(frameTools.mainCommandPool));
+            VkResult commandPoolResult = vkCreateCommandPool(m_device, &commandPoolsInfo, 
+            m_pCustomAllocator, &(frameTools.mainCommandPool.handle));
             if(commandPoolResult != VK_SUCCESS)
                 return 0;
 
             // Allocates the command buffer using the above command pool
-            commandBuffersInfo.commandPool = frameTools.mainCommandPool;
+            commandBuffersInfo.commandPool = frameTools.mainCommandPool.handle;
             VkResult commandBufferResult = vkAllocateCommandBuffers(m_device, &commandBuffersInfo, &(frameTools.commandBuffer));
             if(commandBufferResult != VK_SUCCESS)
                 return 0;
@@ -488,6 +498,15 @@ namespace BlitzenVulkan
         if(m_depthPyramidDescriptorLayout.handle == VK_NULL_HANDLE)
             return 0;
 
+        // Creates a binding for the descriptor that will provide an image to the background compute shader
+        VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 
+        VK_SHADER_STAGE_COMPUTE_BIT);
+        m_backgroundImageSetLayout.handle = CreateDescriptorSetLayout(m_device, 1, &backgroundImageLayoutBinding, 
+        VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        if(m_backgroundImageSetLayout.handle == VK_NULL_HANDLE)
+            return 0;
+
         // The graphics pipeline will use 2 layouts, the one for push desciptors and the constant one for textures
         VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle };
         if(!CreatePipelineLayout(m_device, &m_graphicsPipelineLayout.handle, 2, layouts, 0, nullptr))
@@ -508,6 +527,14 @@ namespace BlitzenVulkan
         VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
         if(!CreatePipelineLayout(m_device, &m_depthPyramidGenerationLayout.handle, 
         1, &m_depthPyramidDescriptorLayout.handle, 1, &depthPyramidMipExtentPushConstant))
+            return 0;
+
+        // Creates the layout for the background compute shader
+        VkPushConstantRange backgroundImageShaderPushConstant{};
+        CreatePushConstantRange(backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
+        sizeof(BackgroundShaderPushConstant));
+        if(!CreatePipelineLayout(m_device, &m_basicBackgroundLayout.handle, 1, 
+        &m_backgroundImageSetLayout.handle, 1, &backgroundImageShaderPushConstant))
             return 0;
 
         return 1;
@@ -759,14 +786,14 @@ namespace BlitzenVulkan
         poolSize.descriptorCount = static_cast<uint32_t>(textureCount);
 
         // Creates the descriptor pool for the textures
-        m_textureDescriptorPool = CreateDescriptorPool(m_device, 1, &poolSize, 
+        m_textureDescriptorPool.handle = CreateDescriptorPool(m_device, 1, &poolSize, 
         1);
-        if(m_textureDescriptorPool == VK_NULL_HANDLE)
+        if(m_textureDescriptorPool.handle == VK_NULL_HANDLE)
             return 0;
  
         // Allocates the descriptor set that will be used to bind the textures
-        if(!AllocateDescriptorSets(m_device, m_textureDescriptorPool, &m_textureDescriptorSetlayout.handle, 
-        1, &m_textureDescriptorSet))
+        if(!AllocateDescriptorSets(m_device, m_textureDescriptorPool.handle, 
+        &m_textureDescriptorSetlayout.handle, 1, &m_textureDescriptorSet))
             return 0;
 
         // Create image infos for every texture to be passed to the VkWriteDescriptorSet

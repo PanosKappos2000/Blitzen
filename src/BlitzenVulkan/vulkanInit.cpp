@@ -87,14 +87,14 @@ namespace BlitzenVulkan
         }
 
         // Create the surface depending on the implementation on Platform.cpp
-        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface, m_pCustomAllocator))
+        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator))
         {
             BLIT_ERROR("Failed to create Vulkan window surface")
             return 0;
         }
 
         // Call the function to search for a suitable physical device, it it can't find one return 0
-        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface, 
+        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, 
         m_graphicsQueue, m_computeQueue, m_presentQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device")
@@ -108,7 +108,7 @@ namespace BlitzenVulkan
         }
 
         // Creates the swapchain
-        if(!CreateSwapchain(m_device, m_surface, m_physicalDevice, 
+        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, 
         windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
         m_pCustomAllocator, m_swapchainValues))
         {
@@ -927,35 +927,24 @@ namespace BlitzenVulkan
     }
 
     // The cleanup could be handled better, but I would have to create handles for everything that I use, so that they are destroyed automatically
-    // I already do this for buffers and images, so it is theoretically possible but it would be a massive chore at this point
+    // I already do this for buffers and images, so it is theoretically possible but it would be a massive chore at this point (Still did it though)
+    // Update: this is pretty much usuless now
     void VulkanRenderer::Shutdown()
+    {
+        
+    }
+
+    // Few manual destructions remaining, mostly because of my laziness
+    VulkanRenderer::~VulkanRenderer()
     {
         // Wait for the device to finish its work before destroying resources
         vkDeviceWaitIdle(m_device);
-
-        // Destroys the resources used for the texture descriptors
-        vkDestroyDescriptorPool(m_device, m_textureDescriptorPool, nullptr);
 
         for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
         {
             vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
         }
 
-        for(size_t i = 0; i < ce_framesInFlight; ++i)
-        {
-            FrameTools& frameTools = m_frameToolsList[i];
-            vkDestroyCommandPool(m_device, frameTools.mainCommandPool, m_pCustomAllocator);
-        }
-
-        vkDestroySwapchainKHR(m_device, m_swapchainValues.swapchainHandle, m_pCustomAllocator);
-
         DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_pCustomAllocator);
-
-        vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
-    }
-
-    VulkanRenderer::~VulkanRenderer()
-    {
-        
     }
 }

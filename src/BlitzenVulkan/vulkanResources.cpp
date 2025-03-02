@@ -606,6 +606,23 @@ namespace BlitzenVulkan
 
 
 
+    SurfaceKHR::~SurfaceKHR()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkInstance inst = VulkanRenderer::GetRendererInstance()->m_instance;
+            vkDestroySurfaceKHR(inst, handle, nullptr);
+        }
+    }
+
+    Swapchain::~Swapchain()
+    {
+        if(swapchainHandle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroySwapchainKHR(vdv, swapchainHandle, nullptr);
+        }
+    }
 
     void AllocatedImage::CleanupResources(VmaAllocator allocator, VkDevice device)
     {
@@ -673,12 +690,30 @@ namespace BlitzenVulkan
         }
     }
 
+    DescriptorPool::~DescriptorPool()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyDescriptorPool(vdv, handle, nullptr);
+        }
+    }
+
     ImageSampler::~ImageSampler()
     {
         if(handle != VK_NULL_HANDLE)
         {
             VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
             vkDestroySampler(vdv, handle, nullptr);
+        }
+    }
+
+    CommandPool::~CommandPool()
+    {
+        if(handle != VK_NULL_HANDLE)
+        {
+            VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            vkDestroyCommandPool(vdv, handle, nullptr);
         }
     }
 
