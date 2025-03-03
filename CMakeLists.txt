@@ -26,7 +26,9 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanRendererSetup.cpp
                 src/BlitzenVulkan/vulkanDraw.cpp
 
+                src/BlitzenGL/openglData.h
                 src/BlitzenGL/openglRenderer.h
+                src/BlitzenGL/openglResources.cpp
                 src/BlitzenGl/openglRenderer.cpp
 
                 src/Renderer/blitRenderingResources.h
@@ -145,14 +147,12 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VSYNC
 
                             # Vulkan specific preprocessor macros
-                            BLITZEN_VULKAN# Never undef this
-                            BLIT_VK_ACTIVE_GRAPHICS_API
+                            BLITZEN_VULKAN # Never undef this
                             BLIT_VK_VALIDATION_LAYERS
                             BLIT_VK_RAYTRACING
 
                             # Opengl preprocessor marcors
                             #BLIT_GL_LEGACY_OVERRIDE
-                            BLIT_GL_ACTIVE_GRAPHICS_API
 
                             # Engine core preprocessor macros
                             BLIT_ASSERTIONS_ENABLED

@@ -29,28 +29,31 @@ namespace BlitzenEngine
 
         Engine();
         
-        // Many systems check 
+        // Many systems check for this to be null before destructor operations. 
+        // This function makes it null before the engine destructor, so that other systems do not fail on cleanup
         inline static void BeginShutdown() { s_pEngine = nullptr; }
 
         Engine::~Engine();
 
+        // Suspending the engine, means that most systems (like rendering) are inactive. But it is still running on the background
         inline void Suspend() { bSuspended = 1; }
         inline void ReActivate() { bSuspended = 0; }
         inline uint8_t IsActive() { return !bSuspended; }
 
-        inline void BootUp() {bRunning = 1;}
+        // If bRunning is 0, the engine shuts down and the application quits
+        inline void BootUp() { bRunning = 1; }
         inline void Shutdown() { bRunning = 0; }
         inline uint8_t IsRunning() { return bRunning; }
 
         inline static Engine* GetEngineInstancePointer() { return s_pEngine; }
 
-        // Returns delta time, crucial for functions that move objects
+        // Delta time is owned by the engine, but this doesn't make much sense. It should probably be given to the platform system
         inline double GetDeltaTime() { return m_deltaTime; }
         inline void SetDeltaTime(double deltaTime) { m_deltaTime = deltaTime; }
 
     private:
 
-        // Makes sure that the engine is only created once and gives access subparts of the engine through static getter
+        // Leaky singleton
         static Engine* s_pEngine;
 
         uint8_t bRunning = 0;

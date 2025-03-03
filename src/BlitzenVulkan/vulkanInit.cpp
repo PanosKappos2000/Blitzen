@@ -926,14 +926,6 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    // The cleanup could be handled better, but I would have to create handles for everything that I use, so that they are destroyed automatically
-    // I already do this for buffers and images, so it is theoretically possible but it would be a massive chore at this point (Still did it though)
-    // Update: this is pretty much usuless now
-    void VulkanRenderer::Shutdown()
-    {
-        
-    }
-
     // Few manual destructions remaining, mostly because of my laziness
     VulkanRenderer::~VulkanRenderer()
     {

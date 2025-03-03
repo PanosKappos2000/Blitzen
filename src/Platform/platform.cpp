@@ -38,9 +38,9 @@ namespace BlitzenPlatform
             HGLRC hglrc;
         };    
 
-        inline PlatformState s_pPlatformState;
+        inline PlatformState inl_pPlatformState;
 
-        void* GetWindowHandle() {return s_pPlatformState.winWindow;}
+        void* GetWindowHandle() {return inl_pPlatformState.winWindow;}
 
         inline double clockFrequency;
         inline LARGE_INTEGER startTime;
@@ -60,9 +60,9 @@ namespace BlitzenPlatform
             !(BlitzenCore::InputSystemState::GetState()))
                 return 0;
 
-            s_pPlatformState.winInstance = GetModuleHandleA(0);
+            inl_pPlatformState.winInstance = GetModuleHandleA(0);
 
-            HICON icon = LoadIcon(s_pPlatformState.winInstance, IDI_APPLICATION);
+            HICON icon = LoadIcon(inl_pPlatformState.winInstance, IDI_APPLICATION);
             tagWNDCLASSA wc;
             memset(&wc, 0, sizeof(wc));
             wc.style = CS_DBLCLKS;
@@ -70,7 +70,7 @@ namespace BlitzenPlatform
             wc.lpfnWndProc = Win32ProcessMessage;
             wc.cbClsExtra = 0;
             wc.cbWndExtra = 0;
-            wc.hInstance = s_pPlatformState.winInstance;
+            wc.hInstance = inl_pPlatformState.winInstance;
             wc.hIcon = icon;
             wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
             wc.hbrBackground = nullptr;
@@ -80,17 +80,18 @@ namespace BlitzenPlatform
 
             if(!RegisterClassA(&wc))
             {
-                MessageBoxA(s_pPlatformState.winWindow, "Window registration failed", "Error", MB_ICONEXCLAMATION | MB_OK);
+                MessageBoxA(inl_pPlatformState.winWindow, "Window registration failed", "Error", 
+                MB_ICONEXCLAMATION | MB_OK);
                 return 0;
             }
 
-            // Set the window's client size
+            // Sets the window's client size
             uint32_t clientX = BlitzenEngine::ce_windowStartingX;
             uint32_t clientY = BlitzenEngine::ce_windowStartingY;
             uint32_t clientWidth = BlitzenEngine::ce_initialWindowWidth;
             uint32_t clientHeight = BlitzenEngine::ce_initialWindowHeight;
 
-            // Set the size of the window to be the same as the client momentarily
+            // Sets the size of the window to be the same as the client momentarily
             uint32_t windowX = clientX;
             uint32_t windowY = clientY;
             uint32_t windowWidth = clientWidth;
@@ -106,15 +107,17 @@ namespace BlitzenPlatform
             RECT borderRect = {0, 0, 0, 0};
             AdjustWindowRectEx(&borderRect, windowStyle, 0, windowExStyle);
 
-            // Set the true size of the window
+            // Sets the true size of the window
             windowX += borderRect.left;
             windowY += borderRect.top;
             windowWidth += borderRect.right - borderRect.left;
             windowHeight -= borderRect.top - borderRect.bottom;
 
-            //Create the window
-            HWND handle = CreateWindowExA(windowExStyle, "BlitzenWindowClass", appName, windowStyle, windowX, windowY, windowWidth, windowHeight, 0, 0,
-            s_pPlatformState.winInstance, 0);
+            //Creates the window
+            HWND handle = CreateWindowExA(
+            windowExStyle, "BlitzenWindowClass", appName, 
+            windowStyle, windowX, windowY, windowWidth, windowHeight, 
+            0, 0, inl_pPlatformState.winInstance, 0);
 
             // Only assign the handle if it was actually created, otherwise the application should fail
             if(!handle)
@@ -124,13 +127,12 @@ namespace BlitzenPlatform
             }
             else
             {
-                s_pPlatformState.winWindow = handle;
+                inl_pPlatformState.winWindow = handle;
             }
 
-            //Tell the window to show
-            uint8_t shouldActivate = 1;
-            int32_t show = shouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
-            ShowWindow(s_pPlatformState.winWindow, show);
+            // Tells the window to show
+            int32_t show = SW_SHOW; //: SW_SHOWNOACTIVATE;
+            ShowWindow(inl_pPlatformState.winWindow, show);
 
             // Clock setup, similar thing to glfwGetTime
             LARGE_INTEGER frequency;
@@ -144,14 +146,14 @@ namespace BlitzenPlatform
         void PlatformShutdown()
         {
             // Delete the gl render context
-            if(s_pPlatformState.hglrc)
+            if(inl_pPlatformState.hglrc)
             {
-                wglDeleteContext(s_pPlatformState.hglrc);
+                wglDeleteContext(inl_pPlatformState.hglrc);
             }
 
-            if(s_pPlatformState.winWindow)
+            if(inl_pPlatformState.winWindow)
             {
-                DestroyWindow(s_pPlatformState.winWindow);
+                DestroyWindow(inl_pPlatformState.winWindow);
             }
         }
 
@@ -231,8 +233,8 @@ namespace BlitzenPlatform
         uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
         {
             VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-            info.hinstance = s_pPlatformState.winInstance;
-            info.hwnd = s_pPlatformState.winWindow;
+            info.hinstance = inl_pPlatformState.winInstance;
+            info.hwnd = inl_pPlatformState.winWindow;
 
             VkResult res = vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
             if(res != VK_SUCCESS)
@@ -243,7 +245,7 @@ namespace BlitzenPlatform
         uint8_t CreateOpenglDrawContext()
         {
             // Get the device context of the window
-            HDC hdc = GetDC(s_pPlatformState.winWindow);
+            HDC hdc = GetDC(inl_pPlatformState.winWindow);
 
             // Pixel format
             PIXELFORMATDESCRIPTOR pfd;
@@ -276,10 +278,10 @@ namespace BlitzenPlatform
             }
 
             // Create the dummy render context
-            s_pPlatformState.hglrc = wglCreateContext(hdc);
+            inl_pPlatformState.hglrc = wglCreateContext(hdc);
 
             // Make this the current context so that glew can be initialized
-            if(!wglMakeCurrent(hdc, s_pPlatformState.hglrc))
+            if(!wglMakeCurrent(hdc, inl_pPlatformState.hglrc))
             {
                 return 0;
             }
@@ -292,11 +294,11 @@ namespace BlitzenPlatform
 
             // With glew now available, extension function pointers can be accessed and a better gl context can be retrieved
             // So the old render context is deleted and the device is released
-            wglDeleteContext(s_pPlatformState.hglrc);
-            ReleaseDC(s_pPlatformState.winWindow, hdc);
+            wglDeleteContext(inl_pPlatformState.hglrc);
+            ReleaseDC(inl_pPlatformState.winWindow, hdc);
 
             // Get a new device context
-            hdc = GetDC(s_pPlatformState.winWindow);
+            hdc = GetDC(inl_pPlatformState.winWindow);
 
             // Choose a pixel format with attributes
             const int attribList[] =
@@ -322,10 +324,10 @@ namespace BlitzenPlatform
             // Create a new render context with attributes (latest opengl version)
             int const createAttribs[] = {WGL_CONTEXT_MAJOR_VERSION_ARB, 4, WGL_CONTEXT_MINOR_VERSION_ARB,  6,
 		    WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB, 0};
-            s_pPlatformState.hglrc = wglCreateContextAttribsARB(hdc, 0, createAttribs);
+            inl_pPlatformState.hglrc = wglCreateContextAttribsARB(hdc, 0, createAttribs);
 
             // Set the gl render context as the new one
-            return (wglMakeCurrent(hdc, s_pPlatformState.hglrc));
+            return (wglMakeCurrent(hdc, inl_pPlatformState.hglrc));
         }
 
         void OpenglSwapBuffers()
@@ -335,7 +337,7 @@ namespace BlitzenPlatform
             #else
                 wglSwapIntervalEXT(0);
             #endif
-            wglSwapLayerBuffers(GetDC(s_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
+            wglSwapLayerBuffers(GetDC(inl_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
         }
 
         LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param)

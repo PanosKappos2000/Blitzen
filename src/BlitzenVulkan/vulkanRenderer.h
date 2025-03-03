@@ -30,9 +30,6 @@ namespace BlitzenVulkan
 
         void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
 
-        // Kills the renderer and cleans up allocated handles and resources. Implemented on vulkanInit.cpp
-        void Shutdown();
-
         // I do not do anything on the destructor, but I leave it here because Cleaning Vulkan is peculiar
         ~VulkanRenderer();
 
@@ -106,6 +103,7 @@ namespace BlitzenVulkan
 
         VkDebugUtilsMessengerEXT m_debugMessenger;
 
+        // It's important for this to be declared above swapchain, as it needs to be destroyed after it
         SurfaceKHR m_surface;
 
         VkPhysicalDevice m_physicalDevice;

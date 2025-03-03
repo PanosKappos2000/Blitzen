@@ -29,30 +29,50 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/quaternion.hpp"
 
-// I have that this is temporary and that I can do my own string formating
 #include <string>
 
 namespace BlitzenEngine
 {
-    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources)
+    // This will not be used outside of this translation unit, so it has not declaration
+    static uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
+    RendererPtrType pRenderer)
     {
-        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", 
-        "dds_texture_default");
+        // Don't go over the texture limit, might want to throw a warning here
+        if (pResources->textureCount >= ce_maxTextureCount)
+        {
+            BLIT_WARN("Max texture count: %i, has been reached", ce_maxTextureCount)
+            BLIT_ERROR("Texture from file: %s, failed to load", filename)
+            return 0;
+        }
+    
+        TextureStats& texture = pResources->textures[pResources->textureCount];
+        // TODO: Oboslete, create them inside the Upload texture function
+        BlitzenEngine::DDS_HEADER header{};
+        BlitzenEngine::DDS_HEADER_DXT10 header10{};
+            
+        // If texture upload to the renderer succeeds, the texture count is incremented and the function returns successfully
+        if(pRenderer->UploadTexture(header, header10, texture.pTextureData, filename))
+        {
+            pResources->textureCount++;
+            return 1;
+        }
+    
+        BLIT_ERROR("Texture from file: %s, failed to load", filename)
+        return 0;
+    }
 
-        // Creating one default material for now
-            BlitML::vec4 color1(0.1f);
+    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData)
+    {
+        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
+
+        // Creates one default texture and one default material
+        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", 
+        "dds_texture_default", pRenderer);
+        BlitML::vec4 color1(0.1f);
         DefineMaterial(pResources, color1, 65.f, "dds_texture_default", "unknown", "loaded_material");
 
         return 1;
     }
-
-
-
-    /*---------------------------------
-        Texture specific functions
-    ----------------------------------*/
-
-
 
     void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName)
@@ -72,9 +92,6 @@ namespace BlitzenEngine
         pResources->materialTable.Insert(materialName, current);
         pResources->materialCount++;
     }
-    
-
-
 
     uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename)
     {
@@ -327,8 +344,6 @@ namespace BlitzenEngine
         pResources->primitiveVertexCounts.PushBack(static_cast<uint32_t>(vertices.GetSize()));
     }
 
-
-
     void LoadTestGeometry(RenderingResources* pResources)
     {
         LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj");
@@ -336,7 +351,6 @@ namespace BlitzenEngine
         LoadMeshFromObj(pResources, "Assets/Meshes/bunny.obj");
         LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj");
     }
-
 
     void CreateTestGameObjects(RenderingResources* pResources, uint32_t dc)
     {
@@ -485,22 +499,10 @@ namespace BlitzenEngine
         CreateTestGameObjects(pResources, drawCount);
     }
 
-    uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName)
-    {
-        // Don't go over the texture limit, might want to throw a warning here
-        if (pResources->textureCount >= ce_maxTextureCount)
-            return 0;
-
-        TextureStats& texture = pResources->textures[pResources->textureCount++];
-        texture.filepath = filename;
-
-        return 1;
-    }
-
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path)
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, void* rendererData)
     {
         if (pResources->renderObjectCount >= ce_maxRenderObjects)
         {
@@ -591,61 +593,16 @@ namespace BlitzenEngine
             texturePaths[i] = ipath + uri;
         }
 
+        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
         for (auto path : texturePaths)
         {
-            LoadTextureFromFile(pResources, path.c_str(), path.c_str());
+            LoadTextureFromFile(pResources, path.c_str(), path.c_str(), pRenderer);
         }
-        /*auto pRenderer = RenderingSystem::GetRenderingSystem();
-        for(size_t i = 0; i < texturePaths.GetSize(); ++i)
-        {
-            // Don't go over the texture limit, might want to throw a warning here
-            if(pResources->textureCount >= ce_maxTextureCount)
-                break;
-
-            DDS_HEADER header = {};
-            DDS_HEADER_DXT10 header10 = {};
-
-            // The data from the file will be written to this and passed to Vulkan
-            TextureStats& texture = pResources->textures[pResources->textureCount];
-
-            // Create a placeholder image format
-            unsigned int imageFormat = 0;
-
-            // Will be 1 if at least one of the renderers received the textures
-            uint8_t textureLoad = 0;
-
-            // Add the texture to the vulkan renderer if a pointer for it was passed
-            if(pRenderer->IsVulkanAvailable())
-            {
-                if(pRenderer->GiveTextureToVulkan(header, header10, texture.pTextureData, texturePaths[i].c_str()))
-                    textureLoad = 1;
-                else
-                    BLIT_INFO("GLTF texture from file: %s failed to load for Vulkan", texturePaths[i].c_str())
-            }
-
-            if(pRenderer->IsOpenglAvailable())
-            {
-                if(pRenderer->GiveTextureToOpengl(header, header10, texturePaths[i].c_str()))
-                    textureLoad = 1;
-                else
-                    BLIT_INFO("GLTF texture from file: %s failed to load for OpenGL", texturePaths[i].c_str())
-            }
-
-            // As long as the texture was uploaded to at least one of the renderers universal texture stats should be updated
-            if(textureLoad)
-            {
-                texture.textureWidth = header.dwWidth;
-                texture.textureHeight = header.dwHeight;
-                texture.textureTag = static_cast<uint32_t>(pResources->textureCount);
-
-                pResources->textureCount++;
-            }
-        }*/
 
         BLIT_INFO("Loading materials")
 
-            // Saves the previous material count
-            size_t previousMaterialCount = pResources->materialCount;
+        // Saves the previous material count
+        size_t previousMaterialCount = pResources->materialCount;
         // Creates one BlitzenEngine::Material for each material in the gltf
         for (size_t i = 0; i < pData->materials_count; ++i)
         {

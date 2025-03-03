@@ -7,19 +7,7 @@
 
 namespace BlitzenEngine
 {
-    // Renderer type resolution. TODO: Move this to renderer.h, so that more things have access to it
-    #if defined(BLIT_GL_LEGACY_OVERRIDE) && defined(BLITZEN_VULKAN_OVERRIDE) && defined(_WIN32)
-        using Renderer = 
-        BlitCL::SmartPointer<BlitzenGL::OpenglRenderer, BlitzenCore::AllocationType::Renderer>;
-    #elif defined(BLITZEN_VULKAN_OVERRIDE) && defined(_WIN32)
-        using Renderer = 
-        BlitCL::SmartPointer<BlitzenDX12::Dx12Renderer, BlitzenCore::AllocationType::Renderer>;
-    #else
-        using Renderer = 
-        BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>;
-    #endif
-
-    // Function that is defined in blitzenDefaultEvents.cpp and only called once in the Run function
+    // Function that is defined in blitzenDefaultEvents.cpp and only called once in main
     void RegisterDefaultEvents();
 
     Engine* Engine::s_pEngine = nullptr;
@@ -34,9 +22,8 @@ namespace BlitzenEngine
 
     Engine::~Engine()
     {
-        // These systems can be shutdown after the memory manager for now
+        // This does absolutely nothing right now
         BlitzenCore::ShutdownLogging();
-        BlitzenPlatform::PlatformShutdown();
     }
 }
 
@@ -70,7 +57,6 @@ int main(int argc, char* argv[])
 
     uint8_t bRenderingSystem = 0;
     BlitzenEngine::Renderer renderer;
-
     if(renderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight))
         bRenderingSystem = 1;
     else
@@ -81,7 +67,7 @@ int main(int argc, char* argv[])
         
     // Allocates the rendering resources
     BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
-    LoadRenderingResourceSystem(pResources.Data());
+    LoadRenderingResourceSystem(pResources.Data(), renderer.Data());
 
     // Setup the main camera
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
@@ -104,7 +90,7 @@ int main(int argc, char* argv[])
             // The following arguments are used as gltf filepaths
             for(int32_t i = 2; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i]);
+                LoadGltfScene(pResources.Data(), argv[i], renderer.Data());
             }
         }
         // Else, all arguments are used as gltf filepaths
@@ -112,22 +98,13 @@ int main(int argc, char* argv[])
         {
             for(int32_t i = 1; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i]);
+                LoadGltfScene(pResources.Data(), argv[i], renderer.Data());
             }
         }
     }
 
     // Sets the draw count to the render object count   
     uint32_t drawCount = pResources.Data()->renderObjectCount;
-
-    // Uploads the textures from the filepaths that were saved, TODO: Put this back to the renderer
-    for (uint32_t i = 0; i < pResources->textureCount; ++i)
-    {
-        BlitzenEngine::TextureStats& texture = pResources->textures[i];
-        BlitzenEngine::DDS_HEADER header{};
-        BlitzenEngine::DDS_HEADER_DXT10 header10{};
-        renderer->UploadTexture(header, header10, texture.pTextureData, texture.filepath.c_str());
-    }
 
     // Passes the resources that were loaded to the renderer
     if(!bRenderingSystem || !renderer->SetupForRendering(pResources.Data(), 
@@ -176,10 +153,15 @@ int main(int argc, char* argv[])
             BlitzenCore::UpdateInput(engine.GetDeltaTime());
         }
     }
-
-    // I want to remove this eventually and replace it with RAII destructors for every renderer type
-    renderer->Shutdown();
-
     engine.BeginShutdown();
+
+    // If I do this in the destructor, shutdown will look laggy because there are many things that need to be destroyed before the window
+    BlitzenPlatform::PlatformShutdown();
 }
+
+
+
+
+
+
 //Assets/Scenes/CityLow/scene.gltf ../../GltfTestScenes/Scenes/Plaza/scene.gltf ../../GltfTestScenes/Scenes/Museum/scene.gltf (personal test scenes for copy+paste)

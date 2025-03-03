@@ -1,26 +1,10 @@
 #pragma once
-
-#include "Core/blitLogger.h"
-
-#define GLEW_STATIC
-#include <GL/glew.h>
-
-#include "Core/blitzenContainerLibrary.h"
-#include "Renderer/blitDDSTextures.h"
-#include "Renderer/blitRenderingResources.h"
+#include "openglData.h"
 
 namespace BlitzenGL
 {
-
-    using GraphicsProgram = unsigned int;
-    using ComputeProgram = unsigned int;
-
-    using GlBuffer = unsigned int;
-    using GlShader = unsigned int;
-
-    using VertexArray = unsigned int;
-
-    using GlTexture = unsigned int;
+    using GraphicsProgram = ShaderProgram;
+    using ComputeProgram = ShaderProgram;
 
     struct IndirectDrawCommand
     {

@@ -206,7 +206,7 @@ namespace BlitzenEngine
         : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
     };
 
-    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources);
+    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData);
 
     void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
     const char* specularMapName, const char* materialName);
@@ -232,11 +232,9 @@ namespace BlitzenEngine
 
     // Calls some test functions to load a scene that tests the renderer's geometry rendering
     void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount);
-    
-    uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName);
 
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path);
+    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, void* rendererData);
 }
