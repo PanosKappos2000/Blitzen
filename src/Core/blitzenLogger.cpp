@@ -11,6 +11,7 @@ namespace BlitzenCore
 {
     uint8_t InitLogging()
     {
+        BLIT_INFO("%s Booting", BlitzenEngine::ce_blitzenVersion)
         return 1;
     }
 

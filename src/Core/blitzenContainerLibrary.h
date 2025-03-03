@@ -408,8 +408,10 @@ namespace BlitCL
     {
     public:
 
+        // This might be something that I should remove, since Smart pointers handle allocations themselves
         SmartPointer(T* pDataToCopy)
         {
+            BLIT_ASSERT(!pDataToCopy)
             m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(pDataToCopy);
         }
 
@@ -428,6 +430,8 @@ namespace BlitCL
         {
             m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
         }
+
+        SmartPointer<T> operator = (SmartPointer<T>& s) = delete;
 
         inline T* Data() { return m_pData; }
 

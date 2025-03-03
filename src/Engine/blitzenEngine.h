@@ -23,26 +23,30 @@ namespace BlitzenEngine
     constexpr const char* ce_blitzenVersion = "Blitzen Engine 0";
     constexpr uint32_t ce_blitzenMajor = 0;
 
-    // Honestly, this class does not need to exist, the only important thing it has is the Run function.
-    // But it started off as the most important thing in the codebase and I don't really want to erase it
     class Engine
     {
     public:
 
-        Engine(); 
+        Engine();
+        
+        // Many systems check 
+        inline static void BeginShutdown() { s_pEngine = nullptr; }
 
-        void Run(uint32_t argc, char* argv[]);
+        Engine::~Engine();
 
         inline void Suspend() { bSuspended = 1; }
-
         inline void ReActivate() { bSuspended = 0; }
+        inline uint8_t IsActive() { return !bSuspended; }
 
+        inline void BootUp() {bRunning = 1;}
         inline void Shutdown() { bRunning = 0; }
+        inline uint8_t IsRunning() { return bRunning; }
 
         inline static Engine* GetEngineInstancePointer() { return s_pEngine; }
 
         // Returns delta time, crucial for functions that move objects
         inline double GetDeltaTime() { return m_deltaTime; }
+        inline void SetDeltaTime(double deltaTime) { m_deltaTime = deltaTime; }
 
     private:
 
@@ -52,11 +56,6 @@ namespace BlitzenEngine
         uint8_t bRunning = 0;
         uint8_t bSuspended = 0;
 
-        // Clock / DeltaTime values (will be calulated using platform specific system calls at runtime)
-        double m_clockStartTime = 0;
-        double m_clockElapsedTime = 0;
         double m_deltaTime;
     };
-
-    void RegisterDefaultEvents();
 }
