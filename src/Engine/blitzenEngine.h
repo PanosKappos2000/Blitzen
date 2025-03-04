@@ -33,7 +33,7 @@ namespace BlitzenEngine
         // This function makes it null before the engine destructor, so that other systems do not fail on cleanup
         inline static void BeginShutdown() { s_pEngine = nullptr; }
 
-        Engine::~Engine();
+        ~Engine();
 
         // Suspending the engine, means that most systems (like rendering) are inactive. But it is still running on the background
         inline void Suspend() { bSuspended = 1; }

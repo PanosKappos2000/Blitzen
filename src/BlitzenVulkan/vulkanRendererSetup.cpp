@@ -3,47 +3,6 @@
 
 namespace BlitzenVulkan
 {
-    static VkResult CreateAccelerationStructureKHR(VkInstance instance, VkDevice device, 
-    const VkAccelerationStructureCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator,
-    VkAccelerationStructureKHR* pAccelerationStructure)
-    {
-        auto func = (PFN_vkCreateAccelerationStructureKHR) vkGetInstanceProcAddr(
-        instance, "vkCreateAccelerationStructureKHR");
-        if (func != nullptr) 
-        {
-            return func(device, pCreateInfo, pAllocator, pAccelerationStructure);
-        }
-
-        return VK_NOT_READY;
-    }
-
-    static void BuildAccelerationStructureKHR(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t infoCount, 
-    const VkAccelerationStructureBuildGeometryInfoKHR* buildInfos, const VkAccelerationStructureBuildRangeInfoKHR* const *ppRangeInfos)
-    {
-        auto func = (PFN_vkCmdBuildAccelerationStructuresKHR) vkGetInstanceProcAddr(
-        instance, "vkCmdBuildAccelerationStructuresKHR");
-        if(func != nullptr)
-        {
-            func(commandBuffer, infoCount, buildInfos, ppRangeInfos);
-        }
-    }
-
-    static void GetAccelerationStructureBuildSizesKHR(VkInstance instance, VkDevice device, 
-    VkAccelerationStructureBuildTypeKHR buildType, const VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo, 
-    const uint32_t* pMaxPrimitiveCounts, VkAccelerationStructureBuildSizesInfoKHR* pBuildSizes)
-    {
-        auto func = (PFN_vkGetAccelerationStructureBuildSizesKHR) vkGetInstanceProcAddr(
-        instance, "vkGetAccelerationStructureBuildSizesKHR");
-        if(func != nullptr)
-        {
-            func(device, buildType, pBuildInfo, pMaxPrimitiveCounts, pBuildSizes);
-        }
-    }
-
-
-
-
-
     uint8_t VulkanRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
     void* pData, const char* filepath) 
     {
@@ -772,9 +731,14 @@ namespace BlitzenVulkan
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
+        // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)
+        {
             if(!BuildBlas(surfaces, pResources->primitiveVertexCounts))
                 return 0;
+            if(!BuildTlas(pRenderObjects, renderObjectCount, transforms.Data()))
+                return 0;
+        }
 
         // Fails if there are no textures to load
         if(textureCount == 0)
@@ -814,6 +778,56 @@ namespace BlitzenVulkan
         return 1;
     }
 
+    static VkResult CreateAccelerationStructureKHR(VkInstance instance, VkDevice device, 
+    const VkAccelerationStructureCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator,
+    VkAccelerationStructureKHR* pAccelerationStructure)
+    {
+        auto func = (PFN_vkCreateAccelerationStructureKHR) vkGetInstanceProcAddr(
+        instance, "vkCreateAccelerationStructureKHR");
+        if (func != nullptr) 
+        {
+            return func(device, pCreateInfo, pAllocator, pAccelerationStructure);
+        }
+
+        return VK_NOT_READY;
+    }
+    
+    static void BuildAccelerationStructureKHR(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t infoCount, 
+    const VkAccelerationStructureBuildGeometryInfoKHR* buildInfos, const VkAccelerationStructureBuildRangeInfoKHR* const *ppRangeInfos)
+    {
+        auto func = (PFN_vkCmdBuildAccelerationStructuresKHR) vkGetInstanceProcAddr(
+        instance, "vkCmdBuildAccelerationStructuresKHR");
+        if(func != nullptr)
+        {
+            func(commandBuffer, infoCount, buildInfos, ppRangeInfos);
+        }
+    }
+    
+    static void GetAccelerationStructureBuildSizesKHR(VkInstance instance, VkDevice device, 
+    VkAccelerationStructureBuildTypeKHR buildType, const VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo, 
+    const uint32_t* pMaxPrimitiveCounts, VkAccelerationStructureBuildSizesInfoKHR* pBuildSizes)
+    {
+        auto func = (PFN_vkGetAccelerationStructureBuildSizesKHR) vkGetInstanceProcAddr(
+        instance, "vkGetAccelerationStructureBuildSizesKHR");
+        if(func != nullptr)
+        {
+            func(device, buildType, pBuildInfo, pMaxPrimitiveCounts, pBuildSizes);
+        }
+    }
+
+    static VkDeviceAddress GetAccelerationStructureDeviceAddressKHR(VkInstance instance, VkDevice device, 
+    const VkAccelerationStructureDeviceAddressInfoKHR* pInfo)
+    {
+        auto func = (PFN_vkGetAccelerationStructureDeviceAddressKHR) vkGetInstanceProcAddr(
+        instance, "vkGetAccelerationStructureDeviceAddressKHR");
+        if(func != nullptr)
+        {
+            return func(device, pInfo);
+        }
+
+        return (VkDeviceAddress)VK_NULL_HANDLE;
+    }
+
     uint8_t VulkanRenderer::BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
     BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts)
     {
@@ -828,11 +842,12 @@ namespace BlitzenVulkan
 	    BlitCL::DynamicArray<size_t> accelerationSizes(surfaces.GetSize());
 	    BlitCL::DynamicArray<size_t> scratchOffsets(surfaces.GetSize());
 
-        constexpr size_t ce_alignment = 256; // required by spec for acceleration structures
+        const size_t ce_alignment = 256; // required by spec for acceleration structures
 
         size_t totalAccelerationSize = 0;
         size_t totalScratchSize = 0;
 
+        // Gets the address of the vertex buffer and then the index buffer
         VkDeviceAddress vertexBufferAddress = GetBufferAddress(m_device, 
         m_currentStaticBuffers.vertexBuffer.buffer.bufferHandle);
 	    VkDeviceAddress indexBufferAddress = GetBufferAddress(m_device, 
@@ -841,7 +856,7 @@ namespace BlitzenVulkan
         for(size_t i = 0; i < surfaces.GetSize(); ++i)
         {
             const auto& surface = surfaces[i];
-            VkAccelerationStructureGeometryKHR& geometry = geometries[i];
+            VkAccelerationStructureGeometryKHR& geometry = geometries[i];// The as geometry that will be initialized in this loop
             VkAccelerationStructureBuildGeometryInfoKHR& buildInfo = buildInfos[i];
 
             // Specifies the geometry for this accelration structure
@@ -855,7 +870,7 @@ namespace BlitzenVulkan
 
             // Passing vertex data
             geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-            // Get the precise address of the vertex buffer for the current surface (needs to be incremented by the vertex offset)
+            // Gets the precise address of the vertex buffer for the current surface (needs to be incremented by the vertex offset)
             geometry.geometry.triangles.vertexData.deviceAddress = 
             static_cast<VkDeviceAddress>(vertexBufferAddress + surface.vertexOffset * sizeof(BlitzenEngine::Vertex));
             geometry.geometry.triangles.vertexStride = sizeof(BlitzenEngine::Vertex);
@@ -943,6 +958,57 @@ namespace BlitzenVulkan
         // Putting a fence on submit, because device wait idle and queue wait idle did not work
         SubmitCommandBuffer(m_computeQueue.handle, commandBuffer);
         vkQueueWaitIdle(m_computeQueue.handle);
+
+        return 1;
+    }
+
+    uint8_t VulkanRenderer::BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, 
+    BlitzenEngine::MeshTransform* pTransforms)
+    {
+        AllocatedBuffer objectBuffer;
+        if(!CreateBuffer(m_allocator, objectBuffer, 
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(VkAccelerationStructureInstanceKHR) * drawCount, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            return 0;
+
+        // Retrieves the device address of each acceleration structure that was build earlier
+        BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{m_currentStaticBuffers.blasData.GetSize()};
+        for(size_t i = 0; i < blasAddresses.GetSize(); ++i)
+        {
+            VkAccelerationStructureDeviceAddressInfoKHR	addressInfo{};
+            addressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+            addressInfo.accelerationStructure = m_currentStaticBuffers.blasData[i].handle;
+            blasAddresses[i] = GetAccelerationStructureDeviceAddressKHR(m_instance, m_device, &addressInfo);
+        }
+
+        for(size_t i = 0; i < drawCount; ++i)
+        {
+            const auto& object = pDraws[i];
+            const auto& transform = pTransforms[object.transformId];
+
+            // Casts the orientation quat to a matrix
+            auto xform = BlitML::QuatToMat4(transform.orientation) * transform.scale;
+
+            VkAccelerationStructureInstanceKHR instance{};
+            // Copies the first 3 elements of the 1st row of the matrix to the 1st row of the Vulkan side matrix
+            BlitzenCore::BlitMemCopy(instance.transform.matrix[0], &xform[0], sizeof(float) * 3);
+            // Copies the first 3 elements of the 2nd row of the matrix to the 2nd row of the Vulkan side matrix
+            BlitzenCore::BlitMemCopy(instance.transform.matrix[1], &xform[4], sizeof(float) * 3);
+            // Copies the first 3 elements of the 3rd row of the matrix to the 3rd row of the Vulkan side matrix
+            BlitzenCore::BlitMemCopy(instance.transform.matrix[2], &xform[8], sizeof(float) * 3);
+
+            instance.transform.matrix[0][3] = transform.pos.x;
+            instance.transform.matrix[1][3] = transform.pos.y;
+            instance.transform.matrix[2][3] = transform.pos.z;
+
+            instance.instanceCustomIndex = i;
+            instance.mask = 0xFF;
+            instance.accelerationStructureReference = blasAddresses[object.surfaceId];
+
+            auto pData = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(
+            objectBuffer.allocation->GetMappedData()) + i;
+            BlitzenCore::BlitMemCopy(pData, &instance, sizeof(VkAccelerationStructureInstanceKHR));
+        }
 
         return 1;
     }

@@ -9,7 +9,7 @@ namespace BlitzenCore
     #define LOGGER_LEVEL_FATAL      1
     #define LOGGER_LEVEL_ERROR      1
 
-    #ifndef NDEBUG
+    #if !defined(NDEBUG)
         #define LOGGER_LEVEL_INFO       1
         #define LOGGER_LEVEL_WARN       1
         #define LOGGER_LEVEL_DEBUG      1

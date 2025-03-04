@@ -9,6 +9,16 @@
 
 namespace BlitzenCore
 {
+    constexpr const char* logLevels[6] = 
+    {
+        "{FATAL}: ", 
+        "{ERROR}: ", 
+        "{Info}: ", 
+        "{Warning}: ", 
+        "{Debug}: ", 
+        "{Trace}: "
+    };
+
     uint8_t InitLogging()
     {
         BLIT_INFO("%s Booting", BlitzenEngine::ce_blitzenVersion)
@@ -22,14 +32,13 @@ namespace BlitzenCore
 
     void Log(LogLevel level, const char* message, ...)
     {
-        const char* logLevels[6] = {"{FATAL}: ", "{ERROR}: ", "{Info}: ", "{Warning}: ", "{Debug}: ", "{Trace}: "};
         uint8_t isError = level < LogLevel::Info;
 
         // Temporary to avoid dynamic arrays for now, even though this is terrible
         char outMessage[1500];
         memset(outMessage, 0, sizeof(outMessage));
 
-        #if _MSC_VER
+        #if defined(_WIN32)
             va_list argPtr;
         #else
             __builtin_va_list argPtr;
@@ -42,13 +51,13 @@ namespace BlitzenCore
         char outMessage2[1500];
         snprintf(outMessage2, 1500, "%s%s\n", logLevels[static_cast<uint8_t>(level)], outMessage);
 
-        // Create a custom error message
+        // Creates a custom error message
         if (isError) 
         {
             BlitzenPlatform::PlatformConsoleError(outMessage2, static_cast<uint8_t>(level));
         }
 
-        // Create a custom non error message 
+        // Creates a custom non error message 
         else 
         {
             BlitzenPlatform::PlatformConsoleWrite(outMessage2, static_cast<uint8_t>(level));

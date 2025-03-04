@@ -132,6 +132,12 @@ namespace BlitML
             }
         }
 
+        inline mat4(float one, float two, float three, float four, float five, float six, float seven, 
+        float eight, float nine, float ten, float eleven, float twelve, float thirteen, float fourteen,
+        float fifteen, float sixteen)
+        :data{one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, thirteen, fourteen, fifteen, sixteen}
+        {}
+
         inline float& operator [] (size_t index) { return this->data[index]; }
 
         inline vec4 GetRow(uint8_t row) { 
@@ -160,5 +166,28 @@ namespace BlitML
         res.w = mat[3] * vec.x + vec.y * mat[7] + vec.z * mat[11] + vec.w * mat[15];
 
         return res;
+    }
+
+    inline mat4 operator *(mat4& mat, float scalar)
+    {
+        return mat4
+        {
+            mat[0] * scalar, 
+            mat[1] * scalar,
+            mat[2] * scalar,
+            mat[3] * scalar,
+            mat[4] * scalar,
+            mat[5] * scalar,
+            mat[6] * scalar,
+            mat[7] * scalar,
+            mat[8] * scalar,
+            mat[9] * scalar,
+            mat[10] * scalar,
+            mat[11] * scalar,
+            mat[12] * scalar,
+            mat[13] * scalar,
+            mat[14] * scalar,
+            mat[15] * scalar
+        };
     }
 }

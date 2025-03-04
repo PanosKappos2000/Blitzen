@@ -61,6 +61,8 @@ namespace BlitzenVulkan
         uint8_t BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
         BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts);
 
+        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, BlitzenEngine::MeshTransform* pTransforms);
+
         // Dispatches the compute shader that will perform culling and LOD selection and will write to the indirect draw buffer.
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
         uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount,
