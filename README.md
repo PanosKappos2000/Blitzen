@@ -10,7 +10,7 @@ Capable of loading .obj models and .gltf scenes (with some constraints):
 
 -To load gltf scenes it uses the surprisingly intuitive cgltf library : https://github.com/jkuhlmann/cgltf
 
--For the vertices that are loaded, the incredible meshoptimizer library is used to generate indices, LODs, clusters and optimize the vertex cache. Meshoptimizer is written by Arseny Kapoulkine (zeux on github) https://github.com/zeux/meshoptimizer, whose Niagara streams on Youtube have massively influenced the renderer of this Engine (https://www.youtube.com/watch?v=BR2my8OE1Sc&list=PL0JVLUVCkk-l7CWCn3-cdftR0oajugYvd). 
+-For the vertices that are loaded, the incredible meshoptimizer library is used to generate indices, LODs, clusters and optimize the vertex cache. Meshoptimizer is written by Arseny Kapoulkine (zeux on github) https://github.com/zeux/meshoptimizer. 
 
 Uses compute shaders to perform frustum and occlusion culling on each surface. It also loads LODs automatically for each surface loaded. With all of these active it is capable of handling scenes with millions of objects (tested on an RTX3060).
 
@@ -22,4 +22,4 @@ It has only been tested on Nvidia hardware. It is uncertain, for example, if it 
 
 It supports Windows and Linux but the Linux build has not been tested as heavily as the Windows build and can only use Vulkan, not OpenGL.
 
-The project can be built and compiled with CMake. In its current state it will load a default scene with multiple instances of 4 different meshes at random positions. The Engine does not have an editor, so it takes command line arguments for gltf filepaths. It also does not have a custom format for its resources yet, so loading takes time and will be unbearably long if multiple large gltf files are specified.
+The project can be built and compiled with CMake. Starting the Engine without command line arguments, simply opens a default, colored window. It can also take command line arguments -which should be gltf filepaths with DDS textures- in which case it will draw the gltf scene found in the filepath. There is also a special command line argument "RenderingStressTest", which will load a scene with millions of objects in "random" positions. This serves to test the acceleration algorithms mentioned earlier. Some machines might not be able to handle this, as the renderer will load 4'500'000 objects when the BLITZEN_RENDERING_STRESS_TEST preprocessor macro is defined in CMakeLists.txt (defined by default).
