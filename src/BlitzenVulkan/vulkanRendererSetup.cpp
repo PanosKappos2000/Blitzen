@@ -887,7 +887,7 @@ namespace BlitzenVulkan
             // Build info for the acceleration structu. Takes the geometry struct from above and some other configs
             buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             buildInfo.pNext = nullptr;
-            buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+            buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;// Bottom level since the as is for geometries
             buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
             buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
             buildInfo.geometryCount = 1;
@@ -912,12 +912,12 @@ namespace BlitzenVulkan
 
         if(!CreateBuffer(m_allocator, m_currentStaticBuffers.blasBuffer, 
         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, totalAccelerationSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        VMA_MEMORY_USAGE_GPU_ONLY, totalAccelerationSize, 0))
             return 0;
 
         AllocatedBuffer stagingBuffer;
         if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY, totalScratchSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        VMA_MEMORY_USAGE_GPU_ONLY, totalScratchSize, 0))
             return 0;
 
         VkDeviceAddress blasStagingBufferAddress = GetBufferAddress(m_device, stagingBuffer.bufferHandle);
@@ -951,11 +951,8 @@ namespace BlitzenVulkan
 
         VkCommandBuffer commandBuffer = m_frameToolsList[0].commandBuffer;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
         BuildAccelerationStructureKHR(m_instance, commandBuffer, static_cast<uint32_t>(surfaces.GetSize()), 
         buildInfos.Data(), buildRangePtrs.Data());
-
-        // Putting a fence on submit, because device wait idle and queue wait idle did not work
         SubmitCommandBuffer(m_computeQueue.handle, commandBuffer);
         vkQueueWaitIdle(m_computeQueue.handle);
 
@@ -965,12 +962,6 @@ namespace BlitzenVulkan
     uint8_t VulkanRenderer::BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, 
     BlitzenEngine::MeshTransform* pTransforms)
     {
-        AllocatedBuffer objectBuffer;
-        if(!CreateBuffer(m_allocator, objectBuffer, 
-        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(VkAccelerationStructureInstanceKHR) * drawCount, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            return 0;
-
         // Retrieves the device address of each acceleration structure that was build earlier
         BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{m_currentStaticBuffers.blasData.GetSize()};
         for(size_t i = 0; i < blasAddresses.GetSize(); ++i)
@@ -981,6 +972,14 @@ namespace BlitzenVulkan
             blasAddresses[i] = GetAccelerationStructureDeviceAddressKHR(m_instance, m_device, &addressInfo);
         }
 
+        // Creates an object buffer that will hold a VkAccelerationsStructureInstanceKHR for each object loaded
+        AllocatedBuffer objectBuffer;
+        if(!CreateBuffer(m_allocator, objectBuffer, 
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(VkAccelerationStructureInstanceKHR) * drawCount, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            return 0;
+
+        // Creates a VkAccelrationStructureInstanceKHR for each instance's transform and copies it to the object buffer
         for(size_t i = 0; i < drawCount; ++i)
         {
             const auto& object = pDraws[i];
@@ -1009,6 +1008,61 @@ namespace BlitzenVulkan
             objectBuffer.allocation->GetMappedData()) + i;
             BlitzenCore::BlitMemCopy(pData, &instance, sizeof(VkAccelerationStructureInstanceKHR));
         }
+
+        VkAccelerationStructureGeometryKHR geometry{}; 
+        geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+	    geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+        geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+        geometry.geometry.instances.data.deviceAddress = GetBufferAddress(m_device, objectBuffer.bufferHandle);
+
+        // Initial values for build info, more data will become available later in the function
+	    VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
+        buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+	    buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;// Top level since the as is for instances
+	    buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR; // Could have different modes for this
+	    buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+	    buildInfo.geometryCount = 1;
+	    buildInfo.pGeometries = &geometry;
+
+        // Gets the size
+	    VkAccelerationStructureBuildSizesInfoKHR sizeInfo{}; 
+        sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        // Gets the acceleration structure build sizes
+	    GetAccelerationStructureBuildSizesKHR(m_instance, m_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, 
+        &buildInfo, &drawCount, &sizeInfo);
+
+        // Creates the Tlas buffer based on the build size that was retrieved above
+	    if(!CreateBuffer(m_allocator, m_currentStaticBuffers.tlasBuffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, 
+        VMA_MEMORY_USAGE_GPU_ONLY, sizeInfo.accelerationStructureSize, 0))
+            return 0;
+
+	    AllocatedBuffer stagingBuffer;
+	    if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        VMA_MEMORY_USAGE_GPU_ONLY, sizeInfo.buildScratchSize, 0))
+            return 0;
+
+        // Creates the accleration structure
+        VkAccelerationStructureCreateInfoKHR accelerationInfo{}; 
+        accelerationInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+        accelerationInfo.buffer = m_currentStaticBuffers.tlasBuffer.bufferHandle;
+        accelerationInfo.size = sizeInfo.accelerationStructureSize;
+        accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        if(CreateAccelerationStructureKHR(m_instance, m_device, &accelerationInfo, 
+        nullptr, &m_currentStaticBuffers.tlasData.handle) != VK_SUCCESS)
+            return 0;
+
+        buildInfo.dstAccelerationStructure = m_currentStaticBuffers.tlasData.handle;
+        buildInfo.scratchData.deviceAddress = GetBufferAddress(m_device, stagingBuffer.bufferHandle);
+        
+        VkAccelerationStructureBuildRangeInfoKHR buildRange = {};
+        buildRange.primitiveCount = drawCount;
+        const VkAccelerationStructureBuildRangeInfoKHR* pBuildRange = &buildRange;
+
+        VkCommandBuffer commandBuffer = m_frameToolsList[0].commandBuffer;
+        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        BuildAccelerationStructureKHR(m_instance, commandBuffer, 1, &buildInfo, &pBuildRange);
+        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
+        vkQueueWaitIdle(m_graphicsQueue.handle);
 
         return 1;
     }

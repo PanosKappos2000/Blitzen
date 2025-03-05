@@ -195,8 +195,13 @@ namespace BlitzenVulkan
             // It will hold either 1 or 0 for each object based on if they were visible last frame or not
             PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
             
+            // Raytracing primitive acceleration structure buffer and vulkan objects
             AllocatedBuffer blasBuffer;
             BlitCL::DynamicArray<AccelerationStructure> blasData;
+
+            // Raytracing instance acceleration structure buffer and vulkan objects
+            AllocatedBuffer tlasBuffer;
+            AccelerationStructure tlasData;
         };
         StaticBuffers m_currentStaticBuffers;
 
