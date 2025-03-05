@@ -495,9 +495,11 @@ namespace BlitzenEngine
 
     void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources)
     {
+        LoadTestGeometry(pResources);
+
         MeshTransform transform;
-        transform.pos = BlitML::vec3(0);
-        transform.scale = 10.f;
+        transform.pos = BlitML::vec3(30.f, 50.f, 50.f);
+        transform.scale = 2.f;
         transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
         pResources->transforms.PushBack(transform);
 
