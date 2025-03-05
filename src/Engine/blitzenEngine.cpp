@@ -93,6 +93,10 @@ int main(int argc, char* argv[])
                 LoadGltfScene(pResources.Data(), argv[i], renderer.Data());
             }
         }
+        else if(strcmp(argv[1], "ONPC_ReflectionTest") == 0)
+        {
+            CreateObliqueNearPlaneClippingTestObject(pResources.Data());
+        }
         // Else, all arguments are used as gltf filepaths
         else
         {

@@ -355,7 +355,7 @@ namespace BlitzenEngine
     void CreateTestGameObjects(RenderingResources* pResources, uint32_t dc)
     {
         constexpr float ce_stressTestRandomTransformMultiplier = 3'000.f;
-        #ifdef BLITZEN_RENDERING_STRESS_TEST
+        #if defined(BLITZEN_RENDERING_STRESS_TEST)
         constexpr uint32_t drawCount = 4'500'000;
         #else
         uint32_t drawCount = dc;
@@ -364,8 +364,9 @@ namespace BlitzenEngine
         BLIT_INFO("Loading Renderer Stress test with %i objects", drawCount)
         BLIT_WARN("If your machine cannot withstand this many objects, decrease the draw count or undef the stress test macro")
 
-        pResources->objectCount = drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
-        pResources->transforms.Resize(pResources->objectCount);// Every object has a different transform
+        pResources->objectCount += drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
+        pResources->transforms.Resize(pResources->transforms.GetSize() + 
+        pResources->objectCount);// Every object has a different transform
 
         // Hardcode a large amount of male model mesh
         for(size_t i = 0; i < pResources->objectCount / 10; ++i)
@@ -468,7 +469,7 @@ namespace BlitzenEngine
 
             GameObject& currentObject = pResources->objects[i];
 
-            currentObject.meshIndex = 2;// Hardcode the kitten mesh for each object in this loop
+            currentObject.meshIndex = 2;// Hardcode the bunny mesh for each object in this loop
             currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
 
@@ -488,6 +489,66 @@ namespace BlitzenEngine
                 currentObject.transformId = pResources->objects[i].transformIndex;
 
                 pResources->renderObjectCount++;
+            }
+        }
+    }
+
+    void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources)
+    {
+        MeshTransform transform;
+        transform.pos = BlitML::vec3(0);
+        transform.scale = 10.f;
+        transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
+        pResources->transforms.PushBack(transform);
+
+        GameObject& currentObject = pResources->objects[pResources->objectCount++];
+        currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
+        currentObject.transformIndex = pResources->renderObjectCount;
+
+        Mesh& mesh = pResources->meshes[currentObject.meshIndex];
+        for(size_t i = 0; i < mesh.surfaceCount; ++i)
+        {
+            RenderObject& draw = pResources->renders[pResources->renderObjectCount++];
+            draw.surfaceId = mesh.firstSurface + uint32_t(i);
+            draw.transformId = currentObject.transformIndex;
+        }
+
+        const uint32_t nonReflectiveDrawCount = 1000;
+        const uint32_t start = pResources->objectCount;
+        pResources->objectCount += nonReflectiveDrawCount;
+        pResources->transforms.Resize(pResources->transforms.GetSize() + pResources->objectCount);
+
+        for (size_t i = start; i < pResources->objectCount; ++i)
+        {
+            BlitzenEngine::MeshTransform& tr = pResources->transforms[i];
+
+            // Loading random position and scale. Normally you would get this from the game object
+            BlitML::vec3 translation(
+            (float(rand()) / RAND_MAX) * 100,//x 
+            (float(rand()) / RAND_MAX) * 100,//y
+            (float(rand()) / RAND_MAX) * 100);//z
+            tr.pos = translation;
+            tr.scale = 1.f;
+
+            // Loading random orientation. Normally you would get this from the game object
+            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
+            (float(rand()) / RAND_MAX) * 2 - 1, // y
+            (float(rand()) / RAND_MAX) * 2 - 1); // z
+		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
+            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
+            tr.orientation = orientation;
+
+            GameObject& currentObject = pResources->objects[i];
+
+            currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
+            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+
+            Mesh& m = pResources->meshes[currentObject.meshIndex];
+            for(size_t i = 0; i < m.surfaceCount; ++i)
+            {
+                RenderObject& draw = pResources->renders[pResources->renderObjectCount++];
+                draw.surfaceId = m.firstSurface + uint32_t(i);
+                draw.transformId = currentObject.transformIndex;
             }
         }
     }

@@ -39,12 +39,12 @@ void main()
 
     vec3 bitangent = cross(normal, tangent.xyz) * tangent.w;
 	vec3 nrm = normalize(normalMap.r * tangent.xyz + normalMap.g * bitangent + normalMap.b * normal);
-	float ndotl = max(dot(nrm, normalize(vec3(-1, 1, -1))), 0.0);
+    vec3 sunDirection = normalize(vec3(-1, 1, -1));
+	float ndotl = max(dot(nrm, sunDirection), 0.0);
 
     outColor = vec4(albedoMap.rgb * sqrt(ndotl + 0.05) + emissiveMap, albedoMap.a);
     //outColor = vec4(normal, 1);
 
-    
     if(POST_PASS != 0 && albedoMap.a < 0.5)
         discard;
 }
