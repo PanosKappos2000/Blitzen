@@ -98,13 +98,13 @@ namespace BlitzenEngine
         // Updates the transpose of the projection as well
         camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
 
-        BlitML::vec4 planeToUse = BlitML::NormalizePlane(
-            camera.transformData.projectionTranspose.GetRow(3) - 
-            camera.transformData.projectionTranspose.GetRow(0)
+        BlitML::vec4 nearPlane = BlitML::NormalizePlane(
+            camera.transformData.projectionTranspose.GetRow(4) + 
+            camera.transformData.projectionTranspose.GetRow(3)
         );
         ObliqueNearPlaneClippingMatrixModification(
             camera.transformData.projectionMatrix, 
-            camera.onbcProjectionMatrix, planeToUse
+            camera.onbcProjectionMatrix, nearPlane
         );
 
         // Updates view frustum values as they are dependent on the projection matrix

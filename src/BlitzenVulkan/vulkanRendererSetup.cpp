@@ -149,7 +149,7 @@ namespace BlitzenVulkan
             return 0;
         }
         
-        #ifdef NDEBUG
+        #if defined(NDEBUG)
         // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
         // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -177,7 +177,7 @@ namespace BlitzenVulkan
             return 0;
         }
         
-        #ifdef NDEBUG
+        #if defined(NDEBUG)
         // Creates pipeline for the late culling shader that will be dispatched before the 2nd render pass.
         // It performs frustum culling and occlusion culling on all objects.
         // It creates a draw command for the objects that were not tested by the previous shader
@@ -360,77 +360,158 @@ namespace BlitzenVulkan
         // Binding used for meshlet indices
         VkDescriptorSetLayoutBinding meshletDataBinding{};
 
+        // Every binding in the pushDescriptorSetLayout will have one descriptor
+        constexpr uint32_t descriptorCountOfEachPushDescriptorLayoutBinding = 1;
+
         // Descriptor set layout binding for view data uniform buffer descriptor
         VkShaderStageFlags viewDataShaderStageFlags = m_stats.meshShaderSupport ? 
-        VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT :
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-        CreateDescriptorSetLayoutBinding(viewDataLayoutBinding, m_varBuffers[0].viewDataBuffer.descriptorBinding, 
-        1, m_varBuffers[0].viewDataBuffer.descriptorType, viewDataShaderStageFlags);
+            VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT :
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+        CreateDescriptorSetLayoutBinding(
+            viewDataLayoutBinding, 
+            m_varBuffers[0].viewDataBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            m_varBuffers[0].viewDataBuffer.descriptorType, 
+            viewDataShaderStageFlags
+        );
 
         // Descriptor set layout binding for vertex buffer
         VkShaderStageFlags vertexBufferShaderStageFlags = m_stats.meshShaderSupport ? 
-        VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
-        VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(vertexBufferBinding, m_currentStaticBuffers.vertexBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.vertexBuffer.descriptorType, vertexBufferShaderStageFlags);
+            VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+            VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(
+            vertexBufferBinding, 
+            m_currentStaticBuffers.vertexBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            m_currentStaticBuffers.vertexBuffer.descriptorType, 
+            vertexBufferShaderStageFlags
+        );
 
         // Descriptor set layout binding for surface SSBO
         VkShaderStageFlags surfaceBufferShaderStageFlags = m_stats.meshShaderSupport ?
-        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
-        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(surfaceBufferBinding, m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.surfaceBuffer.descriptorType, surfaceBufferShaderStageFlags);
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(
+            surfaceBufferBinding, 
+            m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            m_currentStaticBuffers.surfaceBuffer.descriptorType, 
+            surfaceBufferShaderStageFlags
+        );
 
         // Descriptor set layout binding for cluster / meshlet SSBO
         VkShaderStageFlags clusterBufferShaderStageFlags = m_stats.meshShaderSupport ?
-        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
-        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(meshletBufferBinding, m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.meshletBuffer.descriptorType, clusterBufferShaderStageFlags);
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(
+            meshletBufferBinding, 
+            m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.meshletBuffer.descriptorType, 
+            clusterBufferShaderStageFlags
+        );
 
         VkShaderStageFlags clusterDataBufferShaderStageFlags = m_stats.meshShaderSupport ? 
-        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
-        VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(meshletDataBinding, m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.meshletDataBuffer.descriptorType, clusterDataBufferShaderStageFlags);
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(
+            meshletDataBinding, 
+            m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.meshletDataBuffer.descriptorType, 
+            clusterDataBufferShaderStageFlags
+        );
 
         // If mesh shaders are used the bindings needs to be accessed by mesh shaders, otherwise they will be accessed by vertex shader stage
         if(m_stats.meshShaderSupport)
-            CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding, 
-            1, m_currentStaticBuffers.indirectTaskBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT); 
+            CreateDescriptorSetLayoutBinding(
+                indirectTaskBufferBinding, 
+                m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding, 
+                descriptorCountOfEachPushDescriptorLayoutBinding, 
+                m_currentStaticBuffers.indirectTaskBuffer.descriptorType, 
+                VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT
+            ); 
 
         // Sets the binding for the depth image
         VkDescriptorSetLayoutBinding depthImageBinding{};
-        CreateDescriptorSetLayoutBinding(depthImageBinding, 3, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
-        VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(
+            depthImageBinding, 
+            3, // Binding ID, the depth image binding is never specified before this point
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            VK_SHADER_STAGE_COMPUTE_BIT);
 
         // Sets the binding for the render object buffer
         VkDescriptorSetLayoutBinding renderObjectBufferBinding{};
-        CreateDescriptorSetLayoutBinding(renderObjectBufferBinding, m_currentStaticBuffers.renderObjectBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.renderObjectBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(
+            renderObjectBufferBinding, 
+            m_currentStaticBuffers.renderObjectBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.renderObjectBuffer.descriptorType, 
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
+        );
 
+        // Set the binding of the transform buffer
         VkDescriptorSetLayoutBinding transformBufferBinding{};
-        CreateDescriptorSetLayoutBinding(transformBufferBinding, m_currentStaticBuffers.transformBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.renderObjectBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(
+            transformBufferBinding, 
+            m_currentStaticBuffers.transformBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.renderObjectBuffer.descriptorType, 
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
+        );
 
+        // Sets the binding of the material buffer
         VkDescriptorSetLayoutBinding materialBufferBinding{};
-        CreateDescriptorSetLayoutBinding(materialBufferBinding, m_currentStaticBuffers.materialBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.materialBuffer.descriptorType, VK_SHADER_STAGE_FRAGMENT_BIT);
+        CreateDescriptorSetLayoutBinding(
+            materialBufferBinding, 
+            m_currentStaticBuffers.materialBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.materialBuffer.descriptorType, 
+            VK_SHADER_STAGE_FRAGMENT_BIT
+        );
 
+        // Sets the binding of the indirect draw buffer
         VkDescriptorSetLayoutBinding indirectDrawBufferBinding{};
-        CreateDescriptorSetLayoutBinding(indirectDrawBufferBinding, m_currentStaticBuffers.indirectDrawBuffer.descriptorBinding,
-        1, m_currentStaticBuffers.indirectDrawBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
+        CreateDescriptorSetLayoutBinding(
+            indirectDrawBufferBinding, 
+            m_currentStaticBuffers.indirectDrawBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.indirectDrawBuffer.descriptorType, 
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT
+        );
 
+        // Sets the binding of the indirect count buffer
         VkDescriptorSetLayoutBinding indirectDrawCountBinding{};
-        CreateDescriptorSetLayoutBinding(indirectDrawCountBinding, m_currentStaticBuffers.indirectCountBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.indirectCountBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(
+            indirectDrawCountBinding, 
+            m_currentStaticBuffers.indirectCountBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.indirectCountBuffer.descriptorType, 
+            VK_SHADER_STAGE_COMPUTE_BIT
+        );
 
+        // Sets the binding of the visibility buffer
         VkDescriptorSetLayoutBinding visibilityBufferBinding{};
-        CreateDescriptorSetLayoutBinding(visibilityBufferBinding, m_currentStaticBuffers.visibilityBuffer.descriptorBinding, 
-        1, m_currentStaticBuffers.visibilityBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(
+            visibilityBufferBinding, 
+            m_currentStaticBuffers.visibilityBuffer.descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.visibilityBuffer.descriptorType, 
+            VK_SHADER_STAGE_COMPUTE_BIT
+        );
+
+        VkDescriptorSetLayoutBinding onpcRenderObjectBufferBinding{};
+        CreateDescriptorSetLayoutBinding(
+            onpcRenderObjectBufferBinding,
+            m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorType,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
+        );
         
         // All bindings combined to create the global shader data descriptor set layout
-        VkDescriptorSetLayoutBinding shaderDataBindings[13] = 
+        VkDescriptorSetLayoutBinding shaderDataBindings[14] = 
         {
             viewDataLayoutBinding, 
             vertexBufferBinding, 
@@ -443,11 +524,16 @@ namespace BlitzenVulkan
             visibilityBufferBinding, 
             surfaceBufferBinding, 
             meshletBufferBinding, 
-            meshletDataBinding, 
+            meshletDataBinding,
+            onpcRenderObjectBufferBinding, 
             indirectTaskBufferBinding
         };
-        m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(m_device, 12, shaderDataBindings, 
-        VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(
+            m_device, 
+            13, // Could use BLIT_ARRAY_SIZE macro, but I don't want to use everything in the above array at the moment
+            shaderDataBindings, 
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
+        );
         if(m_pushDescriptorBufferLayout.handle == VK_NULL_HANDLE)
             return 0;
 

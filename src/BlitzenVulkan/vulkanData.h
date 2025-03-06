@@ -43,10 +43,16 @@ namespace BlitzenVulkan
         constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     #endif
 
-    #ifdef BLIT_VK_VALIDATION_LAYERS
+    #if defined(BLIT_VK_VALIDATION_LAYERS) && !defined(NDEBUG)
         constexpr uint8_t ce_bValidationLayersRequested = 1;
+        #if defined(BLIT_VK_SYNCHRONIZATION_VALIDATION)
+            constexpr uint8_t ce_bSynchronizationValidationRequested = 1;
+        #else
+            constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
+        #endif
     #else
         constexpr uint8_t ce_bValidationLayersRequested = 0;
+        constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
     #endif
 
     constexpr uint32_t ce_maxRequestedInstanceExtensions = 3;

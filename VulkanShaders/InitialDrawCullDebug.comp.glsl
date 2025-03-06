@@ -33,22 +33,17 @@ void main()
     if(surface.postPass == 1)
         return;
 
-    // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
-    vec3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.pos;
-    center = (viewData.view * vec4(center, 1)).xyz;
-
-    // The bounding sphere's radius only needs to be multiplied by the object's scale
-	float radius = surface.radius * transform.scale;
-
-    // Check that the bounding sphere is inside the view frustum(frustum culling)
-	bool visible = true;
-    // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time
-    // Formula taken from Arseny Kapoulkine's Niagara renderer https://github.com/zeux/niagara
-    // It is also referenced in VKguide's GPU driven rendering articles https://vkguide.dev/docs/gpudriven/compute_culling/
-    visible = visible && center.z * viewData.frustumLeft - abs(center.x) * viewData.frustumRight > -radius;
-	visible = visible && center.z * viewData.frustumBottom - abs(center.y) * viewData.frustumTop > -radius;
-	// the near/far plane culling uses camera space Z directly
-	visible = visible && center.z + radius > viewData.zNear && center.z - radius < viewData.zFar;
+    // Frustum culling.
+    // The center and radius are modified and used for LODs
+    vec3 center;
+	float radius;
+	bool visible = IsObjectInsideViewFrustum(
+        center, radius, surface.center, surface.radius, 
+        transform.scale, transform.pos, transform.orientation, 
+        viewData.view, 
+        viewData.frustumRight, viewData.frustumLeft, 
+        viewData.frustumTop, viewData.frustumBottom,
+        viewData.zNear, viewData.zFar);
 	
     // Create draw commands for the objects that passed frustum culling
     if(visible)

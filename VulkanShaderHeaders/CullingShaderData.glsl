@@ -39,6 +39,34 @@ bool projectSphere(vec3 c, float r, float znear, float P00, float P11, out vec4 
 	return true;
 }
 
+bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bounding sphere values
+vec3 boundCenter, float boundRadius, // Bounding sphere values
+float scale, vec3 pos, vec4 orientation, // Transform
+mat4 view, // view matrix
+float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, // View frustum planes
+float znear, float zfar)
+{
+	// Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
+    center = RotateQuat(boundCenter, orientation) * scale + pos;
+    center = (view * vec4(center, 1)).xyz;
+
+    // The bounding sphere's radius only needs to be multiplied by the object's scale
+	radius = boundRadius * scale;
+
+    // Checks that the bounding sphere is inside the view frustum(frustum culling)
+	bool visible = true;
+
+    // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time
+    // Formula taken from Arseny Kapoulkine's Niagara renderer https://github.com/zeux/niagara
+    // It is also referenced in VKguide's GPU driven rendering articles https://vkguide.dev/docs/gpudriven/compute_culling/
+    visible = visible && center.z * frustumLeft - abs(center.x) * frustumRight > -radius;
+	visible = visible && center.z * frustumBottom - abs(center.y) * frustumTop > -radius;
+	// the near/far plane culling uses camera space Z directly
+	visible = visible && center.z + radius > znear && center.z - radius < zfar;
+
+	return visible;
+}
+
 // The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
 // Will be incremented when necessary by a compute shader
 layout(set = 0, binding = 9, std430) writeonly buffer IndirectCount

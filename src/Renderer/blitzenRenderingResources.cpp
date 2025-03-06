@@ -469,13 +469,15 @@ namespace BlitzenEngine
         pResources->transforms.PushBack(transform);
 
         GameObject& currentObject = pResources->gameObjects[pResources->gameObjectCount++];
-        currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
-        currentObject.transformIndex = pResources->renderObjectCount;
+        currentObject.meshIndex = 3; // Male model mesh
+        currentObject.transformIndex = pResources->gameObjectCount - 1;
 
         Mesh& mesh = pResources->meshes[currentObject.meshIndex];
         for(size_t i = 0; i < mesh.surfaceCount; ++i)
         {
-            RenderObject& draw = pResources->renders[pResources->renderObjectCount++];
+            RenderObject& draw = pResources->onpcReflectiveRenderObjects[
+                pResources->onpcReflectiveRenderObjectCount++];
+
             draw.surfaceId = mesh.firstSurface + uint32_t(i);
             draw.transformId = currentObject.transformIndex;
         }

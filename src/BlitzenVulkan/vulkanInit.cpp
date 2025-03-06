@@ -160,7 +160,12 @@ namespace BlitzenVulkan
             ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         };
         // Stores a boolean for each extension, telling the application if they were requested, if they are required and if they were found
-        uint8_t extensionsSupportRequested[ce_maxRequestedInstanceExtensions] = {1, 1, ce_bValidationLayersRequested};
+        uint8_t extensionsSupportRequested[ce_maxRequestedInstanceExtensions] = 
+        {
+            1, 
+            1, 
+            ce_bValidationLayersRequested
+        };
         uint8_t extensionSupportRequired[ce_maxRequestedInstanceExtensions] = {1, 1, 0};
         uint8_t extensionSupportFound[ce_maxRequestedInstanceExtensions] = { 0, 0, 0 };
 
@@ -209,8 +214,8 @@ namespace BlitzenVulkan
                     // The debug messenger needs to be referenced by the instance
                     instanceInfo.pNext = &debugMessengerInfo;
 
-                    // If the layer for synchronization 2 is found enable that as well
-                    if (EnabledInstanceSynchronizationValidation())
+                    // If the layer for synchronization 2 is found, it enables that as well
+                    if (ce_bSynchronizationValidationRequested && EnabledInstanceSynchronizationValidation())
                         instanceInfo.enabledLayerCount = 2;
                     // If not just enables the other one
                     else
@@ -634,7 +639,9 @@ namespace BlitzenVulkan
 
         VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
         vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-        #ifdef BLIT_VK_MESH_EXT
+        vulkanFeaturesMesh.meshShader = false;
+        vulkanFeaturesMesh.taskShader = false;
+        #if defined(BLIT_VK_MESH_EXT)
             vulkanFeaturesMesh.meshShader = true;
             vulkanFeaturesMesh.taskShader = true;
         #endif
@@ -643,13 +650,13 @@ namespace BlitzenVulkan
         rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
         VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
         accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        rayQueryFeatures.rayQuery = false;
+        accelerationStructureFeatures.accelerationStructure = false;
         if(stats.bRayTracingSupported)
         {
             rayQueryFeatures.rayQuery = true;
             accelerationStructureFeatures.accelerationStructure = true;
         }
-        
-
 
         VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
         vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;

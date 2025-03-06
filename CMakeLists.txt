@@ -147,7 +147,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VSYNC
 
                             # Vulkan specific preprocessor macros
-                            BLITZEN_VULKAN # Never undef this
+                            BLITZEN_VULKAN # Never undef this, it's broken because of VulkanMemoryCrucials
                             BLIT_VK_VALIDATION_LAYERS
                             BLIT_VK_RAYTRACING
 

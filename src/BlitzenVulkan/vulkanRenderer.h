@@ -194,6 +194,10 @@ namespace BlitzenVulkan
             // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
             // It will hold either 1 or 0 for each object based on if they were visible last frame or not
             PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+
+            // The onpcReflectiveRenderObject buffer is a storage buffer that will be part of the push descriptor layout at binding 14
+            // It will hold the objects that use Oblique near-plane clipping
+            PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
             
             // Raytracing primitive acceleration structure buffer and vulkan objects
             AllocatedBuffer blasBuffer;
