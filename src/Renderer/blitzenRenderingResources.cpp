@@ -352,6 +352,27 @@ namespace BlitzenEngine
         LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj");
     }
 
+    static void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
+    {
+        transform.pos = BlitML::vec3(
+            (float(rand()) / RAND_MAX) * multiplier,//x 
+            (float(rand()) / RAND_MAX) * multiplier,//y
+            (float(rand()) / RAND_MAX) * multiplier
+        );
+
+        transform.scale = scale;
+
+        transform.orientation = BlitML::QuatFromAngleAxis(
+            BlitML::vec3(
+                (float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1
+            ), 
+            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), // Angle 
+            0
+        );
+    }
+
     void CreateTestGameObjects(RenderingResources* pResources, uint32_t dc)
     {
         constexpr float ce_stressTestRandomTransformMultiplier = 3'000.f;
@@ -364,120 +385,64 @@ namespace BlitzenEngine
         BLIT_INFO("Loading Renderer Stress test with %i objects", drawCount)
         BLIT_WARN("If your machine cannot withstand this many objects, decrease the draw count or undef the stress test macro")
 
-        pResources->objectCount += drawCount;// Normally the draw count differs from the game object count, but the engine is really simple at the moment
-        pResources->transforms.Resize(pResources->transforms.GetSize() + 
-        pResources->objectCount);// Every object has a different transform
+        // Increments the game object count and the transform count
+        pResources->gameObjectCount += drawCount;
+        pResources->transforms.Resize(pResources->transforms.GetSize() + drawCount);
 
         // Hardcode a large amount of male model mesh
-        for(size_t i = 0; i < pResources->objectCount / 10; ++i)
+        for(size_t i = 0; i < pResources->gameObjectCount / 10; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
-            // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation(
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
-            transform.pos = translation;
-            transform.scale = 0.1f;
+            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 0.1f);
 
-            // Loading random orientation. Normally you would get this from the game object
-            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-            (float(rand()) / RAND_MAX) * 2 - 1, // y
-            (float(rand()) / RAND_MAX) * 2 - 1); // z
-		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-            transform.orientation = orientation;
-
-            GameObject& currentObject = pResources->objects[i];
+            GameObject& currentObject = pResources->gameObjects[i];
 
             currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
             currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
         // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
-        for (size_t i = pResources->objectCount / 10; i < pResources->objectCount / 8; ++i)
+        for (size_t i = pResources->gameObjectCount / 10; i < pResources->gameObjectCount / 8; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
-            // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation(
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
-            transform.pos = translation;
-            transform.scale = 1.f;
+            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 1.f);
 
-            // Loading random orientation. Normally you would get this from the game object
-            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-            (float(rand()) / RAND_MAX) * 2 - 1, // y
-            (float(rand()) / RAND_MAX) * 2 - 1); // z
-		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-            transform.orientation = orientation;
-
-            GameObject& currentObject = pResources->objects[i];
+            GameObject& currentObject = pResources->gameObjects[i];
 
             currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
             currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
         // Hardcode a large amount of stanford dragons
-        for (size_t i = pResources->objectCount / 8; i < pResources->objectCount / 6; ++i)
+        for (size_t i = pResources->gameObjectCount / 8; i < pResources->gameObjectCount / 6; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
-            // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation(
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
-            transform.pos = translation;
-            transform.scale = 0.1f;
+            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 0.1f);
 
-            // Loading random orientation. Normally you would get this from the game object
-            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-                (float(rand()) / RAND_MAX) * 2 - 1, // y
-                (float(rand()) / RAND_MAX) * 2 - 1); // z
-            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-            transform.orientation = orientation;
-
-            GameObject& currentObject = pResources->objects[i];
+            GameObject& currentObject = pResources->gameObjects[i];
 
             currentObject.meshIndex = 0;// Hardcode the kitten mesh for each object in this loop
             currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
         // Hardcode a large amount of standford bunnies
-        for (size_t i = pResources->objectCount / 6; i < pResources->objectCount; ++i)
+        for (size_t i = pResources->gameObjectCount / 6; i < pResources->gameObjectCount; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
-            // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation(
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//x 
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier,//y
-            (float(rand()) / RAND_MAX) * ce_stressTestRandomTransformMultiplier);//z
-            transform.pos = translation;
-            transform.scale = 5.f;
+            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 5.f);
 
-            // Loading random orientation. Normally you would get this from the game object
-            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-                (float(rand()) / RAND_MAX) * 2 - 1, // y
-                (float(rand()) / RAND_MAX) * 2 - 1); // z
-            float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-            transform.orientation = orientation;
-
-            GameObject& currentObject = pResources->objects[i];
+            GameObject& currentObject = pResources->gameObjects[i];
 
             currentObject.meshIndex = 2;// Hardcode the bunny mesh for each object in this loop
             currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
         }
 
         // Create all the render objects by getting the data from the game objects
-        for(size_t i = 0; i < pResources->objectCount; ++i)
+        for(size_t i = 0; i < pResources->gameObjectCount; ++i)
         {
             // Get the mesh used by the current game object
-            BlitzenEngine::Mesh& currentMesh = pResources->meshes[pResources->objects[i].meshIndex];
+            BlitzenEngine::Mesh& currentMesh = pResources->meshes[pResources->gameObjects[i].meshIndex];
 
             for(size_t j = 0; j < currentMesh.surfaceCount; ++j)
             {
@@ -486,7 +451,7 @@ namespace BlitzenEngine
                 // Get the surface Id for this render object by adding the current index to the first surface of the mesh
                 currentObject.surfaceId = currentMesh.firstSurface + static_cast<uint32_t>(j);
                 
-                currentObject.transformId = pResources->objects[i].transformIndex;
+                currentObject.transformId = pResources->gameObjects[i].transformIndex;
 
                 pResources->renderObjectCount++;
             }
@@ -503,7 +468,7 @@ namespace BlitzenEngine
         transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
         pResources->transforms.PushBack(transform);
 
-        GameObject& currentObject = pResources->objects[pResources->objectCount++];
+        GameObject& currentObject = pResources->gameObjects[pResources->gameObjectCount++];
         currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
         currentObject.transformIndex = pResources->renderObjectCount;
 
@@ -516,31 +481,17 @@ namespace BlitzenEngine
         }
 
         const uint32_t nonReflectiveDrawCount = 1000;
-        const uint32_t start = pResources->objectCount;
-        pResources->objectCount += nonReflectiveDrawCount;
-        pResources->transforms.Resize(pResources->transforms.GetSize() + pResources->objectCount);
+        const uint32_t start = pResources->gameObjectCount;
+        pResources->gameObjectCount += nonReflectiveDrawCount;
+        pResources->transforms.Resize(pResources->transforms.GetSize() + pResources->gameObjectCount);
 
-        for (size_t i = start; i < pResources->objectCount; ++i)
+        for (size_t i = start; i < pResources->gameObjectCount; ++i)
         {
             BlitzenEngine::MeshTransform& tr = pResources->transforms[i];
 
-            // Loading random position and scale. Normally you would get this from the game object
-            BlitML::vec3 translation(
-            (float(rand()) / RAND_MAX) * 100,//x 
-            (float(rand()) / RAND_MAX) * 100,//y
-            (float(rand()) / RAND_MAX) * 100);//z
-            tr.pos = translation;
-            tr.scale = 1.f;
+            RandomizeTransform(tr, 100, 1.f);
 
-            // Loading random orientation. Normally you would get this from the game object
-            BlitML::vec3 axis((float(rand()) / RAND_MAX) * 2 - 1, // x
-            (float(rand()) / RAND_MAX) * 2 - 1, // y
-            (float(rand()) / RAND_MAX) * 2 - 1); // z
-		    float angle = BlitML::Radians((float(rand()) / RAND_MAX) * 90.f);
-            BlitML::quat orientation = BlitML::QuatFromAngleAxis(axis, angle, 0);
-            tr.orientation = orientation;
-
-            GameObject& currentObject = pResources->objects[i];
+            GameObject& currentObject = pResources->gameObjects[i];
 
             currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
             currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index

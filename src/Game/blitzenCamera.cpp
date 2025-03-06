@@ -6,15 +6,9 @@ namespace BlitzenEngine
     BlitML::vec3 initialCameraPosition, float drawDistance, 
     float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
     {
-        // Initalize the projection matrix
-        camera.transformData.projectionMatrix = 
-        BlitML::InfiniteZPerspective(fov, windowWidth / windowHeight, zNear);
-
         // Save these values for later use
         camera.transformData.fov = fov;
         camera.viewData.zNear = zNear;
-        camera.transformData.windowWidth = windowWidth;
-        camera.transformData.windowHeight = windowHeight;
         // Draw distance is held by the camera
         camera.viewData.zFar = drawDistance;
 
@@ -39,25 +33,7 @@ namespace BlitzenEngine
 
         camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
 
-        // This is calculated here so that the shaders don't need to calculate this for every invocation
-        camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
-
-        // The transpose of the projection matrix will be used for frustum culling
-        camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
-        // Frustum planes
-        BlitML::vec4 frustumX = BlitML::NormalizePlane(
-        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(0)); // x + w < 0
-        BlitML::vec4 frustumY = BlitML::NormalizePlane(
-        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(1));
-        camera.viewData.frustumRight = frustumX.x;
-        camera.viewData.frustumLeft = frustumX.z;
-        camera.viewData.frustumTop = frustumY.y;
-        camera.viewData.frustumBottom = frustumY.z;
-
-        camera.viewData.proj0 = camera.transformData.projectionMatrix[0];
-        camera.viewData.proj5 = camera.transformData.projectionMatrix[5];
-
-        camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / float(camera.transformData.windowHeight));
+        UpdateProjection(camera, windowWidth, windowHeight);
     }
 
     // This will move from here once I add a camera system
@@ -105,9 +81,16 @@ namespace BlitzenEngine
 
     void UpdateProjection(Camera& camera, float newWidth, float newHeight)
     {
+        // Updates the values that made the projection matrix change
+        camera.transformData.windowWidth = newWidth;
+        camera.transformData.windowHeight = newHeight;
+
         // Changes the projection according to the parameters
-        camera.transformData.projectionMatrix = 
-        BlitML::InfiniteZPerspective(camera.transformData.fov, newWidth/ newHeight, camera.viewData.zNear);
+        camera.transformData.projectionMatrix = BlitML::InfiniteZPerspective(
+            camera.transformData.fov, 
+            newWidth / newHeight, 
+            camera.viewData.zNear
+        );
 
         // Updates the view * projection matrix results, as the projection matrix changed
         camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
@@ -115,15 +98,24 @@ namespace BlitzenEngine
         // Updates the transpose of the projection as well
         camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
 
-        // Updates the values that made the projection matrix change
-        camera.transformData.windowWidth = newWidth;
-        camera.transformData.windowHeight = newHeight;
+        BlitML::vec4 planeToUse = BlitML::NormalizePlane(
+            camera.transformData.projectionTranspose.GetRow(3) - 
+            camera.transformData.projectionTranspose.GetRow(0)
+        );
+        ObliqueNearPlaneClippingMatrixModification(
+            camera.transformData.projectionMatrix, 
+            camera.onbcProjectionMatrix, planeToUse
+        );
 
         // Updates view frustum values as they are dependent on the projection matrix
         BlitML::vec4 frustumX = BlitML::NormalizePlane(
-        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(0)); // x + w < 0
+            camera.transformData.projectionTranspose.GetRow(3) + 
+            camera.transformData.projectionTranspose.GetRow(0)
+        ); // x + w < 0
         BlitML::vec4 frustumY = BlitML::NormalizePlane(
-        camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(1));
+            camera.transformData.projectionTranspose.GetRow(3) + 
+            camera.transformData.projectionTranspose.GetRow(1)
+        );
         camera.viewData.frustumRight = frustumX.x;
         camera.viewData.frustumLeft = frustumX.z;
         camera.viewData.frustumTop = frustumY.y;
@@ -135,6 +127,31 @@ namespace BlitzenEngine
     
         // Updates the lod target threshold multiplier, as it is also dependent on projection
         camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / float(camera.transformData.windowHeight));
+    }
+
+    void ObliqueNearPlaneClippingMatrixModification(BlitML::mat4& proj, BlitML::mat4& res, 
+    const BlitML::vec4& clipPlane)
+    {
+        // Sets the oblique near-plane clipping matrix to the original projection matrix initially
+        res = proj;
+
+        BlitML::vec4 q;
+
+        // Calculates the clip-space corner point opposite the clipping plane
+        //  and transforms it into camera space by multiplying it by the inverse of the projection matrix
+        q.x = (BlitML::ClipSpaceSignGL(clipPlane.x) + proj[8]) / proj[0];
+        q.y = (BlitML::ClipSpaceSignGL(clipPlane.y) + proj[9]) / proj[5];
+        q.z = -1.0F;
+        q.w = (1.0F + proj[10]) / proj[14];
+
+        // Calculates the scaled plane vector
+        BlitML::vec4 c = clipPlane * (2.f / BlitML::Dot(clipPlane, q));
+    
+        // Replaces the third row of the Oblique near plane clipping projection matrix
+        res[8] = c.x;
+        res[9] = c.y;
+        res[10] = c.z + 1.0F;
+        res[11] = c.w;
     }
 
     // Must Declare the static variable

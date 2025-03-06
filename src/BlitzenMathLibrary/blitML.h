@@ -60,6 +60,8 @@ namespace BlitML
         return result;
     }
 
+    inline float ClipSpaceSignGL(float a){ return (a > 0.f) ?  1.f : (a < 0.f) ? -1.f : 0.f; }
+
     static uint8_t sRandSeeded = 0;
 
     inline int32_t Rand() 

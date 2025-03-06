@@ -342,6 +342,11 @@ namespace BlitzenVulkan
 
     uint8_t VulkanRenderer::CreateDescriptorLayouts()
     {
+        /*
+            The first descriptor set layout that is going to be configured is the push descriptor set layout.
+            It is used by both compute pipelines and graphics pipelines
+        */
+
         // Binding used by both compute and graphics pipelines, to access global data like the view matrix
         VkDescriptorSetLayoutBinding viewDataLayoutBinding{};
         // Binding used by both compute and graphics pipelines, to access the vertex buffer
@@ -425,14 +430,39 @@ namespace BlitzenVulkan
         1, m_currentStaticBuffers.visibilityBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
         
         // All bindings combined to create the global shader data descriptor set layout
-        VkDescriptorSetLayoutBinding shaderDataBindings[13] = {viewDataLayoutBinding, vertexBufferBinding, 
-        depthImageBinding, renderObjectBufferBinding, transformBufferBinding, materialBufferBinding, 
-        indirectDrawBufferBinding, indirectDrawCountBinding, visibilityBufferBinding, 
-        surfaceBufferBinding, meshletBufferBinding, meshletDataBinding, indirectTaskBufferBinding};
+        VkDescriptorSetLayoutBinding shaderDataBindings[13] = 
+        {
+            viewDataLayoutBinding, 
+            vertexBufferBinding, 
+            depthImageBinding, 
+            renderObjectBufferBinding, 
+            transformBufferBinding, 
+            materialBufferBinding, 
+            indirectDrawBufferBinding, 
+            indirectDrawCountBinding, 
+            visibilityBufferBinding, 
+            surfaceBufferBinding, 
+            meshletBufferBinding, 
+            meshletDataBinding, 
+            indirectTaskBufferBinding
+        };
         m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(m_device, 12, shaderDataBindings, 
         VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
         if(m_pushDescriptorBufferLayout.handle == VK_NULL_HANDLE)
             return 0;
+
+        /*
+            End of descriptor set layout configurations.
+        */
+
+
+
+
+        /*
+            The next descriptor set layout is the texture descriptor set layout.
+            All descriptors / textures held by it will be allocated at setup time.
+            Used by the fragment shader(s) only
+        */
 
         // Descriptor set layout for textures
         VkDescriptorSetLayoutBinding texturesLayoutBinding{};
@@ -441,6 +471,18 @@ namespace BlitzenVulkan
         m_textureDescriptorSetlayout.handle = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
         if(m_textureDescriptorSetlayout.handle == VK_NULL_HANDLE)
             return 0;
+
+        /*
+            Texture descriptor set layout complete.
+        */
+
+
+
+
+        /*
+            The descriptor set layout below is for the src and dst images of the debug pyramid.
+            Used by the depth generation compute shader only.
+        */
 
         // Binding for input image in depth pyramid creation shader
         VkDescriptorSetLayoutBinding inImageLayoutBinding{};
@@ -457,6 +499,16 @@ namespace BlitzenVulkan
         if(m_depthPyramidDescriptorLayout.handle == VK_NULL_HANDLE)
             return 0;
 
+        /*
+            Depth pyramid descriptor set layout complete.
+        */
+
+
+
+        /*
+            Descriptor used only for the background compute shader, which draws a window with gradient color
+        */
+
         // Creates a binding for the descriptor that will provide an image to the background compute shader
         VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
         CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 
@@ -466,6 +518,17 @@ namespace BlitzenVulkan
         if(m_backgroundImageSetLayout.handle == VK_NULL_HANDLE)
             return 0;
 
+        /*
+            Background compute shader descriptor set layout complete
+        */
+
+
+
+
+        /*
+            Pipeline layouts. Different combinations of the descriptor set layout and push constants
+        */
+       
         // The graphics pipeline will use 2 layouts, the one for push desciptors and the constant one for textures
         VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle };
         if(!CreatePipelineLayout(m_device, &m_graphicsPipelineLayout.handle, 2, layouts, 0, nullptr))

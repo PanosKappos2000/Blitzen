@@ -79,6 +79,9 @@ namespace BlitzenEngine
         CameraViewData viewData;
 
         CameraTransformData transformData;
+
+        // This has not been integrated to the renderer, properly, so it is placed separately for now
+        BlitML::mat4 onbcProjectionMatrix;
     };
 
     // Gives some default values to a new camera so that it does not spawn with a random transform
@@ -94,6 +97,9 @@ namespace BlitzenEngine
     // Since the main camera is also responsible for the projection matrix, whenever it needs to be updated the main camera is passed to this functions
     // Values that have to do with projection are also updated
     void UpdateProjection(Camera& camera, float newWidth, float newHeight);
+
+    // Test function, taken from https://terathon.com/blog/oblique-clipping.html
+    void ObliqueNearPlaneClippingMatrixModification(BlitML::mat4& proj, BlitML::mat4& res, const BlitML::vec4& clipPlane);
 
     class CameraSystem
     {

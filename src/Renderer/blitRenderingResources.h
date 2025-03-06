@@ -17,6 +17,8 @@ namespace BlitzenEngine
 
     constexpr uint32_t ce_maxRenderObjects = 5'000'000;
 
+    constexpr uint32_t ce_maxONPC_Objects = 100;
+
     #ifdef BLITZEN_CLUSTER_CULLING
         constexpr uint8_t ce_buildClusters = 1;
     #else
@@ -177,15 +179,18 @@ namespace BlitzenEngine
 
         // Holds all the render objects / primitives. They index into one primitive and one transform each
         RenderObject renders[ce_maxRenderObjects];
-        uint32_t renderObjectCount; 
+        uint32_t renderObjectCount = 0; 
+
+        RenderObject onpcReflectiveRenderObjects[ce_maxONPC_Objects];
+        uint32_t onpcReflectiveRenderObjectCount = 0;
         
-        // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives. TODO: Put these on a separate struct (maybe)
+        // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives.
         Mesh meshes[ce_maxMeshCount];
         size_t meshCount = 0;
 
-        // TODO: This is not a rendering resource, it should not be part of this struct
-        GameObject objects[ce_maxRenderObjects];
-        uint32_t objectCount;
+        // A game object, for now, is a simple entity that has a mesh and a transform
+        GameObject gameObjects[ce_maxRenderObjects];
+        uint32_t gameObjectCount = 0;
     };
 
     // Draw context needs to be given to draw frame function, so that it can update uniform values
