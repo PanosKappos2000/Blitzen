@@ -27,34 +27,36 @@ namespace BlitzenEngine
     }
 }
 
+using EventSystem = BlitCL::SmartPointer<BlitzenCore::EventSystemState>;
+using InputSystem = BlitCL::SmartPointer<BlitzenCore::InputSystemState>;
+using RenderingResources = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
+
 int main(int argc, char* argv[])
 {
+    // Not as important as it sounds
     BlitzenEngine::Engine engine;
 
-    // Memory manager should be the first system initialized and destroyed after anything that allocates memory 
-    // *The exceptions are the engine class and the logging and platform systems, which make no dyncamic allocations anyway
+    // Only systems that do not allocate on the heap may be initialized before here
+    // The opposite goes for destruction
     BlitzenCore::MemoryManagerState blitzenMemory;
 
-    // Initializes logging. This always succeeds for now
+    // Logging system. Extremely simplistic for now
     BlitzenCore::InitLogging();
 
-    // Initializes the camera stystem
+    // Camera system. Holds a fixed amount of cameras that is known at compile time
     BlitzenEngine::CameraSystem cameraSystem;
 
-    // Initializes the event system as a smart pointer
-    BlitCL::SmartPointer<BlitzenCore::EventSystemState> eventSystemState;
+    // Event handling
+    EventSystem eventSystemState;
+    InputSystem inputSystemState;
 
-    // Initializes the input system after the event system
-    BlitCL::SmartPointer<BlitzenCore::InputSystemState> inputSystemState;
-
-    // Platform specific code initalization. 
-    // This should be called after the event system has been initialized because the event function is called.
-    // That will break the application without the event system.
+    // Platform specific code. Mostly window creation. Lightweight, no allocations, but needs to wait for event systems
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion))
             
-    // With the event and input systems active, register the engine's default events and input bindings
+    // Default engine events (see blitzenDefaultEvents.cpp). The client app may modify these with some exceptions
     BlitzenEngine::RegisterDefaultEvents();
 
+    // Initial renderer setup (API initialization, see blitRenderer.h for API selection)
     uint8_t bRenderingSystem = 0;
     BlitzenEngine::Renderer renderer;
     if(renderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight))
@@ -66,69 +68,87 @@ int main(int argc, char* argv[])
     }
         
     // Allocates the rendering resources
-    BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer> pResources;
-    LoadRenderingResourceSystem(pResources.Data(), renderer.Data());
+    RenderingResources renderingResources;
+    LoadRenderingResourceSystem(renderingResources.Data(), renderer.Data());
 
-    // Setup the main camera
+    // Main camera
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
-    SetupCamera(mainCamera, BlitML::Radians(BlitzenEngine::ce_initialFOV), 
-    static_cast<float>(BlitzenEngine::ce_initialWindowWidth), 
-    static_cast<float>(BlitzenEngine::ce_initialWindowHeight), 
-    BlitzenEngine::ce_znear, 
-    BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ), 
-    BlitzenEngine::ce_initialDrawDistance);
+    SetupCamera(
+        mainCamera, 
+        BlitML::Radians(BlitzenEngine::ce_initialFOV), // field of view
+        static_cast<float>(BlitzenEngine::ce_initialWindowWidth), 
+        static_cast<float>(BlitzenEngine::ce_initialWindowHeight), 
+        BlitzenEngine::ce_znear, // znear
+        /* Camera position vector */
+        BlitML::vec3(
+        BlitzenEngine::ce_initialCameraX, // x
+        BlitzenEngine::ce_initialCameraY, // y
+        BlitzenEngine::ce_initialCameraZ), // z
+        /* Camera position vector (parameter end)*/ 
+        BlitzenEngine::ce_initialDrawDistance // the engine uses infinite projection matrix by default, so the draw distance is the zfar
+    );
 
-    // Checks for command line arguments
+    // Command line arguments. TODO: Put this in a function
     if(argc > 1)
     {
-        // If the first command line argument is rendring stress test, the rendering stress test is loaded
+        // Special argument. Loads heavy scene to stress test the culling
         if(strcmp(argv[1], "RenderingStressTest") == 0)
         {
             constexpr uint32_t ce_defaultObjectCount = 1'000'000;
-            LoadGeometryStressTest(pResources.Data(), ce_defaultObjectCount);
+            LoadGeometryStressTest(renderingResources.Data(), ce_defaultObjectCount);
 
             // The following arguments are used as gltf filepaths
             for(int32_t i = 2; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i], renderer.Data());
+                LoadGltfScene(renderingResources.Data(), argv[i], renderer.Data());
             }
         }
+
+        // Special argument. Test oblique near-plane clipping technique. Not working yet.
         else if(strcmp(argv[1], "ONPC_ReflectionTest") == 0)
         {
-            CreateObliqueNearPlaneClippingTestObject(pResources.Data());
+            CreateObliqueNearPlaneClippingTestObject(renderingResources.Data());
+
             // The following arguments are used as gltf filepaths
             for (int32_t i = 2; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i], renderer.Data());
+                LoadGltfScene(renderingResources.Data(), argv[i], renderer.Data());
             }
         }
-        // Else, all arguments are used as gltf filepaths
+
+        // If there are no special arguments everything is treated as a filepath for a gltf scene
         else
         {
             for(int32_t i = 1; i < argc; ++i)
             {
-                LoadGltfScene(pResources.Data(), argv[i], renderer.Data());
+                LoadGltfScene(renderingResources.Data(), argv[i], renderer.Data());
             }
         }
     }
 
-    // Sets the draw count to the render object count   
-    uint32_t drawCount = pResources.Data()->renderObjectCount;
+    // Sets the draw count to the render object count. TODO: Might as well not have this  
+    uint32_t drawCount = renderingResources.Data()->renderObjectCount;
 
-    // Passes the resources that were loaded to the renderer
-    if(!bRenderingSystem || !renderer->SetupForRendering(pResources.Data(), 
-    mainCamera.viewData.pyramidWidth, mainCamera.viewData.pyramidHeight))
+    // Rendering setup with the loaded resources. Checks if it fails first
+    if(!bRenderingSystem || // Checks if API initialization was succesful
+        // Then tries the function
+        !renderer->SetupForRendering( 
+            renderingResources.Data(), 
+            mainCamera.viewData.pyramidWidth, 
+            mainCamera.viewData.pyramidHeight
+    ))
     {
         BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline")
         bRenderingSystem = 0;
     }
         
-    // Starts the clock
+    // The clock is used to keep movement stable with variable fps
+    // At the moment, it is not doing its job actually
     double clockStartTime = BlitzenPlatform::PlatformGetAbsoluteTime();
-    double clockElapsedTime = 0;
-    double previousTime = clockElapsedTime;// Initialize previous frame time to the elapsed time
+    double clockElapsedTime = 0;// No time has passed
+    double previousTime = clockElapsedTime;// Holds the previous frame time
 
-    // Main Loop starts
+    // MAIN LOOP
     while(engine.IsRunning())
     {
         // Captures events
@@ -139,24 +159,20 @@ int main(int argc, char* argv[])
 
         if(engine.IsActive())
         {
-            // Get the elapsed time of the application
+            // Updates delta time
             clockElapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - clockStartTime;
-            // Update the delta time by using the previous elapsed time
             engine.SetDeltaTime(clockElapsedTime - previousTime);
-            // Update the previous elapsed time to the current elapsed time
             previousTime = clockElapsedTime;
 
-            // With delta time retrieved, call update camera to make any necessary changes to the scene based on its transform
             UpdateCamera(mainCamera, static_cast<float>(engine.GetDeltaTime()));
 
-            // Draws the frame
             if(bRenderingSystem)
             {
                 BlitzenEngine::DrawContext drawContext(&mainCamera, drawCount);
-                renderer->DrawFrame(drawContext);
+                renderer->DrawFrame(drawContext);// This is a bit important
             }
 
-            // Make sure that the window resize is set to false after the renderer is notified
+            // Reset window resize, TODO: Why is this here??????
             mainCamera.transformData.windowResize = 0;
 
             BlitzenCore::UpdateInput(engine.GetDeltaTime());
@@ -164,13 +180,10 @@ int main(int argc, char* argv[])
     }
     engine.BeginShutdown();
 
-    // If I do this in the destructor, shutdown will look laggy because there are many things that need to be destroyed before the window
+    // Destroys window before other destructors, otherwise it will lag
+    // (because it waits for a huge amount of deletes)
     BlitzenPlatform::PlatformShutdown();
 }
-
-
-
-
 
 
 //Assets/Scenes/CityLow/scene.gltf ../../GltfTestScenes/Scenes/Plaza/scene.gltf ../../GltfTestScenes/Scenes/Museum/scene.gltf (personal test scenes for copy pasting)

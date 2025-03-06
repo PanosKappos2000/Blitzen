@@ -26,7 +26,7 @@ void main()
     Transform transform = transformBuffer.instances[object.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[object.surfaceId];
 
-    // If the late culling shader does not match the pass of the current surface it exits
+    // If the late culling shader does not match the pass of the current surface, it exits
     if(surface.postPass != cullPC.postPass)
         return;
     

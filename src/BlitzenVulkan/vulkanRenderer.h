@@ -227,6 +227,8 @@ namespace BlitzenVulkan
 
         VkWriteDescriptorSet pushDescriptorWritesGraphics[7];
         VkWriteDescriptorSet pushDescriptorWritesCompute[8];
+        VkWriteDescriptorSet m_pushDescriptorWritesOnpcGraphics[7];
+        VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[7];
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
         DescriptorSetLayout m_depthPyramidDescriptorLayout;
@@ -249,6 +251,12 @@ namespace BlitzenVulkan
         PipelineObject m_opaqueGeometryPipeline;
         PipelineObject m_postPassGeometryPipeline;
         PipelineLayout m_graphicsPipelineLayout;
+
+        // Oblique Near-Plane clipping objects
+        PipelineObject m_onpcReflectiveGeometryPipeline;
+        PipelineLayout m_onpcReflectiveGeometryLayout;
+        PipelineObject m_onpcDrawCullPipeline;
+        PipelineLayout m_onpcDrawCullLayout;
 
         // Draws opaque geometries. Uses opaque geometry pipline object and graphics pipline layout
         PipelineProgram m_opaqueGeometryProgram;

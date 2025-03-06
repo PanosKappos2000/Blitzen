@@ -127,26 +127,70 @@ namespace BlitzenVulkan
         }
         else
         {
-            // Dispatch the culling shader for the intial pass. This will perform frustum culling and LOD selection for objects that were visible last frame
-            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
-            BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 0, 0, 
-            context.bOcclusionCulling, context.bLOD);
+            /*
+                !RENDER OPERATIONS INFO:
+                1.The first culling shader is called.
+                  It only works on objects that were visible last frame and are not transparent.
+                  It performs frustum culling and LOD selection.(See InitialDrawCull.comp)
+                
+                2.The first draw pass is called.
+                  It takes the indirect commands and indirect count that were written by the culling shader.
+                  It uses one draw call to draw everything that those buffer specify
 
-            // Draw the objects based on the indirect draw buffer and indirect count buffer that were written by the culling shader
-            DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, context.drawCount, 0, m_opaqueGeometryPipeline.handle);
+                Pre-3.The depth generation shader is called, to allow for occlusion culling.
 
-            // Before the late culling shader the depth pyramid needs to be generated based on the early pass depth attachment
+                3.The second culling shader is called.
+                  It does frustum culling and LOD selection on every object. It also does occlusion culling this time.
+                  It only creates indirect draw commands for the objects that were NOT visible last frame.
+                  It also updates the visibility buffer for every object, to affect the next frame.
+                  Transparent objects are ignored
+
+                4.The second draw pass is called.
+                  It is the exact same as the first one, but gets its commands from the second culling pass.
+
+                5.The 3rd culling shader is called.
+                  It is the same shader as the second pass but this time ignores opaque objects and operator on transparent ones.
+
+                6.The final draw pass is called.
+                  It takes the commands from the 3rd culling shader.
+                  Its fragment shader also has a modified specialization constant for alpha discard
+            */
+
+            // First culling pass
+            DispatchRenderObjectCullingComputeShader(
+                fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
+                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
+                context.drawCount, 
+                0, 0, // Post pass and late culling boolean values
+                context.bOcclusionCulling, context.bLOD // Debug values
+            );
+
+            // First draw pass
+            DrawGeometry(
+                fTools.commandBuffer, pushDescriptorWritesGraphics, 
+                context.drawCount, 
+                0, // late pass boolean value
+                m_opaqueGeometryPipeline.handle
+            );
+
+            // Depth pyramid generation
             GenerateDepthPyramid(fTools.commandBuffer);
 
-            // Dispatches the late culling compute shader which does frustum culling, occlusion culling and LOD selection on everything
-            // It only draws the objects that were not visible last frame and updates the visibility buffer for all objects
-            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
-            BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 0, 
-            context.bOcclusionCulling, context.bLOD);
+            // Second culling pass 
+            DispatchRenderObjectCullingComputeShader(
+                fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
+                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
+                context.drawCount, 
+                1, 0, // Late culling and post pass boolean values
+                context.bOcclusionCulling, context.bLOD // Debug values
+            );
 
-            // Draw the objects based on the indirect draw buffer and indirect count buffer
-            DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
-            context.drawCount, 1, m_opaqueGeometryPipeline.handle);
+            // Second draw pass
+            DrawGeometry(
+                fTools.commandBuffer, pushDescriptorWritesGraphics, 
+                context.drawCount, 
+                1, 
+                m_opaqueGeometryPipeline.handle);
 
             // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution will be found)
             DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
@@ -237,38 +281,56 @@ namespace BlitzenVulkan
         {
             VkWriteDescriptorSet depthPyramidWrite{};
             VkDescriptorImageInfo depthPyramidImageInfo{};
-            WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 
-            3, VK_IMAGE_LAYOUT_GENERAL, m_depthPyramid.imageView, m_depthAttachmentSampler.handle);
+            WriteImageDescriptorSets(
+                depthPyramidWrite, depthPyramidImageInfo, 
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+                VK_NULL_HANDLE, // Descriptor set not needed for push descriptors
+                3, // Depth pyramid image binding ID
+                VK_IMAGE_LAYOUT_GENERAL, 
+                m_depthPyramid.imageView, 
+                m_depthAttachmentSampler.handle
+            );
+
             pushDescriptorWritesCompute[descriptorWriteCount - 1] = depthPyramidWrite;
         }
 
-        // Wait for previous render pass to be done with the indirect count buffer before zeroing it
+        // This pipeline barrier waits for previous indirect draw to be done with indirect count buffer,
+        // before zeroing it with vkCmdFillBuffer
         VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
-        BufferMemoryBarrier(m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, waitBeforeZeroingCountBuffer,
-        VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        BufferMemoryBarrier(
+            m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
+            waitBeforeZeroingCountBuffer,
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT,VK_ACCESS_2_TRANSFER_WRITE_BIT,
+             0, VK_WHOLE_SIZE
+        );
         PipelineBarrier(commandBuffer, 0, nullptr, 1, &waitBeforeZeroingCountBuffer, 0, nullptr);
 
-        // Initialize the indirect count buffer as zero
+        // Indirect count starts from 0
         vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, sizeof(uint32_t), 0);
 
+        // These pipeline barriers wait for previous actions on buffers to finish, 
+        // before the culling shader reads from them or writes to them.
+        // The affected buffers are the visibility, indirect count and indirect draw buffers
         VkBufferMemoryBarrier2 waitBeforeDispatchingShaders[3] = {};
-        // Before dispatching the compute shader, it needs to wait for the transfer command above to Zero out the indirect count buffer
-        BufferMemoryBarrier(m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
-        waitBeforeDispatchingShaders[0], 
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
-        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 
-        0, VK_WHOLE_SIZE);
-
-        // Before the compute shader can be dispatched, the previous frame needs to be done with the indirect draw buffer.
-        // This means that the draw indirect stage needs to read the indirect command and the vertex shader stage needs to read the object id
-        BufferMemoryBarrier(m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, 
-        waitBeforeDispatchingShaders[1], 
-        VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
-        VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 
-        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
-
-        // Before the compute shader can be dispatched, the previous fream needs to be done with the visibility buffer
+        // Indirect count buffer waits for vkCmdFillBuffer to finish
+        BufferMemoryBarrier(
+            m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
+            waitBeforeDispatchingShaders[0], 
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 
+            0, VK_WHOLE_SIZE
+        );
+        // The indirect draw buffer waits for the indirect draw stage to finish reading previous commands
+        BufferMemoryBarrier(
+            m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, 
+            waitBeforeDispatchingShaders[1], 
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            0, VK_WHOLE_SIZE
+        );
+        // The visibility buffer waits for the previous compute shader to complete read and write operations
         // TODO: this barrier could be more specific depending on if I am in late or early stage
         BufferMemoryBarrier(m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, 
         waitBeforeDispatchingShaders[2], 
@@ -276,17 +338,19 @@ namespace BlitzenVulkan
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
         0, VK_WHOLE_SIZE);
 
-        // The late culling shader needs to wait for the 2 barriers above but it also needs to wait for the depth pyramid to be generated
+        // The late culling shader needs to wait for the 3 barriers above but it also needs to wait for the depth pyramid to be generated
         if(lateCulling)
         {
-            // Stops the culling shader from reading for the depth pyramid before it is complete
+            // This barrier waits for the depth generation compute shader to finish writing to the depth pyramid image
             VkImageMemoryBarrier2 waitForDepthPyramidGeneration{};
-            ImageMemoryBarrier(m_depthPyramid.image, waitForDepthPyramidGeneration, 
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
-            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, 
-            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-            // Adds the 2 barriers above and the image memory barrier
+            ImageMemoryBarrier(
+                m_depthPyramid.image, waitForDepthPyramidGeneration, 
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
+                VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, // No layout transtions
+                VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
+            );
+            // Pipeline barrier execution
             PipelineBarrier(commandBuffer, 0, nullptr, 3, waitBeforeDispatchingShaders, 1, &waitForDepthPyramidGeneration);
         }
         // If this is the initial culling stage, simply adds the 2 barriers
@@ -295,40 +359,57 @@ namespace BlitzenVulkan
             PipelineBarrier(commandBuffer, 0, nullptr, 3, waitBeforeDispatchingShaders, 0, nullptr);
         }
 
-        // Push the descriptor that need to be bound
-        PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_drawCullLayout.handle, 
-        0, lateCulling ? descriptorWriteCount : descriptorWriteCount - 1, pDescriptorWrites);
-        // Binds the shader's pipeline
+        // Sets up before dispatch
+        PushDescriptors(
+            m_instance, commandBuffer, 
+            VK_PIPELINE_BIND_POINT_COMPUTE, 
+            m_drawCullLayout.handle, 
+            0, // Descriptor set ID
+            lateCulling ? descriptorWriteCount : descriptorWriteCount - 1, // late culling has an extra binding
+            pDescriptorWrites
+        );
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        // Pass the push constant value
-        DrawCullShaderPushConstant pc{drawCount, postPass, bOcclusionEnabled, bLODs};
-        vkCmdPushConstants(commandBuffer, m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, 
-        sizeof(DrawCullShaderPushConstant), &pc);
+        DrawCullShaderPushConstant pc{drawCount, postPass, bOcclusionEnabled, bLODs}; // Push constant data
+        vkCmdPushConstants(
+            commandBuffer, 
+            m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 
+            0, // Offset into the push constant
+            sizeof(DrawCullShaderPushConstant), &pc
+        );
+
+        // Dispatches the shader
         vkCmdDispatch(commandBuffer, (drawCount / 64) + 1, 1, 1);
 
+        // Once the shader is done, a barrier needs to make sure that the graphics pipeline waits
         VkBufferMemoryBarrier2 waitForCullingShader[3] = {};
-        // Wait for the culling shader to write the indirect count buffer before reading in draw indirect stage
-        BufferMemoryBarrier(m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
-        waitForCullingShader[0], 
-        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
-        VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 0, VK_WHOLE_SIZE);
-
-        // Wait for culling shader to write the indirect commands before accessing the indirect draw buffer.
-        // This means that the indirect stage need to stop before reading the commands,
-        // and the vertex shader stage needs to wait before reading the object id
-        BufferMemoryBarrier(m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, 
-        waitForCullingShader[1], 
-        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
-        VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
-        VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
-
-        // Wait for the culling shader to read and write to the visibility buffer, before the next shader does the same
-        BufferMemoryBarrier(m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, waitForCullingShader[2], 
-        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
-        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
-        0, VK_WHOLE_SIZE);
-        
-        // Add the above barriers
+        // Stop the indirect count buffer from being read before the culling shader is done with it
+        BufferMemoryBarrier(
+            m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
+            waitForCullingShader[0], 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 
+            0, VK_WHOLE_SIZE
+        );
+        // Stops the vertex shader from reading draw IDs and the indirect stage from reading commands
+        BufferMemoryBarrier(
+            m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, 
+            waitForCullingShader[1], 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 
+            0, VK_WHOLE_SIZE
+        );
+        // This one might be obsolete
+        BufferMemoryBarrier(
+            m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, 
+            waitForCullingShader[2], 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
+            VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
+            VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, 
+            0, VK_WHOLE_SIZE
+        );
+        // Executes the barriers
         PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
     }
 
@@ -337,30 +418,52 @@ namespace BlitzenVulkan
     {
         // Creates info for the color attachment 
         VkRenderingAttachmentInfo colorAttachmentInfo{};
-        CreateRenderingAttachmentInfo(colorAttachmentInfo, m_colorAttachment.imageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-        latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0.1f, 0.2f, 0.3f, 0});
+        CreateRenderingAttachmentInfo(
+            colorAttachmentInfo, m_colorAttachment.imageView, 
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+            latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR, 
+            VK_ATTACHMENT_STORE_OP_STORE, 
+            {0.1f, 0.2f, 0.3f, 0} // Window color
+        );
         // Creates info for the depth attachment
         VkRenderingAttachmentInfo depthAttachmentInfo{};
-        CreateRenderingAttachmentInfo(depthAttachmentInfo, m_depthAttachment.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
-        latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, 
-        {0, 0});
+        CreateRenderingAttachmentInfo(
+            depthAttachmentInfo, m_depthAttachment.imageView, 
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
+            latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR, 
+            VK_ATTACHMENT_STORE_OP_STORE, 
+            {0, 0, 0, 0}, // Clear color (irrelevant here)
+            {0, 0} // Clear depth
+        );
+        // Render pass begins
+        BeginRendering(
+            commandBuffer, m_drawExtent, 
+            {0, 0}, // Render area offset
+            1, &colorAttachmentInfo, // Color attachment count and color attachment(s)
+            &depthAttachmentInfo, 
+            nullptr // Stencil attachment
+        );
 
-        // Render pass begins here, the function expects that proper barriers were setup before
-        BeginRendering(commandBuffer, m_drawExtent, {0, 0}, 1, &colorAttachmentInfo, 
-        &depthAttachmentInfo, nullptr);
-
-        // Pushes all uniform buffer descriptors but the culling data one to the graphics pipelines
-        PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-        m_graphicsPipelineLayout.handle, 0, 7, pDescriptorWrites);
-
-        // Bind the texture descriptor set. This one was allocated and written to in the UploadDataToGPU function
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipelineLayout.handle, 1,
-        1, &m_textureDescriptorSet, 0, nullptr);
-
-        // Binds the graphics pipeline before the draw call
+        // Descriptor using push descriptor extensions are pushed
+        PushDescriptors(
+            m_instance, commandBuffer, 
+            VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            m_graphicsPipelineLayout.handle, 
+            0, // Set ID is 0 
+            7, // Set count is 7 (TODO: This should be a parameter)
+            pDescriptorWrites
+        );
+        // Descriptor set for bindless textures
+        vkCmdBindDescriptorSets(
+            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            m_graphicsPipelineLayout.handle, 
+            1, 1, // First set ID and set count
+            &m_textureDescriptorSet, 
+            0, nullptr // Dynamic offsets
+        );
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-        // Draw indirect draws all the objects in the indirect draw / task buffer, from offset 0 to the number in the draw count buffer
+        // Mesh shader
         if(m_stats.meshShaderSupport)
         {
             DrawMeshTasks(m_instance, commandBuffer, 
@@ -369,16 +472,23 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, // Task count buffer 
             0, drawCount, sizeof(IndirectTaskData));
         }
+        // Vertex shader
         else
         {
-            // Binds the index buffer for the vertex shader path
-            vkCmdBindIndexBuffer(commandBuffer, m_currentStaticBuffers.indexBuffer.bufferHandle, 
-            0, VK_INDEX_TYPE_UINT32);
-
-            vkCmdDrawIndexedIndirectCount(commandBuffer, 
-            m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, offsetof(IndirectDrawData, drawIndirect), // Draw buffer
-            m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, // Draw count buffer
-            0, drawCount, sizeof(IndirectDrawData));
+            vkCmdBindIndexBuffer(
+                commandBuffer, 
+                m_currentStaticBuffers.indexBuffer.bufferHandle, 
+                0, // Index buffer offset
+                VK_INDEX_TYPE_UINT32 // Data type for indices
+            );
+            vkCmdDrawIndexedIndirectCount(
+                commandBuffer, 
+                m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, 
+                offsetof(IndirectDrawData, drawIndirect), // indirect draw buffer offset
+                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                0, // Indirect count buffer offset
+                drawCount, // Max draw count 
+                sizeof(IndirectDrawData));
         }
 
         vkCmdEndRendering(commandBuffer);

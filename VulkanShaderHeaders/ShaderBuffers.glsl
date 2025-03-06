@@ -146,6 +146,11 @@ layout(set = 0, binding = 4, std430) readonly buffer ObjectBuffer
     RenderObject objects[];
 }objectBuffer;
 
+layout(set = 0, binding = 14, std430) readonly buffer OnpcReflectiveObjectBuffer
+{
+    RenderObject objects[];
+}onpcReflectiveObjectBuffer;
+
 struct Transform
 {
     vec3 pos;

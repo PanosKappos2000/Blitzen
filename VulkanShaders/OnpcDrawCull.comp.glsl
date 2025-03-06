@@ -7,8 +7,6 @@
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
 
-#define CULL  true
-
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 void main()
@@ -16,28 +14,14 @@ void main()
     // The object index is for the current object's element in the render object
 	uint objectIndex = gl_GlobalInvocationID.x;
 
-    // This is a guard so that the culling shader does not go over the draw count
-    if(cullPC.drawCount <= objectIndex)
-        return;
-
-    // This culling shader also returns if the current object was not visible last frame
-    if(visibilityBuffer.visibilities[objectIndex] == 0)
-        return;
-
     // Gets the current object using the global invocation ID. It also retrieves the surface that the objects points to and the transform data
-    RenderObject currentObject = objectBuffer.objects[objectIndex];
+    RenderObject currentObject = onpcReflectiveObjectBuffer.objects[objectIndex];
     Transform transform = transformBuffer.instances[currentObject.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[currentObject.surfaceId];
 
-    // The initial culling pass does not touch transparent objects
-    if(surface.postPass == 1)
-        return;
-
-    // Frustum culling.
-    // The center and radius are modified and used for LODs
-    vec3 center;
-	float radius;
-	bool visible = IsObjectInsideViewFrustum(
+    /*vec3 center;
+    vec3 radius;
+    bool visible = IsObjectInsideViewFrustum(
         center, radius, surface.center, surface.radius, 
         transform.scale, transform.pos, transform.orientation, 
         viewData.view, 
@@ -45,7 +29,7 @@ void main()
         viewData.frustumTop, viewData.frustumBottom,
         viewData.zNear, viewData.zFar
     );
-	
+
     // Create draw commands for the objects that passed frustum culling
     if(visible)
     {
@@ -59,7 +43,7 @@ void main()
             surface is taken and the minimum error that would result in acceptable
             screen-space deviation is computed based on camera parameters
         */
-        if (cullPC.lodEnabled == 1)
+        /*if (cullPC.lodEnabled == 1)
 		{
 			float distance = max(length(center) - radius, 0);
 			float threshold = distance * viewData.lodTarget / transform.scale;
@@ -78,5 +62,5 @@ void main()
         indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
         indirectDrawBuffer.draws[drawIndex].vertexOffset = surface.vertexOffset;
         indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
-    } 
+    }*/
 }
