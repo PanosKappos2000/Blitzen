@@ -475,8 +475,8 @@ namespace BlitzenEngine
         Mesh& mesh = pResources->meshes[currentObject.meshIndex];
         for(size_t i = 0; i < mesh.surfaceCount; ++i)
         {
-            RenderObject& draw = pResources->onpcReflectiveRenderObjects[
-                pResources->onpcReflectiveRenderObjectCount++];
+            RenderObject& draw = 
+            pResources->onpcReflectiveRenderObjects[pResources->onpcReflectiveRenderObjectCount++];
 
             draw.surfaceId = mesh.firstSurface + uint32_t(i);
             draw.transformId = currentObject.transformIndex;

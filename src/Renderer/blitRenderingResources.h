@@ -207,8 +207,10 @@ namespace BlitzenEngine
         uint8_t bOcclusionCulling;
         uint8_t bLOD;
 
-        inline DrawContext(void* pCam, uint32_t dc, uint8_t bOC = 1, uint8_t bLod = 1) 
-        : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod} {}
+        uint8_t bOnpc = 0;
+
+        inline DrawContext(void* pCam, uint32_t dc, uint8_t onpc = 0, uint8_t bOC = 1, uint8_t bLod = 1) 
+        : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod}, bOnpc{onpc} {}
     };
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData);

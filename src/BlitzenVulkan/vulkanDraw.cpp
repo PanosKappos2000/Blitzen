@@ -53,6 +53,11 @@ namespace BlitzenVulkan
         // Specifies the descriptor writes that are not static again
         pushDescriptorWritesGraphics[0] = vBuffers.viewDataBuffer.descriptorWrite;
         pushDescriptorWritesCompute[0] = vBuffers.viewDataBuffer.descriptorWrite;
+        if (context.bOnpc)
+        {
+            m_pushDescriptorWritesOnpcCompute[0] = vBuffers.viewDataBuffer.descriptorWrite;
+			m_pushDescriptorWritesOnpcGraphics[0] = vBuffers.viewDataBuffer.descriptorWrite;
+        }
         
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence.handle), VK_TRUE, 1000000000);
@@ -167,10 +172,11 @@ namespace BlitzenVulkan
 
             // First draw pass
             DrawGeometry(
-                fTools.commandBuffer, pushDescriptorWritesGraphics, 
+                fTools.commandBuffer, 
+                pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
+                m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
                 context.drawCount, 
-                0, // late pass boolean value
-                m_opaqueGeometryPipeline.handle
+                0 // late pass boolean value
             );
 
             // Depth pyramid generation
@@ -187,19 +193,47 @@ namespace BlitzenVulkan
 
             // Second draw pass
             DrawGeometry(
-                fTools.commandBuffer, pushDescriptorWritesGraphics, 
+                fTools.commandBuffer, 
+                pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
+                m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
                 context.drawCount, 
-                1, 
-                m_opaqueGeometryPipeline.handle);
+                1 // late pass boolean value
+                );
 
-            // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution will be found)
-            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
-            BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, context.drawCount, 1, 1, 
-            context.bOcclusionCulling, context.bLOD);
+            // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution should be found)
+            DispatchRenderObjectCullingComputeShader(
+                fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
+                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
+                context.drawCount, 
+                1, 1, // late culling and post pass boolean values
+                context.bOcclusionCulling, context.bLOD // debug values
+            );
 
             // Draws the transparent objects
-            DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics, 
-            context.drawCount, 1, m_postPassGeometryPipeline.handle);
+            DrawGeometry(fTools.commandBuffer, 
+                pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
+                m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
+                context.drawCount, 
+                1 // late pass boolean
+            );
+
+            if(context.bOnpc)
+            {
+                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, 
+                    BLIT_ARRAY_SIZE(m_pushDescriptorWritesOnpcCompute), m_pushDescriptorWritesOnpcCompute,
+                    1, // temporary hardcoded draw count
+                    0, 0, // late culling and post pass boolean values
+                    context.bOcclusionCulling, context.bLOD // debug values 
+                );
+
+                DrawGeometry(fTools.commandBuffer, 
+                    m_pushDescriptorWritesOnpcGraphics, BLIT_ARRAY_SIZE(m_pushDescriptorWritesOnpcGraphics),
+                    m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle,
+                    1, // temporary hardcoded draw count
+                    1, // late pass boolean
+                    1, &pCamera->onbcProjectionMatrix // Oblique Near Plane clipping data
+                );
+            }
         }
         
 
@@ -272,8 +306,10 @@ namespace BlitzenVulkan
         m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
 
-    void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline,
-    uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
+    void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, 
+    VkPipeline pipeline,
+    uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, 
+    uint32_t drawCount, 
     uint8_t lateCulling /*=0*/, uint8_t postPass /*=0*/, uint8_t bOcclusionEnabled /*=1*/, uint8_t bLODs /*=1*/)
     {
         // If this is after the first render pass, the shader will also need the depth pyramid image sampler to do occlusion culling
@@ -291,7 +327,7 @@ namespace BlitzenVulkan
                 m_depthAttachmentSampler.handle
             );
 
-            pushDescriptorWritesCompute[descriptorWriteCount - 1] = depthPyramidWrite;
+            pDescriptorWrites[descriptorWriteCount - 1] = depthPyramidWrite;
         }
 
         // This pipeline barrier waits for previous indirect draw to be done with indirect count buffer,
@@ -307,7 +343,10 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, 1, &waitBeforeZeroingCountBuffer, 0, nullptr);
 
         // Indirect count starts from 0
-        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, sizeof(uint32_t), 0);
+        vkCmdFillBuffer(
+            commandBuffer, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
+            0, sizeof(uint32_t), 0 // offset, size of buffer and value to set
+        );
 
         // These pipeline barriers wait for previous actions on buffers to finish, 
         // before the culling shader reads from them or writes to them.
@@ -359,7 +398,7 @@ namespace BlitzenVulkan
             PipelineBarrier(commandBuffer, 0, nullptr, 3, waitBeforeDispatchingShaders, 0, nullptr);
         }
 
-        // Sets up before dispatch
+        // Set up before dispatch
         PushDescriptors(
             m_instance, commandBuffer, 
             VK_PIPELINE_BIND_POINT_COMPUTE, 
@@ -413,8 +452,10 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
     }
 
-    void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
-    uint8_t latePass, VkPipeline pipeline)
+    void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, 
+    VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
+    VkPipeline pipeline, VkPipelineLayout layout, uint32_t drawCount, 
+    uint8_t latePass /*=0*/, uint8_t onpcPass /*=0*/, BlitML::mat4* pOnpcMatrix /*=nullptr*/)
     {
         // Creates info for the color attachment 
         VkRenderingAttachmentInfo colorAttachmentInfo{};
@@ -445,22 +486,22 @@ namespace BlitzenVulkan
         );
 
         // Descriptor using push descriptor extensions are pushed
-        PushDescriptors(
-            m_instance, commandBuffer, 
-            VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            m_graphicsPipelineLayout.handle, 
+        PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            layout, 
             0, // Set ID is 0 
-            7, // Set count is 7 (TODO: This should be a parameter)
-            pDescriptorWrites
+            descriptorWriteCount, pDescriptorWrites
         );
         // Descriptor set for bindless textures
-        vkCmdBindDescriptorSets(
-            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            m_graphicsPipelineLayout.handle, 
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            layout, 
             1, 1, // First set ID and set count
             &m_textureDescriptorSet, 
             0, nullptr // Dynamic offsets
         );
+        if(onpcPass)
+            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 
+                0, sizeof(BlitML::mat4), pOnpcMatrix
+            );
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
         // Mesh shader

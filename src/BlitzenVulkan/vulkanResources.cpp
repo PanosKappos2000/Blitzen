@@ -40,37 +40,39 @@ namespace BlitzenVulkan
 
     VkDeviceAddress CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
     void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
-    VkBufferUsageFlags usage, VkDeviceSize size, uint8_t getBufferDeviceAddress /*=0*/)
+    VkBufferUsageFlags usage, VkDeviceSize size)
     {
-        // The function needs to return a device address but it is relevant only if the user requested it
-        // I don't know why I wrote it like this but it doesn't really matter
-        VkDeviceAddress res = {};
-
-        // Creates the storage buffer
-        if(!CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
-        size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        // Base buffer creation function for the storage buffer (GPU only)
+        if(!CreateBuffer(
+            allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
+            size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
-            // The way this function lets the user know that it failed is by initializing the storage buffer to null
+            // The function returns null, if it fails to create one of the buffers
             storageBuffer.bufferHandle = VK_NULL_HANDLE;
-            return res;
+            return VkDeviceAddress{};
         }
 
-        // Creates the staging buffer and copy the data to it
-        if(!CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-        size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        // Base buffer creation function for the staging buffer 
+        // (Will hold the data and can later copy it to the GPU only buffer)
+        if(!CreateBuffer(
+            allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, // Used for data transfer
+            VMA_MEMORY_USAGE_CPU_TO_GPU, size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             storageBuffer.bufferHandle = VK_NULL_HANDLE;
-            return res;
+            return VkDeviceAddress{};
         }
 
-        // Gets the persistent mapped pointer to the staging buffer and copy the data to it
+        // Copies data to the staging buffer address
         void* pVertexBufferData = stagingBuffer.allocationInfo.pMappedData;
         BlitzenCore::BlitMemCopy(pVertexBufferData, pData, size);
 
-        // If a buffer device address is requested, it is retrieved and returned
-        if(getBufferDeviceAddress)
+        // The function will return an address if the proper flag is set
+        if(usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+        {
+            VkDeviceAddress res = {};
             res = GetBufferAddress(device, storageBuffer.bufferHandle);
-        return res;
+        }
+        return VkDeviceAddress{};
     }
 
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer)

@@ -98,13 +98,13 @@ namespace BlitzenEngine
         // Updates the transpose of the projection as well
         camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
 
-        BlitML::vec4 nearPlane = BlitML::NormalizePlane(
+        BlitML::vec4 plane = BlitML::NormalizePlane(
             camera.transformData.projectionTranspose.GetRow(4) + 
-            camera.transformData.projectionTranspose.GetRow(3)
+            camera.transformData.projectionTranspose.GetRow(0)
         );
         ObliqueNearPlaneClippingMatrixModification(
             camera.transformData.projectionMatrix, 
-            camera.onbcProjectionMatrix, nearPlane
+            camera.onbcProjectionMatrix, plane
         );
 
         // Updates view frustum values as they are dependent on the projection matrix
@@ -148,10 +148,10 @@ namespace BlitzenEngine
         BlitML::vec4 c = clipPlane * (2.f / BlitML::Dot(clipPlane, q));
     
         // Replaces the third row of the Oblique near plane clipping projection matrix
-        res[8] = c.x;
-        res[9] = c.y;
+        res[2] = c.x;
+        res[6] = c.y;
         res[10] = c.z + 1.0F;
-        res[11] = c.w;
+        res[14] = c.w;
     }
 
     // Must Declare the static variable

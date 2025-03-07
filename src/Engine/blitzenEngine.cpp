@@ -89,6 +89,7 @@ int main(int argc, char* argv[])
     );
 
     // Command line arguments. TODO: Put this in a function
+    uint8_t bOnpc = 0; // Oblique Near-Plane clipping boolean
     if(argc > 1)
     {
         // Special argument. Loads heavy scene to stress test the culling
@@ -108,6 +109,7 @@ int main(int argc, char* argv[])
         else if(strcmp(argv[1], "ONPC_ReflectionTest") == 0)
         {
             CreateObliqueNearPlaneClippingTestObject(renderingResources.Data());
+            bOnpc = 1;
 
             // The following arguments are used as gltf filepaths
             for (int32_t i = 2; i < argc; ++i)
@@ -168,7 +170,11 @@ int main(int argc, char* argv[])
 
             if(bRenderingSystem)
             {
-                BlitzenEngine::DrawContext drawContext(&mainCamera, drawCount);
+                BlitzenEngine::DrawContext drawContext(
+                    &mainCamera, 
+                    drawCount, 
+                    bOnpc // Tells the renderer if oblique near-plane clipping objects exist
+                );
                 renderer->DrawFrame(drawContext);// This is a bit important
             }
 

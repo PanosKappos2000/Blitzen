@@ -285,6 +285,19 @@ namespace BlitzenVulkan
         }
         pipelineInfo.pStages = shaderStages;
 
+        // Loads the shader for Oblique Near-Plane Clipping objects
+        // It has a different vertex shader, but the same fragment shader(for now)
+        ShaderModule onpcVertexShaderModule;
+        VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
+        if(!CreateShaderProgram(
+            m_device, "VulkanShaders/OnpcGeometry.vert.glsl.spv", 
+            VK_SHADER_STAGE_VERTEX_BIT, "main", 
+            onpcVertexShaderModule.handle, onpcGeometryShaderStages[0] 
+        ))
+            return 0;
+
+        onpcGeometryShaderStages[1] = shaderStages[1];
+
         // Setting up triangle primitive assembly
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = SetTriangleListInputAssembly();
         pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -358,6 +371,18 @@ namespace BlitzenVulkan
 
         pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, 
         &m_postPassGeometryPipeline.handle);
+        if(pipelineCreateFinalResult != VK_SUCCESS)
+            return 0;
+
+        // Oblique Near-Plane clipping pipeline. Only the shader stages and pipeline layout change
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = onpcGeometryShaderStages;
+        pipelineInfo.layout = m_onpcReflectiveGeometryLayout.handle;
+        pipelineCreateFinalResult = vkCreateGraphicsPipelines(
+            m_device, VK_NULL_HANDLE, 
+            1, & pipelineInfo, nullptr, 
+            &m_onpcReflectiveGeometryPipeline.handle
+        );
         if(pipelineCreateFinalResult != VK_SUCCESS)
             return 0;
 

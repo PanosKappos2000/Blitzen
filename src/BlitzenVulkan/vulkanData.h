@@ -270,8 +270,8 @@ namespace BlitzenVulkan
         AllocatedBuffer buffer;
 
         // Most buffers have a VkWriteDescriptor struct that remains static at runtime
-        VkDescriptorBufferInfo bufferInfo;
-        VkWriteDescriptorSet descriptorWrite;
+        VkDescriptorBufferInfo bufferInfo{};
+        VkWriteDescriptorSet descriptorWrite{};
 
         // Set these up so that they are defined on the constructor and not hardcoded for every descriptor struct
         uint32_t descriptorBinding;
@@ -280,7 +280,9 @@ namespace BlitzenVulkan
         // Persistently mapped pointer, useful for uniform buffers
         T* pData;
 
-        inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type): descriptorBinding{binding}, descriptorType{type} {}
+        // The constructor expects the binding and the type to be known at initialization
+        inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type)
+            : descriptorBinding{binding}, descriptorType{type} {}
     };
 
 

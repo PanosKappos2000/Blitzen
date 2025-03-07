@@ -262,7 +262,8 @@ namespace BlitzenVulkan
         m_pushDescriptorWritesOnpcCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         m_pushDescriptorWritesOnpcCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite; 
         m_pushDescriptorWritesOnpcCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite; 
-        m_pushDescriptorWritesOnpcCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite; 
+        m_pushDescriptorWritesOnpcCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+        m_pushDescriptorWritesOnpcCompute[7] = {}; 
 
         return 1;
     }
@@ -667,34 +668,57 @@ namespace BlitzenVulkan
             Pipeline layouts. Different combinations of the descriptor set layout and push constants
         */
        
-        // The graphics pipeline will use 2 layouts, the one for push desciptors and the constant one for textures
-        VkDescriptorSetLayout layouts[2] = { m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle };
-        if(!CreatePipelineLayout(m_device, &m_graphicsPipelineLayout.handle, 2, layouts, 0, nullptr))
+        // Grapchics pipeline layout
+        VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] = 
+        {
+             m_pushDescriptorBufferLayout.handle, // Push descriptor layout
+             m_textureDescriptorSetlayout.handle // Texture layout
+        };
+        if(!CreatePipelineLayout(
+            m_device, &m_graphicsPipelineLayout.handle, 
+            2, defaultGraphicsPipelinesDescriptorSetLayouts, // descriptor set layouts
+            0, nullptr // no push constants
+        ))
             return 0;
 
-        // The layout for culling shaders uses the push descriptor layout but accesses more bindings for culling data and the depth pyramid
+        // Culling shaders shader their laout
         VkPushConstantRange lateCullShaderPostPassPushConstant{};
-        CreatePushConstantRange(lateCullShaderPostPassPushConstant, 
-        VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
-        if(!CreatePipelineLayout(m_device, &m_drawCullLayout.handle, 1, 
-        &m_pushDescriptorBufferLayout.handle, 1, &lateCullShaderPostPassPushConstant))
+        CreatePushConstantRange(
+            lateCullShaderPostPassPushConstant, // push constant post pass boolean
+            VK_SHADER_STAGE_COMPUTE_BIT, 
+            sizeof(DrawCullShaderPushConstant)
+        );
+        if(!CreatePipelineLayout(
+            m_device, &m_drawCullLayout.handle, 
+            1, &m_pushDescriptorBufferLayout.handle, // push descriptor set layout
+            1, &lateCullShaderPostPassPushConstant // push constant only used by late culling pipeline
+        ))
             return 0;
 
-        // The depth pyramid shader uses the set with depth pyramid images and depth attachment image, 
-        // It also needs a push constant for the width and height of the current mip level of the depth pyramid
+        // Layout for depth pyramid generation pipeline
         VkPushConstantRange depthPyramidMipExtentPushConstant{};
-        CreatePushConstantRange(depthPyramidMipExtentPushConstant, 
-        VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
-        if(!CreatePipelineLayout(m_device, &m_depthPyramidGenerationLayout.handle, 
-        1, &m_depthPyramidDescriptorLayout.handle, 1, &depthPyramidMipExtentPushConstant))
+        CreatePushConstantRange(
+            depthPyramidMipExtentPushConstant, // push constant for image extent
+            VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2) // takes one vec2
+        );
+        if(!CreatePipelineLayout(
+            m_device, &m_depthPyramidGenerationLayout.handle, 
+            1, &m_depthPyramidDescriptorLayout.handle, // depth pyramid src and dst image push descriptor layout
+            1, &depthPyramidMipExtentPushConstant
+        ))
             return 0;
 
         // Creates the layout for the background compute shader
         VkPushConstantRange backgroundImageShaderPushConstant{};
-        CreatePushConstantRange(backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
-        sizeof(BackgroundShaderPushConstant));
-        if(!CreatePipelineLayout(m_device, &m_basicBackgroundLayout.handle, 1, 
-        &m_backgroundImageSetLayout.handle, 1, &backgroundImageShaderPushConstant))
+        CreatePushConstantRange(
+            backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
+            sizeof(BackgroundShaderPushConstant) 
+        );
+        if(!CreatePipelineLayout(
+            m_device, &m_basicBackgroundLayout.handle, 
+            1, &m_backgroundImageSetLayout.handle, // Image push descriptor layout
+            1, &backgroundImageShaderPushConstant // Push constant for use data
+        ))
             return 0;
 
         VkPushConstantRange onpcMatrixPushConstant{};
@@ -702,10 +726,8 @@ namespace BlitzenVulkan
         if(!CreatePipelineLayout(
             m_device, 
             &m_onpcReflectiveGeometryLayout.handle, 
-            1, // descriptor set layout count
-            &m_pushDescriptorBufferLayout.handle, 
-            1, 
-            &onpcMatrixPushConstant
+            2, defaultGraphicsPipelinesDescriptorSetLayouts, // Same descriptors as the default graphics pipeline
+            1, &onpcMatrixPushConstant // Push constant for onpc modified projection matrix (temporary)
         ))
             return 0;
 
@@ -760,99 +782,93 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets = pResources->meshlets;
         BlitCL::DynamicArray<uint32_t>& meshletData = pResources->meshletData;
 
+        BlitzenEngine::RenderObject* pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
+        uint32_t onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
+
         // When raytracing is active, some additional flags are needed for the vertex and index buffer
         uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
-        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR 
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         : 0;
 
-        // Creates a storage buffer that will hold the vertices
+        // Global vertex buffer
         VkDeviceSize vertexBufferSize = sizeof(BlitzenEngine::Vertex) * vertices.GetSize();
-        // Fails if there are no vertices
         if(vertexBufferSize == 0)
             return 0;
-        // Creates a staging buffer to hold the vertex data and pass it to the vertex buffer later
         AllocatedBuffer stagingVertexBuffer;
-        // Initializes the push descritpor buffer struct that holds the vertex buffer
         if(!SetupPushDescriptorBuffer(
             m_device, m_allocator, 
             m_currentStaticBuffers.vertexBuffer, stagingVertexBuffer, 
             vertexBufferSize, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | // Primary flags
             geometryBuffersRaytracingFlags, // Raytracing flags
-            vertices.Data()
+            vertices.Data() // buffer data
         ))
             return 0;
 
-        // Creates an index buffer that will hold all the loaded indices
+        // Global index buffer
         VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
-        // Fails if there are no indices
         if(indexBufferSize == 0)
             return 0;
-        // Creates a staging buffer to hold the index data and pass it to the index buffer later
         AllocatedBuffer stagingIndexBuffer;
         CreateStorageBufferWithStagingBuffer(
-            m_allocator, m_device, indices.Data(), 
+            m_allocator, m_device, 
+            indices.Data(), // Buffer data
             m_currentStaticBuffers.indexBuffer, stagingIndexBuffer, 
             VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | // Primary flags 
             geometryBuffersRaytracingFlags, // Raytracing flags
             indexBufferSize
         );
-        // Checks if the above function failed
         if(m_currentStaticBuffers.indexBuffer.bufferHandle == VK_NULL_HANDLE)
             return 0;
 
-        // Creates an SSBO that will hold all the render objects that were loaded for the scene
+        // Standard render object buffer
         VkDeviceSize renderObjectBufferSize = sizeof(BlitzenEngine::RenderObject) * renderObjectCount;
         if(renderObjectBufferSize == 0)
             return 0;
-        // Creates a staging buffer to hold the render object data and pass it to the render object buffer later
         AllocatedBuffer renderObjectStagingBuffer;
         if(!SetupPushDescriptorBuffer(
             m_device, m_allocator, 
             m_currentStaticBuffers.renderObjectBuffer, renderObjectStagingBuffer, 
             renderObjectBufferSize, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-            pRenderObjects
+            pRenderObjects // buffer data
         ))
             return 0;
 
-        // Creates an SSBO that will hold all the mesh surfaces / primitives that were loaded to the scene
+        // Render object buffer that holds objects that use Oblique near plane clipping
+        VkDeviceSize onpcRenderObjectBufferSize = 
+        sizeof(BlitzenEngine::RenderObject) * onpcRenderObjectCount;
+        AllocatedBuffer onpcRenderObjectStagingBuffer;
+        if(onpcRenderObjectBufferSize != 0)
+            if(!SetupPushDescriptorBuffer(
+                m_device, m_allocator, 
+                m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer, 
+                onpcRenderObjectStagingBuffer,
+                onpcRenderObjectBufferSize, 
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                pOnpcRenderObjects // buffer data
+            ))
+                return 0;
+
+        // Buffer that holds primitives (surfaces that can be drawn)
         VkDeviceSize surfaceBufferSize = sizeof(BlitzenEngine::PrimitiveSurface) * surfaces.GetSize();
         if(surfaceBufferSize == 0)
             return 0;
-        // Creates a staging buffer that will hold the surface data and pass it to the surface buffer later
         AllocatedBuffer surfaceStagingBuffer;
-        // Initializes the push descriptor buffer that holds the surface buffer
         if(!SetupPushDescriptorBuffer(
             m_device, m_allocator, 
             m_currentStaticBuffers.surfaceBuffer, surfaceStagingBuffer, 
             surfaceBufferSize, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-            surfaces.Data()
+            surfaces.Data() // buffer data
         ))
             return 0;
 
-        // Creates an SSBO that will hold all the materials that were loaded for the scene
-        VkDeviceSize materialBufferSize = sizeof(BlitzenEngine::Material) * materialCount;
-        if(materialBufferSize == 0)
-            return 0;
-        // Creates a staging buffer that will hold the material data and pass it to the material buffer later
-        AllocatedBuffer materialStagingBuffer; 
-        // Initializes the push descriptor buffer that holds the material buffer
-        if(!SetupPushDescriptorBuffer(
-            m_device, m_allocator, 
-            m_currentStaticBuffers.materialBuffer, materialStagingBuffer, 
-            materialBufferSize, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-            pMaterials
-        ))
-            return 0;
-
-        // Create an SSBO that will hold all the object transforms that were loaded for the scene
+        // Holds the transforms of all the mesh instances that were loaded
         VkDeviceSize transformBufferSize = sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize();
         if(transformBufferSize == 0)
             return 0;
-        // Creates a staging buffer that will hold the transform data and pass it to the transform buffer later
         AllocatedBuffer transformStagingBuffer; 
         if(!SetupPushDescriptorBuffer(
             m_device, m_allocator, 
@@ -863,12 +879,24 @@ namespace BlitzenVulkan
         ))
             return 0;
 
-        // Creates the buffer that will hold the indirect draw commands. 
-        // It is set as an SSBO as well so that it can be written by the culling shaders
+        // Global material buffer
+        VkDeviceSize materialBufferSize = sizeof(BlitzenEngine::Material) * materialCount;
+        if(materialBufferSize == 0)
+            return 0;
+        AllocatedBuffer materialStagingBuffer; 
+        if(!SetupPushDescriptorBuffer(
+            m_device, m_allocator, 
+            m_currentStaticBuffers.materialBuffer, materialStagingBuffer, 
+            materialBufferSize, 
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            pMaterials // buffer data
+        ))
+            return 0;
+
+        // Indirect draw buffer (VkDrawIndexedIndirectCommand holder and render object id)
         VkDeviceSize indirectDrawBufferSize = sizeof(IndirectDrawData) * renderObjectCount;
         if(indirectDrawBufferSize == 0)
             return 0;
-        // Initializes the push descriptor buffer that holds the indirect draw buffer
         if(!SetupPushDescriptorBuffer(
             m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
             m_currentStaticBuffers.indirectDrawBuffer, indirectDrawBufferSize, 
@@ -877,17 +905,20 @@ namespace BlitzenVulkan
             return 0;
 
         
-        // Creates the buffers for clusters if they are needed
+        // Mesh shader indirect commands
         VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
+
+        // Cluster data
         VkDeviceSize meshletBufferSize = sizeof(BlitzenEngine::Meshlet) * meshlets.GetSize();
         AllocatedBuffer meshletStagingBuffer;
         VkDeviceSize meshletDataBufferSize = sizeof(uint32_t) * meshletData.GetSize();
         AllocatedBuffer meshletDataStagingBuffer;
+
         if(m_stats.meshShaderSupport)
         {
+            // Indirect task buffer
             if(indirectTaskBufferSize == 0)
                 return 0;
-            // Initializes the push descriptor buffer that holds the indirect task buffer
             if(!SetupPushDescriptorBuffer(
                 m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
                 m_currentStaticBuffers.indirectTaskBuffer, indirectTaskBufferSize, 
@@ -895,10 +926,13 @@ namespace BlitzenVulkan
             ))
                 return 0;
 
-            // Creates an SSBO that will hold all clusters / meshlets that were loaded for the scene
+            /*
+                TODO: Meshlet data should be available for cluster mode as well, not just mesh shaders
+            */
+
+            // Meshlets / Clusters
             if(meshletBufferSize == 0)
                 return 0;
-            // Initializes the push descriptor buffer that holds the meshlet buffer
             if(!SetupPushDescriptorBuffer(
                 m_device, m_allocator, 
                 m_currentStaticBuffers.meshletBuffer, meshletStagingBuffer, 
@@ -908,10 +942,9 @@ namespace BlitzenVulkan
             ))
                 return 0;
 
-            // Creates an SSBO that will hold all the meshlet indices to the index buffer
+            // Cluster indices
             if(meshletDataBufferSize == 0)
                 return 0;
-            // Initializes the push descriptor buffer that holds the meshlet data buffer
             if(!SetupPushDescriptorBuffer(
                 m_device, m_allocator, 
                 m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer, 
@@ -922,15 +955,18 @@ namespace BlitzenVulkan
                 return 0;
         }
 
-        // Initializes the push descriptor buffer that holds the indirect count buffer
+        // Indirect count buffer
         if(!SetupPushDescriptorBuffer(
             m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
-            m_currentStaticBuffers.indirectCountBuffer, sizeof(uint32_t), 
-            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+            m_currentStaticBuffers.indirectCountBuffer, 
+            sizeof(uint32_t), // holds a single integer, manipulated by culling shaders
+            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | // draw command treats it as indirect buffer
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | // data transfer with vkCmdBufferFill, initializing to 0
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT // culling shaders treat it as write storage buffer
         ))
             return 0;
 
-        // Creates an SSBO that will hold one integer for each object indicating if they were visible or not on the previous frame
+        // Visiblity buffer for every render object (could be integrated to the render object as 8bit integer)
         VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * renderObjectCount;
         if(visibilityBufferSize == 0)
             return 0;
@@ -941,39 +977,77 @@ namespace BlitzenVulkan
         ))
             return 0;
 
+        /*
+            Buffers ready. Data transfer -for the buffers that need it- can commence
+        */
+
         // Start recording the transfer commands
         VkCommandBuffer& commandBuffer = m_frameToolsList[0].commandBuffer;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-        // Copies the data held by the staging buffer to the vertex buffer
-        CopyBufferToBuffer(commandBuffer, stagingVertexBuffer.bufferHandle, 
-        m_currentStaticBuffers.vertexBuffer.buffer.bufferHandle, vertexBufferSize, 
-        0, 0);
+        // Vertex data copy
+        CopyBufferToBuffer(
+            commandBuffer, 
+            stagingVertexBuffer.bufferHandle, // Temporary staging buffer
+            m_currentStaticBuffers.vertexBuffer.buffer.bufferHandle, // GPU only buffer
+            vertexBufferSize, 
+            0, 0 // offsets
+        );
 
-        // Copies the index data held by the staging buffer to the index buffer
-        CopyBufferToBuffer(commandBuffer, stagingIndexBuffer.bufferHandle, 
-        m_currentStaticBuffers.indexBuffer.bufferHandle, indexBufferSize, 
-        0, 0);
+        // Index data copy
+        CopyBufferToBuffer(
+            commandBuffer, 
+            stagingIndexBuffer.bufferHandle, // temporary staging buffer
+            m_currentStaticBuffers.indexBuffer.bufferHandle, // GPU only buffer
+            indexBufferSize, 
+            0, 0 // offsets
+        );
 
-        // Copies the render object data held by the staging buffer to the render object buffer
-        CopyBufferToBuffer(commandBuffer, renderObjectStagingBuffer.bufferHandle, 
-        m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle, renderObjectBufferSize, 
-        0, 0);
+        // Render objects
+        CopyBufferToBuffer(
+            commandBuffer, 
+            renderObjectStagingBuffer.bufferHandle, // temporary staging buffer
+            m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle, // GPU only buffer
+            renderObjectBufferSize, 
+            0, 0 // offsets
+        );
 
-        // Copies the surface data held by the staging buffer to the surface buffer
-        CopyBufferToBuffer(commandBuffer, surfaceStagingBuffer.bufferHandle, 
-        m_currentStaticBuffers.surfaceBuffer.buffer.bufferHandle, surfaceBufferSize, 
-        0, 0);
+        // Render objects that use Oblique Near-Plane Clipping
+        if(onpcRenderObjectBufferSize != 0)
+            CopyBufferToBuffer(
+                commandBuffer, 
+                onpcRenderObjectStagingBuffer.bufferHandle, // temporary staging buffer
+                m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.buffer.bufferHandle, // GPU only buffer
+                onpcRenderObjectBufferSize, 
+                0, 0 // offsets
+            );
 
-        // Copies the material data held by the staging buffer to the material buffer
-        CopyBufferToBuffer(commandBuffer, materialStagingBuffer.bufferHandle, 
-        m_currentStaticBuffers.materialBuffer.buffer.bufferHandle, materialBufferSize, 
-        0, 0);
+        // Primitive surfaces
+        CopyBufferToBuffer(
+            commandBuffer, 
+            surfaceStagingBuffer.bufferHandle, // temporary staging buffer
+            m_currentStaticBuffers.surfaceBuffer.buffer.bufferHandle, // GPU only buffer
+            surfaceBufferSize, 
+            0, 0 // offsets
+        );
 
-        // Copies the transform data held by the staging buffer to the transform buffer
-        CopyBufferToBuffer(commandBuffer, transformStagingBuffer.bufferHandle,
-        m_currentStaticBuffers.transformBuffer.buffer.bufferHandle, transformBufferSize, 
-        0, 0);
+        // Transforms
+        CopyBufferToBuffer(
+            commandBuffer, 
+            transformStagingBuffer.bufferHandle, // temporary staging buffer
+            m_currentStaticBuffers.transformBuffer.buffer.bufferHandle, // GPU only buffer
+            transformBufferSize, 
+            0, 0 // offsets
+        );
+
+        // Materials
+        CopyBufferToBuffer(
+            commandBuffer, 
+            materialStagingBuffer.bufferHandle, // temporary staging buffer
+            m_currentStaticBuffers.materialBuffer.buffer.bufferHandle, // GPU only buffer
+            materialBufferSize, 
+            0, 0 // offsets
+        );
         
         if(m_stats.meshShaderSupport)
         {
@@ -987,8 +1061,12 @@ namespace BlitzenVulkan
             0, 0);
         }
 
-        // The visibility buffer will start the 1st frame with only zeroes(nothing will be drawn on the first frame but that is fine)
-        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, 0, visibilityBufferSize, 0);
+        // Visibility buffer will start with only zeroes. The first frame will do noting, but that should be fine
+        vkCmdFillBuffer(
+            commandBuffer, 
+            m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, 
+            0, visibilityBufferSize, 0
+        );
         
         // Submit the commands and wait for the queue to finish
         SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);

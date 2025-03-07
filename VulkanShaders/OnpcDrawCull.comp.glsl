@@ -14,13 +14,16 @@ void main()
     // The object index is for the current object's element in the render object
 	uint objectIndex = gl_GlobalInvocationID.x;
 
+    if(cullPC.drawCount <= objectIndex)
+        return;
+
     // Gets the current object using the global invocation ID. It also retrieves the surface that the objects points to and the transform data
     RenderObject currentObject = onpcReflectiveObjectBuffer.objects[objectIndex];
     Transform transform = transformBuffer.instances[currentObject.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[currentObject.surfaceId];
 
-    /*vec3 center;
-    vec3 radius;
+    vec3 center;
+    float radius;
     bool visible = IsObjectInsideViewFrustum(
         center, radius, surface.center, surface.radius, 
         transform.scale, transform.pos, transform.orientation, 
@@ -43,7 +46,7 @@ void main()
             surface is taken and the minimum error that would result in acceptable
             screen-space deviation is computed based on camera parameters
         */
-        /*if (cullPC.lodEnabled == 1)
+        if (cullPC.lodEnabled == 1)
 		{
 			float distance = max(length(center) - radius, 0);
 			float threshold = distance * viewData.lodTarget / transform.scale;
@@ -62,5 +65,5 @@ void main()
         indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
         indirectDrawBuffer.draws[drawIndex].vertexOffset = surface.vertexOffset;
         indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
-    }*/
+    }
 }

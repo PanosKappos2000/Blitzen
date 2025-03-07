@@ -69,8 +69,10 @@ namespace BlitzenVulkan
         uint8_t lateCulling = 0, uint8_t postPass = 0, uint8_t bOcclusionEnabled = 1, uint8_t bLODs = 1);
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
-        void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
-        uint8_t latePass, VkPipeline pipeline);
+        void DrawGeometry(VkCommandBuffer commandBuffer, 
+        VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
+        VkPipeline pipeline, VkPipelineLayout layout, 
+        uint32_t drawCount, uint8_t latePass = 0, uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr);
 
         // For occlusion culling to be possible a depth pyramid needs to be generated based on the depth attachment
         void GenerateDepthPyramid(VkCommandBuffer commandBuffer);
@@ -228,7 +230,7 @@ namespace BlitzenVulkan
         VkWriteDescriptorSet pushDescriptorWritesGraphics[7];
         VkWriteDescriptorSet pushDescriptorWritesCompute[8];
         VkWriteDescriptorSet m_pushDescriptorWritesOnpcGraphics[7];
-        VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[7];
+        VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[8];
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
         DescriptorSetLayout m_depthPyramidDescriptorLayout;
@@ -381,10 +383,12 @@ namespace BlitzenVulkan
     uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
     VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, VmaAllocationCreateFlags allocationFlags);
 
-    // Create a gpu only storage buffer and a staging buffer to hold its data. Returns the address of the storage buffer if the caller requests it
-    VkDeviceAddress CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
+    // Create a gpu only storage buffer and a staging buffer to hold its data
+    // If the buffer has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT set, the pAddr pointer is updated as well
+    VkDeviceAddress CreateStorageBufferWithStagingBuffer(
+    VmaAllocator allocator, VkDevice device, 
     void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
-    VkBufferUsageFlags usage, VkDeviceSize size, uint8_t getBufferDeviceAddress = 0);
+    VkBufferUsageFlags usage, VkDeviceSize size);
 
     // Returns the GPU address of a buffer
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
@@ -451,39 +455,6 @@ namespace BlitzenVulkan
     VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, 
     VkDescriptorSet dstSet = VK_NULL_HANDLE,  VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
     VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
-
-    // Sets up a buffer that is going to be in the push descriptor layout. Copies the data that it will hold to a staging buffer
-    template <typename T = void>
-    uint8_t SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, 
-    PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer, 
-    VkDeviceSize bufferSize, VkBufferUsageFlags usage, void* pData)
-    {
-        // Creates the storage buffer and the staging buffer that will hold its data
-        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
-        stagingBuffer, usage, bufferSize);
-        // Checks if the above function failed
-        if(pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
-            return 0;
-        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.bufferHandle);
-        return 1;
-    }
-
-    // Sets up a buffer that is going to be in the push descriptor layout. Unlike the above, it does not create a staging buffer
-    template <typename T = void>
-    uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
-    PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, VkBufferUsageFlags usage)
-    {
-        // Creates the storage buffer and the staging buffer that will hold its data
-        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            return 0;
-        
-        // Initialize the VkWriteDescirptors and VkDescriptorBufferInfo structs for the buffer
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-        pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.bufferHandle);
-        return 1;
-    }
 
     // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
@@ -596,6 +567,58 @@ namespace BlitzenVulkan
     // Calles the code needed to dynamically set the viewport and scissor. 
     // The graphics pipeline uses a dynamic viewport and scissor by default, so this needs to be called during the frame loop
     void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
+
+
+
+
+    /*
+        Template functions
+    */
+
+    // This function calls the CreateStorageBufferWithStagingBuffer function for a PushDescriptorBuffer
+    // It also create a VkWriteDescriptorSets struct for it
+    template <typename T = void>
+    uint8_t SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, 
+    PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer, 
+    VkDeviceSize bufferSize, VkBufferUsageFlags usage, void* pData)
+    {
+        // Creates the storage buffer (does not save the address, it assumes the caller does not need it)
+        // It also creates its staging buffer. The caller can later use it to pass the data to the storage buffer
+        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
+        stagingBuffer, usage, bufferSize);
+        if(pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
+            return 0;
+        
+        // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
+        WriteBufferDescriptorSets(
+            pushBuffer.descriptorWrite, 
+            pushBuffer.bufferInfo, 
+            pushBuffer.descriptorType, 
+            pushBuffer.descriptorBinding, 
+            pushBuffer.buffer.bufferHandle
+        );
+        return 1;
+    }
+
+    // This overload of the above function calls the base CreateBuffer function only
+    // It does the same thing as the above with the VkWriteDescriptorSet
+    template <typename T = void>
+    uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
+    PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, VkBufferUsageFlags usage)
+    {
+        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            return 0;
+        
+        // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
+        WriteBufferDescriptorSets(
+            pushBuffer.descriptorWrite, 
+            pushBuffer.bufferInfo, 
+            pushBuffer.descriptorType, 
+            pushBuffer.descriptorBinding, 
+            pushBuffer.buffer.bufferHandle
+        );
+        return 1;
+    }
 }
 
 namespace BlitzenCore
