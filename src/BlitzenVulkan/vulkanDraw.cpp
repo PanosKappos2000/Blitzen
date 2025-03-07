@@ -85,7 +85,7 @@ namespace BlitzenVulkan
         // The viewport and scissor are dynamic, so they should be set here
         DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
 
-        VkImageLayout colorAttachmentWorkingLayout = context.drawCount ? 
+        VkImageLayout colorAttachmentWorkingLayout = context.pResources->renderObjectCount ? 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
 
         // Create image barrier to transition color attachment image layout from undefined to optimal.
@@ -108,7 +108,7 @@ namespace BlitzenVulkan
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderingAttachmentDefinitionBarriers);
 
 
-        if(context.drawCount == 0)
+        if(context.pResources->renderObjectCount == 0)
         {
 	        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, 
             m_basicBackgroundPipeline.handle);
@@ -165,7 +165,7 @@ namespace BlitzenVulkan
             DispatchRenderObjectCullingComputeShader(
                 fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
-                context.drawCount, 
+                context.pResources->renderObjectCount, 
                 0, 0, // Post pass and late culling boolean values
                 context.bOcclusionCulling, context.bLOD // Debug values
             );
@@ -175,7 +175,7 @@ namespace BlitzenVulkan
                 fTools.commandBuffer, 
                 pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
-                context.drawCount, 
+                context.pResources->renderObjectCount, 
                 0 // late pass boolean value
             );
 
@@ -186,7 +186,7 @@ namespace BlitzenVulkan
             DispatchRenderObjectCullingComputeShader(
                 fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
-                context.drawCount, 
+                context.pResources->renderObjectCount, 
                 1, 0, // Late culling and post pass boolean values
                 context.bOcclusionCulling, context.bLOD // Debug values
             );
@@ -196,7 +196,7 @@ namespace BlitzenVulkan
                 fTools.commandBuffer, 
                 pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
-                context.drawCount, 
+                context.pResources->renderObjectCount, 
                 1 // late pass boolean value
                 );
 
@@ -204,7 +204,7 @@ namespace BlitzenVulkan
             DispatchRenderObjectCullingComputeShader(
                 fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
-                context.drawCount, 
+                context.pResources->renderObjectCount, 
                 1, 1, // late culling and post pass boolean values
                 context.bOcclusionCulling, context.bLOD // debug values
             );
@@ -213,7 +213,7 @@ namespace BlitzenVulkan
             DrawGeometry(fTools.commandBuffer, 
                 pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
                 m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
-                context.drawCount, 
+                context.pResources->renderObjectCount, 
                 1 // late pass boolean
             );
 
@@ -221,7 +221,7 @@ namespace BlitzenVulkan
             {
                 DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, 
                     BLIT_ARRAY_SIZE(m_pushDescriptorWritesOnpcCompute), m_pushDescriptorWritesOnpcCompute,
-                    1, // temporary hardcoded draw count
+                    context.pResources->onpcReflectiveRenderObjectCount, 
                     0, 0, // late culling and post pass boolean values
                     context.bOcclusionCulling, context.bLOD // debug values 
                 );
@@ -229,7 +229,7 @@ namespace BlitzenVulkan
                 DrawGeometry(fTools.commandBuffer, 
                     m_pushDescriptorWritesOnpcGraphics, BLIT_ARRAY_SIZE(m_pushDescriptorWritesOnpcGraphics),
                     m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle,
-                    1, // temporary hardcoded draw count
+                    context.pResources->onpcReflectiveRenderObjectCount,
                     1, // late pass boolean
                     1, &pCamera->onbcProjectionMatrix // Oblique Near Plane clipping data
                 );

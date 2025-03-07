@@ -93,79 +93,8 @@ namespace BlitzenEngine
         pResources->materialCount++;
     }
 
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename)
-    {
-        // The function should return if the engine will go over the max allowed mesh assets
-        if(pResources->meshCount > ce_maxMeshCount)
-        {
-            BLIT_ERROR("Max mesh count: ( %i ) reached!", ce_maxMeshCount)
-            BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
-            return 0;
-        }
-
-        BLIT_INFO("Loading obj model form file: %s", filename)
-
-        // Get the current mesh and give it the size surface array as its first surface index
-        Mesh& currentMesh = pResources->meshes[pResources->meshCount];
-        currentMesh.firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
-
-        ObjFile file;
-        if(!objParseFile(file, filename))
-            return 0;
-
-        size_t indexCount = file.f_size / 3;
-
-        BlitCL::DynamicArray<Vertex> triangleVertices(indexCount);
-
-        BLIT_INFO("Loading vertices and indices")
-
-        for(size_t i = 0; i < indexCount; ++i)
-        {
-            Vertex& vtx = triangleVertices[i];
-
-            int32_t vertexIndex = file.f[i * 3 + 0];
-		    int32_t vertexTextureIndex = file.f[i * 3 + 1];
-		    int32_t vertexNormalIndex = file.f[i * 3 + 2];
-
-            vtx.position.x = file.v[vertexIndex * 3 + 0];
-		    vtx.position.y = file.v[vertexIndex * 3 + 1];
-		    vtx.position.z = file.v[vertexIndex * 3 + 2];
-
-            // Load the normal and turn them to 8 bit integers
-		    float normalX = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 0];
-		    float normalY = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 1];
-		    float normalZ = vertexNormalIndex < 0 ? 1.f : file.vn[vertexNormalIndex * 3 + 2];
-            vtx.normalX = static_cast<uint8_t>(normalX * 127.f + 127.5f);
-            vtx.normalY = static_cast<uint8_t>(normalY * 127.f + 127.5f);
-            vtx.normalZ = static_cast<uint8_t>(normalZ * 127.f + 127.5f);
-
-            vtx.tangentX = vtx.tangentY = vtx.tangentZ = 127;
-            vtx.tangentW = 254;
-
-		    vtx.uvX = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0]);
-		    vtx.uvY = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1]);
-        }
-
-        BlitCL::DynamicArray<uint32_t> remap(indexCount);
-		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, triangleVertices.Data(), indexCount, sizeof(Vertex));
-
-        BlitCL::DynamicArray<uint32_t> indices(indexCount);
-        BlitCL::DynamicArray<Vertex> vertices(vertexCount);
-
-        meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
-		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
-
-        BLIT_INFO("Creating surface")
-        LoadPrimitiveSurface(pResources, vertices, indices);
-
-        currentMesh.surfaceCount++;// Increment the surface count
-        ++(pResources->meshCount);// Increment the mesh count
-
-        return 1;
-    }
-
-    // The code for this function is taken from Arseny's niagara streams. It uses his meshoptimizer library which I am not that familiar with
-    size_t GenerateClusters(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, 
+    // Loads cluster using the meshoptimizer library
+    static size_t GenerateClusters(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
         const size_t maxVertices = 64;
@@ -224,7 +153,8 @@ namespace BlitzenEngine
         return akMeshlets.GetSize();
     }
 
-    void LoadPrimitiveSurface(RenderingResources* pResources, 
+    // Called  to create a Primitive Surface resource for the renderer
+    static void LoadPrimitiveSurface(RenderingResources* pResources, 
     BlitCL::DynamicArray<Vertex>& vertices, 
     BlitCL::DynamicArray<uint32_t>& indices)
     {
@@ -344,6 +274,77 @@ namespace BlitzenEngine
         pResources->primitiveVertexCounts.PushBack(static_cast<uint32_t>(vertices.GetSize()));
     }
 
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename)
+    {
+        // The function should return if the engine will go over the max allowed mesh assets
+        if(pResources->meshCount > ce_maxMeshCount)
+        {
+            BLIT_ERROR("Max mesh count: ( %i ) reached!", ce_maxMeshCount)
+            BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
+            return 0;
+        }
+
+        BLIT_INFO("Loading obj model form file: %s", filename)
+
+        // Get the current mesh and give it the size surface array as its first surface index
+        Mesh& currentMesh = pResources->meshes[pResources->meshCount];
+        currentMesh.firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
+
+        ObjFile file;
+        if(!objParseFile(file, filename))
+            return 0;
+
+        size_t indexCount = file.f_size / 3;
+
+        BlitCL::DynamicArray<Vertex> triangleVertices(indexCount);
+
+        BLIT_INFO("Loading vertices and indices")
+
+        for(size_t i = 0; i < indexCount; ++i)
+        {
+            Vertex& vtx = triangleVertices[i];
+
+            int32_t vertexIndex = file.f[i * 3 + 0];
+		    int32_t vertexTextureIndex = file.f[i * 3 + 1];
+		    int32_t vertexNormalIndex = file.f[i * 3 + 2];
+
+            vtx.position.x = file.v[vertexIndex * 3 + 0];
+		    vtx.position.y = file.v[vertexIndex * 3 + 1];
+		    vtx.position.z = file.v[vertexIndex * 3 + 2];
+
+            // Load the normal and turn them to 8 bit integers
+		    float normalX = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 0];
+		    float normalY = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 1];
+		    float normalZ = vertexNormalIndex < 0 ? 1.f : file.vn[vertexNormalIndex * 3 + 2];
+            vtx.normalX = static_cast<uint8_t>(normalX * 127.f + 127.5f);
+            vtx.normalY = static_cast<uint8_t>(normalY * 127.f + 127.5f);
+            vtx.normalZ = static_cast<uint8_t>(normalZ * 127.f + 127.5f);
+
+            vtx.tangentX = vtx.tangentY = vtx.tangentZ = 127;
+            vtx.tangentW = 254;
+
+		    vtx.uvX = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0]);
+		    vtx.uvY = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1]);
+        }
+
+        BlitCL::DynamicArray<uint32_t> remap(indexCount);
+		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, triangleVertices.Data(), indexCount, sizeof(Vertex));
+
+        BlitCL::DynamicArray<uint32_t> indices(indexCount);
+        BlitCL::DynamicArray<Vertex> vertices(vertexCount);
+
+        meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
+		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
+
+        BLIT_INFO("Creating surface")
+        LoadPrimitiveSurface(pResources, vertices, indices);
+
+        currentMesh.surfaceCount++;// Increment the surface count
+        ++(pResources->meshCount);// Increment the mesh count
+
+        return 1;
+    }
+
     void LoadTestGeometry(RenderingResources* pResources)
     {
         LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj");
@@ -352,6 +353,7 @@ namespace BlitzenEngine
         LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj");
     }
 
+    // Sets random transform
     static void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
     {
         transform.pos = BlitML::vec3(
@@ -373,7 +375,8 @@ namespace BlitzenEngine
         );
     }
 
-    void CreateTestGameObjects(RenderingResources* pResources, uint32_t dc)
+    // Creates the rendering stress test scene
+    static void LoadGeometryStressTest(RenderingResources* pResources, uint32_t dc)
     {
         constexpr float ce_stressTestRandomTransformMultiplier = 3'000.f;
         #if defined(BLITZEN_RENDERING_STRESS_TEST)
@@ -458,10 +461,9 @@ namespace BlitzenEngine
         }
     }
 
-    void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources)
+    // Creates a scene for oblique Near-Plane clipping testing. Pretty lackluster for the time being
+    static void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources)
     {
-        LoadTestGeometry(pResources);
-
         MeshTransform transform;
         transform.pos = BlitML::vec3(30.f, 50.f, 50.f);
         transform.scale = 2.f;
@@ -506,13 +508,6 @@ namespace BlitzenEngine
                 draw.transformId = currentObject.transformIndex;
             }
         }
-    }
-
-    // Calls some test functions to load a scene that tests the renderer's geometry rendering
-    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount)
-    {
-        LoadTestGeometry(pResources);
-        CreateTestGameObjects(pResources, drawCount);
     }
 
     // Takes a path to a gltf file and loads the resources needed to render the scene
@@ -802,5 +797,50 @@ namespace BlitzenEngine
             }
 
         return 1;
+    }
+
+    void CreateSceneFromArguments(int argc, char** argv, 
+    RenderingResources* pResources, void* rendererData, uint8_t& bOnpc)
+    {
+        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
+        if(argc > 1)
+        {
+            // Special argument. Loads heavy scene to stress test the culling
+            if(strcmp(argv[1], "RenderingStressTest") == 0)
+            {
+                LoadTestGeometry(pResources);
+                constexpr uint32_t ce_defaultObjectCount = 1'000'000;
+                LoadGeometryStressTest(pResources, ce_defaultObjectCount);
+
+                // The following arguments are used as gltf filepaths
+                for(int32_t i = 2; i < argc; ++i)
+                {
+                    LoadGltfScene(pResources, argv[i], rendererData);
+                }
+            }
+
+            // Special argument. Test oblique near-plane clipping technique. Not working yet.
+            else if(strcmp(argv[1], "ONPC_ReflectionTest") == 0)
+            {
+                LoadTestGeometry(pResources);
+                CreateObliqueNearPlaneClippingTestObject(pResources);
+                bOnpc = 1;
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    LoadGltfScene(pResources, argv[i], rendererData);
+                }
+            }
+
+            // If there are no special arguments everything is treated as a filepath for a gltf scene
+            else
+            {
+                for(int32_t i = 1; i < argc; ++i)
+                {
+                    LoadGltfScene(pResources, argv[i], rendererData);
+                }
+            }
+        }
     }
 }

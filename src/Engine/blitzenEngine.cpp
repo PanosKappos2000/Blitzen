@@ -73,63 +73,21 @@ int main(int argc, char* argv[])
 
     // Main camera
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
-    SetupCamera(
-        mainCamera, 
+    SetupCamera(mainCamera, 
         BlitML::Radians(BlitzenEngine::ce_initialFOV), // field of view
         static_cast<float>(BlitzenEngine::ce_initialWindowWidth), 
         static_cast<float>(BlitzenEngine::ce_initialWindowHeight), 
         BlitzenEngine::ce_znear, // znear
         /* Camera position vector */
-        BlitML::vec3(
-        BlitzenEngine::ce_initialCameraX, // x
-        BlitzenEngine::ce_initialCameraY, // y
-        BlitzenEngine::ce_initialCameraZ), // z
+        BlitML::vec3(BlitzenEngine::ce_initialCameraX, // x
+        BlitzenEngine::ce_initialCameraY, /*y*/ BlitzenEngine::ce_initialCameraZ), // z
         /* Camera position vector (parameter end)*/ 
         BlitzenEngine::ce_initialDrawDistance // the engine uses infinite projection matrix by default, so the draw distance is the zfar
     );
 
-    // Command line arguments. TODO: Put this in a function
-    uint8_t bOnpc = 0; // Oblique Near-Plane clipping boolean
-    if(argc > 1)
-    {
-        // Special argument. Loads heavy scene to stress test the culling
-        if(strcmp(argv[1], "RenderingStressTest") == 0)
-        {
-            constexpr uint32_t ce_defaultObjectCount = 1'000'000;
-            LoadGeometryStressTest(renderingResources.Data(), ce_defaultObjectCount);
-
-            // The following arguments are used as gltf filepaths
-            for(int32_t i = 2; i < argc; ++i)
-            {
-                LoadGltfScene(renderingResources.Data(), argv[i], renderer.Data());
-            }
-        }
-
-        // Special argument. Test oblique near-plane clipping technique. Not working yet.
-        else if(strcmp(argv[1], "ONPC_ReflectionTest") == 0)
-        {
-            CreateObliqueNearPlaneClippingTestObject(renderingResources.Data());
-            bOnpc = 1;
-
-            // The following arguments are used as gltf filepaths
-            for (int32_t i = 2; i < argc; ++i)
-            {
-                LoadGltfScene(renderingResources.Data(), argv[i], renderer.Data());
-            }
-        }
-
-        // If there are no special arguments everything is treated as a filepath for a gltf scene
-        else
-        {
-            for(int32_t i = 1; i < argc; ++i)
-            {
-                LoadGltfScene(renderingResources.Data(), argv[i], renderer.Data());
-            }
-        }
-    }
-
-    // Sets the draw count to the render object count. TODO: Might as well not have this  
-    uint32_t drawCount = renderingResources.Data()->renderObjectCount;
+    // Uses the command line arguments to load resources for the renderer
+    uint8_t bOnpc = 0;
+    BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), bOnpc);
 
     // Rendering setup with the loaded resources. Checks if it fails first
     if(!bRenderingSystem || // Checks if API initialization was succesful
@@ -172,7 +130,7 @@ int main(int argc, char* argv[])
             {
                 BlitzenEngine::DrawContext drawContext(
                     &mainCamera, 
-                    drawCount, 
+                    renderingResources.Data(), 
                     bOnpc // Tells the renderer if oblique near-plane clipping objects exist
                 );
                 renderer->DrawFrame(drawContext);// This is a bit important

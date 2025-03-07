@@ -196,21 +196,21 @@ namespace BlitzenEngine
     // Draw context needs to be given to draw frame function, so that it can update uniform values
     struct DrawContext
     {
-        // The shaders have a struct that aligns with one of the structs of the camera class.
-        // It holds crucial data for culling and rendering like view matrix, frustum planes, screen coordinate lodTarget and more
+        // The camera holds crucial data for the shaders. 
+        // The structs in the shader try to be aligned with the structs in the camera
         void* pCamera;
 
-        // Vulkan needs to know how many objects are being drawn
-        uint32_t drawCount;
+        RenderingResources* pResources;
 
         // Debug values
         uint8_t bOcclusionCulling;
         uint8_t bLOD;
 
+        // Tells the renderer if it should do call Oblique near clipping shaders
         uint8_t bOnpc = 0;
 
-        inline DrawContext(void* pCam, uint32_t dc, uint8_t onpc = 0, uint8_t bOC = 1, uint8_t bLod = 1) 
-        : pCamera(pCam), drawCount(dc), bOcclusionCulling{bOC}, bLOD{bLod}, bOnpc{onpc} {}
+        inline DrawContext(void* pCam, RenderingResources* pr, uint8_t onpc = 0, uint8_t bOC = 1, uint8_t bLod = 1) 
+        : pCamera(pCam), pResources(pr), bOcclusionCulling{bOC}, bLOD{bLod}, bOnpc{onpc} {}
     };
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData);
@@ -221,26 +221,12 @@ namespace BlitzenEngine
     // Loads a mesh from an obj file
     uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename);
 
-    // Generates meshlet for a mesh or surface loaded using meshOptimizer library and converts it to the renderer's format
-    size_t GenerateClusters(RenderingResources* pResources, 
-    BlitCL::DynamicArray<Vertex>& vertices, 
-    BlitCL::DynamicArray<uint32_t>& indices);
-
-    // Takes the vertices and indices loaded for a mesh primitive from a file and converts the data to the renderer's format
-    void LoadPrimitiveSurface(RenderingResources* pResources, 
-    BlitCL::DynamicArray<Vertex>& vertices, 
-    BlitCL::DynamicArray<uint32_t>& indices);
-
     // Placeholder to load some default resources while testing the systems
     void LoadTestGeometry(RenderingResources* pResources);
 
-    // This function is used to load a default scene
-    void CreateTestGameObjects(RenderingResources* pResources, uint32_t drawCount);
-
-    void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources);
-
-    // Calls some test functions to load a scene that tests the renderer's geometry rendering
-    void LoadGeometryStressTest(RenderingResources* pResources, uint32_t drawCount);
+    // Takes the command line arguments to form a scene
+    void CreateSceneFromArguments(int argc, char** argv, 
+    RenderingResources* pResources, void* rendererData, uint8_t& bOnpc);
 
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene

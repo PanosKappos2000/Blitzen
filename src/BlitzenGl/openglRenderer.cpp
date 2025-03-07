@@ -152,7 +152,7 @@ namespace BlitzenGL
         glBindBuffer(GL_UNIFORM_BUFFER, m_viewDataBuffer.handle);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CameraViewData), &(pCamera->viewData), GL_STATIC_READ);
 
-        CullData cull(context.drawCount, context.bOcclusionCulling, context.bLOD);
+        CullData cull(context.pResources->renderObjectCount, context.bOcclusionCulling, context.bLOD);
         glBindBuffer(GL_UNIFORM_BUFFER, m_cullDataBuffer.handle);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(CullData), &(cull), GL_STATIC_READ);
 
@@ -165,7 +165,7 @@ namespace BlitzenGL
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_cullDataBuffer.handle);
         
         // Dispatches the compute shader to do GPU side culling and create the draw commands
-        glDispatchCompute(context.drawCount / 64 + 1, 1, 1);
+        glDispatchCompute(context.pResources->renderObjectCount / 64 + 1, 1, 1);
         glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
         // glClearDepth value needs to be set to 0 since the renderer is using reverse z
@@ -190,7 +190,9 @@ namespace BlitzenGL
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_viewDataBuffer.handle);
 
         // Draw the objects with indirect commands
-        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, context.drawCount, sizeof(IndirectDrawCommand));
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, 
+            context.pResources->renderObjectCount, sizeof(IndirectDrawCommand)
+        );
 
         // Swaps the framebuffer
 	    BlitzenPlatform::OpenglSwapBuffers();
