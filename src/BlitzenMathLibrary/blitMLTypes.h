@@ -110,7 +110,7 @@ namespace BlitML
 
 
     // Quaternion
-    typedef vec4 quat;
+    using quat = vec4;
 
 
     // 4x4 matrix

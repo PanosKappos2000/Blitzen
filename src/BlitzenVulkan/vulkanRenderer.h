@@ -206,7 +206,7 @@ namespace BlitzenVulkan
             BlitCL::DynamicArray<AccelerationStructure> blasData;
 
             // Raytracing instance acceleration structure buffer and vulkan objects
-            AllocatedBuffer tlasBuffer;
+            PushDescriptorBuffer<void> tlasBuffer{15, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR};
             AccelerationStructure tlasData;
         };
         StaticBuffers m_currentStaticBuffers;
@@ -227,7 +227,7 @@ namespace BlitzenVulkan
         // Layout for descriptors that will be using PushDescriptor extension. Has 10+ bindings
         DescriptorSetLayout m_pushDescriptorBufferLayout;
 
-        VkWriteDescriptorSet pushDescriptorWritesGraphics[7];
+        BlitCL::StaticArray<VkWriteDescriptorSet, 8> pushDescriptorWritesGraphics;
         VkWriteDescriptorSet pushDescriptorWritesCompute[8];
         VkWriteDescriptorSet m_pushDescriptorWritesOnpcGraphics[7];
         VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[8];
@@ -452,7 +452,7 @@ namespace BlitzenVulkan
 
     // Creates VkWriteDescriptorSet for a buffer type descriptor set
     void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, 
-    VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, 
+    VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain = nullptr,
     VkDescriptorSet dstSet = VK_NULL_HANDLE,  VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
     VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
 
@@ -544,9 +544,12 @@ namespace BlitzenVulkan
     void CreateDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding& bindingInfo, uint32_t binding, uint32_t descriptorCount, 
     VkDescriptorType descriptorType, VkShaderStageFlags shaderStage, VkSampler* pImmutableSamplers = nullptr);
 
-    //Helper function for pipeline layout creation, takes care of a single descriptor set layout creation
-    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings, 
-    VkDescriptorSetLayoutCreateFlags flags = 0);
+    // Initializes the member of a VkDescriptorSetLayoutCreateInfo instance and calls vkCreateDescriptorSetLayout
+    // Returns the resulting VkDescriptorSetLayout, return VK_NULL_HANDLE if it fails
+    VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, 
+        uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings, 
+        VkDescriptorSetLayoutCreateFlags flags = 0, void* pNextChain = nullptr
+    );
 
     //Helper function for pipeline layout creation, takes care of a single push constant creation
     void CreatePushConstantRange(VkPushConstantRange& pushConstant, VkShaderStageFlags shaderStage, uint32_t size, uint32_t offset = 0);
@@ -585,16 +588,14 @@ namespace BlitzenVulkan
         // Creates the storage buffer (does not save the address, it assumes the caller does not need it)
         // It also creates its staging buffer. The caller can later use it to pass the data to the storage buffer
         CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
-        stagingBuffer, usage, bufferSize);
+            stagingBuffer, usage, bufferSize
+        );
         if(pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
             return 0;
         
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
-        WriteBufferDescriptorSets(
-            pushBuffer.descriptorWrite, 
-            pushBuffer.bufferInfo, 
-            pushBuffer.descriptorType, 
-            pushBuffer.descriptorBinding, 
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding, 
             pushBuffer.buffer.bufferHandle
         );
         return 1;
@@ -604,18 +605,19 @@ namespace BlitzenVulkan
     // It does the same thing as the above with the VkWriteDescriptorSet
     template <typename T = void>
     uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
-    PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, VkBufferUsageFlags usage)
+        PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, 
+        VkBufferUsageFlags usage, void* pNextChain = nullptr
+    )
     {
-        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, 
+            memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT
+        ))
             return 0;
         
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
-        WriteBufferDescriptorSets(
-            pushBuffer.descriptorWrite, 
-            pushBuffer.bufferInfo, 
-            pushBuffer.descriptorType, 
-            pushBuffer.descriptorBinding, 
-            pushBuffer.buffer.bufferHandle
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding, 
+            pushBuffer.buffer.bufferHandle, pNextChain
         );
         return 1;
     }

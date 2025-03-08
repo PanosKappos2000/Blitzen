@@ -378,6 +378,11 @@ namespace BlitzenEngine
     // Creates the rendering stress test scene
     static void LoadGeometryStressTest(RenderingResources* pResources, uint32_t dc)
     {
+        // Don't load the stress test if ray tracing is on
+        #if defined(BLIT_VK_RAYTRACING)// The name of this macro should change
+            return;
+        #endif
+
         constexpr float ce_stressTestRandomTransformMultiplier = 3'000.f;
         #if defined(BLITZEN_RENDERING_STRESS_TEST)
         constexpr uint32_t drawCount = 4'500'000;

@@ -219,6 +219,7 @@ namespace BlitzenVulkan
         pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite; 
         pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+        pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
         pushDescriptorWritesCompute[0] = {};// This will be where the global shader data write will be, but this one is not always static
         pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite; 
@@ -518,6 +519,7 @@ namespace BlitzenVulkan
             VK_SHADER_STAGE_COMPUTE_BIT
         );
 
+        // Oblique near plance clipping objects
         VkDescriptorSetLayoutBinding onpcRenderObjectBufferBinding{};
         CreateDescriptorSetLayoutBinding(
             onpcRenderObjectBufferBinding,
@@ -526,9 +528,19 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorType,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
         );
+
+        // Acceleration structure binding 
+        VkDescriptorSetLayoutBinding accelerationStructureTlasBinding{};
+        CreateDescriptorSetLayoutBinding(
+            accelerationStructureTlasBinding, 
+            m_currentStaticBuffers.tlasBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            m_currentStaticBuffers.tlasBuffer.descriptorType, 
+            VK_SHADER_STAGE_FRAGMENT_BIT
+        );
         
         // All bindings combined to create the global shader data descriptor set layout
-        VkDescriptorSetLayoutBinding shaderDataBindings[14] = 
+        VkDescriptorSetLayoutBinding shaderDataBindings[15] = 
         {
             viewDataLayoutBinding, 
             vertexBufferBinding, 
@@ -543,11 +555,11 @@ namespace BlitzenVulkan
             meshletBufferBinding, 
             meshletDataBinding,
             onpcRenderObjectBufferBinding, 
+            accelerationStructureTlasBinding,
             indirectTaskBufferBinding
         };
-        m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(
-            m_device, 
-            13, // Could use BLIT_ARRAY_SIZE macro, but I don't want to use everything in the above array at the moment
+        m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(m_device, 
+            BLIT_ARRAY_SIZE(shaderDataBindings) - 1, // Indirect task buffer not added for now
             shaderDataBindings, 
             VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
         );
@@ -1308,7 +1320,7 @@ namespace BlitzenVulkan
             const auto& transform = pTransforms[object.transformId];
 
             // Casts the orientation quat to a matrix
-            auto xform = BlitML::QuatToMat4(transform.orientation) * transform.scale;
+            auto xform = BlitML::Transpose(BlitML::QuatToMat4(transform.orientation)) * transform.scale;
 
             VkAccelerationStructureInstanceKHR instance{};
             // Copies the first 3 elements of the 1st row of the matrix to the 1st row of the Vulkan side matrix
@@ -1354,8 +1366,11 @@ namespace BlitzenVulkan
         &buildInfo, &drawCount, &sizeInfo);
 
         // Creates the Tlas buffer based on the build size that was retrieved above
-	    if(!CreateBuffer(m_allocator, m_currentStaticBuffers.tlasBuffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, 
-        VMA_MEMORY_USAGE_GPU_ONLY, sizeInfo.accelerationStructureSize, 0))
+        // For raytracing, the below struct needs to be added to the pNext chain of the descriptor set layout
+	    if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
+            m_currentStaticBuffers.tlasBuffer, sizeInfo.accelerationStructureSize, 
+            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
+        ))
             return 0;
 
 	    AllocatedBuffer stagingBuffer;
@@ -1366,7 +1381,7 @@ namespace BlitzenVulkan
         // Creates the accleration structure
         VkAccelerationStructureCreateInfoKHR accelerationInfo{}; 
         accelerationInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-        accelerationInfo.buffer = m_currentStaticBuffers.tlasBuffer.bufferHandle;
+        accelerationInfo.buffer = m_currentStaticBuffers.tlasBuffer.buffer.bufferHandle;
         accelerationInfo.size = sizeInfo.accelerationStructureSize;
         accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
         if(CreateAccelerationStructureKHR(m_instance, m_device, &accelerationInfo, 

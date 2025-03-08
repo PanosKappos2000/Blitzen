@@ -31,6 +31,8 @@ glm::vec4 glm_NormalizePlane(glm::vec4& plane)
 namespace BlitzenVulkan
 {
 
+    constexpr uint32_t ce_pushDescriptorSetID = 0;
+
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
         BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
@@ -167,7 +169,7 @@ namespace BlitzenVulkan
             // First draw pass
             DrawGeometry(
                 fTools.commandBuffer, 
-                pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
+                pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
                 context.pResources->renderObjectCount, 
                 0 // late pass boolean value
@@ -187,7 +189,7 @@ namespace BlitzenVulkan
             // Second draw pass
             DrawGeometry(
                 fTools.commandBuffer, 
-                pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
+                pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
                 context.pResources->renderObjectCount, 
                 1 // late pass boolean value
@@ -203,7 +205,7 @@ namespace BlitzenVulkan
 
             // Draws the transparent objects
             DrawGeometry(fTools.commandBuffer, 
-                pushDescriptorWritesGraphics, BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics), 
+                pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
                 context.pResources->renderObjectCount, 
                 1 // late pass boolean
@@ -394,7 +396,7 @@ namespace BlitzenVulkan
             m_instance, commandBuffer, 
             VK_PIPELINE_BIND_POINT_COMPUTE, 
             m_drawCullLayout.handle, 
-            0, // Descriptor set ID
+            ce_pushDescriptorSetID,
             lateCulling ? descriptorWriteCount : descriptorWriteCount - 1, // late culling has an extra binding
             pDescriptorWrites
         );
@@ -476,11 +478,21 @@ namespace BlitzenVulkan
             nullptr // Stencil attachment
         );
 
-        // Descriptor using push descriptor extensions are pushed
+        // The acceleration structure write needs this struct on its pNext chain
+        VkWriteDescriptorSetAccelerationStructureKHR layoutAccelerationStructurePNext{};
+        if(ce_bRaytracing)
+        {
+            layoutAccelerationStructurePNext.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+            layoutAccelerationStructurePNext.accelerationStructureCount = 1;
+            layoutAccelerationStructurePNext.pAccelerationStructures = &m_currentStaticBuffers.tlasData.handle;
+            pDescriptorWrites[7].pNext = &layoutAccelerationStructurePNext;
+        }
+        // Pushes the descriptors that use the push descriptor extension
         PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
             layout, 
-            0, // Set ID is 0 
-            descriptorWriteCount, pDescriptorWrites
+            ce_pushDescriptorSetID,  
+            ce_bRaytracing ? descriptorWriteCount : descriptorWriteCount - 1, // Raytracing mode needs to bind the tlas buffer
+            pDescriptorWrites
         );
         // Descriptor set for bindless textures
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 

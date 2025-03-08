@@ -198,12 +198,12 @@ namespace BlitzenVulkan
     }
 
     VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings, 
-    VkDescriptorSetLayoutCreateFlags flags /* = 0 */)
+    VkDescriptorSetLayoutCreateFlags flags /* = 0 */, void* pNextChain /*=nullptr*/)
     {
         VkDescriptorSetLayoutCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         info.flags = flags;
-        info.pNext = nullptr;
+        info.pNext = pNextChain;
         info.bindingCount = bindingCount;
         info.pBindings = pBindings;
 
