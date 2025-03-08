@@ -242,39 +242,6 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler, VkSamplerMipmapMode mipmapMode)
-    {
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.flags = 0;
-        samplerInfo.pNext = nullptr;
-
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-        samplerInfo.anisotropyEnable = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR);
-        samplerInfo.maxAnisotropy = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR) ? 4.f : 1.f;
-
-        samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = mipmapMode;
-        samplerInfo.mipLodBias = 0.f;
-        samplerInfo.maxLod = 16.f;
-        samplerInfo.minLod = 0.f;
-
-        
-        VkResult res = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
-        if(res != VK_SUCCESS)
-            return 0;
-        return 1;
-    }
-
     VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10)
     {
         if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
@@ -327,28 +294,68 @@ namespace BlitzenVulkan
 	    return VK_FORMAT_UNDEFINED;
     }
 
-    VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode)
+    VkSampler CreateSampler(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
+        VkSamplerAddressMode addressMode, void* pNextChain /*=nullptr*/
+    )
     {
         VkSamplerCreateInfo createInfo {}; 
         createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	    createInfo.magFilter = VK_FILTER_LINEAR;
-	    createInfo.minFilter = VK_FILTER_LINEAR;
-	    createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	    createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	    createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	    createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+	    createInfo.magFilter = filter;
+	    createInfo.minFilter = filter;
+
+	    createInfo.mipmapMode = mipmapMode;
+
+	    createInfo.addressModeU = addressMode;
+	    createInfo.addressModeV = addressMode;
+	    createInfo.addressModeW = addressMode;
+
+        createInfo.mipLodBias = 0.f;
 	    createInfo.minLod = 0;
 	    createInfo.maxLod = 16.f;
 
-        VkSamplerReductionModeCreateInfo reductionInfo{};
-        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
-        reductionInfo.reductionMode = reductionMode;
-        createInfo.pNext = &reductionInfo;
+        createInfo.anisotropyEnable = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR);
+        createInfo.maxAnisotropy = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR) ? 4.f : 1.f;
+
+        createInfo.pNext = pNextChain;
+
+        // Hardcode values(for now)
+        createInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+        createInfo.unnormalizedCoordinates = VK_FALSE;
+        createInfo.compareEnable = VK_FALSE;
+        createInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
 	    VkSampler sampler = VK_NULL_HANDLE;
 	    if(vkCreateSampler(device, &createInfo, 0, &sampler) != VK_SUCCESS)
             return VK_NULL_HANDLE;
 	    return sampler;
+    }
+
+    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler, VkSamplerMipmapMode mipmapMode)
+    {
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.flags = 0;
+        samplerInfo.pNext = nullptr;
+
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+        
+        samplerInfo.mipmapMode = mipmapMode;
+        samplerInfo.mipLodBias = 0.f;
+        samplerInfo.maxLod = 16.f;
+        samplerInfo.minLod = 0.f;
+
+        
+        VkResult res = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
     }
 
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 

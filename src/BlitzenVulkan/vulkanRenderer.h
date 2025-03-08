@@ -61,7 +61,9 @@ namespace BlitzenVulkan
         uint8_t BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
         BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts);
 
-        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, BlitzenEngine::MeshTransform* pTransforms);
+        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, 
+            BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface
+        );
 
         // Dispatches the compute shader that will perform culling and LOD selection and will write to the indirect draw buffer.
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
@@ -128,6 +130,7 @@ namespace BlitzenVulkan
         AllocatedImage m_colorAttachment;
         AllocatedImage m_depthAttachment;
         VkExtent2D m_drawExtent;
+        ImageSampler m_colorAttachmentSampler;
 
         // The depth pyramid is generated for occlusion culling based on the depth buffer of an initial render pass
         // It has a maximum fo 16 mip levels, but the actual count is based on the window width and height
@@ -151,46 +154,52 @@ namespace BlitzenVulkan
         // Holds data for buffers that will be loaded once and will be used for every object
         struct StaticBuffers
         {
-            // The vertex buffer is a storage buffer that will be part of the push descriptor layout at binding 1
-            // It will hold all vertices for all the objects on the scene
+            // Vertex buffer. Push descriptor layout. Binding 1. Storage buffer. Accessible in vertex shader
+            // Holds all BlitzenEngine::Vertex that were loaded for the scene.
             PushDescriptorBuffer<void> vertexBuffer{1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
+            // Index buffer (this does not use push descriptors, a call to vkCmdBindIndexBuffer is enough)
             AllocatedBuffer indexBuffer;
 
-            // The meshlet / cluster buffer is a storage buffer that will be part of the push descirptor layout at binding 12
-            // It will hold all meshlets for all the primitives on the scene
+            // Cluster buffer. Push descriptor layout. Binding 12. Storage buffer. Not used currently
+            // Holds all BlitzenEngine::Meshlet that were loaded for the scene
             PushDescriptorBuffer<void> meshletBuffer{12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-            // The meshlet data buffer is a storage buffer that will be part of the push descirptor layout at binding 13
-            // It will hold indices to access the correct cluster in the meshlet buffer
+            // Cluster indices buffer. Push descriptor layout. Binding 13. Storage buffer. Not used currently.
+            // Holds all uint32_t meshlet indices that were loaded for the scene
             PushDescriptorBuffer<void> meshletDataBuffer{13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-            // The material buffer is a storage buffer that will be part of the push descriptor layout at binding 6
-            // It will hold all the materials used in the scene
+            // Material buffer. Push descriptor layout. Binding 6. Sotrage buffer. Accessible in fragment shaders
+            // Holds all BlitzenEngine::Material that were load for the scene
             PushDescriptorBuffer<void> materialBuffer{6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-            // The render object buffer is a storage buffer that will be part of the push descriptor layout at binding 4
-            // It will holds indices to the primitive and transform of all the render object in the the scene
+            // Renderer object buffer. Push descriptor layout. Binding 4. Storage buffer. Accessible in compute and vertex shaders.
+            // Holds all BlitzenEngine::RenderObject. 
+            // Basically an index to a primitive and an index to a transform (see binding 2 and 5)
             PushDescriptorBuffer<void> renderObjectBuffer{4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-            // The surface buffer is a storage buffer that will be part of the push descriptor layout at binding 2
-            // It will hold the data for all the primitive surfaces that will be used in the scene
+            // Surface buffer. Push descriptor layout. Binding 2. Storage buffer. Accessible in compute and vertex shaders.
+            // Holds all BlitzenEngine::PrimitiveSurface that were loaded for the scene
+            // (per resources data, like LODs, vertex buffer offset)
             PushDescriptorBuffer<void> surfaceBuffer{2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-            // The transform buffer is a storage buffer that will be part of the push descriptor layout at bidning 5
-            // It will hold the transforms of all the objects in the scene
+            // Transform buffer. Push descriptor layout. Binding 5. Storage buffer. Accessible in compute and vertex shaders.
+            // Holds all BlitzenEngine::MeshTransform that were loaded for the scene (per mesh instance)
             PushDescriptorBuffer<void> transformBuffer{5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-            // The indirect draw buffer is a storage buffer that will be part of the push descriptor layout at binding 7
-            // It will hold all the indirect draw commands for each frame
+            // Indirect draw buffer. Push descriptor layout. Binding 7. Storage and Indirect draw buffer. Accessible in compute and vertex shaders
+            // Holds a VkCmdDrawIndexedIndirectCommand and a uint32_t draw ID. 
+            // Initialized with the size of the render object count but its data is initialized by the culling shaders.
+            // The vertex shaders iterate up to the integer in indirect count and the draw ID  to access the correct render object
             PushDescriptorBuffer<void> indirectDrawBuffer{7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
             // The indirect task buffer is a storage buffer that will be part of the push descriptor layout at binding 8
             // It will hold all the indirect task commands for each frame
             PushDescriptorBuffer<void> indirectTaskBuffer{8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
-            // The indirect draw count buffer is a storage buffer that will be part of the push descriptor layout at binding 9
-            // It will hold one integer that will tell the graphics pipeline how many elements it should access in the indirect draw buffer
+            // Indirect count buffer. Push descriptor layout. Binding 9. Storage and indirect draw buffer. Accessible in compute and vertex shaders.
+            // Holds a single uint32_t that will be written by culling shaders each frame.
+            // It will then be read by the draw call to iterate up to the correct amount of render objects
             PushDescriptorBuffer<void> indirectCountBuffer{9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
 
             // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
@@ -242,7 +251,11 @@ namespace BlitzenVulkan
         DescriptorPool m_textureDescriptorPool;
         VkDescriptorSet m_textureDescriptorSet;
 
+        // Descriptor set layout for the backup shader, used when draw count is 0
         DescriptorSetLayout m_backgroundImageSetLayout;
+
+        // Descriptor set layout for src and dst image for the generate presentation compute shader
+        DescriptorSetLayout m_generatePresentationImageSetLayout;
 
     /*
         Pipelines section
@@ -293,6 +306,9 @@ namespace BlitzenVulkan
         // Used when draw count is 0 to generate a default background (might use it with normal drawing as well in the future)
         PipelineObject m_basicBackgroundPipeline;
         PipelineLayout m_basicBackgroundLayout;
+
+        PipelineObject m_generatePresentationPipeline;
+        PipelineLayout m_generatePresentationLayout;
     
     /*
         Runtime section
@@ -353,16 +369,30 @@ namespace BlitzenVulkan
 
     // Creates the swapchain
     uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
-    uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
-    VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
+        uint32_t windowWidth, uint32_t windowHeight, 
+        Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
+        VkAllocationCallbacks* pCustomAllocator, 
+        Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE
+    );
 
-    uint8_t FindSwapchainSurfaceFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, 
-    VkFormat& swapchainFormat);
+    // Tries to find the requested swapchain format, saves the chosen format to the VkFormat ref
+    uint8_t FindSwapchainSurfaceFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, 
+        VkSwapchainCreateInfoKHR& info, VkFormat& swapchainFormat
+    );
 
-    uint8_t FindSwapchainPresentMode(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info);
+    uint8_t FindSwapchainPresentMode(VkPhysicalDevice physicalDevice, 
+        VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info
+    );
 
-    uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, 
-    Swapchain& swapchain);
+    uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, 
+        VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, Swapchain& swapchain
+    );
+
+    void PresentToSwapchain(VkDevice device, VkQueue queue, 
+        VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
+        uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
+        uint32_t* pImageIndices, VkResult* pResults = nullptr, void* pNextChain = nullptr
+    );
 
 
 
@@ -411,16 +441,12 @@ namespace BlitzenVulkan
     uint8_t CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
     VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels);
 
-    // Placeholder sampler creation function. Used for the default sampler used by all textures so far. 
-    // TODO: Replace this with a general purpose function
-    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler, VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR);
+    VkSampler CreateSampler(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
+        VkSamplerAddressMode addressMode, void* pNextChain = nullptr
+    );
 
     // Returns VkFormat based on DDS input to correctly load a texture image
     VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10);
-
-    // Returns a VkSampler used only for depth pyramid creation
-    // TODO: Replace this with a general purpose function like the above
-    VkSampler CreateSampler(VkDevice device, VkSamplerReductionMode reductionMode);
 
     // Uses vkCmdBlitImage2 to copy a source image to a destination image. Hardcodes alot of parameters. 
     //Can be improved but this is used rarely for now, so I will leave it as is until I have to

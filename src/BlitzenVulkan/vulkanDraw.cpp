@@ -37,9 +37,10 @@ namespace BlitzenVulkan
     {
         BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
         if(pCamera->transformData.windowResize)
-        {
-            RecreateSwapchain(uint32_t(pCamera->transformData.windowWidth), uint32_t(pCamera->transformData.windowHeight));
-        }
+            RecreateSwapchain(
+                uint32_t(pCamera->transformData.windowWidth), 
+                uint32_t(pCamera->transformData.windowHeight)
+            );
 
         // Gets a ref to the frame tools of the current frame
         FrameTools& fTools = m_frameToolsList[m_currentFrame];
@@ -71,7 +72,7 @@ namespace BlitzenVulkan
         else
             *(vBuffers.viewDataBuffer.pData) = pCamera->viewData;
         
-        // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
+        // Swapchain image, needed to present the color attachment results
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, 
         1000000000, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
@@ -82,29 +83,28 @@ namespace BlitzenVulkan
         // The viewport and scissor are dynamic, so they should be set here
         DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
 
+        // Color attachment working layout depends on if there are any render objects
         VkImageLayout colorAttachmentWorkingLayout = context.pResources->renderObjectCount ? 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-
-        // Create image barrier to transition color attachment image layout from undefined to optimal.
-        // It needs to wait for the previous frame and then stop the color attachment stage
+        // Attachment barriers for layout transitions before rendering
         VkImageMemoryBarrier2 renderingAttachmentDefinitionBarriers[2] = {};
         ImageMemoryBarrier(m_colorAttachment.image, renderingAttachmentDefinitionBarriers[0], 
-        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE, 
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
-        VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, 
-        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-
-        // Similar thing for the depth atatchment
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE, 
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
+            VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, VK_IMAGE_ASPECT_COLOR_BIT, 
+            0, VK_REMAINING_MIP_LEVELS
+        );
         ImageMemoryBarrier(m_depthAttachment.image, renderingAttachmentDefinitionBarriers[1], 
-        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE, 
-        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
-        VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
-
-        // Places the 2 image barriers
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE, 
+            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 
+            0, VK_REMAINING_MIP_LEVELS
+        );
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderingAttachmentDefinitionBarriers);
 
 
+
+        // In case there is nothing to draw, it present a gradient colored window
         if(context.pResources->renderObjectCount == 0)
         {
 	        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, 
@@ -231,71 +231,66 @@ namespace BlitzenVulkan
         
 
 
-
         /*
-            !TODO: Improve the final section of draw frame
+            Presentation: 
+            -The color attachment is copied to the current swapchain image
+            -The commands are submitted
+            -The swapchain image is presented
         */
         VkImageMemoryBarrier2 colorAttachmentTransferBarriers[2] = {};
-        // Creates an image barrier for the color attachment to transition its layout to transfer source optimal
         ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentTransferBarriers[0], 
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
-        VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
-        colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-
-        // Create an image barrier for the swapchain image to transition its layout to transfer dst optimal
-        ImageMemoryBarrier(m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], colorAttachmentTransferBarriers[1], 
-        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
-        VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-
-        // Pass the 2 barriers from above
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 
+            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+            colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+            VK_IMAGE_ASPECT_COLOR_BIT, 
+            0, VK_REMAINING_MIP_LEVELS
+        );
+        ImageMemoryBarrier(m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], 
+            colorAttachmentTransferBarriers[1], 
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
+            VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 
+            0, VK_REMAINING_MIP_LEVELS
+        );
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
 
-        // Old debug code that display the debug pyramid instead of the image, does not work anymore for reason I'm not sure of
-        if(0)// This should say if(context.debugPyramid)
-        {
-            uint32_t debugLevel = 0;
-            CopyImageToImage(fTools.commandBuffer, m_depthPyramid.image, VK_IMAGE_LAYOUT_GENERAL, 
-            m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-            {uint32_t(BlitML::Max(1u, (m_depthPyramidExtent.width) >> debugLevel)), 
-            uint32_t(BlitML::Max(1u, (m_depthPyramidExtent.height) >> debugLevel))}, 
-            m_swapchainValues.swapchainExtent, {VK_IMAGE_ASPECT_COLOR_BIT, debugLevel, 0, 1}, 
-            {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, VK_FILTER_NEAREST);
-        }
-        // Copy the color attachment to the swapchain image
-        else
-        {
-            CopyImageToImage(fTools.commandBuffer, m_colorAttachment.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-            m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-            m_drawExtent, m_swapchainValues.swapchainExtent, {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, 
-            {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, VK_FILTER_LINEAR);
-        }
+        CopyImageToImage(fTools.commandBuffer, m_colorAttachment.image, 
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+            m_swapchainValues.swapchainImages[size_t(swapchainIdx)], // swapchain image
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+            m_drawExtent, m_swapchainValues.swapchainExtent, 
+            {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, // src subresource layer
+            {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, // dst subresource layer
+            VK_FILTER_LINEAR
+        );
 
         // Create a barrier for the swapchain image to transition to present optimal
         VkImageMemoryBarrier2 presentImageBarrier{};
-        ImageMemoryBarrier(m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], presentImageBarrier, 
-        VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 
-        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 
-        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        ImageMemoryBarrier(m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], 
+            presentImageBarrier, 
+            VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout transition
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
+        );
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
 
-        // All commands have ben recorded, the command buffer is submitted
-        SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 1, fTools.imageAcquiredSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-        1, fTools.readyToPresentSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence.handle);
+        SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 
+            1, fTools.imageAcquiredSemaphore.handle, // waits for image to be acquired
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, // all graphics commands wait
+            1, fTools.readyToPresentSemaphore.handle, // signals the ready to present semaphore when done
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, // all graphics wait for signal
+            fTools.inFlightFence.handle // next frame waits for commands to be done
+        );
 
-        // Presents the swapchain image, so that the rendering results are shown on the window
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &fTools.readyToPresentSemaphore.handle;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &(m_swapchainValues.swapchainHandle);
-        presentInfo.pImageIndices = &swapchainIdx;
-        vkQueuePresentKHR(m_presentQueue.handle, &presentInfo);
+        PresentToSwapchain(m_device, m_graphicsQueue.handle, 
+            &m_swapchainValues.swapchainHandle, 1, 
+            1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
+            &swapchainIdx
+        );
 
-        // Change the current frame to the next frame, important when using double buffering
         m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
 
@@ -702,6 +697,29 @@ namespace BlitzenVulkan
         scissor.offset.y = 0;
 
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    }
+
+    void PresentToSwapchain(VkDevice device, VkQueue queue, 
+        VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
+        uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
+        uint32_t* pImageIndices, VkResult* pResults /*=nullptr*/,
+        void* pNextChain /*=nullptr*/
+    )
+    {
+        VkPresentInfoKHR info{};
+        info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        info.pNext = pNextChain;
+
+        info.swapchainCount = swapchainCount; // might never support this but who knows
+        info.pSwapchains = pSwapchains;
+
+        info.waitSemaphoreCount = waitSemaphoreCount;
+        info.pWaitSemaphores = pWaitSemaphores;
+
+        info.pImageIndices = pImageIndices;
+        info.pResults = pResults;
+
+        vkQueuePresentKHR(queue, &info);
     }
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)

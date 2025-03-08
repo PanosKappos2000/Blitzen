@@ -75,8 +75,13 @@ namespace BlitzenVulkan
     
         // This sampler will be used by all textures for now
         // Initialized here since textures can and will be given to Vulkan before the renderer is set up
-        if(!CreateTextureSampler(m_device, m_textureSampler.handle))
+        m_textureSampler.handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, 
+            VK_SAMPLER_ADDRESS_MODE_REPEAT);
+        if(m_textureSampler.handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create texture sampler")
             return;
+        }
 
         // Creates command buffers and synchronization structures in the frame tools struct
         // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
@@ -95,7 +100,7 @@ namespace BlitzenVulkan
         // Checks if resource management has been setup
         if(!m_stats.bResourceManagementReady)
         {
-            // Calls the function and checks if it succeeded. If it did not, it fails
+            // Retry
             SetupResourceManagement();
             if(!m_stats.bResourceManagementReady)
             {
@@ -105,24 +110,44 @@ namespace BlitzenVulkan
         }
 
         // Creates Rendering attachment image resource for color attachment
-        if(!CreateImage(m_device, m_allocator, m_colorAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_R16G16B16A16_SFLOAT, 
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+        if(!CreateImage(m_device, m_allocator, m_colorAttachment, 
+            {m_drawExtent.width, m_drawExtent.height, 1}, // extent
+            VK_FORMAT_R16G16B16A16_SFLOAT, 
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | // usage flags
+            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT // usage flags part 2
+        ))
         {
             BLIT_ERROR("Failed to create color attachment image resource")
             return 0;
         }
 
+        // Color attachment sammpler will be used to copy to the swapchain image
+        m_colorAttachmentSampler.handle = CreateSampler(m_device, VK_FILTER_NEAREST, 
+            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+        );
+        if(m_colorAttachmentSampler.handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create color attachment sampler")
+            return 0;
+        }
+
         // Creates rendering attachment image resource for depth attachment
-        if(!CreateImage(m_device, m_allocator, m_depthAttachment, {m_drawExtent.width, m_drawExtent.height, 1}, VK_FORMAT_D32_SFLOAT, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))
+        if(!CreateImage(m_device, m_allocator, m_depthAttachment, 
+            {m_drawExtent.width, m_drawExtent.height, 1}, 
+            VK_FORMAT_D32_SFLOAT, 
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
+        ))
         {
             BLIT_ERROR("Failed to create depth attachment image resource")
             return 0;
         }
 
         // Create the depth pyramid image and its mips that will be used for occlusion culling
-        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMips, m_depthPyramidMipLevels, 
-        m_depthAttachmentSampler.handle, m_drawExtent, m_device, m_allocator))
+        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
+            m_depthPyramidMips, m_depthPyramidMipLevels, // depth pyramid mip view and mip count
+            m_depthAttachmentSampler.handle, m_drawExtent, 
+            m_device, m_allocator
+        ))
         {
             BLIT_ERROR("Failed to create the depth pyramid")
             return 0;
@@ -149,54 +174,65 @@ namespace BlitzenVulkan
             return 0;
         }
         
-        // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
-        // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
+        // Initial draw cull shader compute pipeline
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", // filepath
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
+            m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle 
+        ))
         {
             BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
             return 0;
         }
         
-        // Creates pipeline for the depth pyramid generation shader which will be dispatched before the late culling compute shader
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_depthPyramidGenerationLayout.handle, &m_depthPyramidGenerationPipeline.handle))
+        // Generate depth pyramid compute shader
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", 
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
+            m_depthPyramidGenerationLayout.handle, &m_depthPyramidGenerationPipeline.handle
+        ))
         {
             BLIT_ERROR("Failed to create DepthPyramidGeneration.comp shader program")
             return 0;
         }
         
         
-        // Creates pipeline for the late culling shader that will be dispatched before the 2nd render pass.
-        // It performs frustum culling and occlusion culling on all objects.
-        // It creates a draw command for the objects that were not tested by the previous shader
-        // It also sets the visibility of each object for this frame, so that it can be accessed next frame
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle))
+        // Late culling shader compute pipeline
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv", 
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle
+        ))
         {
             BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
             return 0;
         }
 
         // Create the background shader in case the renderer has not objects
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/BasicBackground.comp.glsl.spv", 
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_basicBackgroundLayout.handle, &m_basicBackgroundPipeline.handle))
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/BasicBackground.comp.glsl.spv", // filepath
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
+            m_basicBackgroundLayout.handle, &m_basicBackgroundPipeline.handle
+        ))
         {
             BLIT_ERROR("Failed to create BasicBackground.comp shader program")
             if(pResources->renderObjectCount == 0)
                 return 0;
         }
 
-        if(!CreateComputeShaderProgram(
-            m_device, 
-            "VulkanShaders/OnpcDrawCull.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, 
-            "main", // entry point
-            m_drawCullLayout.handle, // pipeline layout
-            &m_onpcDrawCullPipeline.handle // pipeline
+        // Redundant shader
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/OnpcDrawCull.comp.glsl.spv", // filepath
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
+            m_drawCullLayout.handle, &m_onpcDrawCullPipeline.handle 
         ))
         {
             BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program")
+            return 0;
+        }
+
+        // Creates the generate presentation image compute shader program
+        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/GeneratePresentation.comp.glsl.spv", // filepath
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            m_generatePresentationLayout.handle, &m_generatePresentationPipeline.handle   
+        ))
+        {
+            BLIT_ERROR("Failed to create GeneratePresentation.comp shader program")
             return 0;
         }
         
@@ -327,8 +363,15 @@ namespace BlitzenVulkan
         depthPyramidMipLevels = 0;
     
         // Create the sampler only if it is requested. In case where the depth pyramid is recreated on window resize, this is not needed
+        VkSamplerReductionModeCreateInfo reductionInfo{};
+        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
         if(createSampler)
-            depthAttachmentSampler = CreateSampler(device, VK_SAMPLER_REDUCTION_MODE_MIN);
+            depthAttachmentSampler = CreateSampler(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, 
+                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo
+            );
+        if(depthAttachmentSampler == VK_NULL_HANDLE)
+            return 0;
     
         // Get a conservative starting extent for the depth pyramid image, by getting the previous power of 2 of the draw extent
         depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
@@ -559,7 +602,9 @@ namespace BlitzenVulkan
             indirectTaskBufferBinding
         };
         m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(m_device, 
-            BLIT_ARRAY_SIZE(shaderDataBindings) - 1, // Indirect task buffer not added for now
+            m_stats.bRayTracingSupported ? 
+            BLIT_ARRAY_SIZE(shaderDataBindings) - 1 : // Indirect task buffer not added for now
+            BLIT_ARRAY_SIZE(shaderDataBindings) - 2, // acceleration structure also removed when raytracing is not active
             shaderDataBindings, 
             VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
         );
@@ -641,17 +686,49 @@ namespace BlitzenVulkan
             Descriptor used only for the background compute shader, which draws a window with gradient color
         */
 
-        // Creates a binding for the descriptor that will provide an image to the background compute shader
         VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 
-        VK_SHADER_STAGE_COMPUTE_BIT);
-        m_backgroundImageSetLayout.handle = CreateDescriptorSetLayout(m_device, 1, &backgroundImageLayoutBinding, 
-        VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 
+            1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT
+        );
+        m_backgroundImageSetLayout.handle = CreateDescriptorSetLayout(m_device, 
+            1, &backgroundImageLayoutBinding, // storage image binding
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR // uses push descriptors
+        );
         if(m_backgroundImageSetLayout.handle == VK_NULL_HANDLE)
             return 0;
 
         /*
             Background compute shader descriptor set layout complete
+        */
+
+
+
+        /*
+            Descriptor used for generate presentation image. Holds the color attachment sampler and the presentation image
+        */
+
+        VkDescriptorSetLayoutBinding presentImageLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(presentImageLayoutBinding, 0, 1, 
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT
+        );
+        VkDescriptorSetLayoutBinding colorAttachmentSamplerLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(colorAttachmentSamplerLayoutBinding, 1, 1, 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT
+        );
+        VkDescriptorSetLayoutBinding generatePresentationSetLayoutBindings[2] = 
+        {
+            presentImageLayoutBinding, 
+            colorAttachmentSamplerLayoutBinding
+        };
+        m_generatePresentationImageSetLayout.handle = CreateDescriptorSetLayout(m_device, 
+            2, generatePresentationSetLayoutBindings, 
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
+        );
+        if(m_generatePresentationImageSetLayout.handle == VK_NULL_HANDLE)
+            return 0;
+
+        /*
+            Present compute shader descriptor set layout complete
         */
 
 
@@ -716,11 +793,20 @@ namespace BlitzenVulkan
 
         VkPushConstantRange onpcMatrixPushConstant{};
         CreatePushConstantRange(onpcMatrixPushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(BlitML::mat4));
-        if(!CreatePipelineLayout(
-            m_device, 
-            &m_onpcReflectiveGeometryLayout.handle, 
+        if(!CreatePipelineLayout(m_device, &m_onpcReflectiveGeometryLayout.handle, 
             2, defaultGraphicsPipelinesDescriptorSetLayouts, // Same descriptors as the default graphics pipeline
             1, &onpcMatrixPushConstant // Push constant for onpc modified projection matrix (temporary)
+        ))
+            return 0;
+
+        // Generate present image compute shader layout
+        VkPushConstantRange colorAttachmentExtentPushConstant{};
+        CreatePushConstantRange(colorAttachmentExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
+            sizeof(BlitML::vec2)
+        );
+        if(!CreatePipelineLayout(m_device, &m_generatePresentationLayout.handle, 
+            1, &m_generatePresentationImageSetLayout.handle, 
+            1, &colorAttachmentExtentPushConstant
         ))
             return 0;
 
@@ -733,17 +819,21 @@ namespace BlitzenVulkan
         {
             VarBuffers& buffers = m_varBuffers[i];
 
-            // Tries to create the global shader data uniform buffer
-            if(!CreateBuffer(m_allocator, buffers.viewDataBuffer.buffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-            sizeof(BlitzenEngine::CameraViewData), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            // Creates the uniform buffer for view data
+            if(!CreateBuffer(m_allocator, buffers.viewDataBuffer.buffer, 
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+                sizeof(BlitzenEngine::CameraViewData), VMA_ALLOCATION_CREATE_MAPPED_BIT
+            ))
                 return 0;
-            // If everything went fine, get the persistent mapped pointer to the buffer
+
             buffers.viewDataBuffer.pData = reinterpret_cast<BlitzenEngine::CameraViewData*>(
-            buffers.viewDataBuffer.buffer.allocation->GetMappedData());
-            // Creates the VkWriteDescriptor for this buffer here, as it will reamain constant 
-            WriteBufferDescriptorSets(buffers.viewDataBuffer.descriptorWrite, buffers.viewDataBuffer.bufferInfo, 
-            buffers.viewDataBuffer.descriptorType, buffers.viewDataBuffer.descriptorBinding, 
-            buffers.viewDataBuffer.buffer.bufferHandle);
+                buffers.viewDataBuffer.buffer.allocation->GetMappedData()
+            );
+            
+            WriteBufferDescriptorSets(buffers.viewDataBuffer.descriptorWrite, 
+                buffers.viewDataBuffer.bufferInfo, buffers.viewDataBuffer.descriptorType, 
+                buffers.viewDataBuffer.descriptorBinding, buffers.viewDataBuffer.buffer.bufferHandle
+            );
         }
 
         return 1;
@@ -1070,7 +1160,7 @@ namespace BlitzenVulkan
         {
             if(!BuildBlas(surfaces, pResources->primitiveVertexCounts))
                 return 0;
-            if(!BuildTlas(pRenderObjects, renderObjectCount, transforms.Data()))
+            if(!BuildTlas(pRenderObjects, renderObjectCount, transforms.Data(), surfaces.Data()))
                 return 0;
         }
 
@@ -1222,7 +1312,9 @@ namespace BlitzenVulkan
             buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             buildInfo.pNext = nullptr;
             buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;// Bottom level since the as is for geometries
-            buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+            buildInfo.flags = 
+                VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | 
+                VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
             buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
             buildInfo.geometryCount = 1;
             buildInfo.pGeometries = &geometry;
@@ -1294,7 +1386,8 @@ namespace BlitzenVulkan
     }
 
     uint8_t VulkanRenderer::BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, 
-    BlitzenEngine::MeshTransform* pTransforms)
+        BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurfaces
+    )
     {
         // Retrieves the device address of each acceleration structure that was build earlier
         BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{m_currentStaticBuffers.blasData.GetSize()};
@@ -1318,6 +1411,7 @@ namespace BlitzenVulkan
         {
             const auto& object = pDraws[i];
             const auto& transform = pTransforms[object.transformId];
+            const auto& surface = pSurfaces[object.surfaceId];
 
             // Casts the orientation quat to a matrix
             auto xform = BlitML::Transpose(BlitML::QuatToMat4(transform.orientation)) * transform.scale;
@@ -1335,7 +1429,8 @@ namespace BlitzenVulkan
             instance.transform.matrix[2][3] = transform.pos.z;
 
             instance.instanceCustomIndex = i;
-            instance.mask = 0xFF;
+            instance.mask = 1 << surface.postPass;
+            instance.flags = surface.postPass ? VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR : 0;
             instance.accelerationStructureReference = blasAddresses[object.surfaceId];
 
             auto pData = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(
