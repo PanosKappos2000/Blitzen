@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/blitLogger.h"
 #include "Core/blitAssert.h"
 #include <utility>
 
@@ -45,9 +46,7 @@ namespace BlitzenCore
     T* BlitAlloc(AllocationType alloc, size_t size)
     {
         BLIT_ASSERT(alloc != AllocationType::MaxTypes)
-
         LogAllocation(alloc, size * sizeof(T));
-
         return reinterpret_cast<T*>(BlitzenPlatform::PlatformMalloc(size * sizeof(T), false));
     }
 
@@ -55,9 +54,7 @@ namespace BlitzenCore
     void BlitFree(AllocationType alloc, void* pBlock, size_t size)
     {
         BLIT_ASSERT(alloc != AllocationType::MaxTypes)
-
         LogFree(alloc, size * sizeof(T));
-
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
 

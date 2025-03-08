@@ -149,7 +149,6 @@ namespace BlitzenVulkan
             return 0;
         }
         
-        #if defined(NDEBUG)
         // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
         // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -158,16 +157,6 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
             return 0;
         }
-        #else
-        // Creates pipeline for The initial culling shader that will be dispatched before the 1st pass. 
-        // It performs frustum culling on objects that were visible last frame (visibility is set by the late culling shader)
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCullDebug.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
-        {
-            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
-            return 0;
-        }
-        #endif
         
         // Creates pipeline for the depth pyramid generation shader which will be dispatched before the late culling compute shader
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -177,7 +166,7 @@ namespace BlitzenVulkan
             return 0;
         }
         
-        #if defined(NDEBUG)
+        
         // Creates pipeline for the late culling shader that will be dispatched before the 2nd render pass.
         // It performs frustum culling and occlusion culling on all objects.
         // It creates a draw command for the objects that were not tested by the previous shader
@@ -188,14 +177,6 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
             return 0;
         }
-        #else
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCullDebug.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-        m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle))
-        {
-            BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
-            return 0;
-        }
-        #endif
 
         // Create the background shader in case the renderer has not objects
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/BasicBackground.comp.glsl.spv", 

@@ -66,7 +66,7 @@ namespace BlitzenVulkan
         // Dispatches the compute shader that will perform culling and LOD selection and will write to the indirect draw buffer.
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
         uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount,
-        uint8_t lateCulling = 0, uint8_t postPass = 0, uint8_t bOcclusionEnabled = 1, uint8_t bLODs = 1);
+        uint8_t lateCulling = 0, uint8_t postPass = 0);
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
         void DrawGeometry(VkCommandBuffer commandBuffer, 

@@ -46,14 +46,11 @@ void main()
             surface is taken and the minimum error that would result in acceptable
             screen-space deviation is computed based on camera parameters
         */
-        if (cullPC.lodEnabled == 1)
-		{
-			float distance = max(length(center) - radius, 0);
-			float threshold = distance * viewData.lodTarget / transform.scale;
-			for (uint i = 1; i < surface.lodCount; ++i)
-				if (surface.lod[i].error < threshold)
-					lodIndex = i;
-		}
+		float distance = max(length(center) - radius, 0);
+		float threshold = distance * viewData.lodTarget / transform.scale;
+		for (uint i = 1; i < surface.lodCount; ++i)
+			if (surface.lod[i].error < threshold)
+				lodIndex = i;
 
         // Get the selected LOD
         MeshLod currentLod = surface.lod[lodIndex];

@@ -305,20 +305,16 @@ namespace BlitzenVulkan
     // Culling shaders receive this shader as a push constant
     struct alignas(16) DrawCullShaderPushConstant
     {
-        // Draw count should be checked at the start of the, 
+        // Draw count should be checked at the start of the culling shader, 
         // so that the compute shader does not index an out of bounds element in the render object array 
         uint32_t drawCount;
-
-        // Debug booleans to deactivate occlusion culling and LOD selection on the fly
-        uint8_t bOcclusionCulling;
-        uint8_t bLOD;
 
         // Tells the late culling compute shader that it should now check transparent primitives
         uint8_t bPostPass;
 
         // Constructor
-        inline DrawCullShaderPushConstant(uint32_t dc, uint8_t bPP, uint8_t bOC = 1, uint8_t bLod = 1)
-        :drawCount{dc}, bPostPass{bPP}, bOcclusionCulling{bOC}, bLOD{bLod} {}
+        inline DrawCullShaderPushConstant(uint32_t dc, uint8_t bPP)
+        :drawCount{dc}, bPostPass{bPP} {}
     };
 
     struct BackgroundShaderPushConstant

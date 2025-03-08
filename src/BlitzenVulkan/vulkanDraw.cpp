@@ -63,16 +63,11 @@ namespace BlitzenVulkan
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence.handle), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
-        // Write the data to the buffer pointers
-        #ifdef NDEBUG
-        *(vBuffers.viewDataBuffer.pData) = pCamera->viewData;
-        #else
         if(pCamera->transformData.freezeFrustum)
             // Only change the matrix that moves the camera if the freeze frustum debug functionality is active
             vBuffers.viewDataBuffer.pData->projectionViewMatrix = pCamera->viewData.projectionViewMatrix;
         else
             *(vBuffers.viewDataBuffer.pData) = pCamera->viewData;
-        #endif
         
         // Asks for the next image in the swapchain to use for presentation, and saves it in swapchainIdx
         uint32_t swapchainIdx;
@@ -166,8 +161,7 @@ namespace BlitzenVulkan
                 fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 context.pResources->renderObjectCount, 
-                0, 0, // Post pass and late culling boolean values
-                context.bOcclusionCulling, context.bLOD // Debug values
+                0, 0 // Post pass and late culling boolean values
             );
 
             // First draw pass
@@ -187,8 +181,7 @@ namespace BlitzenVulkan
                 fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 context.pResources->renderObjectCount, 
-                1, 0, // Late culling and post pass boolean values
-                context.bOcclusionCulling, context.bLOD // Debug values
+                1, 0 // Late culling and post pass boolean values
             );
 
             // Second draw pass
@@ -205,8 +198,7 @@ namespace BlitzenVulkan
                 fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 context.pResources->renderObjectCount, 
-                1, 1, // late culling and post pass boolean values
-                context.bOcclusionCulling, context.bLOD // debug values
+                1, 1 // late culling and post pass boolean values
             );
 
             // Draws the transparent objects
@@ -222,8 +214,7 @@ namespace BlitzenVulkan
                 DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, 
                     BLIT_ARRAY_SIZE(m_pushDescriptorWritesOnpcCompute), m_pushDescriptorWritesOnpcCompute,
                     context.pResources->onpcReflectiveRenderObjectCount, 
-                    0, 0, // late culling and post pass boolean values
-                    context.bOcclusionCulling, context.bLOD // debug values 
+                    0, 0 // late culling and post pass boolean values
                 );
 
                 DrawGeometry(fTools.commandBuffer, 
@@ -310,7 +301,7 @@ namespace BlitzenVulkan
     VkPipeline pipeline,
     uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, 
     uint32_t drawCount, 
-    uint8_t lateCulling /*=0*/, uint8_t postPass /*=0*/, uint8_t bOcclusionEnabled /*=1*/, uint8_t bLODs /*=1*/)
+    uint8_t lateCulling /*=0*/, uint8_t postPass /*=0*/)
     {
         // If this is after the first render pass, the shader will also need the depth pyramid image sampler to do occlusion culling
         if(lateCulling)
@@ -408,7 +399,7 @@ namespace BlitzenVulkan
             pDescriptorWrites
         );
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        DrawCullShaderPushConstant pc{drawCount, postPass, bOcclusionEnabled, bLODs}; // Push constant data
+        DrawCullShaderPushConstant pc{drawCount, postPass}; // Push constant data
         vkCmdPushConstants(
             commandBuffer, 
             m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 

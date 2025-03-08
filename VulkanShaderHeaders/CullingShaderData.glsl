@@ -8,10 +8,6 @@ layout (push_constant) uniform CullingConstants
 {
     uint drawCount;
 
-    // Debug values
-    uint8_t occlusionEnabled;
-    uint8_t lodEnabled;
-
     uint8_t postPass;
 }cullPC;
 
@@ -39,12 +35,13 @@ bool projectSphere(vec3 c, float r, float znear, float P00, float P11, out vec4 
 	return true;
 }
 
+// Frustum culling function
 bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bounding sphere values
-vec3 boundCenter, float boundRadius, // Bounding sphere values
-float scale, vec3 pos, vec4 orientation, // Transform
-mat4 view, // view matrix
-float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, // View frustum planes
-float znear, float zfar)
+	vec3 boundCenter, float boundRadius, // Bounding sphere values
+	float scale, vec3 pos, vec4 orientation, // Transform
+	mat4 view, // view matrix
+	float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, // View frustum planes
+	float znear, float zfar)
 {
 	// Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
     center = RotateQuat(boundCenter, orientation) * scale + pos;
