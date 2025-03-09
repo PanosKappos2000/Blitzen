@@ -109,30 +109,42 @@ namespace BlitzenVulkan
             }
         }
 
-        // Creates Rendering attachment image resource for color attachment
-        if(!CreateImage(m_device, m_allocator, m_colorAttachment, 
+        // Color attachment sammpler will be used to copy to the swapchain image
+        if(!m_colorAttachment.SamplerInit(m_device, VK_FILTER_NEAREST, 
+            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr
+        ))
+        {
+            BLIT_ERROR("Failed to create color attachment sampler")
+            return 0;
+        }
+        // Create depth attachment image and image view
+        if(!CreatePushDescriptorImage(m_device, m_allocator, m_colorAttachment, 
             {m_drawExtent.width, m_drawExtent.height, 1}, // extent
-            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage 
+            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage, 
+            1, VMA_MEMORY_USAGE_GPU_ONLY 
         ))
         {
             BLIT_ERROR("Failed to create color attachment image resource")
             return 0;
         }
 
-        // Color attachment sammpler will be used to copy to the swapchain image
-        m_colorAttachmentSampler.handle = CreateSampler(m_device, VK_FILTER_NEAREST, 
-            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
-        );
-        if(m_colorAttachmentSampler.handle == VK_NULL_HANDLE)
+        // Creates a sampler for the depth attachment, used for the depth pyramid
+        VkSamplerReductionModeCreateInfo reductionInfo{};
+        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
+        if(!m_depthAttachment.SamplerInit(m_device, 
+            VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, 
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo
+        ))
         {
-            BLIT_ERROR("Failed to create color attachment sampler")
+            BLIT_ERROR("Failed to create depth attachment sampler")
             return 0;
         }
-
         // Creates rendering attachment image resource for depth attachment
-        if(!CreateImage(m_device, m_allocator, m_depthAttachment, 
+        if(!CreatePushDescriptorImage(m_device, m_allocator, m_depthAttachment, 
             {m_drawExtent.width, m_drawExtent.height, 1}, 
-            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage
+            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage, 
+            1, VMA_MEMORY_USAGE_GPU_ONLY
         ))
         {
             BLIT_ERROR("Failed to create depth attachment image resource")
@@ -142,8 +154,7 @@ namespace BlitzenVulkan
         // Create the depth pyramid image and its mips that will be used for occlusion culling
         if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
             m_depthPyramidMips, m_depthPyramidMipLevels, // depth pyramid mip view and mip count
-            m_depthAttachmentSampler.handle, m_drawExtent, 
-            m_device, m_allocator
+            m_drawExtent, m_device, m_allocator
         ))
         {
             BLIT_ERROR("Failed to create the depth pyramid")
@@ -353,22 +364,12 @@ namespace BlitzenVulkan
     }
 
     uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
-    VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
-    VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler /* =1 */)
+        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
+        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator
+    )
     {
         // This will fail if mip levels do not start from 0
         depthPyramidMipLevels = 0;
-    
-        // Create the sampler only if it is requested. In case where the depth pyramid is recreated on window resize, this is not needed
-        VkSamplerReductionModeCreateInfo reductionInfo{};
-        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
-        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
-        if(createSampler)
-            depthAttachmentSampler = CreateSampler(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, 
-                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo
-            );
-        if(depthAttachmentSampler == VK_NULL_HANDLE)
-            return 0;
     
         // Get a conservative starting extent for the depth pyramid image, by getting the previous power of 2 of the draw extent
         depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
@@ -385,13 +386,19 @@ namespace BlitzenVulkan
         }
     
         // Create the depth pyramid image which will be used as storage image and to then transfer its data for occlusion culling
-        if(!CreateImage(device, allocator, depthPyramidImage, {depthPyramidExtent.width, depthPyramidExtent.height, 1}, VK_FORMAT_R32_SFLOAT, 
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, depthPyramidMipLevels))
+        if(!CreateImage(device, allocator, depthPyramidImage, 
+            {depthPyramidExtent.width, depthPyramidExtent.height, 1}, 
+            VK_FORMAT_R32_SFLOAT, 
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
+            depthPyramidMipLevels
+        ))
             return 0;
     
         for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
         {
-            if(!CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image, VK_FORMAT_R32_SFLOAT, i, 1))
+            if(!CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image, 
+                VK_FORMAT_R32_SFLOAT, i, 1
+            ))
                 return 0;
         }
     
@@ -660,9 +667,9 @@ namespace BlitzenVulkan
         VkDescriptorSetLayoutBinding outImageLayoutBinding{};
         CreateDescriptorSetLayoutBinding(
             outImageLayoutBinding, 
-            1, // binding ID 
-            1, // descriptor count
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            m_depthAttachment.m_descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            m_depthAttachment.m_descriptorType, 
             VK_SHADER_STAGE_COMPUTE_BIT
         );
 

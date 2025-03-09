@@ -84,8 +84,10 @@ namespace BlitzenVulkan
         return vkGetBufferDeviceAddress(device, &indirectBufferAddressInfo);
     }
 
-    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
-    uint8_t mipLevels /*= 1*/, VmaMemoryUsage memoryUsage /*=VMA_MEMORY_USAGE_GPU_ONLY*/)
+    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
+        uint8_t mipLevels /*= 1*/, VmaMemoryUsage memoryUsage /*=VMA_MEMORY_USAGE_GPU_ONLY*/
+    )
     {
         // Save the extent and format of the image in the AllocatedImage structure
         image.extent = extent;
@@ -112,7 +114,9 @@ namespace BlitzenVulkan
         imageAllocationInfo.usage = memoryUsage;
         imageAllocationInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &(image.image), &(image.allocation), nullptr);
+        VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, 
+            &image.image, &image.allocation, nullptr
+        );
         if(res != VK_SUCCESS)
             return 0;
 
@@ -123,7 +127,29 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
+    uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image, 
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, 
+        VmaMemoryUsage memoryUsage
+    )
+    {
+        if(!CreateImage(device, allocator, image.image, extent, format, 
+            usage, mipLevels, memoryUsage
+        ))
+            return 0;
+
+        WriteImageDescriptorSets(image.descriptorWrite, image.descriptorInfo, 
+            image.m_descriptorType, VK_NULL_HANDLE, image.m_descriptorBinding, 
+            image.m_layout, image.image.imageView, 
+            (image.sampler.handle != VK_NULL_HANDLE) ? 
+            image.sampler.handle : VK_NULL_HANDLE // Passes the sampler if it is initialized
+        );
+
+        return 1;
+    }
+
+    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, 
+        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels
+    )
     {
         VkImageViewCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -641,6 +667,15 @@ namespace BlitzenVulkan
     {
         vmaDestroyImage(allocator, image, allocation);
         vkDestroyImageView(device, imageView, nullptr);
+    }
+
+    uint8_t PushDescriptorImage::SamplerInit(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
+        VkSamplerAddressMode addressMode, void* pNextChain)
+    {
+        sampler.handle = CreateSampler(device, filter, mipmapMode, addressMode, pNextChain);
+        if(sampler.handle == VK_NULL_HANDLE)
+            return 0;
+        return 1;
     }
 
     AllocatedImage::~AllocatedImage()

@@ -102,7 +102,6 @@ namespace BlitzenVulkan
         uint32_t deviceExtensionCount = 0;
         const char* deviceExtensionNames[ce_maxRequestedDeviceExtensions];
 
-        // Tells some independent function like texture loaders, if their resources are ready to be allocated
         uint8_t bResourceManagementReady = 0;
     };
 
@@ -114,21 +113,6 @@ namespace BlitzenVulkan
         VkSurfaceKHR handle = VK_NULL_HANDLE;
 
         ~SurfaceKHR();
-    };
-
-    struct Swapchain
-    {
-        VkSwapchainKHR swapchainHandle;
-
-        VkExtent2D swapchainExtent;
-
-        VkFormat swapchainFormat;
-
-        BlitCL::DynamicArray<VkImage> swapchainImages;
-
-        BlitCL::DynamicArray<VkImageView> swapchainImageViews;
-
-        ~Swapchain();
     };
 
     struct Queue
@@ -254,6 +238,42 @@ namespace BlitzenVulkan
         VkSampler handle = VK_NULL_HANDLE;
 
         ~ImageSampler();
+    };
+
+    struct PushDescriptorImage
+    {
+        AllocatedImage image;
+        
+        ImageSampler sampler;
+
+        VkDescriptorType m_descriptorType;
+        uint32_t m_descriptorBinding;
+        VkImageLayout m_layout;
+
+        VkWriteDescriptorSet descriptorWrite{};
+        VkDescriptorImageInfo descriptorInfo{};
+
+        inline PushDescriptorImage(VkDescriptorType type, uint32_t binding, VkImageLayout layout) 
+            :m_descriptorType{type}, m_descriptorBinding{binding}, m_layout{layout}
+        {}
+
+        uint8_t SamplerInit(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
+            VkSamplerAddressMode addressMode, void* pNextChain);
+    };
+
+    struct Swapchain
+    {
+        VkSwapchainKHR swapchainHandle;
+
+        VkExtent2D swapchainExtent;
+
+        VkFormat swapchainFormat;
+
+        BlitCL::DynamicArray<VkImage> swapchainImages;
+
+        BlitCL::DynamicArray<VkImageView> swapchainImageViews;
+
+        ~Swapchain();
     };
 
     // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once

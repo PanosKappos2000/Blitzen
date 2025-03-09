@@ -126,12 +126,25 @@ namespace BlitzenVulkan
     */
     private:
 
-        // Data for the rendering attachments
-        AllocatedImage m_colorAttachment;
-        AllocatedImage m_depthAttachment;
+        // Size of color attachments (right now it's always the same size as the swapchain)
         VkExtent2D m_drawExtent;
-        ImageSampler m_colorAttachmentSampler;
 
+        // Color attachment. Its sampler will be used to copy it into the swapchain
+        PushDescriptorImage m_colorAttachment
+        {
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            1, // binding ID
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+
+        // Depth attachment. Its sampler will be passed to the depth pyramid generation shader, binding 1
+        PushDescriptorImage m_depthAttachment
+        {
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            1, // bidning ID
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        };
+        
         // The depth pyramid is generated for occlusion culling based on the depth buffer of an initial render pass
         // It has a maximum fo 16 mip levels, but the actual count is based on the window width and height
         AllocatedImage m_depthPyramid;
@@ -139,7 +152,6 @@ namespace BlitzenVulkan
         uint8_t m_depthPyramidMipLevels = 0;
 
         VkExtent2D m_depthPyramidExtent;
-        ImageSampler m_depthAttachmentSampler;
 
         // Array of structs that represent the way textures will be pushed to the GPU
         TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
@@ -406,8 +418,9 @@ namespace BlitzenVulkan
 
     // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
     uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
-    VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, VkSampler& depthAttachmentSampler, 
-    VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator, uint8_t createSampler = 1);
+        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
+        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator
+    );
 
     // Allocates a buffer using VMA
     uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
@@ -424,11 +437,19 @@ namespace BlitzenVulkan
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
     // Creates and image with VMA and also create an image view for it
-    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
-    VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels = 1, VmaMemoryUsage memoryUsage =VMA_MEMORY_USAGE_GPU_ONLY);
+    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
+        uint8_t mipLevels = 1, VmaMemoryUsage memoryUsage =VMA_MEMORY_USAGE_GPU_ONLY);
 
-    // Creates an image view. Called automatically by CreateImage but can also be used seperately for something like the depth pyramid
-    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
+    // Calls CreateImage, but also create a VkWriteDescriptorSets struct for the PushDescriptorImage
+    uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image, 
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, 
+        VmaMemoryUsage memoryUsage
+    );
+
+    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, 
+        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels
+    );
 
     // Allocate an image resource to be used specifically as texture. 
     // The 1st parameter should be the loaded image data that should be passed to the image resource
