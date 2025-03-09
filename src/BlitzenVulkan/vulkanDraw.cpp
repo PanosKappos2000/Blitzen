@@ -81,7 +81,7 @@ namespace BlitzenVulkan
         BeginCommandBuffer(fTools.commandBuffer, 0);
 
         // The viewport and scissor are dynamic, so they should be set here
-        DefineViewportAndScissor(fTools.commandBuffer, m_drawExtent);
+        DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.swapchainExtent);
 
         // Color attachment working layout depends on if there are any render objects
         VkImageLayout colorAttachmentWorkingLayout = context.pResources->renderObjectCount ? 
@@ -237,42 +237,57 @@ namespace BlitzenVulkan
             -The commands are submitted
             -The swapchain image is presented
         */
+
+        // Image barriers to transition the layout of the color attachment and the swapchain image
         VkImageMemoryBarrier2 colorAttachmentTransferBarriers[2] = {};
         ImageMemoryBarrier(m_colorAttachment.image, colorAttachmentTransferBarriers[0], 
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 
-            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
-            VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
-            colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-            VK_IMAGE_ASPECT_COLOR_BIT, 
-            0, VK_REMAINING_MIP_LEVELS
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
+            colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
         );
         ImageMemoryBarrier(m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], 
             colorAttachmentTransferBarriers[1], 
-            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
-            VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
-            VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 
             0, VK_REMAINING_MIP_LEVELS
         );
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
 
-        CopyImageToImage(fTools.commandBuffer, m_colorAttachment.image, 
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-            m_swapchainValues.swapchainImages[size_t(swapchainIdx)], // swapchain image
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-            m_drawExtent, m_swapchainValues.swapchainExtent, 
-            {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, // src subresource layer
-            {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, // dst subresource layer
-            VK_FILTER_LINEAR
+        // Call the copy compute shader. TODO: Clearn this up: Put the writes in a dedicated push descriptor struct
+        VkWriteDescriptorSet colorAttachmentSamplerWrite{};
+        VkDescriptorImageInfo colorAttachmentDescriptorInfo{};
+        WriteImageDescriptorSets(colorAttachmentSamplerWrite, colorAttachmentDescriptorInfo, 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+            m_colorAttachment.imageView, m_colorAttachmentSampler.handle
         );
+        VkWriteDescriptorSet swapchainImageWrite{};
+        VkDescriptorImageInfo swapchainImageDescriptorInfo{};
+        WriteImageDescriptorSets(swapchainImageWrite, swapchainImageDescriptorInfo, 
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, 
+            m_swapchainValues.swapchainImageViews[swapchainIdx]
+        );
+        VkWriteDescriptorSet colorAttachmentCopyWrite[2] = {colorAttachmentSamplerWrite, swapchainImageWrite};
+        PushDescriptors(m_instance, fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, 
+            m_generatePresentationLayout.handle, 0, 2, colorAttachmentCopyWrite
+        );
+        BlitML::vec2 presentImageExtentPcVal{
+            static_cast<float>(m_drawExtent.width), 
+            static_cast<float>(m_drawExtent.height)
+        };
+        vkCmdPushConstants(fTools.commandBuffer, m_generatePresentationLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 
+            0, sizeof(BlitML::vec2), &presentImageExtentPcVal);
+        vkCmdBindPipeline(fTools.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_generatePresentationPipeline.handle);
+        vkCmdDispatch(fTools.commandBuffer, m_drawExtent.width / 8 + 1, m_drawExtent.height / 8 + 1, 1);
 
         // Create a barrier for the swapchain image to transition to present optimal
         VkImageMemoryBarrier2 presentImageBarrier{};
         ImageMemoryBarrier(m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], 
             presentImageBarrier, 
-            VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 
-            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, 
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout transition
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
+            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout transition
             VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
         );
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
@@ -484,9 +499,9 @@ namespace BlitzenVulkan
         }
         // Pushes the descriptors that use the push descriptor extension
         PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            layout, 
-            ce_pushDescriptorSetID,  
-            ce_bRaytracing ? descriptorWriteCount : descriptorWriteCount - 1, // Raytracing mode needs to bind the tlas buffer
+            layout, ce_pushDescriptorSetID,  
+            m_stats.bRayTracingSupported ? descriptorWriteCount // Raytracing mode needs to bind the tlas buffer
+            : descriptorWriteCount - 1, // tlas buffer not needed otherwise
             pDescriptorWrites
         );
         // Descriptor set for bindless textures
@@ -724,27 +739,40 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight)
     {
-        // Create a new swapchain by passing an empty swapchain handle to the new swapchain argument and the old swapchain to oldSwapchain
+        vkDeviceWaitIdle(m_device);
+
+        // Creates new swapchain, after saving the old handle to destroy it
         VkSwapchainKHR oldSwapchain = m_swapchainValues.swapchainHandle;
         CreateSwapchain(m_device, m_surface.handle, m_physicalDevice,  windowWidth, windowHeight, m_graphicsQueue, 
         m_presentQueue, m_computeQueue, m_pCustomAllocator, m_swapchainValues, oldSwapchain);
 
-        // The draw extent should also be updated depending on if the swapchain got bigger or smaller
-        //m_drawExtent.width = std::min(windowWidth, m_drawExtent.width);
-        //m_drawExtent.height = std::min(windowHeight, m_drawExtent.height);
-
-        // Wait for the GPU to be done with the swapchain and destroy the swapchain and depth pyramid
-        vkDeviceWaitIdle(m_device);
-
+        // Destroys old swapchain
         vkDestroySwapchainKHR(m_device, oldSwapchain, nullptr);
 
+        // Destroys old depth pyramid views
         m_depthPyramid.CleanupResources(m_allocator, m_device);
         for(uint8_t i = 0; i < m_depthPyramidMipLevels; ++i)
         {
             vkDestroyImageView(m_device, m_depthPyramidMips[size_t(i)], m_pCustomAllocator);
         }
 
-        // ReCreate the depth pyramid after the old one has been destroyed
+        // Destroy old attachments
+        m_colorAttachment.CleanupResources(m_allocator, m_device);
+        m_depthAttachment.CleanupResources(m_allocator, m_device);
+
+        // Recreates the attachments
+        m_drawExtent.width = windowWidth;
+        m_drawExtent.height = windowHeight;
+        CreateImage(m_device, m_allocator, m_colorAttachment, 
+            {m_drawExtent.width, m_drawExtent.height, 1}, 
+            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage
+        );
+        CreateImage(m_device, m_allocator, m_depthAttachment, 
+            {m_drawExtent.width, m_drawExtent.height, 1}, 
+            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage
+        );
+
+        // Recreates the depth pyramid after the old one has been destroyed
         CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
         m_depthPyramidMips, m_depthPyramidMipLevels, m_depthAttachmentSampler.handle, 
         m_drawExtent, m_device, m_allocator, 0);

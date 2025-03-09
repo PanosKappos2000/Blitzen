@@ -106,11 +106,12 @@ namespace BlitCL
         inline T& Back() { BLIT_ASSERT(m_size) return m_pBlock[m_size - 1]; }
         inline T* Data() {return m_pBlock; }
 
-        void Fill(const T& val)
+        // Copies the given value to every element in the dynamic array
+        void Fill(T&& val)
         {
             if(m_size > 0)
                 for(size_t i = 0; i < m_size; ++i)
-                    Memcpy(&m_pBlock[i], &val, sizeof(T));
+                    BlitzenCore::BlitMemCopy(&m_pBlock[i], &val, sizeof(T));
         }
 
         // TODO: I should have this be for both resize and downsize, I do not know what I was thinking

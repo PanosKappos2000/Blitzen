@@ -77,6 +77,17 @@ namespace BlitzenVulkan
         constexpr uint8_t ce_bMeshShaders = 0; 
     #endif
 
+    constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+    constexpr VkImageUsageFlags ce_colorAttachmentImageUsage = 
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
+        VK_IMAGE_USAGE_SAMPLED_BIT | // For generate present compute shader
+        VK_IMAGE_USAGE_STORAGE_BIT; // For basic background compute shader
+
+    constexpr VkFormat ce_depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+    constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = 
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
+        VK_IMAGE_USAGE_SAMPLED_BIT; // For generate debug pyramid compute shader
+
 
 
 

@@ -112,9 +112,7 @@ namespace BlitzenVulkan
         // Creates Rendering attachment image resource for color attachment
         if(!CreateImage(m_device, m_allocator, m_colorAttachment, 
             {m_drawExtent.width, m_drawExtent.height, 1}, // extent
-            VK_FORMAT_R16G16B16A16_SFLOAT, 
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | // usage flags
-            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT // usage flags part 2
+            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage 
         ))
         {
             BLIT_ERROR("Failed to create color attachment image resource")
@@ -134,8 +132,7 @@ namespace BlitzenVulkan
         // Creates rendering attachment image resource for depth attachment
         if(!CreateImage(m_device, m_allocator, m_depthAttachment, 
             {m_drawExtent.width, m_drawExtent.height, 1}, 
-            VK_FORMAT_D32_SFLOAT, 
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
+            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage
         ))
         {
             BLIT_ERROR("Failed to create depth attachment image resource")
@@ -1002,8 +999,7 @@ namespace BlitzenVulkan
             // Indirect task buffer
             if(indirectTaskBufferSize == 0)
                 return 0;
-            if(!SetupPushDescriptorBuffer(
-                m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
+            if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
                 m_currentStaticBuffers.indirectTaskBuffer, indirectTaskBufferSize, 
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
             ))
@@ -1016,8 +1012,7 @@ namespace BlitzenVulkan
             // Meshlets / Clusters
             if(meshletBufferSize == 0)
                 return 0;
-            if(!SetupPushDescriptorBuffer(
-                m_device, m_allocator, 
+            if(!SetupPushDescriptorBuffer(m_device, m_allocator, 
                 m_currentStaticBuffers.meshletBuffer, meshletStagingBuffer, 
                 meshletBufferSize, 
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
@@ -1028,8 +1023,7 @@ namespace BlitzenVulkan
             // Cluster indices
             if(meshletDataBufferSize == 0)
                 return 0;
-            if(!SetupPushDescriptorBuffer(
-                m_device, m_allocator, 
+            if(!SetupPushDescriptorBuffer(m_device, m_allocator, 
                 m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer, 
                 meshletDataBufferSize, 
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
@@ -1039,8 +1033,7 @@ namespace BlitzenVulkan
         }
 
         // Indirect count buffer
-        if(!SetupPushDescriptorBuffer(
-            m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
+        if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
             m_currentStaticBuffers.indirectCountBuffer, 
             sizeof(uint32_t), // holds a single integer, manipulated by culling shaders
             VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | // draw command treats it as indirect buffer
@@ -1053,8 +1046,7 @@ namespace BlitzenVulkan
         VkDeviceSize visibilityBufferSize = sizeof(uint32_t) * renderObjectCount;
         if(visibilityBufferSize == 0)
             return 0;
-        if(!SetupPushDescriptorBuffer(
-            m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
+        if(!SetupPushDescriptorBuffer(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY, 
             m_currentStaticBuffers.visibilityBuffer, visibilityBufferSize, 
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         ))
@@ -1069,8 +1061,7 @@ namespace BlitzenVulkan
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         // Vertex data copy
-        CopyBufferToBuffer(
-            commandBuffer, 
+        CopyBufferToBuffer(commandBuffer, 
             stagingVertexBuffer.bufferHandle, // Temporary staging buffer
             m_currentStaticBuffers.vertexBuffer.buffer.bufferHandle, // GPU only buffer
             vertexBufferSize, 
@@ -1078,8 +1069,7 @@ namespace BlitzenVulkan
         );
 
         // Index data copy
-        CopyBufferToBuffer(
-            commandBuffer, 
+        CopyBufferToBuffer(commandBuffer, 
             stagingIndexBuffer.bufferHandle, // temporary staging buffer
             m_currentStaticBuffers.indexBuffer.bufferHandle, // GPU only buffer
             indexBufferSize, 
@@ -1087,8 +1077,7 @@ namespace BlitzenVulkan
         );
 
         // Render objects
-        CopyBufferToBuffer(
-            commandBuffer, 
+        CopyBufferToBuffer(commandBuffer, 
             renderObjectStagingBuffer.bufferHandle, // temporary staging buffer
             m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle, // GPU only buffer
             renderObjectBufferSize, 
@@ -1097,8 +1086,7 @@ namespace BlitzenVulkan
 
         // Render objects that use Oblique Near-Plane Clipping
         if(onpcRenderObjectBufferSize != 0)
-            CopyBufferToBuffer(
-                commandBuffer, 
+            CopyBufferToBuffer(commandBuffer, 
                 onpcRenderObjectStagingBuffer.bufferHandle, // temporary staging buffer
                 m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.buffer.bufferHandle, // GPU only buffer
                 onpcRenderObjectBufferSize, 
@@ -1106,8 +1094,7 @@ namespace BlitzenVulkan
             );
 
         // Primitive surfaces
-        CopyBufferToBuffer(
-            commandBuffer, 
+        CopyBufferToBuffer(commandBuffer, 
             surfaceStagingBuffer.bufferHandle, // temporary staging buffer
             m_currentStaticBuffers.surfaceBuffer.buffer.bufferHandle, // GPU only buffer
             surfaceBufferSize, 
@@ -1115,8 +1102,7 @@ namespace BlitzenVulkan
         );
 
         // Transforms
-        CopyBufferToBuffer(
-            commandBuffer, 
+        CopyBufferToBuffer(commandBuffer, 
             transformStagingBuffer.bufferHandle, // temporary staging buffer
             m_currentStaticBuffers.transformBuffer.buffer.bufferHandle, // GPU only buffer
             transformBufferSize, 
@@ -1124,8 +1110,7 @@ namespace BlitzenVulkan
         );
 
         // Materials
-        CopyBufferToBuffer(
-            commandBuffer, 
+        CopyBufferToBuffer(commandBuffer, 
             materialStagingBuffer.bufferHandle, // temporary staging buffer
             m_currentStaticBuffers.materialBuffer.buffer.bufferHandle, // GPU only buffer
             materialBufferSize, 
@@ -1145,9 +1130,7 @@ namespace BlitzenVulkan
         }
 
         // Visibility buffer will start with only zeroes. The first frame will do noting, but that should be fine
-        vkCmdFillBuffer(
-            commandBuffer, 
-            m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, 
+        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle, 
             0, visibilityBufferSize, 0
         );
         

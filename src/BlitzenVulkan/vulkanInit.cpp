@@ -394,12 +394,23 @@ namespace BlitzenVulkan
 
         // Check that all the required features are supported by the device
         if(!features.multiDrawIndirect || !features.samplerAnisotropy ||
-        !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
-        !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray ||  
-        !features12.storageBuffer8BitAccess || !features12.shaderFloat16 || !features12.drawIndirectCount ||
-        !features12.samplerFilterMinmax || !features12.shaderInt8 || !features12.shaderSampledImageArrayNonUniformIndexing ||
-        !features12.uniformAndStorageBuffer8BitAccess || !features12.storagePushConstant8 ||
-        !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
+            // Vulkan 1.1 features
+            !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
+            // Vulkan 1.2 features
+            !features12.bufferDeviceAddress || 
+            !features12.descriptorIndexing || 
+            !features12.runtimeDescriptorArray ||  
+            !features12.storageBuffer8BitAccess || 
+            !features12.shaderFloat16 || 
+            !features12.drawIndirectCount ||
+            !features12.samplerFilterMinmax || 
+            !features12.shaderInt8 || 
+            !features12.shaderSampledImageArrayNonUniformIndexing ||
+            !features12.uniformAndStorageBuffer8BitAccess || 
+            !features12.storagePushConstant8 ||
+            // Vulkan 1.3 features
+            !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4
+        )
             return 0;
         
         // Looks for the requested extensions. Fails if the required ones are not found
@@ -469,38 +480,48 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
         vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
 
-        // Store the names of all possible extensions to be used
-        const char* possibleRequestedExtensions[ce_maxRequestedDeviceExtensions] = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, 
-            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, VK_KHR_RAY_QUERY_EXTENSION_NAME, 
-            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_EXT_MESH_SHADER_EXTENSION_NAME
+        struct ExtensionQueryHelper
+        {
+            const char* extensionName;
+            uint8_t bSupportRequested;
+            uint8_t bSupportRequired;
+            uint8_t bSupportFound;
+
+            inline ExtensionQueryHelper(const char* name, uint8_t bRequested, uint8_t bRequired)
+                :extensionName{name}, bSupportRequested{bRequested}, 
+                bSupportRequired{bRequired}, bSupportFound{0}
+            {}
+
         };
-        // Stores a boolean for each extension, telling the application if they were requested, if they are required and if they were found
-        uint8_t extensionsSupportRequested[ce_maxRequestedDeviceExtensions] = {1, 1, 
-        ce_bRaytracing, ce_bRaytracing, ce_bRaytracing, ce_bMeshShaders
+        ExtensionQueryHelper extensionsData [ce_maxRequestedDeviceExtensions]
+        {
+            { VK_KHR_SWAPCHAIN_EXTENSION_NAME, /*requested*/1, /*required*/1 },
+            { VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, /*requested*/1, /*required*/1 },
+            { VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
+            { VK_KHR_RAY_QUERY_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
+            { VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
+            { VK_EXT_MESH_SHADER_EXTENSION_NAME, /*requested*/ce_bMeshShaders, /*required*/0 }
         };
-        uint8_t extensionSupportRequired[ce_maxRequestedDeviceExtensions] = {1, 1, 0, 0, 0, 0};
-        uint8_t extensionSupportFound[ce_maxRequestedDeviceExtensions] = {0, 0, 0, 0, 0, 0};
 
         // Check for the required extension name with strcmp
-        for(size_t i = 0; i < ce_maxRequestedDeviceExtensions; ++i)
+        for(auto& data : extensionsData)
         {
             // If the extensions was never requested, it does not bother checking for it
-            if(!extensionsSupportRequested[i])
+            if(!data.bSupportRequested)
                 continue;
 
             for(auto& extension : dvExtensionsProps)
             {
-                if(!strcmp(extension.extensionName, possibleRequestedExtensions[i]))
+                if(!strcmp(extension.extensionName, data.extensionName))
                 {
-                    extensionSupportFound[i] = 1;
-                    stats.deviceExtensionNames[stats.deviceExtensionCount++] = possibleRequestedExtensions[i];
+                    data.bSupportFound = 1;
+                    stats.deviceExtensionNames[stats.deviceExtensionCount++] = data.extensionName;
                 }  
             }
 
-            if(!extensionSupportFound[i] && extensionSupportRequired[i])
+            if(!data.bSupportFound && data.bSupportRequired)
             {
-                BLIT_ERROR("Device extension with name: %s, not supported", possibleRequestedExtensions[i])
+                BLIT_ERROR("Device extension with name: %s, not supported", data.extensionName)
                 return 0;
             }
         }
@@ -518,7 +539,7 @@ namespace BlitzenVulkan
             vkGetPhysicalDeviceFeatures2(pdv, &features2);
             
             // Mesh shaders are supported if both the feature and the extensions are found
-            stats.meshShaderSupport = extensionSupportFound[5] 
+            stats.meshShaderSupport = extensionsData[5].extensionName 
             && meshFeatures.meshShader && meshFeatures.taskShader;
 
             if (stats.meshShaderSupport)
@@ -544,7 +565,9 @@ namespace BlitzenVulkan
             vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
             stats.bRayTracingSupported = 
-            extensionSupportFound[2] && extensionSupportFound[3] && extensionSupportFound[4] &&
+            extensionsData[2].extensionName && 
+            extensionsData[3].extensionName && 
+            extensionsData[4].extensionName &&
             rayQuery.rayQuery && ASfeats.accelerationStructure;
 
             if(stats.bRayTracingSupported)
@@ -756,7 +779,7 @@ namespace BlitzenVulkan
         swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapchainInfo.surface = surface;
         // The color attachment will transfer its contents to the swapchain image when rendering is done
-        swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
         // Used when the swapchain is recreated
         swapchainInfo.oldSwapchain = oldSwapchain;
 
@@ -810,6 +833,25 @@ namespace BlitzenVulkan
         newSwapchain.swapchainHandle, &swapchainImageCount, newSwapchain.swapchainImages.Data());
         if(imageResult != VK_SUCCESS)
             return 0;
+
+        // Creates image views for the swapchain
+        if(newSwapchain.swapchainImageViews.GetSize() == 0)
+        {
+            newSwapchain.swapchainImageViews.Resize(newSwapchain.swapchainImages.GetSize());
+            newSwapchain.swapchainImageViews.Fill(std::move(VK_NULL_HANDLE));
+        }
+        for(size_t i = 0; i < newSwapchain.swapchainImages.GetSize(); ++i)
+        {
+            auto& view = newSwapchain.swapchainImageViews[i];
+            if(view != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(device, view, nullptr);
+            }
+            if(!CreateImageView(device, view, newSwapchain.swapchainImages[i], 
+                newSwapchain.swapchainFormat, 0, 1
+            ))
+                return 0;
+        }
         
         // If the swapchain has been created and the images have been acquired, swapchain creation is succesful
         return 1;

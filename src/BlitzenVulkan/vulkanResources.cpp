@@ -629,6 +629,10 @@ namespace BlitzenVulkan
         if(swapchainHandle != VK_NULL_HANDLE)
         {
             VkDevice vdv = VulkanRenderer::GetRendererInstance()->m_device;
+
+            for(auto view : swapchainImageViews)
+                vkDestroyImageView(vdv, view, nullptr);
+
             vkDestroySwapchainKHR(vdv, swapchainHandle, nullptr);
         }
     }
