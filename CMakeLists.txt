@@ -149,7 +149,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Vulkan specific preprocessor macros
                             BLITZEN_VULKAN # Never undef this, it's broken because of VulkanMemoryCrucials
                             BLIT_VK_VALIDATION_LAYERS
-                            #BLIT_VK_RAYTRACING
+                            BLIT_VK_RAYTRACING
 
                             # Opengl preprocessor marcors
                             #BLIT_GL_LEGACY_OVERRIDE

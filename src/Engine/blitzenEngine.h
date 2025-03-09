@@ -18,7 +18,7 @@ namespace BlitzenEngine
     constexpr float ce_initialCameraZ = 0.f;
     constexpr float ce_znear = 0.1f;
     constexpr float ce_initialFOV = 70.f;
-    constexpr float ce_initialDrawDistance = 600.f;
+    constexpr float ce_initialDrawDistance = 650.f;
 
     constexpr const char* ce_blitzenVersion = "Blitzen Engine 0";
     constexpr uint32_t ce_blitzenMajor = 0;

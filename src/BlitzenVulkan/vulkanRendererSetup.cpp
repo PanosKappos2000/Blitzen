@@ -363,11 +363,13 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
         VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
         VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator
     )
     {
+		const VkFormat depthPyramidFormat = VK_FORMAT_R32_SFLOAT;
+
         // This will fail if mip levels do not start from 0
         depthPyramidMipLevels = 0;
     
@@ -386,18 +388,18 @@ namespace BlitzenVulkan
         }
     
         // Create the depth pyramid image which will be used as storage image and to then transfer its data for occlusion culling
-        if(!CreateImage(device, allocator, depthPyramidImage, 
+        if(!CreatePushDescriptorImage(device, allocator, depthPyramidImage, 
             {depthPyramidExtent.width, depthPyramidExtent.height, 1}, 
-            VK_FORMAT_R32_SFLOAT, 
+            depthPyramidFormat,
             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
-            depthPyramidMipLevels
+            depthPyramidMipLevels, VMA_MEMORY_USAGE_GPU_ONLY
         ))
             return 0;
     
         for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
         {
-            if(!CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image, 
-                VK_FORMAT_R32_SFLOAT, i, 1
+            if(!CreateImageView(device, depthPyramidMips[size_t(i)], 
+                depthPyramidImage.image.image, depthPyramidFormat, i, 1
             ))
                 return 0;
         }
@@ -657,9 +659,9 @@ namespace BlitzenVulkan
         VkDescriptorSetLayoutBinding inImageLayoutBinding{};
         CreateDescriptorSetLayoutBinding(
             inImageLayoutBinding, 
-            0, // binding ID
-            1, // descriptor count
-            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 
+            m_depthPyramid.m_descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_depthPyramid.m_descriptorType, 
             VK_SHADER_STAGE_COMPUTE_BIT
         );
 
@@ -674,9 +676,14 @@ namespace BlitzenVulkan
         );
 
         // Combine the bindings for the final descriptor layout
-        VkDescriptorSetLayoutBinding storageImageBindings[2] = {inImageLayoutBinding, outImageLayoutBinding};
-        m_depthPyramidDescriptorLayout.handle = CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
-        VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        VkDescriptorSetLayoutBinding storageImageBindings[2] = 
+        {
+            inImageLayoutBinding, outImageLayoutBinding
+        };
+        m_depthPyramidDescriptorLayout.handle = CreateDescriptorSetLayout(
+            m_device, 2, storageImageBindings, 
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
+        );
         if(m_depthPyramidDescriptorLayout.handle == VK_NULL_HANDLE)
             return 0;
 
@@ -716,8 +723,10 @@ namespace BlitzenVulkan
             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT
         );
         VkDescriptorSetLayoutBinding colorAttachmentSamplerLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(colorAttachmentSamplerLayoutBinding, 1, 1, 
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT
+        CreateDescriptorSetLayoutBinding(colorAttachmentSamplerLayoutBinding, 
+            m_colorAttachment.m_descriptorBinding, 
+            descriptorCountOfEachPushDescriptorLayoutBinding, 
+            m_colorAttachment.m_descriptorType, VK_SHADER_STAGE_COMPUTE_BIT
         );
         VkDescriptorSetLayoutBinding generatePresentationSetLayoutBindings[2] = 
         {

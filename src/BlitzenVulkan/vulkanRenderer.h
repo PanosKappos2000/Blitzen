@@ -145,9 +145,13 @@ namespace BlitzenVulkan
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         
-        // The depth pyramid is generated for occlusion culling based on the depth buffer of an initial render pass
-        // It has a maximum fo 16 mip levels, but the actual count is based on the window width and height
-        AllocatedImage m_depthPyramid;
+		// The depth pyramid will copy data from the depth attachment to create a pyramid for occlusion culling
+        PushDescriptorImage m_depthPyramid
+		{
+			VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+			0, // binding ID
+			VK_IMAGE_LAYOUT_GENERAL
+		};
         VkImageView m_depthPyramidMips[16];
         uint8_t m_depthPyramidMipLevels = 0;
 
@@ -413,11 +417,13 @@ namespace BlitzenVulkan
     ------------------------- */
 
     // Create a allocator from the VMA library
-    uint8_t CreateVmaAllocator(VkDevice device, VkInstance instance, VkPhysicalDevice physicalDevice, VmaAllocator& allocator, 
-    VmaAllocatorCreateFlags flags);
+    uint8_t CreateVmaAllocator(VkDevice device, VkInstance instance, 
+        VkPhysicalDevice physicalDevice, VmaAllocator& allocator, 
+        VmaAllocatorCreateFlags flags
+    );
 
     // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
-    uint8_t CreateDepthPyramid(AllocatedImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
         VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
         VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator
     );
