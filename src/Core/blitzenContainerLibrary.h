@@ -416,6 +416,8 @@ namespace BlitCL
             m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(pDataToCopy);
         }
 
+		SmartPointer() : m_pData(nullptr) {}
+
         SmartPointer(const T& data)
         {
             m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(data);
@@ -427,12 +429,16 @@ namespace BlitCL
         }
 
         template<typename... P>
-        SmartPointer(const P&... params)
+        void Make(const P&... params)
         {
+            BLIT_ASSERT(!m_pData);
             m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
         }
 
         SmartPointer<T> operator = (SmartPointer<T>& s) = delete;
+        SmartPointer<T> operator = (SmartPointer<T> s) = delete;
+		SmartPointer(const SmartPointer<T>& s) = delete;
+        SmartPointer(SmartPointer<T>& s) = delete;
 
         inline T* Data() { return m_pData; }
 

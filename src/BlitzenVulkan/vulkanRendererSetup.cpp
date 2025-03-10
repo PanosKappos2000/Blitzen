@@ -274,6 +274,7 @@ namespace BlitzenVulkan
         pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite; 
         pushDescriptorWritesCompute[7] = {};
 
+        // This is obsolete but I am not in the mood to fix it
         m_pushDescriptorWritesOnpcGraphics[0] = {};
         m_pushDescriptorWritesOnpcGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
         m_pushDescriptorWritesOnpcGraphics[2] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
@@ -281,6 +282,7 @@ namespace BlitzenVulkan
         m_pushDescriptorWritesOnpcGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite; 
         m_pushDescriptorWritesOnpcGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         m_pushDescriptorWritesOnpcGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+		m_pushDescriptorWritesOnpcGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
         m_pushDescriptorWritesOnpcCompute[0] = {};// This will be where the global shader data write will be, but this one is not always static
         m_pushDescriptorWritesOnpcCompute[1] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite; 

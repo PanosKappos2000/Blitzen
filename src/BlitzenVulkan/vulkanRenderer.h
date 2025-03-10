@@ -254,7 +254,7 @@ namespace BlitzenVulkan
 
         BlitCL::StaticArray<VkWriteDescriptorSet, 8> pushDescriptorWritesGraphics;
         VkWriteDescriptorSet pushDescriptorWritesCompute[8];
-        VkWriteDescriptorSet m_pushDescriptorWritesOnpcGraphics[7];
+		BlitCL::StaticArray<VkWriteDescriptorSet, 8> m_pushDescriptorWritesOnpcGraphics;
         VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[8];
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip

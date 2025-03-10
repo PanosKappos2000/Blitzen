@@ -219,8 +219,8 @@ namespace BlitzenVulkan
                     0, 0 // late culling and post pass boolean values
                 );
 
-                DrawGeometry(fTools.commandBuffer, 
-                    m_pushDescriptorWritesOnpcGraphics, BLIT_ARRAY_SIZE(m_pushDescriptorWritesOnpcGraphics),
+                DrawGeometry(fTools.commandBuffer, m_pushDescriptorWritesOnpcGraphics.Data(), 
+                    uint32_t(m_pushDescriptorWritesOnpcGraphics.Size()),
                     m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle,
                     context.pResources->onpcReflectiveRenderObjectCount,
                     1, // late pass boolean

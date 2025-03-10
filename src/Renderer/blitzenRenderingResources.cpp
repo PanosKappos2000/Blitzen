@@ -466,19 +466,10 @@ namespace BlitzenEngine
 
         const uint32_t nonReflectiveDrawCount = 1000;
         const uint32_t start = pResources->renderObjectCount;
-        pResources->renderObjectCount += nonReflectiveDrawCount;
-        pResources->transforms.Resize(pResources->transforms.GetSize() + nonReflectiveDrawCount);
-
-        for (size_t i = start; i < pResources->renderObjectCount; ++i)
+        
+        for (size_t i = start; i < start + nonReflectiveDrawCount; ++i)
         {
-            BlitzenEngine::MeshTransform& tr = pResources->transforms[i];
-
-            RandomizeTransform(tr, 100, 1.f);
-
-            RenderObject& currentObject = pResources->renders[i];
-
-            currentObject.surfaceId = pResources->meshes[1].firstSurface;
-            currentObject.transformId = static_cast<uint32_t>(i);
+            CreateRenderObjectWithRandomTransform(1, pResources, 100.f, 1.f);
         }
     }
 

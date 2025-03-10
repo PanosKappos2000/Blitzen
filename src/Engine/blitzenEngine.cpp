@@ -48,7 +48,9 @@ int main(int argc, char* argv[])
 
     // Event handling
     EventSystem eventSystemState;
+	eventSystemState.Make();
     InputSystem inputSystemState;
+    inputSystemState.Make();
 
     // Platform specific code. Mostly window creation. Lightweight, no allocations, but needs to wait for event systems
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion))
@@ -59,6 +61,7 @@ int main(int argc, char* argv[])
     // Initial renderer setup (API initialization, see blitRenderer.h for API selection)
     uint8_t bRenderingSystem = 0;
     BlitzenEngine::Renderer renderer;
+    renderer.Make();
     if(renderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight))
         bRenderingSystem = 1;
     else
@@ -69,7 +72,12 @@ int main(int argc, char* argv[])
         
     // Allocates the rendering resources
     RenderingResources renderingResources;
+	renderingResources.Make();
     LoadRenderingResourceSystem(renderingResources.Data(), renderer.Data());
+
+    // Game object manager, holds all client objects with game logic
+    BlitzenEngine::GameObjectManager gameObjectManager;
+	gameObjectManager.AddObject<BlitzenEngine::GameObject>("undefined", 1);
 
     // Main camera
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
@@ -125,6 +133,8 @@ int main(int argc, char* argv[])
             previousTime = clockElapsedTime;
 
             UpdateCamera(mainCamera, static_cast<float>(engine.GetDeltaTime()));
+
+			gameObjectManager.UpdateDynamicObjects();
 
             if(bRenderingSystem)
             {
