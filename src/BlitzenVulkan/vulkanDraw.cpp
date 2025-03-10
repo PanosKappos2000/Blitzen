@@ -35,7 +35,8 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-        BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
+        BlitzenEngine::Camera* pCamera = context.pCamera;
+
         if(pCamera->transformData.windowResize)
             RecreateSwapchain(
                 uint32_t(pCamera->transformData.windowWidth), 

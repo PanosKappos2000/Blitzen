@@ -75,10 +75,6 @@ int main(int argc, char* argv[])
 	renderingResources.Make();
     LoadRenderingResourceSystem(renderingResources.Data(), renderer.Data());
 
-    // Game object manager, holds all client objects with game logic
-    BlitzenEngine::GameObjectManager gameObjectManager;
-	gameObjectManager.AddObject<BlitzenEngine::GameObject>("undefined", 1);
-
     // Main camera
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
     SetupCamera(mainCamera, 
@@ -96,6 +92,20 @@ int main(int argc, char* argv[])
     // Uses the command line arguments to load resources for the renderer
     uint8_t bOnpc = 0;
     BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), bOnpc);
+
+    // Game object manager, holds all client objects with game logic
+    BlitzenEngine::GameObjectManager gameObjectManager;
+    // Testing
+    gameObjectManager.AddObject<BlitzenEngine::ClientTest>
+    (
+        renderingResources.Data(),
+        BlitzenEngine::MeshTransform
+        {
+            BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ),
+            20.f,
+            BlitML::quat(0.f, 0.f, 0.f, 1.f) },
+            "undefined", 1
+    );
 
     // Rendering setup with the loaded resources. Checks if it fails first
     if(!bRenderingSystem || // Checks if API initialization was succesful

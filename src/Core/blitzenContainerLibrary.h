@@ -435,6 +435,13 @@ namespace BlitCL
             m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
         }
 
+        template<typename I, typename... P>
+        void MakeAs(const P&... params)
+        {
+            BLIT_ASSERT(!m_pData);
+            m_pData = BlitzenCore::BlitConstructAlloc<I>(alloc, params...);
+        }
+
         SmartPointer<T> operator = (SmartPointer<T>& s) = delete;
         SmartPointer<T> operator = (SmartPointer<T> s) = delete;
 		SmartPointer(const SmartPointer<T>& s) = delete;

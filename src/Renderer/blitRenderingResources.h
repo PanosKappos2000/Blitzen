@@ -1,8 +1,7 @@
 #pragma once
-#include "Core/blitLogger.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Core/blitzenContainerLibrary.h"
-#include "Game/blitObject.h" // I probably do not want to include this here
+#include "Game/blitCamera.h"
 #include <string>
 
 namespace BlitzenEngine
@@ -187,6 +186,37 @@ namespace BlitzenEngine
         // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives.
         Mesh meshes[ce_maxMeshCount];
         size_t meshCount = 0;
+
+		inline uint32_t AddRenderObjectsFromMesh(uint32_t meshId, 
+            const BlitzenEngine::MeshTransform& transform)
+		{
+            BlitzenEngine::Mesh& mesh = meshes[meshId];
+			if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
+			{
+				BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count")
+				return 0;
+			}
+
+            uint32_t transformId = static_cast<uint32_t>(transforms.GetSize());
+            transforms.PushBack(transform);
+
+			for (uint32_t i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
+			{
+                RenderObject& object = renders[renderObjectCount++];
+
+                object.surfaceId = i;
+                object.transformId = transformId;
+			}
+			
+			return transformId;
+		}
+
+        RenderingResources::RenderingResources();
+
+		inline static RenderingResources* GetRenderingResources() { return s_pResources; }
+
+    private:
+		static RenderingResources* s_pResources;
     };
 
     // Draw context needs to be given to draw frame function, so that it can update uniform values
@@ -194,7 +224,7 @@ namespace BlitzenEngine
     {
         // The camera holds crucial data for the shaders. 
         // The structs in the shader try to be aligned with the structs in the camera
-        void* pCamera;
+        BlitzenEngine::Camera* pCamera;
 
         RenderingResources* pResources;
 
@@ -205,8 +235,11 @@ namespace BlitzenEngine
         // Tells the renderer if it should do call Oblique near clipping shaders
         uint8_t bOnpc = 0;
 
-        inline DrawContext(void* pCam, RenderingResources* pr, uint8_t onpc = 0, uint8_t bOC = 1, uint8_t bLod = 1) 
-        : pCamera(pCam), pResources(pr), bOcclusionCulling{bOC}, bLOD{bLod}, bOnpc{onpc} {}
+        inline DrawContext(BlitzenEngine::Camera* pCam, 
+            RenderingResources* pr, 
+            uint8_t onpc = 0, uint8_t bOC = 1, uint8_t bLod = 1
+        ) : pCamera(pCam), pResources(pr), bOcclusionCulling{bOC}, bLOD{bLod}, bOnpc{onpc} 
+        {}
     };
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData);

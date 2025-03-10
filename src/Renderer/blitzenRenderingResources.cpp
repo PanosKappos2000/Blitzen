@@ -33,6 +33,8 @@
 
 namespace BlitzenEngine
 {
+	RenderingResources* RenderingResources::s_pResources = nullptr;
+
     // This will not be used outside of this translation unit, so it has not declaration
     static uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
     RendererPtrType pRenderer)
@@ -61,6 +63,11 @@ namespace BlitzenEngine
         return 0;
     }
 
+    RenderingResources::RenderingResources()
+    {
+		s_pResources = this;
+    }
+
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData)
     {
         auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
@@ -74,8 +81,10 @@ namespace BlitzenEngine
         return 1;
     }
 
-    void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
-    const char* specularMapName, const char* materialName)
+    void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, 
+        float shininess, const char* diffuseMapName, 
+        const char* specularMapName, const char* materialName
+    )
     {
         Material& current = pResources->materials[pResources->materialCount];
 
