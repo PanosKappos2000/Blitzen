@@ -187,10 +187,6 @@ namespace BlitzenEngine
         // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives.
         Mesh meshes[ce_maxMeshCount];
         size_t meshCount = 0;
-
-        // A game object, for now, is a simple entity that has a mesh and a transform
-        GameObject gameObjects[ce_maxRenderObjects];
-        uint32_t gameObjectCount = 0;
     };
 
     // Draw context needs to be given to draw frame function, so that it can update uniform values

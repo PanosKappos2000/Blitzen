@@ -1,18 +1,60 @@
 #pragma once
 
-#include "Core/blitLogger.h"
+#include "Core/blitzenContainerLibrary.h"
+#include "Engine/blitzenEngine.h"
 
 namespace BlitzenEngine
 {
-    // This game object can potentially allow a user of the engine to create a custom character 
-    // by selecting one of the loaded meshes and giving it an entry into the transform array of the renderer
-    struct GameObject
-    {
-        uint32_t meshIndex; // Index into the mesh array inside of the LoadedResources struct in BlitzenEngine
+    constexpr uint32_t ce_maxObjectCount = 5'000'000;
+    
 
-        // TODO: This could also be replaced with a reference to an instance of the struct, 
-        // but including the file will cause circular dependency at the moment
-        uint32_t transformIndex; // Index into the transform array in Engine resources,
-        // used to access orientation, position and scale. But to also change them when necessary
+    class GameObject
+    {
+    public:
+        inline GameObject(const char* meshName = "undefined", uint8_t bDynamic = 0) :
+            m_meshIndex{0/*pResources->meshMap.Get(meshName).transformIndex*/}, 
+            m_bDynamic{ bDynamic }, m_transformIndex{ 0 }
+        { }
+
+		inline uint8_t IsDynamic() const { return m_bDynamic; } 
+
+        uint32_t m_meshIndex; // Index into the mesh array inside of the LoadedResources struct in BlitzenEngine
+
+        uint32_t m_transformIndex;
+
+        virtual void Update();
+
+    private: 
+		uint8_t m_bDynamic; // If the object is dynamic, it will be updated every frame
+    };
+
+    struct GameObjectManager
+    {
+        BlitCL::StaticArray<GameObject, ce_maxObjectCount> m_gameObjects;
+        
+
+        BlitCL::DynamicArray<GameObject*> m_pDynamicObjects;
+
+        // Handles the addition of game objects to the scene
+        inline uint8_t AddObject(const char* meshName, uint8_t bDynamic = 0)
+        {
+			if (m_objectCount >= ce_maxObjectCount)
+			{
+				BLIT_ERROR("Maximum object count reached")
+				return 0;
+			}
+
+			m_gameObjects[m_objectCount] = GameObject(meshName, bDynamic);
+			if (bDynamic)
+			{
+                m_pDynamicObjects.PushBack(&m_gameObjects[m_objectCount]);
+			}
+			m_objectCount++;
+
+            return 1;
+        }
+
+    private:
+        uint32_t m_objectCount = 0; // Number of object added to m_gameObjects
     };
 }

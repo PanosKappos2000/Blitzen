@@ -375,7 +375,34 @@ namespace BlitzenEngine
         );
     }
 
-    // Creates the rendering stress test scene
+    static void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderingResources* pResources,
+        uint32_t randomTransformMultiplier)
+    {
+		if (pResources->renderObjectCount >= ce_maxRenderObjects)
+		{
+			BLIT_WARN("Max render object count reached")
+			return;
+		}
+
+		// Get the mesh used by the current game object
+		BlitzenEngine::Mesh& currentMesh = pResources->meshes[meshId];
+        if (currentMesh.surfaceCount > 1)
+		{
+			BLIT_WARN("Only meshes with one primitive are allowed")
+			return;
+		}
+
+        BlitzenEngine::MeshTransform transform;
+        RandomizeTransform(transform, randomTransformMultiplier, 0.1f);
+        pResources->transforms.PushBack(transform);
+
+		RenderObject& currentObject = pResources->renders[pResources->renderObjectCount++];
+        currentObject.surfaceId = pResources->meshes[meshId].firstSurface;
+        currentObject.transformId = static_cast<uint32_t>(pResources->transforms.GetSize() - 1);
+    }
+
+    // Creates the rendering stress test scene. 
+    // TODO: This function is unsafe, calling it after another function that create render object will cause issues
     static void LoadGeometryStressTest(RenderingResources* pResources, uint32_t dc)
     {
         // Don't load the stress test if ray tracing is on
@@ -394,75 +421,58 @@ namespace BlitzenEngine
         BLIT_WARN("If your machine cannot withstand this many objects, decrease the draw count or undef the stress test macro")
 
         // Increments the game object count and the transform count
-        pResources->gameObjectCount += drawCount;
-        pResources->transforms.Resize(pResources->transforms.GetSize() + drawCount);
+        pResources->renderObjectCount += drawCount;
+		pResources->transforms.Resize(pResources->transforms.GetSize() + drawCount);
 
         // Hardcode a large amount of male model mesh
-        for(size_t i = 0; i < pResources->gameObjectCount / 10; ++i)
+        for(size_t i = 0; i < pResources->renderObjectCount / 10; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 0.1f);
 
-            GameObject& currentObject = pResources->gameObjects[i];
+            RenderObject& currentObject = pResources->renders[i];
 
-            currentObject.meshIndex = 3;// Hardcode the bunny mesh for each object in this loop
-            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+            // Hardcodes the bunny mesh for these objects
+            currentObject.surfaceId = pResources->meshes[3].firstSurface;
+            currentObject.transformId = static_cast<uint32_t>(i);
         }
         // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
-        for (size_t i = pResources->gameObjectCount / 10; i < pResources->gameObjectCount / 8; ++i)
+        for (size_t i = pResources->renderObjectCount / 10; i < pResources->renderObjectCount / 8; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 1.f);
 
-            GameObject& currentObject = pResources->gameObjects[i];
+            RenderObject& currentObject = pResources->renders[i];
 
-            currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
-            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+            // Kitten mesh for these objects
+            currentObject.surfaceId = pResources->meshes[1].firstSurface;
+            currentObject.transformId = static_cast<uint32_t>(i);
         }
         // Hardcode a large amount of stanford dragons
-        for (size_t i = pResources->gameObjectCount / 8; i < pResources->gameObjectCount / 6; ++i)
+        for (size_t i = pResources->renderObjectCount / 8; i < pResources->renderObjectCount / 6; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 0.1f);
 
-            GameObject& currentObject = pResources->gameObjects[i];
+            RenderObject& currentObject = pResources->renders[i];
 
-            currentObject.meshIndex = 0;// Hardcode the kitten mesh for each object in this loop
-            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
+            currentObject.surfaceId = pResources->meshes[0].firstSurface;
+            currentObject.transformId = static_cast<uint32_t>(i);
         }
         // Hardcode a large amount of standford bunnies
-        for (size_t i = pResources->gameObjectCount / 6; i < pResources->gameObjectCount; ++i)
+        for (size_t i = pResources->renderObjectCount / 6; i < pResources->renderObjectCount; ++i)
         {
             BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
 
             RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 5.f);
 
-            GameObject& currentObject = pResources->gameObjects[i];
+            RenderObject& currentObject = pResources->renders[i];
 
-            currentObject.meshIndex = 2;// Hardcode the bunny mesh for each object in this loop
-            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
-        }
-
-        // Create all the render objects by getting the data from the game objects
-        for(size_t i = 0; i < pResources->gameObjectCount; ++i)
-        {
-            // Get the mesh used by the current game object
-            BlitzenEngine::Mesh& currentMesh = pResources->meshes[pResources->gameObjects[i].meshIndex];
-
-            for(size_t j = 0; j < currentMesh.surfaceCount; ++j)
-            {
-                RenderObject& currentObject = pResources->renders[pResources->renderObjectCount];
-
-                // Get the surface Id for this render object by adding the current index to the first surface of the mesh
-                currentObject.surfaceId = currentMesh.firstSurface + static_cast<uint32_t>(j);
-                
-                currentObject.transformId = pResources->gameObjects[i].transformIndex;
-
-                pResources->renderObjectCount++;
-            }
+            currentObject.surfaceId = pResources->meshes[2].firstSurface;
+            currentObject.transformId = static_cast<uint32_t>(i);
         }
     }
 
@@ -475,43 +485,28 @@ namespace BlitzenEngine
         transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
         pResources->transforms.PushBack(transform);
 
-        GameObject& currentObject = pResources->gameObjects[pResources->gameObjectCount++];
-        currentObject.meshIndex = 3; // Male model mesh
-        currentObject.transformIndex = pResources->gameObjectCount - 1;
-
-        Mesh& mesh = pResources->meshes[currentObject.meshIndex];
-        for(size_t i = 0; i < mesh.surfaceCount; ++i)
-        {
-            RenderObject& draw = 
-            pResources->onpcReflectiveRenderObjects[pResources->onpcReflectiveRenderObjectCount++];
-
-            draw.surfaceId = mesh.firstSurface + uint32_t(i);
-            draw.transformId = currentObject.transformIndex;
-        }
+        RenderObject& currentObject = 
+            pResources->onpcReflectiveRenderObjects[
+                pResources->onpcReflectiveRenderObjectCount++
+            ];
+        currentObject.surfaceId = pResources->meshes[3].firstSurface;
+        currentObject.transformId = static_cast<uint32_t>(pResources->transforms.GetSize() - 1);
 
         const uint32_t nonReflectiveDrawCount = 1000;
-        const uint32_t start = pResources->gameObjectCount;
-        pResources->gameObjectCount += nonReflectiveDrawCount;
-        pResources->transforms.Resize(pResources->transforms.GetSize() + pResources->gameObjectCount);
+        const uint32_t start = pResources->renderObjectCount;
+        pResources->renderObjectCount += nonReflectiveDrawCount;
+        pResources->transforms.Resize(pResources->transforms.GetSize() + nonReflectiveDrawCount);
 
-        for (size_t i = start; i < pResources->gameObjectCount; ++i)
+        for (size_t i = start; i < pResources->renderObjectCount; ++i)
         {
             BlitzenEngine::MeshTransform& tr = pResources->transforms[i];
 
             RandomizeTransform(tr, 100, 1.f);
 
-            GameObject& currentObject = pResources->gameObjects[i];
+            RenderObject& currentObject = pResources->renders[i];
 
-            currentObject.meshIndex = 1;// Hardcode the kitten mesh for each object in this loop
-            currentObject.transformIndex = static_cast<uint32_t>(i);// Transform index is the same as the object index
-
-            Mesh& m = pResources->meshes[currentObject.meshIndex];
-            for(size_t i = 0; i < m.surfaceCount; ++i)
-            {
-                RenderObject& draw = pResources->renders[pResources->renderObjectCount++];
-                draw.surfaceId = m.firstSurface + uint32_t(i);
-                draw.transformId = currentObject.transformIndex;
-            }
+            currentObject.surfaceId = pResources->meshes[1].firstSurface;
+            currentObject.transformId = static_cast<uint32_t>(i);
         }
     }
 

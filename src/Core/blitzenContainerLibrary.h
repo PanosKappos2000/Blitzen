@@ -104,7 +104,7 @@ namespace BlitCL
         inline T& operator [] (size_t index) { BLIT_ASSERT(index >= 0 && index < m_size) return m_pBlock[index]; }
         inline T& Front() { BLIT_ASSERT(m_size) m_pBlock[0]; }
         inline T& Back() { BLIT_ASSERT(m_size) return m_pBlock[m_size - 1]; }
-        inline T* Data() {return m_pBlock; }
+        inline T* Data() { return m_pBlock; }
 
         // Copies the given value to every element in the dynamic array
         void Fill(T&& val)

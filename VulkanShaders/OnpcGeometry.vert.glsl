@@ -19,10 +19,10 @@ layout(location = 4) out vec3 outModel;
 
 void main()
 {
-    // Access the current vertex
+    // Accesses the current vertex
     Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
 
-    // Access the current object data
+    // Accesses the current object data
     RenderObject object = onpcReflectiveObjectBuffer.objects[indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
 
