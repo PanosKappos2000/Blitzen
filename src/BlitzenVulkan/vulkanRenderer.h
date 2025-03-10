@@ -25,8 +25,7 @@ namespace BlitzenVulkan
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
-        // This is an incomplete function that attempts to clear anything Vulkan has drawn to swith to a different renderer. It does not work
-        void ClearFrame();
+		void UpdateBuffers(FrameTools& tools, BlitzenEngine::RenderingResources* pResources);
 
         void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
 
@@ -331,16 +330,6 @@ namespace BlitzenVulkan
     */
     private:
 
-        // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
-        struct FrameTools
-        {
-            CommandPool mainCommandPool;
-            VkCommandBuffer commandBuffer;
-
-            SyncFence inFlightFence;
-            Semaphore imageAcquiredSemaphore;
-            Semaphore readyToPresentSemaphore;        
-        };
         FrameTools m_frameToolsList[ce_framesInFlight];
 
         // Used to access the right frame tools depending on which ones are already being used
@@ -523,12 +512,15 @@ namespace BlitzenVulkan
     // Puts command buffer in the ready state. vkCmd type function can be called after this and until vkEndCommandBuffer is called
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
 
+	void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo, 
+        VkSemaphore semaphore, VkPipelineStageFlags2 stage);
+
     // Submits the command buffer to excecute the recorded commands. Semaphores, fences and other sync structures can be specified 
     void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, 
-    uint8_t waitSemaphoreCount = 0, VkSemaphore waitSemaphore = VK_NULL_HANDLE, 
-    VkPipelineStageFlags2 waitPipelineStage = VK_PIPELINE_STAGE_2_NONE, 
-    uint8_t signalSemaphoreCount = 0, VkSemaphore signalSemaphore = VK_NULL_HANDLE, 
-    VkPipelineStageFlags2 signalPipelineStage = VK_PIPELINE_STAGE_2_NONE, VkFence fence = VK_NULL_HANDLE);
+        uint32_t waitSemaphoreCount = 0, VkSemaphoreSubmitInfo* pWaitInfo = nullptr,  
+        uint32_t signalSemaphoreCount = 0, VkSemaphoreSubmitInfo* signalSemaphore = nullptr,  
+        VkFence fence = VK_NULL_HANDLE
+    );
 
 
     

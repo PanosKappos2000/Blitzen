@@ -360,6 +360,13 @@ namespace BlitzenVulkan
             );
             if(presentSemaphoreResult != VK_SUCCESS)
                 return 0;
+
+			VkResult bufferSemaphoreResult = vkCreateSemaphore(
+				m_device, &semaphoresInfo,
+				m_pCustomAllocator, &frameTools.buffersReadySemaphore.handle
+			);
+			if (bufferSemaphoreResult != VK_SUCCESS)
+				return 0;
         }
 
         return 1;
@@ -1498,5 +1505,33 @@ namespace BlitzenVulkan
         vkQueueWaitIdle(m_graphicsQueue.handle);
 
         return 1;
+    }
+
+    void VulkanRenderer::UpdateBuffers(FrameTools& tools, BlitzenEngine::RenderingResources* pResources)
+    {
+        AllocatedBuffer transformStagingBuffer;
+        BLIT_ASSERT(CreateBuffer(m_allocator, transformStagingBuffer,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_GPU_TO_CPU,
+            pResources->transforms.GetSize() * sizeof(BlitzenEngine::MeshTransform), 
+            VMA_ALLOCATION_CREATE_MAPPED_BIT
+        ))
+        void* pTransformStagingBufferAddr = transformStagingBuffer.allocation->GetMappedData();
+        BlitzenCore::BlitMemCopy(pTransformStagingBufferAddr, pResources->transforms.Data(), 
+            pResources->transforms.GetSize() * sizeof(BlitzenEngine::MeshTransform)
+        );
+
+        BeginCommandBuffer(tools.commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        CopyBufferToBuffer(tools.commandBuffer, transformStagingBuffer.bufferHandle,
+            m_currentStaticBuffers.transformBuffer.buffer.bufferHandle,
+            pResources->transforms.GetSize(), 0, 0);
+
+        VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
+        CreateSemahoreSubmitInfo(bufferCopySemaphoreInfo, tools.buffersReadySemaphore.handle,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+        );
+        SubmitCommandBuffer(m_graphicsQueue.handle, tools.commandBuffer,
+            0, nullptr, 1, &bufferCopySemaphoreInfo, nullptr
+        );
     }
 }

@@ -355,6 +355,18 @@ namespace BlitzenVulkan
         BlitML::vec4 data3;
         BlitML::vec4 data4;
     };
+
+    // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
+    struct FrameTools
+    {
+        CommandPool mainCommandPool;
+        VkCommandBuffer commandBuffer;
+
+        SyncFence inFlightFence;
+        Semaphore imageAcquiredSemaphore;
+        Semaphore buffersReadySemaphore;
+        Semaphore readyToPresentSemaphore;
+    };
 }
 
 

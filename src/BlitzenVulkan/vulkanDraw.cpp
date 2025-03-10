@@ -67,6 +67,8 @@ namespace BlitzenVulkan
         vkWaitForFences(m_device, 1, &(fTools.inFlightFence.handle), VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
+		//UpdateBuffers(fTools, context.pResources);
+
         if(pCamera->transformData.freezeFrustum)
             // Only change the matrix that moves the camera if the freeze frustum debug functionality is active
             vBuffers.viewDataBuffer.pData->projectionViewMatrix = pCamera->viewData.projectionViewMatrix;
@@ -291,11 +293,21 @@ namespace BlitzenVulkan
         );
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
 
+        //VkSemaphoreSubmitInfo waitSemaphores[2]{ {}, {} };
+        VkSemaphoreSubmitInfo waitSemaphores{};
+		CreateSemahoreSubmitInfo(waitSemaphores, fTools.imageAcquiredSemaphore.handle, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+        );
+		/*CreateSemahoreSubmitInfo(waitSemaphores[1], fTools.buffersReadySemaphore.handle,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+        );*/
+        VkSemaphoreSubmitInfo signalSemaphore{};
+		CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle,
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
+        );
         SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 
-            1, fTools.imageAcquiredSemaphore.handle, // waits for image to be acquired
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, // wait for compute shader
-            1, fTools.readyToPresentSemaphore.handle, // signals the ready to present semaphore when done
-            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, // all graphics wait for signal
+            1, &waitSemaphores, // waits for image to be acquired
+            1, &signalSemaphore, // signals the ready to present semaphore when done
             fTools.inFlightFence.handle // next frame waits for commands to be done
         );
 
@@ -620,21 +632,13 @@ namespace BlitzenVulkan
         VK_CHECK(vkBeginCommandBuffer(commandBuffer, &commandBufferInfo));
     }
 
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint8_t waitSemaphoreCount /* =0 */, 
-    VkSemaphore waitSemaphore /* =VK_NULL_HANDLE */, VkPipelineStageFlags2 waitPipelineStage /*=VK_PIPELINE_STAGE_2_NONE*/, uint8_t signalSemaphoreCount /* =0 */,
-    VkSemaphore signalSemaphore /* =VK_NULL_HANDLE */, VkPipelineStageFlags2 signalPipelineStage /*=VK_PIPELINE_STAGE_2_NONE*/, VkFence fence /* =VK_NULL_HANDLE */)
+    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, 
+        uint32_t waitSemaphoreCount /* =0 */, VkSemaphoreSubmitInfo* waitSemaphore /* =nullptr */, 
+        uint32_t signalSemaphoreCount /* =0 */, VkSemaphoreSubmitInfo* signalSemaphore /* =nullptr */, 
+        VkFence fence /* =VK_NULL_HANDLE */
+    )
     {
-        VK_CHECK(vkEndCommandBuffer(commandBuffer));
-
-        VkSemaphoreSubmitInfo waitSemaphoreInfo{};
-        waitSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        waitSemaphoreInfo.stageMask = waitPipelineStage;
-        waitSemaphoreInfo.semaphore = waitSemaphore;
-
-        VkSemaphoreSubmitInfo signalSemaphoreInfo{};
-        signalSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        signalSemaphoreInfo.stageMask = signalPipelineStage;
-        signalSemaphoreInfo.semaphore = signalSemaphore;
+        vkEndCommandBuffer(commandBuffer);
 
         VkCommandBufferSubmitInfo commandBufferInfo{};
         commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
@@ -645,10 +649,19 @@ namespace BlitzenVulkan
         submitInfo.commandBufferInfoCount = 1;
         submitInfo.pCommandBufferInfos = &commandBufferInfo;
         submitInfo.waitSemaphoreInfoCount = waitSemaphoreCount;
-        submitInfo.pWaitSemaphoreInfos = &waitSemaphoreInfo;
+        submitInfo.pWaitSemaphoreInfos = waitSemaphore;
         submitInfo.signalSemaphoreInfoCount = signalSemaphoreCount;
-        submitInfo.pSignalSemaphoreInfos = &signalSemaphoreInfo;
+        submitInfo.pSignalSemaphoreInfos = signalSemaphore;
         vkQueueSubmit2(queue, 1, &submitInfo, fence);
+    }
+
+    void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo,
+        VkSemaphore semaphore, VkPipelineStageFlags2 stage)
+    {
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		semaphoreInfo.pNext = nullptr;
+		semaphoreInfo.semaphore = semaphore;
+		semaphoreInfo.stageMask = stage;
     }
 
     void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout, 
@@ -768,71 +781,6 @@ namespace BlitzenVulkan
         CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
         m_depthPyramidMips, m_depthPyramidMipLevels, 
         m_drawExtent, m_device, m_allocator);
-    }
-
-    void VulkanRenderer::ClearFrame()
-    {
-        vkDeviceWaitIdle(m_device);
-        FrameTools& fTools = m_frameToolsList[m_currentFrame];
-        VkCommandBuffer commandBuffer = m_frameToolsList[m_currentFrame].commandBuffer;
-
-        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, 1000000000);
-        vkResetFences(m_device, 1, &fTools.inFlightFence.handle);
-
-        uint32_t swapchainIdx;
-        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
-        1000000000, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
-
-        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-        VkImageMemoryBarrier2 colorAttachmentBarrier{};
-        ImageMemoryBarrier(m_swapchainValues.swapchainImages[swapchainIdx], colorAttachmentBarrier, 
-        VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
-        VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 
-        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &colorAttachmentBarrier);
-
-        VkClearColorValue value;
-        value.float32[0] = 0;
-        value.float32[1] = 0;
-        value.float32[2] = 0;
-        value.float32[3] = 1;
-        VkImageSubresourceRange range;
-        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        range.baseMipLevel = 0;
-        range.levelCount = VK_REMAINING_MIP_LEVELS;
-        range.baseArrayLayer = 0;
-        range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-        vkCmdClearColorImage(commandBuffer, m_swapchainValues.swapchainImages[swapchainIdx], VK_IMAGE_LAYOUT_GENERAL, &value, 
-        1, &range);
-
-        VkImageMemoryBarrier2 swapchainPresentBarrier{};
-        ImageMemoryBarrier(m_swapchainValues.swapchainImages[swapchainIdx], swapchainPresentBarrier, 
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, VK_PIPELINE_STAGE_2_NONE, 
-        VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 
-        0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &swapchainPresentBarrier);
-
-        // All commands have ben recorded, the command buffer is submitted
-        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer, 1, fTools.imageAcquiredSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, 
-        1, fTools.readyToPresentSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, fTools.inFlightFence.handle);
-
-        // Presents the swapchain image, so that the rendering results are shown on the window
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &fTools.readyToPresentSemaphore.handle;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &(m_swapchainValues.swapchainHandle);
-        presentInfo.pImageIndices = &swapchainIdx;
-        vkQueuePresentKHR(m_presentQueue.handle, &presentInfo);
-
-        // Resets any fences that were not reset
-        for(size_t i = 0; i < ce_framesInFlight; ++i)
-        {
-            if(i != m_currentFrame)
-                vkResetFences(m_device, 1, &m_frameToolsList[i].inFlightFence.handle);
-        }
     }
 
     void VulkanRenderer::SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight)
