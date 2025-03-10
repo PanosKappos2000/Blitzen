@@ -376,7 +376,7 @@ namespace BlitzenEngine
     }
 
     static void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderingResources* pResources,
-        uint32_t randomTransformMultiplier)
+        float randomTransformMultiplier, float scale)
     {
 		if (pResources->renderObjectCount >= ce_maxRenderObjects)
 		{
@@ -393,7 +393,7 @@ namespace BlitzenEngine
 		}
 
         BlitzenEngine::MeshTransform transform;
-        RandomizeTransform(transform, randomTransformMultiplier, 0.1f);
+        RandomizeTransform(transform, randomTransformMultiplier, scale);
         pResources->transforms.PushBack(transform);
 
 		RenderObject& currentObject = pResources->renders[pResources->renderObjectCount++];
@@ -403,7 +403,7 @@ namespace BlitzenEngine
 
     // Creates the rendering stress test scene. 
     // TODO: This function is unsafe, calling it after another function that create render object will cause issues
-    static void LoadGeometryStressTest(RenderingResources* pResources, uint32_t dc)
+    static void LoadGeometryStressTest(RenderingResources* pResources)
     {
         // Don't load the stress test if ray tracing is on
         #if defined(BLIT_VK_RAYTRACING)// The name of this macro should change
@@ -411,68 +411,40 @@ namespace BlitzenEngine
         #endif
 
         constexpr float ce_stressTestRandomTransformMultiplier = 3'000.f;
-        #if defined(BLITZEN_RENDERING_STRESS_TEST)
-        constexpr uint32_t drawCount = 4'500'000;
-        #else
-        uint32_t drawCount = dc;
-        #endif
+        
+        constexpr uint32_t bunnyCount = 2'500'000;
+        constexpr uint32_t kittenCount = 1'500'000;
+        constexpr uint32_t maleCount = 490'000;
+		constexpr uint32_t dragonCount = 10'000;
+		constexpr uint32_t totalCount = bunnyCount + kittenCount + maleCount + dragonCount;
 
-        BLIT_INFO("Loading Renderer Stress test with %i objects", drawCount)
-        BLIT_WARN("If your machine cannot withstand this many objects, decrease the draw count or undef the stress test macro")
+        BLIT_INFO("Loading Renderer Stress test with %i objects", totalCount)
+        BLIT_WARN("If your machine cannot withstand this many objects, decrease the draw count")
 
-        // Increments the game object count and the transform count
-        pResources->renderObjectCount += drawCount;
-		pResources->transforms.Resize(pResources->transforms.GetSize() + drawCount);
+		uint32_t start = pResources->renderObjectCount;
 
-        // Hardcode a large amount of male model mesh
-        for(size_t i = 0; i < pResources->renderObjectCount / 10; ++i)
+        // Bunnies
+        for(size_t i = start; i < start + bunnyCount; ++i)
         {
-            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
-
-            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 0.1f);
-
-            RenderObject& currentObject = pResources->renders[i];
-
-            // Hardcodes the bunny mesh for these objects
-            currentObject.surfaceId = pResources->meshes[3].firstSurface;
-            currentObject.transformId = static_cast<uint32_t>(i);
+			CreateRenderObjectWithRandomTransform(2, pResources, ce_stressTestRandomTransformMultiplier, 5.f);
         }
-        // Hardcode a large amount of objects with the high polygon kitten mesh and random transforms
-        for (size_t i = pResources->renderObjectCount / 10; i < pResources->renderObjectCount / 8; ++i)
+        start += bunnyCount;
+        // Kittens
+        for (size_t i = start; i < start + kittenCount; ++i)
         {
-            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
-
-            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 1.f);
-
-            RenderObject& currentObject = pResources->renders[i];
-
-            // Kitten mesh for these objects
-            currentObject.surfaceId = pResources->meshes[1].firstSurface;
-            currentObject.transformId = static_cast<uint32_t>(i);
+            CreateRenderObjectWithRandomTransform(1, pResources, ce_stressTestRandomTransformMultiplier, 1.f);
         }
-        // Hardcode a large amount of stanford dragons
-        for (size_t i = pResources->renderObjectCount / 8; i < pResources->renderObjectCount / 6; ++i)
+        // Standford dragons
+        start += kittenCount;
+        for (size_t i = start; i < start + dragonCount; ++i)
         {
-            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
-
-            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 0.1f);
-
-            RenderObject& currentObject = pResources->renders[i];
-
-            currentObject.surfaceId = pResources->meshes[0].firstSurface;
-            currentObject.transformId = static_cast<uint32_t>(i);
+			CreateRenderObjectWithRandomTransform(0, pResources, ce_stressTestRandomTransformMultiplier, 0.5f);
         }
         // Hardcode a large amount of standford bunnies
-        for (size_t i = pResources->renderObjectCount / 6; i < pResources->renderObjectCount; ++i)
+        start += dragonCount;
+        for (size_t i = start; i < start + maleCount; ++i)
         {
-            BlitzenEngine::MeshTransform& transform = pResources->transforms[i];
-
-            RandomizeTransform(transform, ce_stressTestRandomTransformMultiplier, 5.f);
-
-            RenderObject& currentObject = pResources->renders[i];
-
-            currentObject.surfaceId = pResources->meshes[2].firstSurface;
-            currentObject.transformId = static_cast<uint32_t>(i);
+			CreateRenderObjectWithRandomTransform(3, pResources, ce_stressTestRandomTransformMultiplier, 0.2f);
         }
     }
 
@@ -809,8 +781,7 @@ namespace BlitzenEngine
             if(strcmp(argv[1], "RenderingStressTest") == 0)
             {
                 LoadTestGeometry(pResources);
-                constexpr uint32_t ce_defaultObjectCount = 1'000'000;
-                LoadGeometryStressTest(pResources, ce_defaultObjectCount);
+                LoadGeometryStressTest(pResources);
 
                 // The following arguments are used as gltf filepaths
                 for(int32_t i = 2; i < argc; ++i)
