@@ -169,7 +169,7 @@ namespace BlitzenVulkan
         }
 
         // Creates the uniform buffers
-        if(!VarBuffersInit())
+        if(!VarBuffersInit(pResources->transforms))
         {
             BLIT_ERROR("Failed to create uniform buffers")
             return 0;
@@ -259,7 +259,7 @@ namespace BlitzenVulkan
         pushDescriptorWritesGraphics[0] = {};// This will be where the global shader data write will be, but this one is not always static
         pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
         pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
-        pushDescriptorWritesGraphics[3] = m_currentStaticBuffers.transformBuffer.descriptorWrite;
+        pushDescriptorWritesGraphics[3] = m_varBuffers[0].transformBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite; 
         pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
@@ -267,7 +267,7 @@ namespace BlitzenVulkan
 
         pushDescriptorWritesCompute[0] = {};// This will be where the global shader data write will be, but this one is not always static
         pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite; 
-        pushDescriptorWritesCompute[2] = m_currentStaticBuffers.transformBuffer.descriptorWrite; 
+        pushDescriptorWritesCompute[2] = m_varBuffers[0].transformBuffer.descriptorWrite;
         pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite; 
         pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite; 
@@ -278,7 +278,7 @@ namespace BlitzenVulkan
         m_pushDescriptorWritesOnpcGraphics[0] = {};
         m_pushDescriptorWritesOnpcGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
         m_pushDescriptorWritesOnpcGraphics[2] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
-        m_pushDescriptorWritesOnpcGraphics[3] = m_currentStaticBuffers.transformBuffer.descriptorWrite;
+        m_pushDescriptorWritesOnpcGraphics[3] = m_varBuffers[0].transformBuffer.descriptorWrite;
         m_pushDescriptorWritesOnpcGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite; 
         m_pushDescriptorWritesOnpcGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         m_pushDescriptorWritesOnpcGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
@@ -286,7 +286,7 @@ namespace BlitzenVulkan
 
         m_pushDescriptorWritesOnpcCompute[0] = {};// This will be where the global shader data write will be, but this one is not always static
         m_pushDescriptorWritesOnpcCompute[1] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite; 
-        m_pushDescriptorWritesOnpcCompute[2] = m_currentStaticBuffers.transformBuffer.descriptorWrite; 
+        m_pushDescriptorWritesOnpcCompute[2] = m_varBuffers[0].transformBuffer.descriptorWrite;
         m_pushDescriptorWritesOnpcCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         m_pushDescriptorWritesOnpcCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite; 
         m_pushDescriptorWritesOnpcCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite; 
@@ -531,9 +531,9 @@ namespace BlitzenVulkan
         VkDescriptorSetLayoutBinding transformBufferBinding{};
         CreateDescriptorSetLayoutBinding(
             transformBufferBinding, 
-            m_currentStaticBuffers.transformBuffer.descriptorBinding, 
+            m_varBuffers[0].transformBuffer.descriptorBinding,
             descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.renderObjectBuffer.descriptorType, 
+            m_varBuffers[0].transformBuffer.descriptorType,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT
         );
 
@@ -835,7 +835,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::VarBuffersInit()
+    uint8_t VulkanRenderer::VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms)
     {
         for(size_t i = 0; i < ce_framesInFlight; ++i)
         {
@@ -856,6 +856,31 @@ namespace BlitzenVulkan
                 buffers.viewDataBuffer.bufferInfo, buffers.viewDataBuffer.descriptorType, 
                 buffers.viewDataBuffer.descriptorBinding, buffers.viewDataBuffer.buffer.bufferHandle
             );
+
+			VkDeviceSize transformBufferSize = sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize();
+            if(!SetupPushDescriptorBuffer(m_device, m_allocator,
+                buffers.transformBuffer, buffers.transformStagingBuffer,
+                transformBufferSize,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, transforms.Data()
+            ))
+                return 0;
+
+			buffers.pTransformData = reinterpret_cast<BlitzenEngine::MeshTransform*>(
+				buffers.transformStagingBuffer.allocationInfo.pMappedData
+			);
+
+			BeginCommandBuffer(m_frameToolsList[i].commandBuffer, 
+                VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+            );
+
+			CopyBufferToBuffer(m_frameToolsList[i].commandBuffer,
+				buffers.transformStagingBuffer.bufferHandle,
+				buffers.transformBuffer.buffer.bufferHandle,
+				transformBufferSize, 0, 0
+			);
+
+			SubmitCommandBuffer(m_graphicsQueue.handle, m_frameToolsList[i].commandBuffer);
+            vkQueueWaitIdle(m_graphicsQueue.handle);
         }
 
         return 1;
@@ -881,14 +906,13 @@ namespace BlitzenVulkan
         BlitzenEngine::Material* pMaterials = pResources->materials;
         uint32_t materialCount = static_cast<uint32_t>(pResources->materialCount);
 
-        // TODO: Why the hell are transforms stored dynamically
-        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms = pResources->transforms;
-
         BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets = pResources->meshlets;
         BlitCL::DynamicArray<uint32_t>& meshletData = pResources->meshletData;
 
         BlitzenEngine::RenderObject* pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
         uint32_t onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
+
+		BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms = pResources->transforms;
 
         // When raytracing is active, some additional flags are needed for the vertex and index buffer
         uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
@@ -967,20 +991,6 @@ namespace BlitzenVulkan
             surfaceBufferSize, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
             surfaces.Data() // buffer data
-        ))
-            return 0;
-
-        // Holds the transforms of all the mesh instances that were loaded
-        VkDeviceSize transformBufferSize = sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize();
-        if(transformBufferSize == 0)
-            return 0;
-        AllocatedBuffer transformStagingBuffer; 
-        if(!SetupPushDescriptorBuffer(
-            m_device, m_allocator, 
-            m_currentStaticBuffers.transformBuffer, transformStagingBuffer, 
-            transformBufferSize, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-            transforms.Data()
         ))
             return 0;
 
@@ -1123,14 +1133,6 @@ namespace BlitzenVulkan
             surfaceStagingBuffer.bufferHandle, // temporary staging buffer
             m_currentStaticBuffers.surfaceBuffer.buffer.bufferHandle, // GPU only buffer
             surfaceBufferSize, 
-            0, 0 // offsets
-        );
-
-        // Transforms
-        CopyBufferToBuffer(commandBuffer, 
-            transformStagingBuffer.bufferHandle, // temporary staging buffer
-            m_currentStaticBuffers.transformBuffer.buffer.bufferHandle, // GPU only buffer
-            transformBufferSize, 
             0, 0 // offsets
         );
 
@@ -1507,31 +1509,23 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void VulkanRenderer::UpdateBuffers(FrameTools& tools, BlitzenEngine::RenderingResources* pResources)
+    void VulkanRenderer::UpdateBuffers(BlitzenEngine::RenderingResources* pResources, 
+        FrameTools& tools, VarBuffers& buffers)
     {
-        AllocatedBuffer transformStagingBuffer;
-        BLIT_ASSERT(CreateBuffer(m_allocator, transformStagingBuffer,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_GPU_TO_CPU,
-            pResources->transforms.GetSize() * sizeof(BlitzenEngine::MeshTransform), 
-            VMA_ALLOCATION_CREATE_MAPPED_BIT
-        ))
-        void* pTransformStagingBufferAddr = transformStagingBuffer.allocation->GetMappedData();
-        BlitzenCore::BlitMemCopy(pTransformStagingBufferAddr, pResources->transforms.Data(), 
-            pResources->transforms.GetSize() * sizeof(BlitzenEngine::MeshTransform)
-        );
+		VkDeviceSize transformDataSize = sizeof(BlitzenEngine::MeshTransform) * pResources->transforms.GetSize();
 
         BeginCommandBuffer(tools.commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-        CopyBufferToBuffer(tools.commandBuffer, transformStagingBuffer.bufferHandle,
-            m_currentStaticBuffers.transformBuffer.buffer.bufferHandle,
-            pResources->transforms.GetSize(), 0, 0);
+        CopyBufferToBuffer(tools.commandBuffer, buffers.transformStagingBuffer.bufferHandle,
+            buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0
+        );
 
         VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
         CreateSemahoreSubmitInfo(bufferCopySemaphoreInfo, tools.buffersReadySemaphore.handle,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
         );
-        SubmitCommandBuffer(m_graphicsQueue.handle, tools.commandBuffer,
-            0, nullptr, 1, &bufferCopySemaphoreInfo, nullptr
+        SubmitCommandBuffer(m_graphicsQueue.handle, tools.commandBuffer, 
+            0, nullptr, 0, nullptr, tools.inFlightFence.handle
         );
     }
 }

@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         BlitzenEngine::MeshTransform
         {
             BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ),
-            20.f,
+            1.f,
             BlitML::quat(0.f, 0.f, 0.f, 1.f) },
             "undefined", 1
     );

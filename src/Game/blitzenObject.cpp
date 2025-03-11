@@ -1,4 +1,5 @@
 #include "blitObject.h"
+#include "Renderer/blitRenderer.h"
 
 namespace BlitzenEngine
 {
@@ -21,8 +22,9 @@ namespace BlitzenEngine
 	{
 		auto pResources = RenderingResources::GetRenderingResources();
 
-		m_yaw += m_speed;
-		m_pitch += m_speed;
+		float deltaTime = float(Engine::GetEngineInstancePointer()->GetDeltaTime());
+		m_yaw += m_speed * deltaTime;
+		m_pitch += m_speed * deltaTime;
 
 		BlitML::vec3 yAxis(0.f, -1.f, 0.f);
 		BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, m_yaw, 0);
@@ -32,5 +34,8 @@ namespace BlitzenEngine
 		
 		BlitzenEngine::MeshTransform& transform = pResources->transforms[m_transformId];
 		transform.orientation = yawOrientation + pitchOrientation;
+
+		auto pr = RendererType::GetRendererInstance();
+		pr->UpdateObjectTransform(m_transformId, transform);
 	}
 }

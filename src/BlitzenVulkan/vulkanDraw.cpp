@@ -57,6 +57,11 @@ namespace BlitzenVulkan
         // Specifies the descriptor writes that are not static again
         pushDescriptorWritesGraphics[0] = vBuffers.viewDataBuffer.descriptorWrite;
         pushDescriptorWritesCompute[0] = vBuffers.viewDataBuffer.descriptorWrite;
+
+        // Update the buffer info in the transform buffer descriptor write
+		pushDescriptorWritesGraphics[3].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
+		pushDescriptorWritesCompute[2].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
+
         if (context.bOnpc)
         {
             m_pushDescriptorWritesOnpcCompute[0] = vBuffers.viewDataBuffer.descriptorWrite;
@@ -64,10 +69,13 @@ namespace BlitzenVulkan
         }
         
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
-        vkWaitForFences(m_device, 1, &(fTools.inFlightFence.handle), VK_TRUE, 1000000000);
+        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, 1000000000);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
-		//UpdateBuffers(fTools, context.pResources);
+		UpdateBuffers(context.pResources, fTools, vBuffers);
+
+        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, UINT64_MAX);
+        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
         if(pCamera->transformData.freezeFrustum)
             // Only change the matrix that moves the camera if the freeze frustum debug functionality is active
@@ -646,13 +654,17 @@ namespace BlitzenVulkan
 
         VkSubmitInfo2 submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+
         submitInfo.commandBufferInfoCount = 1;
         submitInfo.pCommandBufferInfos = &commandBufferInfo;
+
         submitInfo.waitSemaphoreInfoCount = waitSemaphoreCount;
         submitInfo.pWaitSemaphoreInfos = waitSemaphore;
+
         submitInfo.signalSemaphoreInfoCount = signalSemaphoreCount;
         submitInfo.pSignalSemaphoreInfos = signalSemaphore;
-        vkQueueSubmit2(queue, 1, &submitInfo, fence);
+
+        VK_CHECK(vkQueueSubmit2(queue, 1, &submitInfo, fence))
     }
 
     void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo,

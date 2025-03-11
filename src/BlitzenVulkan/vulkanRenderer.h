@@ -8,6 +8,85 @@ namespace BlitzenVulkan
 {
     class VulkanRenderer
     {
+    private:
+
+        // Holds data for buffers that will be loaded once and will be used for every object
+        struct StaticBuffers
+        {
+            // Vertex buffer. Push descriptor layout. Binding 1. Storage buffer. Accessible in vertex shader
+            // Holds all BlitzenEngine::Vertex that were loaded for the scene.
+            PushDescriptorBuffer<void> vertexBuffer{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Index buffer (this does not use push descriptors, a call to vkCmdBindIndexBuffer is enough)
+            AllocatedBuffer indexBuffer;
+
+            // Cluster buffer. Push descriptor layout. Binding 12. Storage buffer. Not used currently
+            // Holds all BlitzenEngine::Meshlet that were loaded for the scene
+            PushDescriptorBuffer<void> meshletBuffer{ 12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Cluster indices buffer. Push descriptor layout. Binding 13. Storage buffer. Not used currently.
+            // Holds all uint32_t meshlet indices that were loaded for the scene
+            PushDescriptorBuffer<void> meshletDataBuffer{ 13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Material buffer. Push descriptor layout. Binding 6. Sotrage buffer. Accessible in fragment shaders
+            // Holds all BlitzenEngine::Material that were load for the scene
+            PushDescriptorBuffer<void> materialBuffer{ 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Renderer object buffer. Push descriptor layout. Binding 4. Storage buffer. Accessible in compute and vertex shaders.
+            // Holds all BlitzenEngine::RenderObject. 
+            // Basically an index to a primitive and an index to a transform (see binding 2 and 5)
+            PushDescriptorBuffer<void> renderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Surface buffer. Push descriptor layout. Binding 2. Storage buffer. Accessible in compute and vertex shaders.
+            // Holds all BlitzenEngine::PrimitiveSurface that were loaded for the scene
+            // (per resources data, like LODs, vertex buffer offset)
+            PushDescriptorBuffer<void> surfaceBuffer{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Indirect draw buffer. Push descriptor layout. Binding 7. Storage and Indirect draw buffer. Accessible in compute and vertex shaders
+            // Holds a VkCmdDrawIndexedIndirectCommand and a uint32_t draw ID. 
+            // Initialized with the size of the render object count but its data is initialized by the culling shaders.
+            // The vertex shaders iterate up to the integer in indirect count and the draw ID  to access the correct render object
+            PushDescriptorBuffer<void> indirectDrawBuffer{ 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // The indirect task buffer is a storage buffer that will be part of the push descriptor layout at binding 8
+            // It will hold all the indirect task commands for each frame
+            PushDescriptorBuffer<void> indirectTaskBuffer{ 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Indirect count buffer. Push descriptor layout. Binding 9. Storage and indirect draw buffer. Accessible in compute and vertex shaders.
+            // Holds a single uint32_t that will be written by culling shaders each frame.
+            // It will then be read by the draw call to iterate up to the correct amount of render objects
+            PushDescriptorBuffer<void> indirectCountBuffer{ 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
+            // It will hold either 1 or 0 for each object based on if they were visible last frame or not
+            PushDescriptorBuffer<void> visibilityBuffer{ 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // The onpcReflectiveRenderObject buffer is a storage buffer that will be part of the push descriptor layout at binding 14
+            // It will hold the objects that use Oblique near-plane clipping
+            PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{ 14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // Raytracing primitive acceleration structure buffer and vulkan objects
+            AllocatedBuffer blasBuffer;
+            BlitCL::DynamicArray<AccelerationStructure> blasData;
+
+            // Raytracing instance acceleration structure buffer and vulkan objects
+            PushDescriptorBuffer<void> tlasBuffer{ 15, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR };
+            AccelerationStructure tlasData;
+        };
+
+        struct VarBuffers
+        {
+            // The global view data buffer is a uniform buffer that will be part of the push descriptor layout at binding 0
+            // It will hold view data like the view matrix or frustum planes data
+            PushDescriptorBuffer<BlitzenEngine::CameraViewData> viewDataBuffer{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
+
+            // Transform buffer. Push descriptor layout. Binding 5. Storage buffer. Accessible in compute and vertex shaders.
+            // Holds all BlitzenEngine::MeshTransform that were loaded for the scene (per mesh instance)
+            PushDescriptorBuffer<void> transformBuffer{ 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            AllocatedBuffer transformStagingBuffer;
+            BlitzenEngine::MeshTransform* pTransformData = nullptr;
+        };
+
     public:
 
         VulkanRenderer();
@@ -25,14 +104,20 @@ namespace BlitzenVulkan
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
-		void UpdateBuffers(FrameTools& tools, BlitzenEngine::RenderingResources* pResources);
+		void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, FrameTools& tools, VarBuffers& buffers);
 
+        inline void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform newTr)
+        {
+            auto pData = m_varBuffers[m_currentFrame].pTransformData;
+            BlitzenCore::BlitMemCopy(pData + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
+        }
+
+        // TODO: Remember to erase this
         void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
 
-        // I do not do anything on the destructor, but I leave it here because Cleaning Vulkan is peculiar
         ~VulkanRenderer();
 
-        VulkanRenderer operator = (VulkanRenderer) = delete;
+        VulkanRenderer operator = (const VulkanRenderer& vk) = delete;
 
     private:
 
@@ -46,7 +131,7 @@ namespace BlitzenVulkan
         uint8_t FrameToolsInit();
 
         // Initializes the buffers that are included in frame tools
-        uint8_t VarBuffersInit();
+        uint8_t VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
         // Creates the descriptor set latyouts that are not constant and need to have one instance for each frame in flight
         uint8_t CreateDescriptorLayouts();
@@ -166,81 +251,8 @@ namespace BlitzenVulkan
     */
     private:
 
-        // Holds data for buffers that will be loaded once and will be used for every object
-        struct StaticBuffers
-        {
-            // Vertex buffer. Push descriptor layout. Binding 1. Storage buffer. Accessible in vertex shader
-            // Holds all BlitzenEngine::Vertex that were loaded for the scene.
-            PushDescriptorBuffer<void> vertexBuffer{1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Index buffer (this does not use push descriptors, a call to vkCmdBindIndexBuffer is enough)
-            AllocatedBuffer indexBuffer;
-
-            // Cluster buffer. Push descriptor layout. Binding 12. Storage buffer. Not used currently
-            // Holds all BlitzenEngine::Meshlet that were loaded for the scene
-            PushDescriptorBuffer<void> meshletBuffer{12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Cluster indices buffer. Push descriptor layout. Binding 13. Storage buffer. Not used currently.
-            // Holds all uint32_t meshlet indices that were loaded for the scene
-            PushDescriptorBuffer<void> meshletDataBuffer{13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Material buffer. Push descriptor layout. Binding 6. Sotrage buffer. Accessible in fragment shaders
-            // Holds all BlitzenEngine::Material that were load for the scene
-            PushDescriptorBuffer<void> materialBuffer{6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Renderer object buffer. Push descriptor layout. Binding 4. Storage buffer. Accessible in compute and vertex shaders.
-            // Holds all BlitzenEngine::RenderObject. 
-            // Basically an index to a primitive and an index to a transform (see binding 2 and 5)
-            PushDescriptorBuffer<void> renderObjectBuffer{4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Surface buffer. Push descriptor layout. Binding 2. Storage buffer. Accessible in compute and vertex shaders.
-            // Holds all BlitzenEngine::PrimitiveSurface that were loaded for the scene
-            // (per resources data, like LODs, vertex buffer offset)
-            PushDescriptorBuffer<void> surfaceBuffer{2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Transform buffer. Push descriptor layout. Binding 5. Storage buffer. Accessible in compute and vertex shaders.
-            // Holds all BlitzenEngine::MeshTransform that were loaded for the scene (per mesh instance)
-            PushDescriptorBuffer<void> transformBuffer{5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Indirect draw buffer. Push descriptor layout. Binding 7. Storage and Indirect draw buffer. Accessible in compute and vertex shaders
-            // Holds a VkCmdDrawIndexedIndirectCommand and a uint32_t draw ID. 
-            // Initialized with the size of the render object count but its data is initialized by the culling shaders.
-            // The vertex shaders iterate up to the integer in indirect count and the draw ID  to access the correct render object
-            PushDescriptorBuffer<void> indirectDrawBuffer{7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // The indirect task buffer is a storage buffer that will be part of the push descriptor layout at binding 8
-            // It will hold all the indirect task commands for each frame
-            PushDescriptorBuffer<void> indirectTaskBuffer{8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // Indirect count buffer. Push descriptor layout. Binding 9. Storage and indirect draw buffer. Accessible in compute and vertex shaders.
-            // Holds a single uint32_t that will be written by culling shaders each frame.
-            // It will then be read by the draw call to iterate up to the correct amount of render objects
-            PushDescriptorBuffer<void> indirectCountBuffer{9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
-            // It will hold either 1 or 0 for each object based on if they were visible last frame or not
-            PushDescriptorBuffer<void> visibilityBuffer{10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-
-            // The onpcReflectiveRenderObject buffer is a storage buffer that will be part of the push descriptor layout at binding 14
-            // It will hold the objects that use Oblique near-plane clipping
-            PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
-            
-            // Raytracing primitive acceleration structure buffer and vulkan objects
-            AllocatedBuffer blasBuffer;
-            BlitCL::DynamicArray<AccelerationStructure> blasData;
-
-            // Raytracing instance acceleration structure buffer and vulkan objects
-            PushDescriptorBuffer<void> tlasBuffer{15, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR};
-            AccelerationStructure tlasData;
-        };
         StaticBuffers m_currentStaticBuffers;
 
-        struct VarBuffers
-        {
-            // The global view data buffer is a uniform buffer that will be part of the push descriptor layout at binding 0
-            // It will hold view data like the view matrix or frustum planes data
-            PushDescriptorBuffer<BlitzenEngine::CameraViewData> viewDataBuffer{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
-        };
         VarBuffers m_varBuffers[ce_framesInFlight];
 
     /*

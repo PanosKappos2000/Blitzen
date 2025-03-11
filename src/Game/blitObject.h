@@ -84,7 +84,7 @@ namespace BlitzenEngine
         float m_yaw = 0.f;
         float m_roll = 0.f;
 
-        float m_speed = 1.f;
+        float m_speed = 0.1f;
     };
 
 }
