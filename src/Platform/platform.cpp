@@ -353,7 +353,7 @@ namespace BlitzenPlatform
                 case WM_CLOSE:
                 {
                     BlitzenCore::EventContext context{};
-                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
+                    BlitzenCore::FireEvent<void*>(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
                     return 1;
                 }
 
@@ -372,18 +372,19 @@ namespace BlitzenPlatform
                     BlitzenCore::EventContext context;
                     context.data.ui32[0] = width;
                     context.data.ui32[1] = height;
-                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
+                    BlitzenCore::FireEvent<void*>(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
                     break;
                 }
+
+                // Key event (input system)
                 case WM_KEYDOWN:
                 case WM_SYSKEYDOWN:
                 case WM_KEYUP:
                 case WM_SYSKEYUP: 
                 {
-                    // Key pressed/released
-                    uint8_t pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
-                    BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(w_param);
-                    BlitzenCore::InputProcessKey(key, pressed);
+                    uint8_t pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);// key pressed or released
+                    BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(w_param); // key code
+                    BlitzenCore::InputProcessKey(key, pressed);// let input system know
                     break;
                 } 
                 case WM_MOUSEMOVE: 

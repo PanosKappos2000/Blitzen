@@ -4,7 +4,7 @@
 
 namespace BlitzenEngine
 {
-    uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, 
+    static uint8_t OnEvent(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, 
     const BlitzenCore::EventContext& data)
     {
         if(eventType == BlitzenCore::BlitEventType::EngineShutdown)
@@ -17,19 +17,19 @@ namespace BlitzenEngine
         return 0;
     }
 
-    void CloseOnEscapeKeyPressCallback()
+    static void CloseOnEscapeKeyPressCallback()
     {
-        BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, {});
+        BlitzenCore::FireEvent<void*>(BlitzenCore::BlitEventType::EngineShutdown, nullptr, {});
     }
 
-    void MoveDefaultCameraForwardOnWKeyPressCallback()
+    static void MoveDefaultCameraForwardOnWKeyPressCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.cameraDirty = 1;
         camera.transformData.velocity = BlitML::vec3(0.f, 0.f, 1.f);
     }
 
-    void StopMovingCameraForwardOnWKeyReleaseCallback()
+    static void StopMovingCameraForwardOnWKeyReleaseCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.z = 0.f;
@@ -39,14 +39,14 @@ namespace BlitzenEngine
         }
     }
 
-    void MoveDefaultCameraBackwardOnSKeyPressCallback()
+    static void MoveDefaultCameraBackwardOnSKeyPressCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.cameraDirty = 1;
         camera.transformData.velocity = BlitML::vec3(0.f, 0.f, -1.f);
     }
 
-    void StopMovingCameraBackwardOnSKeyReleaseCallback()
+    static void StopMovingCameraBackwardOnSKeyReleaseCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.z = 0.f;
@@ -56,14 +56,14 @@ namespace BlitzenEngine
         }
     }
 
-    void MoveDefaultCameraLeftOnAKeyPressCallback()
+    static void MoveDefaultCameraLeftOnAKeyPressCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.cameraDirty = 1;
         camera.transformData.velocity = BlitML::vec3(-1.f, 0.f, 0.f);
     }
 
-    void StopMovingCameraLeftOnAKeyReleaseCallback()
+    static void StopMovingCameraLeftOnAKeyReleaseCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.x = 0.f;
@@ -73,14 +73,14 @@ namespace BlitzenEngine
         }
     }
 
-    void MoveDefaultCameraRightOnDKeyPressCallback()
+    static void MoveDefaultCameraRightOnDKeyPressCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.cameraDirty = 1;
         camera.transformData.velocity = BlitML::vec3(1.f, 0.f, 0.f);
     }
 
-    void StopMovingCameraRightOnDReleaseCallback()
+    static void StopMovingCameraRightOnDReleaseCallback()
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.x = 0.f;
@@ -90,14 +90,15 @@ namespace BlitzenEngine
         }
     }
 
-    void FreezeFrustumOnF1KeyPressCallback()
+    static void FreezeFrustumOnF1KeyPressCallback()
     {
         Camera& cam = CameraSystem::GetCameraSystem()->GetCamera();
         cam.transformData.freezeFrustum = !cam.transformData.freezeFrustum;
     }
 
-    uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, 
-    const BlitzenCore::EventContext& data)
+    static uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, 
+        const BlitzenCore::EventContext& data
+    )
     {
         //Get the key pressed from the event context
         BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(data.data.ui16[0]);
@@ -114,7 +115,7 @@ namespace BlitzenEngine
         return 1;
     }
 
-    void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight)
+    static void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight)
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         Engine* pEngine = Engine::GetEngineInstancePointer();
@@ -129,7 +130,9 @@ namespace BlitzenEngine
         UpdateProjection(camera, static_cast<float>(newWidth), static_cast<float>(newHeight));
     }
 
-    uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, const BlitzenCore::EventContext& data)
+    static uint8_t OnResize(BlitzenCore::BlitEventType eventType, void* pSender, 
+        void* pListener, const BlitzenCore::EventContext& data
+    )
     {
         uint32_t newWidth = data.data.ui32[0];
         uint32_t newHeight = data.data.ui32[1];
@@ -139,7 +142,9 @@ namespace BlitzenEngine
         return 1;
     }
 
-    uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, const BlitzenCore::EventContext& data)
+    static uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, 
+        void* pListener, const BlitzenCore::EventContext& data
+    )
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
         float deltaTime = static_cast<float>(Engine::GetEngineInstancePointer()->GetDeltaTime());
@@ -153,35 +158,38 @@ namespace BlitzenEngine
 
     void RegisterDefaultEvents()
     {
-        BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, OnEvent);
-
-        // Main function called whenever a key press happens
-        BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyPressed, nullptr, OnKeyPress);
-        // When escape is pressed , Blitzen shuts down
-        BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback);
-        // When W is pressed the camera moves forward by default
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__W, 
-        MoveDefaultCameraForwardOnWKeyPressCallback, StopMovingCameraForwardOnWKeyReleaseCallback);
-        // When S is pressed the came moves back by default
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__S, MoveDefaultCameraBackwardOnSKeyPressCallback, 
-        StopMovingCameraBackwardOnSKeyReleaseCallback);
-        // When A is pressed the camera moves left by default
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__A, MoveDefaultCameraLeftOnAKeyPressCallback, 
-        StopMovingCameraLeftOnAKeyReleaseCallback);
-        // When D is pressed the came moves right by default
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__D, MoveDefaultCameraRightOnDKeyPressCallback, 
-        StopMovingCameraRightOnDReleaseCallback);
-        // When F1 is frustum culling freezes (debug functionality)
-        BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback);
-        // When F3 is pressed shaders stop performing occlusion culling (debug functionality, does not work on Release)
-        //BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F3, ChangeOcclusionCullingState);
-        // When F4 is pressed, shader stop performing LOD selection (debug functionality, does not work on Release)
-        //BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__F4, ChangeLodEnabledState);    
-
-        BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::KeyReleased, nullptr, OnKeyPress);
-
+        BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::EngineShutdown, 
+            nullptr, OnEvent
+        );
         BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, OnResize);
-
         BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::MouseMoved, nullptr, OnMouseMove);
+
+        BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__ESCAPE, 
+            CloseOnEscapeKeyPressCallback
+        );
+
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__W, 
+            MoveDefaultCameraForwardOnWKeyPressCallback, 
+            StopMovingCameraForwardOnWKeyReleaseCallback
+        );
+
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__S, 
+            MoveDefaultCameraBackwardOnSKeyPressCallback, 
+            StopMovingCameraBackwardOnSKeyReleaseCallback
+        );
+
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__A, 
+            MoveDefaultCameraLeftOnAKeyPressCallback, 
+            StopMovingCameraLeftOnAKeyReleaseCallback
+        );
+
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(BlitzenCore::BlitKey::__D, 
+            MoveDefaultCameraRightOnDKeyPressCallback, 
+            StopMovingCameraRightOnDReleaseCallback
+        );
+
+        BlitzenCore::RegisterKeyReleaseCallback(BlitzenCore::BlitKey::__F1, 
+            FreezeFrustumOnF1KeyPressCallback
+        );   
     }
 }
