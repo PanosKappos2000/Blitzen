@@ -74,9 +74,6 @@ namespace BlitzenVulkan
 
 		UpdateBuffers(context.pResources, fTools, vBuffers);
 
-        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, UINT64_MAX);
-        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
-
         if(pCamera->transformData.freezeFrustum)
             // Only change the matrix that moves the camera if the freeze frustum debug functionality is active
             vBuffers.viewDataBuffer.pData->projectionViewMatrix = pCamera->viewData.projectionViewMatrix;
@@ -301,20 +298,20 @@ namespace BlitzenVulkan
         );
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
 
-        //VkSemaphoreSubmitInfo waitSemaphores[2]{ {}, {} };
-        VkSemaphoreSubmitInfo waitSemaphores{};
-		CreateSemahoreSubmitInfo(waitSemaphores, fTools.imageAcquiredSemaphore.handle, 
+        VkSemaphoreSubmitInfo waitSemaphores[2]{ {}, {} };
+      
+		CreateSemahoreSubmitInfo(waitSemaphores[0], fTools.imageAcquiredSemaphore.handle,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
         );
-		/*CreateSemahoreSubmitInfo(waitSemaphores[1], fTools.buffersReadySemaphore.handle,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
-        );*/
+		CreateSemahoreSubmitInfo(waitSemaphores[1], fTools.buffersReadySemaphore.handle,
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+        );
         VkSemaphoreSubmitInfo signalSemaphore{};
 		CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle,
             VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
         );
         SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 
-            1, &waitSemaphores, // waits for image to be acquired
+            2, waitSemaphores, // waits for image to be acquired
             1, &signalSemaphore, // signals the ready to present semaphore when done
             fTools.inFlightFence.handle // next frame waits for commands to be done
         );

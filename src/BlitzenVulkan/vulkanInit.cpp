@@ -66,10 +66,10 @@ namespace BlitzenVulkan
     }
 
     VulkanRenderer::VulkanRenderer() :
-    m_opaqueGeometryProgram(m_opaqueGeometryPipeline, m_graphicsPipelineLayout), 
-    m_postPassGeometryProgram(m_postPassGeometryPipeline, m_graphicsPipelineLayout), 
-    m_initialDrawCullProgram(m_initialDrawCullPipeline, m_drawCullLayout), 
-    m_lateDrawCullProgram(m_lateDrawCullPipeline, m_drawCullLayout)
+        m_opaqueGeometryProgram(m_opaqueGeometryPipeline, m_graphicsPipelineLayout), 
+        m_postPassGeometryProgram(m_postPassGeometryPipeline, m_graphicsPipelineLayout), 
+        m_initialDrawCullProgram(m_initialDrawCullPipeline, m_drawCullLayout), 
+        m_lateDrawCullProgram(m_lateDrawCullPipeline, m_drawCullLayout)
     {}
 
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
@@ -95,14 +95,16 @@ namespace BlitzenVulkan
 
         // Call the function to search for a suitable physical device, it it can't find one return 0
         if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, 
-        m_graphicsQueue, m_computeQueue, m_presentQueue, m_stats))
+        m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device")
             return 0;
         }
 
         // Create the device
-        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, m_presentQueue, m_computeQueue, m_stats))
+        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, 
+            m_presentQueue, m_computeQueue, m_transferQueue, m_stats
+        ))
         {
             BLIT_ERROR("Failed to pick suitable physical device")
         }
@@ -304,7 +306,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface,
-    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
+    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, 
     VulkanStats& stats)
     {
         // Retrieves the physical device count
@@ -328,7 +330,9 @@ namespace BlitzenVulkan
             if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
                 continue;
             // Checks if the discrete gpu is suitable
-            if(ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, computeQueue, presentQueue, stats))
+            if(ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, 
+                computeQueue, presentQueue, transferQueue, stats
+            ))
             {
                 gpu = pdv;
                 stats.hasDiscreteGPU = 1;
@@ -344,7 +348,8 @@ namespace BlitzenVulkan
         for(auto& pdv : physicalDevices)
         {
             // Checks for possible non discrete GPUs
-            if(!ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, computeQueue, presentQueue, stats))
+            if(!ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, 
+                computeQueue, presentQueue, transferQueue, stats))
             {
                 gpu = pdv;
                 return 1;
@@ -359,7 +364,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface, 
-    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
+    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, 
     VulkanStats& stats)
     {
         // Get core physical device features
@@ -436,22 +441,52 @@ namespace BlitzenVulkan
         vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
 
         uint32_t queueIndex = 0;
-        for(auto& queueProps : queueFamilyProperties)
+        for (auto& queueProps : queueFamilyProperties)
         {
             // Checks for a graphics queue index, if one has not already been found 
-            if(queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && !graphicsQueue.hasIndex)
+            if (queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
                 graphicsQueue.index = queueIndex;
                 graphicsQueue.hasIndex = 1;
+                break;
             }
 
+            ++queueIndex;
+        }
+
+        queueIndex = 0;
+        for (auto& queueProps : queueFamilyProperties)
+        {
             // Checks for a compute queue index, if one has not already been found 
-            if(queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT && !computeQueue.hasIndex)
+            if (queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT)
             {
                 computeQueue.index = queueIndex;
                 computeQueue.hasIndex = 1;
+                break;
             }
 
+            ++queueIndex;
+        }
+
+		queueIndex = 0;
+        for (auto& queueProps : queueFamilyProperties)
+        {
+            // Checks for a transfer queue index, if one has not already been found
+            if (queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT && 
+                queueIndex != graphicsQueue.index
+            )
+            {
+                transferQueue.index = queueIndex;
+                transferQueue.hasIndex = 1;
+                break;
+            }
+
+            ++queueIndex;
+        }
+
+		queueIndex = 0;
+		for (auto& queueProps : queueFamilyProperties)
+        {
             // Checks for presentation queue, if one was not already found
             VkBool32 supportsPresent = VK_FALSE;
             VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, queueIndex, surface, &supportsPresent))
@@ -459,13 +494,14 @@ namespace BlitzenVulkan
             {
                 presentQueue.index = queueIndex;
                 presentQueue.hasIndex = 1;
+                break;
             }
 
             ++queueIndex;
         }
 
         // If one of the required queue families has no index, then it gets removed from the candidates
-        if(!presentQueue.hasIndex || !graphicsQueue.hasIndex || !computeQueue.hasIndex)
+        if(!presentQueue.hasIndex || !graphicsQueue.hasIndex || !computeQueue.hasIndex || !transferQueue.hasIndex)
             return 0;
 
         return 1;
@@ -583,7 +619,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, 
-    Queue& presentQueue, Queue& computeQueue, VulkanStats& stats)
+    Queue& presentQueue, Queue& computeQueue, Queue& transferQueue, VulkanStats& stats)
     {
         VkDeviceCreateInfo deviceInfo{};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -685,7 +721,7 @@ namespace BlitzenVulkan
         vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         vulkanExtendedFeatures.features = deviceFeatures;
 
-        // Add all features structs to the pNext chain
+        // Adds all features structs to the pNext chain
         deviceInfo.pNext = &vulkanExtendedFeatures;
         vulkanExtendedFeatures.pNext = &vulkan11Features;
         vulkan11Features.pNext = &vulkan12Features;
@@ -696,24 +732,15 @@ namespace BlitzenVulkan
 
         BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
         queueInfos[0].queueFamilyIndex = graphicsQueue.index;
-        VkDeviceQueueCreateInfo deviceQueueInfo{};
+        VkDeviceQueueCreateInfo deviceQueueInfo{}; // temp
+        queueInfos.PushBack(deviceQueueInfo);
+        queueInfos[1].queueFamilyIndex = transferQueue.index;
+        
         // If compute has a different index from present, add a new info for it
-        if(graphicsQueue.index != computeQueue.index)
-        {
-            queueInfos.PushBack(deviceQueueInfo);
-            queueInfos[1].queueFamilyIndex = computeQueue.index;
-        }
-        // If an info was created for compute and present is not equal to compute or graphics, create a new one for present as well
-        if(queueInfos.GetSize() == 2 && queueInfos[0].queueFamilyIndex != presentQueue.index && queueInfos[1].queueFamilyIndex != presentQueue.index)
+        if(graphicsQueue.index != presentQueue.index)
         {
             queueInfos.PushBack(deviceQueueInfo);
             queueInfos[2].queueFamilyIndex = presentQueue.index;
-        }
-        // If an info was not created for compute but present has a different index from the other 2, create a new info for it
-        if(queueInfos.GetSize() == 1 && queueInfos[0].queueFamilyIndex != presentQueue.index)
-        {
-            queueInfos.PushBack(deviceQueueInfo);
-            queueInfos[1].queueFamilyIndex = presentQueue.index;
         }
         // With the count of the queue infos found and the indices passed, the rest is standard
         float priority = 1.f;
@@ -760,6 +787,14 @@ namespace BlitzenVulkan
         presentQueueInfo.queueFamilyIndex = presentQueue.index;
         presentQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
+
+        VkDeviceQueueInfo2 transferQueueInfo{};
+		transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
+		transferQueueInfo.flags = 0; // Not using this
+		transferQueueInfo.pNext = nullptr; // Not using this
+        transferQueueInfo.queueFamilyIndex = transferQueue.index;
+        transferQueueInfo.queueIndex = 0;
+		vkGetDeviceQueue2(device, &transferQueueInfo, &transferQueue.handle);
 
         return 1;
     }

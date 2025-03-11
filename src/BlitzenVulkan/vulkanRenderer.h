@@ -87,6 +87,21 @@ namespace BlitzenVulkan
             BlitzenEngine::MeshTransform* pTransformData = nullptr;
         };
 
+        // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
+        struct FrameTools
+        {
+            CommandPool mainCommandPool;
+            VkCommandBuffer commandBuffer;
+
+            CommandPool transferCommandPool;
+            VkCommandBuffer transferCommandBuffer;
+
+            SyncFence inFlightFence;
+            Semaphore imageAcquiredSemaphore;
+            Semaphore buffersReadySemaphore;
+            Semaphore readyToPresentSemaphore;
+        };
+
     public:
 
         VulkanRenderer();
@@ -199,11 +214,6 @@ namespace BlitzenVulkan
         VkPhysicalDevice m_physicalDevice;
 
         Swapchain m_swapchainValues;
-
-        // All the queue handles and indices retrieved from the device on initialization
-        Queue m_graphicsQueue;
-        Queue m_presentQueue;
-        Queue m_computeQueue;
 
     /*
         Image resources section
@@ -349,6 +359,14 @@ namespace BlitzenVulkan
 
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
+       
+        Queue m_graphicsQueue;
+
+        Queue m_presentQueue;
+
+        Queue m_computeQueue;
+
+        Queue m_transferQueue;
     };
 
 
@@ -367,20 +385,23 @@ namespace BlitzenVulkan
     // Picks a suitable physical device (GPU) for the application and passes the handle to the first argument.
     // Returns 1 if if finds a fitting device. Expects the instance and surface arguments to be valid
     uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface,
-    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
-    VulkanStats& stats);
+		Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue,
+        VulkanStats& stats
+    );
 
     // Validates the suitability of a GPU for the application
     uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface, 
-    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, 
-    VulkanStats& stats);
+		Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue,
+        VulkanStats& stats
+    );
 
     // Looks for extensions in a physical device, returns 1 if everything goes well, and uploads data to stats and the extension count
     uint8_t LookForRequestedExtensions(VkPhysicalDevice gpu, VulkanStats& stats);
 
     // Creates the logical device, after activating required extensions and features
     uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, 
-    Queue& presentQueue, Queue& computeQueue, VulkanStats& stats);
+        Queue& presentQueue, Queue& computeQueue, Queue& transferQueue, VulkanStats& stats
+    );
     
 
 

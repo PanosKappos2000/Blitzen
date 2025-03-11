@@ -300,14 +300,25 @@ namespace BlitzenVulkan
     {
         VkCommandPoolCreateInfo commandPoolsInfo {};
         commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allow each individual command buffer to be reset
+        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;// Allows reset
         commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
+
+		VkCommandPoolCreateInfo dedicatedCommandPoolsInfo{};
+		dedicatedCommandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		dedicatedCommandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        dedicatedCommandPoolsInfo.queueFamilyIndex = m_transferQueue.index;
 
         VkCommandBufferAllocateInfo commandBuffersInfo{};
         commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         commandBuffersInfo.pNext = nullptr;
         commandBuffersInfo.commandBufferCount = 1;
         commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+        VkCommandBufferAllocateInfo dedicatedCmbInfo{};
+		dedicatedCmbInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		dedicatedCmbInfo.pNext = nullptr;
+		dedicatedCmbInfo.commandBufferCount = 1;
+		dedicatedCmbInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
         VkFenceCreateInfo fenceInfo{};
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -325,14 +336,13 @@ namespace BlitzenVulkan
         {
             FrameTools& frameTools = m_frameToolsList[i];
 
-            // Creates the command pool that manages the command buffer's memory
+            // Main command buffer
             VkResult commandPoolResult = vkCreateCommandPool(
                 m_device, &commandPoolsInfo, 
                 m_pCustomAllocator, &frameTools.mainCommandPool.handle
             );
             if(commandPoolResult != VK_SUCCESS)
                 return 0;
-
             commandBuffersInfo.commandPool = frameTools.mainCommandPool.handle;
             VkResult commandBufferResult = vkAllocateCommandBuffers(
                 m_device, &commandBuffersInfo, &frameTools.commandBuffer
@@ -340,6 +350,18 @@ namespace BlitzenVulkan
             if(commandBufferResult != VK_SUCCESS)
                 return 0;
 
+            // Dedicated command buffer
+            if (vkCreateCommandPool(m_device, &dedicatedCommandPoolsInfo,
+				nullptr, &frameTools.transferCommandPool.handle) != VK_SUCCESS
+            )
+                return 0;
+			dedicatedCmbInfo.commandPool = frameTools.transferCommandPool.handle;
+			if (vkAllocateCommandBuffers(m_device, &dedicatedCmbInfo, 
+                &frameTools.transferCommandBuffer) != VK_SUCCESS
+            )
+				return 0;
+
+            // Fence that stops commands from being recorded with a used command buffer
             VkResult fenceResult = vkCreateFence(
                 m_device, &fenceInfo, 
                 m_pCustomAllocator, &frameTools.inFlightFence.handle
@@ -347,6 +369,7 @@ namespace BlitzenVulkan
             if(fenceResult != VK_SUCCESS)
                 return 0;
 
+			// Samphore that command buffer from being submitted before the image is acquired
             VkResult imageSemaphoreResult = vkCreateSemaphore(
                 m_device, &semaphoresInfo, 
                 m_pCustomAllocator, &frameTools.imageAcquiredSemaphore.handle
@@ -354,6 +377,7 @@ namespace BlitzenVulkan
             if(imageSemaphoreResult != VK_SUCCESS)
                 return 0;
 
+            // Semaphore that blocks presentation before the commands are all executed
             VkResult presentSemaphoreResult = vkCreateSemaphore(
                 m_device, &semaphoresInfo, 
                 m_pCustomAllocator, &frameTools.readyToPresentSemaphore.handle
@@ -361,6 +385,7 @@ namespace BlitzenVulkan
             if(presentSemaphoreResult != VK_SUCCESS)
                 return 0;
 
+            // Semaphore to wait for buffer to be updated
 			VkResult bufferSemaphoreResult = vkCreateSemaphore(
 				m_device, &semaphoresInfo,
 				m_pCustomAllocator, &frameTools.buffersReadySemaphore.handle
@@ -1514,18 +1539,18 @@ namespace BlitzenVulkan
     {
 		VkDeviceSize transformDataSize = sizeof(BlitzenEngine::MeshTransform) * pResources->transforms.GetSize();
 
-        BeginCommandBuffer(tools.commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        BeginCommandBuffer(tools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-        CopyBufferToBuffer(tools.commandBuffer, buffers.transformStagingBuffer.bufferHandle,
+        CopyBufferToBuffer(tools.transferCommandBuffer, buffers.transformStagingBuffer.bufferHandle,
             buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0
         );
 
         VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
         CreateSemahoreSubmitInfo(bufferCopySemaphoreInfo, tools.buffersReadySemaphore.handle,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
         );
-        SubmitCommandBuffer(m_graphicsQueue.handle, tools.commandBuffer, 
-            0, nullptr, 0, nullptr, tools.inFlightFence.handle
+        SubmitCommandBuffer(m_transferQueue.handle, tools.transferCommandBuffer, 
+            0, nullptr, 1, &bufferCopySemaphoreInfo
         );
     }
 }
