@@ -256,7 +256,7 @@ namespace BlitzenVulkan
         pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
 
         // Since most of these descriptor writes are static they can be initialized here
-        pushDescriptorWritesGraphics[0] = {};// This will be where the global shader data write will be, but this one is not always static
+        pushDescriptorWritesGraphics[0] = m_varBuffers[0].viewDataBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
         pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[3] = m_varBuffers[0].transformBuffer.descriptorWrite;
@@ -265,7 +265,7 @@ namespace BlitzenVulkan
         pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
-        pushDescriptorWritesCompute[0] = {};// This will be where the global shader data write will be, but this one is not always static
+        pushDescriptorWritesCompute[0] = m_varBuffers[0].viewDataBuffer.descriptorWrite;
         pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite; 
         pushDescriptorWritesCompute[2] = m_varBuffers[0].transformBuffer.descriptorWrite;
         pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;

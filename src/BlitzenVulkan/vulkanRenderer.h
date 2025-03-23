@@ -6,6 +6,11 @@
 
 namespace BlitzenVulkan
 {
+    constexpr uint8_t ce_graphicsDecriptorWriteCount = 8;
+    constexpr uint8_t ce_computeDescriptorWriteCount = 8;
+
+    constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
+
     class VulkanRenderer
     {
     private:
@@ -246,7 +251,7 @@ namespace BlitzenVulkan
 			0, // binding ID
 			VK_IMAGE_LAYOUT_GENERAL
 		};
-        VkImageView m_depthPyramidMips[16];
+        VkImageView m_depthPyramidMips[ce_maxDepthPyramidMipLevels];
         uint8_t m_depthPyramidMipLevels = 0;
 
         VkExtent2D m_depthPyramidExtent;
@@ -273,10 +278,13 @@ namespace BlitzenVulkan
         // Layout for descriptors that will be using PushDescriptor extension. Has 10+ bindings
         DescriptorSetLayout m_pushDescriptorBufferLayout;
 
-        BlitCL::StaticArray<VkWriteDescriptorSet, 8> pushDescriptorWritesGraphics;
-        VkWriteDescriptorSet pushDescriptorWritesCompute[8];
-		BlitCL::StaticArray<VkWriteDescriptorSet, 8> m_pushDescriptorWritesOnpcGraphics;
-        VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[8];
+        BlitCL::StaticArray<VkWriteDescriptorSet, 
+            ce_graphicsDecriptorWriteCount> pushDescriptorWritesGraphics;
+        VkWriteDescriptorSet pushDescriptorWritesCompute[ce_computeDescriptorWriteCount];
+
+		BlitCL::StaticArray<VkWriteDescriptorSet, 
+            ce_graphicsDecriptorWriteCount> m_pushDescriptorWritesOnpcGraphics;
+        VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[ce_computeDescriptorWriteCount];
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
         DescriptorSetLayout m_depthPyramidDescriptorLayout;

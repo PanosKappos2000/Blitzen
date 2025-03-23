@@ -30,8 +30,11 @@ glm::vec4 glm_NormalizePlane(glm::vec4& plane)
 
 namespace BlitzenVulkan
 {
-
     constexpr uint32_t ce_pushDescriptorSetID = 0;
+
+    constexpr uint32_t ce_viewDataWriteElement = 0;
+
+	constexpr uint64_t ce_fenceTimeout, ce_swapchainImageTimeout = 1000000000;
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
@@ -54,9 +57,11 @@ namespace BlitzenVulkan
             pCamera->viewData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
         }
 
-        // Specifies the descriptor writes that are not static again
-        pushDescriptorWritesGraphics[0] = vBuffers.viewDataBuffer.descriptorWrite;
-        pushDescriptorWritesCompute[0] = vBuffers.viewDataBuffer.descriptorWrite;
+        // Passes the view data buffer info again since it is not a constant buffer
+        pushDescriptorWritesGraphics[ce_viewDataWriteElement].pBufferInfo = 
+            &vBuffers.viewDataBuffer.bufferInfo;
+        pushDescriptorWritesCompute[ce_viewDataWriteElement].pBufferInfo = 
+            &vBuffers.viewDataBuffer.bufferInfo;
 
         // Update the buffer info in the transform buffer descriptor write
 		pushDescriptorWritesGraphics[3].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
@@ -69,7 +74,7 @@ namespace BlitzenVulkan
         }
         
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
-        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, 1000000000);
+        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
 		UpdateBuffers(context.pResources, fTools, vBuffers);
@@ -83,7 +88,7 @@ namespace BlitzenVulkan
         // Swapchain image, needed to present the color attachment results
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, 
-        1000000000, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
+        ce_fenceTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
 
         // The command buffer recording begin here (stops when submit is called)
         BeginCommandBuffer(fTools.commandBuffer, 0);
