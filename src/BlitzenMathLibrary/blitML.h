@@ -86,6 +86,20 @@ namespace BlitML
     inline float FRand();
     inline float FRandInRange(float min, float max);
 
+    inline uint8_t GetDepthPyramidMipLevels(uint32_t width, uint32_t height)
+    {
+        uint8_t mipLevels = 0;
+        
+        while (width > 1 || height > 1)
+        {
+            mipLevels++;
+            width /= 2;
+            height /= 2;
+        }
+
+        return mipLevels;
+    }
+
 
     /*-----------------------
         Vector operations

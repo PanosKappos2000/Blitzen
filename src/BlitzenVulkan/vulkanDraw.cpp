@@ -1,40 +1,40 @@
 #include "vulkanRenderer.h"
 
-void DrawMeshTasks(VkInstance instance, VkCommandBuffer commandBuffer, VkBuffer drawBuffer, 
-VkDeviceSize drawOffset, VkBuffer countBuffer, VkDeviceSize countOffset, uint32_t maxDrawCount, uint32_t stride) 
-{
-    auto func = (PFN_vkCmdDrawMeshTasksIndirectCountEXT) vkGetInstanceProcAddr(instance, "vkCmdDrawMeshTasksIndirectCountEXT");
-    if (func != nullptr) 
-    {
-        func(commandBuffer, drawBuffer, drawOffset, countBuffer, countOffset, maxDrawCount, stride);
-    } 
-}
-
-// Call vkCmdPushDescriptorSetKHR extension function (This can be removed if I upgrade to Vulkan 1.4)
-void PushDescriptors(VkInstance instance, VkCommandBuffer commandBuffer, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t set, 
-uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites)
-{
-    auto func = (PFN_vkCmdPushDescriptorSetKHR) vkGetInstanceProcAddr(instance, "vkCmdPushDescriptorSetKHR");
-    if(func != nullptr)
-    {
-        func(commandBuffer, bindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
-    }
-}
-
-// Temporary helper function until I make sure that my math library works for frustum culling
-// I will keep it here until I implement a moving frustum
-glm::vec4 glm_NormalizePlane(glm::vec4& plane)
-{
-    return plane / glm::length(glm::vec3(plane));
-}
-
 namespace BlitzenVulkan
 {
-    constexpr uint32_t ce_pushDescriptorSetID = 0;
+    constexpr uint32_t ce_pushDescriptorSetID = 0;// Used when calling PuhsDesriptors for the set parameter
 
-    constexpr uint32_t ce_viewDataWriteElement = 0;
+    constexpr uint64_t ce_fenceTimeout = 1000000000;
+    constexpr uint64_t ce_swapchainImageTimeout = ce_fenceTimeout;
 
-	constexpr uint64_t ce_fenceTimeout, ce_swapchainImageTimeout = 1000000000;
+    static void DrawMeshTasks(VkInstance instance, VkCommandBuffer commandBuffer, VkBuffer drawBuffer,
+        VkDeviceSize drawOffset, VkBuffer countBuffer, VkDeviceSize countOffset, uint32_t maxDrawCount, uint32_t stride)
+    {
+        auto func = (PFN_vkCmdDrawMeshTasksIndirectCountEXT)vkGetInstanceProcAddr(instance, "vkCmdDrawMeshTasksIndirectCountEXT");
+        if (func != nullptr)
+        {
+            func(commandBuffer, drawBuffer, drawOffset, countBuffer, countOffset, maxDrawCount, stride);
+        }
+    }
+
+    // Call vkCmdPushDescriptorSetKHR extension function (This can be removed if I upgrade to Vulkan 1.4)
+    static void PushDescriptors(VkInstance instance, VkCommandBuffer commandBuffer,
+        VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t set,
+        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites)
+    {
+        auto func = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(instance, "vkCmdPushDescriptorSetKHR");
+        if (func != nullptr)
+        {
+            func(commandBuffer, bindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+        }
+    }
+
+    // Fallback to glm function
+    static glm::vec4 glm_NormalizePlane(glm::vec4& plane)
+    {
+        return plane / glm::length(glm::vec3(plane));
+    }
+
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
@@ -88,7 +88,7 @@ namespace BlitzenVulkan
         // Swapchain image, needed to present the color attachment results
         uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, 
-        ce_fenceTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
+        ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
 
         // The command buffer recording begin here (stops when submit is called)
         BeginCommandBuffer(fTools.commandBuffer, 0);

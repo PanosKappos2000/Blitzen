@@ -283,6 +283,64 @@ namespace BlitzenEngine
         pResources->primitiveVertexCounts.PushBack(static_cast<uint32_t>(vertices.GetSize()));
     }
 
+
+    static void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, 
+        BlitCL::DynamicArray<uint32_t>& indices
+    ) 
+    {
+        for (size_t i = 0; i < indices.GetSize(); i += 3) 
+        {
+            uint32_t i0 = indices[i + 0];
+            uint32_t i1 = indices[i + 1];
+            uint32_t i2 = indices[i + 2];
+
+            BlitML::vec3 edge1 = vertices[i1].position - vertices[i0].position;
+            BlitML::vec3 edge2 = vertices[i2].position - vertices[i0].position;
+
+            float deltaU1 = float(vertices[i1].uvX - vertices[i0].uvX);
+            float deltaV1 = float(vertices[i1].uvY - vertices[i0].uvY);
+
+            float deltaU2 = float(vertices[i2].uvX - vertices[i0].uvX);
+            float deltaV2 = float(vertices[i2].uvY - vertices[i0].uvY);
+
+            float dividend = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
+
+            float fc = 1.0f / dividend;
+
+            BlitML::vec3 tangent
+            {
+                (fc * (deltaV2 * edge1.x - deltaV1 * edge2.x)),
+                (fc * (deltaV2 * edge1.y - deltaV1 * edge2.y)),
+                (fc * (deltaV2 * edge1.z - deltaV1 * edge2.z)) 
+            };
+
+            BlitML::Normalize(tangent);
+
+            float sx = deltaU1, sy = deltaU2;
+
+            float tx = deltaV1, ty = deltaV2;
+
+            float handedness = ((tx * sy - ty * sx) < 0.0f) ? -1.0f : 1.0f;
+
+            BlitML::vec4 t4{ tangent, handedness };
+
+            vertices[i0].tangentX = uint8_t(t4.x * 127.f + 127.5f);
+			vertices[i0].tangentY = uint8_t(t4.y * 127.f + 127.5f);
+			vertices[i0].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
+			vertices[i0].tangentW = uint8_t(t4.w * 127.f + 127.5f);
+
+            vertices[i1].tangentX = uint8_t(t4.x * 127.f + 127.5f);
+			vertices[i1].tangentY = uint8_t(t4.y * 127.f + 127.5f);
+			vertices[i1].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
+			vertices[i1].tangentW = uint8_t(t4.w * 127.f + 127.5f);
+
+            vertices[i2].tangentX = uint8_t(t4.x * 127.f + 127.5f);
+            vertices[i2].tangentY = uint8_t(t4.y * 127.f + 127.5f);
+            vertices[i2].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
+            vertices[i2].tangentW = uint8_t(t4.w * 127.f + 127.5f);
+        }
+    }
+
     uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename)
     {
         // The function should return if the engine will go over the max allowed mesh assets
@@ -344,6 +402,9 @@ namespace BlitzenEngine
 
         meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
 		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
+
+		BLIT_INFO("Generating tangents")
+		GenerateTangents(vertices, indices);
 
         BLIT_INFO("Creating surface")
         LoadPrimitiveSurface(pResources, vertices, indices);

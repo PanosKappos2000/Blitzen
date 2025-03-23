@@ -3,6 +3,8 @@
 
 namespace BlitzenVulkan
 {
+	constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
+
     uint8_t VulkanRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
     void* pData, const char* filepath) 
     {
@@ -22,7 +24,7 @@ namespace BlitzenVulkan
         // This buffer has a random big size, as it needs to be allocated so that pData is not null in the next function
         BlitzenVulkan::AllocatedBuffer stagingBuffer;
         if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VMA_MEMORY_USAGE_CPU_TO_GPU, 128 * 1024 * 1024, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        VMA_MEMORY_USAGE_CPU_TO_GPU, ce_textureStagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             BLIT_ERROR("Failed to create staging buffer for texture data copy")
             return 0;
@@ -256,7 +258,8 @@ namespace BlitzenVulkan
         pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
 
         // Since most of these descriptor writes are static they can be initialized here
-        pushDescriptorWritesGraphics[0] = m_varBuffers[0].viewDataBuffer.descriptorWrite;
+        pushDescriptorWritesGraphics[ce_viewDataWriteElement]
+            = m_varBuffers[0].viewDataBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
         pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[3] = m_varBuffers[0].transformBuffer.descriptorWrite;
@@ -265,14 +268,15 @@ namespace BlitzenVulkan
         pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
         pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
-        pushDescriptorWritesCompute[0] = m_varBuffers[0].viewDataBuffer.descriptorWrite;
+        pushDescriptorWritesCompute[ce_viewDataWriteElement] = 
+            m_varBuffers[0].viewDataBuffer.descriptorWrite;
         pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite; 
         pushDescriptorWritesCompute[2] = m_varBuffers[0].transformBuffer.descriptorWrite;
         pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
         pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite; 
         pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite; 
         pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite; 
-        pushDescriptorWritesCompute[7] = {};
+        pushDescriptorWritesCompute[7] = {};// Will hold the depth pyramid for late culling compute shaders
 
         // This is obsolete but I am not in the mood to fix it
         m_pushDescriptorWritesOnpcGraphics[0] = {};
@@ -403,33 +407,27 @@ namespace BlitzenVulkan
     )
     {
 		const VkFormat depthPyramidFormat = VK_FORMAT_R32_SFLOAT;
+        const VkImageUsageFlags depthPyramidUsage =
+            VK_IMAGE_USAGE_SAMPLED_BIT | // When a depth pyramid mip is passed as the dst image, it is sampled
+            VK_IMAGE_USAGE_STORAGE_BIT; // When a depth pyramid mip is passed as the src image, it is a storage image
 
-        // This will fail if mip levels do not start from 0
-        depthPyramidMipLevels = 0;
     
-        // Get a conservative starting extent for the depth pyramid image, by getting the previous power of 2 of the draw extent
+        // Conservative starting extent
         depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
         depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
     
-        // Get the amount of mip levels for the depth pyramid by dividing the extent by 2, until both width and height are not over 1
-        uint32_t width = depthPyramidExtent.width;
-        uint32_t height = depthPyramidExtent.height;
-        while(width > 1 || height > 1)
-        {
-            depthPyramidMipLevels++;
-            width /= 2;
-            height /= 2;
-        }
+        // Mip level count
+		depthPyramidMipLevels = BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
     
-        // Create the depth pyramid image which will be used as storage image and to then transfer its data for occlusion culling
+        // Creates the primary depth pyramid image
         if(!CreatePushDescriptorImage(device, allocator, depthPyramidImage, 
             {depthPyramidExtent.width, depthPyramidExtent.height, 1}, 
-            depthPyramidFormat,
-            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
-            depthPyramidMipLevels, VMA_MEMORY_USAGE_GPU_ONLY
+            depthPyramidFormat, depthPyramidUsage, depthPyramidMipLevels, 
+            VMA_MEMORY_USAGE_GPU_ONLY
         ))
             return 0;
     
+        // Create the mip levels of the depth pyramid
         for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
         {
             if(!CreateImageView(device, depthPyramidMips[size_t(i)], 

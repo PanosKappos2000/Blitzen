@@ -126,6 +126,7 @@ namespace BlitzenVulkan
 
 		void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, FrameTools& tools, VarBuffers& buffers);
 
+        // When a dynamic object moves, it should call this function to update the staging buffer
         inline void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform newTr)
         {
             auto pData = m_varBuffers[m_currentFrame].pTransformData;
@@ -253,10 +254,9 @@ namespace BlitzenVulkan
 		};
         VkImageView m_depthPyramidMips[ce_maxDepthPyramidMipLevels];
         uint8_t m_depthPyramidMipLevels = 0;
-
         VkExtent2D m_depthPyramidExtent;
 
-        // Array of structs that represent the way textures will be pushed to the GPU
+        // Will hold all textures that will be loaded for the scene, to pass them to the global descriptor set later
         TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
         size_t textureCount = 0;
         ImageSampler m_textureSampler;

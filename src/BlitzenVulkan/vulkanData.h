@@ -1,8 +1,5 @@
 #pragma once
 
-/*#define VK_NO_PROTOTYPES
-#include <Volk/volk.h>*/
-
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 
@@ -22,7 +19,7 @@
 #include "glm/gtx/quaternion.hpp"
 
 // Deactivate validation layers on debug mode even if they are requested
-#ifdef NDEBUG
+#if defined(NDEBUG)
 #undef BLIT_VK_VALIDATION_LAYERS
 #define VK_CHECK(expr)              expr;
 #else
@@ -31,18 +28,22 @@
 
 namespace BlitzenVulkan
 {
-    // These macros will be used to initalize VkApplicationInfo which will be passed to VkInstanceCreateInfo
+	// VkApplicationInfo constant expressions
     constexpr const char* ce_userApp = "Blitzen Game";
     constexpr uint32_t ce_appVersion = VK_MAKE_VERSION (1, 0, 0);
     constexpr const char* ce_hostEngine =  "Blitzen Engine";                             
     constexpr uint32_t ce_userEngineVersion = VK_MAKE_VERSION (BlitzenEngine::ce_blitzenMajor, 0, 0);
 
+
+	// Present mode depends on if vsync is enabled
     #ifdef BLIT_VSYNC
         constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
     #else
         constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     #endif
 
+
+    // Debug constant expressions (mainly validation layers)
     #if defined(BLIT_VK_VALIDATION_LAYERS) && !defined(NDEBUG)
         constexpr uint8_t ce_bValidationLayersRequested = 1;
         #if defined(BLIT_VK_SYNCHRONIZATION_VALIDATION)
@@ -55,28 +56,39 @@ namespace BlitzenVulkan
         constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
     #endif
 
+
+	// The maximum number of instance extensions that may be requested
     constexpr uint32_t ce_maxRequestedInstanceExtensions = 3;
 
+
+    // Raytracing constant expression
     #ifdef BLIT_VK_RAYTRACING
         constexpr uint8_t ce_bRaytracing = 1;
     #else
         constexpr uint8_t ce_bRaytracing = 0;
     #endif
 
+
+	// The maximum number of device extensions that may be requested
     constexpr uint32_t ce_maxRequestedDeviceExtensions = 6;
 
-    #ifdef BLIT_DOUBLE_BUFFERING
+
+    // Double buffering constant expression
+    #if defined(BLIT_DOUBLE_BUFFERING)
         constexpr uint8_t ce_framesInFlight = 2;
     #else
         constexpr uint8_t ce_framesInFlight = 1;
     #endif
 
-    #ifdef  BLIT_VK_MESH_EXT
+	// Mesh shader constant expression
+    #if defined(BLIT_VK_MESH_EXT)
         constexpr uint8_t ce_bMeshShaders = 1;
     #else
         constexpr uint8_t ce_bMeshShaders = 0; 
     #endif
 
+
+    // The format and usage flags that will be set for the color and depth attachments
     constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     constexpr VkImageUsageFlags ce_colorAttachmentImageUsage = 
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
@@ -89,6 +101,8 @@ namespace BlitzenVulkan
         VK_IMAGE_USAGE_SAMPLED_BIT; // For generate debug pyramid compute shader
 
 
+    // Descriptor write array index constant epressions
+    constexpr uint32_t ce_viewDataWriteElement = 0;
 
 
     struct VulkanStats
