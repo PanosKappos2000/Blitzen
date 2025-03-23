@@ -156,6 +156,16 @@ namespace BlitzenEngine
         return 1;
     }
 
+	static void OnMouseButtonClickTest(int16_t mouseX, int16_t mouseY)
+	{
+		BLIT_INFO("Mouse button clicked at %d, %d", mouseX, mouseY);
+	}
+
+	static void OnMouseButtonReleaseTest(int16_t mouseX, int16_t mouseY)
+	{
+		BLIT_INFO("Mouse button released at %d, %d", mouseX, mouseY);
+	}
+
     void RegisterDefaultEvents()
     {
         BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::EngineShutdown, 
@@ -190,6 +200,9 @@ namespace BlitzenEngine
 
         BlitzenCore::RegisterKeyReleaseCallback(BlitzenCore::BlitKey::__F1, 
             FreezeFrustumOnF1KeyPressCallback
-        );   
+        );
+
+        BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(BlitzenCore::MouseButton::Left, 
+            OnMouseButtonClickTest, OnMouseButtonReleaseTest);
     }
 }

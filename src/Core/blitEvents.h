@@ -56,7 +56,6 @@ namespace BlitzenCore
 
     struct EventSystemState 
     {
-        
         RegisteredEvent eventTypes[static_cast<uint8_t>(BlitEventType::MaxTypes)];
 
         EventSystemState();
@@ -74,12 +73,10 @@ namespace BlitzenCore
 		static uint8_t bSH;// Shutdown event already assigned ?
 
         // Some events do not have cusomizable callbacks
-        if (type == BlitEventType::KeyPressed)
+        if (type == BlitEventType::KeyPressed || type == BlitEventType::KeyReleased || 
+            type == BlitEventType::MouseButtonPressed || type == BlitEventType::MouseButtonReleased)
             return;
-        if(type == BlitEventType::KeyReleased)
-        {
-            return;
-        }
+
         if(type == BlitEventType::EngineShutdown)
         {
             if(bSH)
@@ -351,6 +348,59 @@ namespace BlitzenCore
         }
     }
 
+    // Initializes the press function pointer for the given key
+    inline void RegisterMouseButtonReleaseCallback(MouseButton button, BlitPfnMouseButtonCallback callback)
+    {
+		InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnPressCallback = callback;
+    }
+
+    // Initializes the release function pointer for the given key
+    inline void RegisterMouseButtonPressCallback(MouseButton button, BlitPfnMouseButtonCallback callback)
+    {
+        InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnReleaseCallback = callback;
+    }
+
+    // Initializes both the release and press function pointers for the given key
+    inline void RegisterMouseButtonPressAndReleaseCallback(MouseButton button,
+        BlitPfnMouseButtonCallback press, BlitPfnMouseButtonCallback release
+    )
+    {
+        InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnPressCallback = press;
+        InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnReleaseCallback = release;
+    }
+
+    // Accesses the press function pointer in the KEYth element 
+    inline void CallMouseButtonPressFunction(MouseButton button, int16_t mouseX, int16_t mouseY)
+    {
+        auto func = InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnPressCallback;
+        if (func)
+            func(mouseX, mouseY);
+    }
+
+    // Accesses the release function pointer in the KEYth element
+    inline void CallMouseButtonReleaseFunction(MouseButton button, int16_t mouseX, int16_t mouseY)
+    {
+        auto func = InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnReleaseCallback;
+        if (func)
+            func(mouseX, mouseY);
+    }
+
+    inline void InputProcessButton(MouseButton button, uint8_t bPressed)
+    {
+        auto pState = InputSystemState::GetState();
+
+        // If the state changed, fire an event.
+        if (pState->currentMouse.buttons[static_cast<size_t>(button)] != bPressed)
+        {
+            pState->currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
+            if (bPressed)
+                CallMouseButtonPressFunction(button, pState->currentMouse.x, pState->currentMouse.y);
+            else
+                CallMouseButtonReleaseFunction(button, pState->currentMouse.x, pState->currentMouse.y);
+           
+        }
+    }
+
     void UpdateInput(double deltaTime);
 
     // Keyboard input
@@ -364,7 +414,6 @@ namespace BlitzenCore
     void GetMousePosition(int32_t* x, int32_t* y);
     void GetPreviousMousePosition(int32_t* x, int32_t* y);
 
-    void InputProcessButton(MouseButton button, uint8_t bPressed);
     void InputProcessMouseMove(int16_t x, int16_t y);
 
     void InputProcessMouseWheel(int8_t zDelta);

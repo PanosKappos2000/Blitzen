@@ -413,7 +413,8 @@ namespace BlitzenPlatform
                 case WM_MBUTTONUP:
                 case WM_RBUTTONUP: 
                 {
-                    uint8_t bPressed = (msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN);
+                    uint8_t bPressed = msg == WM_LBUTTONDOWN || 
+                        msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
                     BlitzenCore::MouseButton button = BlitzenCore::MouseButton::MaxButtons;
                     switch(msg)
                     {

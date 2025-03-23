@@ -51,22 +51,6 @@ namespace BlitzenCore
         );
     }
 
-    void InputProcessButton(MouseButton button, uint8_t bPressed) 
-    {
-        InputSystemState* pState = InputSystemState::GetState();
-        // If the state changed, fire an event.
-        if (pState->currentMouse.buttons[static_cast<size_t>(button)] != bPressed) 
-        {
-            pState->currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
-            // Fire the event.
-            EventContext context;
-            context.data.ui16[0] = static_cast<uint16_t>(button);
-            FireEvent<void*>(bPressed ? BlitEventType::MouseButtonPressed : BlitEventType::MouseButtonPressed, 
-                nullptr, context
-            );
-        }
-    }
-
 
 
     void InputProcessMouseMove(int16_t x, int16_t y) 
