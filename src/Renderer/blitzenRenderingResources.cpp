@@ -422,28 +422,6 @@ namespace BlitzenEngine
         LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj", "human");
     }
 
-    // Sets random transform
-    static void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
-    {
-        transform.pos = BlitML::vec3(
-            (float(rand()) / RAND_MAX) * multiplier,//x 
-            (float(rand()) / RAND_MAX) * multiplier,//y
-            (float(rand()) / RAND_MAX) * multiplier
-        );
-
-        transform.scale = scale;
-
-        transform.orientation = BlitML::QuatFromAngleAxis(
-            BlitML::vec3(
-                (float(rand()) / RAND_MAX) * 2 - 1, // x
-                (float(rand()) / RAND_MAX) * 2 - 1, // y
-                (float(rand()) / RAND_MAX) * 2 - 1
-            ), 
-            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), // Angle 
-            0
-        );
-    }
-
     static void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderingResources* pResources,
         float randomTransformMultiplier, float scale)
     {
@@ -472,7 +450,7 @@ namespace BlitzenEngine
 
     // Creates the rendering stress test scene. 
     // TODO: This function is unsafe, calling it after another function that create render object will cause issues
-    static void LoadGeometryStressTest(RenderingResources* pResources)
+    void LoadGeometryStressTest(RenderingResources* pResources)
     {
         // Don't load the stress test if ray tracing is on
         #if defined(BLIT_VK_RAYTRACING)// The name of this macro should change
@@ -518,7 +496,7 @@ namespace BlitzenEngine
     }
 
     // Creates a scene for oblique Near-Plane clipping testing. Pretty lackluster for the time being
-    static void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources)
+    void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources)
     {
         MeshTransform transform;
         transform.pos = BlitML::vec3(30.f, 50.f, 50.f);
@@ -829,49 +807,5 @@ namespace BlitzenEngine
             }
 
         return 1;
-    }
-
-    void CreateSceneFromArguments(int argc, char** argv, 
-    RenderingResources* pResources, void* rendererData, uint8_t& bOnpc)
-    {
-        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
-        if(argc > 1)
-        {
-            // Special argument. Loads heavy scene to stress test the culling
-            if(strcmp(argv[1], "RenderingStressTest") == 0)
-            {
-                LoadTestGeometry(pResources);
-                LoadGeometryStressTest(pResources);
-
-                // The following arguments are used as gltf filepaths
-                for(int32_t i = 2; i < argc; ++i)
-                {
-                    LoadGltfScene(pResources, argv[i], rendererData);
-                }
-            }
-
-            // Special argument. Test oblique near-plane clipping technique. Not working yet.
-            else if(strcmp(argv[1], "ONPC_ReflectionTest") == 0)
-            {
-                LoadTestGeometry(pResources);
-                CreateObliqueNearPlaneClippingTestObject(pResources);
-                bOnpc = 1;
-
-                // The following arguments are used as gltf filepaths
-                for (int32_t i = 2; i < argc; ++i)
-                {
-                    LoadGltfScene(pResources, argv[i], rendererData);
-                }
-            }
-
-            // If there are no special arguments everything is treated as a filepath for a gltf scene
-            else
-            {
-                for(int32_t i = 1; i < argc; ++i)
-                {
-                    LoadGltfScene(pResources, argv[i], rendererData);
-                }
-            }
-        }
     }
 }

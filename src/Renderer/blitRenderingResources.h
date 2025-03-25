@@ -259,6 +259,32 @@ namespace BlitzenEngine
         {}
     };
 
+
+
+
+
+    // Sets random transform
+    inline void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
+    {
+        transform.pos = BlitML::vec3(
+            (float(rand()) / RAND_MAX) * multiplier,//x 
+            (float(rand()) / RAND_MAX) * multiplier,//y
+            (float(rand()) / RAND_MAX) * multiplier
+        );
+
+        transform.scale = scale;
+
+        transform.orientation = BlitML::QuatFromAngleAxis(
+            BlitML::vec3(
+                (float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1
+            ),
+            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), // Angle 
+            0
+        );
+    }
+
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData);
 
     void DefineMaterial(RenderingResources* pResources, const BlitML::vec4& diffuseColor, 
@@ -271,12 +297,82 @@ namespace BlitzenEngine
     // Placeholder to load some default resources while testing the systems
     void LoadTestGeometry(RenderingResources* pResources);
 
-    // Takes the command line arguments to form a scene
-    void CreateSceneFromArguments(int argc, char** argv, 
-    RenderingResources* pResources, void* rendererData, uint8_t& bOnpc);
+    // Functions for testing aspects of the renderer
+    void LoadGeometryStressTest(RenderingResources* pResources);
+    void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources);
+    template<typename MT>
+    void CreateDynamicObjectRendererTest(RenderingResources* pResources, MT& manager)
+    {
+        constexpr uint32_t ce_objectCount = 1000;
+        if (pResources->renderObjectCount + ce_objectCount > ce_maxRenderObjects)
+        {
+            BLIT_ERROR("Could not add dynamic object renderer test, object count exceeds limit")
+                return;
+        }
+
+        for (size_t i = 0; i < ce_objectCount; ++i)
+        {
+            BlitzenEngine::MeshTransform transform;
+            RandomizeTransform(transform, 100.f, 1.f);
+
+            if (!manager.AddObject<BlitzenEngine::ClientTest>(
+                pResources, transform, 1, "kitten"
+            ))
+                return;
+        }
+    }
 
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
     uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, void* rendererData);
+
+    // Takes the command line arguments to form a scene (this is pretty ill formed honestly)
+    template<class RT, class MT>
+    void CreateSceneFromArguments(int argc, char** argv,
+        RenderingResources* pResources, RT* pRenderer, MT& manager, uint8_t& bOnpc)
+    {
+        if (argc > 1)
+        {
+            // Special argument. Loads heavy scene to stress test the culling
+            if (strcmp(argv[1], "RenderingStressTest") == 0)
+            {
+                LoadTestGeometry(pResources);
+                LoadGeometryStressTest(pResources);
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    LoadGltfScene(pResources, argv[i], pRenderer);
+                }
+
+                #if defined(BLIT_DYNAMIC_OBJECT_TEST)
+                CreateDynamicObjectRendererTest(pResources, manager);
+                #endif
+            }
+
+            // Special argument. Test oblique near-plane clipping technique. Not working yet.
+            else if (strcmp(argv[1], "ONPC_ReflectionTest") == 0)
+            {
+                LoadTestGeometry(pResources);
+                CreateObliqueNearPlaneClippingTestObject(pResources);
+                bOnpc = 1;
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    LoadGltfScene(pResources, argv[i], pRenderer);
+                }
+            }
+
+            // If there are no special arguments everything is treated as a filepath for a gltf scene
+            else
+            {
+                for (int32_t i = 1; i < argc; ++i)
+                {
+                    LoadGltfScene(pResources, argv[i], pRenderer);
+                }
+            }
+        }
+    }
 }

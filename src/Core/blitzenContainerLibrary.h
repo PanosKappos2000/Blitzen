@@ -242,17 +242,14 @@ namespace BlitCL
 
         void RearrangeCapacity(size_t newSize)
         {
-            size_t temp = m_capacity;
             m_capacity = newSize * ce_blitDynamiArrayCapacityMultiplier;
             T* pTemp = m_pBlock;
+
             m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::DynamicArray>(m_capacity);
             if (m_size != 0)
             {
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_size * sizeof(T));
-            }
-            if(temp != 0)
-            {
-                BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::DynamicArray, pTemp, temp);
+                BlitzenCore::BlitFree<T>(BlitzenCore::AllocationType::DynamicArray, pTemp, m_size);
             }
         }
     };
@@ -408,11 +405,11 @@ namespace BlitCL
         SmartPointer(T* pDataToCopy)
         {
             BLIT_ASSERT(!pDataToCopy)
-            m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(pDataToCopy);
+                m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(pDataToCopy);
         }
 
         // Default constructor
-		SmartPointer() : m_pData(nullptr) {}
+        SmartPointer() : m_pData{nullptr} {}
 
         // Copy constructor
         SmartPointer(const T& data)

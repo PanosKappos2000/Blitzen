@@ -152,6 +152,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_VK_RAYTRACING
                             BLIT_VK_SYNCHRONIZATION_VALIDATION
 
+                            BLIT_DYNAMIC_OBJECT_TEST
+
                             # Opengl preprocessor marcors
                             #BLIT_GL_LEGACY_OVERRIDE
 

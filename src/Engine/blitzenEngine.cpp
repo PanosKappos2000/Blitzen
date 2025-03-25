@@ -30,6 +30,7 @@ namespace BlitzenEngine
 using EventSystem = BlitCL::SmartPointer<BlitzenCore::EventSystemState>;
 using InputSystem = BlitCL::SmartPointer<BlitzenCore::InputSystemState>;
 using RenderingResources = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
+using Entities = BlitCL::SmartPointer<BlitzenEngine::GameObjectManager, BlitzenCore::AllocationType::Entity>;
 
 int main(int argc, char* argv[])
 {
@@ -76,24 +77,13 @@ int main(int argc, char* argv[])
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
     BlitzenEngine::SetupCamera(mainCamera);
 
-    // Command line arguments
-    uint8_t bOnpc = 0;
-    BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), bOnpc);
-
     // Game object manager
     BlitzenEngine::GameObjectManager gameObjectManager;
-    // Testing
-    gameObjectManager.AddObject<BlitzenEngine::ClientTest>
-    (
-        renderingResources.Data(),
-        BlitzenEngine::MeshTransform
-        {
-            BlitML::vec3(BlitzenEngine::ce_initialCameraX, 
-                BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ),
-            1.f, BlitML::quat(0.f, 0.f, 0.f, 1.f) 
-        }, 
-        1, "dragon"
-    );
+
+    // Command line arguments
+    uint8_t bOnpc = 0;
+    BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), 
+        renderer.Data(), gameObjectManager, bOnpc);
 
     // Rendering setup with the loaded resources
     if(!bRenderingSystem || // Checks if API initialization was succesful first
