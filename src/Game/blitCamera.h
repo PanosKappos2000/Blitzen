@@ -3,13 +3,11 @@
 // The camera will need to access math library types and functions
 #include "BlitzenMathLibrary/blitML.h"
 
-// The engine will hold an array
-#define BLIT_MAX_CAMERAS_IN_SCENE    2
-#define BLIT_MAIN_CAMERA_ID          0
-#define BLIT_DETATCHED_CAMERA_ID     1
-
 namespace BlitzenEngine
 {
+	constexpr uint8_t ce_maxCameraCount = 1;
+    constexpr uint8_t ce_mainCameraId = 0;
+
     // This is struct that is needed for camera movement logic and window size stats
     struct CameraTransformData
     {
@@ -88,6 +86,9 @@ namespace BlitzenEngine
     void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
     BlitML::vec3 initialCameraPosition, float drawDistance, float initialYawRotation = 0, float initialPitchRotation = 0);
 
+    // Sets up camera with engine defaults
+    void SetupCamera(Camera& camera);
+
     // Moves a camera based on the velocity and the rotation matrix. Only works if cameraDirty is 1
     void UpdateCamera(Camera& camera, float deltaTime);
 
@@ -119,7 +120,7 @@ namespace BlitzenEngine
         static CameraSystem* m_sThis;
 
         // Holds all the camera created and an index to the active one
-        Camera cameraList[BLIT_MAX_CAMERAS_IN_SCENE];
+        Camera cameraList[ce_maxCameraCount];
 
         // The main camera is the one whose values are used for culling and other operations
         Camera& m_mainCamera;

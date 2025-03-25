@@ -172,16 +172,14 @@ namespace BlitzenVulkan
             */
 
             // First culling pass
-            DispatchRenderObjectCullingComputeShader(
-                fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 context.pResources->renderObjectCount, 
                 0, 0 // Post pass and late culling boolean values
             );
 
             // First draw pass
-            DrawGeometry(
-                fTools.commandBuffer, 
+            DrawGeometry(fTools.commandBuffer, 
                 pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
                 context.pResources->renderObjectCount, 
@@ -192,16 +190,14 @@ namespace BlitzenVulkan
             GenerateDepthPyramid(fTools.commandBuffer);
 
             // Second culling pass 
-            DispatchRenderObjectCullingComputeShader(
-                fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 context.pResources->renderObjectCount, 
                 1, 0 // Late culling and post pass boolean values
             );
 
             // Second draw pass
-            DrawGeometry(
-                fTools.commandBuffer, 
+            DrawGeometry(fTools.commandBuffer, 
                 pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
                 context.pResources->renderObjectCount, 
@@ -209,8 +205,7 @@ namespace BlitzenVulkan
                 );
 
             // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution should be found)
-            DispatchRenderObjectCullingComputeShader(
-                fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 context.pResources->renderObjectCount, 
                 1, 1 // late culling and post pass boolean values

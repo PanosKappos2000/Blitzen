@@ -45,7 +45,8 @@ void main()
         emissiveMap = texture(textures[nonuniformEXT(material.emissiveTag)], uv).rgb;
 
     vec3 bitangent = cross(normal, tangent.xyz) * tangent.w;
-	vec3 nrm = normalize(normalMap.r * tangent.xyz + normalMap.g * bitangent + normalMap.b * normal);
+    vec3 finalTangent = tangent.xyz - dot(tangent.xyz, normal) * normal;
+	vec3 nrm = normalize(normalMap.r * finalTangent + normalMap.g * bitangent + normalMap.b * normal);
     vec3 sunDirection = normalize(vec3(-1, 1, -1));
 	float ndotl = max(dot(nrm, sunDirection), 0.0);
 

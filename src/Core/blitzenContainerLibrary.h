@@ -323,7 +323,7 @@ namespace BlitCL
     public:
 
         HashMap(size_t initialCapacity = 10)
-            :m_capacity(initialCapacity)
+            :m_capacity{initialCapacity}, m_elementCount{ 0 }
         {
             if(m_capacity > 0)
             {
@@ -333,27 +333,22 @@ namespace BlitCL
 
         void Insert(const char* name, const T& value)
         {
-            if(m_capacity <= m_elementCount)
+            if(m_capacity <= m_elementCount + 1)
             {
                 IncreaseCapacity(m_capacity + 1);
             }
 
-            size_t hash = Hash(name);
-            m_pBlock[hash] = value;
+            m_pBlock[HashFunction(name)] = value;
             ++m_elementCount;
         }
 
-        inline T& operator [](const char* name){
-            size_t  hash = Hash(name);
-            return m_pBlock[hash];
-        }
+        inline T& operator [](const char* name){ return m_pBlock[HashFunction(name)]; }
 
         ~HashMap()
         {
             if(m_capacity > 0)
             {
-                delete [] m_pBlock;
-                BlitzenCore::LogFree(BlitzenCore::AllocationType::Hashmap, m_capacity * sizeof(T));
+				BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::Hashmap, m_pBlock, m_capacity);
             }
         }
 
@@ -366,10 +361,10 @@ namespace BlitCL
 
     private:
 
-        size_t Hash(const char* name)
+        size_t HashFunction(const char* name)
         {
             // A multipler to use when generating a hash. Prime to hopefully avoid collisions
-            static const size_t multiplier = 97;
+            constexpr size_t multiplier = 97;
             unsigned const char* us;
 
             size_t hash = 0;
@@ -416,18 +411,22 @@ namespace BlitCL
             m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(pDataToCopy);
         }
 
+        // Default constructor
 		SmartPointer() : m_pData(nullptr) {}
 
+        // Copy constructor
         SmartPointer(const T& data)
         {
             m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(data);
         }
 
+        // Move contructor
         SmartPointer(T&& data)
         {
             m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(std::move(data));
         }
 
+        // Allocates memory for an object
         template<typename... P>
         void Make(const P&... params)
         {
@@ -435,6 +434,7 @@ namespace BlitCL
             m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
         }
 
+		// Allocates memory for a derived class and assigns it to the base class pointer
         template<typename I, typename... P>
         void MakeAs(const P&... params)
         {
@@ -462,6 +462,7 @@ namespace BlitCL
                 BlitzenCore::BlitDestroyAlloc(alloc, m_pData);
             }
         }
+
     private:
         T* m_pData;
     };

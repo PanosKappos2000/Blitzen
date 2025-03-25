@@ -12,7 +12,7 @@ namespace BlitzenEngine
     class GameObject
     {
     public:
-        GameObject(const char* meshName = "undefined", uint8_t bDynamic = 0);
+        GameObject(uint8_t bDynamic = 0, const char* meshName = ce_defaultMeshName);
 
 		inline uint8_t IsDynamic() const { return m_bDynamic; } 
 
@@ -35,9 +35,10 @@ namespace BlitzenEngine
         using Entity = BlitCL::SmartPointer<T, BlitzenCore::AllocationType::Entity>;
         BlitCL::DynamicArray<Entity<GameObject>> m_gameObjects;
         
-        BlitCL::DynamicArray<GameObject*> m_pDynamicObjects;
+        BlitCL::DynamicArray<GameObject*> m_pDynamicObjects;// Objects that will call Update
 
     public:
+
         // Handles the addition of game objects to the scene
         template<typename T, typename... Args>
         inline uint8_t AddObject(BlitzenEngine::RenderingResources* pResources, 
@@ -51,11 +52,12 @@ namespace BlitzenEngine
 
 			m_gameObjects.Resize(m_gameObjects.GetSize() + 1);
             auto& newEntity = m_gameObjects.Back();
-            newEntity.MakeAs<T>(args...);
+            newEntity.MakeAs<T>(args...);// Adds a derived game object to the array
 
             newEntity->m_transformId = pResources->AddRenderObjectsFromMesh(
                 newEntity->m_meshId, initialTransform
             );
+
 			if (m_gameObjects.Back()->IsDynamic())
 			{
                 m_pDynamicObjects.PushBack(m_gameObjects.Back().Data());
@@ -71,13 +73,14 @@ namespace BlitzenEngine
         }
     };
 
+    // Temporary functionality tester
     class ClientTest : public GameObject
     {
     public:
 
         void Update() override;
 
-        ClientTest(const char* meshName = "undefined", uint8_t bDynamic = 0);
+        ClientTest(uint8_t bDynamic = 0, const char* meshName = ce_defaultMeshName);
 
     private:
         float m_pitch = 0.f;
@@ -86,5 +89,15 @@ namespace BlitzenEngine
 
         float m_speed = 0.1f;
     };
+
+
+
+
+    /*
+        General game object functionality
+    */
+
+    // Changes orientation values of an object and updates the renderer
+    void RotateObject(float& yaw, float& pitch, uint32_t transformId, float speed);
 
 }

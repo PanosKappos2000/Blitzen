@@ -48,12 +48,9 @@ namespace BlitzenEngine
         }
     
         TextureStats& texture = pResources->textures[pResources->textureCount];
-        // TODO: Oboslete, create them inside the Upload texture function
-        BlitzenEngine::DDS_HEADER header{};
-        BlitzenEngine::DDS_HEADER_DXT10 header10{};
             
         // If texture upload to the renderer succeeds, the texture count is incremented and the function returns successfully
-        if(pRenderer->UploadTexture(header, header10, texture.pTextureData, filename))
+        if(pRenderer->UploadTexture(texture.pTextureData, filename))
         {
             pResources->textureCount++;
             return 1;
@@ -63,25 +60,26 @@ namespace BlitzenEngine
         return 0;
     }
 
-    RenderingResources::RenderingResources()
+    RenderingResources::RenderingResources(void* rendererData)
     {
 		s_pResources = this;
+
+        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
+
+        // Defaults
+        LoadTextureFromFile(this, "Assets/Textures/base_baseColor.dds","dds_texture_default", pRenderer);
+        DefineMaterial(this, { 0.1f }, 65.f, "dds_texture_default", "unknown", "loaded_material");
+        LoadMeshFromObj(this, "Assets/Meshes/bunny.obj", ce_defaultMeshName);
     }
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData)
     {
-        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
-
-        // Creates one default texture and one default material
-        LoadTextureFromFile(pResources, "Assets/Textures/base_baseColor.dds", 
-        "dds_texture_default", pRenderer);
-        BlitML::vec4 color1(0.1f);
-        DefineMaterial(pResources, color1, 65.f, "dds_texture_default", "unknown", "loaded_material");
+        
 
         return 1;
     }
 
-    void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, 
+    void DefineMaterial(RenderingResources* pResources, const BlitML::vec4& diffuseColor, 
         float shininess, const char* diffuseMapName, 
         const char* specularMapName, const char* materialName
     )
@@ -341,7 +339,7 @@ namespace BlitzenEngine
         }
     }
 
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename)
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, const char* meshName)
     {
         // The function should return if the engine will go over the max allowed mesh assets
         if(pResources->meshCount > ce_maxMeshCount)
@@ -356,6 +354,8 @@ namespace BlitzenEngine
         // Get the current mesh and give it the size surface array as its first surface index
         Mesh& currentMesh = pResources->meshes[pResources->meshCount];
         currentMesh.firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
+		currentMesh.meshId = uint32_t(pResources->meshCount);
+        pResources->meshMap.Insert(meshName, currentMesh);
 
         ObjFile file;
         if(!objParseFile(file, filename))
@@ -410,17 +410,16 @@ namespace BlitzenEngine
         LoadPrimitiveSurface(pResources, vertices, indices);
 
         currentMesh.surfaceCount++;// Increment the surface count
-        ++(pResources->meshCount);// Increment the mesh count
+        ++pResources->meshCount;// Increment the mesh count
 
         return 1;
     }
 
     void LoadTestGeometry(RenderingResources* pResources)
     {
-        LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj");
-        LoadMeshFromObj(pResources, "Assets/Meshes/kitten.obj");
-        LoadMeshFromObj(pResources, "Assets/Meshes/bunny.obj");
-        LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj");
+        LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj", "dragon");
+        LoadMeshFromObj(pResources, "Assets/Meshes/kitten.obj", "kitten");
+        LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj", "human");
     }
 
     // Sets random transform
@@ -496,21 +495,21 @@ namespace BlitzenEngine
         // Bunnies
         for(size_t i = start; i < start + bunnyCount; ++i)
         {
-			CreateRenderObjectWithRandomTransform(2, pResources, ce_stressTestRandomTransformMultiplier, 5.f);
+			CreateRenderObjectWithRandomTransform(0, pResources, ce_stressTestRandomTransformMultiplier, 5.f);
         }
         start += bunnyCount;
         // Kittens
         for (size_t i = start; i < start + kittenCount; ++i)
         {
-            CreateRenderObjectWithRandomTransform(1, pResources, ce_stressTestRandomTransformMultiplier, 1.f);
+            CreateRenderObjectWithRandomTransform(2, pResources, ce_stressTestRandomTransformMultiplier, 1.f);
         }
         // Standford dragons
         start += kittenCount;
         for (size_t i = start; i < start + dragonCount; ++i)
         {
-			CreateRenderObjectWithRandomTransform(0, pResources, ce_stressTestRandomTransformMultiplier, 0.5f);
+			CreateRenderObjectWithRandomTransform(1, pResources, ce_stressTestRandomTransformMultiplier, 0.5f);
         }
-        // Hardcode a large amount of standford bunnies
+        // Humans
         start += dragonCount;
         for (size_t i = start; i < start + maleCount; ++i)
         {

@@ -118,8 +118,7 @@ namespace BlitzenVulkan
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
 
         // Function for DDS texture loading
-        uint8_t UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
-        void* pData, const char* filepath);
+        uint8_t UploadTexture(void* pData, const char* filepath);
 
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::DrawContext& context);
@@ -164,7 +163,8 @@ namespace BlitzenVulkan
         uint8_t SetupMainGraphicsPipeline();
 
         uint8_t BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
-        BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts);
+            BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts
+        );
 
         uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, 
             BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface
@@ -172,14 +172,16 @@ namespace BlitzenVulkan
 
         // Dispatches the compute shader that will perform culling and LOD selection and will write to the indirect draw buffer.
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
-        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount,
-        uint8_t lateCulling = 0, uint8_t postPass = 0);
+            uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount,
+            uint8_t lateCulling = 0, uint8_t postPass = 0
+        );
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
         void DrawGeometry(VkCommandBuffer commandBuffer, 
-        VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
-        VkPipeline pipeline, VkPipelineLayout layout, 
-        uint32_t drawCount, uint8_t latePass = 0, uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr);
+            VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
+            VkPipeline pipeline, VkPipelineLayout layout, 
+            uint32_t drawCount, uint8_t latePass = 0, uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr
+        );
 
         // For occlusion culling to be possible a depth pyramid needs to be generated based on the depth attachment
         void GenerateDepthPyramid(VkCommandBuffer commandBuffer);

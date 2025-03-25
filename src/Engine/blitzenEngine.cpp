@@ -33,26 +33,24 @@ using RenderingResources = BlitCL::SmartPointer<BlitzenEngine::RenderingResource
 
 int main(int argc, char* argv[])
 {
-    // Not as important as it sounds
+    // Not as important as it looks
     BlitzenEngine::Engine engine;
-
     // Only systems that do not allocate on the heap may be initialized before here
     // The opposite goes for destruction
     BlitzenCore::MemoryManagerState blitzenMemory;
 
     // Logging system. Extremely simplistic for now
     BlitzenCore::InitLogging();
-
-    // Camera system. Holds a fixed amount of cameras that is known at compile time
+    // Camera container
     BlitzenEngine::CameraSystem cameraSystem;
-
-    // Event handling
+    // Events
     EventSystem eventSystemState;
 	eventSystemState.Make();
+    // Inputs
     InputSystem inputSystemState;
     inputSystemState.Make();
 
-    // Platform specific code. Mostly window creation. Lightweight, no allocations, but needs to wait for event systems
+    // Platform specific code + window creation
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion))
             
     // Default engine events (see blitzenDefaultEvents.cpp). The client app may modify these with some exceptions
@@ -70,30 +68,19 @@ int main(int argc, char* argv[])
         bRenderingSystem = 0;
     }
         
-    // Allocates the rendering resources
+    // Rendering resources
     RenderingResources renderingResources;
-	renderingResources.Make();
-    LoadRenderingResourceSystem(renderingResources.Data(), renderer.Data());
+    renderingResources.Make(renderer.Data());
 
     // Main camera
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
-    SetupCamera(mainCamera, 
-        BlitML::Radians(BlitzenEngine::ce_initialFOV), // field of view
-        static_cast<float>(BlitzenEngine::ce_initialWindowWidth), 
-        static_cast<float>(BlitzenEngine::ce_initialWindowHeight), 
-        BlitzenEngine::ce_znear, // znear
-        /* Camera position vector */
-        BlitML::vec3(BlitzenEngine::ce_initialCameraX, // x
-        BlitzenEngine::ce_initialCameraY, /*y*/ BlitzenEngine::ce_initialCameraZ), // z
-        /* Camera position vector (parameter end)*/ 
-        BlitzenEngine::ce_initialDrawDistance // the engine uses infinite projection matrix by default, so the draw distance is the zfar
-    );
+    BlitzenEngine::SetupCamera(mainCamera);
 
-    // Uses the command line arguments to load resources for the renderer
+    // Command line arguments
     uint8_t bOnpc = 0;
     BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), bOnpc);
 
-    // Game object manager, holds all client objects with game logic
+    // Game object manager
     BlitzenEngine::GameObjectManager gameObjectManager;
     // Testing
     gameObjectManager.AddObject<BlitzenEngine::ClientTest>
@@ -101,18 +88,16 @@ int main(int argc, char* argv[])
         renderingResources.Data(),
         BlitzenEngine::MeshTransform
         {
-            BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ),
-            1.f,
-            BlitML::quat(0.f, 0.f, 0.f, 1.f) },
-            "undefined", 1
+            BlitML::vec3(BlitzenEngine::ce_initialCameraX, 
+                BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ),
+            1.f, BlitML::quat(0.f, 0.f, 0.f, 1.f) 
+        }, 
+        1, "dragon"
     );
 
-    // Rendering setup with the loaded resources. Checks if it fails first
-    if(!bRenderingSystem || // Checks if API initialization was succesful
-        // Then tries the function
-        !renderer->SetupForRendering( 
-            renderingResources.Data(), 
-            mainCamera.viewData.pyramidWidth, 
+    // Rendering setup with the loaded resources
+    if(!bRenderingSystem || // Checks if API initialization was succesful first
+        !renderer->SetupForRendering(renderingResources.Data(), mainCamera.viewData.pyramidWidth, 
             mainCamera.viewData.pyramidHeight
     ))
     {
@@ -122,9 +107,10 @@ int main(int argc, char* argv[])
         
     // The clock is used to keep movement stable with variable fps
     // At the moment, it is not doing its job actually
+    // TODO: Implement this on platform.cpp
     double clockStartTime = BlitzenPlatform::PlatformGetAbsoluteTime();
-    double clockElapsedTime = 0;// No time has passed
-    double previousTime = clockElapsedTime;// Holds the previous frame time
+    double clockElapsedTime = 0;
+    double previousTime = clockElapsedTime;
 
     // MAIN LOOP
     while(engine.IsRunning())
@@ -148,9 +134,7 @@ int main(int argc, char* argv[])
 
             if(bRenderingSystem)
             {
-                BlitzenEngine::DrawContext drawContext(
-                    &mainCamera, 
-                    renderingResources.Data(), 
+                BlitzenEngine::DrawContext drawContext(&mainCamera, renderingResources.Data(), 
                     bOnpc // Tells the renderer if oblique near-plane clipping objects exist
                 );
                 renderer->DrawFrame(drawContext);// This is a bit important

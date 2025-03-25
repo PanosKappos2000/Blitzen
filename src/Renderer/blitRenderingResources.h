@@ -13,6 +13,7 @@ namespace BlitzenEngine
     constexpr uint8_t ce_primitiveSurfaceMaxLODCount = 8;
 
     constexpr uint32_t ce_maxMeshCount = 1'000'000; 
+	constexpr const char* ce_defaultMeshName = "bunny";
 
     constexpr uint32_t ce_maxRenderObjects = 5'000'000;
 
@@ -23,7 +24,8 @@ namespace BlitzenEngine
     #else
         constexpr uint8_t ce_buildClusters = 0;
     #endif 
-
+    
+    // Data for each texture
     struct TextureStats
     {
         std::string filepath;
@@ -35,6 +37,7 @@ namespace BlitzenEngine
         uint32_t textureTag;
     };
 
+    // Data for each vertex. Passed to the GPU
     struct alignas(16) Vertex
     {
         // Vertex position (3 floats)
@@ -47,6 +50,7 @@ namespace BlitzenEngine
         uint8_t tangentX, tangentY, tangentZ, tangentW;
     };
 
+    // Data for each meshlet. Passed to the GPU
     struct alignas(16) Meshlet
     {
         // Bounding sphere for frustum culling
@@ -62,7 +66,7 @@ namespace BlitzenEngine
     	uint8_t triangleCount;
     };
 
-    // Passed to the GPU as a unified storage buffer. Part of Material stats
+	// Data for each material. Passed to the GPU
     struct alignas(16) Material
     {
         // Not using these 2 right now, might remove them when I'm not bored, but they (or something similar) will be used in the future
@@ -77,49 +81,52 @@ namespace BlitzenEngine
 
         uint32_t emissiveTag;// Index into the texture array for the emissive map of the material
 
-        // TODO: I need to try removing this, it's a waster of space
+        // TODO: I need to try removing this, it's a waste of space
         uint32_t materialId;
     };
 
+    // Mesh LOD data. An array of these is held by each primitive
     struct MeshLod
     {
-        // The amount of indices that have to be iterated over after the first index, in order to draw the surface with this lod
+        // Accesses index data
         uint32_t indexCount;
-        // The index of the first element in the index buffer for this mesh lod
         uint32_t firstIndex;
 
+        // Accesses meshlet data
         uint32_t meshletCount = 0;
         uint32_t firstMeshlet;
 
+        // LOD error
         float error;
     };
 
-    // Has information about a mesh surface that will be given to a GPU friendly struct, so that the GPU can draw each surface
+    // Per primitive data. Passed to the GPU
     struct alignas(16) PrimitiveSurface
     {
-        // Bounding sphere data, can be used for frustum culling and other operations
+        // Bounding sphere data, needed for frustum culling
         BlitML::vec3 center;
         float radius;
 
-        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
+        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];// This is wasteful
         uint8_t lodCount = 0;
 
-        // With the way obj files are loaded, this will be needed to index into the vertex buffer
         uint32_t vertexOffset;
 
-        // Index into the material array to tell the fragment shader what material this primitive uses
         uint32_t materialId;
 
         uint8_t postPass = 0;
     };
 
+    // A mesh is a collection of one or more primitives.
     struct Mesh
     {
         uint32_t firstSurface;
         uint32_t surfaceCount = 0;
+
+        uint32_t meshId;
     };
 
-    // Data that can vary for 2 different object with the same or different objects
+    // Each mesh has a different transform. Passed to the GPU. Accessed through render object
     struct alignas(16) MeshTransform
     {
         BlitML::vec3 pos;
@@ -127,14 +134,18 @@ namespace BlitzenEngine
         BlitML::quat orientation;
     };
 
-    // Accesses per draw data. A single draw has a unique transform and surface combination
+    // Per render object Data. Passed to the GPU
     struct RenderObject
     {
         uint32_t transformId;
         uint32_t surfaceId;
     };
 
-    // This struct holds every loaded resource that will be used for rendering all game objects
+
+
+    /*
+        Container struct that holds all loaded resources for the scene
+    */
     struct RenderingResources
     {
         // Holds all textures. No dynamic allocation.
@@ -185,8 +196,14 @@ namespace BlitzenEngine
         
         // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives.
         Mesh meshes[ce_maxMeshCount];
+        BlitCL::HashMap<Mesh> meshMap;
         size_t meshCount = 0;
 
+
+
+    public:
+
+        // Takes a mesh id and adds a render object based on that ID and a transform
 		inline uint32_t AddRenderObjectsFromMesh(uint32_t meshId, 
             const BlitzenEngine::MeshTransform& transform)
 		{
@@ -211,7 +228,7 @@ namespace BlitzenEngine
 			return transformId;
 		}
 
-        RenderingResources::RenderingResources();
+        RenderingResources::RenderingResources(void* rendererData);
 
 		inline static RenderingResources* GetRenderingResources() { return s_pResources; }
 
@@ -244,11 +261,12 @@ namespace BlitzenEngine
 
     uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData);
 
-    void DefineMaterial(RenderingResources* pResources, BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, 
-    const char* specularMapName, const char* materialName);
+    void DefineMaterial(RenderingResources* pResources, const BlitML::vec4& diffuseColor, 
+        float shininess, const char* diffuseMapName, 
+        const char* specularMapName, const char* materialName);
 
     // Loads a mesh from an obj file
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename);
+    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, const char* meshName);
 
     // Placeholder to load some default resources while testing the systems
     void LoadTestGeometry(RenderingResources* pResources);

@@ -25,8 +25,7 @@ namespace BlitzenGL
         return 1;
     }
 
-    uint8_t OpenglRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
-    void* pData, const char* filepath) 
+    uint8_t OpenglRenderer::UploadTexture(void* pData, const char* filepath) 
     {
         if(m_textureCount >= BlitzenEngine::ce_maxTextureCount)
             return 0;
@@ -34,6 +33,8 @@ namespace BlitzenGL
         BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::SmartPointer> store(128 * 1024 * 1024);
 
         // This is a consequence of having a shared Load image function with Vulkan
+		BlitzenEngine::DDS_HEADER header;
+		BlitzenEngine::DDS_HEADER_DXT10 header10;
         unsigned int placeholder = 0;
         if(BlitzenEngine::LoadDDSImage(filepath, header, header10, placeholder, BlitzenEngine::RendererToLoadDDS::Opengl, store.Data()))
         {

@@ -5,8 +5,7 @@ namespace BlitzenVulkan
 {
 	constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
 
-    uint8_t VulkanRenderer::UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, 
-    void* pData, const char* filepath) 
+    uint8_t VulkanRenderer::UploadTexture(void* pData, const char* filepath) 
     {
         // Checks if resource management has been setup
         if(!m_stats.bResourceManagementReady)
@@ -31,18 +30,21 @@ namespace BlitzenVulkan
         }
         pData = stagingBuffer.allocationInfo.pMappedData;
 
-        // Calls the function to initialize header, header10 for DDS, get the data of the image and the image format
+        // Initializes necessary data for DDS texture
+		BlitzenEngine::DDS_HEADER header{};
+		BlitzenEngine::DDS_HEADER_DXT10 header10{};
         unsigned int format = VK_FORMAT_UNDEFINED;
-        if(!BlitzenEngine::LoadDDSImage(filepath, header, header10, format, BlitzenEngine::RendererToLoadDDS::Vulkan, pData))
+        if(!BlitzenEngine::LoadDDSImage(filepath, header, header10, format, 
+            BlitzenEngine::RendererToLoadDDS::Vulkan, pData
+        ))
         {
             BLIT_ERROR("Failed to load texture image")
             return 0;
         }
-        
         // Casts the placeholder format to a VkFormat
-        VkFormat vkFormat = static_cast<VkFormat>(format);
+        auto vkFormat{ static_cast<VkFormat>(format) };
 
-        // Creates the texture image for Vulkan. This function also copies the data of the staging buffer to the image
+        // Creates the texture image for Vulkan by copying the data from the staging buffer
         if(!CreateTextureImage(stagingBuffer, m_device, m_allocator, loadedTextures[textureCount].image, 
         {header.dwWidth, header.dwHeight, 1}, vkFormat, VK_IMAGE_USAGE_SAMPLED_BIT, 
         m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, header.dwMipMapCount))
@@ -53,9 +55,7 @@ namespace BlitzenVulkan
         
         // Add the global sampler at the element in the array that was just porcessed
         loadedTextures[textureCount].sampler = m_textureSampler.handle;
-
         textureCount++;
-
         return 1;
     }
 

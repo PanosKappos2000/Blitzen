@@ -1,4 +1,5 @@
 #include "blitCamera.h"
+#include "Engine/blitzenEngine.h"
 
 namespace BlitzenEngine
 {
@@ -34,6 +35,22 @@ namespace BlitzenEngine
         camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
 
         UpdateProjection(camera, windowWidth, windowHeight);
+    }
+
+    void SetupCamera(Camera& camera)
+    {
+        SetupCamera(camera,
+            BlitML::Radians(BlitzenEngine::ce_initialFOV), // field of view
+            static_cast<float>(BlitzenEngine::ce_initialWindowWidth),
+            static_cast<float>(BlitzenEngine::ce_initialWindowHeight),
+            BlitzenEngine::ce_znear, // znear
+            /* Camera position vector */
+            BlitML::vec3(BlitzenEngine::ce_initialCameraX, // x
+                BlitzenEngine::ce_initialCameraY, /*y*/ BlitzenEngine::ce_initialCameraZ), // z
+            /* Camera position vector (parameter end)*/
+            BlitzenEngine::ce_initialDrawDistance // the engine uses infinite projection matrix by default, 
+            //so the draw distance is the zfar
+        );
     }
 
     // This will move from here once I add a camera system
@@ -158,7 +175,7 @@ namespace BlitzenEngine
     CameraSystem* CameraSystem::m_sThis;
 
     CameraSystem::CameraSystem()
-        :m_mainCamera{cameraList[BLIT_MAIN_CAMERA_ID]} // The main camera is the first element in the camera list
+        :m_mainCamera{cameraList[ce_mainCameraId]}
     {
         m_sThis = this;
     }
