@@ -78,12 +78,13 @@ int main(int argc, char* argv[])
     BlitzenEngine::SetupCamera(mainCamera);
 
     // Game object manager
-    BlitzenEngine::GameObjectManager gameObjectManager;
+    Entities entities;
+	entities.Make();
 
     // Command line arguments
     uint8_t bOnpc = 0;
     BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), 
-        renderer.Data(), gameObjectManager, bOnpc);
+        renderer.Data(), entities.Data(), bOnpc);
 
     // Rendering setup with the loaded resources
     if(!bRenderingSystem || // Checks if API initialization was succesful first
@@ -120,7 +121,7 @@ int main(int argc, char* argv[])
 
             UpdateCamera(mainCamera, static_cast<float>(engine.GetDeltaTime()));
 
-			gameObjectManager.UpdateDynamicObjects();
+			entities->UpdateDynamicObjects();
 
             if(bRenderingSystem)
             {

@@ -301,7 +301,7 @@ namespace BlitzenEngine
     void LoadGeometryStressTest(RenderingResources* pResources);
     void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources);
     template<typename MT>
-    void CreateDynamicObjectRendererTest(RenderingResources* pResources, MT& manager)
+    void CreateDynamicObjectRendererTest(RenderingResources* pResources, MT* pManager)
     {
         constexpr uint32_t ce_objectCount = 1000;
         if (pResources->renderObjectCount + ce_objectCount > ce_maxRenderObjects)
@@ -315,7 +315,7 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform transform;
             RandomizeTransform(transform, 100.f, 1.f);
 
-            if (!manager.AddObject<BlitzenEngine::ClientTest>(
+            if (!pManager->AddObject<BlitzenEngine::ClientTest>(
                 pResources, transform, 1, "kitten"
             ))
                 return;
@@ -330,7 +330,7 @@ namespace BlitzenEngine
     // Takes the command line arguments to form a scene (this is pretty ill formed honestly)
     template<class RT, class MT>
     void CreateSceneFromArguments(int argc, char** argv,
-        RenderingResources* pResources, RT* pRenderer, MT& manager, uint8_t& bOnpc)
+        RenderingResources* pResources, RT* pRenderer, MT* pManager, uint8_t& bOnpc)
     {
         if (argc > 1)
         {
@@ -347,7 +347,7 @@ namespace BlitzenEngine
                 }
 
                 #if defined(BLIT_DYNAMIC_OBJECT_TEST)
-                CreateDynamicObjectRendererTest(pResources, manager);
+                CreateDynamicObjectRendererTest(pResources, pManager);
                 #endif
             }
 

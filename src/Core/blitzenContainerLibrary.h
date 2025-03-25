@@ -445,6 +445,7 @@ namespace BlitCL
         SmartPointer(SmartPointer<T>& s) = delete;
 
         inline T* Data() { return m_pData; }
+        inline T& Ref() { return m_pData[0]; }
 
         inline T* operator ->() {return m_pData; }
 
