@@ -5,20 +5,11 @@
 // https://github.com/nothings/stb
 #define STB_IMAGE_IMPLEMENTATION
 #include "VendorCode/stb_image.h"
-
 // Used for loading .obj meshes
 // https://github.com/thisistherk/fast_obj
 #define FAST_OBJ_IMPLEMENTATION
 #include "fast_obj.h"
-
-// Algorithms for building meshlets, loading LODs, optimizing vertex caches etc.
-// https://github.com/zeux/meshoptimizer
-#include "Meshoptimizer/meshoptimizer.h"
 #include "objparser.h"
-
-// Single file gltf loading https://github.com/jkuhlmann/cgltf
-#define CGLTF_IMPLEMENTATION
-#include "Cgltf/cgltf.h"
 
 // Not necessary since I have my own math library, but I use glm for random values in textures
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -69,42 +60,55 @@ namespace BlitzenEngine
     }
 
     // Loads cluster using the meshoptimizer library
-    static size_t GenerateClusters(RenderingResources* pResources, BlitCL::DynamicArray<Vertex>& vertices, 
-    BlitCL::DynamicArray<uint32_t>& indices)
+    size_t RenderingResources::GenerateClusters(BlitCL::DynamicArray<Vertex>& inVertices, 
+        BlitCL::DynamicArray<uint32_t>& inIndices)
     {
         const size_t maxVertices = 64;
         const size_t maxTriangles = 124;
         const float coneWeight = 0.25f;
 
-        BlitCL::DynamicArray<meshopt_Meshlet> akMeshlets(meshopt_buildMeshletsBound(indices.GetSize(), maxVertices, maxTriangles));
-        BlitCL::DynamicArray<unsigned int> meshletVertices(akMeshlets.GetSize() * maxVertices);
-        BlitCL::DynamicArray<unsigned char> meshletTriangles(akMeshlets.GetSize() * maxTriangles * 3);
+        BlitCL::DynamicArray<meshopt_Meshlet> akMeshlets{ 
+            meshopt_buildMeshletsBound(inIndices.GetSize(), maxVertices, maxTriangles) 
+        };
+        BlitCL::DynamicArray<unsigned int> meshletVertices{
+            akMeshlets.GetSize() * maxVertices 
+        };
+        BlitCL::DynamicArray<unsigned char> meshletTriangles{
+            akMeshlets.GetSize() * maxTriangles * 3
+        };
 
-        akMeshlets.Downsize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), indices.Data(), indices.GetSize(), 
-        &vertices[0].position.x, vertices.GetSize(), sizeof(Vertex), maxVertices, maxTriangles, coneWeight));
+        akMeshlets.Downsize(meshopt_buildMeshlets(
+            akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), 
+            inIndices.Data(), inIndices.GetSize(), 
+            &inVertices[0].position.x, inVertices.GetSize(), 
+            sizeof(Vertex), maxVertices, maxTriangles, coneWeight
+        ));
 
-        
-	    // note: I could append meshletVertices & meshletTriangles buffers more or less directly with small changes in Meshlet struct, 
-        // but for now keep the GPU side layout flexible and separate
+
         for(size_t i = 0; i < akMeshlets.GetSize(); ++i)
         {
             meshopt_Meshlet& meshlet = akMeshlets[i];
 
-            meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset], &meshletTriangles[meshlet.triangle_offset], 
-            meshlet.triangle_count, meshlet.vertex_count);
+            meshopt_optimizeMeshlet(
+                &meshletVertices[meshlet.vertex_offset], 
+                &meshletTriangles[meshlet.triangle_offset], 
+                meshlet.triangle_count, meshlet.vertex_count
+            );
 
-            size_t dataOffset = pResources->meshletData.GetSize();
+            auto dataOffset = meshletData.GetSize();
             for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
             {
-                pResources->meshletData.PushBack(meshletVertices[meshlet.vertex_offset + i]);
+                meshletData.PushBack(meshletVertices[meshlet.vertex_offset + i]);
             }
 
-            unsigned int* indexGroups = reinterpret_cast<unsigned int*>(&meshletTriangles[0] + meshlet.triangle_offset);
+            auto indexGroups = reinterpret_cast<unsigned int*>(
+                &meshletTriangles[0] + meshlet.triangle_offset
+            );
             unsigned int indexGroupCount = (meshlet.triangle_count * 3 + 3);
 
             for(unsigned int i = 0; i < indexGroupCount; ++i)
             {
-                pResources->meshletData.PushBack(indexGroups[size_t(i)]);
+                meshletData.PushBack(indexGroups[size_t(i)]);
             }
 
             meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
@@ -122,152 +126,164 @@ namespace BlitzenEngine
 		    m.cone_axis[2] = bounds.cone_axis_s8[2];
 		    m.cone_cutoff = bounds.cone_cutoff_s8; 
 
-            pResources->meshlets.PushBack(m);
+            meshlets.PushBack(m);
         }
 
         return akMeshlets.GetSize();
     }
 
     // Called  to create a Primitive Surface resource for the renderer
-    static void LoadPrimitiveSurface(RenderingResources* pResources, 
-    BlitCL::DynamicArray<Vertex>& vertices, 
-    BlitCL::DynamicArray<uint32_t>& indices)
+    void RenderingResources::LoadPrimitiveSurface(BlitCL::DynamicArray<Vertex>& surfaceVertices, 
+        BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
-        // This is an algorithm from Arseny Kapoulkine that improves the way vertices are distributed for a primitive
-        meshopt_optimizeVertexCache(indices.Data(), indices.Data(), indices.GetSize(), vertices.GetSize());
-	    meshopt_optimizeVertexFetch(vertices.Data(), indices.Data(), indices.GetSize(), vertices.Data(), 
-        vertices.GetSize(), sizeof(Vertex));
+		// Optimize vertices and indices using meshoptimizer
+        meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(),
+            surfaceIndices.GetSize(), surfaceVertices.GetSize()
+        );
+	    meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(), 
+            surfaceIndices.GetSize(), surfaceVertices.Data(),surfaceVertices.GetSize(), 
+            sizeof(Vertex)
+        );
 
-        // Create the new surface that will be added and initialize its vertex offset
+        // Creates a new primitive surface object and passes its vertices
         PrimitiveSurface newSurface;
-        newSurface.vertexOffset = static_cast<uint32_t>(pResources->vertices.GetSize());
+        newSurface.vertexOffset = static_cast<uint32_t>(vertices.GetSize());
+        vertices.AppendArray(surfaceVertices);
 
-        // Since the vertices will be global for all shaders and objects, new elements will be added to the one vertex array
-        pResources->vertices.AppendArray(vertices);
+        AutomaticLevelOfDetailGenration(newSurface, surfaceVertices, surfaceIndices);
 
-        // Create the normal array to be used with the meshoptimizer function for lod generation
-        BlitCL::DynamicArray<BlitML::vec3> normals(vertices.GetSize());
-	    for (size_t i = 0; i < vertices.GetSize(); ++i)
-	    {
-		    Vertex& v = vertices[i];
-		    normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f, v.normalY / 127.f - 1.f, v.normalZ / 127.f - 1.f);
-	    }
+        // Bounding sphere generation
+        GenerateBoundingSphere(newSurface, surfaceVertices, surfaceIndices);
 
-        // This will be used to take into accout surface dimensions when saving the lod error
-        float lodScale = meshopt_simplifyScale(&vertices[0].position.x, vertices.GetSize(), sizeof(Vertex));
+        // No logic for materials for now (TODO)
+        newSurface.materialId = 0;
 
-        // Lod error will be passed as a pointer every time the meshopt lod genration function is called, to save the next error
+		// Adds the surface to the global surfaces array
+        surfaces.PushBack(newSurface);
+        primitiveVertexCounts.PushBack(static_cast<uint32_t>(vertices.GetSize()));
+    }
+
+    void RenderingResources::AutomaticLevelOfDetailGenration(PrimitiveSurface& surface,
+        BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices
+    )
+    {
+        // Automatic LOD generation helpers
+        BlitCL::DynamicArray<BlitML::vec3> normals{ surfaceVertices.GetSize() };
+        for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
+        {
+            Vertex& v = surfaceVertices[i];
+            normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f,
+                v.normalY / 127.f - 1.f,
+                v.normalZ / 127.f - 1.f);
+        }
+        float lodScale = meshopt_simplifyScale(&surfaceVertices[0].position.x,
+            surfaceVertices.GetSize(), sizeof(Vertex)
+        );
         float lodError = 0.f;
-
-	    float normalWeights[3] = {1.f, 1.f, 1.f};
+        float normalWeights[3] = { 1.f, 1.f, 1.f };
 
         // Pass the original loaded indices of the surface to the new lod indices
-        BlitCL::DynamicArray<uint32_t> lodIndices(indices);
+        BlitCL::DynamicArray<uint32_t> lodIndices{ surfaceIndices };
 
-        while(newSurface.lodCount < ce_primitiveSurfaceMaxLODCount)
+        while (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
         {
-            // Get current element in the LOD array and increment the count
-            MeshLod& lod = newSurface.meshLod[newSurface.lodCount++];
+            auto& lod = surface.meshLod[surface.lodCount++];
 
-            // Save the indices that will be used for the current lod level
-            lod.firstIndex = static_cast<uint32_t>(pResources->indices.GetSize());
+            // Depending on the implementation, LOD will use either indices or meshlets
+            lod.firstIndex = static_cast<uint32_t>(indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
+            lod.firstMeshlet = static_cast<uint32_t>(meshlets.GetSize());
+            lod.meshletCount = ce_buildClusters ?
+                static_cast<uint32_t>(GenerateClusters(vertices, indices))
+                : 0;
 
-            // Save the meshlets that will be used for the current lod level
-            lod.firstMeshlet = static_cast<uint32_t>(pResources->meshlets.GetSize());
-            lod.meshletCount = ce_buildClusters ? static_cast<uint32_t>(GenerateClusters(pResources, vertices, indices)) : 0;
-
-            // Add the new indices that were loaded for this lod level to the global index buffer
-            pResources->indices.AppendArray(lodIndices);
-
-            // Save the current lod error
+            // Adds level of details indices to the global indices array
+            indices.AppendArray(lodIndices);
+            // Adjusts the error to the generated scale
             lod.error = lodError * lodScale;
 
-            if(newSurface.lodCount < ce_primitiveSurfaceMaxLODCount)
+            // Starts generating the next level of detail
+            if (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
             {
-                // Specify the next target index count (simplify by 65% each time)
-                size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
+                auto nextIndicesTarget = static_cast<size_t>((
+                    double(lodIndices.GetSize()) * 0.65) / 3) * 3;
+                const float maxError = 1e-1f;
+                float nextError = 0.f;
 
-                const float maxError = 1e-1f;// Parameter for meshopt_simplifyWithAttributes
+                // Generates first level of detail indices
+                auto nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(),
+                    lodIndices.GetSize(), &surfaceVertices[0].position.x, surfaceVertices.GetSize(),
+                    sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3),
+                    normalWeights, 3, nullptr, nextIndicesTarget, maxError, 0, &nextError
+                );
 
-                // The next error will be saved here to check if the actual lod error should be updated
-                float nextError = 0;
-
-                // Generate the indices
-                size_t nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), 
-                lodIndices.GetSize(), &vertices[0].position.x, 
-                vertices.GetSize(), sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3), 
-                normalWeights, 3, nullptr, nextIndicesTarget, maxError, 0, &nextError);
-
-                // If the next lod size surpasses the previous than this function has failed
-                BLIT_ASSERT(nextIndicesSize <= lodIndices.GetSize())
-
-                // Reached the error bounds
-                if(nextIndicesSize == lodIndices.GetSize() || nextIndicesSize == 0)
+                if (nextIndicesSize > lodIndices.GetSize())
+                {
+                    BLIT_ERROR("LOD generation failed");
                     break;
-
-                // while I could keep this LOD, it's too close to the last one (and it can't go below that due to constant error bound above)
-			    if (nextIndicesSize >= size_t(double(lodIndices.GetSize()) * 0.95))
-				    break;
-
-                // Downsize the indices to the next indices size
+                }
+                // Reached the error bounds
+                if (nextIndicesSize == lodIndices.GetSize() || nextIndicesSize == 0)
+                    break;
+                // while I could keep this LOD, it's too close to the last one 
+                // (and it can't go below that due to constant error bound above)
+                if (nextIndicesSize >= size_t(double(lodIndices.GetSize()) * 0.95))
+                    break;
                 lodIndices.Downsize(nextIndicesSize);
- 
-                // Optimize the new vertex cache that was generated
-                meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), vertices.GetSize());
+
+                // Optimize the level of detail vertex cache
+                meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(),
+                    surfaceVertices.GetSize()
+                );
 
                 // since it starts from next lod accumulate the error
                 lodError = BlitML::Max(lodError, nextError);
             }
         }
+    }
 
-        // Calculate the center of the bounding sphere for the surface
-        BlitML::vec3 center(0.f);
-        for(size_t i = 0; i < vertices.GetSize(); ++i)
+    void RenderingResources::GenerateBoundingSphere(PrimitiveSurface& surface,
+        BlitCL::DynamicArray<Vertex>& surfaceVertices,
+        BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    {
+        BlitML::vec3 center{ 0.f };
+        for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
         {
-            center = center + vertices[i].position;// I have not overloaded the += operator
+            center = center + surfaceVertices[i].position;// I have not overloaded the += operator
         }
-        center = center / static_cast<float>(vertices.GetSize());// Again, I've only overloaded the regular operators
-
-        // After calculating the center, calculate the radius of the bounding sphere
+        center = center / static_cast<float>(surfaceVertices.GetSize());
+        // Bounding sphere radius
         float radius = 0;
-        for(size_t i = 0; i < vertices.GetSize(); ++i)
+        for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
         {
-            BlitML::vec3 pos = vertices[i].position;
-            radius = BlitML::Max(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
+            auto pos = surfaceVertices[i].position;
+            radius = BlitML::Max(radius,
+                BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)
+                ));
         }
-
-        // Pass the center and radius to the surface, so that bounding sphere data is available for frustum culling
-        newSurface.center = center;
-        newSurface.radius = radius;
-
-        // Default material
-        newSurface.materialId = 0;
-
-        // Add the resources to the global surface array so that it is added to the GPU buffer
-        pResources->surfaces.PushBack(newSurface);
-        pResources->primitiveVertexCounts.PushBack(static_cast<uint32_t>(vertices.GetSize()));
+        surface.center = center;
+        surface.radius = radius;
     }
 
 
-    static void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, 
+    void RenderingResources::GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, 
         BlitCL::DynamicArray<uint32_t>& indices
     ) 
     {
         for (size_t i = 0; i < indices.GetSize(); i += 3) 
         {
-            uint32_t i0 = indices[i + 0];
-            uint32_t i1 = indices[i + 1];
-            uint32_t i2 = indices[i + 2];
+            auto i0 = indices[i + 0];
+            auto i1 = indices[i + 1];
+            auto i2 = indices[i + 2];
 
-            BlitML::vec3 edge1 = vertices[i1].position - vertices[i0].position;
-            BlitML::vec3 edge2 = vertices[i2].position - vertices[i0].position;
+            auto edge1 = vertices[i1].position - vertices[i0].position;
+            auto edge2 = vertices[i2].position - vertices[i0].position;
 
-            float deltaU1 = float(vertices[i1].uvX - vertices[i0].uvX);
-            float deltaV1 = float(vertices[i1].uvY - vertices[i0].uvY);
+            auto deltaU1 = float(vertices[i1].uvX - vertices[i0].uvX);
+            auto deltaV1 = float(vertices[i1].uvY - vertices[i0].uvY);
 
-            float deltaU2 = float(vertices[i2].uvX - vertices[i0].uvX);
-            float deltaV2 = float(vertices[i2].uvY - vertices[i0].uvY);
+            auto deltaU2 = float(vertices[i2].uvX - vertices[i0].uvX);
+            auto deltaV2 = float(vertices[i2].uvY - vertices[i0].uvY);
 
             float dividend = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
 
@@ -375,7 +391,7 @@ namespace BlitzenEngine
 		GenerateTangents(vertices, indices);
 
         BLIT_INFO("Creating surface")
-        LoadPrimitiveSurface(this, vertices, indices);
+        LoadPrimitiveSurface(vertices, indices);
 
         currentMesh.surfaceCount++;// Increment the surface count
         ++meshCount;// Increment the mesh count
@@ -486,308 +502,5 @@ namespace BlitzenEngine
         {
             CreateRenderObjectWithRandomTransform(1, pResources, 100.f, 1.f);
         }
-    }
-
-    // Takes a path to a gltf file and loads the resources needed to render the scene
-    // This function uses the cgltf library to load a .glb or .gltf scene
-    // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t RenderingResources::LoadGltfScene(const char* path, void* rendererData)
-    {
-        if (renderObjectCount >= ce_maxRenderObjects)
-        {
-            BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. GLTF LOADING FAILED!")
-                return 0;
-        }
-
-        cgltf_options options = {};
-
-        cgltf_data* pData = nullptr;
-
-        cgltf_result res = cgltf_parse_file(&options, path, &pData);
-        if (res != cgltf_result_success)
-        {
-            BLIT_WARN("Failed to load gltf file: %s", path)
-                return 0;
-        }
-
-        // Struct only used for cgltf_data pointer, will call its specialized free function when done
-        struct CgltfScope
-        {
-            cgltf_data* pData;
-
-            inline ~CgltfScope() { cgltf_free(pData); }
-        };
-
-        CgltfScope cgltfScope{ pData };
-
-        res = cgltf_load_buffers(&options, pData, path);
-        if (res != cgltf_result_success)
-        {
-            return 0;
-        }
-
-        res = cgltf_validate(pData);
-        if (res != cgltf_result_success)
-        {
-            return 0;
-        }
-
-        BLIT_INFO("Loading GLTF scene from file: %s", path)
-
-            // Defining a lambda here for finding the accessor since it will probably not be used outside of this
-            auto findAccessor = [](const cgltf_primitive* prim, cgltf_attribute_type type, cgltf_int index = 0) {
-            for (size_t i = 0; i < prim->attributes_count; ++i)
-            {
-                const cgltf_attribute& attr = prim->attributes[i];
-                if (attr.type == type && attr.index == index)
-                    return attr.data;
-            }
-
-            // This might seem redundant but compilation fails if I do not do this
-            cgltf_accessor* scratch = nullptr;
-            return scratch;
-            };
-
-        // Before loading textures save the previous texture size, to use for indexing
-        size_t previousTextureSize = textureCount;
-
-        BLIT_INFO("Loading textures")
-
-            // I had to fold and use the STL
-        BlitCL::DynamicArray<std::string> texturePaths(pData->textures_count);
-        for (size_t i = 0; i < pData->textures_count; ++i)
-        {
-            cgltf_texture* texture = &(pData->textures[i]);
-            if (!texture->image)
-                break;
-
-            cgltf_image* image = texture->image;
-            if (!image->uri)
-                break;
-
-            std::string ipath = path;
-            std::string::size_type pos = ipath.find_last_of('/');
-            if (pos == std::string::npos)
-                ipath = "";
-            else
-                ipath = ipath.substr(0, pos + 1);
-
-            std::string uri = image->uri;
-            uri.resize(cgltf_decode_uri(&uri[0]));
-            std::string::size_type dot = uri.find_last_of('.');
-
-            if (dot != std::string::npos)
-                uri.replace(dot, uri.size() - dot, ".dds");
-
-            texturePaths[i] = ipath + uri;
-        }
-
-        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
-        for (auto path : texturePaths)
-        {
-            LoadTextureFromFile(path.c_str(), path.c_str(), pRenderer);
-        }
-
-        BLIT_INFO("Loading materials")
-
-        // Saves the previous material count
-        size_t previousMaterialCount = materialCount;
-        // Creates one BlitzenEngine::Material for each material in the gltf
-        for (size_t i = 0; i < pData->materials_count; ++i)
-        {
-            cgltf_material& cgltf_mat = pData->materials[i];
-
-            Material& mat = materials[materialCount++];
-            mat.materialId = static_cast<uint32_t>(materialCount - 1);
-
-            mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
-                    cgltf_mat.pbr_metallic_roughness.base_color_texture.texture
-                ))
-                : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
-                    cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture
-                ))
-                : 0;
-
-            mat.normalTag =
-                cgltf_mat.normal_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
-                    cgltf_mat.normal_texture.texture
-                ))
-                : 0;
-
-            mat.specularTag =
-                cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
-                    cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture
-                ))
-                : 0;
-
-            mat.emissiveTag =
-                cgltf_mat.emissive_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
-                    cgltf_mat.emissive_texture.texture
-                ))
-                : 0;
-
-        }
-
-        BLIT_INFO("Loading meshes and primitives")
-
-            // The surface indices is a list of the first surface of each mesh. Used to create the render object struct
-            BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
-
-        for (size_t i = 0; i < pData->meshes_count; ++i)
-        {
-            // Get the current mesh
-            const cgltf_mesh& mesh = pData->meshes[i];
-
-            // Find the first surface of the current mesh. 
-            // It is important for the mesh struct and to save the data for later to create the render objects
-            uint32_t firstSurface = static_cast<uint32_t>(surfaces.GetSize());
-
-            // Give the new mesh the surface that it owns and increment the mesh count
-            meshes[meshCount].firstSurface = firstSurface;
-            meshes[meshCount].surfaceCount = static_cast<uint32_t>(mesh.primitives_count);
-            meshCount++;
-
-            // Pass the first surface here so that it can be accessed by the nodes
-            surfaceIndices[i] = firstSurface;
-
-            for (size_t j = 0; j < mesh.primitives_count; ++j)
-            {
-                const cgltf_primitive& prim = mesh.primitives[j];
-
-                // Skip primitives that are not triangles
-                if (prim.type != cgltf_primitive_type_triangles || !prim.indices)
-                    continue;
-
-                size_t vertexCount = prim.attributes[0].data->count;
-
-                BlitCL::DynamicArray<Vertex> vertices(vertexCount);
-
-                // Will temporarily hold each aspect of the vertices (pos, tangent, normals, uvMaps) from the primitive
-                BlitCL::DynamicArray<float> scratch(vertexCount * 4);
-
-                if (const cgltf_accessor* pos = cgltf_find_accessor(&prim, cgltf_attribute_type_position, 0))
-                {
-                    // No choice but to assert here, as some data might already have been loaded
-                    BLIT_ASSERT(cgltf_num_components(pos->type) == 3);
-
-                    cgltf_accessor_unpack_floats(pos, scratch.Data(), vertexCount * 3);
-                    for (size_t j = 0; j < vertexCount; ++j)
-                    {
-                        vertices[j].position = BlitML::vec3(scratch[j * 3 + 0], scratch[j * 3 + 1], scratch[j * 3 + 2]);
-                    }
-                }
-
-                if (const cgltf_accessor* nrm = cgltf_find_accessor(&prim, cgltf_attribute_type_normal, 0))
-                {
-                    BLIT_ASSERT(cgltf_num_components(nrm->type) == 3);
-
-                    cgltf_accessor_unpack_floats(nrm, scratch.Data(), vertexCount * 3);
-                    for (size_t j = 0; j < vertexCount; ++j)
-                    {
-                        vertices[j].normalX = static_cast<uint8_t>(scratch[j * 3 + 0] * 127.f + 127.5f);
-                        vertices[j].normalY = static_cast<uint8_t>(scratch[j * 3 + 1] * 127.f + 127.5f);
-                        vertices[j].normalZ = static_cast<uint8_t>(scratch[j * 3 + 2] * 127.f + 127.5f);
-                    }
-                }
-
-                if (const cgltf_accessor* tang = cgltf_find_accessor(&prim, cgltf_attribute_type_tangent, 0))
-                {
-                    BLIT_ASSERT(cgltf_num_components(tang->type) == 4)
-
-                        cgltf_accessor_unpack_floats(tang, scratch.Data(), vertexCount * 4);
-                    for (size_t j = 0; j < vertexCount; ++j)
-                    {
-                        vertices[j].tangentX = uint8_t(scratch[j * 4 + 0] * 127.f + 127.5f);
-                        vertices[j].tangentY = uint8_t(scratch[j * 4 + 1] * 127.f + 127.5f);
-                        vertices[j].tangentZ = uint8_t(scratch[j * 4 + 2] * 127.f + 127.5f);
-                        vertices[j].tangentW = uint8_t(scratch[j * 4 + 3] * 127.f + 127.5f);
-                    }
-                }
-
-                if (const cgltf_accessor* tex = cgltf_find_accessor(&prim, cgltf_attribute_type_texcoord, 0))
-                {
-                    BLIT_ASSERT(cgltf_num_components(tex->type) == 2);
-                    cgltf_accessor_unpack_floats(tex, scratch.Data(), vertexCount * 2);
-                    for (size_t j = 0; j < vertexCount; ++j)
-                    {
-                        vertices[j].uvX = meshopt_quantizeHalf(scratch[j * 2 + 0]);
-                        vertices[j].uvY = meshopt_quantizeHalf(scratch[j * 2 + 1]);
-                    }
-                }
-
-                BlitCL::DynamicArray<uint32_t> indices(prim.indices->count);
-                cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
-
-                LoadPrimitiveSurface(this, vertices, indices);
-
-                // Get the material index and pass it to the surface if there is material index
-                if (prim.material)
-                {
-                    surfaces.Back().materialId =
-                        materials[previousMaterialCount + 
-                            cgltf_material_index(pData, prim.material)].materialId;
-
-                    if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
-                        surfaces.Back().postPass = 1;
-                }
-            }
-        }
-
-        BLIT_INFO("Loading scene nodes")
-
-            for (size_t i = 0; i < pData->nodes_count; ++i)
-            {
-                const cgltf_node* node = &(pData->nodes[i]);
-                if (node->mesh)
-                {
-                    // Gets the model matrix
-                    float matrix[16];
-                    cgltf_node_transform_world(node, matrix);
-
-                    // Uses these float arrays to hold the decomposed matrix
-                    float translation[3];
-                    float rotation[4];
-                    float scale[3];
-
-                    // Decomposes the model transform and tranlates the data to the engine's transform structure
-                    BlitML::decomposeTransform(translation, rotation, scale, matrix);
-                    MeshTransform transform;
-                    transform.pos = BlitML::vec3(translation[0], translation[1], translation[2]);
-                    transform.scale = BlitML::Max(scale[0], BlitML::Max(scale[1], scale[2]));
-                    transform.orientation = BlitML::quat(rotation[0], rotation[1], rotation[2], rotation[3]);
-
-                    // TODO: better warnings for non-uniform or negative scale
-
-                    // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
-                    uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(pData, node->mesh)];
-                    uint32_t transformId = static_cast<uint32_t>(transforms.GetSize());
-
-                    for (unsigned int j = 0; j < node->mesh->primitives_count; ++j)
-                    {
-                        // If the gltf goes over BLITZEN_MAX_DRAW_OBJECTS after already loading resources, I have no choice but to assert
-                        BLIT_ASSERT_MESSAGE(renderObjectCount <= ce_maxRenderObjects, 
-                            "While Loading a GLTF, \
-                                additional geometry was loaded \
-                                which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value"
-                        )
-
-                        RenderObject& current = renders[renderObjectCount];
-                        current.surfaceId = surfaceOffset + j;
-                        current.transformId = transformId;
-
-                        // Increment the render object count
-                        renderObjectCount++;
-                    }
-
-                    transforms.PushBack(transform);
-                }
-            }
-
-        return 1;
     }
 }
