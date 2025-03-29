@@ -4,6 +4,7 @@
 #include "Core/blitzenCore.h"
 #include "Core/blitEvents.h"
 #include "Game/blitCamera.h"
+#include "Core/blitTimeManager.h"
 
 namespace BlitzenEngine
 {
@@ -96,12 +97,7 @@ int main(int argc, char* argv[])
         bRenderingSystem = 0;
     }
         
-    // The clock is used to keep movement stable with variable fps
-    // At the moment, it is not doing its job actually
-    // TODO: Implement this on platform.cpp
-    double clockStartTime = BlitzenPlatform::PlatformGetAbsoluteTime();
-    double clockElapsedTime = 0;
-    double previousTime = clockElapsedTime;
+    BlitzenCore::WorldTimerManager coreClock;
 
     // MAIN LOOP
     while(engine.IsRunning())
@@ -114,10 +110,8 @@ int main(int argc, char* argv[])
 
         if(engine.IsActive())
         {
-            // Updates delta time
-            clockElapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - clockStartTime;
-            engine.SetDeltaTime(clockElapsedTime - previousTime);
-            previousTime = clockElapsedTime;
+            // Updates delta time(TODO: Remove deltaTime from engine)
+            engine.SetDeltaTime(coreClock.GetDeltaTime());
 
             UpdateCamera(mainCamera, static_cast<float>(engine.GetDeltaTime()));
 

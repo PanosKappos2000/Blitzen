@@ -28,7 +28,9 @@ namespace BlitzenEngine
 		uint8_t m_bDynamic; // If the object is dynamic, it will be updated every frame
     };
 
-    struct GameObjectManager
+
+
+    class GameObjectManager
     {
     private:
         template<class T>

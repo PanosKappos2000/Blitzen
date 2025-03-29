@@ -334,10 +334,13 @@ namespace BlitzenEngine
     {
         if (argc > 1)
         {
+            LoadTestGeometry(pResources);
+            #if defined(BLIT_DYNAMIC_OBJECT_TEST)
+                CreateDynamicObjectRendererTest(pResources, pManager);
+            #endif
             // Special argument. Loads heavy scene to stress test the culling
             if (strcmp(argv[1], "RenderingStressTest") == 0)
             {
-                LoadTestGeometry(pResources);
                 LoadGeometryStressTest(pResources);
 
                 // The following arguments are used as gltf filepaths
@@ -345,10 +348,6 @@ namespace BlitzenEngine
                 {
                     LoadGltfScene(pResources, argv[i], pRenderer);
                 }
-
-                #if defined(BLIT_DYNAMIC_OBJECT_TEST)
-                CreateDynamicObjectRendererTest(pResources, pManager);
-                #endif
             }
 
             // Special argument. Test oblique near-plane clipping technique. Not working yet.

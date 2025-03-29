@@ -461,7 +461,7 @@ namespace BlitzenEngine
         
         constexpr uint32_t bunnyCount = 2'500'000;
         constexpr uint32_t kittenCount = 1'500'000;
-        constexpr uint32_t maleCount = 490'000;
+        constexpr uint32_t maleCount = 90'000;
 		constexpr uint32_t dragonCount = 10'000;
 		constexpr uint32_t totalCount = bunnyCount + kittenCount + maleCount + dragonCount;
 

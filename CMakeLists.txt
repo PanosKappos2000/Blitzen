@@ -52,6 +52,8 @@ add_executable(BlitzenEngine
                 src/Core/blitAssert.h
                 src/Core/blitEvents.h
                 src/Core/blitzenEvents.cpp
+                src/Core/blitTimeManager.h
+                src/Core/blitzenTimeManager.cpp
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h

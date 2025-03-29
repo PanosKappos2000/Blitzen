@@ -19,211 +19,211 @@ namespace BlitzenPlatform
         WINDOWS   !
     -----------------*/
 
-    #ifdef _WIN32
-        #include <windows.h>
-        #include <Windows.h>
-        #include <windowsx.h>
-        #include <WinUser.h>
-        #include <windowsx.h>
-        #include <vulkan/vulkan_win32.h>
-        // Necessary for some wgl function pointers
-        #include <GL/wglew.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <Windows.h>
+#include <windowsx.h>
+#include <WinUser.h>
+#include <windowsx.h>
+#include <vulkan/vulkan_win32.h>
+    // Necessary for some wgl function pointers
+#include <GL/wglew.h>
 
-        struct PlatformState
+    struct PlatformState
+    {
+        HINSTANCE winInstance;
+        HWND winWindow;
+
+        // gl render context
+        HGLRC hglrc;
+    };
+
+    inline PlatformState inl_pPlatformState;
+
+    void* GetWindowHandle() { return inl_pPlatformState.winWindow; }
+
+    inline double clockFrequency;
+    inline LARGE_INTEGER startTime;
+
+    LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param);
+
+    size_t GetPlatformMemoryRequirements()
+    {
+        return sizeof(PlatformState);
+    }
+
+    uint8_t PlatformStartup(const char* appName)
+    {
+        // Platform cannot startup if the engine or the event system have not been initialized first
+        if (!(BlitzenEngine::Engine::GetEngineInstancePointer()) ||
+            !(BlitzenCore::EventSystemState::GetState()) ||
+            !(BlitzenCore::InputSystemState::GetState()))
+            return 0;
+
+        inl_pPlatformState.winInstance = GetModuleHandleA(0);
+
+        HICON icon = LoadIcon(inl_pPlatformState.winInstance, IDI_APPLICATION);
+        tagWNDCLASSA wc;
+        memset(&wc, 0, sizeof(wc));
+        wc.style = CS_DBLCLKS;
+        // Pass the function that will get called when events get triggered
+        wc.lpfnWndProc = Win32ProcessMessage;
+        wc.cbClsExtra = 0;
+        wc.cbWndExtra = 0;
+        wc.hInstance = inl_pPlatformState.winInstance;
+        wc.hIcon = icon;
+        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wc.hbrBackground = nullptr;
+
+        // This must be the exact same as the 2nd parameter of CreateWindowExA
+        wc.lpszClassName = "BlitzenWindowClass";
+
+        if (!RegisterClassA(&wc))
         {
-            HINSTANCE winInstance;
-            HWND winWindow;
-
-            // gl render context
-            HGLRC hglrc;
-        };    
-
-        inline PlatformState inl_pPlatformState;
-
-        void* GetWindowHandle() {return inl_pPlatformState.winWindow;}
-
-        inline double clockFrequency;
-        inline LARGE_INTEGER startTime;
-
-        LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param);
-
-        size_t GetPlatformMemoryRequirements()
-        {
-            return sizeof(PlatformState);
+            MessageBoxA(inl_pPlatformState.winWindow, "Window registration failed", "Error",
+                MB_ICONEXCLAMATION | MB_OK);
+            return 0;
         }
 
-        uint8_t PlatformStartup(const char* appName)
-        {
-            // Platform cannot startup if the engine or the event system have not been initialized first
-            if(!(BlitzenEngine::Engine::GetEngineInstancePointer()) || 
-            !(BlitzenCore::EventSystemState::GetState()) || 
-            !(BlitzenCore::InputSystemState::GetState()))
-                return 0;
+        // Sets the window's client size
+        uint32_t clientX = BlitzenEngine::ce_windowStartingX;
+        uint32_t clientY = BlitzenEngine::ce_windowStartingY;
+        uint32_t clientWidth = BlitzenEngine::ce_initialWindowWidth;
+        uint32_t clientHeight = BlitzenEngine::ce_initialWindowHeight;
 
-            inl_pPlatformState.winInstance = GetModuleHandleA(0);
+        // Sets the size of the window to be the same as the client momentarily
+        uint32_t windowX = clientX;
+        uint32_t windowY = clientY;
+        uint32_t windowWidth = clientWidth;
+        uint32_t windowHeight = clientHeight;
 
-            HICON icon = LoadIcon(inl_pPlatformState.winInstance, IDI_APPLICATION);
-            tagWNDCLASSA wc;
-            memset(&wc, 0, sizeof(wc));
-            wc.style = CS_DBLCLKS;
-            // Pass the function that will get called when events get triggered
-            wc.lpfnWndProc = Win32ProcessMessage;
-            wc.cbClsExtra = 0;
-            wc.cbWndExtra = 0;
-            wc.hInstance = inl_pPlatformState.winInstance;
-            wc.hIcon = icon;
-            wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-            wc.hbrBackground = nullptr;
+        uint32_t windowStyle = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION;
+        uint32_t windowExStyle = WS_EX_APPWINDOW;
 
-            // This must be the exact same as the 2nd parameter of CreateWindowExA
-            wc.lpszClassName = "BlitzenWindowClass";
+        windowStyle |= WS_MAXIMIZEBOX;
+        windowStyle |= WS_MINIMIZEBOX;
+        windowStyle |= WS_THICKFRAME;
 
-            if(!RegisterClassA(&wc))
-            {
-                MessageBoxA(inl_pPlatformState.winWindow, "Window registration failed", "Error", 
-                MB_ICONEXCLAMATION | MB_OK);
-                return 0;
-            }
+        RECT borderRect = { 0, 0, 0, 0 };
+        AdjustWindowRectEx(&borderRect, windowStyle, 0, windowExStyle);
 
-            // Sets the window's client size
-            uint32_t clientX = BlitzenEngine::ce_windowStartingX;
-            uint32_t clientY = BlitzenEngine::ce_windowStartingY;
-            uint32_t clientWidth = BlitzenEngine::ce_initialWindowWidth;
-            uint32_t clientHeight = BlitzenEngine::ce_initialWindowHeight;
+        // Sets the true size of the window
+        windowX += borderRect.left;
+        windowY += borderRect.top;
+        windowWidth += borderRect.right - borderRect.left;
+        windowHeight -= borderRect.top - borderRect.bottom;
 
-            // Sets the size of the window to be the same as the client momentarily
-            uint32_t windowX = clientX;
-            uint32_t windowY = clientY;
-            uint32_t windowWidth = clientWidth;
-            uint32_t windowHeight = clientHeight;
-
-            uint32_t windowStyle = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION;
-            uint32_t windowExStyle = WS_EX_APPWINDOW;
-
-            windowStyle |= WS_MAXIMIZEBOX;
-            windowStyle |= WS_MINIMIZEBOX;
-            windowStyle |= WS_THICKFRAME;
-
-            RECT borderRect = {0, 0, 0, 0};
-            AdjustWindowRectEx(&borderRect, windowStyle, 0, windowExStyle);
-
-            // Sets the true size of the window
-            windowX += borderRect.left;
-            windowY += borderRect.top;
-            windowWidth += borderRect.right - borderRect.left;
-            windowHeight -= borderRect.top - borderRect.bottom;
-
-            //Creates the window
-            HWND handle = CreateWindowExA(
-            windowExStyle, "BlitzenWindowClass", appName, 
-            windowStyle, windowX, windowY, windowWidth, windowHeight, 
+        //Creates the window
+        HWND handle = CreateWindowExA(
+            windowExStyle, "BlitzenWindowClass", appName,
+            windowStyle, windowX, windowY, windowWidth, windowHeight,
             0, 0, inl_pPlatformState.winInstance, 0);
 
-            // Only assign the handle if it was actually created, otherwise the application should fail
-            if(!handle)
-            {
-                MessageBoxA(nullptr, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-                return 0;
-            }
-            else
-            {
-                inl_pPlatformState.winWindow = handle;
-            }
-
-            // Tells the window to show
-            int32_t show = SW_SHOW; //: SW_SHOWNOACTIVATE;
-            ShowWindow(inl_pPlatformState.winWindow, show);
-
-            // Clock setup, similar thing to glfwGetTime
-            LARGE_INTEGER frequency;
-            QueryPerformanceFrequency(&frequency);
-            clockFrequency = 1.0 / static_cast<double>(frequency.QuadPart);// The quad part is just a 64 bit integer
-            QueryPerformanceCounter(&startTime);
-
-            return 1;
-        }
-
-        void PlatformShutdown()
+        // Only assign the handle if it was actually created, otherwise the application should fail
+        if (!handle)
         {
-            // Delete the gl render context
-            if(inl_pPlatformState.hglrc)
-            {
-                wglDeleteContext(inl_pPlatformState.hglrc);
-            }
-
-            if(inl_pPlatformState.winWindow)
-            {
-                DestroyWindow(inl_pPlatformState.winWindow);
-            }
+            MessageBoxA(nullptr, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+            return 0;
         }
-
-        uint8_t PlatformPumpMessages()
+        else
         {
-            MSG message;
-            while(PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE))
-            {
-                TranslateMessage(&message);
-                DispatchMessage(&message);
-            }
-
-            return 1;
+            inl_pPlatformState.winWindow = handle;
         }
 
-        void* PlatformMalloc(size_t size, uint8_t aligned)
+        // Tells the window to show
+        int32_t show = SW_SHOW; //: SW_SHOWNOACTIVATE;
+        ShowWindow(inl_pPlatformState.winWindow, show);
+
+        // Clock setup, similar thing to glfwGetTime
+        LARGE_INTEGER frequency;
+        QueryPerformanceFrequency(&frequency);
+        clockFrequency = 1.0 / static_cast<double>(frequency.QuadPart);// The quad part is just a 64 bit integer
+        QueryPerformanceCounter(&startTime);
+
+        return 1;
+    }
+
+    void PlatformShutdown()
+    {
+        // Delete the gl render context
+        if (inl_pPlatformState.hglrc)
         {
-            // temporary
-            return malloc(size);
+            wglDeleteContext(inl_pPlatformState.hglrc);
         }
 
-        void PlatformFree(void* pBlock, uint8_t aligned)
+        if (inl_pPlatformState.winWindow)
         {
-            // temporary
-            free(pBlock);
+            DestroyWindow(inl_pPlatformState.winWindow);
+        }
+    }
+
+    uint8_t PlatformPumpMessages()
+    {
+        MSG message;
+        while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&message);
+            DispatchMessage(&message);
         }
 
-        void* PlatformMemZero(void* pBlock, size_t size)
-        {
-            return memset(pBlock, 0, size);
-        }
+        return 1;
+    }
 
-        void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
-        {
-            return memcpy(pDst, pSrc, size);
-        }
+    void* PlatformMalloc(size_t size, uint8_t aligned)
+    {
+        // temporary
+        return malloc(size);
+    }
 
-        void* PlatformMemSet(void* pDst, int32_t value, size_t size)
-        {
-            return memset(pDst, value, size);
-        }
+    void PlatformFree(void* pBlock, uint8_t aligned)
+    {
+        // temporary
+        free(pBlock);
+    }
 
-        void PlatformConsoleWrite(const char* message, uint8_t color)
-        {
-            HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-            static uint8_t levels[6] = {64, 4, 6, 2, 1, 8};
-            SetConsoleTextAttribute(consoleHandle, levels[color]);
-            OutputDebugStringA(message);
-            uint64_t length = strlen(message);
-            LPDWORD numberWritten = 0;
-            WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), message, static_cast<DWORD>(length), numberWritten, 0);
-        }
+    void* PlatformMemZero(void* pBlock, size_t size)
+    {
+        return memset(pBlock, 0, size);
+    }
 
-        void PlatformConsoleError(const char* message, uint8_t color)
-        {
-            HANDLE consoleHandle = GetStdHandle(STD_ERROR_HANDLE);
-            static uint8_t levels[6] = {64, 4, 6, 2, 1, 8};
-            SetConsoleTextAttribute(consoleHandle, levels[color]);
-            OutputDebugStringA(message);
-            uint64_t length = strlen(message);
-            LPDWORD numberWritten = 0;
-            WriteConsoleA(GetStdHandle(STD_ERROR_HANDLE), message, static_cast<DWORD>(length), numberWritten, 0);
-        }
+    void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
+    {
+        return memcpy(pDst, pSrc, size);
+    }
 
-        double PlatformGetAbsoluteTime()
-        {
-            LARGE_INTEGER nowTime;
-            QueryPerformanceCounter(&nowTime);
-            return static_cast<double>(nowTime.QuadPart) * clockFrequency;
-        }
+    void* PlatformMemSet(void* pDst, int32_t value, size_t size)
+    {
+        return memset(pDst, value, size);
+    }
+
+    void PlatformConsoleWrite(const char* message, uint8_t color)
+    {
+        HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        static uint8_t levels[6] = { 64, 4, 6, 2, 1, 8 };
+        SetConsoleTextAttribute(consoleHandle, levels[color]);
+        OutputDebugStringA(message);
+        uint64_t length = strlen(message);
+        LPDWORD numberWritten = 0;
+        WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), message, static_cast<DWORD>(length), numberWritten, 0);
+    }
+
+    void PlatformConsoleError(const char* message, uint8_t color)
+    {
+        HANDLE consoleHandle = GetStdHandle(STD_ERROR_HANDLE);
+        static uint8_t levels[6] = { 64, 4, 6, 2, 1, 8 };
+        SetConsoleTextAttribute(consoleHandle, levels[color]);
+        OutputDebugStringA(message);
+        uint64_t length = strlen(message);
+        LPDWORD numberWritten = 0;
+        WriteConsoleA(GetStdHandle(STD_ERROR_HANDLE), message, static_cast<DWORD>(length), numberWritten, 0);
+    }
+
+    double PlatformGetAbsoluteTime()
+    {
+        LARGE_INTEGER nowTime;
+        QueryPerformanceCounter(&nowTime);
+        return static_cast<double>(nowTime.QuadPart) * clockFrequency;
+    }
 
         void PlatformSleep(uint64_t ms)
         {
