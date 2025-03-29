@@ -146,8 +146,12 @@ namespace BlitzenEngine
     /*
         Container struct that holds all loaded resources for the scene
     */
-    struct RenderingResources
+    class RenderingResources
     {
+    public:
+
+        RenderingResources::RenderingResources(void* rendererData);
+
         // Holds all textures. No dynamic allocation.
         TextureStats textures[ce_maxTextureCount];
         BlitCL::HashMap<TextureStats> textureTable;
@@ -228,11 +232,46 @@ namespace BlitzenEngine
 			return transformId;
 		}
 
-        RenderingResources::RenderingResources(void* rendererData);
+        uint8_t LoadMeshFromObj(const char* filename, const char* meshName);
+        // Takes a path to a gltf file and loads the resources needed to render the scene
+        // This function uses the cgltf library to load a .glb or .gltf scene
+        // The repository can be found on https://github.com/jkuhlmann/cgltf
+        uint8_t LoadGltfScene(const char* path, void* rendererData);
+
+    public:
+
+		template<class RENDERER>
+		bool LoadTextureFromFile(const char* filename, const char* texName,
+			RENDERER* pRenderer)
+		{
+			// Don't go over the texture limit, might want to throw a warning here
+			if (textureCount >= ce_maxTextureCount)
+			{
+				BLIT_WARN("Max texture count: %i, has been reached", ce_maxTextureCount)
+				BLIT_ERROR("Texture from file: %s, failed to load", filename)
+				return 0;
+			}
+
+			TextureStats& texture = textures[textureCount];
+			// If texture upload to the renderer succeeds, the texture count is incremented and the function returns successfully
+			if (pRenderer->UploadTexture(texture.pTextureData, filename))
+			{
+				textureCount++;
+				return true;
+			}
+            else
+            {
+                BLIT_ERROR("Texture from file: %s, failed to load", filename)
+                return false;
+            }
+		}
+
+    public:
 
 		inline static RenderingResources* GetRenderingResources() { return s_pResources; }
 
     private:
+
 		static RenderingResources* s_pResources;
     };
 
@@ -285,14 +324,9 @@ namespace BlitzenEngine
         );
     }
 
-    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData);
-
     void DefineMaterial(RenderingResources* pResources, const BlitML::vec4& diffuseColor, 
         float shininess, const char* diffuseMapName, 
         const char* specularMapName, const char* materialName);
-
-    // Loads a mesh from an obj file
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, const char* meshName);
 
     // Placeholder to load some default resources while testing the systems
     void LoadTestGeometry(RenderingResources* pResources);
@@ -300,6 +334,7 @@ namespace BlitzenEngine
     // Functions for testing aspects of the renderer
     void LoadGeometryStressTest(RenderingResources* pResources);
     void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources);
+
     template<typename MT>
     void CreateDynamicObjectRendererTest(RenderingResources* pResources, MT* pManager)
     {
@@ -322,11 +357,6 @@ namespace BlitzenEngine
         }
     }
 
-    // Takes a path to a gltf file and loads the resources needed to render the scene
-    // This function uses the cgltf library to load a .glb or .gltf scene
-    // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, void* rendererData);
-
     // Takes the command line arguments to form a scene (this is pretty ill formed honestly)
     template<class RT, class MT>
     void CreateSceneFromArguments(int argc, char** argv,
@@ -346,7 +376,7 @@ namespace BlitzenEngine
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    LoadGltfScene(pResources, argv[i], pRenderer);
+                    pResources->LoadGltfScene(argv[i], pRenderer);
                 }
             }
 
@@ -360,7 +390,7 @@ namespace BlitzenEngine
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    LoadGltfScene(pResources, argv[i], pRenderer);
+                    pResources->LoadGltfScene(argv[i], pRenderer);
                 }
             }
 
@@ -369,7 +399,7 @@ namespace BlitzenEngine
             {
                 for (int32_t i = 1; i < argc; ++i)
                 {
-                    LoadGltfScene(pResources, argv[i], pRenderer);
+                    pResources->LoadGltfScene(argv[i], pRenderer);
                 }
             }
         }

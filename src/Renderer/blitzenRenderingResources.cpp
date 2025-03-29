@@ -35,31 +35,6 @@ namespace BlitzenEngine
 {
 	RenderingResources* RenderingResources::s_pResources = nullptr;
 
-    // This will not be used outside of this translation unit, so it has not declaration
-    static uint8_t LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, 
-    RendererPtrType pRenderer)
-    {
-        // Don't go over the texture limit, might want to throw a warning here
-        if (pResources->textureCount >= ce_maxTextureCount)
-        {
-            BLIT_WARN("Max texture count: %i, has been reached", ce_maxTextureCount)
-            BLIT_ERROR("Texture from file: %s, failed to load", filename)
-            return 0;
-        }
-    
-        TextureStats& texture = pResources->textures[pResources->textureCount];
-            
-        // If texture upload to the renderer succeeds, the texture count is incremented and the function returns successfully
-        if(pRenderer->UploadTexture(texture.pTextureData, filename))
-        {
-            pResources->textureCount++;
-            return 1;
-        }
-    
-        BLIT_ERROR("Texture from file: %s, failed to load", filename)
-        return 0;
-    }
-
     RenderingResources::RenderingResources(void* rendererData)
     {
 		s_pResources = this;
@@ -67,16 +42,9 @@ namespace BlitzenEngine
         auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
 
         // Defaults
-        LoadTextureFromFile(this, "Assets/Textures/base_baseColor.dds","dds_texture_default", pRenderer);
+        LoadTextureFromFile("Assets/Textures/base_baseColor.dds","dds_texture_default", pRenderer);
         DefineMaterial(this, { 0.1f }, 65.f, "dds_texture_default", "unknown", "loaded_material");
-        LoadMeshFromObj(this, "Assets/Meshes/bunny.obj", ce_defaultMeshName);
-    }
-
-    uint8_t LoadRenderingResourceSystem(RenderingResources* pResources, void* rendererData)
-    {
-        
-
-        return 1;
+        LoadMeshFromObj("Assets/Meshes/bunny.obj", ce_defaultMeshName);
     }
 
     void DefineMaterial(RenderingResources* pResources, const BlitML::vec4& diffuseColor, 
@@ -339,10 +307,10 @@ namespace BlitzenEngine
         }
     }
 
-    uint8_t LoadMeshFromObj(RenderingResources* pResources, const char* filename, const char* meshName)
+    uint8_t RenderingResources::LoadMeshFromObj(const char* filename, const char* meshName)
     {
         // The function should return if the engine will go over the max allowed mesh assets
-        if(pResources->meshCount > ce_maxMeshCount)
+        if(meshCount > ce_maxMeshCount)
         {
             BLIT_ERROR("Max mesh count: ( %i ) reached!", ce_maxMeshCount)
             BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
@@ -352,10 +320,10 @@ namespace BlitzenEngine
         BLIT_INFO("Loading obj model form file: %s", filename)
 
         // Get the current mesh and give it the size surface array as its first surface index
-        Mesh& currentMesh = pResources->meshes[pResources->meshCount];
-        currentMesh.firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
-		currentMesh.meshId = uint32_t(pResources->meshCount);
-        pResources->meshMap.Insert(meshName, currentMesh);
+        Mesh& currentMesh = meshes[meshCount];
+        currentMesh.firstSurface = static_cast<uint32_t>(surfaces.GetSize());
+		currentMesh.meshId = uint32_t(meshCount);
+        meshMap.Insert(meshName, currentMesh);
 
         ObjFile file;
         if(!objParseFile(file, filename))
@@ -407,19 +375,19 @@ namespace BlitzenEngine
 		GenerateTangents(vertices, indices);
 
         BLIT_INFO("Creating surface")
-        LoadPrimitiveSurface(pResources, vertices, indices);
+        LoadPrimitiveSurface(this, vertices, indices);
 
         currentMesh.surfaceCount++;// Increment the surface count
-        ++pResources->meshCount;// Increment the mesh count
+        ++meshCount;// Increment the mesh count
 
         return 1;
     }
 
     void LoadTestGeometry(RenderingResources* pResources)
     {
-        LoadMeshFromObj(pResources, "Assets/Meshes/dragon.obj", "dragon");
-        LoadMeshFromObj(pResources, "Assets/Meshes/kitten.obj", "kitten");
-        LoadMeshFromObj(pResources, "Assets/Meshes/FinalBaseMesh.obj", "human");
+        pResources->LoadMeshFromObj("Assets/Meshes/dragon.obj", "dragon");
+        pResources->LoadMeshFromObj("Assets/Meshes/kitten.obj", "kitten");
+        pResources->LoadMeshFromObj("Assets/Meshes/FinalBaseMesh.obj", "human");
     }
 
     static void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderingResources* pResources,
@@ -523,9 +491,9 @@ namespace BlitzenEngine
     // Takes a path to a gltf file and loads the resources needed to render the scene
     // This function uses the cgltf library to load a .glb or .gltf scene
     // The repository can be found on https://github.com/jkuhlmann/cgltf
-    uint8_t LoadGltfScene(RenderingResources* pResources, const char* path, void* rendererData)
+    uint8_t RenderingResources::LoadGltfScene(const char* path, void* rendererData)
     {
-        if (pResources->renderObjectCount >= ce_maxRenderObjects)
+        if (renderObjectCount >= ce_maxRenderObjects)
         {
             BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. GLTF LOADING FAILED!")
                 return 0;
@@ -581,7 +549,7 @@ namespace BlitzenEngine
             };
 
         // Before loading textures save the previous texture size, to use for indexing
-        size_t previousTextureSize = pResources->textureCount;
+        size_t previousTextureSize = textureCount;
 
         BLIT_INFO("Loading textures")
 
@@ -617,40 +585,50 @@ namespace BlitzenEngine
         auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
         for (auto path : texturePaths)
         {
-            LoadTextureFromFile(pResources, path.c_str(), path.c_str(), pRenderer);
+            LoadTextureFromFile(path.c_str(), path.c_str(), pRenderer);
         }
 
         BLIT_INFO("Loading materials")
 
         // Saves the previous material count
-        size_t previousMaterialCount = pResources->materialCount;
+        size_t previousMaterialCount = materialCount;
         // Creates one BlitzenEngine::Material for each material in the gltf
         for (size_t i = 0; i < pData->materials_count; ++i)
         {
             cgltf_material& cgltf_mat = pData->materials[i];
 
-            Material& mat = pResources->materials[pResources->materialCount++];
-            mat.materialId = static_cast<uint32_t>(pResources->materialCount - 1);
+            Material& mat = materials[materialCount++];
+            mat.materialId = static_cast<uint32_t>(materialCount - 1);
 
             mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_metallic_roughness.base_color_texture.texture))
+                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
+                    cgltf_mat.pbr_metallic_roughness.base_color_texture.texture
+                ))
                 : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture))
+                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
+                    cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture
+                ))
                 : 0;
 
             mat.normalTag =
                 cgltf_mat.normal_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.normal_texture.texture))
+                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
+                    cgltf_mat.normal_texture.texture
+                ))
                 : 0;
 
             mat.specularTag =
                 cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture))
+                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
+                    cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture
+                ))
                 : 0;
 
             mat.emissiveTag =
                 cgltf_mat.emissive_texture.texture ?
-                uint32_t(previousTextureSize + cgltf_texture_index(pData, cgltf_mat.emissive_texture.texture))
+                uint32_t(previousTextureSize + cgltf_texture_index(pData, 
+                    cgltf_mat.emissive_texture.texture
+                ))
                 : 0;
 
         }
@@ -667,12 +645,12 @@ namespace BlitzenEngine
 
             // Find the first surface of the current mesh. 
             // It is important for the mesh struct and to save the data for later to create the render objects
-            uint32_t firstSurface = static_cast<uint32_t>(pResources->surfaces.GetSize());
+            uint32_t firstSurface = static_cast<uint32_t>(surfaces.GetSize());
 
             // Give the new mesh the surface that it owns and increment the mesh count
-            pResources->meshes[pResources->meshCount].firstSurface = firstSurface;
-            pResources->meshes[pResources->meshCount].surfaceCount = static_cast<uint32_t>(mesh.primitives_count);
-            pResources->meshCount++;
+            meshes[meshCount].firstSurface = firstSurface;
+            meshes[meshCount].surfaceCount = static_cast<uint32_t>(mesh.primitives_count);
+            meshCount++;
 
             // Pass the first surface here so that it can be accessed by the nodes
             surfaceIndices[i] = firstSurface;
@@ -745,16 +723,17 @@ namespace BlitzenEngine
                 BlitCL::DynamicArray<uint32_t> indices(prim.indices->count);
                 cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
 
-                LoadPrimitiveSurface(pResources, vertices, indices);
+                LoadPrimitiveSurface(this, vertices, indices);
 
                 // Get the material index and pass it to the surface if there is material index
                 if (prim.material)
                 {
-                    pResources->surfaces.Back().materialId =
-                        pResources->materials[previousMaterialCount + cgltf_material_index(pData, prim.material)].materialId;
+                    surfaces.Back().materialId =
+                        materials[previousMaterialCount + 
+                            cgltf_material_index(pData, prim.material)].materialId;
 
                     if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
-                        pResources->surfaces.Back().postPass = 1;
+                        surfaces.Back().postPass = 1;
                 }
             }
         }
@@ -786,23 +765,26 @@ namespace BlitzenEngine
 
                     // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
                     uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(pData, node->mesh)];
-                    uint32_t transformId = static_cast<uint32_t>(pResources->transforms.GetSize());
+                    uint32_t transformId = static_cast<uint32_t>(transforms.GetSize());
 
                     for (unsigned int j = 0; j < node->mesh->primitives_count; ++j)
                     {
                         // If the gltf goes over BLITZEN_MAX_DRAW_OBJECTS after already loading resources, I have no choice but to assert
-                        BLIT_ASSERT_MESSAGE(pResources->renderObjectCount <= ce_maxRenderObjects, "While Loading a GLTF, \
-                    additional geometry was loaded which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value")
+                        BLIT_ASSERT_MESSAGE(renderObjectCount <= ce_maxRenderObjects, 
+                            "While Loading a GLTF, \
+                                additional geometry was loaded \
+                                which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value"
+                        )
 
-                            RenderObject& current = pResources->renders[pResources->renderObjectCount];
+                        RenderObject& current = renders[renderObjectCount];
                         current.surfaceId = surfaceOffset + j;
                         current.transformId = transformId;
 
                         // Increment the render object count
-                        pResources->renderObjectCount++;
+                        renderObjectCount++;
                     }
 
-                    pResources->transforms.PushBack(transform);
+                    transforms.PushBack(transform);
                 }
             }
 
