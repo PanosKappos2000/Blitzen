@@ -122,254 +122,74 @@ namespace BlitzenEngine
         {
             if (renderObjectCount >= ce_maxRenderObjects)
             {
-                BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. GLTF LOADING FAILED!")
-                    return 0;
+                BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. \
+                    GLTF LOADING FAILED!")
+                return false;
             }
 
             cgltf_options options = {};
 
             cgltf_data* pData = nullptr;
 
-            cgltf_result res = cgltf_parse_file(&options, path, &pData);
+            auto res = cgltf_parse_file(&options, path, &pData);
             if (res != cgltf_result_success)
             {
                 BLIT_WARN("Failed to load gltf file: %s", path)
-                    return 0;
+                return false;
             }
 
-            // Struct only used for cgltf_data pointer, will call its specialized free function when done
+            // Automatic free struct
             struct CgltfScope
             {
                 cgltf_data* pData;
-
                 inline ~CgltfScope() { cgltf_free(pData); }
             };
-
             CgltfScope cgltfScope{ pData };
 
             res = cgltf_load_buffers(&options, pData, path);
-            if (res != cgltf_result_success)
-            {
-                return 0;
-            }
+            if (res != cgltf_result_success)            
+                return false;
+            
 
             res = cgltf_validate(pData);
             if (res != cgltf_result_success)
-            {
-                return 0;
-            }
+                return false;
+            
 
             BLIT_INFO("Loading GLTF scene from file: %s", path)
 
-                // Defining a lambda here for finding the accessor since it will probably not be used outside of this
-                auto findAccessor = [](const cgltf_primitive* prim, cgltf_attribute_type type, cgltf_int index = 0) {
-                for (size_t i = 0; i < prim->attributes_count; ++i)
-                {
-                    const cgltf_attribute& attr = prim->attributes[i];
-                    if (attr.type == type && attr.index == index)
-                        return attr.data;
-                }
-
-                // This might seem redundant but compilation fails if I do not do this
-                cgltf_accessor* scratch = nullptr;
-                return scratch;
-                };
-
-            // Before loading textures save the previous texture size, to use for indexing
-            auto previousTextureSize = m_textureCount;
-
+            // Textures
+            auto previousTextureCount = m_textureCount;
             BLIT_INFO("Loading textures")
+            LoadGltfTextures(pData, previousTextureCount, path, pRenderer);
 
-            // I had to fold and use the STL
-            BlitCL::DynamicArray<std::string> texturePaths(pData->textures_count);
-            for (size_t i = 0; i < pData->textures_count; ++i)
-            {
-                cgltf_texture* texture = &(pData->textures[i]);
-                if (!texture->image)
-                    break;
-
-                cgltf_image* image = texture->image;
-                if (!image->uri)
-                    break;
-
-                std::string ipath = path;
-                std::string::size_type pos = ipath.find_last_of('/');
-                if (pos == std::string::npos)
-                    ipath = "";
-                else
-                    ipath = ipath.substr(0, pos + 1);
-
-                std::string uri = image->uri;
-                uri.resize(cgltf_decode_uri(&uri[0]));
-                std::string::size_type dot = uri.find_last_of('.');
-
-                if (dot != std::string::npos)
-                    uri.replace(dot, uri.size() - dot, ".dds");
-
-                texturePaths[i] = ipath + uri;
-            }
-
-            for (auto& path : texturePaths)
-            {
-                LoadTextureFromFile(path.c_str(), path.c_str(), pRenderer);
-            }
-
+            // Materials
             BLIT_INFO("Loading materials")
+            auto previousMaterialCount = m_materialCount;
+            LoadGltfMaterials(pData, previousMaterialCount, previousTextureCount);
 
-            // Saves the previous material count
-            size_t previousMaterialCount = m_materialCount;
-            // Creates one BlitzenEngine::Material for each material in the gltf
-            for (size_t i = 0; i < pData->materials_count; ++i)
-            {
-                cgltf_material& cgltf_mat = pData->materials[i];
-
-                Material& mat = m_materials[m_materialCount++];
-                mat.materialId = m_materialCount - 1;
-
-                mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
-                    uint32_t(previousTextureSize + cgltf_texture_index(pData,
-                        cgltf_mat.pbr_metallic_roughness.base_color_texture.texture
-                    ))
-                    : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
-                    uint32_t(previousTextureSize + cgltf_texture_index(pData,
-                        cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture
-                    ))
-                    : 0;
-
-                mat.normalTag =
-                    cgltf_mat.normal_texture.texture ?
-                    uint32_t(previousTextureSize + cgltf_texture_index(pData,
-                        cgltf_mat.normal_texture.texture
-                    ))
-                    : 0;
-
-                mat.specularTag =
-                    cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ?
-                    uint32_t(previousTextureSize + cgltf_texture_index(pData,
-                        cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture
-                    ))
-                    : 0;
-
-                mat.emissiveTag =
-                    cgltf_mat.emissive_texture.texture ?
-                    uint32_t(previousTextureSize + cgltf_texture_index(pData,
-                        cgltf_mat.emissive_texture.texture
-                    ))
-                    : 0;
-
-            }
-
-            BLIT_INFO("Loading meshes and primitives")
-
-            // The surface indices is a list of the first surface of each mesh. Used to create the render object struct
+            // Meshes and primitives
             BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
-
+            BLIT_INFO("Loading meshes and primitives")
             for (size_t i = 0; i < pData->meshes_count; ++i)
             {
-                const cgltf_mesh& mesh = pData->meshes[i];
+                const cgltf_mesh& gltfMesh = pData->meshes[i];
 
                 uint32_t firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
 
                 Mesh& blitzenMesh = meshes[meshCount];
                 blitzenMesh.firstSurface = firstSurface;
-                blitzenMesh.surfaceCount = static_cast<uint32_t>(mesh.primitives_count);
+                blitzenMesh.surfaceCount = static_cast<uint32_t>(gltfMesh.primitives_count);
                 blitzenMesh.meshId = static_cast<uint32_t>(meshCount);
                 meshCount++;
 
-                // Saves the surface index for nodes and creating the engine's render objects
                 surfaceIndices[i] = firstSurface;
 
-                for (size_t j = 0; j < mesh.primitives_count; ++j)
-                {
-                    const cgltf_primitive& prim = mesh.primitives[j];
-
-                    // Skips primitives that do not consist of triangles
-                    if (prim.type != cgltf_primitive_type_triangles || !prim.indices)
-                    {
-                        BLIT_ERROR("Blitzen supports only primitives with cgltf_primitive_type_triangles flags set and with indices")
-                        continue;
-                    }
-
-                    size_t vertexCount = prim.attributes[0].data->count;
-                    BlitCL::DynamicArray<Vertex> vertices{ vertexCount };
-                    BlitCL::DynamicArray<float> scratch{ vertexCount * 4 };
-
-                    // Vertex positions
-                    if (const cgltf_accessor* pos = cgltf_find_accessor(&prim, cgltf_attribute_type_position, 0))
-                    {
-                        BLIT_ASSERT(cgltf_num_components(pos->type) == 3);
-
-                        cgltf_accessor_unpack_floats(pos, scratch.Data(), vertexCount * 3);
-                        for (size_t j = 0; j < vertexCount; ++j)
-                        {
-                            vertices[j].position = BlitML::vec3(
-                                scratch[j * 3 + 0], 
-                                scratch[j * 3 + 1], 
-                                scratch[j * 3 + 2]
-                            );
-                        }
-                    }
-
-                    // Vertex normals
-                    if (const cgltf_accessor* nrm = cgltf_find_accessor(&prim, cgltf_attribute_type_normal, 0))
-                    {
-                        BLIT_ASSERT(cgltf_num_components(nrm->type) == 3);
-
-                        cgltf_accessor_unpack_floats(nrm, scratch.Data(), vertexCount * 3);
-                        for (size_t j = 0; j < vertexCount; ++j)
-                        {
-                            vertices[j].normalX = static_cast<uint8_t>(scratch[j * 3 + 0] * 127.f + 127.5f);
-                            vertices[j].normalY = static_cast<uint8_t>(scratch[j * 3 + 1] * 127.f + 127.5f);
-                            vertices[j].normalZ = static_cast<uint8_t>(scratch[j * 3 + 2] * 127.f + 127.5f);
-                        }
-                    }
-
-                    // Vertex tangents
-                    if (const cgltf_accessor* tang = cgltf_find_accessor(&prim, cgltf_attribute_type_tangent, 0))
-                    {
-                        BLIT_ASSERT(cgltf_num_components(tang->type) == 4)
-
-                        cgltf_accessor_unpack_floats(tang, scratch.Data(), vertexCount * 4);
-                        for (size_t j = 0; j < vertexCount; ++j)
-                        {
-                            vertices[j].tangentX = uint8_t(scratch[j * 4 + 0] * 127.f + 127.5f);
-                            vertices[j].tangentY = uint8_t(scratch[j * 4 + 1] * 127.f + 127.5f);
-                            vertices[j].tangentZ = uint8_t(scratch[j * 4 + 2] * 127.f + 127.5f);
-                            vertices[j].tangentW = uint8_t(scratch[j * 4 + 3] * 127.f + 127.5f);
-                        }
-                    }
-
-                    if (const cgltf_accessor* tex = cgltf_find_accessor(&prim, cgltf_attribute_type_texcoord, 0))
-                    {
-                        BLIT_ASSERT(cgltf_num_components(tex->type) == 2);
-                        cgltf_accessor_unpack_floats(tex, scratch.Data(), vertexCount * 2);
-                        for (size_t j = 0; j < vertexCount; ++j)
-                        {
-                            vertices[j].uvX = meshopt_quantizeHalf(scratch[j * 2 + 0]);
-                            vertices[j].uvY = meshopt_quantizeHalf(scratch[j * 2 + 1]);
-                        }
-                    }
-
-                    BlitCL::DynamicArray<uint32_t> indices(prim.indices->count);
-                    cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
-
-                    LoadPrimitiveSurface(vertices, indices);
-
-                    // Get the material index and pass it to the surface if there is material index
-                    if (prim.material)
-                    {
-                        m_surfaces.Back().materialId =
-                            m_materials[previousMaterialCount +
-                            cgltf_material_index(pData, prim.material)].materialId;
-
-                        if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
-                            m_surfaces.Back().postPass = 1;
-                    }
-                }
+                AddPrimitivesFromGltf(pData, gltfMesh, previousMaterialCount);
             }
 
 
-            // The scene nodes will be used to create the render objects in the scene
+            // Render objects
             BLIT_INFO("Loading scene nodes")
             CreateRenderObjectsFromGltffNodes(pData, surfaceIndices);
 
@@ -406,6 +226,47 @@ namespace BlitzenEngine
         void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData,
             const BlitCL::DynamicArray<uint32_t>& surfaceIndices
         );
+
+        void AddPrimitivesFromGltf(const cgltf_data* pGltfData, 
+            const cgltf_mesh& pGltfMesh, uint32_t previousMaterialCount);
+
+        void LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount,
+            uint32_t previousTextureCount
+        );
+
+        template<class RENDERER>
+        void LoadGltfTextures(const cgltf_data* pGltfData, uint32_t previousTextureCount,
+            const char* gltfFilepath, RENDERER pRenderer)
+        {
+            for (size_t i = 0; i < pGltfData->textures_count; ++i)
+            {
+                auto pTexture = &(pGltfData->textures[i]);
+                if (!pTexture->image)
+                    break;
+
+                auto pImage = pTexture->image;
+                if (!pImage->uri)
+                    break;
+
+                std::string ipath = gltfFilepath;
+                auto pos = ipath.find_last_of('/');
+                if (pos == std::string::npos)
+                    ipath = "";
+                else
+                    ipath = ipath.substr(0, pos + 1);
+
+                std::string uri = pImage->uri;
+                uri.resize(cgltf_decode_uri(&uri[0]));
+                auto dot = uri.find_last_of('.');
+
+                if (dot != std::string::npos)
+                    uri.replace(dot, uri.size() - dot, ".dds");
+
+                auto path = ipath + uri;
+
+                LoadTextureFromFile(path.c_str(), path.c_str(), pRenderer);
+            }
+        }
 
 
     private:

@@ -424,6 +424,99 @@ namespace BlitzenEngine
         return transformId;
     }
 
+    void RenderingResources::AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& gltfMesh, 
+        uint32_t previousMaterialCount)
+    {
+        for (size_t j = 0; j < gltfMesh.primitives_count; ++j)
+        {
+            const cgltf_primitive& prim = gltfMesh.primitives[j];
+
+            // Skips primitives that do not consist of triangles
+            if (prim.type != cgltf_primitive_type_triangles || !prim.indices)
+            {
+                BLIT_ERROR("Blitzen supports only primitives with \
+                    cgltf_primitive_type_triangles flags set and with indices")
+                continue;
+            }
+
+            size_t vertexCount = prim.attributes[0].data->count;
+            BlitCL::DynamicArray<Vertex> vertices{ vertexCount };
+            BlitCL::DynamicArray<float> scratch{ vertexCount * 4 };
+
+            // Vertex positions
+            if (const cgltf_accessor* pos = cgltf_find_accessor(&prim, cgltf_attribute_type_position, 0))
+            {
+                BLIT_ASSERT(cgltf_num_components(pos->type) == 3);
+
+                cgltf_accessor_unpack_floats(pos, scratch.Data(), vertexCount * 3);
+                for (size_t j = 0; j < vertexCount; ++j)
+                {
+                    vertices[j].position = BlitML::vec3(
+                        scratch[j * 3 + 0],
+                        scratch[j * 3 + 1],
+                        scratch[j * 3 + 2]
+                    );
+                }
+            }
+
+            // Vertex normals
+            if (const cgltf_accessor* nrm = cgltf_find_accessor(&prim, cgltf_attribute_type_normal, 0))
+            {
+                BLIT_ASSERT(cgltf_num_components(nrm->type) == 3);
+
+                cgltf_accessor_unpack_floats(nrm, scratch.Data(), vertexCount * 3);
+                for (size_t j = 0; j < vertexCount; ++j)
+                {
+                    vertices[j].normalX = static_cast<uint8_t>(scratch[j * 3 + 0] * 127.f + 127.5f);
+                    vertices[j].normalY = static_cast<uint8_t>(scratch[j * 3 + 1] * 127.f + 127.5f);
+                    vertices[j].normalZ = static_cast<uint8_t>(scratch[j * 3 + 2] * 127.f + 127.5f);
+                }
+            }
+
+            // Vertex tangents
+            if (const cgltf_accessor* tang = cgltf_find_accessor(&prim, cgltf_attribute_type_tangent, 0))
+            {
+                BLIT_ASSERT(cgltf_num_components(tang->type) == 4)
+
+                    cgltf_accessor_unpack_floats(tang, scratch.Data(), vertexCount * 4);
+                for (size_t j = 0; j < vertexCount; ++j)
+                {
+                    vertices[j].tangentX = uint8_t(scratch[j * 4 + 0] * 127.f + 127.5f);
+                    vertices[j].tangentY = uint8_t(scratch[j * 4 + 1] * 127.f + 127.5f);
+                    vertices[j].tangentZ = uint8_t(scratch[j * 4 + 2] * 127.f + 127.5f);
+                    vertices[j].tangentW = uint8_t(scratch[j * 4 + 3] * 127.f + 127.5f);
+                }
+            }
+
+            if (const cgltf_accessor* tex = cgltf_find_accessor(&prim, cgltf_attribute_type_texcoord, 0))
+            {
+                BLIT_ASSERT(cgltf_num_components(tex->type) == 2);
+                cgltf_accessor_unpack_floats(tex, scratch.Data(), vertexCount * 2);
+                for (size_t j = 0; j < vertexCount; ++j)
+                {
+                    vertices[j].uvX = meshopt_quantizeHalf(scratch[j * 2 + 0]);
+                    vertices[j].uvY = meshopt_quantizeHalf(scratch[j * 2 + 1]);
+                }
+            }
+
+            BlitCL::DynamicArray<uint32_t> indices(prim.indices->count);
+            cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
+
+            LoadPrimitiveSurface(vertices, indices);
+
+            // Get the material index and pass it to the surface if there is material index
+            if (prim.material)
+            {
+                m_surfaces.Back().materialId =
+                    m_materials[previousMaterialCount +
+                    cgltf_material_index(pGltfData, prim.material)].materialId;
+
+                if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
+                    m_surfaces.Back().postPass = 1;
+            }
+        }
+    }
+
     void RenderingResources::CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData,
         const BlitCL::DynamicArray<uint32_t>& surfaceIndices
     )
@@ -462,7 +555,7 @@ namespace BlitzenEngine
                             which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value"
                     )
 
-                        RenderObject& current = renders[renderObjectCount];
+                    RenderObject& current = renders[renderObjectCount];
                     current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
                     current.transformId = transformId;
                     renderObjectCount++;
@@ -470,6 +563,50 @@ namespace BlitzenEngine
 
                 transforms.PushBack(transform);
             }
+        }
+    }
+
+    void RenderingResources::LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount, 
+        uint32_t previousTextureCount)
+    {
+        for (size_t i = 0; i < pGltfData->materials_count; ++i)
+        {
+            cgltf_material& cgltf_mat = pGltfData->materials[i];
+
+            Material& mat = m_materials[m_materialCount++];
+            mat.materialId = m_materialCount - 1;
+
+            mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
+                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
+                    cgltf_mat.pbr_metallic_roughness.base_color_texture.texture
+                ))
+                : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
+                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
+                    cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture
+                ))
+                : 0;
+
+            mat.normalTag =
+                cgltf_mat.normal_texture.texture ?
+                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
+                    cgltf_mat.normal_texture.texture
+                ))
+                : 0;
+
+            mat.specularTag =
+                cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ?
+                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
+                    cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture
+                ))
+                : 0;
+
+            mat.emissiveTag =
+                cgltf_mat.emissive_texture.texture ?
+                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
+                    cgltf_mat.emissive_texture.texture
+                ))
+                : 0;
+
         }
     }
 
