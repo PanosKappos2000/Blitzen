@@ -918,19 +918,22 @@ namespace BlitzenVulkan
             return 1;
         }
 
-        BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->vertices;
-        BlitCL::DynamicArray<uint32_t>& indices = pResources->indices;
+        const BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = 
+            pResources->GetVerticesArray();
+        const BlitCL::DynamicArray<uint32_t>& indices = pResources->GetIndicesArray();
 
         BlitzenEngine::RenderObject* pRenderObjects = pResources->renders;
         uint32_t renderObjectCount = pResources->renderObjectCount;
 
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces = pResources->surfaces;
+        const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces = 
+            pResources->GetSurfaceArray();
 
-        BlitzenEngine::Material* pMaterials = pResources->materials;
-        uint32_t materialCount = static_cast<uint32_t>(pResources->materialCount);
+        const BlitzenEngine::Material* pMaterials = pResources->GetMaterialArrayPointer();
+        uint32_t materialCount = pResources->GetMaterialCount();
 
-        BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets = pResources->meshlets;
-        BlitCL::DynamicArray<uint32_t>& meshletData = pResources->meshletData;
+        const BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets = 
+            pResources->GetClusterArray();
+        const BlitCL::DynamicArray<uint32_t>& meshletData = pResources->GetClusterIndices();
 
         BlitzenEngine::RenderObject* pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
         uint32_t onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
@@ -1027,7 +1030,7 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.materialBuffer, materialStagingBuffer, 
             materialBufferSize, 
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-            pMaterials // buffer data
+            const_cast<BlitzenEngine::Material*>(pMaterials) // buffer data
         ))
             return 0;
 
@@ -1191,7 +1194,7 @@ namespace BlitzenVulkan
         // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)
         {
-            if(!BuildBlas(surfaces, pResources->primitiveVertexCounts))
+            if(!BuildBlas(surfaces, pResources->GetPrimitiveVertexCounts()))
                 return 0;
             if(!BuildTlas(pRenderObjects, renderObjectCount, transforms.Data(), surfaces.Data()))
                 return 0;
@@ -1285,8 +1288,8 @@ namespace BlitzenVulkan
         return (VkDeviceAddress)VK_NULL_HANDLE;
     }
 
-    uint8_t VulkanRenderer::BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
-    BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts)
+    uint8_t VulkanRenderer::BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
+        const BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts)
     {
         if(!surfaces.GetSize())
             return 0;

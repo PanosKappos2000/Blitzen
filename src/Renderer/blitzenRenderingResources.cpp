@@ -34,16 +34,16 @@ namespace BlitzenEngine
 
         // Defaults
         LoadTextureFromFile("Assets/Textures/base_baseColor.dds","dds_texture_default", pRenderer);
-        DefineMaterial(this, { 0.1f }, 65.f, "dds_texture_default", "unknown", "loaded_material");
+        DefineMaterial(BlitML::vec4{ 0.1f }, 65.f, "dds_texture_default", "unknown", "loaded_material");
         LoadMeshFromObj("Assets/Meshes/bunny.obj", ce_defaultMeshName);
     }
 
-    void DefineMaterial(RenderingResources* pResources, const BlitML::vec4& diffuseColor, 
+    void RenderingResources::DefineMaterial(const BlitML::vec4& diffuseColor, 
         float shininess, const char* diffuseMapName, 
         const char* specularMapName, const char* materialName
     )
     {
-        Material& current = pResources->materials[pResources->materialCount];
+        Material& current = m_materials[m_materialCount];
 
         current.diffuseColor = diffuseColor;
         current.shininess = shininess;
@@ -53,10 +53,10 @@ namespace BlitzenEngine
         current.specularTag = 0;
         current.emissiveTag = 0;
 
-        current.materialId = static_cast<uint32_t>(pResources->materialCount);
+        current.materialId = m_materialCount;
 
-        pResources->materialTable.Insert(materialName, current);
-        pResources->materialCount++;
+        m_materialTable.Insert(materialName, current);
+        m_materialCount++;
     }
 
     // Loads cluster using the meshoptimizer library
@@ -95,10 +95,10 @@ namespace BlitzenEngine
                 meshlet.triangle_count, meshlet.vertex_count
             );
 
-            auto dataOffset = meshletData.GetSize();
+            auto dataOffset = m_clusterIndices.GetSize();
             for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
             {
-                meshletData.PushBack(meshletVertices[meshlet.vertex_offset + i]);
+                m_clusterIndices.PushBack(meshletVertices[meshlet.vertex_offset + i]);
             }
 
             auto indexGroups = reinterpret_cast<unsigned int*>(
@@ -108,11 +108,12 @@ namespace BlitzenEngine
 
             for(unsigned int i = 0; i < indexGroupCount; ++i)
             {
-                meshletData.PushBack(indexGroups[size_t(i)]);
+                m_clusterIndices.PushBack(indexGroups[size_t(i)]);
             }
 
             meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
-            &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, &vertices[0].position.x, vertices.GetSize(), sizeof(Vertex));
+            &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, 
+                &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
 
             Meshlet m = {};
             m.dataOffset = static_cast<uint32_t>(dataOffset);
@@ -126,7 +127,7 @@ namespace BlitzenEngine
 		    m.cone_axis[2] = bounds.cone_axis_s8[2];
 		    m.cone_cutoff = bounds.cone_cutoff_s8; 
 
-            meshlets.PushBack(m);
+            m_clusters.PushBack(m);
         }
 
         return akMeshlets.GetSize();
@@ -147,8 +148,8 @@ namespace BlitzenEngine
 
         // Creates a new primitive surface object and passes its vertices
         PrimitiveSurface newSurface;
-        newSurface.vertexOffset = static_cast<uint32_t>(vertices.GetSize());
-        vertices.AppendArray(surfaceVertices);
+        newSurface.vertexOffset = static_cast<uint32_t>(m_vertices.GetSize());
+        m_vertices.AppendArray(surfaceVertices);
 
         AutomaticLevelOfDetailGenration(newSurface, surfaceVertices, surfaceIndices);
 
@@ -159,8 +160,8 @@ namespace BlitzenEngine
         newSurface.materialId = 0;
 
 		// Adds the surface to the global surfaces array
-        surfaces.PushBack(newSurface);
-        primitiveVertexCounts.PushBack(static_cast<uint32_t>(vertices.GetSize()));
+        m_surfaces.PushBack(newSurface);
+        m_primitiveVertexCounts.PushBack(static_cast<uint32_t>(m_vertices.GetSize()));
     }
 
     void RenderingResources::AutomaticLevelOfDetailGenration(PrimitiveSurface& surface,
@@ -190,15 +191,15 @@ namespace BlitzenEngine
             auto& lod = surface.meshLod[surface.lodCount++];
 
             // Depending on the implementation, LOD will use either indices or meshlets
-            lod.firstIndex = static_cast<uint32_t>(indices.GetSize());
+            lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
-            lod.firstMeshlet = static_cast<uint32_t>(meshlets.GetSize());
+            lod.firstMeshlet = static_cast<uint32_t>(m_clusters.GetSize());
             lod.meshletCount = ce_buildClusters ?
-                static_cast<uint32_t>(GenerateClusters(vertices, indices))
+                static_cast<uint32_t>(GenerateClusters(surfaceVertices, surfaceIndices))
                 : 0;
 
             // Adds level of details indices to the global indices array
-            indices.AppendArray(lodIndices);
+            m_indices.AppendArray(lodIndices);
             // Adjusts the error to the generated scale
             lod.error = lodError * lodScale;
 
@@ -337,7 +338,7 @@ namespace BlitzenEngine
 
         // Get the current mesh and give it the size surface array as its first surface index
         Mesh& currentMesh = meshes[meshCount];
-        currentMesh.firstSurface = static_cast<uint32_t>(surfaces.GetSize());
+        currentMesh.firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
 		currentMesh.meshId = uint32_t(meshCount);
         meshMap.Insert(meshName, currentMesh);
 
@@ -398,6 +399,84 @@ namespace BlitzenEngine
 
         return 1;
     }
+
+    uint32_t RenderingResources::AddRenderObjectsFromMesh(uint32_t meshId,
+        const BlitzenEngine::MeshTransform& transform)
+    {
+        BlitzenEngine::Mesh& mesh = meshes[meshId];
+        if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
+        {
+            BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count")
+            return 0;
+        }
+
+        uint32_t transformId = static_cast<uint32_t>(transforms.GetSize());
+        transforms.PushBack(transform);
+
+        for (uint32_t i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
+        {
+            RenderObject& object = renders[renderObjectCount++];
+
+            object.surfaceId = i;
+            object.transformId = transformId;
+        }
+
+        return transformId;
+    }
+
+    void RenderingResources::CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData,
+        const BlitCL::DynamicArray<uint32_t>& surfaceIndices
+    )
+    {
+        for (size_t i = 0; i < pGltfData->nodes_count; ++i)
+        {
+            const cgltf_node* node = &(pGltfData->nodes[i]);
+            if (node->mesh)
+            {
+                // Gets the model matrix
+                float matrix[16];
+                cgltf_node_transform_world(node, matrix);
+
+                // Have to decompose the transform, since blitzen does not use matrix for transform
+                float translation[3];
+                float rotation[4];
+                float scale[3];
+                BlitML::decomposeTransform(translation, rotation, scale, matrix);
+                MeshTransform transform;
+                transform.pos = BlitML::vec3(translation[0], translation[1], translation[2]);
+                transform.scale = BlitML::Max(scale[0], BlitML::Max(scale[1], scale[2]));
+                transform.orientation = BlitML::quat(rotation[0], rotation[1], rotation[2], rotation[3]);
+
+                // TODO: better warnings for non-uniform or negative scale
+
+                // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
+                auto surfaceOffset = surfaceIndices[cgltf_mesh_index(pGltfData, node->mesh)];
+                auto transformId = static_cast<uint32_t>(transforms.GetSize());
+
+                for (size_t j = 0; j < node->mesh->primitives_count; ++j)
+                {
+                    // If the gltf goes over BLITZEN_MAX_DRAW_OBJECTS after already loading resources, I have no choice but to assert
+                    BLIT_ASSERT_MESSAGE(renderObjectCount <= ce_maxRenderObjects,
+                        "While Loading a GLTF, \
+                            additional geometry was loaded \
+                            which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value"
+                    )
+
+                        RenderObject& current = renders[renderObjectCount];
+                    current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
+                    current.transformId = transformId;
+                    renderObjectCount++;
+                }
+
+                transforms.PushBack(transform);
+            }
+        }
+    }
+
+
+
+
+
 
     void LoadTestGeometry(RenderingResources* pResources)
     {

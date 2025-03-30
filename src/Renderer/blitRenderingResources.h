@@ -18,40 +18,42 @@ namespace BlitzenEngine
         inline static RenderingResources* GetRenderingResources() { return s_pResources; }
         RenderingResources::RenderingResources(void* rendererData);
 
+        RenderingResources operator = (const RenderingResources& rr) = delete;
+        RenderingResources operator = (RenderingResources& rr) = delete;
+
+        inline const TextureStats* GetTextureArrayPointer() { return m_textures; }
+        inline const TextureStats& GetTextureFromMap(const char* textureName) { return m_textureTable[textureName]; }
+        inline uint32_t GetTextureCount() const { return m_textureCount; }
+        inline const Material* GetMaterialArrayPointer() const { return m_materials; }
+        inline const Material& GetMaterialFromMap(const char* materialName) { return m_materialTable[materialName]; }
+        inline uint32_t GetMaterialCount() const { return m_materialCount; }
+
+        inline const BlitCL::DynamicArray<PrimitiveSurface>& GetSurfaceArray() const
+        {
+            return m_surfaces;
+        }
+        inline const BlitCL::DynamicArray<Vertex>& GetVerticesArray() const
+        {
+            return m_vertices;
+        }
+        inline const BlitCL::DynamicArray<uint32_t>& GetIndicesArray() const
+        {
+           return m_indices;
+        }
+        inline const BlitCL::DynamicArray<uint32_t>& GetPrimitiveVertexCounts() const
+        {
+            return m_primitiveVertexCounts;
+        }
+        inline const BlitCL::DynamicArray<Meshlet>& GetClusterArray() const
+        {
+            return m_clusters;
+        }
+        inline const BlitCL::DynamicArray<uint32_t>& GetClusterIndices() const
+        {
+            return m_clusterIndices;
+        }
+      
     public:
-
-        // Holds all textures. No dynamic allocation.
-        TextureStats textures[ce_maxTextureCount];
-        BlitCL::HashMap<TextureStats> textureTable;
-        size_t textureCount = 0;
-
-        // Holds all materials. No dynamic allocation. Includes hashmap for separate access
-        Material materials[ce_maxMaterialCount];
-        BlitCL::HashMap<Material> materialTable;
-        size_t materialCount = 0;
-
-
-        /*
-            Per primitive data
-        */
-        // Holds all the primitives / surfaces
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface> surfaces;
-
-        // Holds the vertex count of each primitive. This does not need to be passed to shader for now. But I do need it for ray tracing
-        BlitCL::DynamicArray<uint32_t> primitiveVertexCounts;
-
-        // Holds the vertices of all the primitives that were loaded
-        BlitCL::DynamicArray<Vertex> vertices;
-
-        // Holds the indices of all the primitives that were loaded
-        BlitCL::DynamicArray<uint32_t> indices;
-
-        // Holds all clusters for all the primitives that were loaded
-        BlitCL::DynamicArray<Meshlet> meshlets;
-
-        // Holds the meshlet indices to index into the clusters above
-        BlitCL::DynamicArray<uint32_t> meshletData;
-
 
         /*
             Per instance data
@@ -76,31 +78,14 @@ namespace BlitzenEngine
     public:
 
         // Takes a mesh id and adds a render object based on that ID and a transform
-		inline uint32_t AddRenderObjectsFromMesh(uint32_t meshId, 
-            const BlitzenEngine::MeshTransform& transform)
-		{
-            BlitzenEngine::Mesh& mesh = meshes[meshId];
-			if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
-			{
-				BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count")
-				return 0;
-			}
+        uint32_t AddRenderObjectsFromMesh(uint32_t meshId, const BlitzenEngine::MeshTransform& transform);
 
-            uint32_t transformId = static_cast<uint32_t>(transforms.GetSize());
-            transforms.PushBack(transform);
-
-			for (uint32_t i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
-			{
-                RenderObject& object = renders[renderObjectCount++];
-
-                object.surfaceId = i;
-                object.transformId = transformId;
-			}
-			
-			return transformId;
-		}
-
+        // Takes a filepath and adds a mesh
         uint8_t LoadMeshFromObj(const char* filename, const char* meshName);
+
+        void DefineMaterial(const BlitML::vec4& diffuseColor,
+            float shininess, const char* diffuseMapName,
+            const char* specularMapName, const char* materialName);
 
     public:
 
@@ -110,18 +95,18 @@ namespace BlitzenEngine
 			RENDERER* pRenderer)
 		{
 			// Don't go over the texture limit, might want to throw a warning here
-			if (textureCount >= ce_maxTextureCount)
+			if (m_textureCount >= ce_maxTextureCount)
 			{
 				BLIT_WARN("Max texture count: %i, has been reached", ce_maxTextureCount)
 				BLIT_ERROR("Texture from file: %s, failed to load", filename)
 				return 0;
 			}
 
-			TextureStats& texture = textures[textureCount];
+			TextureStats& texture = m_textures[m_textureCount];
 			// If texture upload to the renderer succeeds, the texture count is incremented and the function returns successfully
 			if (pRenderer->UploadTexture(texture.pTextureData, filename))
 			{
-				textureCount++;
+				m_textureCount++;
 				return true;
 			}
             else
@@ -191,12 +176,12 @@ namespace BlitzenEngine
                 };
 
             // Before loading textures save the previous texture size, to use for indexing
-            size_t previousTextureSize = textureCount;
+            auto previousTextureSize = m_textureCount;
 
             BLIT_INFO("Loading textures")
 
-                // I had to fold and use the STL
-                BlitCL::DynamicArray<std::string> texturePaths(pData->textures_count);
+            // I had to fold and use the STL
+            BlitCL::DynamicArray<std::string> texturePaths(pData->textures_count);
             for (size_t i = 0; i < pData->textures_count; ++i)
             {
                 cgltf_texture* texture = &(pData->textures[i]);
@@ -224,22 +209,22 @@ namespace BlitzenEngine
                 texturePaths[i] = ipath + uri;
             }
 
-            for (auto path : texturePaths)
+            for (auto& path : texturePaths)
             {
                 LoadTextureFromFile(path.c_str(), path.c_str(), pRenderer);
             }
 
             BLIT_INFO("Loading materials")
 
-                // Saves the previous material count
-                size_t previousMaterialCount = materialCount;
+            // Saves the previous material count
+            size_t previousMaterialCount = m_materialCount;
             // Creates one BlitzenEngine::Material for each material in the gltf
             for (size_t i = 0; i < pData->materials_count; ++i)
             {
                 cgltf_material& cgltf_mat = pData->materials[i];
 
-                Material& mat = materials[materialCount++];
-                mat.materialId = static_cast<uint32_t>(materialCount - 1);
+                Material& mat = m_materials[m_materialCount++];
+                mat.materialId = m_materialCount - 1;
 
                 mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
                     uint32_t(previousTextureSize + cgltf_texture_index(pData,
@@ -281,48 +266,51 @@ namespace BlitzenEngine
 
             for (size_t i = 0; i < pData->meshes_count; ++i)
             {
-                // Get the current mesh
                 const cgltf_mesh& mesh = pData->meshes[i];
 
-                // Find the first surface of the current mesh. 
-                // It is important for the mesh struct and to save the data for later to create the render objects
-                uint32_t firstSurface = static_cast<uint32_t>(surfaces.GetSize());
+                uint32_t firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
 
-                // Give the new mesh the surface that it owns and increment the mesh count
-                meshes[meshCount].firstSurface = firstSurface;
-                meshes[meshCount].surfaceCount = static_cast<uint32_t>(mesh.primitives_count);
+                Mesh& blitzenMesh = meshes[meshCount];
+                blitzenMesh.firstSurface = firstSurface;
+                blitzenMesh.surfaceCount = static_cast<uint32_t>(mesh.primitives_count);
+                blitzenMesh.meshId = static_cast<uint32_t>(meshCount);
                 meshCount++;
 
-                // Pass the first surface here so that it can be accessed by the nodes
+                // Saves the surface index for nodes and creating the engine's render objects
                 surfaceIndices[i] = firstSurface;
 
                 for (size_t j = 0; j < mesh.primitives_count; ++j)
                 {
                     const cgltf_primitive& prim = mesh.primitives[j];
 
-                    // Skip primitives that are not triangles
+                    // Skips primitives that do not consist of triangles
                     if (prim.type != cgltf_primitive_type_triangles || !prim.indices)
+                    {
+                        BLIT_ERROR("Blitzen supports only primitives with cgltf_primitive_type_triangles flags set and with indices")
                         continue;
+                    }
 
                     size_t vertexCount = prim.attributes[0].data->count;
+                    BlitCL::DynamicArray<Vertex> vertices{ vertexCount };
+                    BlitCL::DynamicArray<float> scratch{ vertexCount * 4 };
 
-                    BlitCL::DynamicArray<Vertex> vertices(vertexCount);
-
-                    // Will temporarily hold each aspect of the vertices (pos, tangent, normals, uvMaps) from the primitive
-                    BlitCL::DynamicArray<float> scratch(vertexCount * 4);
-
+                    // Vertex positions
                     if (const cgltf_accessor* pos = cgltf_find_accessor(&prim, cgltf_attribute_type_position, 0))
                     {
-                        // No choice but to assert here, as some data might already have been loaded
                         BLIT_ASSERT(cgltf_num_components(pos->type) == 3);
 
                         cgltf_accessor_unpack_floats(pos, scratch.Data(), vertexCount * 3);
                         for (size_t j = 0; j < vertexCount; ++j)
                         {
-                            vertices[j].position = BlitML::vec3(scratch[j * 3 + 0], scratch[j * 3 + 1], scratch[j * 3 + 2]);
+                            vertices[j].position = BlitML::vec3(
+                                scratch[j * 3 + 0], 
+                                scratch[j * 3 + 1], 
+                                scratch[j * 3 + 2]
+                            );
                         }
                     }
 
+                    // Vertex normals
                     if (const cgltf_accessor* nrm = cgltf_find_accessor(&prim, cgltf_attribute_type_normal, 0))
                     {
                         BLIT_ASSERT(cgltf_num_components(nrm->type) == 3);
@@ -336,11 +324,12 @@ namespace BlitzenEngine
                         }
                     }
 
+                    // Vertex tangents
                     if (const cgltf_accessor* tang = cgltf_find_accessor(&prim, cgltf_attribute_type_tangent, 0))
                     {
                         BLIT_ASSERT(cgltf_num_components(tang->type) == 4)
 
-                            cgltf_accessor_unpack_floats(tang, scratch.Data(), vertexCount * 4);
+                        cgltf_accessor_unpack_floats(tang, scratch.Data(), vertexCount * 4);
                         for (size_t j = 0; j < vertexCount; ++j)
                         {
                             vertices[j].tangentX = uint8_t(scratch[j * 4 + 0] * 127.f + 127.5f);
@@ -369,65 +358,20 @@ namespace BlitzenEngine
                     // Get the material index and pass it to the surface if there is material index
                     if (prim.material)
                     {
-                        surfaces.Back().materialId =
-                            materials[previousMaterialCount +
+                        m_surfaces.Back().materialId =
+                            m_materials[previousMaterialCount +
                             cgltf_material_index(pData, prim.material)].materialId;
 
                         if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
-                            surfaces.Back().postPass = 1;
+                            m_surfaces.Back().postPass = 1;
                     }
                 }
             }
 
+
+            // The scene nodes will be used to create the render objects in the scene
             BLIT_INFO("Loading scene nodes")
-
-            for (size_t i = 0; i < pData->nodes_count; ++i)
-            {
-                const cgltf_node* node = &(pData->nodes[i]);
-                if (node->mesh)
-                {
-                    // Gets the model matrix
-                    float matrix[16];
-                    cgltf_node_transform_world(node, matrix);
-
-                    // Uses these float arrays to hold the decomposed matrix
-                    float translation[3];
-                    float rotation[4];
-                    float scale[3];
-
-                    // Decomposes the model transform and tranlates the data to the engine's transform structure
-                    BlitML::decomposeTransform(translation, rotation, scale, matrix);
-                    MeshTransform transform;
-                    transform.pos = BlitML::vec3(translation[0], translation[1], translation[2]);
-                    transform.scale = BlitML::Max(scale[0], BlitML::Max(scale[1], scale[2]));
-                    transform.orientation = BlitML::quat(rotation[0], rotation[1], rotation[2], rotation[3]);
-
-                    // TODO: better warnings for non-uniform or negative scale
-
-                    // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
-                    uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(pData, node->mesh)];
-                    uint32_t transformId = static_cast<uint32_t>(transforms.GetSize());
-
-                    for (unsigned int j = 0; j < node->mesh->primitives_count; ++j)
-                    {
-                        // If the gltf goes over BLITZEN_MAX_DRAW_OBJECTS after already loading resources, I have no choice but to assert
-                        BLIT_ASSERT_MESSAGE(renderObjectCount <= ce_maxRenderObjects,
-                            "While Loading a GLTF, \
-                            additional geometry was loaded \
-                            which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value"
-                        )
-
-                            RenderObject& current = renders[renderObjectCount];
-                        current.surfaceId = surfaceOffset + j;
-                        current.transformId = transformId;
-
-                        // Increment the render object count
-                        renderObjectCount++;
-                    }
-
-                    transforms.PushBack(transform);
-                }
-            }
+            CreateRenderObjectsFromGltffNodes(pData, surfaceIndices);
 
             return true;
         }
@@ -452,16 +396,64 @@ namespace BlitzenEngine
             BlitCL::DynamicArray<uint32_t>& surfaceIndices
         );
 
+        // Generates bounding sphere for primitive based on given vertices and indices
         void GenerateBoundingSphere(PrimitiveSurface& surface,
             BlitCL::DynamicArray<Vertex>& surfaceVertices,
             BlitCL::DynamicArray<uint32_t>& surfaceIndices
+        );
+
+        // Generates render objects for a gltf scene
+        void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData,
+            const BlitCL::DynamicArray<uint32_t>& surfaceIndices
         );
 
 
     private:
 
 		static RenderingResources* s_pResources;
+    
+    /*
+        Textures and materials
+    */
+    private:
+
+        // Holds all textures. No dynamic allocation.
+        TextureStats m_textures[ce_maxTextureCount];
+        BlitCL::HashMap<TextureStats> m_textureTable;
+        uint32_t m_textureCount = 0;
+
+        // Holds all materials. No dynamic allocation
+        Material m_materials[ce_maxMaterialCount];
+        BlitCL::HashMap<Material> m_materialTable;
+        uint32_t m_materialCount = 0;
+
+    /*
+        Per primitive data
+    */
+    private:
+
+        // Holds all the primitives / surfaces
+        BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;
+
+        // Holds the vertex count of each primitive. This does not need to be passed to shader for now. But I do need it for ray tracing
+        BlitCL::DynamicArray<uint32_t> m_primitiveVertexCounts;
+
+        // Holds the vertices of all the primitives that were loaded
+        BlitCL::DynamicArray<Vertex> m_vertices;
+
+        // Holds the indices of all the primitives that were loaded
+        BlitCL::DynamicArray<uint32_t> m_indices;
+
+        // Holds all clusters for all the primitives that were loaded
+        BlitCL::DynamicArray<Meshlet> m_clusters;
+
+        // Holds the meshlet indices to index into the clusters above
+        BlitCL::DynamicArray<uint32_t> m_clusterIndices;
     };
+
+
+
+
 
     // Draw context needs to be given to draw frame function, so that it can update uniform values
     struct DrawContext
@@ -488,8 +480,6 @@ namespace BlitzenEngine
 
 
 
-
-
     // Sets random transform
     inline void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
     {
@@ -512,14 +502,8 @@ namespace BlitzenEngine
         );
     }
 
-    void DefineMaterial(RenderingResources* pResources, const BlitML::vec4& diffuseColor, 
-        float shininess, const char* diffuseMapName, 
-        const char* specularMapName, const char* materialName);
-
-    // Placeholder to load some default resources while testing the systems
+    // Test functions
     void LoadTestGeometry(RenderingResources* pResources);
-
-    // Functions for testing aspects of the renderer
     void LoadGeometryStressTest(RenderingResources* pResources);
     void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources);
 

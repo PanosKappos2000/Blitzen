@@ -99,12 +99,17 @@ namespace BlitCL
         inline Iterator begin() { return Iterator(m_pBlock); }
         inline Iterator end() { return Iterator(m_pBlock + m_size); }
 
-        inline size_t GetSize() { return m_size; }
+        inline size_t GetSize() const { return m_size; }
 
-        inline T& operator [] (size_t index) { BLIT_ASSERT(index >= 0 && index < m_size) return m_pBlock[index]; }
+        inline T& operator [] (size_t index) const 
+        { 
+            BLIT_ASSERT(index >= 0 && index < m_size) 
+            return m_pBlock[index]; 
+        }
+
         inline T& Front() { BLIT_ASSERT(m_size) m_pBlock[0]; }
         inline T& Back() { BLIT_ASSERT(m_size) return m_pBlock[m_size - 1]; }
-        inline T* Data() { return m_pBlock; }
+        inline T* Data() const { return m_pBlock; }
 
         // Copies the given value to every element in the dynamic array
         void Fill(T&& val)
@@ -339,7 +344,8 @@ namespace BlitCL
             ++m_elementCount;
         }
 
-        inline T& operator [](const char* name){ return m_pBlock[HashFunction(name)]; }
+        inline const T& operator [](const char* name) { return m_pBlock[HashFunction(name)]; }
+        inline T& GetVar(const char* name) { return m_pBlock[HashFunction(name)]; }
 
         ~HashMap()
         {

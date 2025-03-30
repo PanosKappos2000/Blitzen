@@ -162,8 +162,8 @@ namespace BlitzenVulkan
         // Since the way the graphics pipelines work is fixed and there are only 2 of them, the code is collected in this fixed function
         uint8_t SetupMainGraphicsPipeline();
 
-        uint8_t BuildBlas(BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
-            BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts
+        uint8_t BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
+            const BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts
         );
 
         uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, 

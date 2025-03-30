@@ -60,16 +60,21 @@ namespace BlitzenGL
             return 0;
     }
 
-    uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight)
+    uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
+        float& pyramidWidth, float& pyramidHeight
+    )
     {
         // Generates the vertex array. I don't know why this needs to be here since I am not using vertex attributes, 
         // but if I don't have it, OpenGL will draw nothing -_-
         glGenVertexArrays(1, &m_vertexArray.handle);
         // Creates the vertex buffer as a storage buffer and passes it to binding t
         glGenBuffers(1, &m_vertexBuffer.handle);
-        BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->vertices;
+        const BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = pResources->GetVerticesArray();
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_vertexBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), vertices.Data(), GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 
+            sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), 
+            vertices.Data(), GL_STATIC_READ
+        );
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_vertexBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
@@ -77,14 +82,19 @@ namespace BlitzenGL
         // Creates the index buffer and pass the indices to it
         glGenBuffers(1, &m_indexBuffer.handle);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer.handle);
-        BlitCL::DynamicArray<uint32_t>& indices = pResources->indices;
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.GetSize(), indices.Data(), GL_STATIC_DRAW);
+        const BlitCL::DynamicArray<uint32_t>& indices = pResources->GetIndicesArray();
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, 
+            sizeof(uint32_t) * indices.GetSize(), 
+            indices.Data(), GL_STATIC_DRAW
+        );
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-        // Creates the indirect draw buffer. It will be as big as the draw count. It will initially be empty but it will be filled by the culling shaders
         glGenBuffers(1, &m_indirectDrawBuffer.handle);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer.handle);
-        glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(IndirectDrawCommand) * pResources->renderObjectCount, nullptr,  GL_STATIC_DRAW);
+        glBufferData(GL_DRAW_INDIRECT_BUFFER, 
+            sizeof(IndirectDrawCommand) * pResources->renderObjectCount, 
+            nullptr,  GL_STATIC_DRAW
+        );
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
         // Binds the indirect draw buffer as an SSBO, so that it can be accessed by the culling shaders
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_indirectDrawBuffer.handle);
@@ -94,31 +104,41 @@ namespace BlitzenGL
         BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms = pResources->transforms;
         glGenBuffers(1, &m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_transformBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize(), 
-        transforms.Data(), GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 
+            sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize(), 
+            transforms.Data(), GL_STATIC_READ
+        );
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         // Creates the primitive surface buffer as a storage buffer and passes it to binding 2
-        BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces = pResources->surfaces;
+        const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces = pResources->GetSurfaceArray();
         glGenBuffers(1, &m_surfaceBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_surfaceBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::PrimitiveSurface) * surfaces.GetSize(),
-        surfaces.Data(), GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 
+            sizeof(BlitzenEngine::PrimitiveSurface) * surfaces.GetSize(),
+            surfaces.Data(), GL_STATIC_READ
+        );
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_surfaceBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         // Creates the render object buffer as a storage buffer and passes it to binding 3
         glGenBuffers(1, &m_renderObjectBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_renderObjectBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::RenderObject) * pResources->renderObjectCount, pResources->renders, GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 
+            sizeof(BlitzenEngine::RenderObject) * pResources->renderObjectCount, 
+            pResources->renders, GL_STATIC_READ
+        );
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_renderObjectBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         // Creates the material buffer as a storage buffer and passes it binding 4
         glGenBuffers(1, &m_materialBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Material) * pResources->materialCount, pResources->materials, GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 
+            sizeof(BlitzenEngine::Material) * pResources->GetMaterialCount(), 
+            pResources->GetMaterialArrayPointer(), GL_STATIC_READ
+        );
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_materialBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
