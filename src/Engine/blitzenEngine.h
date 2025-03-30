@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <cstddef>
 
+//#define LAMBDA_GAME_OBJECT_TEST
+
 namespace BlitzenEngine
 {
     // Window constants

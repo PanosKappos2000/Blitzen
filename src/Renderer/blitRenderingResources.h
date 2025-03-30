@@ -383,10 +383,28 @@ namespace BlitzenEngine
             BlitzenEngine::MeshTransform transform;
             RandomizeTransform(transform, 100.f, 1.f);
 
-            if (!pManager->AddObject<BlitzenEngine::ClientTest>(
-                pResources, transform, 1, "kitten"
+#if defined(LAMBDA_GAME_OBJECT_TEST)
+            struct ClientTestDataStruct
+            {
+                float yaw;
+                float pitch;
+                float speed;
+            };
+            ClientTestDataStruct objectData{ 0.f, 0.f, 0.1f };
+            if (!pManager->AddObject<BlitzenEngine::ClientTest>(pResources, transform,
+                { [](GameObject* pObject) {
+                    auto pData = pObject->m_pData.Get<ClientTestDataStruct>();
+                    RotateObject(pData->yaw, pData->pitch,
+                        pObject->m_transformId, pData->speed);
+                } }, true, "kitten", &objectData, sizeof(ClientTestDataStruct)
             ))
                 return;
+#else
+            if (!pManager->AddObject<BlitzenEngine::ClientTest>(
+                pResources, transform, true, "kitten"
+            ))
+                return;
+#endif
         }
     }
 

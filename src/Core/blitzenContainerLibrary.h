@@ -8,6 +8,8 @@ namespace BlitCL
 {
     constexpr uint8_t ce_blitDynamiArrayCapacityMultiplier = 2;
 
+    constexpr BlitzenCore::AllocationType DArrayAlloc = BlitzenCore::AllocationType::DynamicArray;
+
 
     template<typename T>
     class DynamicArrayIterator
@@ -59,7 +61,7 @@ namespace BlitCL
         {
             if (m_size > 0)
             {
-                m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::DynamicArray>(m_capacity);
+                m_pBlock = BlitzenCore::BlitConstructAlloc<T, DArrayAlloc>(m_capacity);
             }
         }
 
@@ -68,7 +70,7 @@ namespace BlitCL
         {
             if (m_size > 0)
             {
-                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+                m_pBlock = BlitzenCore::BlitAlloc<T>(DArrayAlloc, m_capacity);
                 for (size_t i = 0; i < initialSize; ++i)
                     BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
             }
@@ -79,7 +81,7 @@ namespace BlitCL
         {
             if (m_size > 0)
             {
-                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+                m_pBlock = BlitzenCore::BlitAlloc<T>(DArrayAlloc, m_capacity);
                 for (size_t i = 0; i < initialSize; ++i)
                     BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
             }
@@ -90,7 +92,7 @@ namespace BlitCL
         {
             if (m_size > 0)
             {
-                m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_capacity);
+                m_pBlock = BlitzenCore::BlitAlloc<T>(DArrayAlloc, m_capacity);
                 BlitzenCore::BlitMemCopy(m_pBlock, array.Data(), array.GetSize() * sizeof(T));
             }
         }
@@ -122,18 +124,14 @@ namespace BlitCL
         // TODO: I should have this be for both resize and downsize, I do not know what I was thinking
         void Resize(size_t newSize)
         {
-            // A different function will be used for downsizing
             if(newSize < m_size)
             {
                 return;
             }
-            // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
             if(newSize > m_capacity)
             {
                 RearrangeCapacity(newSize);
-                // TODO: Maybe I would want to zero out the memory after m_size and up to capacity
             }
-
             m_size = newSize;
         }
 
@@ -196,13 +194,13 @@ namespace BlitCL
             {
                 T* pTempBlock = m_pBlock;
 
-                m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::DynamicArray>(m_capacity);
+                m_pBlock = BlitzenCore::BlitConstructAlloc<T, DArrayAlloc>(m_capacity);
 
                 BlitzenCore::BlitMemCopy(m_pBlock, pTempBlock, (index) * sizeof(T));
 
                 BlitzenCore::BlitMemCopy(m_pBlock + index, pTempBlock + index + 1, (m_size - index) * sizeof(T));
 
-                BlitzenCore::BlitFree<T>(BlitzenCore::AllocationType::DynamicArray, pTempBlock, m_size);
+                BlitzenCore::BlitFree<T>(DArrayAlloc, pTempBlock, m_size);
 
                 m_size--;
             }
@@ -221,7 +219,7 @@ namespace BlitCL
         {
             if(m_capacity > 0)
             {
-                BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity);
+                BlitzenCore::BlitDestroyAlloc<T>(DArrayAlloc, m_pBlock, m_capacity);
                 m_pBlock = nullptr;
                 m_size = 0;
                 m_capacity = 0;
@@ -231,7 +229,7 @@ namespace BlitCL
         ~DynamicArray()
         {
             if(m_capacity > 0)
-                BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::DynamicArray, m_pBlock, m_capacity);
+                BlitzenCore::BlitDestroyAlloc<T>(DArrayAlloc,m_pBlock, m_capacity);
         }
 
     private:
@@ -250,11 +248,11 @@ namespace BlitCL
             m_capacity = newSize * ce_blitDynamiArrayCapacityMultiplier;
             T* pTemp = m_pBlock;
 
-            m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::DynamicArray>(m_capacity);
+            m_pBlock = BlitzenCore::BlitAlloc<T>(DArrayAlloc, m_capacity);
             if (m_size != 0)
             {
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_size * sizeof(T));
-                BlitzenCore::BlitFree<T>(BlitzenCore::AllocationType::DynamicArray, pTemp, m_size);
+                BlitzenCore::BlitFree<T>(DArrayAlloc, pTemp, m_size);
             }
         }
     };
@@ -452,11 +450,8 @@ namespace BlitCL
 
         inline T* Data() { return m_pData; }
         inline T& Ref() { return m_pData[0]; }
-
         inline T* operator ->() {return m_pData; }
-
         inline T& operator *() { return *m_pData; }
-
         inline T** operator &() { return &m_pData; }
 
         ~SmartPointer()
@@ -509,6 +504,41 @@ namespace BlitCL
     private:
         T* m_pData = nullptr;
 
+        size_t m_size;
+    };
+
+    class UnknownPointer
+    {
+    public:
+
+        inline UnknownPointer(void* pData, size_t size)
+        {
+            BLIT_ASSERT(pData && size)
+            m_size = size;
+            m_pData = BlitzenCore::BlitAlloc<uint8_t>(BlitzenCore::AllocationType::SmartPointer, size);
+        }
+
+        inline UnknownPointer() : m_pData{ nullptr }, m_size{ 0 }
+        {}
+
+        inline void Make(void* pData, size_t size)
+        {
+            m_size = size;
+            m_pData = BlitzenCore::BlitAlloc<uint8_t>(BlitzenCore::AllocationType::SmartPointer, size);
+            BlitzenCore::BlitMemCopy(m_pData, pData, size);
+        }
+
+        template<typename T>
+        inline T* Get() { return reinterpret_cast<T*>(m_pData); }
+
+        inline ~UnknownPointer()
+        {
+            if(m_pData)
+                BlitzenCore::BlitFree<uint8_t>(BlitzenCore::AllocationType::SmartPointer, m_pData, m_size);
+        }
+
+    private:
+        void* m_pData;
         size_t m_size;
     };
 }
