@@ -245,6 +245,7 @@ namespace BlitCL
 
         void RearrangeCapacity(size_t newSize)
         {
+            auto oldCapacity = m_capacity;
             m_capacity = newSize * ce_blitDynamiArrayCapacityMultiplier;
             T* pTemp = m_pBlock;
 
@@ -252,7 +253,7 @@ namespace BlitCL
             if (m_size != 0)
             {
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, m_size * sizeof(T));
-                BlitzenCore::BlitFree<T>(DArrayAlloc, pTemp, m_size);
+                BlitzenCore::BlitFree<T>(DArrayAlloc, pTemp, oldCapacity);
             }
         }
     };
