@@ -35,16 +35,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<GameObject> m_gameObjects;
         uint32_t m_objectCount = 0;
 
-        using UpdatePfnType = void(*)(GameObject* pObject);
-        struct UpdatePfnTypeHolder
-        {
-            UpdatePfnType pfnUpdate;
-
-            inline UpdatePfnTypeHolder(UpdatePfnType pfn) :pfnUpdate{ pfn } {}
-
-            inline UpdatePfnTypeHolder() : pfnUpdate{ 0 } {}
-        };
-        BlitCL::DynamicArray<UpdatePfnTypeHolder> m_updateFunctions;
+        BlitCL::DynamicArray<BlitCL::Pfn<void, GameObject*>> m_updateFunctions;
 
         BlitCL::DynamicArray<GameObject*> m_pDynamicObjects;// Objects that will call Update
 
@@ -54,7 +45,7 @@ namespace BlitzenEngine
         template<class T, typename... Args>
         inline bool AddObject(BlitzenEngine::RenderingResources* pResources,
             const BlitzenEngine::MeshTransform& initialTransform, 
-            UpdatePfnTypeHolder pfn, bool bDynamic, const char* meshName, Args... args)
+            BlitCL::Pfn<void, GameObject*> pfn, bool bDynamic, const char* meshName, Args... args)
         {
             if (m_objectCount >= ce_maxObjectCount)
             {
@@ -79,7 +70,7 @@ namespace BlitzenEngine
         inline void UpdateDynamicObjects()
         {
             for (size_t i = 0; i < m_pDynamicObjects.GetSize(); ++i)
-                m_updateFunctions[i].pfnUpdate(&m_gameObjects[i]);
+                m_updateFunctions[i](&m_gameObjects[i]);
                 
         }
     };

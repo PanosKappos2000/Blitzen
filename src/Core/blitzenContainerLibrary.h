@@ -15,13 +15,13 @@ namespace BlitCL
     class DynamicArrayIterator
     {
     public:
-        DynamicArrayIterator(T* ptr) :m_pElement{ptr}{}
+        DynamicArrayIterator(T* ptr) :m_pElement{ ptr } {}
 
         inline bool operator !=(DynamicArrayIterator<T>& l) { return m_pElement != l.m_pElement; }
 
-        inline DynamicArrayIterator<T>& operator ++() { 
-            m_pElement++; 
-            return *this; 
+        inline DynamicArrayIterator<T>& operator ++() {
+            m_pElement++;
+            return *this;
         }
 
         inline DynamicArrayIterator<T>& operator ++(int) {
@@ -57,7 +57,7 @@ namespace BlitCL
     public:
 
         DynamicArray(size_t initialSize = 0)
-            :m_size{initialSize}, m_capacity(initialSize * ce_blitDynamiArrayCapacityMultiplier)
+            :m_size{ initialSize }, m_capacity(initialSize* ce_blitDynamiArrayCapacityMultiplier)
         {
             if (m_size > 0)
             {
@@ -88,7 +88,7 @@ namespace BlitCL
         }
 
         DynamicArray(DynamicArray<T>& array)
-            :m_size(array.GetSize()), m_capacity(array.GetSize() * ce_blitDynamiArrayCapacityMultiplier)
+            :m_size(array.GetSize()), m_capacity(array.GetSize()* ce_blitDynamiArrayCapacityMultiplier)
         {
             if (m_size > 0)
             {
@@ -103,10 +103,10 @@ namespace BlitCL
 
         inline size_t GetSize() const { return m_size; }
 
-        inline T& operator [] (size_t index) const 
-        { 
-            BLIT_ASSERT(index >= 0 && index < m_size) 
-            return m_pBlock[index]; 
+        inline T& operator [] (size_t index) const
+        {
+            BLIT_ASSERT(index >= 0 && index < m_size)
+                return m_pBlock[index];
         }
 
         inline T& Front() { BLIT_ASSERT(m_size) m_pBlock[0]; }
@@ -116,19 +116,19 @@ namespace BlitCL
         // Copies the given value to every element in the dynamic array
         void Fill(T&& val)
         {
-            if(m_size > 0)
-                for(size_t i = 0; i < m_size; ++i)
+            if (m_size > 0)
+                for (size_t i = 0; i < m_size; ++i)
                     BlitzenCore::BlitMemCopy(&m_pBlock[i], &val, sizeof(T));
         }
 
         // TODO: I should have this be for both resize and downsize, I do not know what I was thinking
         void Resize(size_t newSize)
         {
-            if(newSize < m_size)
+            if (newSize < m_size)
             {
                 return;
             }
-            if(newSize > m_capacity)
+            if (newSize > m_capacity)
             {
                 RearrangeCapacity(newSize);
             }
@@ -137,7 +137,7 @@ namespace BlitCL
 
         void Downsize(size_t newSize)
         {
-            if(newSize > m_size)
+            if (newSize > m_size)
             {
                 return;
             }
@@ -147,13 +147,13 @@ namespace BlitCL
         void Reserve(size_t size)
         {
             BLIT_ASSERT(size > m_capacity)
-            RearrangeCapacity(size / ce_blitDynamiArrayCapacityMultiplier);
+                RearrangeCapacity(size / ce_blitDynamiArrayCapacityMultiplier);
         }
 
         void PushBack(const T& newElement)
         {
             // If the allocations have reached a point where the amount of elements is above the capacity, increase the capacity
-            if(m_size >= m_capacity)
+            if (m_size >= m_capacity)
             {
                 RearrangeCapacity(m_size + 1);
             }
@@ -163,7 +163,7 @@ namespace BlitCL
 
         void AddBlockAtBack(T* pNewBlock, size_t blockSize)
         {
-            if(m_size + blockSize > m_capacity)
+            if (m_size + blockSize > m_capacity)
             {
                 RearrangeCapacity(m_size + blockSize);
             }
@@ -186,11 +186,11 @@ namespace BlitCL
             // Adds this array's size to m_size
             m_size += additional;
         }
-        
+
         // This one's terrible, should fix it when I am not bored
         void RemoveAtIndex(size_t index)
         {
-            if(index < m_size && index >= 0)
+            if (index < m_size && index >= 0)
             {
                 T* pTempBlock = m_pBlock;
 
@@ -208,7 +208,7 @@ namespace BlitCL
 
         void Clear()
         {
-            if(m_size)
+            if (m_size)
             {
                 BlitzenCore::BlitZeroMemory(m_pBlock, m_size * sizeof(T));
                 m_size = 0;
@@ -217,7 +217,7 @@ namespace BlitCL
 
         void DestroyManually()
         {
-            if(m_capacity > 0)
+            if (m_capacity > 0)
             {
                 BlitzenCore::BlitDestroyAlloc<T>(DArrayAlloc, m_pBlock, m_capacity);
                 m_pBlock = nullptr;
@@ -228,8 +228,8 @@ namespace BlitCL
 
         ~DynamicArray()
         {
-            if(m_capacity > 0)
-                BlitzenCore::BlitDestroyAlloc<T>(DArrayAlloc,m_pBlock, m_capacity);
+            if (m_capacity > 0)
+                BlitzenCore::BlitDestroyAlloc<T>(DArrayAlloc, m_pBlock, m_capacity);
         }
 
     private:
@@ -274,7 +274,7 @@ namespace BlitCL
         {
             static_assert(S > 0);
 
-            for(size_t i = 0; i < S; ++i)
+            for (size_t i = 0; i < S; ++i)
                 BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
         }
 
@@ -282,7 +282,7 @@ namespace BlitCL
         {
             static_assert(S > 0);
 
-            for(size_t i = 0; i < S; ++i)
+            for (size_t i = 0; i < S; ++i)
                 BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
         }
 
@@ -298,7 +298,7 @@ namespace BlitCL
 
         ~StaticArray()
         {
-        
+
         }
     private:
         T m_array[S];
@@ -324,9 +324,9 @@ namespace BlitCL
     public:
 
         HashMap(size_t initialCapacity = 10)
-            :m_capacity{initialCapacity}, m_elementCount{ 0 }
+            :m_capacity{ initialCapacity }, m_elementCount{ 0 }
         {
-            if(m_capacity > 0)
+            if (m_capacity > 0)
             {
                 m_pBlock = BlitzenCore::BlitConstructAlloc<T, BlitzenCore::AllocationType::Hashmap>(m_capacity);
             }
@@ -334,7 +334,7 @@ namespace BlitCL
 
         void Insert(const char* name, const T& value)
         {
-            if(m_capacity <= m_elementCount + 1)
+            if (m_capacity <= m_elementCount + 1)
             {
                 IncreaseCapacity(m_capacity + 1);
             }
@@ -348,9 +348,9 @@ namespace BlitCL
 
         ~HashMap()
         {
-            if(m_capacity > 0)
+            if (m_capacity > 0)
             {
-				BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::Hashmap, m_pBlock, m_capacity);
+                BlitzenCore::BlitDestroyAlloc<T>(BlitzenCore::AllocationType::Hashmap, m_pBlock, m_capacity);
             }
         }
 
@@ -370,7 +370,7 @@ namespace BlitCL
             unsigned const char* us;
 
             size_t hash = 0;
-            for (us = (unsigned const char*)name; *us; us++) 
+            for (us = (unsigned const char*)name; *us; us++)
             {
                 hash = hash * multiplier + *us;
             }
@@ -386,20 +386,20 @@ namespace BlitCL
         {
             size_t temp = m_capacity;
             m_capacity = newSize * ce_blitDynamiArrayCapacityMultiplier;
-            
+
             T* pTemp = m_pBlock;
             m_pBlock = BlitzenCore::BlitAlloc<T>(BlitzenCore::AllocationType::Hashmap, m_capacity);
 
             if (temp != 0)
             {
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, temp * sizeof(T));
-                delete [] pTemp;
+                delete[] pTemp;
                 BlitzenCore::LogFree(BlitzenCore::AllocationType::Hashmap, temp * sizeof(T));
             }
         }
     };
 
-    
+
 
     template<typename T, BlitzenCore::AllocationType alloc = BlitzenCore::AllocationType::SmartPointer>
     class SmartPointer
@@ -414,7 +414,7 @@ namespace BlitCL
         }
 
         // Default constructor
-        SmartPointer() : m_pData{nullptr} {}
+        SmartPointer() : m_pData{ nullptr } {}
 
         // Copy constructor
         SmartPointer(const T& data)
@@ -436,7 +436,7 @@ namespace BlitCL
             m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
         }
 
-		// Allocates memory for a derived class and assigns it to the base class pointer
+        // Allocates memory for a derived class and assigns it to the base class pointer
         template<typename I, typename... P>
         void MakeAs(const P&... params)
         {
@@ -446,18 +446,18 @@ namespace BlitCL
 
         SmartPointer<T> operator = (SmartPointer<T>& s) = delete;
         SmartPointer<T> operator = (SmartPointer<T> s) = delete;
-		SmartPointer(const SmartPointer<T>& s) = delete;
+        SmartPointer(const SmartPointer<T>& s) = delete;
         SmartPointer(SmartPointer<T>& s) = delete;
 
         inline T* Data() { return m_pData; }
         inline T& Ref() { return m_pData[0]; }
-        inline T* operator ->() {return m_pData; }
+        inline T* operator ->() { return m_pData; }
         inline T& operator *() { return *m_pData; }
         inline T** operator &() { return &m_pData; }
 
         ~SmartPointer()
         {
-            if(m_pData)
+            if (m_pData)
             {
                 BlitzenCore::BlitDestroyAlloc(alloc, m_pData);
             }
@@ -475,7 +475,7 @@ namespace BlitCL
 
         StoragePointer(size_t size = 0)
         {
-            if(size > 0)
+            if (size > 0)
             {
                 m_pData = BlitzenCore::BlitAlloc<T>(A, size);
             }
@@ -486,7 +486,7 @@ namespace BlitCL
         {
             BLIT_ASSERT_MESSAGE(m_size == 0, "The storage has already allocated storage")
 
-            m_pData = BlitzenCore::BlitAlloc<T>(A, size);
+                m_pData = BlitzenCore::BlitAlloc<T>(A, size);
             m_size = size;
         }
 
@@ -496,7 +496,7 @@ namespace BlitCL
 
         ~StoragePointer()
         {
-            if(m_pData && m_size > 0)
+            if (m_pData && m_size > 0)
             {
                 BlitzenCore::BlitFree<T>(A, m_pData, m_size);
             }
@@ -515,12 +515,13 @@ namespace BlitCL
         inline UnknownPointer(void* pData, size_t size)
         {
             BLIT_ASSERT(pData && size)
-            m_size = size;
+                m_size = size;
             m_pData = BlitzenCore::BlitAlloc<uint8_t>(BlitzenCore::AllocationType::SmartPointer, size);
         }
 
         inline UnknownPointer() : m_pData{ nullptr }, m_size{ 0 }
-        {}
+        {
+        }
 
         inline void Make(void* pData, size_t size)
         {
@@ -534,12 +535,33 @@ namespace BlitCL
 
         inline ~UnknownPointer()
         {
-            if(m_pData)
+            if (m_pData)
                 BlitzenCore::BlitFree<uint8_t>(BlitzenCore::AllocationType::SmartPointer, m_pData, m_size);
         }
 
     private:
         void* m_pData;
         size_t m_size;
+    };
+
+    // Lightweight Function pointer holder
+    template<typename RET, typename... Args>
+    class Pfn
+    {
+    public:
+
+        using PfnType = RET(*)(Args...);
+
+        Pfn() : m_func{ 0 } {}
+
+        Pfn(PfnType pfn) : m_func{ pfn } {}
+
+        Pfn operator = (PfnType pfn) { return Pfn{ pfn }; }
+
+        RET operator () (Args... args) { return m_func(args...); }
+
+    private:
+
+        PfnType m_func;
     };
 }
