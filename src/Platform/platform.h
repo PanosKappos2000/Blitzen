@@ -14,9 +14,6 @@ namespace BlitzenPlatform
     void PlatformShutdown();
 
     uint8_t PlatformPumpMessages();
-    
-    void PlatformConsoleWrite(const char* message, uint8_t color);
-    void PlatformConsoleError(const char* message, uint8_t color);
 
     // This is basically like glfwGetTime()
     double PlatformGetAbsoluteTime();

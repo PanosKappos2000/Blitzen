@@ -9,16 +9,6 @@
 
 namespace BlitzenCore
 {
-    constexpr const char* logLevels[6] = 
-    {
-        "{FATAL}: ", 
-        "{ERROR}: ", 
-        "{Info}: ", 
-        "{Warning}: ", 
-        "{Debug}: ", 
-        "{Trace}: "
-    };
-
     uint8_t InitLogging()
     {
         BLIT_INFO("%s Booting", BlitzenEngine::ce_blitzenVersion)

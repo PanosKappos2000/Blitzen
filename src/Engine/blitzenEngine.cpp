@@ -74,8 +74,6 @@ int main(int argc, char* argv[])
         BLIT_FATAL("Failed to initialize rendering API")
         bRenderingSystem = 0;
     }
-
-    BlitzenCore::BlitLog(BlitzenCore::LogLevel::Warn, "Testing with %i", 100);
         
     // Rendering resources
     RenderingResources renderingResources;
