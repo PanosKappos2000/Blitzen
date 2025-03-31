@@ -48,7 +48,7 @@ namespace BlitzenCore
     #endif
 
     #if LOGGER_LEVEL_INFO
-        #define BLIT_INFO(message, ...)      Log(BlitzenCore::LogLevel::Info, message, ##__VA_ARGS__);
+        #define BLIT_INFO(message, ...)      BlitLog(BlitzenCore::LogLevel::Info, message, ##__VA_ARGS__);
     #else
         #define BLIT_INFO(message, ...)      ;
     #endif
@@ -70,4 +70,39 @@ namespace BlitzenCore
     #else
         #define BLIT_TRACE(message, ...)    ;
     #endif
+
+    template<typename... Args>
+    void BlitLog(LogLevel level, const char* msg, Args... args)
+    {
+        constexpr const char* levels[6] =
+        {
+            "{FATAL}: ",
+            "{ERROR}: ",
+            "{Info}: ",
+            "{Warning}: ",
+            "{Debug}: ",
+            "{Trace}: "
+        };
+
+        uint8_t isError = level < LogLevel::Info;
+
+        char outMessage[1500];
+        memset(outMessage, 0, sizeof(outMessage));
+        snprintf(outMessage, 1500, msg, args...);
+
+        char outMessage2[1500];
+        snprintf(outMessage2, 1500,"%s%s\n", levels[static_cast<uint8_t>(level)], outMessage);
+
+        // Creates a custom error message
+        if (isError) 
+        {
+            BlitzenPlatform::PlatformConsoleError(outMessage2, static_cast<uint8_t>(level));
+        }
+
+        // Creates a custom non error message 
+        else 
+        {
+            BlitzenPlatform::PlatformConsoleWrite(outMessage2, static_cast<uint8_t>(level));
+        }
+    }
 }
