@@ -9,12 +9,16 @@ namespace BlitzenCore
 
         WorldTimerManager();
 
+        inline void Update()
+        {
+            m_elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_startTime;
+            m_deltaTime = m_elapsedTime - m_previousTime;
+            m_previousTime = m_elapsedTime;
+        }
+
         inline double GetDeltaTime()
         {
-			m_elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_startTime;
-            double deltaTime = m_elapsedTime - m_previousTime;
-            m_previousTime = m_elapsedTime;
-            return deltaTime;
+            return m_deltaTime;
         }
 
     private:
@@ -24,6 +28,8 @@ namespace BlitzenCore
         double m_elapsedTime;
 
         double m_previousTime;
+
+        double m_deltaTime;
 
     public:
 		inline static WorldTimerManager* GetInstance(){return s_pThis;}

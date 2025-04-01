@@ -1,5 +1,6 @@
 #include "blitObject.h"
 #include "Renderer/blitRenderer.h"
+#include "Core/blitTimeManager.h"
 
 namespace BlitzenEngine
 {
@@ -31,7 +32,7 @@ namespace BlitzenEngine
 	void RotateObject(float& yaw, float& pitch, uint32_t transformId, float speed)
 	{
 		auto pResources = RenderingResources::GetRenderingResources();
-		float deltaTime = float(Engine::GetEngineInstancePointer()->GetDeltaTime());
+		float deltaTime = float(BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime());
 		yaw += speed * deltaTime;
 		pitch += speed * deltaTime;
 

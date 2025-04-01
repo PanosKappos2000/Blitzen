@@ -47,10 +47,6 @@ namespace BlitzenEngine
 
         inline static Engine* GetEngineInstancePointer() { return s_pEngine; }
 
-        // Delta time is owned by the engine, but this doesn't make much sense. It should probably be given to the platform system
-        inline double GetDeltaTime() const { return m_deltaTime; }
-        inline void SetDeltaTime(double deltaTime) { m_deltaTime = deltaTime; }
-
     private:
 
         // Leaky singleton
@@ -58,7 +54,5 @@ namespace BlitzenEngine
 
         bool m_bRunning = 0;
         bool m_bSuspended = 0;
-
-        double m_deltaTime;
     };
 }

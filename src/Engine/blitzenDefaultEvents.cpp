@@ -1,6 +1,7 @@
 #include "blitzenEngine.h"
 #include "Core/blitEvents.h"
 #include "Renderer/blitRenderer.h"
+#include "Core/blitTimeManager.h"
 
 namespace BlitzenEngine
 {
@@ -147,7 +148,9 @@ namespace BlitzenEngine
     )
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        float deltaTime = static_cast<float>(Engine::GetEngineInstancePointer()->GetDeltaTime());
+        auto deltaTime = static_cast<float>(
+            BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime()
+        );
 
         camera.transformData.cameraDirty = 1;
 

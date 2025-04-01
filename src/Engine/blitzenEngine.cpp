@@ -133,10 +133,9 @@ int main(int argc, char* argv[])
 
         if(engine.IsActive())
         {
-            // Updates delta time(TODO: Remove deltaTime from engine)
-            engine.SetDeltaTime(coreClock.GetDeltaTime());
+            coreClock.Update();
 
-            UpdateCamera(mainCamera, static_cast<float>(engine.GetDeltaTime()));
+            UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
 			entities->UpdateDynamicObjects();
 
@@ -152,7 +151,7 @@ int main(int argc, char* argv[])
             mainCamera.transformData.windowResize = 0;
         }
 
-        BlitzenCore::UpdateInput(engine.GetDeltaTime());
+        BlitzenCore::UpdateInput(coreClock.GetDeltaTime());
     }
     engine.BeginShutdown();
 
