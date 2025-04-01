@@ -67,7 +67,7 @@ namespace BlitzenCore
             pState->currentMouse.x = x;
             pState->currentMouse.y = y;
 
-            FireEvent<void*>(BlitEventType::MouseMoved, nullptr, context);
+            FireEvent(BlitEventType::MouseMoved, nullptr, context);
         }
     }
     
@@ -76,7 +76,7 @@ namespace BlitzenCore
         //No internal state to update, simply fires an event
         EventContext context;
         context.data.ui8[0] = zDelta;
-        FireEvent<void*>(BlitEventType::MouseWheel, nullptr, context);
+        FireEvent(BlitEventType::MouseWheel, nullptr, context);
     }
 
     uint8_t GetCurrentKeyState(BlitKey key) 

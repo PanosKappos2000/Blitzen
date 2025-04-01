@@ -19,7 +19,7 @@ namespace BlitzenEngine
 
     static void CloseOnEscapeKeyPressCallback()
     {
-        BlitzenCore::FireEvent<void*>(BlitzenCore::BlitEventType::EngineShutdown, nullptr, {});
+        BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, {});
     }
 
     static void MoveDefaultCameraForwardOnWKeyPressCallback()

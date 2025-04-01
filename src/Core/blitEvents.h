@@ -42,16 +42,12 @@ namespace BlitzenCore
         MaxTypes = 8
     };
 
-    // Function type used for event callbacks
-    using pfnOnEvent =  uint8_t (*)(BlitEventType type, void* pSender, void* pListener, 
-		const EventContext& context
-    );
-
-
+    using EventCallbackType = 
+        BlitCL::Pfn<uint8_t, BlitEventType, void*, void*, const EventContext&>;
     struct RegisteredEvent 
     {
         void* pListener;
-        pfnOnEvent callback = 0;
+        EventCallbackType callback;
     };
 
     struct EventSystemState 
@@ -68,7 +64,7 @@ namespace BlitzenCore
     };
 
     // Adds a new RegisteredEvent to the eventState event types array
-    inline void RegisterEvent(BlitEventType type, void* pListener, pfnOnEvent eventCallback)
+    inline void RegisterEvent(BlitEventType type, void* pListener, EventCallbackType eventCallback)
     {
 		static uint8_t bSH;// Shutdown event already assigned ?
 
@@ -85,12 +81,11 @@ namespace BlitzenCore
                 bSH = 1;
         }
         
-        RegisteredEvent* pEvents = EventSystemState::GetState()->eventTypes;
+        auto pEvents = EventSystemState::GetState()->eventTypes;
         pEvents[size_t(type)] = {pListener, eventCallback};
     }
 
-    template<typename S>
-    uint8_t FireEvent(BlitEventType type, const S* sender, const EventContext& context)
+    inline uint8_t FireEvent(BlitEventType type, void* pSender, const EventContext& context)
     {
 		if (type == BlitEventType::KeyPressed || type == BlitEventType::KeyReleased)
 		{
@@ -98,9 +93,9 @@ namespace BlitzenCore
 			return 0;
 		}
 
-        RegisteredEvent event = EventSystemState::GetState()->eventTypes[static_cast<uint8_t>(type)];
-        if (event.callback)
-            return event.callback(type, &sender, event.pListener, context);
+        auto event = EventSystemState::GetState()->eventTypes[static_cast<uint8_t>(type)];
+        if (event.callback.IsFunctional())
+            return event.callback(type, pSender, event.pListener, context);
 
         return 0;
     }
@@ -244,25 +239,6 @@ namespace BlitzenCore
         MAX_KEYS
     };
 
-    // This is the type that the key press functions will have
-    using BlitPfnKeyPressCallback = void (*)();
-    using BlitPfnKeyReleaseCallback = void (*)();
-
-    using BlitPfnMouseButtonCallback = void(*)(int16_t x, int16_t y);
-
-    // A key can have a press callback, a release callback, both or none
-    struct RegisteredKeyCallback
-    {
-        BlitPfnKeyPressCallback pfnPressCallback = 0;
-        BlitPfnKeyReleaseCallback pfnReleaseCallback = 0;
-    };
-
-    struct RegisteredMouseButtonCallback
-    {
-        BlitPfnMouseButtonCallback pfnPressCallback = 0;
-        BlitPfnMouseButtonCallback pfnReleaseCallback = 0;
-    };
-
     // Mouse buttons and mouse position
     struct MouseState 
     {
@@ -274,7 +250,9 @@ namespace BlitzenCore
     struct InputSystemState 
     {
         // Each key has a pair of callbacks for press and release
-        BlitCL::StaticArray<RegisteredKeyCallback, 256> keyInputCallbacks;
+        BlitCL::StaticArray<BlitCL::Pfn<void>, 256> keyPressCallbacks;
+
+        BlitCL::StaticArray<BlitCL::Pfn<void>, 256> keyReleaseCallbacks;
 
         uint8_t currentKeyboard[256];// Currently pressed boolean for each key 
         uint8_t previousKeyboard[256];// Previously pressed boolean for each key
@@ -283,7 +261,8 @@ namespace BlitzenCore
         MouseState currentMouse;
         MouseState previousMouse;
 
-        BlitCL::StaticArray<RegisteredMouseButtonCallback, 3> mouseInputCallbacks;
+        BlitCL::StaticArray<BlitCL::Pfn<void, int16_t, int16_t>, 3> mouseReleaseCallbacks;
+        BlitCL::StaticArray<BlitCL::Pfn<void, int16_t, int16_t>, 3> mousePressCallbacks;
 
         InputSystemState();
 
@@ -295,39 +274,39 @@ namespace BlitzenCore
     };
 
 	// Initializes the press function pointer for the given key
-    inline void RegisterKeyPressCallback(BlitKey key, BlitPfnKeyPressCallback callback) 
+    inline void RegisterKeyPressCallback(BlitKey key, BlitCL::Pfn<void> callback) 
     {
-        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnPressCallback = callback;
+        InputSystemState::GetState()->keyPressCallbacks[size_t(key)] = callback;
     }
     
     // Initializes the release function pointer for the given key
-    inline void RegisterKeyReleaseCallback(BlitKey key, BlitPfnKeyReleaseCallback callback)
+    inline void RegisterKeyReleaseCallback(BlitKey key, BlitCL::Pfn<void> callback)
     {
-        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnReleaseCallback = callback;
+        InputSystemState::GetState()->keyReleaseCallbacks[size_t(key)] = callback;
     }
 
     // Initializes both the release and press function pointers for the given key
     inline void RegisterKeyPressAndReleaseCallback(BlitKey key,
-        BlitPfnKeyPressCallback press, BlitPfnKeyReleaseCallback release
+        BlitCL::Pfn<void> press, BlitCL::Pfn<void> release
     )
     {
-        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnPressCallback = press;
-        InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnReleaseCallback = release;
+        InputSystemState::GetState()->keyPressCallbacks[size_t(key)] = press;
+        InputSystemState::GetState()->keyReleaseCallbacks[size_t(key)] = release;
     }
 
 	// Accesses the press function pointer in the KEYth element 
     inline void CallKeyPressFunction(BlitKey key)
     {
-        auto func = InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnPressCallback;
-        if(func)
+        auto func = InputSystemState::GetState()->keyPressCallbacks[size_t(key)];
+        if(func.IsFunctional())
             func();
     }
 
     // Accesses the release function pointer in the KEYth element
     inline void CallKeyReleaseFunction(BlitKey key)
     {
-        auto func = InputSystemState::GetState()->keyInputCallbacks[size_t(key)].pfnReleaseCallback;
-        if(func)
+        auto func = InputSystemState::GetState()->keyReleaseCallbacks[size_t(key)];
+        if(func.IsFunctional())
             func();
     }
 
@@ -349,39 +328,39 @@ namespace BlitzenCore
     }
 
     // Initializes the press function pointer for the given key
-    inline void RegisterMouseButtonReleaseCallback(MouseButton button, BlitPfnMouseButtonCallback callback)
+    inline void RegisterMouseButtonPressCallback(MouseButton button, BlitCL::Pfn<void, int16_t, int16_t> callback)
     {
-		InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnPressCallback = callback;
+		InputSystemState::GetState()->mousePressCallbacks[uint8_t(button)] = callback;
     }
 
     // Initializes the release function pointer for the given key
-    inline void RegisterMouseButtonPressCallback(MouseButton button, BlitPfnMouseButtonCallback callback)
+    inline void RegisterMouseButtonReleaseCallback(MouseButton button, BlitCL::Pfn<void, int16_t, int16_t> callback)
     {
-        InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnReleaseCallback = callback;
+        InputSystemState::GetState()->mouseReleaseCallbacks[uint8_t(button)] = callback;
     }
 
     // Initializes both the release and press function pointers for the given key
     inline void RegisterMouseButtonPressAndReleaseCallback(MouseButton button,
-        BlitPfnMouseButtonCallback press, BlitPfnMouseButtonCallback release
+        BlitCL::Pfn<void, int16_t, int16_t> press, BlitCL::Pfn<void, int16_t, int16_t> release
     )
     {
-        InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnPressCallback = press;
-        InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnReleaseCallback = release;
+        InputSystemState::GetState()->mousePressCallbacks[uint8_t(button)] = press;
+        InputSystemState::GetState()->mouseReleaseCallbacks[uint8_t(button)] = release;
     }
 
     // Accesses the press function pointer in the KEYth element 
     inline void CallMouseButtonPressFunction(MouseButton button, int16_t mouseX, int16_t mouseY)
     {
-        auto func = InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnPressCallback;
-        if (func)
+        auto func = InputSystemState::GetState()->mousePressCallbacks[uint8_t(button)];
+        if (func.IsFunctional())
             func(mouseX, mouseY);
     }
 
     // Accesses the release function pointer in the KEYth element
     inline void CallMouseButtonReleaseFunction(MouseButton button, int16_t mouseX, int16_t mouseY)
     {
-        auto func = InputSystemState::GetState()->mouseInputCallbacks[uint8_t(button)].pfnReleaseCallback;
-        if (func)
+        auto func = InputSystemState::GetState()->mouseReleaseCallbacks[uint8_t(button)];
+        if (func.IsFunctional())
             func(mouseX, mouseY);
     }
 

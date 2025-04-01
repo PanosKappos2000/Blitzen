@@ -556,9 +556,11 @@ namespace BlitCL
 
         Pfn(PfnType pfn) : m_func{ pfn } {}
 
-        Pfn operator = (PfnType pfn) { return Pfn{ pfn }; }
+        inline Pfn operator = (PfnType pfn) { return Pfn{ pfn }; }
 
-        RET operator () (Args... args) { return m_func(args...); }
+        inline RET operator () (Args... args) { return m_func(args...); }
+
+        inline bool IsFunctional() { return m_func != 0; }
 
     private:
 

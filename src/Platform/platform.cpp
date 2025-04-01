@@ -353,7 +353,7 @@ namespace BlitzenPlatform
                 case WM_CLOSE:
                 {
                     BlitzenCore::EventContext context{};
-                    BlitzenCore::FireEvent<void*>(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
+                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
                     return 1;
                 }
 
@@ -372,7 +372,7 @@ namespace BlitzenPlatform
                     BlitzenCore::EventContext context;
                     context.data.ui32[0] = width;
                     context.data.ui32[1] = height;
-                    BlitzenCore::FireEvent<void*>(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
+                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
                     break;
                 }
 
