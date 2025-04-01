@@ -31,26 +31,24 @@ namespace BlitzenEngine
 
         Engine();
         
-        // Many systems check for this to be null before destructor operations. 
-        // This function makes it null before the engine destructor, so that other systems do not fail on cleanup
         inline static void BeginShutdown() { s_pEngine = nullptr; }
 
         ~Engine();
 
         // Suspending the engine, means that most systems (like rendering) are inactive. But it is still running on the background
-        inline void Suspend() { bSuspended = 1; }
-        inline void ReActivate() { bSuspended = 0; }
-        inline uint8_t IsActive() { return !bSuspended; }
+        inline void Suspend() { m_bSuspended = true; }
+        inline void ReActivate() { m_bSuspended = false; }
+        inline bool IsActive() const { return !m_bSuspended; }
 
         // If bRunning is 0, the engine shuts down and the application quits
-        inline void BootUp() { bRunning = 1; }
-        inline void Shutdown() { bRunning = 0; }
-        inline uint8_t IsRunning() { return bRunning; }
+        inline void BootUp() { m_bRunning = true; }
+        inline void Shutdown() { m_bRunning = false; }
+        inline bool IsRunning() const { return m_bRunning; }
 
         inline static Engine* GetEngineInstancePointer() { return s_pEngine; }
 
         // Delta time is owned by the engine, but this doesn't make much sense. It should probably be given to the platform system
-        inline double GetDeltaTime() { return m_deltaTime; }
+        inline double GetDeltaTime() const { return m_deltaTime; }
         inline void SetDeltaTime(double deltaTime) { m_deltaTime = deltaTime; }
 
     private:
@@ -58,8 +56,8 @@ namespace BlitzenEngine
         // Leaky singleton
         static Engine* s_pEngine;
 
-        uint8_t bRunning = 0;
-        uint8_t bSuspended = 0;
+        bool m_bRunning = 0;
+        bool m_bSuspended = 0;
 
         double m_deltaTime;
     };

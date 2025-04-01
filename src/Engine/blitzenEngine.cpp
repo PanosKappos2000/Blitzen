@@ -11,6 +11,9 @@
 #include "Game/blitCamera.h"
 #include "Core/blitTimeManager.h"
 
+#include <thread>
+#include <atomic>
+
 namespace BlitzenEngine
 {
     // Function that is defined in blitzenDefaultEvents.cpp and only called once in main
@@ -18,12 +21,10 @@ namespace BlitzenEngine
 
     Engine* Engine::s_pEngine = nullptr;
 
-    Engine::Engine()
+    Engine::Engine() : m_bRunning{ true }, m_bSuspended{ true }
     {
-        // Starts the engine if this is the first time that the constructor gets called
         BLIT_ASSERT(!s_pEngine);
         s_pEngine = this;
-        BootUp();
     }
 
     Engine::~Engine()
@@ -35,8 +36,28 @@ namespace BlitzenEngine
 
 using EventSystem = BlitCL::SmartPointer<BlitzenCore::EventSystemState>;
 using InputSystem = BlitCL::SmartPointer<BlitzenCore::InputSystemState>;
-using RenderingResources = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
+using PRenderingResources = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
 using Entities = BlitCL::SmartPointer<BlitzenEngine::GameObjectManager, BlitzenCore::AllocationType::Entity>;
+
+static void LoadRenderingResources(int argc, char** argv,
+    BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer,
+    BlitzenEngine::GameObjectManager* pManager, uint8_t& bOnpc,
+    BlitzenEngine::Camera& camera, bool& bRenderingSystem)
+{
+    BlitzenEngine::CreateSceneFromArguments(argc, argv, pResources,
+        pRenderer, pManager, bOnpc);
+    if (!bRenderingSystem ||
+        !pRenderer->SetupForRendering(pResources, camera.viewData.pyramidWidth,
+            camera.viewData.pyramidHeight
+        ))
+    {
+        BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline")
+            bRenderingSystem = false;
+    }
+
+    BlitzenEngine::Engine::GetEngineInstancePointer()->ReActivate();
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -64,19 +85,19 @@ int main(int argc, char* argv[])
     BlitzenEngine::RegisterDefaultEvents();
 
     // Initial renderer setup (API initialization, see blitRenderer.h for API selection)
-    uint8_t bRenderingSystem = 0;
+    bool bRenderingSystem = false;
     BlitzenEngine::Renderer renderer;
     renderer.Make();
     if(renderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight))
-        bRenderingSystem = 1;
+        bRenderingSystem = true;
     else
     {
         BLIT_FATAL("Failed to initialize rendering API")
-        bRenderingSystem = 0;
+        bRenderingSystem = false;
     }
         
     // Rendering resources
-    RenderingResources renderingResources;
+    PRenderingResources renderingResources;
     renderingResources.Make(renderer.Data());
 
     // Main camera
@@ -87,24 +108,21 @@ int main(int argc, char* argv[])
     Entities entities;
 	entities.Make();
 
-    // Command line arguments
+    // Loading resources
     uint8_t bOnpc = 0;
-    BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), 
-        renderer.Data(), entities.Data(), bOnpc);
-
-    // Rendering setup with the loaded resources
-    if(!bRenderingSystem || // Checks if API initialization was succesful first
-        !renderer->SetupForRendering(renderingResources.Data(), mainCamera.viewData.pyramidWidth, 
-            mainCamera.viewData.pyramidHeight
-    ))
-    {
-        BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline")
-        bRenderingSystem = 0;
-    }
-        
+#if defined(NDEBUG)
+    
+    std::thread loadingThread{ [&]() {
+        LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
+            entities.Data(), bOnpc, mainCamera, bRenderingSystem);
+    }};
+    loadingThread.detach();
+#else
+    LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
+        entities.Data(), bOnpc, mainCamera, bRenderingSystem);
+#endif
+     
     BlitzenCore::WorldTimerManager coreClock;
-
-    // MAIN LOOP
     while(engine.IsRunning())
     {
         // Captures events
@@ -132,9 +150,9 @@ int main(int argc, char* argv[])
 
             // Reset window resize, TODO: Why is this here??????
             mainCamera.transformData.windowResize = 0;
-
-            BlitzenCore::UpdateInput(engine.GetDeltaTime());
         }
+
+        BlitzenCore::UpdateInput(engine.GetDeltaTime());
     }
     engine.BeginShutdown();
 
