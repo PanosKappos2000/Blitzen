@@ -12,7 +12,6 @@
 #include "Core/blitTimeManager.h"
 
 #include <thread>
-#include <atomic>
 
 namespace BlitzenEngine
 {
@@ -61,27 +60,28 @@ static void LoadRenderingResources(int argc, char** argv,
 
 int main(int argc, char* argv[])
 {
-    // Not as important as it looks
+    /*
+        Engine Systems initialization
+    */
+
     BlitzenEngine::Engine engine;
-    // Only systems that do not allocate on the heap may be initialized before here
-    // The opposite goes for destruction
+    
+    // Memory manager, needs to be created before everything that uses heap allocations
     BlitzenCore::MemoryManagerState blitzenMemory;
 
-    // Logging system. Extremely simplistic for now
     BlitzenCore::InitLogging();
-    // Camera container
+    
+    // Holds all available cameras
     BlitzenEngine::CameraSystem cameraSystem;
-    // Events
+    
     EventSystem eventSystemState;
 	eventSystemState.Make();
-    // Inputs
     InputSystem inputSystemState;
     inputSystemState.Make();
 
     // Platform specific code + window creation
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion))
             
-    // Default engine events (see blitzenDefaultEvents.cpp). The client app may modify these with some exceptions
     BlitzenEngine::RegisterDefaultEvents();
 
     // Initial renderer setup (API initialization, see blitRenderer.h for API selection)
@@ -96,15 +96,13 @@ int main(int argc, char* argv[])
         bRenderingSystem = false;
     }
         
-    // Rendering resources
     PRenderingResources renderingResources;
     renderingResources.Make(renderer.Data());
-
-    // Main camera
+    
+    // Initial camera
     BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
     BlitzenEngine::SetupCamera(mainCamera);
 
-    // Game object manager
     Entities entities;
 	entities.Make();
 
@@ -121,7 +119,13 @@ int main(int argc, char* argv[])
     LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
         entities.Data(), bOnpc, mainCamera, bRenderingSystem);
 #endif
-     
+    
+
+
+
+    /*
+        Main loop starts here
+    */
     BlitzenCore::WorldTimerManager coreClock;
     while(engine.IsRunning())
     {

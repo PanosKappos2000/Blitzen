@@ -35,12 +35,13 @@ namespace BlitzenEngine
 
         ~Engine();
 
-        // Suspending the engine, means that most systems (like rendering) are inactive. But it is still running on the background
+        // Suspending the engine, means that most systems (like rendering) are inactive. 
+        // But it is still running on the background
         inline void Suspend() { m_bSuspended = true; }
         inline void ReActivate() { m_bSuspended = false; }
         inline bool IsActive() const { return !m_bSuspended; }
 
-        // If bRunning is 0, the engine shuts down and the application quits
+        // If bRunning is false, the engine shuts down and the application quits.
         inline void BootUp() { m_bRunning = true; }
         inline void Shutdown() { m_bRunning = false; }
         inline bool IsRunning() const { return m_bRunning; }
