@@ -93,7 +93,7 @@ namespace BlitzenCore
         uint8_t isError = level < LogLevel::Info;
 
         char outMessage[1500];
-        memset(outMessage, 0, sizeof(outMessage));
+        //BlitzenPlatform::PlatformMemZero(outMessage, sizeof(outMessage));
         snprintf(outMessage, 1500, msg, args...);
 
         char outMessage2[1500];

@@ -1450,7 +1450,8 @@ namespace BlitzenVulkan
             const auto& surface = pSurfaces[object.surfaceId];
 
             // Casts the orientation quat to a matrix
-            auto xform = BlitML::Transpose(BlitML::QuatToMat4(transform.orientation)) * transform.scale;
+            auto orientationTranspose{BlitML::Transpose(BlitML::QuatToMat4(transform.orientation))};
+            auto xform =  orientationTranspose * transform.scale;
 
             VkAccelerationStructureInstanceKHR instance{};
             // Copies the first 3 elements of the 1st row of the matrix to the 1st row of the Vulkan side matrix
