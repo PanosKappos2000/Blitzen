@@ -116,11 +116,19 @@ int main(int argc, char* argv[])
 
 
     // Secondary loop allows for window interaction while loading thread does its thing
-    while (!bRenderingSystem)
+    BlitzenCore::WorldTimerManager coreClock;
+    while (!engine.IsActive())
     {
         BlitzenPlatform::PlatformPumpMessages();
     
         BlitzenCore::UpdateInput(0.f);
+
+#if defined(VK_DRAW_WHILE_WAITING)
+        if (typeid(renderer) ==
+            typeid(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>)
+        )
+            renderer->DrawWhileWaiting();
+#endif
     }
     
 
@@ -129,7 +137,6 @@ int main(int argc, char* argv[])
     /*
         Main loop starts here
     */
-    BlitzenCore::WorldTimerManager coreClock;
     while(engine.IsRunning())
     {
         // Captures events
@@ -148,10 +155,8 @@ int main(int argc, char* argv[])
 
             if(bRenderingSystem)
             {
-                BlitzenEngine::DrawContext drawContext(&mainCamera, renderingResources.Data(), 
-                    bOnpc // Tells the renderer if oblique near-plane clipping objects exist
-                );
-                renderer->DrawFrame(drawContext);// This is a bit important
+                BlitzenEngine::DrawContext drawContext(&mainCamera, renderingResources.Data(), bOnpc);
+                renderer->DrawFrame(drawContext);
             }
 
             // Reset window resize, TODO: Why is this here??????

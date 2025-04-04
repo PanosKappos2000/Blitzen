@@ -111,7 +111,7 @@ namespace BlitzenVulkan
 
         VulkanRenderer();
 
-        // Initalizes the Vulkan API. Creates the instance, finds a suitable device for the application's needs, creates surface and swapchain
+        // Initalizes the Vulkan API.
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
 
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
@@ -119,6 +119,10 @@ namespace BlitzenVulkan
 
         // Function for DDS texture loading
         uint8_t UploadTexture(void* pData, const char* filepath);
+
+        // This is supposed to make the window look busy while the engine is loading resources
+        // At the moment it does not work, because it uses things that have not been loaded
+        void DrawWhileWaiting();
 
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::DrawContext& context);
@@ -149,6 +153,9 @@ namespace BlitzenVulkan
 
         // Defined in vulkanInit. Initializes the frame tools which are handles that need to have one instance for each frame in flight
         uint8_t FrameToolsInit();
+
+        // Initalizes structure needed to call the DrawWhileWaiting function
+        uint8_t CreateIdleDrawHandles();
 
         // Initializes the buffers that are included in frame tools
         uint8_t VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
@@ -363,6 +370,9 @@ namespace BlitzenVulkan
     private:
 
         FrameTools m_frameToolsList[ce_framesInFlight];
+
+        CommandPool m_idleCommandBufferPool;
+        VkCommandBuffer m_idleDrawCommandBuffer;
 
         // Used to access the right frame tools depending on which ones are already being used
         uint8_t m_currentFrame = 0;

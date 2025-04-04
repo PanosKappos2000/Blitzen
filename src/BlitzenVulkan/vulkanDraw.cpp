@@ -97,7 +97,7 @@ namespace BlitzenVulkan
         DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.swapchainExtent);
 
         // Color attachment working layout depends on if there are any render objects
-        VkImageLayout colorAttachmentWorkingLayout = context.pResources->renderObjectCount ? 
+        auto colorAttachmentWorkingLayout = context.pResources->renderObjectCount ? 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
         // Attachment barriers for layout transitions before rendering
         VkImageMemoryBarrier2 renderingAttachmentDefinitionBarriers[2] = {};
@@ -318,6 +318,94 @@ namespace BlitzenVulkan
 
         PresentToSwapchain(m_device, m_graphicsQueue.handle, 
             &m_swapchainValues.swapchainHandle, 1, 
+            1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
+            &swapchainIdx
+        );
+
+        m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
+    }
+
+    void VulkanRenderer::DrawWhileWaiting()
+    {
+		auto& fTools = m_frameToolsList[m_currentFrame];
+
+        auto colorAttachmentWorkingLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
+        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
+
+        // Swapchain image, needed to present the color attachment results
+        uint32_t swapchainIdx;
+        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
+            ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
+        VkImage swapchainImage{ m_swapchainValues.swapchainImages[swapchainIdx] };
+		VkImageView swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
+
+        // The command buffer recording begin here (stops when submit is called)
+        BeginCommandBuffer(m_idleDrawCommandBuffer, 0);
+
+        // The viewport and scissor are dynamic, so they should be set here
+        DefineViewportAndScissor(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent);
+
+        // Attachment barriers for layout transitions before rendering
+        VkImageMemoryBarrier2 colorAttachmentDefinitionBarrier{};
+        ImageMemoryBarrier(swapchainImage, colorAttachmentDefinitionBarrier,
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS
+        );
+        PipelineBarrier(m_idleDrawCommandBuffer, 0, nullptr, 0,
+            nullptr, 1, &colorAttachmentDefinitionBarrier);
+
+        vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+            m_basicBackgroundPipeline.handle);
+        VkWriteDescriptorSet backgroundImageWrite{};
+        VkDescriptorImageInfo backgroundImageInfo{};
+        WriteImageDescriptorSets(backgroundImageWrite, backgroundImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, swapchainImageView);
+
+        PushDescriptors(m_instance,
+            m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_basicBackgroundLayout.handle,
+            0, 1, &backgroundImageWrite);
+
+        BackgroundShaderPushConstant pc;
+        pc.data1 = BlitML::vec4(1, 0, 0, 1);
+        pc.data2 = BlitML::vec4(0, 0, 1, 1);
+        vkCmdPushConstants(m_idleDrawCommandBuffer, m_basicBackgroundLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+            sizeof(BackgroundShaderPushConstant), &pc);
+
+        vkCmdDispatch(m_idleDrawCommandBuffer, uint32_t(std::ceil(m_drawExtent.width / 16.0)),
+            uint32_t(std::ceil(m_drawExtent.height / 16.0)), 1);
+
+        // Create a barrier for the swapchain image to transition to present optimal
+        VkImageMemoryBarrier2 presentImageBarrier{};
+        ImageMemoryBarrier(swapchainImage, presentImageBarrier,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE,
+            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout transition
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
+        );
+        PipelineBarrier(m_idleDrawCommandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
+
+        VkSemaphoreSubmitInfo waitSemaphores{};
+
+        CreateSemahoreSubmitInfo(waitSemaphores, fTools.imageAcquiredSemaphore.handle,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+        );
+        VkSemaphoreSubmitInfo signalSemaphore{};
+        CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle,
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
+        );
+        SubmitCommandBuffer(m_graphicsQueue.handle, m_idleDrawCommandBuffer,
+            1, &waitSemaphores, // waits for image to be acquired
+            1, &signalSemaphore, // signals the ready to present semaphore when done
+            fTools.inFlightFence.handle // next frame waits for commands to be done
+        );
+
+        PresentToSwapchain(m_device, m_graphicsQueue.handle,
+            &m_swapchainValues.swapchainHandle, 1,
             1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
             &swapchainIdx
         );

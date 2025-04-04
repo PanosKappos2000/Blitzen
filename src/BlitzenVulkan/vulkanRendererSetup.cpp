@@ -215,17 +215,6 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        // Create the background shader in case the renderer has not objects
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/BasicBackground.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
-            m_basicBackgroundLayout.handle, &m_basicBackgroundPipeline.handle
-        ))
-        {
-            BLIT_ERROR("Failed to create BasicBackground.comp shader program")
-            if(pResources->renderObjectCount == 0)
-                return 0;
-        }
-
         // Redundant shader
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/OnpcDrawCull.comp.glsl.spv", // filepath
             VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
@@ -726,27 +715,6 @@ namespace BlitzenVulkan
 
 
         /*
-            Descriptor used only for the background compute shader, which draws a window with gradient color
-        */
-
-        VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 
-            1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT
-        );
-        m_backgroundImageSetLayout.handle = CreateDescriptorSetLayout(m_device, 
-            1, &backgroundImageLayoutBinding, // storage image binding
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR // uses push descriptors
-        );
-        if(m_backgroundImageSetLayout.handle == VK_NULL_HANDLE)
-            return 0;
-
-        /*
-            Background compute shader descriptor set layout complete
-        */
-
-
-
-        /*
             Descriptor used for generate presentation image. Holds the color attachment sampler and the presentation image
         */
 
@@ -816,23 +784,10 @@ namespace BlitzenVulkan
             depthPyramidMipExtentPushConstant, // push constant for image extent
             VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2) // takes one vec2
         );
-        if(!CreatePipelineLayout(
-            m_device, &m_depthPyramidGenerationLayout.handle, 
+        if (!CreatePipelineLayout(
+            m_device, &m_depthPyramidGenerationLayout.handle,
             1, &m_depthPyramidDescriptorLayout.handle, // depth pyramid src and dst image push descriptor layout
             1, &depthPyramidMipExtentPushConstant
-        ))
-            return 0;
-
-        // Creates the layout for the background compute shader
-        VkPushConstantRange backgroundImageShaderPushConstant{};
-        CreatePushConstantRange(
-            backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
-            sizeof(BackgroundShaderPushConstant) 
-        );
-        if(!CreatePipelineLayout(
-            m_device, &m_basicBackgroundLayout.handle, 
-            1, &m_backgroundImageSetLayout.handle, // Image push descriptor layout
-            1, &backgroundImageShaderPushConstant // Push constant for use data
         ))
             return 0;
 

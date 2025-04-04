@@ -121,6 +121,13 @@ namespace BlitzenVulkan
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {m_swapchainValues.swapchainExtent.width, m_swapchainValues.swapchainExtent.height};
 
+        
+		if (!CreateIdleDrawHandles())
+		{
+			BLIT_ERROR("Failed to create idle draw handles")
+		    return 0;
+		}
+        
         return 1;
     }
 
@@ -1006,6 +1013,68 @@ namespace BlitzenVulkan
         info.minImageCount = imageCount;
 
         info.preTransform = surfaceCapabilities.currentTransform;
+
+        return 1;
+    }
+
+    uint8_t VulkanRenderer::CreateIdleDrawHandles()
+    {
+        VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0,
+            1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT
+        );
+        m_backgroundImageSetLayout.handle = CreateDescriptorSetLayout(m_device,
+            1, &backgroundImageLayoutBinding, // storage image binding
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR // uses push descriptors
+        );
+        if (m_backgroundImageSetLayout.handle == VK_NULL_HANDLE)
+            return 0;
+
+        // Creates the layout for the background compute shader
+        VkPushConstantRange backgroundImageShaderPushConstant{};
+        CreatePushConstantRange(
+            backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
+            sizeof(BackgroundShaderPushConstant)
+        );
+        if (!CreatePipelineLayout(
+            m_device, &m_basicBackgroundLayout.handle,
+            1, &m_backgroundImageSetLayout.handle, // Image push descriptor layout
+            1, &backgroundImageShaderPushConstant // Push constant for use data
+        ))
+            return 0;
+
+        // Create the background shader in case the renderer has not objects
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/BasicBackground.comp.glsl.spv", // filepath
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
+            m_basicBackgroundLayout.handle, &m_basicBackgroundPipeline.handle
+        ))
+        {
+            BLIT_ERROR("Failed to create BasicBackground.comp shader program")
+                return 0;
+        }
+
+        VkCommandPoolCreateInfo idleCommandPoolInfo{};
+        idleCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        idleCommandPoolInfo.pNext = nullptr;
+        idleCommandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        idleCommandPoolInfo.queueFamilyIndex = m_graphicsQueue.index;
+        if (vkCreateCommandPool(m_device, &idleCommandPoolInfo, nullptr,
+            &m_idleCommandBufferPool.handle) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create idle draw command buffer pool")
+                return 0;
+        }
+        VkCommandBufferAllocateInfo idleCommandBufferInfo{};
+        idleCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        idleCommandBufferInfo.pNext = nullptr;
+        idleCommandBufferInfo.commandBufferCount = 1;
+        idleCommandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        idleCommandBufferInfo.commandPool = m_idleCommandBufferPool.handle;
+        if (vkAllocateCommandBuffers(m_device, &idleCommandBufferInfo, &m_idleDrawCommandBuffer) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to allocate idle draw command buffer")
+                return 0;
+        }
 
         return 1;
     }
