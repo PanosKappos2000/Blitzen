@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 
     // Loading resources
     uint8_t bOnpc = 0;
-#if defined(NDEBUG)
+#if defined(CGLTF_IMPLEMENTATION)
     
     std::thread loadingThread{ [&]() {
         LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
@@ -119,6 +119,14 @@ int main(int argc, char* argv[])
     LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
         entities.Data(), bOnpc, mainCamera, bRenderingSystem);
 #endif
+
+    // Secondary loop allows for window interaction while loading thread does its thing
+    while (!bRenderingSystem)
+    {
+        BlitzenPlatform::PlatformPumpMessages();
+    
+        BlitzenCore::UpdateInput(0.f);
+    }
     
 
 

@@ -93,12 +93,13 @@ namespace BlitzenEngine
     void CreateSceneFromArguments(int argc, char** argv,
         RenderingResources* pResources, RT* pRenderer, MT* pManager, uint8_t& bOnpc)
     {
+        LoadTestGeometry(pResources);
+#if defined(BLIT_DYNAMIC_OBJECT_TEST)
+        CreateDynamicObjectRendererTest(pResources, pManager);
+#endif
         if (argc > 1)
         {
-            LoadTestGeometry(pResources);
-            #if defined(BLIT_DYNAMIC_OBJECT_TEST)
-                CreateDynamicObjectRendererTest(pResources, pManager);
-            #endif
+            
             // Special argument. Loads heavy scene to stress test the culling
             if (strcmp(argv[1], "RenderingStressTest") == 0)
             {
