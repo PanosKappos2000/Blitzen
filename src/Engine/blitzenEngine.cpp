@@ -108,17 +108,12 @@ int main(int argc, char* argv[])
 
     // Loading resources
     uint8_t bOnpc = 0;
-#if defined(CGLTF_IMPLEMENTATION)
-    
     std::thread loadingThread{ [&]() {
         LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
             entities.Data(), bOnpc, mainCamera, bRenderingSystem);
     }};
     loadingThread.detach();
-#else
-    LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
-        entities.Data(), bOnpc, mainCamera, bRenderingSystem);
-#endif
+
 
     // Secondary loop allows for window interaction while loading thread does its thing
     while (!bRenderingSystem)
