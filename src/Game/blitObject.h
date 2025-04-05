@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/blitzenContainerLibrary.h"
+#include "BlitCL/blitzenContainerLibrary.h"
 #include "Engine/blitzenEngine.h"
 #include "Renderer/blitRenderingResources.h"
 

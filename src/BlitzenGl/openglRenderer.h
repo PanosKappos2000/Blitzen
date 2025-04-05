@@ -21,7 +21,9 @@ namespace BlitzenGL
         uint8_t occlusionEnabled;
         uint8_t lodEnabled;
 
-        inline CullData(uint32_t dc, uint8_t oc, uint8_t lod) :drawCount{dc}, occlusionEnabled{oc}, lodEnabled{lod} {}
+        inline CullData(uint32_t dc, uint8_t oc, uint8_t lod) 
+            :drawCount{dc}, occlusionEnabled{oc}, lodEnabled{lod} 
+        {}
     };
 
     class OpenglRenderer
@@ -31,11 +33,19 @@ namespace BlitzenGL
 
         uint8_t UploadTexture(void* pData, const char* filepath);
 
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
+            float& pyramidWidth, float& pyramidHeight
+        );
 
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
         void Shutdown();
+
+    private:
+
+        bool LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header,
+            BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& fileHandle,
+            void* pData);
 
     private:
 

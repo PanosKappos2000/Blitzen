@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <memory>
+#include <Platform//filesystem.h>
 
 #define DDSCAPS2_CUBEMAP            0x200
 #define DDSCAPS2_VOLUME             0x200000
@@ -70,21 +71,66 @@ namespace BlitzenEngine
 	    DXGI_FORMAT_BC7_UNORM_SRGB = 99,
     };
 
-    inline unsigned int FourCC(const char (&str)[5]){
-	      return (unsigned(str[0]) << 0) | (unsigned(str[1]) << 8) | (unsigned(str[2]) << 16) | (unsigned(str[3]) << 24);
+    inline unsigned int FourCC(const char (&str)[5])
+    {
+	      return (unsigned(str[0]) << 0) 
+              | (unsigned(str[1]) << 8) 
+              | (unsigned(str[2]) << 16) 
+              | (unsigned(str[3]) << 24);
     }
 
-    enum class RendererToLoadDDS : uint8_t
+    uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
+        BlitzenPlatform::FileHandle& handle);
+
+    // Returns the amount of data needed to be allocated for the image data
+    inline size_t GetDDSImageSizeBC(unsigned int width, 
+        unsigned int height, unsigned int levels, 
+        unsigned int blockSize
+    )
     {
-        Vulkan = 0,
-        Opengl = 1,
-        Max = 2
-    };
+        size_t result = 0;
+        for (unsigned int i = 0; i < levels; ++i)
+        {
+            result += ((width + 3) / 4) * ((height + 3) / 4) * blockSize;
+            width = width > 1 ? width / 2 : 1;
+            height = height > 1 ? height / 2 : 1;
+        }
+        return result;
+    }
 
-    uint8_t LoadDDSImage(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 
-    unsigned int& vulkanImageFormat, RendererToLoadDDS chosenRenderer, void* pData);
+    inline size_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10)
+    {
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
+            return 8;
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
+            return 16;
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
+            return 16;
 
-    size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize);
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
+        {
+            switch (header10.dxgiFormat)
+            {
+            case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
+            case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
+            case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
+            case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
+                return 8;
 
-    size_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10);
+            case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
+            case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
+            case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
+            case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
+            case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
+            case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
+            case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
+            case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
+            case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
+            case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+                return 16;
+            }
+        }
+
+        return 16;
+    }
 }

@@ -3,7 +3,7 @@
 #include <wrl.h>
 #include <d3d12sdklayers.h>
 
-#include "Core/blitzenContainerLibrary.h"
+#include "BlitCL/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Renderer/blitDDSTextures.h"
 #include "Core/blitLogger.h"

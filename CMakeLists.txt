@@ -46,7 +46,6 @@ add_executable(BlitzenEngine
                 src/Core/blitzenCore.h
                 src/Core/blitMemory.h
                 src/Core/blitzenMemory.cpp
-                src/Core/blitzenContainerLibrary.h
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
                 src/Core/blitAssert.h
@@ -54,6 +53,8 @@ add_executable(BlitzenEngine
                 src/Core/blitzenEvents.cpp
                 src/Core/blitTimeManager.h
                 src/Core/blitzenTimeManager.cpp
+
+                src/BlitCL/blitzenContainerLibrary.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h

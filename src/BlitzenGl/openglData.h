@@ -3,7 +3,7 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 
-#include "Core/blitzenContainerLibrary.h"
+#include "BlitCL/blitzenContainerLibrary.h"
 #include "Renderer/blitDDSTextures.h"
 #include "Renderer/blitRenderingResources.h"
 

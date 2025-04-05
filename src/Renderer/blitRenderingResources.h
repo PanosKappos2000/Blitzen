@@ -1,6 +1,6 @@
 #pragma once
 #include "renderingResourcesTypes.h"
-#include "Core/blitzenContainerLibrary.h"
+#include "BlitCL/blitzenContainerLibrary.h"
 #include "Game/blitCamera.h"
 
 #include "Cgltf/cgltf.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blitMemory.h"
+#include "Core/blitMemory.h"
 
 #define BLIT_ARRAY_SIZE(array)   sizeof(array) / sizeof(array[0])
 

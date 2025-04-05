@@ -35,8 +35,10 @@ namespace BlitzenGL
         // This is a consequence of having a shared Load image function with Vulkan
 		BlitzenEngine::DDS_HEADER header;
 		BlitzenEngine::DDS_HEADER_DXT10 header10;
-        unsigned int placeholder = 0;
-        if(BlitzenEngine::LoadDDSImage(filepath, header, header10, placeholder, BlitzenEngine::RendererToLoadDDS::Opengl, store.Data()))
+        BlitzenPlatform::FileHandle handle;
+        if(BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle) 
+            && LoadDDSTextureData(header, header10, handle, store.Data())
+        )
         {
             // Create and bind the texture
             glGenTextures(1, &m_textures[m_textureCount].handle);
@@ -58,6 +60,27 @@ namespace BlitzenGL
         }
         else
             return 0;
+    }
+
+    bool OpenglRenderer::LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header, 
+        BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& fileHandle, 
+        void* pData)
+    {
+        size_t blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
+        size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, 
+            header.dwHeight, header.dwMipMapCount, static_cast<unsigned int>(blockSize));
+
+		auto file = reinterpret_cast<FILE*>(fileHandle.pHandle);
+
+        size_t readSize = fread(pData, 1, imageSize, file);
+
+        if (!pData)
+            return false;
+
+        if (readSize != imageSize)
+            return false;
+
+        return true;
     }
 
     uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 

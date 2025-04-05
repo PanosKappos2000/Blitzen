@@ -163,6 +163,11 @@ namespace BlitzenVulkan
         // Creates the descriptor set latyouts that are not constant and need to have one instance for each frame in flight
         uint8_t CreateDescriptorLayouts();
 
+        // Takes an opened DDS file's data and uploads the data to the void* parameter
+        bool LoadDDSImageData(BlitzenEngine::DDS_HEADER& header,
+            BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
+            VkFormat& vulkanImageFormat, void* pData);
+
         // Takes the data that is to be used in the scene (vertices, primitives, textures etc.) and uploads to the appropriate resource struct
         uint8_t UploadDataToGPU(BlitzenEngine::RenderingResources* pResources);
 

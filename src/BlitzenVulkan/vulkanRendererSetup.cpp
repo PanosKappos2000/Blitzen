@@ -1,5 +1,6 @@
 #define VMA_IMPLEMENTATION// Implements vma funcions. Header file included in vulkanData.h
 #include "vulkanRenderer.h"
+#include "Platform/filesystem.h"
 
 namespace BlitzenVulkan
 {
@@ -33,20 +34,22 @@ namespace BlitzenVulkan
         // Initializes necessary data for DDS texture
 		BlitzenEngine::DDS_HEADER header{};
 		BlitzenEngine::DDS_HEADER_DXT10 header10{};
-        unsigned int format = VK_FORMAT_UNDEFINED;
-        if(!BlitzenEngine::LoadDDSImage(filepath, header, header10, format, 
-            BlitzenEngine::RendererToLoadDDS::Vulkan, pData
-        ))
+        BlitzenPlatform::FileHandle handle{};
+        VkFormat format = VK_FORMAT_UNDEFINED;
+        if(!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle))
         {
-            BLIT_ERROR("Failed to load texture image")
+            BLIT_ERROR("Failed to open texture file")
             return 0;
         }
-        // Casts the placeholder format to a VkFormat
-        auto vkFormat{ static_cast<VkFormat>(format) };
+		if (!LoadDDSImageData(header, header10, handle, format, pData))
+		{
+			BLIT_ERROR("Failed to load texture data")
+				return 0;
+		}
 
         // Creates the texture image for Vulkan by copying the data from the staging buffer
         if(!CreateTextureImage(stagingBuffer, m_device, m_allocator, loadedTextures[textureCount].image, 
-        {header.dwWidth, header.dwHeight, 1}, vkFormat, VK_IMAGE_USAGE_SAMPLED_BIT, 
+        {header.dwWidth, header.dwHeight, 1}, format, VK_IMAGE_USAGE_SAMPLED_BIT, 
         m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, header.dwMipMapCount))
         {
             BLIT_ERROR("Failed to load Vulkan texture image")
@@ -57,6 +60,37 @@ namespace BlitzenVulkan
         loadedTextures[textureCount].sampler = m_textureSampler.handle;
         textureCount++;
         return 1;
+    }
+
+    bool VulkanRenderer::LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, 
+        BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle, 
+        VkFormat& vulkanImageFormat, void* pData)
+    {
+        vulkanImageFormat = BlitzenVulkan::GetDDSVulkanFormat(header, header10);
+
+		auto file = reinterpret_cast<FILE*>(handle.pHandle);
+
+        if (vulkanImageFormat == VK_FORMAT_UNDEFINED)
+            return false;
+
+        unsigned int blockSize =
+            (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK 
+                || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK
+                || vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 
+            8 : 16;
+
+        size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, 
+            header.dwMipMapCount, blockSize);
+
+        size_t readSize = fread(pData, 1, imageSize, file);
+
+        if (!pData)
+            return false;
+
+        if (readSize != imageSize)
+            return false;
+
+        return true;
     }
 
     void VulkanRenderer::SetupResourceManagement()
