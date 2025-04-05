@@ -10,6 +10,7 @@ namespace BlitzenPlatform
         Write = 0x2
     };
 
+    // I should turn this into a templated class
     class FileHandle
     {
     public:
@@ -39,7 +40,7 @@ namespace BlitzenPlatform
     // Takes a file handle and reads its content in byte form into a uint8_t buffer and its size into a byte count buffer
     uint8_t FilesystemReadAllBytes(FileHandle& handle, uint8_t** pBytesRead, size_t* byteCount);
 
-    // Does the same as the above but takes uses a (terrible)RAII wrapper instead of the linear allocator, so it should be prefered
+    // This overload uses a (terrible) RAII wrapper instead of the linear allocator, so it should be prefered
     uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::String>& bytes, 
     size_t* byteCount);
 }

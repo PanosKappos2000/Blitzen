@@ -145,6 +145,7 @@ target_include_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include")
 
 target_compile_definitions(BlitzenEngine PUBLIC
+                            BLIT_REIN_SANT_ENG
 
                             #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros

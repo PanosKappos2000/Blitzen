@@ -213,20 +213,34 @@ namespace BlitzenVulkan
 
 
 
-    // Because resources get destroyed automatically, when the Vulkan Renderer destructor is called, 
-    // It needs to be made certain that the instance, the device and -most importanlty- the allocator are destroyed last
-    // So one instance of this struct will be owned by the engine's memory allocator
+    // Needs to be created before the Vulkan Renderer, 
+    // so that the device, instance and allocator are destroyed after everything else
     struct MemoryCrucialHandles
     {
         VmaAllocator allocator;
         VkDevice device;
         VkInstance instance;
 
-        inline ~MemoryCrucialHandles(){
+		static MemoryCrucialHandles* GetInstance()
+		{
+            return s_pInstance;
+		}
+
+        inline MemoryCrucialHandles()
+        {
+            s_pInstance = this;
+        }
+
+        inline ~MemoryCrucialHandles()
+        {
             vmaDestroyAllocator(allocator);
             vkDestroyDevice(device, nullptr);
             vkDestroyInstance(instance, nullptr);
         }
+
+    private:
+
+        inline static MemoryCrucialHandles* s_pInstance;
     };
 
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer

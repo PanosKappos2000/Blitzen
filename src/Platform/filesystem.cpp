@@ -162,7 +162,7 @@ namespace BlitzenPlatform
             uint64_t size = ftell(reinterpret_cast<FILE*>(handle.pHandle));
             
             rewind(reinterpret_cast<FILE*>(handle.pHandle));
-            *pBytesRead = reinterpret_cast<uint8_t*>(BlitzenCore::BlitAllocLinear(BlitzenCore::AllocationType::String, sizeof(char) * size));
+            *pBytesRead = reinterpret_cast<uint8_t*>(BlitzenCore::BlitAllocLinear<char>(BlitzenCore::AllocationType::String, size));
             *byteCount = fread(*pBytesRead, 1, size, reinterpret_cast<FILE*>(handle.pHandle));
             if (*byteCount != size) 
             {

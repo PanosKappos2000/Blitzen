@@ -1,6 +1,7 @@
 #define VMA_IMPLEMENTATION// Implements vma funcions. Header file included in vulkanData.h
 #include "vulkanRenderer.h"
 #include "Platform/filesystem.h"
+#include "Core/blitzenCore.h"
 
 namespace BlitzenVulkan
 {
@@ -104,7 +105,7 @@ namespace BlitzenVulkan
             return;
         }
 
-        MemoryCrucialHandles* pMemCrucials = BlitzenCore::GetVulkanMemoryCrucials();
+        auto pMemCrucials = MemoryCrucialHandles::GetInstance();
         pMemCrucials->allocator = m_allocator;
         pMemCrucials->device = m_device;
         pMemCrucials->instance = m_instance;

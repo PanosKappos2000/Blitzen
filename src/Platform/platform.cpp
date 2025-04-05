@@ -171,13 +171,11 @@ namespace BlitzenPlatform
 
     void* PlatformMalloc(size_t size, uint8_t aligned)
     {
-        // temporary
         return malloc(size);
     }
 
     void PlatformFree(void* pBlock, uint8_t aligned)
     {
-        // temporary
         free(pBlock);
     }
 

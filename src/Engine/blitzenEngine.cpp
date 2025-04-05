@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
     
     // Memory manager, needs to be created before everything that uses heap allocations
     BlitzenCore::MemoryManagerState blitzenMemory;
+    BlitzenVulkan::MemoryCrucialHandles memoryCrucials;
 
     BlitzenCore::InitLogging();
     

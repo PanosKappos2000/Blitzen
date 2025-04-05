@@ -393,8 +393,7 @@ namespace BlitCL
             if (temp != 0)
             {
                 BlitzenCore::BlitMemCopy(m_pBlock, pTemp, temp * sizeof(T));
-                delete[] pTemp;
-                BlitzenCore::LogFree(BlitzenCore::AllocationType::Hashmap, temp * sizeof(T));
+                BlitzenCore::BlitFree<T>(BlitzenCore::AllocationType::Hashmap, pTemp, temp);
             }
         }
     };
