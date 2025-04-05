@@ -1,16 +1,8 @@
 #include "platform.h"
 #include "Core/blitEvents.h"
-
-// Including Vulkan to load the VkSurfaceKHR since that is platform specific
 #include "BlitzenVulkan/vulkanData.h"
-
-// Including the opengl renderer to create the platform specific rendering context
 #include "BlitzenGl/openglRenderer.h"
-
-// The Engine class is needed to see if it has been initialized
 #include "Engine/blitzenEngine.h"
-
-// Need this for memchr and strchr
 #include <cstring>
 
 namespace BlitzenPlatform

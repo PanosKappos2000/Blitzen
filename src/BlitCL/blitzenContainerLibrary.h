@@ -103,14 +103,10 @@ namespace BlitCL
 
         inline size_t GetSize() const { return m_size; }
 
-        inline T& operator [] (size_t index) const
-        {
-            BLIT_ASSERT(index >= 0 && index < m_size)
-                return m_pBlock[index];
-        }
+        inline T& operator [] (size_t index) const{ return m_pBlock[index]; }
 
-        inline T& Front() { BLIT_ASSERT(m_size) m_pBlock[0]; }
-        inline T& Back() { BLIT_ASSERT(m_size) return m_pBlock[m_size - 1]; }
+        inline T& Front() { m_pBlock[0]; }
+        inline T& Back() { return m_pBlock[m_size - 1]; }
         inline T* Data() const { return m_pBlock; }
 
         // Copies the given value to every element in the dynamic array
@@ -146,8 +142,7 @@ namespace BlitCL
 
         void Reserve(size_t size)
         {
-            BLIT_ASSERT(size > m_capacity)
-                RearrangeCapacity(size / ce_blitDynamiArrayCapacityMultiplier);
+            RearrangeCapacity(size / ce_blitDynamiArrayCapacityMultiplier);
         }
 
         void PushBack(const T& newElement)
@@ -290,7 +285,7 @@ namespace BlitCL
         Iterator begin() { return Iterator(m_array); }
         Iterator end() { return Iterator(m_array + S); }
 
-        inline T& operator [] (size_t idx) { BLIT_ASSERT(idx >= 0 && idx < S) return m_array[idx]; }
+        inline T& operator [] (size_t idx) { return m_array[idx]; }
 
         inline T* Data() { return m_array; }
 
@@ -405,13 +400,6 @@ namespace BlitCL
     {
     public:
 
-        // This might be something that I should remove, since Smart pointers handle allocations themselves
-        SmartPointer(T* pDataToCopy)
-        {
-            BLIT_ASSERT(!pDataToCopy)
-                m_pData = BlitzenCore::BlitConstructAlloc<T, alloc>(pDataToCopy);
-        }
-
         // Default constructor
         SmartPointer() : m_pData{ nullptr } {}
 
@@ -431,7 +419,6 @@ namespace BlitCL
         template<typename... P>
         void Make(const P&... params)
         {
-            BLIT_ASSERT(!m_pData);
             m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
         }
 
@@ -439,7 +426,6 @@ namespace BlitCL
         template<typename I, typename... P>
         void MakeAs(const P&... params)
         {
-            BLIT_ASSERT(!m_pData);
             m_pData = BlitzenCore::BlitConstructAlloc<I>(alloc, params...);
         }
 
@@ -483,10 +469,11 @@ namespace BlitCL
 
         void AllocateStorage(size_t size)
         {
-            BLIT_ASSERT_MESSAGE(m_size == 0, "The storage has already allocated storage")
-
+            if(!m_pData)
+            {
                 m_pData = BlitzenCore::BlitAlloc<T>(A, size);
-            m_size = size;
+                m_size = size;
+            }
         }
 
         inline T* Data() { return m_pData; }
@@ -513,8 +500,7 @@ namespace BlitCL
 
         inline UnknownPointer(void* pData, size_t size)
         {
-            BLIT_ASSERT(pData && size)
-                m_size = size;
+            m_size = size;
             m_pData = BlitzenCore::BlitAlloc<uint8_t>(BlitzenCore::AllocationType::SmartPointer, size);
         }
 

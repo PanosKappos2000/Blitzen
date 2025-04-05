@@ -3,8 +3,11 @@
     #include "Core/blitLogger.h"
     #include "Core/blitAssert.h"
     #include "Engine/blitzenEngine.h"
+#else
+    #include <stdio.h>
 #endif
 #include <utility>
+#include <stdlib.h>
 
 // Platform specific code, needed to allocate on the heap
 namespace BlitzenPlatform
@@ -23,19 +26,19 @@ namespace BlitzenPlatform
         }
         inline void PlatformFree(void* pBlock, uint8_t aligned)
         {
-            free();
+            free(pBlock);
         }
         inline void* PlatformMemZero(void* pBlock, size_t size)
         {
-            memset(pBlock, 0, size);
+            return memset(pBlock, 0, size);
         }
         inline void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
         {
-            memcpy(pDst, pSrc, size);
+            return memcpy(pDst, pSrc, size);
         }
         inline void* PlatformMemSet(void* pDst, int32_t value, size_t size)
         {
-            memset(pDst, value, size);
+            return memset(pDst, value, size);
         }
     #endif
 }
@@ -97,13 +100,6 @@ namespace BlitzenCore
 
         inline ~MemoryManagerState()
         {
-            // Memory management should not shut down before the Engine
-            if (BlitzenEngine::Engine::GetEngineInstancePointer())
-            {
-                BLIT_ERROR("Blitzen is still active, memory management cannot be shutdown")
-                return;
-            }
-
             #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
                 BlitFree<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, 
                 linearAlloc.pBlock, linearAlloc.blockSize);
@@ -112,9 +108,14 @@ namespace BlitzenCore
             // Warn the user of any memory leaks to look for
             if (totalAllocated)
             {
+                #if defined(BLIT_REIN_SANT_ENG)
                 BLIT_WARN("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
-                totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]
+                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]
                 )
+                #else
+                printf("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
+                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
+                #endif
             }
         }
 
@@ -141,7 +142,6 @@ namespace BlitzenCore
     template<typename T>
     T* BlitAlloc(AllocationType alloc, size_t size)
     {
-        BLIT_ASSERT(alloc != AllocationType::MaxTypes)
         MemoryManagerState::GetManager()->LogAllocation(alloc, size * sizeof(T));
         return reinterpret_cast<T*>(BlitzenPlatform::PlatformMalloc(size * sizeof(T), false));
     }
@@ -149,7 +149,6 @@ namespace BlitzenCore
     template<typename T>
     void BlitFree(AllocationType alloc, void* pBlock, size_t size)
     {
-        BLIT_ASSERT(alloc != AllocationType::MaxTypes)
         MemoryManagerState::GetManager()->LogFree(alloc, size * sizeof(T));
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
@@ -249,7 +248,6 @@ namespace BlitzenCore
             pState->linearAlloc.totalAllocated += allocSize;
             return pBlock;
         #else
-            BLIT_ASSERT_MESSAGE(true, "The linear allocator was not requested")
             return nullptr;
         #endif
     }
