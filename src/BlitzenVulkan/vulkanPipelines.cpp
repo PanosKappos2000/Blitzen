@@ -6,6 +6,74 @@
 
 namespace BlitzenVulkan
 {
+    void GetDefaultPipelineInfo(VkGraphicsPipelineCreateInfo& pipelineInfo, 
+        VkPipelineRenderingCreateInfo dynamicRenderingInfo, VkFormat* pFormat, 
+        VkPipelineInputAssemblyStateCreateInfo& inputAssembly, 
+        VkPipelineViewportStateCreateInfo& viewport, 
+        VkPipelineDynamicStateCreateInfo& dynamicState, 
+        VkPipelineRasterizationStateCreateInfo& rasterization, 
+		VkPipelineMultisampleStateCreateInfo& multisampling,
+        VkPipelineDepthStencilStateCreateInfo& depthState, 
+        VkPipelineColorBlendAttachmentState& colorBlendAttachment,
+        VkPipelineColorBlendStateCreateInfo& colorBlendState, 
+        VkPipelineVertexInputStateCreateInfo vertexInput, 
+        VkDynamicState* pDynamicStates
+    )
+    {
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.flags = 0;
+        pipelineInfo.renderPass = VK_NULL_HANDLE;
+        
+        dynamicRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        dynamicRenderingInfo.colorAttachmentCount = 1;
+        dynamicRenderingInfo.pColorAttachmentFormats = pFormat;
+        dynamicRenderingInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+        pipelineInfo.pNext = &dynamicRenderingInfo;
+
+        // Setting up triangle primitive assembly
+        inputAssembly = SetTriangleListInputAssembly();
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+
+        // Dynamic viewport by default
+        SetDynamicStateViewport(pDynamicStates, viewport, dynamicState);
+        pipelineInfo.pViewportState = &viewport;
+        pipelineInfo.pDynamicState = &dynamicState;
+
+        // Setting up the rasterizer with primitive back face culling
+        SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, 
+            VK_FRONT_FACE_COUNTER_CLOCKWISE);
+        pipelineInfo.pRasterizationState = &rasterization;
+
+        // No multisampling by default
+        SetupMulitsampling(multisampling, VK_FALSE, VK_SAMPLE_COUNT_1_BIT, 1.f, nullptr, VK_FALSE, VK_FALSE);
+        pipelineInfo.pMultisampleState = &multisampling;
+
+        // Depth buffer for reverse z
+        //SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
+        //nullptr, nullptr);
+        depthState.depthTestEnable = VK_TRUE;
+        depthState.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+        depthState.depthWriteEnable = VK_TRUE;
+        depthState.stencilTestEnable = VK_FALSE;
+        depthState.depthBoundsTestEnable = VK_FALSE;
+        pipelineInfo.pDepthStencilState = &depthState;
+
+        // No color blending by default
+        CreateColorBlendAttachment(colorBlendAttachment, 
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, 
+            VK_FALSE, VK_BLEND_OP_ADD, 
+            VK_BLEND_OP_ADD, VK_BLEND_FACTOR_CONSTANT_ALPHA,
+            VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, 
+            VK_BLEND_FACTOR_CONSTANT_ALPHA);
+        CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
+        pipelineInfo.pColorBlendState = &colorBlendState;
+
+        //Setting up the vertex input state (this will not be used but it needs to be passed)
+        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        pipelineInfo.pVertexInputState = &vertexInput;
+    }
+
     uint8_t CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
     VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, VkSpecializationInfo* pSpecializationInfo /*=nullptr*/)
     {
@@ -67,6 +135,20 @@ namespace BlitzenVulkan
             return 0;
         
         return 1;
+    }
+
+    void CreateShaderProgramSpecializationConstant(VkSpecializationMapEntry& specializationEntry,
+        uint32_t constantId, uint32_t offset, size_t size,
+        VkSpecializationInfo& specializationInfo, void* pData)
+    {
+        specializationEntry.constantID = constantId;
+        specializationEntry.offset = offset;
+        specializationEntry.size = size;
+
+        specializationInfo.dataSize = size;
+        specializationInfo.mapEntryCount = 1;
+        specializationInfo.pMapEntries = &specializationEntry;
+        specializationInfo.pData = pData;
     }
 
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly()
@@ -227,154 +309,97 @@ namespace BlitzenVulkan
     uint8_t VulkanRenderer::SetupMainGraphicsPipeline()
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
-        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.flags = 0;
-        pipelineInfo.renderPass = VK_NULL_HANDLE; // Using dynamic rendering
-        pipelineInfo.layout = m_graphicsPipelineLayout.handle;// The layout is expected to have been created earlier
-
-        // Setting up dynamic rendering info for graphics pipeline
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
-        dynamicRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         VkFormat colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-        dynamicRenderingInfo.colorAttachmentCount = 1;
-        dynamicRenderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
-        dynamicRenderingInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
-        pipelineInfo.pNext = &dynamicRenderingInfo;
-
-        // Loading the vertex shader code (or mesh shading shader if mesh shading is used)
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+		VkPipelineViewportStateCreateInfo viewport{};
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+		VkPipelineRasterizationStateCreateInfo rasterization{}; 
+		VkPipelineMultisampleStateCreateInfo multisampling{};
+        VkPipelineDepthStencilStateCreateInfo depthState{};
+		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+		VkPipelineColorBlendStateCreateInfo colorBlendState{};
+        VkPipelineVertexInputStateCreateInfo vertexInput{};
+        VkDynamicState dynamicStates[2];
+		GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat, 
+            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment, 
+            colorBlendState, vertexInput, dynamicStates);
+        
         ShaderModule vertexShaderModule;
+        ShaderModule taskShaderModule;
         VkPipelineShaderStageCreateInfo shaderStages[3] = {};
-        // Create the mesh shader program for vertex shader if mesh shaders are requested and supported
+        
+        // Mesh shaders need mesh shader and task shader
         if(m_stats.meshShaderSupport)
         {
             if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.mesh.glsl.spv", 
-            VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule.handle, shaderStages[0]))
+                VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule.handle, shaderStages[0]
+            ))
+                return 0;
+
+            if (!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.task.glsl.spv",
+                VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule.handle, shaderStages[2]
+            ))
                 return 0;
         }
-        // Create the vertex shader program for vertex processing if mesh shaders were not requested or not supported
         else
         {
+            // Vertex shader for traditional pipeline
             if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.vert.glsl.spv", 
             VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
                 return 0;
         }
 
-        //Loading the fragment shader
+        // Fragment shader is common
         ShaderModule fragShaderModule;
         if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv",
         VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
             return 0;
 
-        // Loading the task shader if mesh shaders are requested and supported
-        ShaderModule taskShaderModule;
-        if(m_stats.meshShaderSupport)
-        {
-            if(!CreateShaderProgram(m_device, "VulkanShaders/MeshShader.task.glsl.spv", 
-            VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule.handle, shaderStages[2]))
-                return 0;
-        }
-
-        // If the pipeline is going to use mesh shaders, the task shader needs to also be supported, so there will be 3 shader stages
-        if(m_stats.meshShaderSupport)
-        {
-            pipelineInfo.stageCount = 3;
-        }
-        else
-        {
-            pipelineInfo.stageCount = 2;
-        }
+        // mesh pipeline has additional task shader
+		pipelineInfo.stageCount = m_stats.meshShaderSupport ? 3 : 2;
         pipelineInfo.pStages = shaderStages;
 
-        // Loads the shader for Oblique Near-Plane Clipping objects
-        // It has a different vertex shader, but the same fragment shader(for now)
-        ShaderModule onpcVertexShaderModule;
-        VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
-        if(!CreateShaderProgram(
-            m_device, "VulkanShaders/OnpcGeometry.vert.glsl.spv", 
-            VK_SHADER_STAGE_VERTEX_BIT, "main", 
-            onpcVertexShaderModule.handle, onpcGeometryShaderStages[0] 
-        ))
-            return 0;
-
-        onpcGeometryShaderStages[1] = shaderStages[1];
-
-        // Setting up triangle primitive assembly
-        VkPipelineInputAssemblyStateCreateInfo inputAssembly = SetTriangleListInputAssembly();
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-
-        // Setting the viewport and scissor as dynamic states
-        VkDynamicState dynamicStates[2];
-        VkPipelineViewportStateCreateInfo viewport{};
-        VkPipelineDynamicStateCreateInfo dynamicState{};
-        SetDynamicStateViewport(dynamicStates, viewport, dynamicState);
-        pipelineInfo.pViewportState = &viewport;
-        pipelineInfo.pDynamicState = &dynamicState;
-
-        // Setting up the rasterizer with primitive back face culling
-        VkPipelineRasterizationStateCreateInfo rasterization{};
-        SetRasterizationState(rasterization, VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-        pipelineInfo.pRasterizationState = &rasterization;
-
-        // Setting up multisampling(no multisampling for now)
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        SetupMulitsampling(multisampling, VK_FALSE, VK_SAMPLE_COUNT_1_BIT, 1.f, nullptr, VK_FALSE, VK_FALSE);
-        pipelineInfo.pMultisampleState = &multisampling;
-
-        // Depth buffer for reverse z
-        VkPipelineDepthStencilStateCreateInfo depthState{};
-        //SetupDepthTest(depthState, VK_TRUE, VK_COMPARE_OP_GREATER_OR_EQUAL, VK_TRUE, VK_FALSE, 0.f, 0.f, VK_FALSE, 
-        //nullptr, nullptr);
-        depthState.depthTestEnable = VK_TRUE;
-        depthState.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
-        depthState.depthWriteEnable = VK_TRUE;
-        depthState.stencilTestEnable = VK_FALSE;
-        depthState.depthBoundsTestEnable = VK_FALSE;
-        pipelineInfo.pDepthStencilState = &depthState;
-
-        // Color blending. This pipeline is for opaque objects so it is left as default
-        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-        CreateColorBlendAttachment(colorBlendAttachment, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_OP_ADD, VK_BLEND_OP_ADD, VK_BLEND_FACTOR_CONSTANT_ALPHA, 
-        VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA);
-        VkPipelineColorBlendStateCreateInfo colorBlendState{};
-        CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
-        pipelineInfo.pColorBlendState = &colorBlendState;
-
-        //Setting up the vertex input state (this will not be used but it needs to be passed)
-        VkPipelineVertexInputStateCreateInfo vertexInput{};
-        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        pipelineInfo.pVertexInputState = &vertexInput;
-
         //Create the graphics pipeline
-        VkResult pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, m_pCustomAllocator, 
-        &m_opaqueGeometryPipeline.handle);
+        pipelineInfo.layout = m_graphicsPipelineLayout.handle;
+        auto pipelineCreateFinalResult = vkCreateGraphicsPipelines(
+            m_device, VK_NULL_HANDLE, 1, &pipelineInfo, m_pCustomAllocator, 
+            &m_opaqueGeometryPipeline.handle);
         if(pipelineCreateFinalResult != VK_SUCCESS)
             return 0;
 
-        // Compile the spir-v again but with post pass specialization info
-        VkSpecializationMapEntry postPassSpecializationMapEntry{};
-        postPassSpecializationMapEntry.constantID = 0;
-        postPassSpecializationMapEntry.offset = 0;
-        postPassSpecializationMapEntry.size = sizeof(uint32_t);
-        VkSpecializationInfo postPassSpecialization{};
-        postPassSpecialization.dataSize = sizeof(uint32_t);
-        postPassSpecialization.mapEntryCount = 1;
-        postPassSpecialization.pMapEntries = &postPassSpecializationMapEntry;
-        uint32_t postPass = 1;
-        postPassSpecialization.pData = &postPass;
         
+        // For the post pass pipeline, all that changes is that the fragment shader has specialization constants
+        // That specialization constant will specify how it should behave differently to the original
+        VkSpecializationMapEntry postPassSpecializationMapEntry{};
+        VkSpecializationInfo postPassSpecialization{};
+        uint32_t postPass = 1;
+		CreateShaderProgramSpecializationConstant(postPassSpecializationMapEntry, 
+            0, 0, // Constant ID and offset
+            sizeof(uint32_t), postPassSpecialization, &postPass
+        );
         ShaderModule postPassFragShaderModule;
         if(!CreateShaderProgram(m_device, "VulkanShaders/MainObjectShader.frag.glsl.spv", 
         VK_SHADER_STAGE_FRAGMENT_BIT, "main", postPassFragShaderModule.handle, 
         shaderStages[1], &postPassSpecialization))
             return 0;
-
         pipelineCreateFinalResult = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, 
         &m_postPassGeometryPipeline.handle);
         if(pipelineCreateFinalResult != VK_SUCCESS)
             return 0;
 
         // Oblique Near-Plane clipping pipeline. Only the shader stages and pipeline layout change
+        // Loads the shader for Oblique Near-Plane Clipping objects
+        // It has a different vertex shader, but the same fragment shader(for now)
+        ShaderModule onpcVertexShaderModule;
+        VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
+        if (!CreateShaderProgram(
+            m_device, "VulkanShaders/OnpcGeometry.vert.glsl.spv",
+            VK_SHADER_STAGE_VERTEX_BIT, "main",
+            onpcVertexShaderModule.handle, onpcGeometryShaderStages[0]
+        ))
+            return 0;
+        onpcGeometryShaderStages[1] = shaderStages[1];
         pipelineInfo.stageCount = 2;
         pipelineInfo.pStages = onpcGeometryShaderStages;
         pipelineInfo.layout = m_onpcReflectiveGeometryLayout.handle;
@@ -387,5 +412,58 @@ namespace BlitzenVulkan
             return 0;
 
         return 1;
+    }
+
+    bool VulkanRenderer::CreateLoadingTrianglePipeline()
+    {
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
+        VkFormat colorAttachmentFormat = VK_FORMAT_B8G8R8A8_UNORM;
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        VkPipelineViewportStateCreateInfo viewport{};
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        VkPipelineRasterizationStateCreateInfo rasterization{};
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        VkPipelineDepthStencilStateCreateInfo depthState{};
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        VkPipelineColorBlendStateCreateInfo colorBlendState{};
+        VkPipelineVertexInputStateCreateInfo vertexInput{};
+        VkDynamicState dynamicStates[2];
+        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
+            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
+            colorBlendState, vertexInput, dynamicStates);
+
+        ShaderModule vertexShaderModule;
+        VkPipelineShaderStageCreateInfo shaderStages[2] = {};
+        if (!CreateShaderProgram(m_device, "VulkanShaders/LoadingTriangle.vert.glsl.spv",
+            VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]
+        ))
+            return false;
+
+        // Fragment shader is common
+        ShaderModule fragShaderModule;
+        if (!CreateShaderProgram(m_device, "VulkanShaders/LoadingTriangle.frag.glsl.spv",
+            VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
+            return 0;
+
+        // mesh pipeline has additional task shader
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = shaderStages;
+
+        VkPushConstantRange pushConstant{};
+		CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(BlitML::vec3));
+        if (!CreatePipelineLayout(m_device, &m_loadingTriangleLayout.handle,
+            0, nullptr, 1, &pushConstant))
+            return false;
+
+        //Create the graphics pipeline
+        pipelineInfo.layout = m_loadingTriangleLayout.handle;
+        auto pipelineCreateFinalResult = vkCreateGraphicsPipelines(
+            m_device, VK_NULL_HANDLE, 1, &pipelineInfo, m_pCustomAllocator,
+            &m_loadingTrianglePipeline.handle);
+        if (pipelineCreateFinalResult != VK_SUCCESS)
+            return false;
+
+        return true;
     }
 }

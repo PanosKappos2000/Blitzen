@@ -51,7 +51,7 @@ namespace BlitzenVulkan
         // Creates the texture image for Vulkan by copying the data from the staging buffer
         if(!CreateTextureImage(stagingBuffer, m_device, m_allocator, loadedTextures[textureCount].image, 
         {header.dwWidth, header.dwHeight, 1}, format, VK_IMAGE_USAGE_SAMPLED_BIT, 
-        m_frameToolsList[0].commandBuffer, m_graphicsQueue.handle, header.dwMipMapCount))
+        m_frameToolsList[0].transferCommandBuffer, m_transferQueue.handle, header.dwMipMapCount))
         {
             BLIT_ERROR("Failed to load Vulkan texture image")
             return 0;
@@ -908,27 +908,24 @@ namespace BlitzenVulkan
             return 1;
         }
 
-        const BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = 
-            pResources->GetVerticesArray();
-        const BlitCL::DynamicArray<uint32_t>& indices = pResources->GetIndicesArray();
+        const auto& vertices = pResources->GetVerticesArray();
+        const auto& indices = pResources->GetIndicesArray();
 
-        BlitzenEngine::RenderObject* pRenderObjects = pResources->renders;
-        uint32_t renderObjectCount = pResources->renderObjectCount;
+        auto pRenderObjects = pResources->renders;
+        auto renderObjectCount = pResources->renderObjectCount;
 
-        const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces = 
-            pResources->GetSurfaceArray();
+        const auto& surfaces = pResources->GetSurfaceArray();
 
-        const BlitzenEngine::Material* pMaterials = pResources->GetMaterialArrayPointer();
-        uint32_t materialCount = pResources->GetMaterialCount();
+        auto pMaterials = pResources->GetMaterialArrayPointer();
+        auto materialCount = pResources->GetMaterialCount();
 
-        const BlitCL::DynamicArray<BlitzenEngine::Meshlet>& meshlets = 
-            pResources->GetClusterArray();
-        const BlitCL::DynamicArray<uint32_t>& meshletData = pResources->GetClusterIndices();
+        const auto& meshlets = pResources->GetClusterArray();
+        const auto& meshletData = pResources->GetClusterIndices();
 
-        BlitzenEngine::RenderObject* pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
-        uint32_t onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
+        auto pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
+        auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
 
-		BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms = pResources->transforms;
+		auto& transforms = pResources->transforms;
 
         // When raytracing is active, some additional flags are needed for the vertex and index buffer
         uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
@@ -1108,7 +1105,7 @@ namespace BlitzenVulkan
         */
 
         // Start recording the transfer commands
-        VkCommandBuffer& commandBuffer = m_frameToolsList[0].commandBuffer;
+        VkCommandBuffer& commandBuffer = m_frameToolsList[0].transferCommandBuffer;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         // Vertex data copy
@@ -1178,8 +1175,8 @@ namespace BlitzenVulkan
         );
         
         // Submit the commands and wait for the queue to finish
-        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
-        vkQueueWaitIdle(m_graphicsQueue.handle);
+        SubmitCommandBuffer(m_transferQueue.handle, commandBuffer);
+        vkQueueWaitIdle(m_transferQueue.handle);
 
         // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)
@@ -1401,12 +1398,12 @@ namespace BlitzenVulkan
 		    buildRangePtrs[i] = &buildRanges[i];
         }
 
-        VkCommandBuffer commandBuffer = m_frameToolsList[0].commandBuffer;
+        VkCommandBuffer commandBuffer = m_frameToolsList[0].transferCommandBuffer;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         BuildAccelerationStructureKHR(m_instance, commandBuffer, static_cast<uint32_t>(surfaces.GetSize()), 
         buildInfos.Data(), buildRangePtrs.Data());
-        SubmitCommandBuffer(m_computeQueue.handle, commandBuffer);
-        vkQueueWaitIdle(m_computeQueue.handle);
+        SubmitCommandBuffer(m_transferQueue.handle, commandBuffer);
+        vkQueueWaitIdle(m_transferQueue.handle);
 
         return 1;
     }
@@ -1517,32 +1514,12 @@ namespace BlitzenVulkan
         buildRange.primitiveCount = drawCount;
         const VkAccelerationStructureBuildRangeInfoKHR* pBuildRange = &buildRange;
 
-        VkCommandBuffer commandBuffer = m_frameToolsList[0].commandBuffer;
+        VkCommandBuffer commandBuffer = m_frameToolsList[0].transferCommandBuffer;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         BuildAccelerationStructureKHR(m_instance, commandBuffer, 1, &buildInfo, &pBuildRange);
-        SubmitCommandBuffer(m_graphicsQueue.handle, commandBuffer);
-        vkQueueWaitIdle(m_graphicsQueue.handle);
+        SubmitCommandBuffer(m_transferQueue.handle, commandBuffer);
+        vkQueueWaitIdle(m_transferQueue.handle);
 
         return 1;
-    }
-
-    void VulkanRenderer::UpdateBuffers(BlitzenEngine::RenderingResources* pResources, 
-        FrameTools& tools, VarBuffers& buffers)
-    {
-		VkDeviceSize transformDataSize = sizeof(BlitzenEngine::MeshTransform) * pResources->transforms.GetSize();
-
-        BeginCommandBuffer(tools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-        CopyBufferToBuffer(tools.transferCommandBuffer, buffers.transformStagingBuffer.bufferHandle,
-            buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0
-        );
-
-        VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
-        CreateSemahoreSubmitInfo(bufferCopySemaphoreInfo, tools.buffersReadySemaphore.handle,
-            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-        );
-        SubmitCommandBuffer(m_transferQueue.handle, tools.transferCommandBuffer, 
-            0, nullptr, 1, &bufferCopySemaphoreInfo
-        );
     }
 }

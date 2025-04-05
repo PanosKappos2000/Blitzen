@@ -1,4 +1,5 @@
 #include "vulkanRenderer.h"
+#include "Core/blitTimeManager.h"
 
 namespace BlitzenVulkan
 {
@@ -327,19 +328,19 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::DrawWhileWaiting()
     {
-		auto& fTools = m_frameToolsList[m_currentFrame];
+        auto& fTools = m_frameToolsList[m_currentFrame];
 
         auto colorAttachmentWorkingLayout = VK_IMAGE_LAYOUT_GENERAL;
 
         vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
-        // Swapchain image, needed to present the color attachment results
-        uint32_t swapchainIdx;
+            // Swapchain image, needed to present the color attachment results
+            uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
             ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
         VkImage swapchainImage{ m_swapchainValues.swapchainImages[swapchainIdx] };
-		VkImageView swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
+        VkImageView swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
 
         // The command buffer recording begin here (stops when submit is called)
         BeginCommandBuffer(m_idleDrawCommandBuffer, 0);
@@ -358,25 +359,26 @@ namespace BlitzenVulkan
         PipelineBarrier(m_idleDrawCommandBuffer, 0, nullptr, 0,
             nullptr, 1, &colorAttachmentDefinitionBarrier);
 
-        vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-            m_basicBackgroundPipeline.handle);
-        VkWriteDescriptorSet backgroundImageWrite{};
-        VkDescriptorImageInfo backgroundImageInfo{};
-        WriteImageDescriptorSets(backgroundImageWrite, backgroundImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, swapchainImageView);
+        VkRenderingAttachmentInfo colorAttachmentInfo{};
+        CreateRenderingAttachmentInfo(colorAttachmentInfo, swapchainImageView,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+            VK_ATTACHMENT_STORE_OP_STORE, { 0.1f, 0.2f, 0.3f, 0 } // Window color
+        );
+		BeginRendering(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent,
+            {0, 0}, 1, &colorAttachmentInfo, nullptr, nullptr);
 
-        PushDescriptors(m_instance,
-            m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_basicBackgroundLayout.handle,
-            0, 1, &backgroundImageWrite);
+        vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            m_loadingTrianglePipeline.handle);
 
-        BackgroundShaderPushConstant pc;
-        pc.data1 = BlitML::vec4(1, 0, 0, 1);
-        pc.data2 = BlitML::vec4(0, 0, 1, 1);
-        vkCmdPushConstants(m_idleDrawCommandBuffer, m_basicBackgroundLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-            sizeof(BackgroundShaderPushConstant), &pc);
+		auto deltaTime = static_cast<float>(BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime());
+        m_loadingTriangleVertexColor *= cos(deltaTime);
+        vkCmdPushConstants(m_idleDrawCommandBuffer, m_loadingTriangleLayout.handle, 
+            VK_SHADER_STAGE_VERTEX_BIT, 0,
+            sizeof(BlitML::vec3), &m_loadingTriangleVertexColor);
 
-        vkCmdDispatch(m_idleDrawCommandBuffer, uint32_t(std::ceil(m_drawExtent.width / 16.0)),
-            uint32_t(std::ceil(m_drawExtent.height / 16.0)), 1);
+		vkCmdDraw(m_idleDrawCommandBuffer, 3, 1, 0, 0);
+
+		vkCmdEndRendering(m_idleDrawCommandBuffer);
 
         // Create a barrier for the swapchain image to transition to present optimal
         VkImageMemoryBarrier2 presentImageBarrier{};
@@ -623,6 +625,27 @@ namespace BlitzenVulkan
         }
 
         vkCmdEndRendering(commandBuffer);
+    }
+
+    void VulkanRenderer::UpdateBuffers(BlitzenEngine::RenderingResources* pResources,
+        FrameTools& tools, VarBuffers& buffers)
+    {
+        VkDeviceSize transformDataSize = sizeof(BlitzenEngine::MeshTransform) *
+            pResources->transforms.GetSize();
+
+        BeginCommandBuffer(tools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        CopyBufferToBuffer(tools.transferCommandBuffer, buffers.transformStagingBuffer.bufferHandle,
+            buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0
+        );
+
+        VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
+        CreateSemahoreSubmitInfo(bufferCopySemaphoreInfo, tools.buffersReadySemaphore.handle,
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+        );
+        SubmitCommandBuffer(m_transferQueue.handle, tools.transferCommandBuffer,
+            0, nullptr, 1, &bufferCopySemaphoreInfo
+        );
     }
 
     void VulkanRenderer::GenerateDepthPyramid(VkCommandBuffer commandBuffer)

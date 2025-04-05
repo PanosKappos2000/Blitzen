@@ -5,7 +5,7 @@
 #include <cstddef>
 
 //#define LAMBDA_GAME_OBJECT_TEST
-//#define VK_DRAW_WHILE_WAITING
+#define VK_DRAW_WHILE_WAITING
 
 namespace BlitzenEngine
 {

@@ -132,7 +132,10 @@ int main(int argc, char* argv[])
 #endif
     }
     
-
+    if (typeid(renderer) ==
+        typeid(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>)
+    )
+        renderer->WaitForLoadingTriangle();
 
 
     /*

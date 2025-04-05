@@ -821,7 +821,9 @@ namespace BlitzenVulkan
         swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapchainInfo.surface = surface;
         // The color attachment will transfer its contents to the swapchain image when rendering is done
-        swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+        swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT 
+            | VK_IMAGE_USAGE_STORAGE_BIT 
+            | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         // Used when the swapchain is recreated
         swapchainInfo.oldSwapchain = oldSwapchain;
 
@@ -1075,6 +1077,12 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to allocate idle draw command buffer")
                 return 0;
         }
+
+		if (!CreateLoadingTrianglePipeline())
+		{
+			BLIT_ERROR("Failed to create loading triangle pipeline")
+				return 0;
+		}
 
         return 1;
     }
