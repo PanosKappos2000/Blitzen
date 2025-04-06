@@ -328,19 +328,19 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::DrawWhileWaiting()
     {
-        auto& fTools = m_frameToolsList[m_currentFrame];
+        auto& fTools = m_frameToolsList[0];
 
         auto colorAttachmentWorkingLayout = VK_IMAGE_LAYOUT_GENERAL;
 
         vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
 
-            // Swapchain image, needed to present the color attachment results
-            uint32_t swapchainIdx;
+        // Swapchain image, needed to present the color attachment results
+        uint32_t swapchainIdx;
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
             ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
-        VkImage swapchainImage{ m_swapchainValues.swapchainImages[swapchainIdx] };
-        VkImageView swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
+        auto swapchainImage{ m_swapchainValues.swapchainImages[swapchainIdx] };
+        auto swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
 
         // The command buffer recording begin here (stops when submit is called)
         BeginCommandBuffer(m_idleDrawCommandBuffer, 0);
@@ -411,8 +411,6 @@ namespace BlitzenVulkan
             1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
             &swapchainIdx
         );
-
-        m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
 
     void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, 

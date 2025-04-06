@@ -882,18 +882,18 @@ namespace BlitzenVulkan
 				buffers.transformStagingBuffer.allocationInfo.pMappedData
 			);
 
-			BeginCommandBuffer(m_frameToolsList[i].commandBuffer, 
+			BeginCommandBuffer(m_frameToolsList[i].transferCommandBuffer, 
                 VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
             );
 
-			CopyBufferToBuffer(m_frameToolsList[i].commandBuffer,
+			CopyBufferToBuffer(m_frameToolsList[i].transferCommandBuffer,
 				buffers.transformStagingBuffer.bufferHandle,
 				buffers.transformBuffer.buffer.bufferHandle,
 				transformBufferSize, 0, 0
 			);
 
-			SubmitCommandBuffer(m_graphicsQueue.handle, m_frameToolsList[i].commandBuffer);
-            vkQueueWaitIdle(m_graphicsQueue.handle);
+			SubmitCommandBuffer(m_transferQueue.handle, m_frameToolsList[i].transferCommandBuffer);
+            vkQueueWaitIdle(m_transferQueue.handle);
         }
 
         return 1;
@@ -1190,15 +1190,14 @@ namespace BlitzenVulkan
         // Fails if there are no textures to load
         if(textureCount == 0)
             return 0;
-
-        // The descriptor will have multiple descriptors of combined image sampler type. The count is derived from the amount of textures loaded
+        // The descriptor will have multiple descriptors of combined image sampler type.
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSize.descriptorCount = static_cast<uint32_t>(textureCount);
 
         // Creates the descriptor pool for the textures
-        m_textureDescriptorPool.handle = CreateDescriptorPool(m_device, 1, &poolSize, 
-        1);
+        m_textureDescriptorPool.handle = 
+            CreateDescriptorPool(m_device, 1, &poolSize, 1);
         if(m_textureDescriptorPool.handle == VK_NULL_HANDLE)
             return 0;
  
@@ -1425,8 +1424,10 @@ namespace BlitzenVulkan
         // Creates an object buffer that will hold a VkAccelerationsStructureInstanceKHR for each object loaded
         AllocatedBuffer objectBuffer;
         if(!CreateBuffer(m_allocator, objectBuffer, 
-        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-        VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(VkAccelerationStructureInstanceKHR) * drawCount, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR 
+            | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            sizeof(VkAccelerationStructureInstanceKHR) * drawCount, VMA_ALLOCATION_CREATE_MAPPED_BIT
+        ))
             return 0;
 
         // Creates a VkAccelrationStructureInstanceKHR for each instance's transform and copies it to the object buffer

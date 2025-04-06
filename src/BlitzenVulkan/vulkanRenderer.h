@@ -136,11 +136,6 @@ namespace BlitzenVulkan
             BlitzenCore::BlitMemCopy(pData + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
         }
 
-        inline void WaitForLoadingTriangle()
-        {
-			vkDeviceWaitIdle(m_device);
-        }
-
         // TODO: Remember to erase this
         void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
 
