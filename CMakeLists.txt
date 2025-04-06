@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
-project (BlitzenEngine VERSION 0)
+project (
+    BlitzenEngine 
+    VERSION 0
+    LANGUAGES C CXX)
 
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -43,9 +46,63 @@ add_executable(BlitzenEngine
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
                 
-                src/Core/blitzenCore.h
                 src/Core/blitMemory.h
-                src/Core/blitzenMemory.cpp
+                src/Core/blitLogger.h
+                src/Core/blitzenLogger.cpp
+                src/Core/blitAssert.h
+                src/Core/blitEvents.h
+                src/Core/blitzenEvents.cpp
+                src/Core/blitTimeManager.h
+                src/Core/blitzenTimeManager.cpp
+
+                src/BlitCL/blitzenContainerLibrary.h
+
+                src/BlitzenMathLibrary/blitML.h
+                src/BlitzenMathLibrary/blitMLTypes.h
+                
+                src/Platform/platform.h
+                src/Platform/platform.cpp
+                src/Platform/filesystem.h
+                src/Platform/filesystem.cpp
+                
+                src/VendorCode/stb_image.h
+                src/VendorCode/fast_obj.h
+                src/VendorCode/objparser.cpp
+                src/VendorCode/Meshoptimizer/indexgenerator.cpp
+                src/VendorCode/Meshoptimizer/quantization.cpp
+                src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp
+                src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
+                src/VendorCode/Meshoptimizer/clusterizer.cpp
+                src/VendorCode/Meshoptimizer/simplifier.cpp
+                src/VendorCode/Cgltf/cgltf.h
+)
+ELSEIF(UNIX)
+add_executable(BlitzenEngine
+                src/Engine/blitzenEngine.cpp
+                src/Engine/blitzenEngine.h
+                src/Engine/blitzenDefaultEvents.cpp
+
+                src/BlitzenVulkan/vulkanData.h
+                src/BlitzenVulkan/vulkanRenderer.h
+                src/BlitzenVulkan/vulkanInit.cpp
+                src/BlitzenVulkan/vulkanResources.cpp
+                src/BlitzenVulkan/vulkanPipelines.cpp
+                src/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/BlitzenVulkan/vulkanDraw.cpp
+
+                src/Renderer/blitRenderingResources.h
+                src/Renderer/blitzenRenderingResources.cpp
+                src/Renderer/blitRenderer.h
+                src/Renderer/blitzenRenderer.cpp
+                src/Renderer/blitDDSTextures.h
+                src/Renderer/blitzenDDSTextures.cpp
+
+                src/Game/blitObject.h
+                src/Game/blitzenObject.cpp
+                src/Game/blitCamera.h
+                src/Game/blitzenCamera.cpp
+                
+                src/Core/blitMemory.h
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
                 src/Core/blitAssert.h
@@ -76,76 +133,22 @@ add_executable(BlitzenEngine
                 src/VendorCode/Cgltf/cgltf.h
                 #src/VendorCode/volk/volk.c
 )
-ELSEIF(UNIX)
-add_executable(BlitzenEngine
-                src/Engine/blitzenEngine.cpp
-                src/Engine/blitzenEngine.h
-                src/Engine/blitzenDefaultEvents.cpp
-
-                src/BlitzenVulkan/vulkanData.h
-                src/BlitzenVulkan/vulkanRenderer.h
-                src/BlitzenVulkan/vulkanInit.cpp
-                src/BlitzenVulkan/vulkanResources.cpp
-                src/BlitzenVulkan/vulkanPipelines.cpp
-                src/BlitzenVulkan/vulkanRendererSetup.cpp
-                src/BlitzenVulkan/vulkanDraw.cpp
-
-                src/Renderer/blitRenderingResources.h
-                src/Renderer/blitzenRenderingResources.cpp
-                src/Renderer/blitRenderer.h
-                src/Renderer/blitzenRenderer.cpp
-                src/Renderer/blitDDSTextures.h
-                src/Renderer/blitzenDDSTextures.cpp
-
-                src/Game/blitObject.h
-                src/Game/blitzenObject.cpp
-                src/Game/blitCamera.h
-                src/Game/blitzenCamera.cpp
-                
-                src/Core/blitzenCore.h
-                src/Core/blitMemory.h
-                src/Core/blitzenMemory.cpp
-                src/Core/blitzenContainerLibrary.h
-                src/Core/blitLogger.h
-                src/Core/blitzenLogger.cpp
-                src/Core/blitAssert.h
-                src/Core/blitEvents.h
-                src/Core/blitzenEvents.cpp
-                src/Core/blitTimeManager.h
-                src/Core/blitzenTimeManager.cpp
-
-                src/BlitzenMathLibrary/blitML.h
-                src/BlitzenMathLibrary/blitMLTypes.h
-                
-                src/Platform/platform.h
-                src/Platform/platform.cpp
-                src/Platform/filesystem.h
-                src/Platform/filesystem.cpp
-                
-                src/VendorCode/stb_image.h
-                src/VendorCode/fast_obj.h
-                src/VendorCode/objparser.cpp
-                src/VendorCode/Meshoptimizer/indexgenerator.cpp
-                src/VendorCode/Meshoptimizer/quantization.cpp
-                src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp
-                src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
-                src/VendorCode/Meshoptimizer/clusterizer.cpp
-                src/VendorCode/Meshoptimizer/simplifier.cpp
-                src/VendorCode/Cgltf/cgltf.h
-                #src/VendorCode/volk/volk.c
-)
 ENDIF(WIN32)
 
 # Specify directories that hold header files
-target_include_directories(BlitzenEngine PUBLIC
-                        "${PROJECT_SOURCE_DIR}/src"
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies"
-                        "${PROJECT_SOURCE_DIR}/src/VendorCode"
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include")
+target_include_directories(
+    BlitzenEngine PUBLIC
+            "${PROJECT_SOURCE_DIR}/src"
+            "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
+            "${PROJECT_SOURCE_DIR}/ExternalDependencies"
+            "${PROJECT_SOURCE_DIR}/src/VendorCode"
+            "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include"
+            "${PROJECT_SOURCE_DIR}/ExternalDependencies/Submodules/ImGui"
+)
 
 target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_REIN_SANT_ENG
+                            BLIT_GDEV_EDT
 
                             #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros

@@ -551,4 +551,16 @@ namespace BlitCL
 
         PfnType m_func;
     };
+
+    class String
+    {
+    public:
+        inline String() :m_data{nullptr} {}
+
+        inline String(char* data) : m_data{data} {}
+
+        inline const char* GetClassic() const { return m_data; }
+    private:
+        char* m_data;
+    };
 }

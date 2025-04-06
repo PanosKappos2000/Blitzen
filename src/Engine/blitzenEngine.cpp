@@ -5,7 +5,6 @@
 #define CGLTF_IMPLEMENTATION
 
 #include "Platform/platform.h"
-#include "Core/blitzenCore.h"
 #include "Core/blitEvents.h"
 #include "Renderer/blitRenderer.h"
 #include "Game/blitCamera.h"
@@ -58,6 +57,7 @@ static void LoadRenderingResources(int argc, char** argv,
 }
 
 
+#if defined(BLIT_GDEV_EDT)
 int main(int argc, char* argv[])
 {
     /*
@@ -170,6 +170,15 @@ int main(int argc, char* argv[])
     // (because it waits for a huge amount of deletes)
     BlitzenPlatform::PlatformShutdown();
 }
+#else
+int main()
+{
+	BlitzenCore::MemoryManagerState blitzenMemory;
+    BlitCL::String string{ "Trying out my string class" };
+
+    BLIT_TRACE(string.GetClassic());
+}
+#endif
 
 
 //Assets/Scenes/CityLow/scene.gltf ../../GltfTestScenes/Scenes/Plaza/scene.gltf ../../GltfTestScenes/Scenes/Museum/scene.gltf (personal test scenes for copy pasting)
