@@ -176,7 +176,55 @@ int main()
 	BlitzenCore::MemoryManagerState blitzenMemory;
     BlitCL::String string{ "Trying out my string class" };
 
+    cgltf_options options = {};
+    cgltf_data* pData = nullptr;
+	auto path = "../../GltfTestScenes/Scenes/Plaza/scene.gltf";
+    auto res = cgltf_parse_file(&options, path, &pData);
+    // Automatic free struct
+    struct CgltfScope
+    {
+        cgltf_data* pData;
+        inline ~CgltfScope() { cgltf_free(pData); }
+    };
+    CgltfScope cgltfScope{ pData };
+    res = cgltf_load_buffers(&options, pData, path);
+    res = cgltf_validate(pData);
+
+    BlitCL::DynamicArray<std::string> textures{pData->textures_count};
+
+        for (size_t i = 0; i < pData->textures_count; ++i)
+        {
+            auto pTexture = &(pData->textures[i]);
+            if (!pTexture->image)
+                break;
+
+            auto pImage = pTexture->image;
+            if (!pImage->uri)
+                break;
+
+            std::string ipath = path;
+            auto pos = ipath.find_last_of('/');
+            if (pos == std::string::npos)
+                ipath = "";
+            else
+                ipath = ipath.substr(0, pos + 1);
+
+            std::string uri = pImage->uri;
+            uri.resize(cgltf_decode_uri(&uri[0]));
+            auto dot = uri.find_last_of('.');
+
+            if (dot != std::string::npos)
+                uri.replace(dot, uri.size() - dot, ".dds");
+
+            auto path = ipath + uri;
+
+            textures[i] = path;
+        }
+
     BLIT_TRACE(string.GetClassic());
+
+    BLIT_TRACE("capacity %i", string.GetCapacity());
+	BLIT_TRACE("size %i", string.GetSize());
 }
 #endif
 

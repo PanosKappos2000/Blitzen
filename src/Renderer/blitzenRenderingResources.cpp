@@ -77,7 +77,7 @@ namespace BlitzenEngine
             akMeshlets.GetSize() * maxTriangles * 3
         };
 
-        akMeshlets.Downsize(meshopt_buildMeshlets(
+        akMeshlets.Resize(meshopt_buildMeshlets(
             akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), 
             inIndices.Data(), inIndices.GetSize(), 
             &inVertices[0].position.x, inVertices.GetSize(), 
@@ -230,7 +230,7 @@ namespace BlitzenEngine
                 // (and it can't go below that due to constant error bound above)
                 if (nextIndicesSize >= size_t(double(lodIndices.GetSize()) * 0.95))
                     break;
-                lodIndices.Downsize(nextIndicesSize);
+                lodIndices.Resize(nextIndicesSize);
 
                 // Optimize the level of detail vertex cache
                 meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(),

@@ -56,6 +56,7 @@ add_executable(BlitzenEngine
                 src/Core/blitzenTimeManager.cpp
 
                 src/BlitCL/blitzenContainerLibrary.h
+                src/BlitCL/DynamicArray.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
