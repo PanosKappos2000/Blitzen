@@ -57,6 +57,7 @@ add_executable(BlitzenEngine
 
                 src/BlitCL/blitzenContainerLibrary.h
                 src/BlitCL/DynamicArray.h
+                src/BlitCL/blitString.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
