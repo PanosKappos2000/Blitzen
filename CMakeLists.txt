@@ -149,7 +149,7 @@ target_include_directories(
 
 target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_REIN_SANT_ENG
-                            BLIT_GDEV_EDT
+                            #BLIT_GDEV_EDT
 
                             #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros

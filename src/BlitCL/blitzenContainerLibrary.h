@@ -185,8 +185,8 @@ namespace BlitCL
             m_pData = BlitzenCore::BlitConstructAlloc<I>(alloc, params...);
         }
 
-        SmartPointer<T> operator = (SmartPointer<T>& s) = delete;
-        SmartPointer<T> operator = (SmartPointer<T> s) = delete;
+        SmartPointer<T, alloc> operator = (SmartPointer<T>& s) = delete;
+        SmartPointer<T, alloc> operator = (SmartPointer<T> s) = delete;
         SmartPointer(const SmartPointer<T>& s) = delete;
         SmartPointer(SmartPointer<T>& s) = delete;
 
@@ -225,9 +225,18 @@ namespace BlitCL
 
         void AllocateStorage(size_t size)
         {
-            if(!m_pData)
+            if(m_size > 0)
             {
                 m_pData = BlitzenCore::BlitAlloc<T>(A, size);
+                m_size = size;
+            }
+        }
+
+        void TransferOwnership(T* pData, size_t size)
+        {
+            if (m_size > 0)
+            {
+                m_pData = pData;
                 m_size = size;
             }
         }
@@ -236,9 +245,14 @@ namespace BlitCL
 
         inline uint8_t IsEmpty() { return m_size == 0; }
 
+        StoragePointer<T, A> operator = (StoragePointer<T, A>& s) = delete;
+        StoragePointer<T, A> operator = (StoragePointer<T, A> s) = delete;
+        StoragePointer(const StoragePointer<T, A>& s) = delete;
+        StoragePointer(StoragePointer<T, A>& s) = delete;
+
         ~StoragePointer()
         {
-            if (m_pData && m_size > 0)
+            if (m_size > 0)
             {
                 BlitzenCore::BlitFree<T>(A, m_pData, m_size);
             }
@@ -311,32 +325,64 @@ namespace BlitCL
     class String
     {
     public:
-        inline String() :m_data{ nullptr }, m_size{ 0 }{}
+        inline String() :
+            m_data{ nullptr }, 
+            m_capacity{ 0 }, 
+            m_size{ 0 }
+        {}
 
         inline String(char* data) 
         {
-			m_size = strlen(data);
-			m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_size * ce_blitStringCapacityMultiplier);
-			BlitzenCore::BlitMemCopy(m_data, data, m_size);
+            m_size = strlen(data);
+            m_capacity = m_size * ce_blitStringCapacityMultiplier + 1;
+            m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
+            strcpy(m_data, data);
         }
 
         inline ~String()
 		{
-			if (m_data)
+			if (m_capacity)
 			{
-				BlitzenCore::BlitFree<char>(StrAlloc, m_data, strlen(m_data));
+				BlitzenCore::BlitFree<char>(StrAlloc, m_data, m_capacity);
 			}
 		}
 
         inline char operator [] (size_t idx) const { return m_data[idx]; }
-        inline const char* GetClassic() const 
-        {
-            return m_data;
-        }
+        inline const char* GetClassic() const { return m_data; }
         inline size_t GetSize() const { return m_size; }
-		inline size_t GetCapacity() const { return strlen(m_data); }
+		inline size_t GetCapacity() const { return m_capacity; }
+
+        inline void Append(char* str)
+        {
+            size_t newSize = strlen(str) + m_size;
+			if (m_capacity <= newSize)
+			{
+				IncreaseCapacity(newSize);
+			}
+            strcpy(m_data + m_size, str);
+            m_size = newSize;
+        }
+
+    private:
+
+        void IncreaseCapacity(size_t newSize)
+        {
+            auto previousCapacity = m_capacity;
+            BlitCL::StoragePointer<char, StrAlloc> previousData{};
+            previousData.TransferOwnership(m_data, m_size);
+            m_capacity = newSize * ce_blitStringCapacityMultiplier + 1;
+
+            m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
+            if (m_size != 0)
+            {
+                strcpy(m_data, previousData.Data());
+            }
+        }
+
     private:
         char* m_data;
+
+        size_t m_capacity;
 
         size_t m_size;
     };

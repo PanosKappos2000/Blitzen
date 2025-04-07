@@ -176,7 +176,7 @@ int main()
 	BlitzenCore::MemoryManagerState blitzenMemory;
     BlitCL::String string{ "Trying out my string class" };
 
-    cgltf_options options = {};
+    /*cgltf_options options = {};
     cgltf_data* pData = nullptr;
 	auto path = "../../GltfTestScenes/Scenes/Plaza/scene.gltf";
     auto res = cgltf_parse_file(&options, path, &pData);
@@ -219,12 +219,15 @@ int main()
             auto path = ipath + uri;
 
             textures[i] = path;
-        }
+        }*/
 
     BLIT_TRACE(string.GetClassic());
 
     BLIT_TRACE("capacity %i", string.GetCapacity());
 	BLIT_TRACE("size %i", string.GetSize());
+
+	string.Append("Append a long string so that I can invoke the IncreaseCapacity function");
+    BLIT_TRACE(string.GetClassic());
 }
 #endif
 
