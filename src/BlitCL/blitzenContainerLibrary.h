@@ -225,7 +225,7 @@ namespace BlitCL
 
         void AllocateStorage(size_t size)
         {
-            if(m_size > 0)
+            if(m_size == 0)
             {
                 m_pData = BlitzenCore::BlitAlloc<T>(A, size);
                 m_size = size;
@@ -234,7 +234,7 @@ namespace BlitCL
 
         void TransferOwnership(T* pData, size_t size)
         {
-            if (m_size > 0)
+            if (m_size == 0)
             {
                 m_pData = pData;
                 m_size = size;
@@ -339,6 +339,9 @@ namespace BlitCL
             strcpy(m_data, data);
         }
 
+        inline String(const String& str) = delete;
+        inline String operator = (const String& str) = delete;
+
         inline ~String()
 		{
 			if (m_capacity)
@@ -361,6 +364,17 @@ namespace BlitCL
 			}
             strcpy(m_data + m_size, str);
             m_size = newSize;
+        }
+
+        inline int64_t FindLastOf(char c)
+        {
+            for (int64_t i = m_size; i >= 0; --i)
+            {
+                if (m_data[i] == c)
+                    return i;
+            }
+
+            return -1;
         }
 
     private:
