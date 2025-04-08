@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
-
 #include "Core/blitLogger.h"
+#include "Core/blitAssert.h"
 #include "filesystem.h"
 #include "Core/blitMemory.h"
 
@@ -183,6 +183,7 @@ namespace BlitzenPlatform
             uint64_t size = ftell(reinterpret_cast<FILE*>(handle.pHandle));
 
             rewind(reinterpret_cast<FILE*>(handle.pHandle));
+            //BlitCL::String str{size};
             bytes.AllocateStorage(size);
             *byteCount = fread(bytes.Data(), 1, size, reinterpret_cast<FILE*>(handle.pHandle));
             if(*byteCount != size)

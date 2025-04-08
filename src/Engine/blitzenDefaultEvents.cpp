@@ -1,5 +1,5 @@
 #include "blitzenEngine.h"
-#include "Core/blitEvents.h"
+#include "Core/blitInput.h"
 #include "Renderer/blitRenderer.h"
 #include "Core/blitTimeManager.h"
 
@@ -20,7 +20,8 @@ namespace BlitzenEngine
 
     static void CloseOnEscapeKeyPressCallback()
     {
-        BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, {});
+        BlitzenCore::EventSystemState::GetState()->FireEvent(BlitzenCore::BlitEventType::EngineShutdown, 
+            nullptr, {});
     }
 
     static void MoveDefaultCameraForwardOnWKeyPressCallback()

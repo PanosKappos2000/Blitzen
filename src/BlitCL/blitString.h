@@ -12,7 +12,7 @@ namespace BlitCL
     class StoragePointer
     {
     public:
-    
+
         StoragePointer(size_t size = 0)
         {
             if (size > 0)
@@ -80,6 +80,13 @@ namespace BlitCL
             strcpy_s(m_data, m_size + 1, data);
         }
 
+        inline String(size_t size)
+        {
+            m_size = size;
+            m_capacity = m_size * ce_blitStringCapacityMultiplier + 1;
+            m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
+        }
+
         inline String(const String& str) = delete;
         inline String operator = (const String& str) = delete;
 
@@ -117,6 +124,16 @@ namespace BlitCL
             }
 
             return -1;
+        }
+
+        inline void CopyString(const char* str)
+        {
+            size_t size = strlen(str);
+            if(size >= m_capacity)
+            {
+                IncreaseCapacity(size);
+            }
+            strcpy_s(m_data, size + 1, str);
         }
 
         inline String Substring(size_t start, size_t size)

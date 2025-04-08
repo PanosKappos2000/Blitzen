@@ -5,7 +5,7 @@
 #define CGLTF_IMPLEMENTATION
 
 #include "Platform/platform.h"
-#include "Core/blitEvents.h"
+#include "Core/blitInput.h"
 #include "Renderer/blitRenderer.h"
 #include "Game/blitCamera.h"
 #include "Core/blitTimeManager.h"
@@ -81,7 +81,8 @@ int main(int argc, char* argv[])
     inputSystemState.Make();
 
     // Platform specific code + window creation
-    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion))
+    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion, 
+        eventSystemState.Data(), inputSystemState.Data()))
             
     BlitzenEngine::RegisterDefaultEvents();
 
@@ -122,7 +123,7 @@ int main(int argc, char* argv[])
     {
         BlitzenPlatform::PlatformPumpMessages();
     
-        BlitzenCore::UpdateInput(0.f);
+        inputSystemState->UpdateInput(0.f);
 
 #if defined(VK_DRAW_WHILE_WAITING)
         if (typeid(renderer) ==
@@ -162,7 +163,7 @@ int main(int argc, char* argv[])
             mainCamera.transformData.windowResize = 0;
         }
 
-        BlitzenCore::UpdateInput(coreClock.GetDeltaTime());
+        inputSystemState->UpdateInput(coreClock.GetDeltaTime());
     }
     engine.BeginShutdown();
 

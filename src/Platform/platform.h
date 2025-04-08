@@ -1,14 +1,16 @@
 #pragma once 
 
 #include "Core/blitLogger.h"
+#include "Core/blitInput.h"
 
 namespace BlitzenPlatform
 {
-    // I am not sure if I need this
     size_t GetPlatformMemoryRequirements();
 
-    // Called when the engine start to get a window and other related systems that are platform specific
-    uint8_t PlatformStartup(const char* appName);
+    uint8_t PlatformStartup(const char* appName, 
+        BlitzenCore::EventSystemState* pEvents, 
+        BlitzenCore::InputSystemState* pInput
+    );
 
     // Called when engine shuts down to shutdown the platform system
     void PlatformShutdown();

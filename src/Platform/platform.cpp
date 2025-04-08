@@ -1,5 +1,5 @@
 #include "platform.h"
-#include "Core/blitEvents.h"
+#include "Core/blitInput.h"
 #include "BlitzenVulkan/vulkanData.h"
 #include "BlitzenGl/openglRenderer.h"
 #include "Engine/blitzenEngine.h"
@@ -28,6 +28,9 @@ namespace BlitzenPlatform
 
         // gl render context
         HGLRC hglrc;
+
+        BlitzenCore::EventSystemState* pEvents;
+        BlitzenCore::InputSystemState* pInputs;
     };
 
     inline PlatformState inl_pPlatformState;
@@ -44,13 +47,17 @@ namespace BlitzenPlatform
         return sizeof(PlatformState);
     }
 
-    uint8_t PlatformStartup(const char* appName)
+    uint8_t PlatformStartup(const char* appName, 
+        BlitzenCore::EventSystemState* pEvents, 
+        BlitzenCore::InputSystemState* pInputs
+    )
     {
         // Platform cannot startup if the engine or the event system have not been initialized first
-        if (!(BlitzenEngine::Engine::GetEngineInstancePointer()) ||
-            !(BlitzenCore::EventSystemState::GetState()) ||
-            !(BlitzenCore::InputSystemState::GetState()))
+        if (!BlitzenEngine::Engine::GetEngineInstancePointer())
             return 0;
+
+        inl_pPlatformState.pEvents = pEvents;
+        inl_pPlatformState.pInputs = pInputs;
 
         inl_pPlatformState.winInstance = GetModuleHandleA(0);
 
@@ -215,120 +222,120 @@ namespace BlitzenPlatform
         return static_cast<double>(nowTime.QuadPart) * clockFrequency;
     }
 
-        void PlatformSleep(uint64_t ms)
+    void PlatformSleep(uint64_t ms)
+    {
+        Sleep(static_cast<DWORD>(ms));
+    }
+
+    uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
+    {
+        VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
+        info.hinstance = inl_pPlatformState.winInstance;
+        info.hwnd = inl_pPlatformState.winWindow;
+
+        auto res = vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
+        if(res != VK_SUCCESS)
+            return 0;
+        return 1;
+    }
+
+    uint8_t CreateOpenglDrawContext()
+    {
+        // Get the device context of the window
+        HDC hdc = GetDC(inl_pPlatformState.winWindow);
+
+        // Pixel format
+        PIXELFORMATDESCRIPTOR pfd;
+        pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+        pfd.nVersion = 1;
+        pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_SUPPORT_COMPOSITION | PFD_DOUBLEBUFFER;
+        pfd.iPixelType = PFD_TYPE_RGBA;
+        pfd.cColorBits = 32;
+        pfd.cAlphaBits = 8;
+        pfd.iLayerType = PFD_MAIN_PLANE;
+
+        // Setup a dummy pixel format 
+        int formatIndex = ChoosePixelFormat(hdc, &pfd);
+        if(!formatIndex)
         {
-            Sleep(static_cast<DWORD>(ms));
+            return 0;
+        }
+        if(!SetPixelFormat(hdc, formatIndex, &pfd))
+        {
+            return 0;
+        }
+        if (!DescribePixelFormat(hdc, formatIndex, sizeof(pfd), &pfd))
+        {
+            return 0;
         }
 
-        uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
+        if ((pfd.dwFlags & PFD_SUPPORT_OPENGL) != PFD_SUPPORT_OPENGL)
         {
-            VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-            info.hinstance = inl_pPlatformState.winInstance;
-            info.hwnd = inl_pPlatformState.winWindow;
-
-            VkResult res = vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
-            if(res != VK_SUCCESS)
-                return 0;
-            return 1;
+            return 0;
         }
 
-        uint8_t CreateOpenglDrawContext()
+        // Create the dummy render context
+        inl_pPlatformState.hglrc = wglCreateContext(hdc);
+
+        // Make this the current context so that glew can be initialized
+        if(!wglMakeCurrent(hdc, inl_pPlatformState.hglrc))
         {
-            // Get the device context of the window
-            HDC hdc = GetDC(inl_pPlatformState.winWindow);
-
-            // Pixel format
-            PIXELFORMATDESCRIPTOR pfd;
-            pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-            pfd.nVersion = 1;
-            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_SUPPORT_COMPOSITION | PFD_DOUBLEBUFFER;
-            pfd.iPixelType = PFD_TYPE_RGBA;
-            pfd.cColorBits = 32;
-            pfd.cAlphaBits = 8;
-            pfd.iLayerType = PFD_MAIN_PLANE;
-
-            // Setup a dummy pixel format 
-            int formatIndex = ChoosePixelFormat(hdc, &pfd);
-            if(!formatIndex)
-            {
-                return 0;
-            }
-            if(!SetPixelFormat(hdc, formatIndex, &pfd))
-            {
-                return 0;
-            }
-            if (!DescribePixelFormat(hdc, formatIndex, sizeof(pfd), &pfd))
-            {
-                return 0;
-            }
-
-            if ((pfd.dwFlags & PFD_SUPPORT_OPENGL) != PFD_SUPPORT_OPENGL)
-            {
-                return 0;
-            }
-
-            // Create the dummy render context
-            inl_pPlatformState.hglrc = wglCreateContext(hdc);
-
-            // Make this the current context so that glew can be initialized
-            if(!wglMakeCurrent(hdc, inl_pPlatformState.hglrc))
-            {
-                return 0;
-            }
-
-            // Initializes glew
-            if (glewInit() != GLEW_OK)
-            {
-                return 0;
-            }
-
-            // With glew now available, extension function pointers can be accessed and a better gl context can be retrieved
-            // So the old render context is deleted and the device is released
-            wglDeleteContext(inl_pPlatformState.hglrc);
-            ReleaseDC(inl_pPlatformState.winWindow, hdc);
-
-            // Get a new device context
-            hdc = GetDC(inl_pPlatformState.winWindow);
-
-            // Choose a pixel format with attributes
-            const int attribList[] =
-            {
-                WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-                WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-                WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-                WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
-                WGL_COLOR_BITS_ARB, 32,
-                WGL_DEPTH_BITS_ARB, 24,
-                WGL_STENCIL_BITS_ARB, 8,
-                0, // End
-            };
-            int pixelFormat;
-            UINT numFormats;
-            wglChoosePixelFormatARB(hdc, attribList, NULL, 1, &pixelFormat, &numFormats);
-
-            // Set the pixel format
-            PIXELFORMATDESCRIPTOR pixelFormatDesc = {};
-	        DescribePixelFormat(hdc, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pixelFormatDesc);
-	        SetPixelFormat(hdc, pixelFormat, &pixelFormatDesc);
-
-            // Create a new render context with attributes (latest opengl version)
-            int const createAttribs[] = {WGL_CONTEXT_MAJOR_VERSION_ARB, 4, WGL_CONTEXT_MINOR_VERSION_ARB,  6,
-		    WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB, 0};
-            inl_pPlatformState.hglrc = wglCreateContextAttribsARB(hdc, 0, createAttribs);
-
-            // Set the gl render context as the new one
-            return (wglMakeCurrent(hdc, inl_pPlatformState.hglrc));
+            return 0;
         }
 
-        void OpenglSwapBuffers()
+        // Initializes glew
+        if (glewInit() != GLEW_OK)
         {
-            #ifdef BLIT_VSYNC
-                wglSwapIntervalEXT(1);
-            #else
-                wglSwapIntervalEXT(0);
-            #endif
-            wglSwapLayerBuffers(GetDC(inl_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
+            return 0;
         }
+
+        // With glew now available, extension function pointers can be accessed and a better gl context can be retrieved
+        // So the old render context is deleted and the device is released
+        wglDeleteContext(inl_pPlatformState.hglrc);
+        ReleaseDC(inl_pPlatformState.winWindow, hdc);
+
+        // Get a new device context
+        hdc = GetDC(inl_pPlatformState.winWindow);
+
+        // Choose a pixel format with attributes
+        const int attribList[] =
+        {
+            WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+            WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+            WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+            WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+            WGL_COLOR_BITS_ARB, 32,
+            WGL_DEPTH_BITS_ARB, 24,
+            WGL_STENCIL_BITS_ARB, 8,
+            0, // End
+        };
+        int pixelFormat;
+        UINT numFormats;
+        wglChoosePixelFormatARB(hdc, attribList, NULL, 1, &pixelFormat, &numFormats);
+
+        // Set the pixel format
+        PIXELFORMATDESCRIPTOR pixelFormatDesc = {};
+	    DescribePixelFormat(hdc, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pixelFormatDesc);
+	    SetPixelFormat(hdc, pixelFormat, &pixelFormatDesc);
+
+        // Create a new render context with attributes (latest opengl version)
+        int const createAttribs[] = {WGL_CONTEXT_MAJOR_VERSION_ARB, 4, WGL_CONTEXT_MINOR_VERSION_ARB,  6,
+	 WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB, 0};
+        inl_pPlatformState.hglrc = wglCreateContextAttribsARB(hdc, 0, createAttribs);
+
+        // Set the gl render context as the new one
+        return (wglMakeCurrent(hdc, inl_pPlatformState.hglrc));
+    }
+
+    void OpenglSwapBuffers()
+    {
+        #ifdef BLIT_VSYNC
+            wglSwapIntervalEXT(1);
+        #else
+            wglSwapIntervalEXT(0);
+        #endif
+        wglSwapLayerBuffers(GetDC(inl_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
+    }
 
         LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param)
         {
@@ -343,7 +350,8 @@ namespace BlitzenPlatform
                 case WM_CLOSE:
                 {
                     BlitzenCore::EventContext context{};
-                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
+                    inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown, 
+                        nullptr, context);
                     return 1;
                 }
 
@@ -362,7 +370,7 @@ namespace BlitzenPlatform
                     BlitzenCore::EventContext context;
                     context.data.ui32[0] = width;
                     context.data.ui32[1] = height;
-                    BlitzenCore::FireEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
+					inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
                     break;
                 }
 
@@ -372,9 +380,9 @@ namespace BlitzenPlatform
                 case WM_KEYUP:
                 case WM_SYSKEYUP: 
                 {
-                    uint8_t pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);// key pressed or released
-                    BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(w_param); // key code
-                    BlitzenCore::InputProcessKey(key, pressed);// let input system know
+                    uint8_t pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+                    BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(w_param);
+                    inl_pPlatformState.pInputs->InputProcessKey(key, pressed);
                     break;
                 } 
                 case WM_MOUSEMOVE: 
