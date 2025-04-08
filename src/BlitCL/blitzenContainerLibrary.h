@@ -3,68 +3,13 @@
 #include "Core/blitMemory.h"
 #include "DynamicArray.h"
 #include "blitString.h"
+#include "blitArray.h"
+#include "blitPfn.h"
 
 #define BLIT_ARRAY_SIZE(array)   sizeof(array) / sizeof(array[0])
 
 namespace BlitCL
 {
-    template<typename T, size_t S>
-    class StaticArray
-    {
-    public:
-        StaticArray()
-        {
-            static_assert(S > 0);
-        }
-
-        StaticArray(const T& data)
-        {
-            static_assert(S > 0);
-
-            for (size_t i = 0; i < S; ++i)
-                BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
-        }
-
-        StaticArray(T&& data)
-        {
-            static_assert(S > 0);
-
-            for (size_t i = 0; i < S; ++i)
-                BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
-        }
-
-        using Iterator = DynamicArrayIterator<T>;
-        Iterator begin() { return Iterator(m_array); }
-        Iterator end() { return Iterator(m_array + S); }
-
-        inline T& operator [] (size_t idx) { return m_array[idx]; }
-
-        inline T* Data() { return m_array; }
-
-        inline size_t Size() { return S; }
-
-        ~StaticArray()
-        {
-
-        }
-    private:
-        T m_array[S];
-    };
-
-
-    inline void FillArray(DynamicArray<uint32_t>& arr, uint32_t val)
-    {
-        if (arr.GetSize() > 0)
-            BlitzenCore::BlitMemSet(arr.Data(), val, arr.GetSize());
-    }
-
-
-
-    /*------------------------------------------------------------------------------------------
-        This structure is a very simple hash table that only takes pointers.
-        It can never own any memory, so the objects it point to should be managed outside.
-        It also only accepts names for keys. Better hash tables will be created at a later time
-    ---------------------------------------------------------------------------------------------*/
     template<typename T>
     class HashMap
     {
@@ -204,6 +149,8 @@ namespace BlitCL
         T* m_pData;
     };
 
+    // The Unkown Pointer is a weak version of the smart pointer, that uses void* instead of templates
+    // Useful for very specific scenarios, applications should choose smart pointer when possible
     class UnknownPointer
     {
     public:
@@ -215,8 +162,7 @@ namespace BlitCL
         }
 
         inline UnknownPointer() : m_pData{ nullptr }, m_size{ 0 }
-        {
-        }
+        {}
 
         inline void Make(void* pData, size_t size)
         {
@@ -237,28 +183,5 @@ namespace BlitCL
     private:
         void* m_pData;
         size_t m_size;
-    };
-
-    // Lightweight Function pointer holder
-    template<typename RET, typename... Args>
-    class Pfn
-    {
-    public:
-
-        using PfnType = RET(*)(Args...);
-
-        Pfn() : m_func{ 0 } {}
-
-        Pfn(PfnType pfn) : m_func{ pfn } {}
-
-        inline Pfn operator = (PfnType pfn) { return Pfn{ pfn }; }
-
-        inline RET operator () (Args... args) { return m_func(args...); }
-
-        inline bool IsFunctional() { return m_func != 0; }
-
-    private:
-
-        PfnType m_func;
     };
 }

@@ -1,51 +1,14 @@
 #pragma once
 #include "Core/blitMemory.h"
+#include "blitArrayIterator.h"
 
 namespace BlitCL
 {
     constexpr uint8_t ce_blitDynamiArrayCapacityMultiplier = 2;
     constexpr BlitzenCore::AllocationType DArrayAlloc = BlitzenCore::AllocationType::DynamicArray;
 
-    template<typename T>
-    class DynamicArrayIterator
-    {
-    public:
-        DynamicArrayIterator(T* ptr) :m_pElement{ ptr } {}
-
-        inline bool operator !=(DynamicArrayIterator<T>& l) { return m_pElement != l.m_pElement; }
-
-        inline DynamicArrayIterator<T>& operator ++() {
-            m_pElement++;
-            return *this;
-        }
-
-        inline DynamicArrayIterator<T>& operator ++(int) {
-            DynamicArrayIterator<T> temp = *this;
-            ++(*this);
-            return temp;
-        }
-
-        inline DynamicArrayIterator<T>& operator --() {
-            m_pElement--;
-            return *this;
-        }
-
-        inline DynamicArrayIterator<T>& operator --(int) {
-            DynamicArrayIterator<T> temp = *this;
-            --(*this);
-            return temp;
-        }
-
-        inline T& operator [](size_t idx) { return m_pElement[idx]; }
-
-        inline T& operator *() { return *m_pElement; }
-
-        inline T* operator ->() { return m_pElement; }
-
-    private:
-        T* m_pElement;
-    };
-
+    // Warning this class is way more dangerous than std::vector. 
+    // It initializes all memory with malloc and expects the user to provide data for each struct when they wish to do so.
     template<typename T>
     class DynamicArray
     {
@@ -56,6 +19,7 @@ namespace BlitCL
         {
         }
 
+        // Allocates memory for initialSize elements. NO CONSTRUCTORS CALLED!
         DynamicArray(size_t initialSize)
             :m_size{ initialSize },
             m_capacity{ initialSize * ce_blitDynamiArrayCapacityMultiplier },
@@ -63,6 +27,7 @@ namespace BlitCL
         {
         }
 
+        // Allocates memory for initialSize elements. Copies the data to every element up to m_size
         DynamicArray(size_t initialSize, const T& data)
             :m_size{ initialSize },
             m_capacity{ initialSize * ce_blitDynamiArrayCapacityMultiplier },
@@ -72,6 +37,7 @@ namespace BlitCL
                 BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
         }
 
+        // Allocates memory for initialSize elements. Copies the data to every element up to m_size
         DynamicArray(size_t initialSize, T&& data)
             :m_size{ initialSize },
             m_capacity{ initialSize * ce_blitDynamiArrayCapacityMultiplier },
@@ -92,15 +58,21 @@ namespace BlitCL
         ~DynamicArray()
         {
             if (m_capacity > 0)
-                BlitzenCore::BlitDestroyAlloc<T>(DArrayAlloc, m_pBlock, m_capacity);
+            {
+                // Calls destructors for elements up to m_size.
+                for (size_t i = 0; i < m_size; ++i)
+                {
+                    m_pBlock[i].~T(); 
+                }
+                // Free the entire memory block.
+                BlitzenCore::BlitFree<T>(DArrayAlloc, m_pBlock, m_capacity);
+            }
         }
-
 
 
         using Iterator = DynamicArrayIterator<T>;
         inline Iterator begin() { return Iterator(m_pBlock); }
         inline Iterator end() { return Iterator(m_pBlock + m_size); }
-
 
         inline size_t GetSize() const { return m_size; }
         inline T& operator [] (size_t index) const{ return m_pBlock[index]; }
@@ -185,14 +157,6 @@ namespace BlitCL
 
     private:
 
-        size_t m_size;
-        
-        size_t m_capacity;
-        
-        T* m_pBlock;
-
-    private:
-
         void RearrangeCapacity(size_t newSize)
         {
             auto oldCapacity = m_capacity;
@@ -206,5 +170,19 @@ namespace BlitCL
                 BlitzenCore::BlitFree<T>(DArrayAlloc, pTemp, oldCapacity);
             }
         }
+
+    private:
+
+        size_t m_size;
+        
+        size_t m_capacity;
+        
+        T* m_pBlock;
     };
+
+    inline void FillArray(DynamicArray<uint32_t>& arr, uint32_t val)
+    {
+        if (arr.GetSize() > 0)
+            BlitzenCore::BlitMemSet(arr.Data(), val, arr.GetSize());
+    }
 }

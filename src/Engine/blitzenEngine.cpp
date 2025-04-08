@@ -170,6 +170,8 @@ int main(int argc, char* argv[])
     // (because it waits for a huge amount of deletes)
     BlitzenPlatform::PlatformShutdown();
 }
+
+
 #else
 int main()
 {

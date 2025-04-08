@@ -12,7 +12,7 @@ namespace BlitCL
     class StoragePointer
     {
     public:
-
+    
         StoragePointer(size_t size = 0)
         {
             if (size > 0)
