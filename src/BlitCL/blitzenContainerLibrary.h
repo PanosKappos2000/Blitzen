@@ -1,13 +1,10 @@
 #pragma once
-
 #include "Core/blitMemory.h"
 #include "DynamicArray.h"
 #include "blitArray.h"
 #include "blitPfn.h"
 #include "blitSmartPointer.h"
 #include "blitHashMap.h"
-
-#define BLIT_ARRAY_SIZE(array)   sizeof(array) / sizeof(array[0])
 
 namespace BlitCL
 {

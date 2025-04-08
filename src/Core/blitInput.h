@@ -1,6 +1,6 @@
 #pragma once
 #include "blitEvents.h"
-#include "blitCl/blitArray.h"
+#include "blitMemory.h"
 
 namespace BlitzenCore
 {

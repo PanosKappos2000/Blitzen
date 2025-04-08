@@ -1,7 +1,4 @@
 #include "vulkanRenderer.h"
-// Temporary, I will like to handle this myself
-#include <fstream>
-
 #include "Platform/filesystem.h"
 
 namespace BlitzenVulkan
@@ -84,8 +81,8 @@ namespace BlitzenVulkan
         
         // Reads the shader code in byte format
         size_t filesize = 0;
-        BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::String> pBytes;
-        if(!BlitzenPlatform::FilesystemReadAllBytes(handle, pBytes, &filesize))
+        BlitCL::String bytes;
+        if(!BlitzenPlatform::FilesystemReadAllBytes(handle, bytes, &filesize))
         {
             return 0;
         }
@@ -94,7 +91,7 @@ namespace BlitzenVulkan
         VkShaderModuleCreateInfo shaderModuleInfo{};
         shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         shaderModuleInfo.codeSize = static_cast<uint32_t>(filesize);
-        shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(pBytes.Data());
+        shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(bytes.Data());
         VkResult res = vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule);
         if(res != VK_SUCCESS)
             return 0;

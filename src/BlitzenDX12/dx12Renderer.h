@@ -1,5 +1,7 @@
 #include "dx12Data.h"
 #include "Renderer/blitRenderingResources.h"
+#include "Renderer/blitDDSTextures.h"
+#include "Core/blitLogger.h"
 
 namespace BlitzenDX12
 {

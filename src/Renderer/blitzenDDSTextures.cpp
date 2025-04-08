@@ -33,21 +33,4 @@ namespace BlitzenEngine
 
 		return 1;
 	}
-
-		/*switch (chosenRenderer)
-		{
-			case RendererToLoadDDS::Vulkan:
-			{
-				
-			}
-
-			case RendererToLoadDDS::Opengl:
-			{
-				
-			}
-
-			default:
-				return 0;
-		}
-    }*/
 }

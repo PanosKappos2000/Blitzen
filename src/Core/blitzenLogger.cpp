@@ -1,9 +1,7 @@
 #include "blitLogger.h"
 #include "blitAssert.h"
 #include "Platform/platform.h"
-
 #include "Engine/blitzenEngine.h"
-
 #include <stdarg.h>
 #include <cstring>
 

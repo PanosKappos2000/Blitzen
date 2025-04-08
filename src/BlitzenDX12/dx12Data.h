@@ -2,11 +2,8 @@
 #include <dxgi1_6.h>
 #include <wrl.h>
 #include <d3d12sdklayers.h>
-
 #include "BlitCL/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
-#include "Renderer/blitDDSTextures.h"
-#include "Core/blitLogger.h"
 
 namespace BlitzenDX12
 {

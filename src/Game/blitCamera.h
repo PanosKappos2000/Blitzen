@@ -1,6 +1,4 @@
 #pragma once
-
-// The camera will need to access math library types and functions
 #include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenEngine
@@ -83,8 +81,11 @@ namespace BlitzenEngine
     };
 
     // Gives some default values to a new camera so that it does not spawn with a random transform
-    void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
-    BlitML::vec3 initialCameraPosition, float drawDistance, float initialYawRotation = 0, float initialPitchRotation = 0);
+    void SetupCamera(Camera& camera, float fov, 
+        float windowWidth, float windowHeight, float zNear, 
+        BlitML::vec3 initialCameraPosition, float drawDistance, 
+        float initialYawRotation = 0, float initialPitchRotation = 0
+    );
 
     // Sets up camera with engine defaults
     void SetupCamera(Camera& camera);
@@ -95,7 +96,8 @@ namespace BlitzenEngine
     // Rotates a camera based on the amount passed to pitchRotation and yawRotation. Does not support rollRotation for now
     void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation);
 
-    // Since the main camera is also responsible for the projection matrix, whenever it needs to be updated the main camera is passed to this functions
+    // Since the main camera is also responsible for the projection matrix, 
+    // whenever it needs to be updated the main camera is passed to this functions
     // Values that have to do with projection are also updated
     void UpdateProjection(Camera& camera, float newWidth, float newHeight);
 

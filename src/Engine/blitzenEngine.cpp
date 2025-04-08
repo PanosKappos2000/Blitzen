@@ -1,15 +1,10 @@
 #include "Engine/blitzenEngine.h"
-
 // Single file gltf loading https://github.com/jkuhlmann/cgltf
 // Placed here because cgltf is called from a template function
 #define CGLTF_IMPLEMENTATION
-
 #include "Platform/platform.h"
-#include "Core/blitInput.h"
 #include "Renderer/blitRenderer.h"
-#include "Game/blitCamera.h"
 #include "Core/blitTimeManager.h"
-
 #include <thread>
 
 namespace BlitzenEngine

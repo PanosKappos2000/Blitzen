@@ -173,8 +173,7 @@ namespace BlitzenPlatform
         return 0;
     }
 
-    uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::String>& bytes, 
-    size_t* byteCount)
+    uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::String& str, size_t* byteCount)
     {
         if(handle.pHandle)
         {
@@ -184,8 +183,8 @@ namespace BlitzenPlatform
 
             rewind(reinterpret_cast<FILE*>(handle.pHandle));
             //BlitCL::String str{size};
-            bytes.AllocateStorage(size);
-            *byteCount = fread(bytes.Data(), 1, size, reinterpret_cast<FILE*>(handle.pHandle));
+            str.Resize(size);
+            *byteCount = fread(str.Data(), 1, size, reinterpret_cast<FILE*>(handle.pHandle));
             if(*byteCount != size)
             {
                 return 0;

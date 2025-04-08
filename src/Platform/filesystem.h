@@ -1,5 +1,4 @@
 #pragma once
-
 #include "BlitCL/blitString.h"
 
 namespace BlitzenPlatform
@@ -41,6 +40,5 @@ namespace BlitzenPlatform
     uint8_t FilesystemReadAllBytes(FileHandle& handle, uint8_t** pBytesRead, size_t* byteCount);
 
     // This overload uses a (terrible) RAII wrapper instead of the linear allocator, so it should be prefered
-    uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::String>& bytes, 
-    size_t* byteCount);
+    uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::String& bytes, size_t* byteCount);
 }

@@ -1,8 +1,9 @@
 #pragma once
 #include "renderingResourcesTypes.h"
-#include "BlitCL/blitzenContainerLibrary.h"
+#include "BlitCL/blitArray.h"
+#include "BlitCL/DynamicArray.h"
+#include "BlitCL/blitHashMap.h"
 #include "Game/blitCamera.h"
-
 #include "Cgltf/cgltf.h"
 // Algorithms for building meshlets, loading LODs, optimizing vertex caches etc.
 // https://github.com/zeux/meshoptimizer

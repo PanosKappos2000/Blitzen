@@ -1,5 +1,8 @@
 #pragma once
 #include "openglData.h"
+#include "BlitCL/DynamicArray.h"
+#include "Renderer/blitDDSTextures.h"
+#include "Renderer/blitRenderingResources.h"
 
 namespace BlitzenGL
 {
