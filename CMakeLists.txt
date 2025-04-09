@@ -63,7 +63,8 @@ add_executable(BlitzenEngine
                 src/BlitzenMathLibrary/blitMLTypes.h
                 
                 src/Platform/platform.h
-                src/Platform/platform.cpp
+                src/Platform/blitzenWindows.cpp
+                src/Platform/blitzenLinux.cpp
                 src/Platform/filesystem.h
                 src/Platform/filesystem.cpp
                 
@@ -119,7 +120,8 @@ add_executable(BlitzenEngine
                 src/BlitzenMathLibrary/blitMLTypes.h
                 
                 src/Platform/platform.h
-                src/Platform/platform.cpp
+                src/Platform/blitzenWindows.cpp
+                src/Platform/blitzenLinux.cpp
                 src/Platform/filesystem.h
                 src/Platform/filesystem.cpp
                 
