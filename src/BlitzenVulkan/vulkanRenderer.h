@@ -157,7 +157,7 @@ namespace BlitzenVulkan
         // Initalizes structure needed to call the DrawWhileWaiting function
         uint8_t CreateIdleDrawHandles();
 
-        bool VulkanRenderer::CreateLoadingTrianglePipeline();
+        bool CreateLoadingTrianglePipeline();
 
         // Initializes the buffers that are included in frame tools
         uint8_t VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);

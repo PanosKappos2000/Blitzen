@@ -1,5 +1,7 @@
 #pragma once
 #include "Core/blitMemory.h"
+#include <string.h>
+#include <cstdint>
 
 namespace BlitCL
 {
@@ -77,7 +79,7 @@ namespace BlitCL
             m_size = strlen(data);
             m_capacity = m_size * ce_blitStringCapacityMultiplier + 1;
             m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
-            strcpy_s(m_data, m_size + 1, data);
+            strcpy(m_data, data);
         }
 
         inline String(size_t size)
@@ -121,7 +123,7 @@ namespace BlitCL
 			{
 				IncreaseCapacity(newSize);
 			}
-            strcpy_s(m_data + m_size, strSize + 1, str);
+            strcpy(m_data + m_size, str);
             m_size = newSize;
         }
 
@@ -143,14 +145,14 @@ namespace BlitCL
             {
                 IncreaseCapacity(size);
             }
-            strcpy_s(m_data, size + 1, str);
+            strcpy(m_data, str);
         }
 
         inline String Substring(size_t start, size_t size)
         {
             BlitCL::StoragePointer<char, StrAlloc> newStringData{};
             newStringData.AllocateStorage(size + 1);
-            strncpy_s(newStringData.Data(), size + 1, m_data + start, size);
+            strncpy(newStringData.Data(), m_data + start, size);
 
             return String{ newStringData.Data() };
         }
@@ -172,7 +174,7 @@ namespace BlitCL
             m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
             if (m_size != 0)
             {
-                strcpy_s(m_data, m_size + 1, previousData);
+                strcpy(m_data, previousData);
             }
         }
 

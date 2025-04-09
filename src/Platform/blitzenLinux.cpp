@@ -1,11 +1,12 @@
-#if defined(linux)
+#define DBGBLIT
+#if defined(DBGBLIT)
 #include "platform.h"
 #include "Core/blitInput.h"
 #include "BlitzenVulkan/vulkanData.h"
 #include "BlitzenGl/openglRenderer.h"
 #include "Engine/blitzenEngine.h"
 #include <cstring>
-namspace BlitzenPlatform
+namespace BlitzenPlatform
 {
         #include <xcb/xcb.h>
         #include <X11/keysym.h>
@@ -34,6 +35,9 @@ namspace BlitzenPlatform
             xcb_screen_t* pScreen;
             xcb_atom_t wm_protocols;
             xcb_atom_t wm_delete_win;
+
+            BlitzenCore::EventSystemState* pEventSystem;
+            BlitzenCore::InputSystemState* pInputSystem;
         };
 
         inline PlatformState s_state;
@@ -41,9 +45,13 @@ namspace BlitzenPlatform
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);
 
-        uint8_t PlatformStartup(const char* appName)
+        uint8_t PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEventSystem, 
+            BlitzenCore::InputSystemState* pInputSystem)
         {
             s_state.pDisplay = XOpenDisplay(nullptr);
+
+            s_state.pEventSystem = pEventSystem;
+            s_state.pInputSystem = pInputSystem;
 
             // Turn off key repeats.
             XAutoRepeatOff(s_state.pDisplay);
@@ -162,7 +170,7 @@ namspace BlitzenPlatform
                         BlitzenCore::BlitKey key = TranslateKeycode(keySym);
 
                         // Pass to the input subsystem for processing.
-                        BlitzenCore::InputProcessKey(key, pressed);
+                        s_state.pInputSystem->InputProcessKey(key, pressed);
                     } break;
                     case XCB_BUTTON_PRESS:
                     case XCB_BUTTON_RELEASE: 
@@ -205,7 +213,7 @@ namspace BlitzenPlatform
                         BlitzenCore::EventContext context;
                         context.data.ui32[0] = configureEvent->width;
                         context.data.ui32[1] = configureEvent->height;
-                        BlitzenCore::FireEvent(BlitzenCore::BlitEventType::WindowResize, 0, context);
+                        s_state.pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowResize, 0, context);
                         break;
                     }
 
