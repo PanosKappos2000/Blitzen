@@ -23,6 +23,7 @@ add_executable(BlitzenEngine
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
+                src/BlitzenVulkan/vulkanHandles.cpp
                 src/BlitzenVulkan/vulkanInit.cpp
                 src/BlitzenVulkan/vulkanResources.cpp
                 src/BlitzenVulkan/vulkanPipelines.cpp
@@ -88,6 +89,7 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
                 src/BlitzenVulkan/vulkanInit.cpp
+                src/BlitzenVulkan/vulkanHandles.cpp
                 src/BlitzenVulkan/vulkanResources.cpp
                 src/BlitzenVulkan/vulkanPipelines.cpp
                 src/BlitzenVulkan/vulkanRendererSetup.cpp
@@ -152,7 +154,7 @@ target_include_directories(
 
 target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_REIN_SANT_ENG
-                            BLIT_GDEV_EDT
+                            #BLIT_GDEV_EDT
 
                             #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros
