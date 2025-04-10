@@ -323,46 +323,29 @@ namespace BlitzenVulkan
     */
     private:
 
-        // graphics pipeline object and lyaouts
+        // Main graphics pipeline. Draws opaque objects that have no special properties
         PipelineObject m_opaqueGeometryPipeline;
         PipelineObject m_postPassGeometryPipeline;
         PipelineLayout m_graphicsPipelineLayout;
 
-        // Oblique Near-Plane clipping objects
+        // Draws objects that use the near plane clipping matrix.
         PipelineObject m_onpcReflectiveGeometryPipeline;
         PipelineLayout m_onpcReflectiveGeometryLayout;
 
+        // Oblique Near place clipping culling pipeline. Might not be necessary
         PipelineObject m_onpcDrawCullPipeline;
         PipelineLayout m_onpcDrawCullLayout;
 
+        // Draws a triangle. Used while resources are being loaded, so that the screen in not white. Temporary
         PipelineObject m_loadingTrianglePipeline;
         PipelineLayout m_loadingTriangleLayout;
         BlitML::vec3 m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f };
 
-        // Draws opaque geometries. Uses opaque geometry pipline object and graphics pipline layout
-        PipelineProgram m_opaqueGeometryProgram;
-
-        // Draw post pass geometries(geometries with alpha discard). Uses post pass geometry pipline and graphics pipeline layout
-        PipelineProgram m_postPassGeometryProgram;
-
-        // These are compute pipelines that hold the shaders that will perform culling operations on render object level
-        // @InitialDrawCull
-        // The initial culling shader will do frustum culling tests on the objects that were visible last frame
-        // @LateDrawCull
-        // The late culling shader will do both frustum and occlusion culling on all objects
-        // For objects that were not accessed by the initial shader, it will create draw commands (if the are not culled away)
-        // It will also set the frame visibility of each object. This data will be accessed by the initial cull shader next frame
+        // Culling shaders. Initial does furstum culling and LOD selection
+        // Late culling exists to add occlusion culling
         PipelineObject m_initialDrawCullPipeline;
         PipelineObject m_lateDrawCullPipeline;
         PipelineLayout m_drawCullLayout;
-
-        // Performs furstum culling and LOD selection on object that were tagged visible last frame by the late draw cull
-        // Sets up an indirect draw command buffer and indirect count buffer for the graphics programs to use
-        PipelineProgram m_initialDrawCullProgram;
-
-        // Performs frustum culling and occlusion culling and LOD selection on all objects
-        // Sets up an indirect draw command buffer and indirect count buffer for objects that were not tagged as visible last frame
-        PipelineProgram m_lateDrawCullProgram;
 
         // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
         // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 
@@ -373,6 +356,7 @@ namespace BlitzenVulkan
         PipelineObject m_basicBackgroundPipeline;
         PipelineLayout m_basicBackgroundLayout;
 
+        // Copies the color attachment to the current swapchain image. Used at the end of the DrawFrame function
         PipelineObject m_generatePresentationPipeline;
         PipelineLayout m_generatePresentationLayout;
     

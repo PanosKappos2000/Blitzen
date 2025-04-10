@@ -5,7 +5,7 @@
 namespace BlitzenVulkan
 {
     // Platform specific expressions
-    #ifdef _WIN32
+    #if defined(_WIN32)
         constexpr const char* ce_surfaceExtensionName  = "VK_KHR_win32_surface";
         constexpr const char* ce_baseValidationLayerName =  "VK_LAYER_KHRONOS_validation";                 
     #elif linux
@@ -66,10 +66,7 @@ namespace BlitzenVulkan
     }
 
     VulkanRenderer::VulkanRenderer() :
-        m_opaqueGeometryProgram(m_opaqueGeometryPipeline, m_graphicsPipelineLayout), 
-        m_postPassGeometryProgram(m_postPassGeometryPipeline, m_graphicsPipelineLayout), 
-        m_initialDrawCullProgram(m_initialDrawCullPipeline, m_drawCullLayout), 
-        m_lateDrawCullProgram(m_lateDrawCullPipeline, m_drawCullLayout)
+        m_debugMessenger{VK_NULL_HANDLE}
     {}
 
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
@@ -1098,6 +1095,9 @@ namespace BlitzenVulkan
             vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
         }
 
-        DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_pCustomAllocator);
+        if (m_debugMessenger != VK_NULL_HANDLE)
+        {
+            DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_pCustomAllocator);
+        }
     }
 }
