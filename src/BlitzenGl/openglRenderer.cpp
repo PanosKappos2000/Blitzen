@@ -183,20 +183,20 @@ namespace BlitzenGL
 
     void OpenglRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-        BlitzenEngine::Camera* pCamera = reinterpret_cast<BlitzenEngine::Camera*>(context.pCamera);
+        auto pCamera = context.pCamera;
         // Update the viewport if the window has resized
-        if(pCamera->transformData.windowResize)
+        if (pCamera->transformData.windowResize)
         {
-            glViewport(0, 0, 
-            static_cast<GLsizei>(pCamera->transformData.windowWidth), 
-            static_cast<GLsizei>(pCamera->transformData.windowHeight));
+            glViewport(0, 0,
+                static_cast<GLsizei>(pCamera->transformData.windowWidth),
+                static_cast<GLsizei>(pCamera->transformData.windowHeight));
         }
 
         // Update the culling data buffer
         glBindBuffer(GL_UNIFORM_BUFFER, m_viewDataBuffer.handle);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CameraViewData), &(pCamera->viewData), GL_STATIC_READ);
 
-        CullData cull(context.pResources->renderObjectCount, context.bOcclusionCulling, context.bLOD);
+        CullData cull{ context.pResources->renderObjectCount };
         glBindBuffer(GL_UNIFORM_BUFFER, m_cullDataBuffer.handle);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(CullData), &(cull), GL_STATIC_READ);
 

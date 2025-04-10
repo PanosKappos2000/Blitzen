@@ -326,43 +326,18 @@ namespace BlitzenEngine
 
         RenderingResources* pResources;
 
-        // Debug values
-        uint8_t bOcclusionCulling;
-        uint8_t bLOD;
-
         // Tells the renderer if it should do call Oblique near clipping shaders
         uint8_t bOnpc = 0;
 
-        inline DrawContext(BlitzenEngine::Camera* pCam, 
-            RenderingResources* pr, 
-            uint8_t onpc = 0, uint8_t bOC = 1, uint8_t bLod = 1
-        ) : pCamera(pCam), pResources(pr), bOcclusionCulling{bOC}, bLOD{bLod}, bOnpc{onpc} 
+        inline DrawContext(BlitzenEngine::Camera* pCam, RenderingResources* pr, uint8_t onpc = 0): 
+            pCamera(pCam), pResources(pr), bOnpc{onpc} 
         {}
     };
 
 
 
     // Sets random transform
-    inline void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
-    {
-        transform.pos = BlitML::vec3(
-            (float(rand()) / RAND_MAX) * multiplier,//x 
-            (float(rand()) / RAND_MAX) * multiplier,//y
-            (float(rand()) / RAND_MAX) * multiplier
-        );
-
-        transform.scale = scale;
-
-        transform.orientation = BlitML::QuatFromAngleAxis(
-            BlitML::vec3(
-                (float(rand()) / RAND_MAX) * 2 - 1, // x
-                (float(rand()) / RAND_MAX) * 2 - 1, // y
-                (float(rand()) / RAND_MAX) * 2 - 1
-            ),
-            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), // Angle 
-            0
-        );
-    }
+    void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);
 
     // Test functions
     void LoadTestGeometry(RenderingResources* pResources);

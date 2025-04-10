@@ -555,7 +555,7 @@ namespace BlitzenEngine
                             which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value"
                     )
 
-                    RenderObject& current = renders[renderObjectCount];
+                    auto& current = renders[renderObjectCount];
                     current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
                     current.transformId = transformId;
                     renderObjectCount++;
@@ -620,6 +620,27 @@ namespace BlitzenEngine
         pResources->LoadMeshFromObj("Assets/Meshes/dragon.obj", "dragon");
         pResources->LoadMeshFromObj("Assets/Meshes/kitten.obj", "kitten");
         pResources->LoadMeshFromObj("Assets/Meshes/FinalBaseMesh.obj", "human");
+    }
+
+    void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
+    {
+        transform.pos = BlitML::vec3(
+            (float(rand()) / RAND_MAX) * multiplier,//x 
+            (float(rand()) / RAND_MAX) * multiplier,//y
+            (float(rand()) / RAND_MAX) * multiplier
+        );
+
+        transform.scale = scale;
+
+        transform.orientation = BlitML::QuatFromAngleAxis(
+            BlitML::vec3(
+                (float(rand()) / RAND_MAX) * 2 - 1, // x
+                (float(rand()) / RAND_MAX) * 2 - 1, // y
+                (float(rand()) / RAND_MAX) * 2 - 1
+            ),
+            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), // Angle 
+            0
+        );
     }
 
     static void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderingResources* pResources,

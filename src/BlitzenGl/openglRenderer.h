@@ -21,11 +21,9 @@ namespace BlitzenGL
     struct CullData
     {
         uint32_t drawCount;
-        uint8_t occlusionEnabled;
-        uint8_t lodEnabled;
 
-        inline CullData(uint32_t dc, uint8_t oc, uint8_t lod) 
-            :drawCount{dc}, occlusionEnabled{oc}, lodEnabled{lod} 
+        inline CullData(uint32_t dc) 
+            :drawCount{dc} 
         {}
     };
 

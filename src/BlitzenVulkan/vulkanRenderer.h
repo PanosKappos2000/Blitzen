@@ -130,23 +130,13 @@ namespace BlitzenVulkan
 		void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, FrameTools& tools, VarBuffers& buffers);
 
         // When a dynamic object moves, it should call this function to update the staging buffer
-        inline void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform newTr)
-        {
-            auto pData = m_varBuffers[m_currentFrame].pTransformData;
-            BlitzenCore::BlitMemCopy(pData + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
-        }
-
-        // TODO: Remember to erase this
-        void SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight);
+        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
 
         ~VulkanRenderer();
 
         VulkanRenderer operator = (const VulkanRenderer& vk) = delete;
 
     private:
-
-        // This pointer will be used to get access to the renderer for things like automatic destructors
-        static VulkanRenderer* m_pThisRenderer;
 
         // Creates structures that allow Vulkan to allocate resources (command buffers, allocator, texture sampler) 
         void SetupResourceManagement();
@@ -208,16 +198,11 @@ namespace BlitzenVulkan
         // Static function that allows access to vulkan renderer at any scope
         inline static VulkanRenderer* GetRendererInstance() {return m_pThisRenderer;}
 
-        inline VulkanStats GetStats() const {return m_stats;}
+        inline VulkanStats GetStats() const { return m_stats; }
 
-        /*
-            TODO: Switch this to memory crucial handle pointer, to the memory manager
-        */
-        // The Vulkan API instance
+        // Vulkan API and memory crucials
         VkInstance m_instance;
-        // Used to allocate vulkan resources like buffers and images
         VmaAllocator m_allocator;
-        // Handle to the logical device
         VkDevice m_device;
 
     /*
@@ -225,12 +210,12 @@ namespace BlitzenVulkan
     */
     private:
 
-        // Custom allocator, don't need it right now
-        VkAllocationCallbacks* m_pCustomAllocator = nullptr;
+        VkAllocationCallbacks* m_pCustomAllocator;
 
         VkDebugUtilsMessengerEXT m_debugMessenger;
 
-        // It's important for this to be declared above swapchain, as it needs to be destroyed after it
+        // WARNING: Do not move swapchain declaration above this
+        // Destructor order is important for these 2 handles
         SurfaceKHR m_surface;
 
         VkPhysicalDevice m_physicalDevice;
@@ -269,12 +254,12 @@ namespace BlitzenVulkan
 			VK_IMAGE_LAYOUT_GENERAL
 		};
         VkImageView m_depthPyramidMips[ce_maxDepthPyramidMipLevels];
-        uint8_t m_depthPyramidMipLevels = 0;
+        uint8_t m_depthPyramidMipLevels;
         VkExtent2D m_depthPyramidExtent;
 
         // Will hold all textures that will be loaded for the scene, to pass them to the global descriptor set later
         TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
-        size_t textureCount = 0;
+        size_t textureCount;
         ImageSampler m_textureSampler;
 
     /*
@@ -294,12 +279,10 @@ namespace BlitzenVulkan
         // Layout for descriptors that will be using PushDescriptor extension. Has 10+ bindings
         DescriptorSetLayout m_pushDescriptorBufferLayout;
 
-        BlitCL::StaticArray<VkWriteDescriptorSet, 
-            ce_graphicsDecriptorWriteCount> pushDescriptorWritesGraphics;
+        BlitCL::StaticArray<VkWriteDescriptorSet, ce_graphicsDecriptorWriteCount> pushDescriptorWritesGraphics;
         VkWriteDescriptorSet pushDescriptorWritesCompute[ce_computeDescriptorWriteCount];
 
-		BlitCL::StaticArray<VkWriteDescriptorSet, 
-            ce_graphicsDecriptorWriteCount> m_pushDescriptorWritesOnpcGraphics;
+		BlitCL::StaticArray<VkWriteDescriptorSet, ce_graphicsDecriptorWriteCount> m_pushDescriptorWritesOnpcGraphics;
         VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[ce_computeDescriptorWriteCount];
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
@@ -339,7 +322,7 @@ namespace BlitzenVulkan
         // Draws a triangle. Used while resources are being loaded, so that the screen in not white. Temporary
         PipelineObject m_loadingTrianglePipeline;
         PipelineLayout m_loadingTriangleLayout;
-        BlitML::vec3 m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f };
+        BlitML::vec3 m_loadingTriangleVertexColor;
 
         // Culling shaders. Initial does furstum culling and LOD selection
         // Late culling exists to add occlusion culling
@@ -367,22 +350,23 @@ namespace BlitzenVulkan
 
         FrameTools m_frameToolsList[ce_framesInFlight];
 
+        // Used for any loading pipeline
         CommandPool m_idleCommandBufferPool;
         VkCommandBuffer m_idleDrawCommandBuffer;
 
-        // Used to access the right frame tools depending on which ones are already being used
-        uint8_t m_currentFrame = 0;
+        // Frame tools index
+        uint8_t m_currentFrame;
 
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
        
         Queue m_graphicsQueue;
-
         Queue m_presentQueue;
-
         Queue m_computeQueue;
-
         Queue m_transferQueue;
+
+        // Static singleton pointer
+        static VulkanRenderer* m_pThisRenderer;
     };
 
 

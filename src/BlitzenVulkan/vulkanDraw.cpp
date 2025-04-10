@@ -735,6 +735,12 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &depthAttachmentReadBarrier);
     }
 
+    void VulkanRenderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)
+    {
+        auto pData = m_varBuffers[m_currentFrame].pTransformData;
+        BlitzenCore::BlitMemCopy(pData + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
+    }
+
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usageFlags)
     {
         vkResetCommandBuffer(commandBuffer, 0);
@@ -899,10 +905,5 @@ namespace BlitzenVulkan
         CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
         m_depthPyramidMips, m_depthPyramidMipLevels, 
         m_drawExtent, m_device, m_allocator);
-    }
-
-    void VulkanRenderer::SetupForSwitch(uint32_t windowWidth, uint32_t windowHeight)
-    {
-        RecreateSwapchain(windowWidth, windowHeight);
     }
 }

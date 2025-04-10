@@ -66,7 +66,9 @@ namespace BlitzenVulkan
     }
 
     VulkanRenderer::VulkanRenderer() :
-        m_debugMessenger{VK_NULL_HANDLE}
+        m_pCustomAllocator{ nullptr }, m_debugMessenger {VK_NULL_HANDLE}, 
+        m_currentFrame{ 0 }, m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f }, 
+        m_depthPyramidMipLevels{ 0 }, textureCount{ 0 }
     {}
 
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
@@ -265,7 +267,7 @@ namespace BlitzenVulkan
 
         if(!layersFound)
         {
-            BLIT_ERROR("The vulkan renderer will not be used in debug mode without validation layers")
+            BLIT_ERROR("The vulkan renderer should not be used in debug mode without validation layers")
             return 0;
         }
         
