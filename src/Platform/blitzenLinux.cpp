@@ -1,5 +1,4 @@
-#define DBGBLIT
-#if defined(DBGBLIT)
+#if defined(linux)
 #include "platform.h"
 #include "Core/blitInput.h"
 #include "BlitzenVulkan/vulkanData.h"
