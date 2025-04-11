@@ -123,7 +123,7 @@ namespace BlitML
         // Creates and identity matrix if identity is defaulted or any value other than 1. Creates a matrix filled with zeroes otherwise
         inline mat4(uint8_t identity = 1)
         {
-            BlitzenCore::BlitZeroMemory(this, sizeof(mat4));
+            BlitzenCore::BlitZeroMemory(this);
 
             if(identity)
             {

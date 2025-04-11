@@ -222,10 +222,10 @@ namespace BlitzenCore
     }
     
     // The templates below are placeholders to add functionality later
-    template<typename T = void>
-    void BlitZeroMemory(void* pBlock, size_t size)
+    template<typename T>
+    void BlitZeroMemory(T* pBlock, size_t size = 1)
     {
-        BlitzenPlatform::PlatformMemZero(pBlock, size);
+        BlitzenPlatform::PlatformMemZero(pBlock, sizeof(T) * size);
     }
 
     // Allocates memory using the linear allocator
