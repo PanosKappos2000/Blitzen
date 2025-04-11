@@ -1,5 +1,14 @@
+#pragma once
 #include "Engine/blitzenEngine.h"
 #include "Platform/platform.h"
+
+namespace BlitzenPlatform
+{
+    // Sets up clock frequency
+    void PlatfrormSetupClock();
+    // Get delta time based on the above
+    double PlatformGetAbsoluteTime();
+}
 
 namespace BlitzenCore
 {

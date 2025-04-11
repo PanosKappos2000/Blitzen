@@ -1,6 +1,6 @@
 #pragma once 
 #include "blitMLTypes.h"
-#include "Platform/platform.h"
+#include "Core/blitTimeManager.h"
 
 #include <math.h>
 #include <stdlib.h>
