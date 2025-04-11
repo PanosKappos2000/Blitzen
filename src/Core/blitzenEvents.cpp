@@ -5,9 +5,14 @@ namespace BlitzenCore
 {
     void RegisterEvent(BlitEventType type, void* pListener, EventCallbackType eventCallback)
     {
-        if (type == BlitEventType::KeyPressed || type == BlitEventType::KeyReleased || 
-            type == BlitEventType::MouseButtonPressed || type == BlitEventType::MouseButtonReleased)
+        if (type == BlitEventType::KeyPressed 
+            || type == BlitEventType::KeyReleased 
+            ||type == BlitEventType::MouseButtonPressed 
+            || type == BlitEventType::MouseButtonReleased
+        )
+        {
             return;
+        }
 
         auto pEvents = EventSystemState::GetState()->eventTypes;
         pEvents[size_t(type)] = { pListener, eventCallback };
@@ -18,9 +23,29 @@ namespace BlitzenCore
         for (uint32_t i = 0; i < 256; ++i)
         {
             keyPressCallbacks[i] = []() {BLIT_INFO("No callback assigned")};
+            keyReleaseCallbacks[i] = []() {};
+        }
+
+        for (uint32_t i = 0; i < uint8_t(MouseButton::MaxButtons); i++)
+        {
+            mousePressCallbacks[i] = [](int16_t, int16_t) {};
+            mouseReleaseCallbacks[i] = [](int16_t, int16_t) {};
         }
 
         s_pInputSystemState = this;
+    }
+
+    void InputSystemState::InputProcessKey(BlitKey key, uint8_t bPressed)
+    {
+        auto idx = static_cast<uint16_t>(key);
+        if (currentKeyboard[idx] != bPressed)
+        {
+            currentKeyboard[idx] = bPressed;
+            if (bPressed)
+                keyPressCallbacks[idx]();
+            else
+                keyReleaseCallbacks[idx]();
+        }
     }
 
     void RegisterKeyPressCallback(BlitKey key, BlitCL::Pfn<void> callback) 
@@ -38,19 +63,6 @@ namespace BlitzenCore
     {
         InputSystemState::GetState()->keyPressCallbacks[size_t(key)] = press;
         InputSystemState::GetState()->keyReleaseCallbacks[size_t(key)] = release;
-    }
-
-    void CallKeyPressFunction(BlitKey key)
-    {
-        auto func = InputSystemState::GetState()->keyPressCallbacks[size_t(key)];
-        func();
-    }
-
-    void CallKeyReleaseFunction(BlitKey key)
-    {
-        auto func = InputSystemState::GetState()->keyReleaseCallbacks[size_t(key)];
-        if(func.IsFunctional())
-            func();
     }
 
     void InputProcessMouseMove(int16_t x, int16_t y) 
@@ -72,19 +84,17 @@ namespace BlitzenCore
         }
     }
 
-    void InputProcessButton(MouseButton button, uint8_t bPressed)
+    void InputSystemState::InputProcessButton(MouseButton button, uint8_t bPressed)
     {
-        auto pState = InputSystemState::GetState();
-
+        auto idx = static_cast<uint8_t>(button);
         // If the state changed, fire an event.
-        if (pState->currentMouse.buttons[static_cast<size_t>(button)] != bPressed)
+        if (currentMouse.buttons[idx] != bPressed)
         {
-            pState->currentMouse.buttons[static_cast<size_t>(button)] = bPressed;
+            currentMouse.buttons[idx] = bPressed;
             if (bPressed)
-                CallMouseButtonPressFunction(button, pState->currentMouse.x, pState->currentMouse.y);
+                mousePressCallbacks[idx](currentMouse.x, currentMouse.y);
             else
-                CallMouseButtonReleaseFunction(button, pState->currentMouse.x, pState->currentMouse.y);
-           
+                mouseReleaseCallbacks[idx](currentMouse.x, currentMouse.y);   
         }
     }
 
@@ -104,21 +114,7 @@ namespace BlitzenCore
     {
         InputSystemState::GetState()->mousePressCallbacks[uint8_t(button)] = press;
         InputSystemState::GetState()->mouseReleaseCallbacks[uint8_t(button)] = release;
-    }
-
-    void CallMouseButtonPressFunction(MouseButton button, int16_t mouseX, int16_t mouseY)
-    {
-        auto func = InputSystemState::GetState()->mousePressCallbacks[uint8_t(button)];
-        if (func.IsFunctional())
-            func(mouseX, mouseY);
-    }
-
-    void CallMouseButtonReleaseFunction(MouseButton button, int16_t mouseX, int16_t mouseY)
-    {
-        auto func = InputSystemState::GetState()->mouseReleaseCallbacks[uint8_t(button)];
-        if (func.IsFunctional())
-            func(mouseX, mouseY);
-    }
+    }    
     
     void InputProcessMouseWheel(int8_t zDelta) 
     {

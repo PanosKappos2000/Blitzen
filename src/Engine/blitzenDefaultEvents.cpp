@@ -98,25 +98,6 @@ namespace BlitzenEngine
         cam.transformData.bFreezeFrustum = !cam.transformData.bFreezeFrustum;
     }
 
-    static uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, 
-        const BlitzenCore::EventContext& data
-    )
-    {
-        //Get the key pressed from the event context
-        auto key = static_cast<BlitzenCore::BlitKey>(data.data.ui16[0]);
-
-        if(eventType == BlitzenCore::BlitEventType::KeyPressed)
-            BlitzenCore::CallKeyPressFunction(key);
-        else if(eventType == BlitzenCore::BlitEventType::KeyReleased)
-            BlitzenCore::CallKeyReleaseFunction(key);
-        else
-        {
-            BLIT_ERROR("Unknow event type registered to key function")
-            return 0;
-        }
-        return 1;
-    }
-
     static void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight)
     {
         auto& camera = CameraSystem::GetCameraSystem()->GetCamera();

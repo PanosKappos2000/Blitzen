@@ -434,7 +434,7 @@ namespace BlitzenPlatform
                         }
                     }
                     if(button != BlitzenCore::MouseButton::MaxButtons)
-                        BlitzenCore::InputProcessButton(button, bPressed);
+                        inl_pPlatformState.pInputs->InputProcessButton(button, bPressed);
                     break;
                 } 
             }

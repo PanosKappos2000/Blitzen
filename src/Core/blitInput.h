@@ -149,10 +149,6 @@ namespace BlitzenCore
     void RegisterKeyReleaseCallback(BlitKey key, BlitCL::Pfn<void> callback);
     // Passes logic for both key press and release
     void RegisterKeyPressAndReleaseCallback(BlitKey key, BlitCL::Pfn<void> press, BlitCL::Pfn<void> release);
-	// Calls the logic saved for a specific key 
-    void CallKeyPressFunction(BlitKey key);
-    // Calls the logic saved for a specific key 
-    void CallKeyReleaseFunction(BlitKey key);
 
     // Passed logic to be called when one of the mouse buttons is pressed
     void RegisterMouseButtonPressCallback(MouseButton button, BlitCL::Pfn<void, int16_t, int16_t> callback);
@@ -162,11 +158,6 @@ namespace BlitzenCore
     void RegisterMouseButtonPressAndReleaseCallback(MouseButton button,
         BlitCL::Pfn<void, int16_t, int16_t> press, BlitCL::Pfn<void, int16_t, int16_t> release
     );
-    // Fires mouse button press event 
-    void CallMouseButtonPressFunction(MouseButton button, int16_t mouseX, int16_t mouseY);
-    // Fires mouse button release event
-    void CallMouseButtonReleaseFunction(MouseButton button, int16_t mouseX, int16_t mouseY);
-    void InputProcessButton(MouseButton button, uint8_t bPressed);
 
     void InputProcessMouseMove(int16_t x, int16_t y);
     void InputProcessMouseWheel(int8_t zDelta);
@@ -211,18 +202,9 @@ namespace BlitzenCore
             BlitzenCore::BlitMemCopy(&previousMouse, &currentMouse, sizeof(MouseState));
         }
 
-        inline void InputProcessKey(BlitKey key, uint8_t bPressed)
-        {
-            auto idx = static_cast<uint16_t>(key);
-            if (currentKeyboard[idx] != bPressed)
-            {
-                currentKeyboard[idx] = bPressed;
-                if (bPressed)
-                    keyPressCallbacks[idx]();
-                else
-                    CallKeyReleaseFunction(key);
-            }
-        }
+        void InputProcessKey(BlitKey key, uint8_t bPressed);
+
+        void InputProcessButton(MouseButton button, uint8_t bPressed);
 
         inline static InputSystemState* GetState() { return s_pInputSystemState; }
     private:
