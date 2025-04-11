@@ -26,76 +26,76 @@ namespace BlitzenEngine
 
     static void MoveDefaultCameraForwardOnWKeyPressCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        camera.transformData.cameraDirty = 1;
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        camera.transformData.bCameraDirty = true;
         camera.transformData.velocity = BlitML::vec3(0.f, 0.f, 1.f);
     }
 
     static void StopMovingCameraForwardOnWKeyReleaseCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.z = 0.f;
         if(camera.transformData.velocity.y == 0.f && camera.transformData.velocity.x == 0.f)
         {
-            camera.transformData.cameraDirty = 0;
+            camera.transformData.bCameraDirty = false;
         }
     }
 
     static void MoveDefaultCameraBackwardOnSKeyPressCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        camera.transformData.cameraDirty = 1;
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        camera.transformData.bCameraDirty = true;
         camera.transformData.velocity = BlitML::vec3(0.f, 0.f, -1.f);
     }
 
     static void StopMovingCameraBackwardOnSKeyReleaseCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.z = 0.f;
         if(camera.transformData.velocity.y == 0.f && camera.transformData.velocity.x == 0.f)
         {
-            camera.transformData.cameraDirty = 0;
+            camera.transformData.bCameraDirty = false;
         }
     }
 
     static void MoveDefaultCameraLeftOnAKeyPressCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        camera.transformData.cameraDirty = 1;
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        camera.transformData.bCameraDirty = true;
         camera.transformData.velocity = BlitML::vec3(-1.f, 0.f, 0.f);
     }
 
     static void StopMovingCameraLeftOnAKeyReleaseCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.x = 0.f;
         if (camera.transformData.velocity.y == 0.f && camera.transformData.velocity.z == 0.f)
         {
-            camera.transformData.cameraDirty = 0;
+            camera.transformData.bCameraDirty = false;
         }
     }
 
     static void MoveDefaultCameraRightOnDKeyPressCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        camera.transformData.cameraDirty = 1;
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        camera.transformData.bCameraDirty = true;
         camera.transformData.velocity = BlitML::vec3(1.f, 0.f, 0.f);
     }
 
     static void StopMovingCameraRightOnDReleaseCallback()
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
         camera.transformData.velocity.x = 0.f;
         if (camera.transformData.velocity.y == 0.f && camera.transformData.velocity.z == 0.f)
         {
-            camera.transformData.cameraDirty = 0;
+            camera.transformData.bCameraDirty = false;
         }
     }
 
     static void FreezeFrustumOnF1KeyPressCallback()
     {
-        Camera& cam = CameraSystem::GetCameraSystem()->GetCamera();
-        cam.transformData.freezeFrustum = !cam.transformData.freezeFrustum;
+        auto& cam = CameraSystem::GetCameraSystem()->GetCamera();
+        cam.transformData.bFreezeFrustum = !cam.transformData.bFreezeFrustum;
     }
 
     static uint8_t OnKeyPress(BlitzenCore::BlitEventType eventType, void* pSender, void* pListener, 
@@ -103,7 +103,7 @@ namespace BlitzenEngine
     )
     {
         //Get the key pressed from the event context
-        BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(data.data.ui16[0]);
+        auto key = static_cast<BlitzenCore::BlitKey>(data.data.ui16[0]);
 
         if(eventType == BlitzenCore::BlitEventType::KeyPressed)
             BlitzenCore::CallKeyPressFunction(key);
@@ -119,10 +119,10 @@ namespace BlitzenEngine
 
     static void UpdateWindowSize(uint32_t newWidth, uint32_t newHeight)
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        Engine* pEngine = Engine::GetEngineInstancePointer();
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        auto pEngine = Engine::GetEngineInstancePointer();
 
-        camera.transformData.windowResize = 1;
+        camera.transformData.bWindowResize = 1;
         if (newWidth == 0 || newHeight == 0)
         {
             pEngine->Suspend();
@@ -149,12 +149,7 @@ namespace BlitzenEngine
     )
     {
         Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
-        auto deltaTime = static_cast<float>(
-            BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime()
-        );
-
-        camera.transformData.cameraDirty = 1;
-
+        auto deltaTime = static_cast<float>(BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime());
         RotateCamera(camera, deltaTime, data.data.si16[1], data.data.si16[0]);
 
         return 1;

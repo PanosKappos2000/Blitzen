@@ -3,40 +3,42 @@
 
 namespace BlitzenEngine
 {
-	constexpr uint8_t ce_maxCameraCount = 1;
-    constexpr uint8_t ce_mainCameraId = 0;
+	constexpr uint8_t MaxCameraCount = 1;
+    constexpr uint8_t MainCameraId = 0;
 
     // This is struct that is needed for camera movement logic and window size stats
     struct CameraTransformData
     {
-        BlitML::mat4 rotation = BlitML::mat4();
-        BlitML::mat4 translation = BlitML::mat4();
+        // Multiplied to create the view matrix
+        BlitML::mat4 rotation{};
+        BlitML::mat4 translation{};
 
         // Keeps track of the movement of the camera
-        BlitML::vec3 velocity = BlitML::vec3(0.f);
+        BlitML::vec3 velocity{ 0.f };
 
-        // When this is 1 the UpdateCamera function will proceed normally
-        uint8_t cameraDirty = 0;
+        // Keeps track of the camera's orientation
+        float yawRotation;
+        float pitchRotation;
 
-        // Keep track of the rotation of the camera. 
-        // When rotation occurs, they each generate a quaternion. Then the two quats change the roation matrix
-        float yawRotation = 0.f;
-        float pitchRotation = 0.f;
+        // Signifies that camera values have been updated
+        bool bCameraDirty{ false };
 
         float windowWidth;
         float windowHeight;
-        uint8_t windowResize;
+        bool bWindowResize{ false };
 
         // Projection matrix data
         float fov;
         BlitML::mat4 projectionMatrix;
         BlitML::mat4 projectionTranspose;
 
-        uint8_t freezeFrustum = 0;
+		// Debug value for frustum culling, stop culling at the moment that this was turned to true,
+        // effectively allowing the user to view the results of frustum culling
+        // A pleasing side effect is that it also shows the effects of occlusion culling live
+        bool bFreezeFrustum{ false };
     };
 
-    // This struct will hold data important for rendering (view frustum, projection matrix, view matrix), 
-    // It needs to be alinged with what is passed to the shader
+    // Shader struct. Shaders are expected to have a struct that is aligned with this
     struct alignas(16) CameraViewData
     {
         // The view matrix is the most important responsibility of the camera and crucial for rendering
@@ -69,22 +71,20 @@ namespace BlitzenEngine
         float lodTarget;
     };
 
-    // Temporary camera struct, I am going to make it more robust in the future
+    // Context for a single camera
     struct Camera
     {
         CameraViewData viewData;
 
         CameraTransformData transformData;
 
-        // This has not been integrated to the renderer, properly, so it is placed separately for now
+        // TODO: Fix this when I get back to my main machine, so I can properly test it
         BlitML::mat4 onbcProjectionMatrix;
     };
 
-    // Gives some default values to a new camera so that it does not spawn with a random transform
-    void SetupCamera(Camera& camera, float fov, 
-        float windowWidth, float windowHeight, float zNear, 
-        BlitML::vec3 initialCameraPosition, float drawDistance, 
-        float initialYawRotation = 0, float initialPitchRotation = 0
+    // Camera setup function. Changes the values in the camera reference passed to it, using the other arguments
+    void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
+        const BlitML::vec3& initialCameraPosition, float drawDistance, float initialYawRotation = 0, float initialPitchRotation = 0
     );
 
     // Sets up camera with engine defaults
@@ -96,14 +96,13 @@ namespace BlitzenEngine
     // Rotates a camera based on the amount passed to pitchRotation and yawRotation. Does not support rollRotation for now
     void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation);
 
-    // Since the main camera is also responsible for the projection matrix, 
-    // whenever it needs to be updated the main camera is passed to this functions
-    // Values that have to do with projection are also updated
+    // Updates the projection matrix when necessary
     void UpdateProjection(Camera& camera, float newWidth, float newHeight);
 
     // Test function, taken from https://terathon.com/blog/oblique-clipping.html
     void ObliqueNearPlaneClippingMatrixModification(BlitML::mat4& proj, BlitML::mat4& res, const BlitML::vec4& clipPlane);
 
+    // Camera container. Should be responsible for more things in the future
     class CameraSystem
     {
     public:
@@ -122,7 +121,7 @@ namespace BlitzenEngine
         static CameraSystem* m_sThis;
 
         // Holds all the camera created and an index to the active one
-        Camera cameraList[ce_maxCameraCount];
+        Camera cameraList[MaxCameraCount];
 
         // The main camera is the one whose values are used for culling and other operations
         Camera& m_mainCamera;

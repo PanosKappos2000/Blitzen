@@ -1,19 +1,17 @@
 #pragma once
-
 #include <stdio.h>
 #include <cstdint>
-#include <cstddef>
 
 namespace BlitzenCore
 {
-    #ifdef BLIT_ASSERTIONS_ENABLED
-        #if _MSC_VER
+    #if defined(BLIT_ASSERTIONS_ENABLED)
+        #if defined(_WIN32)
             #define BDB_BREAK() __debugbreak();
         #else
             #define BDB_BREAK() __builtin_trap();
         #endif
 
-        //Implemented in blitzenLogger.cpp
+        // Implemented in blitzenLogger.cpp
         void ReportAssertionFailure(const char* expression, const char* message, const char* file, int32_t line);
 
         #define BLIT_ASSERT(expr)                                                                               \

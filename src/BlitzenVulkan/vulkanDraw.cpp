@@ -39,24 +39,19 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-        BlitzenEngine::Camera* pCamera = context.pCamera;
+        auto pCamera = context.pCamera;
 
-        if(pCamera->transformData.windowResize)
-            RecreateSwapchain(
-                uint32_t(pCamera->transformData.windowWidth), 
-                uint32_t(pCamera->transformData.windowHeight)
-            );
-
-        // Gets a ref to the frame tools of the current frame
-        FrameTools& fTools = m_frameToolsList[m_currentFrame];
-        VarBuffers& vBuffers = m_varBuffers[m_currentFrame];
-
-        // Handle the pyramid width if the window resized
-        if(pCamera->transformData.windowResize)
+        if (pCamera->transformData.bWindowResize)
         {
+            RecreateSwapchain(uint32_t(pCamera->transformData.windowWidth), uint32_t(pCamera->transformData.windowHeight));
             pCamera->viewData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
             pCamera->viewData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
         }
+
+        // Gets a ref to the frame tools of the current frame
+        auto& fTools = m_frameToolsList[m_currentFrame];
+        auto& vBuffers = m_varBuffers[m_currentFrame];
+
 
         // Passes the view data buffer info again since it is not a constant buffer
         pushDescriptorWritesGraphics[ce_viewDataWriteElement].pBufferInfo = 
@@ -80,11 +75,15 @@ namespace BlitzenVulkan
 
 		UpdateBuffers(context.pResources, fTools, vBuffers);
 
-        if(pCamera->transformData.freezeFrustum)
+        if (pCamera->transformData.bFreezeFrustum)
+        {
             // Only change the matrix that moves the camera if the freeze frustum debug functionality is active
             vBuffers.viewDataBuffer.pData->projectionViewMatrix = pCamera->viewData.projectionViewMatrix;
+        }
         else
+        {
             *(vBuffers.viewDataBuffer.pData) = pCamera->viewData;
+        }
         
         // Swapchain image, needed to present the color attachment results
         uint32_t swapchainIdx;

@@ -185,7 +185,7 @@ namespace BlitzenGL
     {
         auto pCamera = context.pCamera;
         // Update the viewport if the window has resized
-        if (pCamera->transformData.windowResize)
+        if (pCamera->transformData.bWindowResize)
         {
             glViewport(0, 0,
                 static_cast<GLsizei>(pCamera->transformData.windowWidth),

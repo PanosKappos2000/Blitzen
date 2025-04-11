@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
             }
 
             // Reset window resize, TODO: Why is this here??????
-            mainCamera.transformData.windowResize = 0;
+            mainCamera.transformData.bWindowResize = false;
         }
 
         inputSystemState->UpdateInput(coreClock.GetDeltaTime());
