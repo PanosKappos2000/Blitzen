@@ -215,10 +215,10 @@ namespace BlitzenCore
     }
 
     // The templates below are placeholders to add functionality later
-    template<typename T = void>
-    void BlitMemSet(void* pDst, int32_t value, size_t size)
+    template<typename T>
+    void BlitMemSet(T* pDst, int32_t value, size_t size)
     {
-        BlitzenPlatform::PlatformMemSet(pDst, value, size);
+        BlitzenPlatform::PlatformMemSet(pDst, value, sizeof(T) * size);
     }
     
     // The templates below are placeholders to add functionality later

@@ -47,8 +47,8 @@ namespace BlitzenVulkan
         {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
         {
-            BLIT_INFO("Validation layer: %s", pCallbackData->pMessage)
-                return VK_FALSE;
+            BLIT_INFO("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
         {
@@ -342,7 +342,7 @@ namespace BlitzenVulkan
             {
                 gpu = pdv;
                 stats.hasDiscreteGPU = 1;
-                BLIT_INFO("Discrete GPU found")
+                BLIT_INFO("Discrete GPU found");
                 return 1;
             }
 
@@ -350,7 +350,7 @@ namespace BlitzenVulkan
             stats.deviceExtensionCount = 0;
         }
 
-        BLIT_INFO("Discrete GPU not found, looking for fallback")
+        BLIT_INFO("Discrete GPU not found, looking for fallback");
         for(auto& pdv : physicalDevices)
         {
             // Checks for possible non discrete GPUs
@@ -585,10 +585,12 @@ namespace BlitzenVulkan
             && meshFeatures.meshShader && meshFeatures.taskShader;
 
             if (stats.meshShaderSupport)
-                BLIT_INFO("Mesh shader support confirmed")    
+            {
+                BLIT_INFO("Mesh shader support confirmed");
+            }
             else
             {
-                BLIT_INFO("No mesh shader support, using traditional pipeline")
+                BLIT_INFO("No mesh shader support, using traditional pipeline");
                 #undef BLIT_VK_MESH_EXT
             }
         }
@@ -612,11 +614,13 @@ namespace BlitzenVulkan
             extensionsData[4].extensionName &&
             rayQuery.rayQuery && ASfeats.accelerationStructure;
 
-            if(stats.bRayTracingSupported)
-                BLIT_INFO("Ray tracing support confirmed")
+            if (stats.bRayTracingSupported)
+            {
+                BLIT_INFO("Ray tracing support confirmed");
+            }
             else
             {
-                BLIT_INFO("No ray tracing support found, using traditional raster")
+                BLIT_INFO("No ray tracing support found, using traditional raster");
                 #undef BLIT_VK_RAYTRACING
             }
         }

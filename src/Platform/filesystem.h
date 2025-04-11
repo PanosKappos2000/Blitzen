@@ -9,13 +9,12 @@ namespace BlitzenPlatform
         Write = 0x2
     };
 
-    // I should turn this into a templated class
     class FileHandle
     {
     public:
-        uint8_t Open(const char* path, FileModes mode, uint8_t binary);
+        bool Open(const char* path, FileModes mode, uint8_t binary);
 
-        uint8_t Open(const char* path, const char* mode);
+        bool Open(const char* path, const char* mode);
 
         // Close the file manually
         void Close();

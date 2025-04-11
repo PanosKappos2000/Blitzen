@@ -388,7 +388,7 @@ namespace BlitzenPlatform
                     // Mouse move
                     int32_t mouseX = GET_X_LPARAM(l_param);
                     int32_t mouseY = GET_Y_LPARAM(l_param);
-                    BlitzenCore::InputProcessMouseMove(mouseX, mouseY);
+                    inl_pPlatformState.pInputs->InputProcessMouseMove(mouseX, mouseY);
                     break;
                 } 
                 case WM_MOUSEWHEEL: 
@@ -398,7 +398,7 @@ namespace BlitzenPlatform
                     {
                         // Flatten the input to an OS-independent (-1, 1)
                         zDelta = (zDelta < 0) ? -1 : 1;
-                        BlitzenCore::InputProcessMouseWheel(zDelta);
+                        inl_pPlatformState.pInputs->InputProcessMouseWheel(zDelta);
                         break;
                     }
                 }

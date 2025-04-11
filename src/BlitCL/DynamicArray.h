@@ -182,7 +182,6 @@ namespace BlitCL
 
     inline void FillArray(DynamicArray<uint32_t>& arr, uint32_t val)
     {
-        if (arr.GetSize() > 0)
-            BlitzenCore::BlitMemSet(arr.Data(), val, arr.GetSize());
+        BlitzenCore::BlitMemSet(arr.Data(), val, arr.GetSize());
     }
 }

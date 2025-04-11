@@ -125,15 +125,14 @@ namespace BlitzenEngine
         return 1;
     }
 
-    static uint8_t OnMouseMove(BlitzenCore::BlitEventType eventType, void* pSender, 
-        void* pListener, const BlitzenCore::EventContext& data
-    )
+    static void OnMouseMove(int16_t currentX, int16_t currentY, int16_t previousX, int16_t previousY)
     {
-        Camera& camera = CameraSystem::GetCameraSystem()->GetCamera();
+        auto& camera = CameraSystem::GetCameraSystem()->GetCamera();
         auto deltaTime = static_cast<float>(BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime());
-        RotateCamera(camera, deltaTime, data.data.si16[1], data.data.si16[0]);
 
-        return 1;
+        auto xMovement = static_cast<float>(currentX - previousX);
+        auto yMovement = static_cast<float>(currentY - previousY);
+        RotateCamera(camera, deltaTime, yMovement, xMovement);
     }
 
 	static void OnMouseButtonClickTest(int16_t mouseX, int16_t mouseY)
@@ -152,7 +151,8 @@ namespace BlitzenEngine
             nullptr, OnEvent
         );
         BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, OnResize);
-        BlitzenCore::RegisterEvent(BlitzenCore::BlitEventType::MouseMoved, nullptr, OnMouseMove);
+
+        BlitzenCore::RegisterMouseCallback(OnMouseMove);
 
         BlitzenCore::RegisterKeyPressCallback(BlitzenCore::BlitKey::__ESCAPE, 
             CloseOnEscapeKeyPressCallback

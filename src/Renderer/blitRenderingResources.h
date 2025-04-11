@@ -157,21 +157,21 @@ namespace BlitzenEngine
                 return false;
             
 
-            BLIT_INFO("Loading GLTF scene from file: %s", path)
+            BLIT_INFO("Loading GLTF scene from file: %s", path);
 
             // Textures
             auto previousTextureCount = m_textureCount;
-            BLIT_INFO("Loading textures")
+            BLIT_INFO("Loading textures");
             LoadGltfTextures(pData, previousTextureCount, path, pRenderer);
 
             // Materials
-            BLIT_INFO("Loading materials")
+            BLIT_INFO("Loading materials");
             auto previousMaterialCount = m_materialCount;
             LoadGltfMaterials(pData, previousMaterialCount, previousTextureCount);
 
             // Meshes and primitives
             BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
-            BLIT_INFO("Loading meshes and primitives")
+            BLIT_INFO("Loading meshes and primitives");
             for (size_t i = 0; i < pData->meshes_count; ++i)
             {
                 const cgltf_mesh& gltfMesh = pData->meshes[i];
@@ -191,7 +191,7 @@ namespace BlitzenEngine
 
 
             // Render objects
-            BLIT_INFO("Loading scene nodes")
+            BLIT_INFO("Loading scene nodes");
             CreateRenderObjectsFromGltffNodes(pData, surfaceIndices);
 
             return true;

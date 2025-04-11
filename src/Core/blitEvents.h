@@ -42,7 +42,7 @@ namespace BlitzenCore
     {
         void* pListener;
         EventCallbackType callback{ [](BlitEventType, void*, void*, const EventContext&)->uint8_t {
-            BLIT_INFO("No callback assigned")
+            BLIT_INFO("No callback assigned");
             return false;
         }};
     };

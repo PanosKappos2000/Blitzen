@@ -330,11 +330,10 @@ namespace BlitzenEngine
         if(meshCount > ce_maxMeshCount)
         {
             BLIT_ERROR("Max mesh count: ( %i ) reached!", ce_maxMeshCount)
-            BLIT_INFO("If more objects are needed, increase the BLIT_MAX_MESH_COUNT macro before starting the loop")
             return 0;
         }
 
-        BLIT_INFO("Loading obj model form file: %s", filename)
+        BLIT_INFO("Loading obj model form file: %s", filename);
 
         // Get the current mesh and give it the size surface array as its first surface index
         Mesh& currentMesh = meshes[meshCount];
@@ -350,7 +349,7 @@ namespace BlitzenEngine
 
         BlitCL::DynamicArray<Vertex> triangleVertices(indexCount);
 
-        BLIT_INFO("Loading vertices and indices")
+        BLIT_INFO("Loading vertices and indices");
 
         for(size_t i = 0; i < indexCount; ++i)
         {
@@ -388,10 +387,9 @@ namespace BlitzenEngine
         meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
 		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
 
-		BLIT_INFO("Generating tangents")
 		GenerateTangents(vertices, indices);
 
-        BLIT_INFO("Creating surface")
+        BLIT_INFO("Creating surface");
         LoadPrimitiveSurface(vertices, indices);
 
         currentMesh.surfaceCount++;// Increment the surface count
@@ -686,8 +684,7 @@ namespace BlitzenEngine
 		constexpr uint32_t dragonCount = 10'000;
 		constexpr uint32_t totalCount = bunnyCount + kittenCount + maleCount + dragonCount;
 
-        BLIT_INFO("Loading Renderer Stress test with %i objects", totalCount)
-        BLIT_WARN("If your machine cannot withstand this many objects, decrease the draw count")
+        BLIT_WARN("Loading Renderer Stress test with %i objects", totalCount);
 
 		uint32_t start = pResources->renderObjectCount;
 

@@ -20,48 +20,47 @@ namespace BlitzenPlatform
         #endif
     }
 
-    uint8_t FileHandle::Open(const char* path, FileModes mode, uint8_t binary)
+    bool FileHandle::Open(const char* path, FileModes mode, uint8_t binary)
     {
         // If the handle already has a valid handle, it asserts
         BLIT_ASSERT(pHandle == nullptr)
 
-        const char* modeStr;
+            const char* modeStr;
 
         // Try to determine the file mode and turn it into a string
-        if (((uint8_t)mode & (uint8_t)FileModes::Read) != 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) != 0) 
+        if (((uint8_t)mode & (uint8_t)FileModes::Read) != 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) != 0)
         {
             modeStr = binary ? "w+b" : "w+";
-        } 
-        else if (((uint8_t)mode & (uint8_t)FileModes::Read) != 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) == 0) 
+        }
+        else if (((uint8_t)mode & (uint8_t)FileModes::Read) != 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) == 0)
         {
             modeStr = binary ? "rb" : "r";
-        } 
-        else if (((uint8_t)mode & (uint8_t)FileModes::Read) == 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) != 0) 
+        }
+        else if (((uint8_t)mode & (uint8_t)FileModes::Read) == 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) != 0)
         {
             modeStr = binary ? "wb" : "w";
-        }
-        // If what was passed makes no sense to the system, write an error message and exit 
-        else 
+        } 
+        else
         {
             BLIT_ERROR("Invalid mode passed while trying to open file: '%s'", path);
-            return 0;
+            return false;
         }
 
         // If the previous check is done tries to read the file
         FILE* file = fopen(path, modeStr);
         // If the file cannot be read, write an error message and exit
-        if (!file) 
+        if (!file)
         {
             BLIT_ERROR("Error opening file: '%s'", path);
-            return 0;
+            return false;
         }
 
         // If everything goes well update the file handle and exit successfully
         pHandle = file;
-        return 1;
+        return true;
     }
 
-    uint8_t FileHandle::Open(const char* path, const char* mode)
+    bool FileHandle::Open(const char* path, const char* mode)
     {
         // If the previous check is done tries to read the file
         FILE* file = fopen(path, mode);
@@ -69,12 +68,12 @@ namespace BlitzenPlatform
         if (!file)
         {
             BLIT_ERROR("Error opening file: '%s'", path);
-            return 0;
+            return false;
         }
 
         // If everything goes well update the file handle and exit successfully
         pHandle = file;
-        return 1;
+        return true;
     }
 
     FileHandle::~FileHandle()

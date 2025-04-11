@@ -11,7 +11,6 @@ namespace BlitzenDX12
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
 	float& pyramidWidth, float& pyramidHeight)
 	{
-		BLIT_INFO("Dx12 renderer setup")
 		return 1;
 	}
 }

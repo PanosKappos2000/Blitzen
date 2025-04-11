@@ -52,6 +52,8 @@ add_executable(BlitzenEngine
                 src/Core/blitzenLogger.cpp
                 src/Core/blitAssert.h
                 src/Core/blitEvents.h
+                src/Core/blitKeys.h
+                src/Core/blitInput.h
                 src/Core/blitzenEvents.cpp
                 src/Core/blitTimeManager.h
                 src/Core/blitzenTimeManager.cpp
@@ -153,7 +155,11 @@ target_include_directories(
 )
 
 target_compile_definitions(BlitzenEngine PUBLIC
+
+                            # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
                             BLIT_REIN_SANT_ENG
+
+                            # Defines that the Engine is not in test mode (Dev mode)
                             BLIT_GDEV_EDT
 
                             #BLITZEN_VULKAN_OVERRIDE

@@ -44,8 +44,8 @@ static void LoadRenderingResources(int argc, char** argv,
             camera.viewData.pyramidHeight
         ))
     {
-        BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline")
-            bRenderingSystem = false;
+        BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");
+        bRenderingSystem = false;
     }
 
     BlitzenEngine::Engine::GetEngineInstancePointer()->ReActivate();
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
         bRenderingSystem = true;
     else
     {
-        BLIT_FATAL("Failed to initialize rendering API")
+        BLIT_FATAL("Failed to initialize rendering API");
         bRenderingSystem = false;
     }
         
@@ -235,6 +235,8 @@ int main()
 
     otherString.ReplaceSubstring(20, "Blitzen");
 	BLIT_TRACE("Replaced: %s", otherString.GetClassic());
+
+    //BLIT_ASSERT(false)
 }
 #endif
 
