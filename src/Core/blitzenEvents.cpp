@@ -13,6 +13,16 @@ namespace BlitzenCore
         pEvents[size_t(type)] = { pListener, eventCallback };
     }
 
+    InputSystemState::InputSystemState()
+    {
+        for (uint32_t i = 0; i < 256; ++i)
+        {
+            keyPressCallbacks[i] = []() {BLIT_INFO("No callback assigned")};
+        }
+
+        s_pInputSystemState = this;
+    }
+
     void RegisterKeyPressCallback(BlitKey key, BlitCL::Pfn<void> callback) 
     {
         InputSystemState::GetState()->keyPressCallbacks[size_t(key)] = callback;
@@ -33,8 +43,7 @@ namespace BlitzenCore
     void CallKeyPressFunction(BlitKey key)
     {
         auto func = InputSystemState::GetState()->keyPressCallbacks[size_t(key)];
-        if(func.IsFunctional())
-            func();
+        func();
     }
 
     void CallKeyReleaseFunction(BlitKey key)

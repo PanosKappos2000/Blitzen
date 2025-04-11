@@ -140,7 +140,7 @@ namespace BlitzenCore
     {
         int16_t x;
         int16_t y;
-        uint8_t buttons[static_cast<size_t>(MouseButton::MaxButtons)];
+        uint8_t buttons[uint8_t(MouseButton::MaxButtons)];
     };
 
     // Passes the logic to be called when a speicific key is pressed
@@ -201,7 +201,7 @@ namespace BlitzenCore
 
     public:
 
-        inline InputSystemState() { s_pInputSystemState = this; }
+        InputSystemState(); 
 
         ~InputSystemState() { s_pInputSystemState = nullptr; }
 
@@ -213,11 +213,12 @@ namespace BlitzenCore
 
         inline void InputProcessKey(BlitKey key, uint8_t bPressed)
         {
-            if (currentKeyboard[static_cast<size_t>(key)] != bPressed)
+            auto idx = static_cast<uint16_t>(key);
+            if (currentKeyboard[idx] != bPressed)
             {
-                currentKeyboard[static_cast<size_t>(key)] = bPressed;
+                currentKeyboard[idx] = bPressed;
                 if (bPressed)
-                    CallKeyPressFunction(key);
+                    keyPressCallbacks[idx]();
                 else
                     CallKeyReleaseFunction(key);
             }

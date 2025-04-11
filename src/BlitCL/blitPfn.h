@@ -14,7 +14,7 @@ namespace BlitCL
 
         Pfn(PfnType pfn) : m_func{ pfn } {}
 
-        inline Pfn operator = (PfnType pfn) { return Pfn{ pfn }; }
+        inline void operator = (PfnType pfn) { m_func = pfn; }
 
         inline RET operator () (Args... args) { return m_func(args...); }
 

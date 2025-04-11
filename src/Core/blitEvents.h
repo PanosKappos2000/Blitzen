@@ -23,20 +23,15 @@ namespace BlitzenCore
         } data;
     };
 
-    enum class BlitEventType : uint16_t
+    enum class BlitEventType : uint8_t
     {
         EngineShutdown = 0,
-
         KeyPressed = 1,
         KeyReleased = 2,
-
         MouseButtonPressed = 3,
         MouseButtonReleased = 4,
-
         MouseMoved = 5,
-
         MouseWheel = 6,
-
         WindowResize = 7,
 
         MaxTypes = 8
@@ -46,25 +41,32 @@ namespace BlitzenCore
     struct RegisteredEvent 
     {
         void* pListener;
-        EventCallbackType callback;
+        EventCallbackType callback{ [](BlitEventType, void*, void*, const EventContext&)->uint8_t {
+            BLIT_INFO("No callback assigned")
+            return false;
+        }};
     };
 
     class EventSystemState 
     {
     public:
-        RegisteredEvent eventTypes[static_cast<uint8_t>(BlitEventType::MaxTypes)];
+
+        RegisteredEvent eventTypes[uint8_t(BlitEventType::MaxTypes)];
 
         inline EventSystemState(){ s_pEventSystemState = this; }
 
         inline ~EventSystemState() {s_pEventSystemState = nullptr; }
 
-        inline bool FireEvent(BlitEventType type, void* pSender, const EventContext& context)
+        inline bool operator () (BlitEventType type, void* pSender, const EventContext& context) const
         {
-			auto event = eventTypes[size_t(type)];
-            if (event.callback.IsFunctional())
-                return event.callback(type, pSender, event.pListener, context);
+            auto event = eventTypes[size_t(type)];
+            return event.callback(type, pSender, event.pListener, context);
+        }
 
-            return false;
+        inline bool FireEvent(BlitEventType type, void* pSender, const EventContext& context) const
+        {
+            auto event = eventTypes[size_t(type)];
+            return event.callback(type, pSender, event.pListener, context);
         }
 
         inline static EventSystemState* GetState() { return s_pEventSystemState; }
