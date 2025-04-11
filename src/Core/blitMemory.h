@@ -12,8 +12,8 @@
 // Platform specific code, needed to allocate on the heap
 namespace BlitzenPlatform
 {
+    // Implementation changes, depending on if the memory manager is used by Blitzen or a different application
     #if defined(BLIT_REIN_SANT_ENG)
-        // Called only by the memory manager
         void* PlatformMalloc(size_t size, uint8_t aligned);
         void PlatformFree(void* pBlock, uint8_t aligned);
         void* PlatformMemZero(void* pBlock, size_t size);
@@ -70,6 +70,7 @@ namespace BlitzenCore
         size_t blockSize;
     };
 
+    constexpr size_t LinearAllocatorBlockSize = UINT32_MAX;
     class MemoryManagerState
     {
     public:
@@ -91,10 +92,10 @@ namespace BlitzenCore
 
             // Allocate a big block of memory for the linear allocator
             #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
-                s_pMemoryManager->linearAlloc.blockSize = ce_linearAllocatorBlockSize;
+                s_pMemoryManager->linearAlloc.blockSize = LinearAllocatorBlockSize;
                 s_pMemoryManager->linearAlloc.totalAllocated = 0;
                 s_pMemoryManager->linearAlloc.pBlock = 
-                BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, ce_linearAllocatorBlockSize);
+                BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, LinearAllocatorBlockSize);
             #endif
         }
 
@@ -136,8 +137,6 @@ namespace BlitzenCore
             return s_pMemoryManager;
         }
     };
-
-    constexpr size_t ce_linearAllocatorBlockSize = UINT32_MAX;
 
     template<typename T>
     T* BlitAlloc(AllocationType alloc, size_t size)

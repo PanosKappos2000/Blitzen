@@ -7,10 +7,10 @@
 
 namespace BlitzenCore
 {
-    uint8_t InitLogging()
+    bool InitLogging()
     {
         BLIT_INFO("%s Booting", BlitzenEngine::ce_blitzenVersion)
-        return 1;
+        return true;
     }
 
     void ShutdownLogging()
