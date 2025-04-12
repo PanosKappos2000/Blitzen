@@ -14,6 +14,7 @@ namespace BlitzenVulkan
 {
     constexpr uint32_t PushDescriptorSetID = 0;// Used when calling PuhsDesriptors for the set parameter
     constexpr uint32_t DepthPyramidImageBindingID = 3;
+    constexpr uint32_t TextureDescriptorSetID = 1;
 
     constexpr uint64_t ce_fenceTimeout = 1000000000;
     constexpr uint64_t ce_swapchainImageTimeout = ce_fenceTimeout;
@@ -239,131 +240,36 @@ namespace BlitzenVulkan
             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
             colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
-        );
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         ImageMemoryBarrier(m_swapchainValues.swapchainImages[static_cast<size_t>(swapchainIdx)], 
             colorAttachmentTransferBarriers[1], 
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE, 
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 
-            0, VK_REMAINING_MIP_LEVELS
-        );
+            0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
 
-        CopyColorAttachmentToSwapchainImage(fTools.commandBuffer, m_swapchainValues.swapchainImageViews[swapchainIdx], 
+        // Copies the color attachment to the swapchain image
+        CopyColorAttachmentToSwapchainImage(fTools.commandBuffer, 
+            m_swapchainValues.swapchainImageViews[swapchainIdx], 
             m_swapchainValues.swapchainImages[swapchainIdx]);
 
+        // Adds semaphores and submits command buffer
         VkSemaphoreSubmitInfo waitSemaphores[2]{ {}, {} };
-      
 		CreateSemahoreSubmitInfo(waitSemaphores[0], fTools.imageAcquiredSemaphore.handle,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
-        );
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
 		CreateSemahoreSubmitInfo(waitSemaphores[1], fTools.buffersReadySemaphore.handle,
-            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-        );
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
         VkSemaphoreSubmitInfo signalSemaphore{};
 		CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle,
-            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
-        );
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
         SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 
-            2, waitSemaphores, // waits for image to be acquired
-            1, &signalSemaphore, // signals the ready to present semaphore when done
-            fTools.inFlightFence.handle // next frame waits for commands to be done
-        );
+            2, waitSemaphores, 1, &signalSemaphore, fTools.inFlightFence.handle);
 
-        PresentToSwapchain(m_device, m_graphicsQueue.handle, 
-            &m_swapchainValues.swapchainHandle, 1, 
-            1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
-            &swapchainIdx
-        );
+        PresentToSwapchain(m_device, m_graphicsQueue.handle, &m_swapchainValues.swapchainHandle, 
+            1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
 
         m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
-    }
-
-    void VulkanRenderer::DrawWhileWaiting()
-    {
-        auto& fTools = m_frameToolsList[0];
-        auto colorAttachmentWorkingLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
-        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
-
-        // Swapchain image, needed to present the color attachment results
-        uint32_t swapchainIdx;
-        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
-            ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
-        auto swapchainImage{ m_swapchainValues.swapchainImages[swapchainIdx] };
-        auto swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
-
-        // The command buffer recording begin here (stops when submit is called)
-        BeginCommandBuffer(m_idleDrawCommandBuffer, 0);
-
-        // The viewport and scissor are dynamic, so they should be set here
-        DefineViewportAndScissor(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent);
-
-        // Attachment barriers for layout transitions before rendering
-        VkImageMemoryBarrier2 colorAttachmentDefinitionBarrier{};
-        ImageMemoryBarrier(swapchainImage, colorAttachmentDefinitionBarrier,
-            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, VK_IMAGE_ASPECT_COLOR_BIT,
-            0, VK_REMAINING_MIP_LEVELS
-        );
-        PipelineBarrier(m_idleDrawCommandBuffer, 0, nullptr, 0,
-            nullptr, 1, &colorAttachmentDefinitionBarrier);
-
-        VkRenderingAttachmentInfo colorAttachmentInfo{};
-        CreateRenderingAttachmentInfo(colorAttachmentInfo, swapchainImageView,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
-            VK_ATTACHMENT_STORE_OP_STORE, { 0.1f, 0.2f, 0.3f, 0 } // Window color
-        );
-		BeginRendering(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent,
-            {0, 0}, 1, &colorAttachmentInfo, nullptr, nullptr);
-
-        vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            m_loadingTrianglePipeline.handle);
-
-		auto deltaTime = static_cast<float>(BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime());
-        m_loadingTriangleVertexColor *= cos(deltaTime);
-        vkCmdPushConstants(m_idleDrawCommandBuffer, m_loadingTriangleLayout.handle, 
-            VK_SHADER_STAGE_VERTEX_BIT, 0,
-            sizeof(BlitML::vec3), &m_loadingTriangleVertexColor);
-
-		vkCmdDraw(m_idleDrawCommandBuffer, 3, 1, 0, 0);
-
-		vkCmdEndRendering(m_idleDrawCommandBuffer);
-
-        // Create a barrier for the swapchain image to transition to present optimal
-        VkImageMemoryBarrier2 presentImageBarrier{};
-        ImageMemoryBarrier(swapchainImage, presentImageBarrier,
-            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 
-            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE,
-            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout transition
-            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
-        );
-        PipelineBarrier(m_idleDrawCommandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
-
-        VkSemaphoreSubmitInfo waitSemaphores{};
-
-        CreateSemahoreSubmitInfo(waitSemaphores, fTools.imageAcquiredSemaphore.handle,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
-        );
-        VkSemaphoreSubmitInfo signalSemaphore{};
-        CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle,
-            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT
-        );
-        SubmitCommandBuffer(m_graphicsQueue.handle, m_idleDrawCommandBuffer,
-            1, &waitSemaphores, // waits for image to be acquired
-            1, &signalSemaphore, // signals the ready to present semaphore when done
-            fTools.inFlightFence.handle // next frame waits for commands to be done
-        );
-
-        PresentToSwapchain(m_device, m_graphicsQueue.handle,
-            &m_swapchainValues.swapchainHandle, 1,
-            1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
-            &swapchainIdx
-        );
     }
 
     void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, 
@@ -465,24 +371,15 @@ namespace BlitzenVulkan
         VkPipeline pipeline, VkPipelineLayout layout, uint32_t drawCount, 
         uint8_t latePass /*=0*/, uint8_t onpcPass /*=0*/, BlitML::mat4* pOnpcMatrix /*=nullptr*/)
     {
+        // Setup render pass
         m_colorAttachmentInfo.loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
-
-        // TODO: Do something similar to the above for depth attachment
-        VkRenderingAttachmentInfo depthAttachmentInfo{};
-        CreateRenderingAttachmentInfo(depthAttachmentInfo, m_depthAttachment.image.imageView, 
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
-            latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR,
-            VK_ATTACHMENT_STORE_OP_STORE, {0, 0, 0, 0}, {0, 0});
-
-        // Render pass begins
-        BeginRendering(commandBuffer, m_drawExtent, {0, 0}, // Render area offset
-            1, &m_colorAttachmentInfo, // Color attachment count and color attachment(s)
-            &depthAttachmentInfo, nullptr // Stencil attachment
-        );
+        m_depthAttachmentInfo.loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
+        BeginRendering(commandBuffer, m_drawExtent, {0, 0}, 1, &m_colorAttachmentInfo, 
+            &m_depthAttachmentInfo, nullptr);
 
         // The acceleration structure write needs this struct on its pNext chain
         VkWriteDescriptorSetAccelerationStructureKHR layoutAccelerationStructurePNext{};
-        if(ce_bRaytracing)
+        if(m_stats.bRayTracingSupported)
         {
             layoutAccelerationStructurePNext.sType = 
                 VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -491,49 +388,39 @@ namespace BlitzenVulkan
                 &m_currentStaticBuffers.tlasData.handle;
             pDescriptorWrites[7].pNext = &layoutAccelerationStructurePNext;
         }
-        // Pushes the descriptors that use the push descriptor extension
+
+        // Push descriptor and texture descriptors
         PushDescriptors(m_instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
             layout, PushDescriptorSetID,  
-            m_stats.bRayTracingSupported ? descriptorWriteCount // Raytracing mode needs to bind the tlas buffer
-            : descriptorWriteCount - 1, // tlas buffer not needed otherwise
-            pDescriptorWrites
-        );
-        // Descriptor set for bindless textures
+            m_stats.bRayTracingSupported ? descriptorWriteCount : descriptorWriteCount - 1, 
+            pDescriptorWrites);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            layout, 1, 1, // First set ID and set count
-            &m_textureDescriptorSet, 0, nullptr // Dynamic offsets
-        );
+            layout, TextureDescriptorSetID, 1, &m_textureDescriptorSet, 0, nullptr);
         // For oblique near-plane clipping render pass, the push constant that holds the modified matrix is needed
-        if(onpcPass)
-            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 
-                0, sizeof(BlitML::mat4), pOnpcMatrix
-            );
-
+        if (onpcPass)
+        {
+            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT,
+                0, sizeof(BlitML::mat4), pOnpcMatrix);
+        }
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        // Mesh shader
         if(m_stats.meshShaderSupport)
         {
             DrawMeshTasks(m_instance, commandBuffer, 
-                m_currentStaticBuffers.indirectTaskBuffer.buffer.bufferHandle, // Task buffer
+                m_currentStaticBuffers.indirectTaskBuffer.buffer.bufferHandle, 
                 offsetof(IndirectTaskData, drawIndirectTasks), 
-                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, // Task count buffer 
-                0, drawCount, sizeof(IndirectTaskData)
-            );
+                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                0, drawCount, sizeof(IndirectTaskData));
         }
-        // Vertex shader
         else
         {
             vkCmdBindIndexBuffer(commandBuffer, m_currentStaticBuffers.indexBuffer.bufferHandle, 
-                0, VK_INDEX_TYPE_UINT32 // Index buffer offset and data type
-            );
+                0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexedIndirectCount(commandBuffer, 
                 m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, 
-                offsetof(IndirectDrawData, drawIndirect), // indirect draw buffer offset
+                offsetof(IndirectDrawData, drawIndirect),
                 m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                0, drawCount, sizeof(IndirectDrawData) // buffer offset, max draw count and stride
-            );
+                0, drawCount, sizeof(IndirectDrawData));
         }
-
         vkCmdEndRendering(commandBuffer);
     }
 
@@ -544,18 +431,13 @@ namespace BlitzenVulkan
             pResources->transforms.GetSize();
 
         BeginCommandBuffer(tools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
         CopyBufferToBuffer(tools.transferCommandBuffer, buffers.transformStagingBuffer.bufferHandle,
-            buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0
-        );
-
+            buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0);
         VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
         CreateSemahoreSubmitInfo(bufferCopySemaphoreInfo, tools.buffersReadySemaphore.handle,
-            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
-        );
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
         SubmitCommandBuffer(m_transferQueue.handle, tools.transferCommandBuffer,
-            0, nullptr, 1, &bufferCopySemaphoreInfo
-        );
+            0, nullptr, 1, &bufferCopySemaphoreInfo);
     }
 
     void VulkanRenderer::GenerateDepthPyramid(VkCommandBuffer commandBuffer)
@@ -645,6 +527,90 @@ namespace BlitzenVulkan
             VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS
         );
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &depthAttachmentReadBarrier);
+    }
+
+    void VulkanRenderer::DrawWhileWaiting()
+    {
+        auto& fTools = m_frameToolsList[0];
+        auto colorAttachmentWorkingLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
+        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
+
+            // Swapchain image, needed to present the color attachment results
+            uint32_t swapchainIdx;
+        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
+            ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
+        auto swapchainImage{ m_swapchainValues.swapchainImages[swapchainIdx] };
+        auto swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
+
+        // The command buffer recording begin here (stops when submit is called)
+        BeginCommandBuffer(m_idleDrawCommandBuffer, 0);
+
+        // The viewport and scissor are dynamic, so they should be set here
+        DefineViewportAndScissor(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent);
+
+        // Attachment barriers for layout transitions before rendering
+        VkImageMemoryBarrier2 colorAttachmentDefinitionBarrier{};
+        ImageMemoryBarrier(swapchainImage, colorAttachmentDefinitionBarrier,
+            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS
+        );
+        PipelineBarrier(m_idleDrawCommandBuffer, 0, nullptr, 0,
+            nullptr, 1, &colorAttachmentDefinitionBarrier);
+
+        VkRenderingAttachmentInfo colorAttachmentInfo{};
+        CreateRenderingAttachmentInfo(colorAttachmentInfo, swapchainImageView,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+            VK_ATTACHMENT_STORE_OP_STORE, { 0.1f, 0.2f, 0.3f, 0 } // Window color
+        );
+        BeginRendering(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent,
+            { 0, 0 }, 1, &colorAttachmentInfo, nullptr, nullptr);
+
+        vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            m_loadingTrianglePipeline.handle);
+
+        auto deltaTime = static_cast<float>(BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime());
+        m_loadingTriangleVertexColor *= cos(deltaTime);
+        vkCmdPushConstants(m_idleDrawCommandBuffer, m_loadingTriangleLayout.handle,
+            VK_SHADER_STAGE_VERTEX_BIT, 0,
+            sizeof(BlitML::vec3), &m_loadingTriangleVertexColor);
+
+        vkCmdDraw(m_idleDrawCommandBuffer, 3, 1, 0, 0);
+
+        vkCmdEndRendering(m_idleDrawCommandBuffer);
+
+        // Create a barrier for the swapchain image to transition to present optimal
+        VkImageMemoryBarrier2 presentImageBarrier{};
+        ImageMemoryBarrier(swapchainImage, presentImageBarrier,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE,
+            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout transition
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS
+        );
+        PipelineBarrier(m_idleDrawCommandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
+
+        VkSemaphoreSubmitInfo waitSemaphores{};
+
+        CreateSemahoreSubmitInfo(waitSemaphores, fTools.imageAcquiredSemaphore.handle,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+        VkSemaphoreSubmitInfo signalSemaphore{};
+        CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle,
+            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
+        SubmitCommandBuffer(m_graphicsQueue.handle, m_idleDrawCommandBuffer,
+            1, &waitSemaphores, // waits for image to be acquired
+            1, &signalSemaphore, // signals the ready to present semaphore when done
+            fTools.inFlightFence.handle // next frame waits for commands to be done
+        );
+
+        PresentToSwapchain(m_device, m_graphicsQueue.handle,
+            &m_swapchainValues.swapchainHandle, 1,
+            1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
+            &swapchainIdx
+        );
     }
 
     void VulkanRenderer::DrawBackgroundImage(VkCommandBuffer commandBuffer)

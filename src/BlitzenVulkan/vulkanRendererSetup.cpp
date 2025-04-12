@@ -148,7 +148,9 @@ namespace BlitzenVulkan
                 return 0;
             }
         }
-
+        /*
+            Color attachment handle and value configuration
+        */
         // Color attachment sammpler will be used to copy to the swapchain image
         if(!m_colorAttachment.SamplerInit(m_device, VK_FILTER_NEAREST, 
             VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr
@@ -172,7 +174,9 @@ namespace BlitzenVulkan
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
             VK_ATTACHMENT_LOAD_OP_LOAD ,VK_ATTACHMENT_STORE_OP_STORE,
             WindowClearColor);
-
+        /*
+            Depth attachement value and handle configuration
+        */
         // Creates a sampler for the depth attachment, used for the depth pyramid
         VkSamplerReductionModeCreateInfo reductionInfo{};
         reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
@@ -195,7 +199,11 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create depth attachment image resource")
             return 0;
         }
-
+        // Rendering attachment info info, most values stay constant
+        CreateRenderingAttachmentInfo(m_depthAttachmentInfo, m_depthAttachment.image.imageView,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, 
+            { 0, 0, 0, 0 }, { 0, 0 });
         // Create the depth pyramid image and its mips that will be used for occlusion culling
         if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
             m_depthPyramidMips, m_depthPyramidMipLevels, // depth pyramid mip view and mip count
@@ -205,6 +213,8 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create the depth pyramid")
             return 0;
         }
+
+
 
         // Creates all know descriptor layouts for all known pipelines
         if(!CreateDescriptorLayouts())
