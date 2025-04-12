@@ -119,6 +119,7 @@ int main(int argc, char* argv[])
     /*
         Main loop starts here
     */
+    BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data(), bOnpc };
     while(engine.IsRunning())
     {
         // Captures events
@@ -137,7 +138,7 @@ int main(int argc, char* argv[])
 
             if(bRenderingSystem)
             {
-                BlitzenEngine::DrawContext drawContext(&mainCamera, renderingResources.Data(), bOnpc);
+                renderer->SetupWhileWaitingForPreviousFrame(drawContext);
                 renderer->DrawFrame(drawContext);
             }
 

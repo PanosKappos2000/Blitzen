@@ -1,23 +1,20 @@
 #pragma once
-
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
-
 #include "Engine/blitzenEngine.h"
 #include "BlitCL/DynamicArray.h"
 #include "BlitCL/blitArray.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Renderer/blitRenderingResources.h"
-#include "Game/blitObject.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+/*#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 #include "glm/gtx/transform.hpp"
-#include "glm/gtx/quaternion.hpp"
+#include "glm/gtx/quaternion.hpp"*/
 
 // Deactivate validation layers on debug mode even if they are requested
 #if defined(NDEBUG)
@@ -391,4 +388,8 @@ namespace BlitzenPlatform
 {
     // Creates the surface used by the vulkan renderer. Implemented on Platform.cpp
     uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator);
+
+    // Gets the memory crucial handles form the memory manager (defined in blitzenMemory.cpp)
+    BlitzenVulkan::MemoryCrucialHandles* GetVulkanMemoryCrucials();
+
 }

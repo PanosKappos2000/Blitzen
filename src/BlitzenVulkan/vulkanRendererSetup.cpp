@@ -1,10 +1,14 @@
 #define VMA_IMPLEMENTATION// Implements vma funcions. Header file included in vulkanData.h
 #include "vulkanRenderer.h"
+#include "vulkanResourceFunctions.h"
+#include "vulkanPipelines.h"
 #include "Platform/filesystem.h"
 
 namespace BlitzenVulkan
 {
 	constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
+
+    constexpr VkClearColorValue WindowClearColor = { 0.f, 0.2f, 0.4f, 1.f };
 
     uint8_t VulkanRenderer::UploadTexture(void* pData, const char* filepath) 
     {
@@ -163,6 +167,11 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create color attachment image resource")
             return 0;
         }
+        // Rendering attachment info, most values stay constant
+        CreateRenderingAttachmentInfo(m_colorAttachmentInfo, m_colorAttachment.image.imageView,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+            VK_ATTACHMENT_LOAD_OP_LOAD ,VK_ATTACHMENT_STORE_OP_STORE,
+            WindowClearColor);
 
         // Creates a sampler for the depth attachment, used for the depth pyramid
         VkSamplerReductionModeCreateInfo reductionInfo{};

@@ -1,5 +1,8 @@
 #include "vulkanRenderer.h"
 #include "Platform/platform.h"
+#include "vulkanApiInitFunctions.h"
+#include "vulkanResourceFunctions.h"
+#include "vulkanPipelines.h"
 #include <cstring> // For strcmp
 
 namespace BlitzenVulkan

@@ -1,4 +1,5 @@
 #include "vulkanRenderer.h"
+#include "vulkanResourceFunctions.h"
 
 namespace BlitzenVulkan
 {
@@ -637,5 +638,14 @@ namespace BlitzenVulkan
         barrier.srcAccessMask = firstAccessStage;
         barrier.dstStageMask = secondSyncStage;
         barrier.dstAccessMask = secondAccessStage;
+    }
+
+    uint8_t PushDescriptorImage::SamplerInit(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode,
+        VkSamplerAddressMode addressMode, void* pNextChain)
+    {
+        sampler.handle = CreateSampler(device, filter, mipmapMode, addressMode, pNextChain);
+        if (sampler.handle == VK_NULL_HANDLE)
+            return 0;
+        return 1;
     }
 }

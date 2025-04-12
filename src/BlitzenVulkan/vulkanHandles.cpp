@@ -32,15 +32,6 @@ namespace BlitzenVulkan
         vkDestroyImageView(device, imageView, nullptr);
     }
 
-    uint8_t PushDescriptorImage::SamplerInit(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode,
-        VkSamplerAddressMode addressMode, void* pNextChain)
-    {
-        sampler.handle = CreateSampler(device, filter, mipmapMode, addressMode, pNextChain);
-        if (sampler.handle == VK_NULL_HANDLE)
-            return 0;
-        return 1;
-    }
-
     AllocatedImage::~AllocatedImage()
     {
         if (image != VK_NULL_HANDLE)

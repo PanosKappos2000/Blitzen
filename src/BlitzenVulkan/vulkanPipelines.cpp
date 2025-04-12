@@ -1,5 +1,6 @@
 #include "vulkanRenderer.h"
 #include "Platform/filesystem.h"
+#include "vulkanPipelines.h"
 
 namespace BlitzenVulkan
 {
