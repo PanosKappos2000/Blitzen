@@ -1,31 +1,28 @@
 #if defined(linux)
+#include <cstring>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <xcb/xcb.h>
+#include <X11/keysym.h>
+#include <X11/XKBlib.h>  // sudo apt-get install libx11-dev
+#include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev
+#include <sys/time.h>
+#if _POSIX_C_SOURCE >= 199309L
+#include <time.h>  // nanosleep
+#else
+#include <unistd.h>  // usleep
+#endif
 #include "platform.h"
 #include "Core/blitInput.h"
 #include "BlitzenVulkan/vulkanData.h"
-#include "BlitzenGl/openglRenderer.h"
+#include <vulkan/vulkan_xcb.h>
 #include "Engine/blitzenEngine.h"
-#include <cstring>
+
+
 namespace BlitzenPlatform
 {
-        #include <xcb/xcb.h>
-        #include <X11/keysym.h>
-        #include <X11/XKBlib.h>  // sudo apt-get install libx11-dev
-        #include <X11/Xlib.h>
-        #include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev
-        #include <sys/time.h>
-
-        #if _POSIX_C_SOURCE >= 199309L
-        #include <time.h>  // nanosleep
-        #else
-        #include <unistd.h>  // usleep
-        #endif
-
-        #include <stdlib.h>
-        #include <stdio.h>
-        #include <string.h>
-
-        #include <vulkan/vulkan_xcb.h>
-
         struct PlatformState
         {
             Display* pDisplay;
@@ -44,7 +41,7 @@ namespace BlitzenPlatform
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);
 
-        uint8_t PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEventSystem, 
+        bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEventSystem,
             BlitzenCore::InputSystemState* pInputSystem)
         {
             s_state.pDisplay = XOpenDisplay(nullptr);
@@ -105,8 +102,10 @@ namespace BlitzenPlatform
 
             // Tell the server to notify when the window manager
             // attempts to destroy the window.
-            xcb_intern_atom_cookie_t wm_delete_cookie = xcb_intern_atom(s_state.pConnection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
-            xcb_intern_atom_cookie_t wm_protocols_cookie = xcb_intern_atom(s_state.pConnection, 0, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
+            auto wm_delete_cookie = 
+                xcb_intern_atom(s_state.pConnection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
+            auto wm_protocols_cookie = 
+                xcb_intern_atom(s_state.pConnection, 0, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
             xcb_intern_atom_reply_t* wm_delete_reply = xcb_intern_atom_reply(s_state.pConnection, wm_delete_cookie, nullptr);
             xcb_intern_atom_reply_t* wm_protocols_reply = xcb_intern_atom_reply( s_state.pConnection, wm_protocols_cookie, nullptr);
             s_state.wm_delete_win = wm_delete_reply->atom;
@@ -123,10 +122,10 @@ namespace BlitzenPlatform
             if (streamResult <= 0)
             {
                 BLIT_FATAL("An error occurred when flusing the stream: %d", streamResult);
-                return 0;
+                return false;
             }
 
-            return 1;
+            return true;
         }
 
         void PlatformShutdown() 
@@ -137,106 +136,104 @@ namespace BlitzenPlatform
             xcb_destroy_window(s_state.pConnection, s_state.window);
         }
 
-        uint8_t PlatformPumpMessages() 
+        bool PlatformPumpMessages() 
         {
             
-                xcb_generic_event_t* event;
-                xcb_client_message_event_t* cm;
+            xcb_generic_event_t* event;
+            xcb_client_message_event_t* cm;
 
-                uint8_t quitFlagged = 0;
+            uint8_t quitFlagged = 0;
 
-                // Poll for events until null is returned.
-                while (event) 
+            // Poll for events until null is returned.
+            while (event) 
+            {
+                event = xcb_poll_for_event(s_state.pConnection);
+                if (!event) 
                 {
-                    event = xcb_poll_for_event(s_state.pConnection);
-                    if (!event) 
-                    {
-                        break;
-                    }
-
-                    // Input events
-                    switch (event->response_type & ~0x80) {
-                    case XCB_KEY_PRESS:
-                    case XCB_KEY_RELEASE: 
-                    {
-                        // Key press event - xcb_key_press_event_t and xcb_key_release_event_t are the same
-                        xcb_key_press_event_t* kb_event = (xcb_key_press_event_t*)event;
-                        uint8_t pressed = event->response_type == XCB_KEY_PRESS;
-                        xcb_keycode_t code = kb_event->detail;
-                        KeySym keySym = XkbKeycodeToKeysym(s_state.pDisplay,(KeyCode)code,  //event.xkey.keycode,
-                        0, code & ShiftMask ? 1 : 0);
-
-                        BlitzenCore::BlitKey key = TranslateKeycode(keySym);
-
-                        // Pass to the input subsystem for processing.
-                        s_state.pInputSystem->InputProcessKey(key, pressed);
-                    } break;
-                    case XCB_BUTTON_PRESS:
-                    case XCB_BUTTON_RELEASE: 
-                    {
-                        xcb_button_press_event_t* mouseEvent = (xcb_button_press_event_t*)event;
-                        uint8_t bPressed = event->response_type == XCB_BUTTON_PRESS;
-                        BlitzenCore::MouseButton mouseButton = BlitzenCore::MouseButton::MaxButtons;
-                        switch (mouseEvent->detail) {
-                        case XCB_BUTTON_INDEX_1:
-                            mouseButton = BlitzenCore::MouseButton::Left;
-                            break;
-                        case XCB_BUTTON_INDEX_2:
-                            mouseButton = BlitzenCore::MouseButton::Middle;
-                            break;
-                        case XCB_BUTTON_INDEX_3:
-                            mouseButton = BlitzenCore::MouseButton::Right;
-                            break;
-                        }
-
-                        // Pass over to the input subsystem.
-                        if (mouseButton != BlitzenCore::MouseButton::MaxButtons) {
-                            BlitzenCore::InputProcessButton(mouseButton, bPressed);
-                        }
-                    } break;
-                    case XCB_MOTION_NOTIFY: {
-                        // Mouse move
-                        xcb_motion_notify_event_t* moveEvent = (xcb_motion_notify_event_t*)event;
-
-                        // Pass over to the input subsystem.
-                        BlitzenCore::InputProcessMouseMove(moveEvent->event_x, moveEvent->event_y);
-                    } break;
-                    case XCB_CONFIGURE_NOTIFY: {
-                        // Resizing - note that this is also triggered by moving the window, but should be
-                        // passed anyway since a change in the x/y could mean an upper-left resize.
-                        // The application layer can decide what to do with this.
-                        xcb_configure_notify_event_t* configureEvent = (xcb_configure_notify_event_t*)event;
-
-                        // Fire the event. The application layer should pick this up, but not handle it
-                        // as it shouldn be visible to other parts of the application.
-                        BlitzenCore::EventContext context;
-                        context.data.ui32[0] = configureEvent->width;
-                        context.data.ui32[1] = configureEvent->height;
-                        s_state.pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowResize, 0, context);
-                        break;
-                    }
-
-                    case XCB_CLIENT_MESSAGE: 
-                    {
-                        cm = (xcb_client_message_event_t*)event;
-
-                        // Window close
-                        if (cm->data.data32[0] == s_state.wm_delete_win) 
-                        {
-                            quitFlagged = true;
-                        }
-                        break;
-                    }
-                    default:
-                        // Something else
-                        break;
-                    }
-
-                    free(event);
+                    break;
                 }
-                return !quitFlagged;
-            
-            return 1;
+
+                // Input events
+                switch (event->response_type & ~0x80) {
+                case XCB_KEY_PRESS:
+                case XCB_KEY_RELEASE: 
+                {
+                    // Key press event - xcb_key_press_event_t and xcb_key_release_event_t are the same
+                    xcb_key_press_event_t* kb_event = (xcb_key_press_event_t*)event;
+                    uint8_t pressed = event->response_type == XCB_KEY_PRESS;
+                    xcb_keycode_t code = kb_event->detail;
+                    KeySym keySym = XkbKeycodeToKeysym(s_state.pDisplay,(KeyCode)code,  //event.xkey.keycode,
+                    0, code & ShiftMask ? 1 : 0);
+
+                    BlitzenCore::BlitKey key = TranslateKeycode(keySym);
+
+                    // Pass to the input subsystem for processing.
+                    s_state.pInputSystem->InputProcessKey(key, pressed);
+                } break;
+                case XCB_BUTTON_PRESS:
+                case XCB_BUTTON_RELEASE: 
+                {
+                    xcb_button_press_event_t* mouseEvent = (xcb_button_press_event_t*)event;
+                    uint8_t bPressed = event->response_type == XCB_BUTTON_PRESS;
+                    BlitzenCore::MouseButton mouseButton = BlitzenCore::MouseButton::MaxButtons;
+                    switch (mouseEvent->detail) {
+                    case XCB_BUTTON_INDEX_1:
+                        mouseButton = BlitzenCore::MouseButton::Left;
+                        break;
+                    case XCB_BUTTON_INDEX_2:
+                        mouseButton = BlitzenCore::MouseButton::Middle;
+                        break;
+                    case XCB_BUTTON_INDEX_3:
+                        mouseButton = BlitzenCore::MouseButton::Right;
+                        break;
+                    }
+
+                    // Pass over to the input subsystem.
+                    if (mouseButton != BlitzenCore::MouseButton::MaxButtons) {
+                        s_state.pInputSystem->InputProcessButton(mouseButton, bPressed);
+                    }
+                } break;
+                case XCB_MOTION_NOTIFY: {
+                    // Mouse move
+                    xcb_motion_notify_event_t* moveEvent = (xcb_motion_notify_event_t*)event;
+
+                    // Pass over to the input subsystem.
+                    s_state.pInputSystem->InputProcessMouseMove(moveEvent->event_x, moveEvent->event_y);
+                } break;
+                case XCB_CONFIGURE_NOTIFY: {
+                    // Resizing - note that this is also triggered by moving the window, but should be
+                    // passed anyway since a change in the x/y could mean an upper-left resize.
+                    // The application layer can decide what to do with this.
+                    xcb_configure_notify_event_t* configureEvent = (xcb_configure_notify_event_t*)event;
+
+                    // Fire the event. The application layer should pick this up, but not handle it
+                    // as it shouldn be visible to other parts of the application.
+                    BlitzenCore::EventContext context;
+                    context.data.ui32[0] = configureEvent->width;
+                    context.data.ui32[1] = configureEvent->height;
+                    s_state.pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowResize, 0, context);
+                    break;
+                }
+
+                case XCB_CLIENT_MESSAGE: 
+                {
+                    cm = (xcb_client_message_event_t*)event;
+
+                    // Window close
+                    if (cm->data.data32[0] == s_state.wm_delete_win) 
+                    {
+                        quitFlagged = true;
+                    }
+                    break;
+                }
+                default:
+                    // Something else
+                    break;
+                }
+
+                free(event);
+            }
+            return !quitFlagged;
         }
 
         void* PlatformMalloc(size_t size, uint8_t aligned)

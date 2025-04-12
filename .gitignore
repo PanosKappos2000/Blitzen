@@ -1,5 +1,7 @@
 .vscode/
+.vs/
 build/
+out/
 ClangBuild/
 Build/
 GCCbuild/

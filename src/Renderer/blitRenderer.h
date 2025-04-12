@@ -1,15 +1,15 @@
 #pragma once
-
 // Vulkan
 #include "BlitzenVulkan/vulkanRenderer.h"
-
 // Opengl
+#if defined(_WIN32)
 #include "BlitzenGl/openglRenderer.h"
-
+#endif
 // Direct3D12
-#ifdef _WIN32
+#if defined(_WIN32)
 #include "BlitzenDX12/dx12Renderer.h"
 #endif
+#include <typeinfo>
 
 #include <cstring> // For strcmp
 

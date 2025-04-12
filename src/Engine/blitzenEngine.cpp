@@ -228,7 +228,7 @@ int main()
     BLIT_TRACE(string.GetClassic());
 
     BlitCL::String otherString{ "Lets see what this can do. Leave some space" };
-    BLIT_TRACE("Char: %c", otherString[otherString.FindLastOf('.')])
+    BLIT_TRACE("Char: %c", otherString[otherString.FindLastOf('.')]);
 
         BlitCL::String sub{ otherString.Substring(0, 10) };
 	BLIT_TRACE("Sub: %s", sub.GetClassic());

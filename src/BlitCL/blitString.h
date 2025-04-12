@@ -79,7 +79,7 @@ namespace BlitCL
             m_size = strlen(data);
             m_capacity = m_size * ce_blitStringCapacityMultiplier + 1;
             m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
-            strcpy_s(m_data, m_size + 1, data);
+            snprintf(m_data, m_size + 1, "%s", data);
         }
 
         inline String(size_t size)
@@ -123,7 +123,7 @@ namespace BlitCL
 			{
 				IncreaseCapacity(newSize);
 			}
-            strcpy_s(m_data + m_size, strSize + 1, str);
+            snprintf(m_data + m_size, strSize + 1, "%s", str);
             m_size = newSize;
         }
 
@@ -145,21 +145,21 @@ namespace BlitCL
             {
                 IncreaseCapacity(size);
             }
-            strcpy_s(m_data, size + 1, str);
+            snprintf(m_data, size + 1, "%s", str);
         }
 
         inline String Substring(size_t start, size_t size)
         {
             BlitCL::StoragePointer<char, StrAlloc> newStringData{};
             newStringData.AllocateStorage(size + 1);
-            strncpy_s(newStringData.Data(), size + 1, m_data + start, size);
+            snprintf(newStringData.Data(), size + 1, "%s", m_data + start);
 
             return String{ newStringData.Data() };
         }
 
         inline void ReplaceSubstring(size_t start, char* str)
         {
-			size_t strSize = strlen(str);
+			auto strSize = strlen(str);
 			BlitzenCore::BlitMemCopy<char>(m_data + start, str, strSize);
         }
 
@@ -174,7 +174,7 @@ namespace BlitCL
             m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
             if (m_size != 0)
             {
-                strcpy_s(m_data, m_size + 1, previousData);
+                snprintf(m_data, m_size + 1, "%s", previousData);
             }
         }
 
