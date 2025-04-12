@@ -58,30 +58,29 @@ int main(int argc, char* argv[])
     /*
         Engine Systems initialization
     */
-
     BlitzenEngine::Engine engine;
+    BlitzenCore::InitLogging();
     
     // Memory manager, needs to be created before everything that uses heap allocations
     BlitzenCore::MemoryManagerState blitzenMemory;
+#if !defined(BLITZEN_VULKAN_OVERRIDE)
     BlitzenVulkan::MemoryCrucialHandles memoryCrucials;
-
-    BlitzenCore::InitLogging();
+#endif
     
-    // Holds all available cameras
-    BlitzenEngine::CameraSystem cameraSystem;
-    
+    // Platform depends on input and event system, after they're both ready default events are registered
     EventSystem eventSystemState;
 	eventSystemState.Make();
     InputSystem inputSystemState;
     inputSystemState.Make();
-
-    // Platform specific code + window creation
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion, 
-        eventSystemState.Data(), inputSystemState.Data()))
-            
+        eventSystemState.Data(), inputSystemState.Data()))        
     BlitzenEngine::RegisterDefaultEvents();
 
-    // Initial renderer setup (API initialization, see blitRenderer.h for API selection)
+    BlitzenEngine::CameraSystem cameraSystem;
+    auto& mainCamera = cameraSystem.GetCamera();
+    BlitzenEngine::SetupCamera(mainCamera);
+
+    
     bool bRenderingSystem = false;
     BlitzenEngine::Renderer renderer;
     renderer.Make();
@@ -91,14 +90,9 @@ int main(int argc, char* argv[])
     {
         BLIT_FATAL("Failed to initialize rendering API");
         bRenderingSystem = false;
-    }
-        
+    }    
     PRenderingResources renderingResources;
     renderingResources.Make(renderer.Data());
-    
-    // Initial camera
-    BlitzenEngine::Camera& mainCamera = cameraSystem.GetCamera();
-    BlitzenEngine::SetupCamera(mainCamera);
 
     Entities entities;
 	entities.Make();
@@ -117,15 +111,8 @@ int main(int argc, char* argv[])
     while (!engine.IsActive())
     {
         BlitzenPlatform::PlatformPumpMessages();
-    
         inputSystemState->UpdateInput(0.f);
-
-#if defined(VK_DRAW_WHILE_WAITING)
-        if (typeid(renderer) ==
-            typeid(BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>)
-        )
-            renderer->DrawWhileWaiting();
-#endif
+        renderer->DrawWhileWaiting();
     }
 
 
@@ -161,9 +148,6 @@ int main(int argc, char* argv[])
         inputSystemState->UpdateInput(coreClock.GetDeltaTime());
     }
     engine.BeginShutdown();
-
-    // Destroys window before other destructors, otherwise it will lag
-    // (because it waits for a huge amount of deletes)
     BlitzenPlatform::PlatformShutdown();
 }
 

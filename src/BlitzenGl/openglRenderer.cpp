@@ -5,24 +5,28 @@
 
 namespace BlitzenGL
 {
-    uint8_t OpenglRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
+    OpenglRenderer* OpenglRenderer::s_pRenderer;
+
+    bool OpenglRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
         if(!BlitzenPlatform::CreateOpenglDrawContext())
         {
             BLIT_ERROR("Opengl failed to load")
-            return 0;
+            return false;
         }
+
+        s_pRenderer = this;
 
         // Set the viewport
         glViewport(0, 0, windowWidth, windowHeight);
 
-        // Configure the depth test	
+        // Depth test configurations for reverse infinite z	
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_GEQUAL);
         glDisable(GL_CULL_FACE);
 
-        return 1;
+        return true;
     }
 
     uint8_t OpenglRenderer::UploadTexture(void* pData, const char* filepath) 
@@ -83,6 +87,13 @@ namespace BlitzenGL
         return true;
     }
 
+    void OpenglRenderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)
+    {
+        auto& transforms = BlitzenEngine::RenderingResources::GetRenderingResources()->transforms;
+        BlitzenCore::BlitMemCopy(transforms.Data() + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
+         
+    }
+
     uint8_t OpenglRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
         float& pyramidWidth, float& pyramidHeight
     )
@@ -124,18 +135,17 @@ namespace BlitzenGL
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_indirectDrawBuffer.handle);
 
         // Create the transform buffer as a storage buffer and pass it to binding 1
-        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms = pResources->transforms;
+        auto& transforms = pResources->transforms;
         glGenBuffers(1, &m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_transformBuffer.handle);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 
             sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize(), 
-            transforms.Data(), GL_STATIC_READ
-        );
+            transforms.Data(), GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         // Creates the primitive surface buffer as a storage buffer and passes it to binding 2
-        const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces = pResources->GetSurfaceArray();
+        const auto& surfaces = pResources->GetSurfaceArray();
         glGenBuffers(1, &m_surfaceBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_surfaceBuffer.handle);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 
@@ -169,13 +179,13 @@ namespace BlitzenGL
         glGenBuffers(1, &m_viewDataBuffer.handle);
         glGenBuffers(1, &m_cullDataBuffer.handle);
 
+        // Create the compute shader program that will perform initial culling operations
+        if (!CreateComputeProgram("GlslShaders/InitialDrawCullShader.comp.glsl", m_initialDrawCullCompProgram))
+            return 0;
+
         // Create the graphics program that will have the vertex and fragment shader attached
         if(!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", 
         m_opaqueGeometryGraphicsProgram))
-            return 0;
-
-        // Create the compute shader program that will perform initial culling operations
-        if(!CreateComputeProgram("GlslShaders/InitialDrawCullShader.comp.glsl", m_initialDrawCullCompProgram))
             return 0;
         
         return 1;
@@ -240,6 +250,11 @@ namespace BlitzenGL
 
         // Swaps the framebuffer
 	    BlitzenPlatform::OpenglSwapBuffers();
+    }
+
+    void OpenglRenderer::DrawWhileWaiting()
+    {
+
     }
 
     uint8_t CreateGraphicsProgram(const char* vertexShaderFilepath, const char* fragmentShaderFilepath, 
@@ -339,7 +354,7 @@ namespace BlitzenGL
         return 1;
     }
 
-    void OpenglRenderer::Shutdown()
+    OpenglRenderer::~OpenglRenderer()
     {
         
     }

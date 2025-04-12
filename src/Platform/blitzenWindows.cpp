@@ -285,7 +285,7 @@ namespace BlitzenPlatform
 
     void OpenglSwapBuffers()
     {
-        #ifdef BLIT_VSYNC
+        #if defined(BLIT_VSYNC)
             wglSwapIntervalEXT(1);
         #else
             wglSwapIntervalEXT(0);

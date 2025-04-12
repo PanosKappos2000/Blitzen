@@ -30,17 +30,22 @@ namespace BlitzenGL
     class OpenglRenderer
     {
     public:
-        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
+        bool Init(uint32_t windowWidth, uint32_t windowHeight);
+
+        ~OpenglRenderer();
 
         uint8_t UploadTexture(void* pData, const char* filepath);
 
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
-            float& pyramidWidth, float& pyramidHeight
-        );
+            float& pyramidWidth, float& pyramidHeight);
+
+        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
+
+        void DrawWhileWaiting();
 
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
-        void Shutdown();
+        static OpenglRenderer* GetRendererInstance() { return s_pRenderer; }
 
     private:
 
@@ -85,6 +90,8 @@ namespace BlitzenGL
         GlTexture m_textures[BlitzenEngine::ce_maxTextureCount];
 
         uint32_t m_textureCount = 0;
+
+        static OpenglRenderer* s_pRenderer;
     };
 
     uint8_t CompileShader(GlShader& shader, GLenum shaderType, const char* filepath);
