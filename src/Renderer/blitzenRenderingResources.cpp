@@ -732,9 +732,10 @@ namespace BlitzenEngine
         const uint32_t nonReflectiveDrawCount = 1000;
         const uint32_t start = pResources->renderObjectCount;
         
+        uint32_t meshId = pResources->meshMap["kitten"].meshId;
         for (size_t i = start; i < start + nonReflectiveDrawCount; ++i)
         {
-            CreateRenderObjectWithRandomTransform(1, pResources, 100.f, 1.f);
+            CreateRenderObjectWithRandomTransform(meshId, pResources, 100.f, 1.f);
         }
     }
 }

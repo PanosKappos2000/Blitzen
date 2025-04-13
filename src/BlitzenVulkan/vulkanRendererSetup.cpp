@@ -316,25 +316,6 @@ namespace BlitzenVulkan
         pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite; 
         pushDescriptorWritesCompute[7] = {};// Will hold the depth pyramid for late culling compute shaders
 
-        // This is obsolete but I am not in the mood to fix it
-        m_pushDescriptorWritesOnpcGraphics[0] = {};
-        m_pushDescriptorWritesOnpcGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
-        m_pushDescriptorWritesOnpcGraphics[2] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
-        m_pushDescriptorWritesOnpcGraphics[3] = m_varBuffers[0].transformBuffer.descriptorWrite;
-        m_pushDescriptorWritesOnpcGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite; 
-        m_pushDescriptorWritesOnpcGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-        m_pushDescriptorWritesOnpcGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-		m_pushDescriptorWritesOnpcGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
-
-        m_pushDescriptorWritesOnpcCompute[0] = {};// This will be where the global shader data write will be, but this one is not always static
-        m_pushDescriptorWritesOnpcCompute[1] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite; 
-        m_pushDescriptorWritesOnpcCompute[2] = m_varBuffers[0].transformBuffer.descriptorWrite;
-        m_pushDescriptorWritesOnpcCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-        m_pushDescriptorWritesOnpcCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite; 
-        m_pushDescriptorWritesOnpcCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite; 
-        m_pushDescriptorWritesOnpcCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-        m_pushDescriptorWritesOnpcCompute[7] = {}; 
-
         return 1;
     }
 
@@ -941,6 +922,7 @@ namespace BlitzenVulkan
         auto pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
         auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
 		auto& transforms = pResources->transforms;
+        const auto& transparentRenderobjects = pResources->GetTranparentRenders();
 
         // Raytracing support needs additional flags
         uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
@@ -1007,6 +989,25 @@ namespace BlitzenVulkan
             if (onpcRenderObjectBufferSize == 0)
             {
                 BLIT_ERROR("Failed to create Oblique Near-Plane Clipping render object buffer");
+                return 0;
+            }
+
+            m_stats.bObliqueNearPlaneClippingObjectsExist = 1;
+        }
+
+        AllocatedBuffer tranparentRenderObjectStagingBuffer;
+        VkDeviceSize transparentRenderObjectBufferSize;
+        if (transparentRenderobjects.GetSize() != 0)
+        {
+            transparentRenderObjectBufferSize =
+                SetupPushDescriptorBuffer(m_device, m_allocator, 
+                    m_currentStaticBuffers.transparentRenderObjectBuffer, 
+                    tranparentRenderObjectStagingBuffer, transparentRenderobjects.GetSize(), 
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                    transparentRenderobjects.Data());
+            if (transparentRenderObjectBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create transparent render object buffer");
                 return 0;
             }
         }

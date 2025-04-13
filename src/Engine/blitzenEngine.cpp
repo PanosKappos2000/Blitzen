@@ -34,11 +34,10 @@ using Entities = BlitCL::SmartPointer<BlitzenEngine::GameObjectManager, BlitzenC
 
 static void LoadRenderingResources(int argc, char** argv,
     BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer,
-    BlitzenEngine::GameObjectManager* pManager, uint8_t& bOnpc,
-    BlitzenEngine::Camera& camera, bool& bRenderingSystem)
+    BlitzenEngine::GameObjectManager* pManager, BlitzenEngine::Camera& camera, bool& bRenderingSystem)
 {
     BlitzenEngine::CreateSceneFromArguments(argc, argv, pResources,
-        pRenderer, pManager, bOnpc);
+        pRenderer, pManager);
     if (!bRenderingSystem ||
         !pRenderer->SetupForRendering(pResources, camera.viewData.pyramidWidth,
             camera.viewData.pyramidHeight
@@ -98,10 +97,9 @@ int main(int argc, char* argv[])
 	entities.Make();
 
     // Loading resources
-    uint8_t bOnpc = 0;
     std::thread loadingThread{ [&]() {
         LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
-            entities.Data(), bOnpc, mainCamera, bRenderingSystem);
+            entities.Data(), mainCamera, bRenderingSystem);
     }};
     loadingThread.detach();
 
@@ -119,7 +117,7 @@ int main(int argc, char* argv[])
     /*
         Main loop starts here
     */
-    BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data(), bOnpc };
+    BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data()};
     while(engine.IsRunning())
     {
         // Captures events

@@ -28,7 +28,6 @@ namespace BlitzenEngine
         inline const Material* GetMaterialArrayPointer() const { return m_materials; }
         inline const Material& GetMaterialFromMap(const char* materialName) { return m_materialTable[materialName]; }
         inline uint32_t GetMaterialCount() const { return m_materialCount; }
-
         inline const BlitCL::DynamicArray<PrimitiveSurface>& GetSurfaceArray() const
         {
             return m_surfaces;
@@ -52,6 +51,10 @@ namespace BlitzenEngine
         inline const BlitCL::DynamicArray<uint32_t>& GetClusterIndices() const
         {
             return m_clusterIndices;
+        }
+        inline const BlitCL::DynamicArray<RenderObject>& GetTranparentRenders() const
+        {
+            return m_transparentRenders;
         }
       
     public:
@@ -311,6 +314,10 @@ namespace BlitzenEngine
 
         // Holds the meshlet indices to index into the clusters above
         BlitCL::DynamicArray<uint32_t> m_clusterIndices;
+
+    private:
+
+        BlitCL::DynamicArray<RenderObject> m_transparentRenders;
     };
 
 
@@ -326,11 +333,8 @@ namespace BlitzenEngine
 
         RenderingResources* pResources;
 
-        // Tells the renderer if it should do call Oblique near clipping shaders
-        uint8_t bOnpc = 0;
-
-        inline DrawContext(BlitzenEngine::Camera* pCam, RenderingResources* pr, uint8_t onpc = 0): 
-            pCamera(pCam), pResources(pr), bOnpc{onpc} 
+        inline DrawContext(BlitzenEngine::Camera* pCam, RenderingResources* pr): 
+            pCamera(pCam), pResources(pr) 
         {}
     };
 

@@ -65,10 +65,10 @@ namespace BlitzenVulkan
         pushDescriptorWritesCompute[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
 		pushDescriptorWritesGraphics[3].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
 		pushDescriptorWritesCompute[2].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
-        if (context.bOnpc)
+        if (m_stats.bObliqueNearPlaneClippingObjectsExist)
         {
-            m_pushDescriptorWritesOnpcCompute[ce_viewDataWriteElement] = vBuffers.viewDataBuffer.descriptorWrite;
-			m_pushDescriptorWritesOnpcGraphics[ce_viewDataWriteElement] = vBuffers.viewDataBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
+			pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
         }
     }
 
@@ -207,21 +207,22 @@ namespace BlitzenVulkan
                 1 // late pass boolean
             );
 
-            if(context.bOnpc)
+            if(m_stats.bObliqueNearPlaneClippingObjectsExist)
             {
-                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, 
-                    BLIT_ARRAY_SIZE(m_pushDescriptorWritesOnpcCompute), m_pushDescriptorWritesOnpcCompute,
-                    context.pResources->onpcReflectiveRenderObjectCount, 
-                    0, 0 // late culling and post pass boolean values
-                );
+                // Replace the regular render object write with the onpc one
+                pushDescriptorWritesGraphics[2] = 
+                    m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
+                pushDescriptorWritesCompute[1] = 
+                    m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
 
-                DrawGeometry(fTools.commandBuffer, m_pushDescriptorWritesOnpcGraphics.Data(), 
-                    uint32_t(m_pushDescriptorWritesOnpcGraphics.Size()),
+                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, 
+                    BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
+                    context.pResources->onpcReflectiveRenderObjectCount, 0, 0);
+
+                DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
+                    uint32_t(pushDescriptorWritesGraphics.Size()),
                     m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle,
-                    context.pResources->onpcReflectiveRenderObjectCount,
-                    1, // late pass boolean
-                    1, &pCamera->onbcProjectionMatrix // Oblique Near Plane clipping data
-                );
+                    context.pResources->onpcReflectiveRenderObjectCount, 1, 1, &pCamera->onbcProjectionMatrix);
             }
         }
         

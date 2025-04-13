@@ -1,9 +1,6 @@
 #version 450
-
 #extension GL_GOOGLE_include_directive : require
-
 #define COMPUTE_PIPELINE
-
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
 
@@ -15,9 +12,9 @@ void main()
 	uint objectIndex = gl_GlobalInvocationID.x;
 
     if(cullPC.drawCount <= objectIndex)
+    {
         return;
-
-    // Gets the current object using the global invocation ID. It also retrieves the surface that the objects points to and the transform data
+    }
     RenderObject currentObject = onpcReflectiveObjectBuffer.objects[objectIndex];
     Transform transform = transformBuffer.instances[currentObject.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[currentObject.surfaceId];
@@ -51,12 +48,10 @@ void main()
 		for (uint i = 1; i < surface.lodCount; ++i)
 			if (surface.lod[i].error < threshold)
 				lodIndex = i;
-
-        // Get the selected LOD
         MeshLod currentLod = surface.lod[lodIndex];
-        // The object index is needed to know which element to access in the per object data buffer
+
+        // Draw commands + object id
         indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
-        // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface
         indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
         indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
         indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;

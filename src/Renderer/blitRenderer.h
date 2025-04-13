@@ -91,7 +91,7 @@ namespace BlitzenEngine
     // Takes the command line arguments to form a scene (this is pretty ill formed honestly)
     template<class RT, class MT>
     void CreateSceneFromArguments(int argc, char** argv,
-        RenderingResources* pResources, RT* pRenderer, MT* pManager, uint8_t& bOnpc)
+        RenderingResources* pResources, RT* pRenderer, MT* pManager)
     {
         LoadTestGeometry(pResources);
 #if defined(BLIT_DYNAMIC_OBJECT_TEST)
@@ -113,11 +113,10 @@ namespace BlitzenEngine
             }
 
             // Special argument. Test oblique near-plane clipping technique. Not working yet.
-            else if (strcmp(argv[1], "ONPC_ReflectionTest") == 0)
+            else if (strcmp(argv[1], "OnpcReflectionTest") == 0)
             {
                 LoadTestGeometry(pResources);
                 CreateObliqueNearPlaneClippingTestObject(pResources);
-                bOnpc = 1;
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)

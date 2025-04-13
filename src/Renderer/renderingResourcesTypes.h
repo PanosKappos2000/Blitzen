@@ -104,13 +104,15 @@ namespace BlitzenEngine
         BlitML::vec3 center;
         float radius;
 
-        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];// This is wasteful
+        // TODO: Will replace this with an index
+        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
         uint8_t lodCount = 0;
 
         uint32_t vertexOffset;
 
         uint32_t materialId;
 
+        // To be replaced
         uint8_t postPass = 0;
     };
 

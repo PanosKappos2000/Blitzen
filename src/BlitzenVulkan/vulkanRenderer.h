@@ -159,7 +159,7 @@ namespace BlitzenVulkan
         */
     private:
 
-        // Holds data for buffers that will be loaded once and will be used for every object
+        // This structu is pointless, should just have what is inside separately
         struct StaticBuffers
         {
             // Vertex buffer. Push descriptor layout. Binding 1. Storage buffer. Accessible in vertex shader
@@ -181,10 +181,9 @@ namespace BlitzenVulkan
             // Holds all BlitzenEngine::Material that were load for the scene
             PushDescriptorBuffer<void> materialBuffer{ 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
 
-            // Renderer object buffer. Push descriptor layout. Binding 4. Storage buffer. Accessible in compute and vertex shaders.
-            // Holds all BlitzenEngine::RenderObject. 
-            // Basically an index to a primitive and an index to a transform (see binding 2 and 5)
             PushDescriptorBuffer<void> renderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{ 14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> transparentRenderObjectBuffer{ 15, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
 
             // Surface buffer. Push descriptor layout. Binding 2. Storage buffer. Accessible in compute and vertex shaders.
             // Holds all BlitzenEngine::PrimitiveSurface that were loaded for the scene
@@ -209,10 +208,6 @@ namespace BlitzenVulkan
             // The visibility buffer is a storage buffer thta will be part of the push descriptor layout at binding 10
             // It will hold either 1 or 0 for each object based on if they were visible last frame or not
             PushDescriptorBuffer<void> visibilityBuffer{ 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-
-            // The onpcReflectiveRenderObject buffer is a storage buffer that will be part of the push descriptor layout at binding 14
-            // It will hold the objects that use Oblique near-plane clipping
-            PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{ 14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
 
             // Raytracing primitive acceleration structure buffer and vulkan objects
             AllocatedBuffer blasBuffer;
@@ -301,9 +296,6 @@ namespace BlitzenVulkan
 
         BlitCL::StaticArray<VkWriteDescriptorSet, ce_graphicsDecriptorWriteCount> pushDescriptorWritesGraphics;
         VkWriteDescriptorSet pushDescriptorWritesCompute[ce_computeDescriptorWriteCount];
-
-        BlitCL::StaticArray<VkWriteDescriptorSet, ce_graphicsDecriptorWriteCount> m_pushDescriptorWritesOnpcGraphics;
-        VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[ce_computeDescriptorWriteCount];
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
         DescriptorSetLayout m_depthPyramidDescriptorLayout;

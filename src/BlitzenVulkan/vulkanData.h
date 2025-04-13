@@ -118,6 +118,8 @@ namespace BlitzenVulkan
         const char* deviceExtensionNames[ce_maxRequestedDeviceExtensions];
 
         uint8_t bResourceManagementReady = 0;
+
+        uint8_t bObliqueNearPlaneClippingObjectsExist = 0;
     };
 
 
