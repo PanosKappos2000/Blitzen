@@ -68,7 +68,7 @@ namespace BlitzenVulkan
         void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
 
         // Static function that allows access to vulkan renderer at any scope
-        inline static VulkanRenderer* GetRendererInstance() {return m_pThisRenderer;}
+        inline static VulkanRenderer* GetRendererInstance() { return m_pThisRenderer; }
         inline VulkanStats GetStats() const { return m_stats; }
 
         // Vulkan API and memory crucials
@@ -103,32 +103,43 @@ namespace BlitzenVulkan
         // Takes the data that is to be used in the scene (vertices, primitives, textures etc.) and uploads to the appropriate resource struct
         uint8_t UploadDataToGPU(BlitzenEngine::RenderingResources* pResources);
 
+        void CopyStaticBufferDataToGPUBuffers(
+            VkBuffer stagingVertexBuffer, VkDeviceSize vertexBufferSize,
+            VkBuffer stagingIndexBuffer, VkDeviceSize indexBufferSize,
+            VkBuffer renderObjectStagingBuffer, VkDeviceSize renderObjectBufferSize,
+            VkBuffer onpcRenderObjectStagingBuffer, VkDeviceSize onpcRenderObjectBufferSize,
+            VkBuffer surfaceStagingBuffer, VkDeviceSize surfaceBufferSize,
+            VkBuffer materialStagingBuffer, VkDeviceSize materialBufferSize,
+            VkDeviceSize visibilityBufferSize,
+            VkBuffer clusterStagingBuffer, VkDeviceSize clusterBufferSize,
+            VkBuffer clusterIndicesStagingBuffer, VkDeviceSize clusterIndicesBufferSize);
+
         // Since the way the graphics pipelines work is fixed and there are only 2 of them, the code is collected in this fixed function
         uint8_t SetupMainGraphicsPipeline();
 
-        uint8_t BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, 
+        uint8_t BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces,
             const BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts
         );
 
-        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, 
+        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount,
             BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface
         );
 
 
 
         // Updates var buffers
-		void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, FrameTools& tools, VarBuffers& buffers);
+        void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, FrameTools& tools, VarBuffers& buffers);
 
         // Dispatches the compute shader that will perform culling and LOD selection and will write to the indirect draw buffer.
-        void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline, 
+        void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline,
             uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount,
             uint8_t lateCulling = 0, uint8_t postPass = 0
         );
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
-        void DrawGeometry(VkCommandBuffer commandBuffer, 
+        void DrawGeometry(VkCommandBuffer commandBuffer,
             VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
-            VkPipeline pipeline, VkPipelineLayout layout, 
+            VkPipeline pipeline, VkPipelineLayout layout,
             uint32_t drawCount, uint8_t latePass = 0, uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr
         );
 
@@ -143,9 +154,9 @@ namespace BlitzenVulkan
         // Recreates the swapchain when necessary (and other handles that are involved with the window, like the depth pyramid)
         void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
 
-    /*
-        Private helper structs
-    */
+        /*
+            Private helper structs
+        */
     private:
 
         // Holds data for buffers that will be loaded once and will be used for every object
@@ -212,9 +223,9 @@ namespace BlitzenVulkan
             AccelerationStructure tlasData;
         };
 
-    /*
-        API initialization handles section
-    */
+        /*
+            API initialization handles section
+        */
     private:
 
         VkAllocationCallbacks* m_pCustomAllocator;
@@ -229,9 +240,9 @@ namespace BlitzenVulkan
 
         Swapchain m_swapchainValues;
 
-    /*
-        Image resources section
-    */
+        /*
+            Image resources section
+        */
     private:
 
         // Size of color attachments (right now it's always the same size as the swapchain)
@@ -240,7 +251,7 @@ namespace BlitzenVulkan
         // Color attachment. Its sampler will be used to copy it into the swapchain
         PushDescriptorImage m_colorAttachment
         {
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             1, // binding ID
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
@@ -249,19 +260,19 @@ namespace BlitzenVulkan
         // Depth attachment. Its sampler will be passed to the depth pyramid generation shader, binding 1
         PushDescriptorImage m_depthAttachment
         {
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             1, // bidning ID
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkRenderingAttachmentInfo m_depthAttachmentInfo{};
-        
-		// The depth pyramid will copy data from the depth attachment to create a pyramid for occlusion culling
+
+        // The depth pyramid will copy data from the depth attachment to create a pyramid for occlusion culling
         PushDescriptorImage m_depthPyramid
-		{
-			VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-			0, // binding ID
-			VK_IMAGE_LAYOUT_GENERAL
-		};
+        {
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            0, // binding ID
+            VK_IMAGE_LAYOUT_GENERAL
+        };
         VkImageView m_depthPyramidMips[ce_maxDepthPyramidMipLevels];
         uint8_t m_depthPyramidMipLevels;
         VkExtent2D m_depthPyramidExtent;
@@ -271,18 +282,18 @@ namespace BlitzenVulkan
         size_t textureCount;
         ImageSampler m_textureSampler;
 
-    /*
-        Buffer resources section
-    */
+        /*
+            Buffer resources section
+        */
     private:
 
         StaticBuffers m_currentStaticBuffers;
 
         VarBuffers m_varBuffers[ce_framesInFlight];
 
-    /*
-        Descriptor section
-    */
+        /*
+            Descriptor section
+        */
     private:
 
         // Layout for descriptors that will be using PushDescriptor extension. Has 10+ bindings
@@ -291,7 +302,7 @@ namespace BlitzenVulkan
         BlitCL::StaticArray<VkWriteDescriptorSet, ce_graphicsDecriptorWriteCount> pushDescriptorWritesGraphics;
         VkWriteDescriptorSet pushDescriptorWritesCompute[ce_computeDescriptorWriteCount];
 
-		BlitCL::StaticArray<VkWriteDescriptorSet, ce_graphicsDecriptorWriteCount> m_pushDescriptorWritesOnpcGraphics;
+        BlitCL::StaticArray<VkWriteDescriptorSet, ce_graphicsDecriptorWriteCount> m_pushDescriptorWritesOnpcGraphics;
         VkWriteDescriptorSet m_pushDescriptorWritesOnpcCompute[ce_computeDescriptorWriteCount];
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
@@ -310,9 +321,9 @@ namespace BlitzenVulkan
         // Descriptor set layout for src and dst image for the generate presentation compute shader
         DescriptorSetLayout m_generatePresentationImageSetLayout;
 
-    /*
-        Pipelines section
-    */
+        /*
+            Pipelines section
+        */
     private:
 
         // Main graphics pipeline. Draws opaque objects that have no special properties
@@ -351,10 +362,10 @@ namespace BlitzenVulkan
         // Copies the color attachment to the current swapchain image. Used at the end of the DrawFrame function
         PipelineObject m_generatePresentationPipeline;
         PipelineLayout m_generatePresentationLayout;
-    
-    /*
-        Runtime section
-    */
+
+        /*
+            Runtime section
+        */
     private:
 
         FrameTools m_frameToolsList[ce_framesInFlight];
@@ -368,7 +379,7 @@ namespace BlitzenVulkan
 
         // Holds stats that give information about how the vulkanRenderer is operating
         VulkanStats m_stats;
-       
+
         Queue m_graphicsQueue;
         Queue m_presentQueue;
         Queue m_computeQueue;
@@ -383,33 +394,33 @@ namespace BlitzenVulkan
 
     // Creates the swapchain
     uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
-        uint32_t windowWidth, uint32_t windowHeight, 
-        Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
-        VkAllocationCallbacks* pCustomAllocator, 
+        uint32_t windowWidth, uint32_t windowHeight,
+        Queue graphicsQueue, Queue presentQueue, Queue computeQueue,
+        VkAllocationCallbacks* pCustomAllocator,
         Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE
     );
 
     // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
-    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
-        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
+    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent,
+        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels,
         VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator
     );
 
 
     // Creates VkWriteDescriptorSet for a buffer type descriptor set
-    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, 
-    VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain = nullptr,
-    VkDescriptorSet dstSet = VK_NULL_HANDLE,  VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
-    VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo,
+        VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain = nullptr,
+        VkDescriptorSet dstSet = VK_NULL_HANDLE, VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
+        VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
 
     // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
-    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 
-    uint32_t descriptorCount, uint32_t binding, uint32_t dstArrayElement = 0);
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet,
+        uint32_t descriptorCount, uint32_t binding, uint32_t dstArrayElement = 0);
 
     // Creates VkDescriptorImageInfo and uses it to create a VkWriteDescriptorSet for images. DescriptorCount is set to 1 by default
-    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo, 
-    VkDescriptorType descirptorType, VkDescriptorSet dstSet, 
-    uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler = VK_NULL_HANDLE);
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo,
+        VkDescriptorType descirptorType, VkDescriptorSet dstSet,
+        uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler = VK_NULL_HANDLE);
 
 
 
@@ -417,126 +428,130 @@ namespace BlitzenVulkan
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
 
     // Copies parts of one buffer to parts of another, depending on the offsets that are passed
-    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, 
+    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer,
         VkDeviceSize copySize, VkDeviceSize srcOffset, VkDeviceSize dstOffset);
 
     // Defined in vulkanRenderer.cpp, create a rending attachment info needed to call vkCmdBeginRendering (dynamic rendering)
-    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, 
-        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, 
-        VkClearColorValue clearValueColor = {0, 0, 0, 0}, VkClearDepthStencilValue clearValueDepth = {0, 0});
-    
-        // Starts a render pass using the dynamic rendering feature(command buffer should be in recording state)
-        void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, 
-        uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment, 
-        VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1 );
-    
-        // Calles the code needed to dynamically set the viewport and scissor. 
-        // The graphics pipeline uses a dynamic viewport and scissor by default, so this needs to be called during the frame loop
-        void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
+        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
+        VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
 
-	void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo, 
+    // Starts a render pass using the dynamic rendering feature(command buffer should be in recording state)
+    void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset,
+        uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment,
+        VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1);
+
+    // Calles the code needed to dynamically set the viewport and scissor. 
+    // The graphics pipeline uses a dynamic viewport and scissor by default, so this needs to be called during the frame loop
+    void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
+
+    void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo,
         VkSemaphore semaphore, VkPipelineStageFlags2 stage);
 
     // Submits the command buffer to excecute the recorded commands. Semaphores, fences and other sync structures can be specified 
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount = 0, 
-        VkSemaphoreSubmitInfo* pWaitInfo = nullptr,  uint32_t signalSemaphoreCount = 0, 
-        VkSemaphoreSubmitInfo* signalSemaphore = nullptr,  VkFence fence = VK_NULL_HANDLE
+    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount = 0,
+        VkSemaphoreSubmitInfo* pWaitInfo = nullptr, uint32_t signalSemaphoreCount = 0,
+        VkSemaphoreSubmitInfo* signalSemaphore = nullptr, VkFence fence = VK_NULL_HANDLE
     );
 
-    void PresentToSwapchain(VkDevice device, VkQueue queue, 
+    void PresentToSwapchain(VkDevice device, VkQueue queue,
         VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
         uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
         uint32_t* pImageIndices, VkResult* pResults = nullptr, void* pNextChain = nullptr
     );
 
     // Records a command for a pipeline barrier with the specified memory, buffer and image barriers
-    void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount, 
-        VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount, 
-        VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount, 
+    void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount,
+        VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount,
+        VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount,
         VkImageMemoryBarrier2* pImageBarriers
     );
 
     // Sets up an image memory barrier to be passed to the above function
-    void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier, 
-        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
-        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, 
-        VkImageLayout oldLayout, VkImageLayout newLayout, 
-        VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount, 
+    void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier,
+        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage,
+        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
+        VkImageLayout oldLayout, VkImageLayout newLayout,
+        VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount,
         uint32_t baseArrayLayer = 0, uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS
     );
 
     // Sets up a buffer memory barrier to be passed to the PipelineBarrier function
-    void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier, 
-        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage, 
-        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage, 
+    void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier,
+        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage,
+        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
         VkDeviceSize offset, VkDeviceSize size
     );
 
     // Sets up a memory barrier to be passed to the PipelineBarrier function
-    void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage, 
-        VkAccessFlags2 firstAccessStage, VkPipelineStageFlags2 secondSyncStage, 
+    void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage,
+        VkAccessFlags2 firstAccessStage, VkPipelineStageFlags2 secondSyncStage,
         VkAccessFlags2 secondAccessStage
     );
 
 
-   
+
     /*
         GpuUpload functions
     */
 
-    // This function calls the CreateStorageBufferWithStagingBuffer function for a PushDescriptorBuffer
-    // It also create a VkWriteDescriptorSets struct for it
-    template <typename T = void>
-    uint8_t SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, 
-    PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer, 
-    VkDeviceSize bufferSize, VkBufferUsageFlags usage, void* pData)
+    // Allocates a buffer, creates a staging buffer for its data and creates a VkWriteDescriptorSet for its descriptor
+    // Return the buffer's size or 0 if it fails
+    template <typename DataType, typename T = void>
+    VkDeviceSize SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator,
+        PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer,
+        size_t elementCount, VkBufferUsageFlags usage, DataType* pData)
     {
-        // Creates the storage buffer (does not save the address, it assumes the caller does not need it)
-        // It also creates its staging buffer. The caller can later use it to pass the data to the storage buffer
-        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
+        VkDeviceSize bufferSize = elementCount * sizeof(DataType);
+        if (bufferSize == 0)
+        {
+            return 0;
+        }
+        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer,
             stagingBuffer, usage, bufferSize);
-        if(pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
+        if (pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
         {
             return 0;
         }
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-            pushBuffer.descriptorType, pushBuffer.descriptorBinding, 
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo,
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding,
             pushBuffer.buffer.bufferHandle);
-        return 1;
+        return bufferSize;
     }
 
     // This overload of the above function calls the base CreateBuffer function only
     // It does the same thing as the above with the VkWriteDescriptorSet
-    template <typename T = void>
-    uint8_t SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
-        PushDescriptorBuffer<T>& pushBuffer, VkDeviceSize bufferSize, 
+    template <typename DataType, typename T = void>
+    VkDeviceSize SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
+        PushDescriptorBuffer<T>& pushBuffer, size_t elementCount,
         VkBufferUsageFlags usage, void* pNextChain = nullptr
     )
     {
-        if(!CreateBuffer(allocator, pushBuffer.buffer, usage, 
+        VkDeviceSize bufferSize = sizeof(DataType) * elementCount;
+        if (!CreateBuffer(allocator, pushBuffer.buffer, usage,
             memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             return 0;
         }
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
-            pushBuffer.descriptorType, pushBuffer.descriptorBinding, 
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo,
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding,
             pushBuffer.buffer.bufferHandle, pNextChain);
-        return 1;
+        return bufferSize;
     }
 
     // Calls CreateImage, but also create a VkWriteDescriptorSets struct for the PushDescriptorImage
-    uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image, 
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, 
+    uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image,
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels,
         VmaMemoryUsage memoryUsage);
 
-    // Creates a global vertex buffer as a Shader Storage Buffer. Returns its size or 0 if it fails
-    VkDeviceSize CreateGlobalSSBOVertexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported,
-        AllocatedBuffer& vertexStagingBuffer, PushDescriptorBuffer<void>& vertexBuffer, 
-        BlitzenEngine::Vertex* pVertexData, size_t vertexDataCount);
-    
+
     // Creates a global index buffer. Return its size or 0 if it fails
-    VkDeviceSize CreateGlobalIndexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported, 
+    VkDeviceSize CreateGlobalIndexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported,
         AllocatedBuffer& indexStagingBuffer, AllocatedBuffer& indexBuffer, uint32_t* pIndexData, size_t indicesCount);
+
+    uint8_t AllocateTextureDescriptorSet(VkDevice device, uint32_t textureCount, TextureData* pTextures, 
+        VkDescriptorPool& descriptorPool, VkDescriptorSetLayout* pLayout, VkDescriptorSet& descriptorSet);
+
 }

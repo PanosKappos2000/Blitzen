@@ -3,30 +3,6 @@
 
 namespace BlitzenVulkan
 {
-    VkDeviceSize CreateGlobalSSBOVertexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported,
-        AllocatedBuffer& stagingVertexBuffer, PushDescriptorBuffer<void>& vertexBuffer, 
-        BlitzenEngine::Vertex* pVertexData, size_t vertexDataCount)
-    {
-        // Raytracing support needs additional flags
-        uint32_t geometryBuffersRaytracingFlags = bRaytracingSupported ?
-            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-            | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-            : 0;
-        VkDeviceSize vertexBufferSize = sizeof(BlitzenEngine::Vertex) * vertexDataCount;
-        if (vertexBufferSize == 0)
-        {
-            return 0;
-        }
-        // Creates vertex buffer. If the function fails returns 0 to let the caller know
-        if (!SetupPushDescriptorBuffer(device, allocator, vertexBuffer, stagingVertexBuffer,
-            vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryBuffersRaytracingFlags,
-            pVertexData))
-        {
-            return 0;
-        }
-        return vertexBufferSize;
-    }
-
     VkDeviceSize CreateGlobalIndexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported, 
         AllocatedBuffer& stagingIndexBuffer, AllocatedBuffer& indexBuffer, uint32_t* pIndexData, size_t indicesCount)
     {
@@ -50,5 +26,43 @@ namespace BlitzenVulkan
             return 0;
         }
         return indexBufferSize;
+    }
+
+    uint8_t AllocateTextureDescriptorSet(VkDevice device, uint32_t textureCount, TextureData* pTextures, 
+        VkDescriptorPool& descriptorPool, VkDescriptorSetLayout* pLayout, VkDescriptorSet& descriptorSet)
+    {
+        if(textureCount == 0)
+        {
+            return 0;
+        }
+        // Creates descriptor pool to allocate combined image samplers
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSize.descriptorCount = textureCount;
+        descriptorPool = CreateDescriptorPool(device, 1, &poolSize, 1);
+        if(descriptorPool == VK_NULL_HANDLE)
+        {
+            return 0;
+        }
+        // Allocates the descriptor sets
+        if(!AllocateDescriptorSets(device, descriptorPool, pLayout, 1, &descriptorSet))
+        {
+            return 0;
+        }
+        
+        // Creates image infos for every texture to be passed to the VkWriteDescriptorSet
+        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(textureCount);
+        for(size_t i = 0; i < imageInfos.GetSize(); ++i)
+        {
+            imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfos[i].imageView = pTextures[i].image.imageView;
+            imageInfos[i].sampler = pTextures[i].sampler;
+        }
+        VkWriteDescriptorSet write{};
+        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
+            descriptorSet, static_cast<uint32_t>(imageInfos.GetSize()), 0);
+        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+
+        return 1;
     }
 }
