@@ -8,8 +8,6 @@ namespace BlitzenVulkan
 {
 	constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
 
-    constexpr VkClearColorValue WindowClearColor = { 0.f, 0.2f, 0.4f, 1.f };
-
     uint8_t VulkanRenderer::UploadTexture(void* pData, const char* filepath) 
     {
         // Checks if resource management has been setup
@@ -171,9 +169,8 @@ namespace BlitzenVulkan
         }
         // Rendering attachment info, most values stay constant
         CreateRenderingAttachmentInfo(m_colorAttachmentInfo, m_colorAttachment.image.imageView,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-            VK_ATTACHMENT_LOAD_OP_LOAD ,VK_ATTACHMENT_STORE_OP_STORE,
-            WindowClearColor);
+            ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD ,VK_ATTACHMENT_STORE_OP_STORE,
+            ce_WindowClearColor);
         /*
             Depth attachement value and handle configuration
         */
@@ -201,8 +198,7 @@ namespace BlitzenVulkan
         }
         // Rendering attachment info info, most values stay constant
         CreateRenderingAttachmentInfo(m_depthAttachmentInfo, m_depthAttachment.image.imageView,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, 
+            ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, 
             { 0, 0, 0, 0 }, { 0, 0 });
         // Create the depth pyramid image and its mips that will be used for occlusion culling
         if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
@@ -945,42 +941,27 @@ namespace BlitzenVulkan
 
 		auto& transforms = pResources->transforms;
 
-        // When raytracing is active, some additional flags are needed for the vertex and index buffer
-        uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
-        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR 
-        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-        : 0;
-
-        // Global vertex buffer
-        VkDeviceSize vertexBufferSize = sizeof(BlitzenEngine::Vertex) * vertices.GetSize();
-        if(vertexBufferSize == 0)
-            return 0;
+        // Creates vertex buffer
         AllocatedBuffer stagingVertexBuffer;
-        if(!SetupPushDescriptorBuffer(
-            m_device, m_allocator, 
-            m_currentStaticBuffers.vertexBuffer, stagingVertexBuffer, 
-            vertexBufferSize, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | // Primary flags
-            geometryBuffersRaytracingFlags, // Raytracing flags
-            vertices.Data() // buffer data
-        ))
+        VkDeviceSize vertexBufferSize{ CreateGlobalSSBOVertexBuffer(m_device, m_allocator,
+            m_stats.bRayTracingSupported, stagingVertexBuffer, 
+            m_currentStaticBuffers.vertexBuffer, vertices.Data(), vertices.GetSize()) };
+        if (vertexBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create vertex buffer");
             return 0;
+        }
 
         // Global index buffer
-        VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.GetSize();
-        if(indexBufferSize == 0)
-            return 0;
         AllocatedBuffer stagingIndexBuffer;
-        CreateStorageBufferWithStagingBuffer(
-            m_allocator, m_device, 
-            indices.Data(), // Buffer data
-            m_currentStaticBuffers.indexBuffer, stagingIndexBuffer, 
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | // Primary flags 
-            geometryBuffersRaytracingFlags, // Raytracing flags
-            indexBufferSize
-        );
-        if(m_currentStaticBuffers.indexBuffer.bufferHandle == VK_NULL_HANDLE)
+        VkDeviceSize indexBufferSize{ CreateGlobalIndexBuffer(m_device, m_allocator,
+            m_stats.bRayTracingSupported, stagingIndexBuffer, m_currentStaticBuffers.indexBuffer,
+            indices.Data(), indices.GetSize()) };
+        if (indexBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create index buffer");
             return 0;
+        }
 
         // Standard render object buffer
         VkDeviceSize renderObjectBufferSize = sizeof(BlitzenEngine::RenderObject) * renderObjectCount;

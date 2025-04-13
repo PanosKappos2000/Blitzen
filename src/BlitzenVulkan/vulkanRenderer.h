@@ -481,7 +481,7 @@ namespace BlitzenVulkan
 
    
     /*
-        Template functions
+        GpuUpload functions
     */
 
     // This function calls the CreateStorageBufferWithStagingBuffer function for a PushDescriptorBuffer
@@ -494,16 +494,15 @@ namespace BlitzenVulkan
         // Creates the storage buffer (does not save the address, it assumes the caller does not need it)
         // It also creates its staging buffer. The caller can later use it to pass the data to the storage buffer
         CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer, 
-            stagingBuffer, usage, bufferSize
-        );
+            stagingBuffer, usage, bufferSize);
         if(pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
+        {
             return 0;
-        
+        }
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
         WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
             pushBuffer.descriptorType, pushBuffer.descriptorBinding, 
-            pushBuffer.buffer.bufferHandle
-        );
+            pushBuffer.buffer.bufferHandle);
         return 1;
     }
 
@@ -516,21 +515,28 @@ namespace BlitzenVulkan
     )
     {
         if(!CreateBuffer(allocator, pushBuffer.buffer, usage, 
-            memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT
-        ))
+            memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        {
             return 0;
-        
+        }
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
         WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, 
             pushBuffer.descriptorType, pushBuffer.descriptorBinding, 
-            pushBuffer.buffer.bufferHandle, pNextChain
-        );
+            pushBuffer.buffer.bufferHandle, pNextChain);
         return 1;
     }
 
     // Calls CreateImage, but also create a VkWriteDescriptorSets struct for the PushDescriptorImage
     uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image, 
         VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, 
-        VmaMemoryUsage memoryUsage
-    );
+        VmaMemoryUsage memoryUsage);
+
+    // Creates a global vertex buffer as a Shader Storage Buffer. Returns its size or 0 if it fails
+    VkDeviceSize CreateGlobalSSBOVertexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported,
+        AllocatedBuffer& vertexStagingBuffer, PushDescriptorBuffer<void>& vertexBuffer, 
+        BlitzenEngine::Vertex* pVertexData, size_t vertexDataCount);
+    
+    // Creates a global index buffer. Return its size or 0 if it fails
+    VkDeviceSize CreateGlobalIndexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported, 
+        AllocatedBuffer& indexStagingBuffer, AllocatedBuffer& indexBuffer, uint32_t* pIndexData, size_t indicesCount);
 }

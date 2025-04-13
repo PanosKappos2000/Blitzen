@@ -818,11 +818,11 @@ namespace BlitzenVulkan
             vkDestroyImageView(m_device, m_depthPyramidMips[size_t(i)], m_pCustomAllocator);
         }
 
-        // Destroy old attachments
+        // Destroys old attachments
         m_colorAttachment.image.CleanupResources(m_allocator, m_device);
         m_depthAttachment.image.CleanupResources(m_allocator, m_device);
 
-        // Recreates the attachments
+        // Recreates color attachment
         m_drawExtent.width = windowWidth;
         m_drawExtent.height = windowHeight;
         CreatePushDescriptorImage(m_device, m_allocator, m_colorAttachment, 
@@ -830,11 +830,19 @@ namespace BlitzenVulkan
             ce_colorAttachmentFormat, ce_colorAttachmentImageUsage, 
             1, VMA_MEMORY_USAGE_GPU_ONLY
         );
+        CreateRenderingAttachmentInfo(m_colorAttachmentInfo, m_colorAttachment.image.imageView,
+            ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+            ce_WindowClearColor);
+
+        // Recreates Depth attachment
         CreatePushDescriptorImage(m_device, m_allocator, m_depthAttachment, 
             {m_drawExtent.width, m_drawExtent.height, 1}, 
             ce_depthAttachmentFormat, ce_depthAttachmentImageUsage, 
             1, VMA_MEMORY_USAGE_GPU_ONLY
         );
+        CreateRenderingAttachmentInfo(m_depthAttachmentInfo, m_depthAttachment.image.imageView,
+            ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+            { 0, 0, 0, 0 }, { 0, 0 });
 
         // Recreates the depth pyramid after the old one has been destroyed
         CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
