@@ -120,6 +120,8 @@ namespace BlitzenVulkan
         uint8_t bResourceManagementReady = 0;
 
         uint8_t bObliqueNearPlaneClippingObjectsExist = 0;
+
+        uint8_t bTranspartentObjectsExist = 0;
     };
 
 

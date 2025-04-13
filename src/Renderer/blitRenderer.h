@@ -115,7 +115,6 @@ namespace BlitzenEngine
             // Special argument. Test oblique near-plane clipping technique. Not working yet.
             else if (strcmp(argv[1], "OnpcReflectionTest") == 0)
             {
-                LoadTestGeometry(pResources);
                 CreateObliqueNearPlaneClippingTestObject(pResources);
 
                 // The following arguments are used as gltf filepaths
