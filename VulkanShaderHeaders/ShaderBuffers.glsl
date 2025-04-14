@@ -146,10 +146,20 @@ layout(set = 0, binding = 4, std430) readonly buffer ObjectBuffer
     RenderObject objects[];
 }objectBuffer;
 
+layout(buffer_reference, std430) readonly buffer RenderObjectBuffer
+{
+    RenderObject objects[];
+};
+
 layout(set = 0, binding = 14, std430) readonly buffer OnpcReflectiveObjectBuffer
 {
     RenderObject objects[];
 }onpcReflectiveObjectBuffer;
+
+layout(set = 0, binding = 15, std430) readonly buffer TransparentObjectBuffer
+{
+    RenderObject objects[];
+}transparentObjectBuffer;
 
 struct Transform
 {

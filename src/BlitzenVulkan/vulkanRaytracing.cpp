@@ -188,8 +188,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t VulkanRenderer::BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount,
-        BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurfaces
-    )
+        BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurfaces)
     {
         // Retrieves the device address of each acceleration structure that was build earlier
         BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ m_currentStaticBuffers.blasData.GetSize() };

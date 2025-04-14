@@ -22,13 +22,9 @@ void main()
         return;
 
     // Access the object's data
-    RenderObject object = objectBuffer.objects[objectIndex];
+    RenderObject object = cullPC.renderObjectBufferAddress.objects[objectIndex];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[object.surfaceId];
-
-    // If the late culling shader does not match the pass of the current surface, it exits
-    if(surface.postPass != cullPC.postPass)
-        return;
     
     // Frustum culling
     vec3 center;
@@ -63,7 +59,7 @@ void main()
 
     // Prepares draw commands if the object passed frustum and occlusion AND was not visible last frame OR is transparent
     // Transparent objects are only processed by this culling shader so last frame visibility is irrelevant
-    if(visible && (visibilityBuffer.visibilities[objectIndex] == 0 || cullPC.postPass != 0))
+    if(visible && visibilityBuffer.visibilities[objectIndex] == 0)
     {
         // Increments the draw count buffer, so that vkCmdDrawIndexedIndirectCount draws the current object
         uint drawIndex = atomicAdd(indirectCountBuffer.drawCount, 1);

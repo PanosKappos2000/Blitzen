@@ -505,19 +505,19 @@ namespace BlitzenEngine
             // Get the material index and pass it to the surface if there is material index
             if (prim.material)
             {
-                m_surfaces.Back().materialId =
-                    m_materials[previousMaterialCount +
+                m_surfaces.Back().materialId = m_materials[previousMaterialCount +
                     cgltf_material_index(pGltfData, prim.material)].materialId;
 
                 if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
+                {
                     m_surfaces.Back().postPass = 1;
+                }
             }
         }
     }
 
     void RenderingResources::CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData,
-        const BlitCL::DynamicArray<uint32_t>& surfaceIndices
-    )
+        const BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
         for (size_t i = 0; i < pGltfData->nodes_count; ++i)
         {
@@ -550,13 +550,19 @@ namespace BlitzenEngine
                     BLIT_ASSERT_MESSAGE(renderObjectCount <= ce_maxRenderObjects,
                         "While Loading a GLTF, \
                             additional geometry was loaded \
-                            which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value"
-                    )
-
-                    auto& current = renders[renderObjectCount];
-                    current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
-                    current.transformId = transformId;
-                    renderObjectCount++;
+                            which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value")
+                    
+                    if (!m_surfaces[surfaceOffset + j].postPass)
+                    {
+                        auto& current = renders[renderObjectCount];
+                        current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
+                        current.transformId = transformId;
+                        renderObjectCount++;
+                    }
+                    else
+                    {
+                        m_transparentRenders.PushBack({ surfaceOffset + static_cast<uint32_t>(j), transformId });
+                    }
                 }
 
                 transforms.PushBack(transform);

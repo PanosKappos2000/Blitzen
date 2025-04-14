@@ -127,7 +127,7 @@ namespace BlitzenEngine
             if (renderObjectCount >= ce_maxRenderObjects)
             {
                 BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. \
-                    GLTF LOADING FAILED!")
+                    GLTF LOADING FAILED!");
                 return false;
             }
 
@@ -151,13 +151,17 @@ namespace BlitzenEngine
             CgltfScope cgltfScope{ pData };
 
             res = cgltf_load_buffers(&options, pData, path);
-            if (res != cgltf_result_success)            
+            if (res != cgltf_result_success)
+            {
                 return false;
+            }
             
 
             res = cgltf_validate(pData);
             if (res != cgltf_result_success)
+            {
                 return false;
+            }
             
 
             BLIT_INFO("Loading GLTF scene from file: %s", path);
@@ -174,14 +178,15 @@ namespace BlitzenEngine
 
             // Meshes and primitives
             BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
+            BlitCL::DynamicArray<uint8_t> surfaceTransparencyArray;
             BLIT_INFO("Loading meshes and primitives");
             for (size_t i = 0; i < pData->meshes_count; ++i)
             {
                 const cgltf_mesh& gltfMesh = pData->meshes[i];
 
-                uint32_t firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
+                auto firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
 
-                Mesh& blitzenMesh = meshes[meshCount];
+                auto& blitzenMesh = meshes[meshCount];
                 blitzenMesh.firstSurface = firstSurface;
                 blitzenMesh.surfaceCount = static_cast<uint32_t>(gltfMesh.primitives_count);
                 blitzenMesh.meshId = static_cast<uint32_t>(meshCount);
@@ -217,26 +222,21 @@ namespace BlitzenEngine
         // Generates LODs for the vertices of a given surface
         void AutomaticLevelOfDetailGenration(PrimitiveSurface& surface, 
             BlitCL::DynamicArray<Vertex>& surfaceVertices, 
-            BlitCL::DynamicArray<uint32_t>& surfaceIndices
-        );
+            BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
         // Generates bounding sphere for primitive based on given vertices and indices
-        void GenerateBoundingSphere(PrimitiveSurface& surface,
-            BlitCL::DynamicArray<Vertex>& surfaceVertices,
-            BlitCL::DynamicArray<uint32_t>& surfaceIndices
-        );
+        void GenerateBoundingSphere(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices,
+            BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
         // Generates render objects for a gltf scene
         void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData,
-            const BlitCL::DynamicArray<uint32_t>& surfaceIndices
-        );
+            const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
-        void AddPrimitivesFromGltf(const cgltf_data* pGltfData, 
-            const cgltf_mesh& pGltfMesh, uint32_t previousMaterialCount);
+        void AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& pGltfMesh, 
+            uint32_t previousMaterialCount);
 
         void LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount,
-            uint32_t previousTextureCount
-        );
+            uint32_t previousTextureCount);
 
         template<class RENDERER>
         void LoadGltfTextures(const cgltf_data* pGltfData, uint32_t previousTextureCount,

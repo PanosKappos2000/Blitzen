@@ -4,13 +4,6 @@
 #define LOD_ENABLED
 #define OCCLUSION_ENABLED
 
-layout (push_constant) uniform CullingConstants
-{
-    uint drawCount;
-
-    uint8_t postPass;
-}cullPC;
-
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
 // Basically, this will be used to turn each object's bounding spere into an AABB to be used for occlusion culling
 bool projectSphere(vec3 c, float r, float znear, float P00, float P11, out vec4 aabb)
@@ -75,3 +68,10 @@ layout(set = 0, binding = 10, std430) buffer VisibilityBuffer
 {
     uint visibilities[];
 }visibilityBuffer;
+
+layout (push_constant) uniform CullingConstants
+{
+    RenderObjectBuffer renderObjectBufferAddress;
+    uint drawCount;
+    uint8_t postPass;
+}cullPC;

@@ -15,24 +15,14 @@ void main()
 {
     // The object index is for the current object's element in the render object
 	uint objectIndex = gl_GlobalInvocationID.x;
-
-    // This is a guard so that the culling shader does not go over the draw count
     if(cullPC.drawCount <= objectIndex)
         return;
-
-    // Objects that were not visible last frame are not processed by this culling shader
-    // Object visibility is set by the late culling shader
+    // This shader only processes objects that were visible last frame
     if(visibilityBuffer.visibilities[objectIndex] == 0)
         return;
-
-    // Gets all relevant data for the current object
-    RenderObject currentObject = objectBuffer.objects[objectIndex];
+    RenderObject currentObject = cullPC.renderObjectBufferAddress.objects[objectIndex];
     Transform transform = transformBuffer.instances[currentObject.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[currentObject.surfaceId];
-
-    // Ignores transparent objects
-    if(surface.postPass == 1)
-        return;
 
     // Frustum culling
     vec3 center;

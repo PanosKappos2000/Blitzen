@@ -112,7 +112,6 @@ namespace BlitzenEngine
 
         uint32_t materialId;
 
-        // To be replaced
         uint8_t postPass = 0;
     };
 

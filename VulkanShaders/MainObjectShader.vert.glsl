@@ -14,13 +14,18 @@ layout(location = 2) out vec4 outTangent;
 layout(location = 3) out uint outMaterialTag;
 layout(location = 4) out vec3 outModel;
 
+layout(push_constant) uniform Constants
+{
+    RenderObjectBuffer renderObjects;
+}rodvpc;
+
 void main()
 {
     // Access the current vertex
     Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
 
     // Access the current object data
-    RenderObject object = objectBuffer.objects[indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
+    RenderObject object = rodvpc.renderObjects.objects[indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
 
     // Calculate the model position by using the current transform data(the model position will be passed to the fragment shader and for gl_position)

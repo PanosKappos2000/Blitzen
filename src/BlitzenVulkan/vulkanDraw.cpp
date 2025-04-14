@@ -165,13 +165,14 @@ namespace BlitzenVulkan
             // First culling pass
             DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
-                context.pResources->renderObjectCount, Ce_InitialCulling, 0);
+                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress, 
+                Ce_InitialCulling, 0);
 
             // First draw pass
             DrawGeometry(fTools.commandBuffer, 
                 pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
-                context.pResources->renderObjectCount, 0);
+                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress, 0);
 
             // Depth pyramid generation
             GenerateDepthPyramid(fTools.commandBuffer);
@@ -179,24 +180,14 @@ namespace BlitzenVulkan
             // Second culling pass 
             DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
-                context.pResources->renderObjectCount, Ce_LateCulling, 0);
+                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
+                Ce_LateCulling, 0);
 
             // Second draw pass
             DrawGeometry(fTools.commandBuffer, 
                 pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
-                context.pResources->renderObjectCount, 1);
-
-            // Dispatches one more culling pass for transparent objects (this is not ideal and a better solution should be found)
-            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, 
-                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
-                context.pResources->renderObjectCount, Ce_LateCulling, 1);
-
-            // Draws the transparent objects
-            DrawGeometry(fTools.commandBuffer, 
-                pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
-                m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
-                context.pResources->renderObjectCount, 1);
+                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress, 1);
 
             if(m_stats.bObliqueNearPlaneClippingObjectsExist)
             {
@@ -208,15 +199,18 @@ namespace BlitzenVulkan
 
                 DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, 
                     BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                    context.pResources->onpcReflectiveRenderObjectCount, 0, 0);
+                    context.pResources->onpcReflectiveRenderObjectCount, 
+                    m_currentStaticBuffers.renderObjectBufferAddress, 0, 0);
 
                 DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
                     uint32_t(pushDescriptorWritesGraphics.Size()),
                     m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle,
-                    context.pResources->onpcReflectiveRenderObjectCount, 1, 1, &pCamera->onbcProjectionMatrix);
+                    context.pResources->onpcReflectiveRenderObjectCount, 
+                    m_currentStaticBuffers.onpcRenderObjectBufferAddress, 
+                    1, 1, &pCamera->onbcProjectionMatrix);
             }
 
-            if (m_stats.bTranspartentObjectsExist)
+            if (0)
             {
                 // Replace the regular render object write with the transparent one
                 pushDescriptorWritesGraphics[2] =
@@ -226,12 +220,14 @@ namespace BlitzenVulkan
 
                 DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_transparentDrawCullPipeline.handle,
                     BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                    uint32_t(context.pResources->GetTranparentRenders().GetSize()), 0, 0);
+                    uint32_t(context.pResources->GetTranparentRenders().GetSize()),
+                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, 1, 0);
 
                 DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
                     uint32_t(pushDescriptorWritesGraphics.Size()),
-                    m_onpcReflectiveGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
-                    uint32_t(context.pResources->GetTranparentRenders().GetSize()), 1);
+                    m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
+                    uint32_t(context.pResources->GetTranparentRenders().GetSize()), 
+                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, 1);
             }
         }
         
@@ -283,8 +279,9 @@ namespace BlitzenVulkan
     }
 
     void VulkanRenderer::DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, 
-    VkPipeline pipeline, uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, 
-    uint32_t drawCount, uint8_t lateCulling /*=0*/, uint8_t postPass /*=0*/)
+        VkPipeline pipeline, uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, 
+        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
+        uint8_t lateCulling, uint8_t postPass)
     {
         // Adds depth pyramid image descriptor for occlusion culling shader
         if(lateCulling)
@@ -355,7 +352,7 @@ namespace BlitzenVulkan
             lateCulling ? descriptorWriteCount : descriptorWriteCount - 1,
             pDescriptorWrites);
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        DrawCullShaderPushConstant pc{drawCount, postPass};
+        DrawCullShaderPushConstant pc{ renderObjectBufferAddress, drawCount, postPass};
         vkCmdPushConstants(commandBuffer, m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 
             0,sizeof(DrawCullShaderPushConstant), &pc);
         vkCmdDispatch(commandBuffer, (drawCount / 64) + 1, 1, 1);
@@ -379,7 +376,8 @@ namespace BlitzenVulkan
     void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, 
         VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
         VkPipeline pipeline, VkPipelineLayout layout, uint32_t drawCount, 
-        uint8_t latePass /*=0*/, uint8_t onpcPass /*=0*/, BlitML::mat4* pOnpcMatrix /*=nullptr*/)
+        VkDeviceAddress renderObjectBufferAddress, uint8_t latePass, 
+        uint8_t onpcPass /*=0*/, BlitML::mat4* pOnpcMatrix /*=nullptr*/)
     {
         // Setup render pass
         m_colorAttachmentInfo.loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -412,6 +410,9 @@ namespace BlitzenVulkan
             vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT,
                 0, sizeof(BlitML::mat4), pOnpcMatrix);
         }
+        GlobalShaderDataPushConstant pcData{ renderObjectBufferAddress };
+        vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+            sizeof(GlobalShaderDataPushConstant), &pcData);
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         if(m_stats.meshShaderSupport)
         {

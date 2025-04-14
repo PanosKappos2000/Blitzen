@@ -16,7 +16,7 @@ void main()
     {
         return;
     }
-    RenderObject object = objectBuffer.objects[objectIndex];
+    RenderObject object = cullPC.renderObjectBufferAddress.objects[objectIndex];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[object.surfaceId];
     
