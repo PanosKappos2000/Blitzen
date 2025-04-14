@@ -218,7 +218,20 @@ namespace BlitzenVulkan
 
             if (m_stats.bTranspartentObjectsExist)
             {
+                // Replace the regular render object write with the transparent one
+                pushDescriptorWritesGraphics[2] =
+                    m_currentStaticBuffers.transparentRenderObjectBuffer.descriptorWrite;
+                pushDescriptorWritesCompute[1] =
+                    m_currentStaticBuffers.transparentRenderObjectBuffer.descriptorWrite;
 
+                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_transparentDrawCullPipeline.handle,
+                    BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
+                    uint32_t(context.pResources->GetTranparentRenders().GetSize()), 0, 0);
+
+                DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
+                    uint32_t(pushDescriptorWritesGraphics.Size()),
+                    m_onpcReflectiveGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
+                    uint32_t(context.pResources->GetTranparentRenders().GetSize()), 1);
             }
         }
         

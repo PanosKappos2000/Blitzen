@@ -219,6 +219,8 @@ namespace BlitzenVulkan
             return 0;
         }
 
+
+
         // Creates the uniform buffers
         if(!VarBuffersInit(pResources->transforms))
         {
@@ -232,6 +234,8 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to upload data to the GPU")
             return 0;
         }
+
+
         
         // Initial draw cull shader compute pipeline
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", // filepath
@@ -253,7 +257,6 @@ namespace BlitzenVulkan
             return 0;
         }
         
-        
         // Late culling shader compute pipeline
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv", 
             VK_SHADER_STAGE_COMPUTE_BIT, "main", 
@@ -266,11 +269,18 @@ namespace BlitzenVulkan
 
         // Redundant shader
         if(!CreateComputeShaderProgram(m_device, "VulkanShaders/OnpcDrawCull.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
-            m_drawCullLayout.handle, &m_onpcDrawCullPipeline.handle 
-        ))
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle, 
+            &m_onpcDrawCullPipeline.handle))
         {
             BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program")
+            return 0;
+        }
+
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/TransparentDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle,
+            &m_transparentDrawCullPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program");
             return 0;
         }
 

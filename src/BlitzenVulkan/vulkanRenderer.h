@@ -329,7 +329,6 @@ namespace BlitzenVulkan
 
         // Oblique Near place clipping culling pipeline. Might not be necessary
         PipelineObject m_onpcDrawCullPipeline;
-        PipelineLayout m_onpcDrawCullLayout;
 
         // Draws a triangle. Used while resources are being loaded, so that the screen in not white. Temporary
         PipelineObject m_loadingTrianglePipeline;
@@ -340,6 +339,7 @@ namespace BlitzenVulkan
         // Late culling exists to add occlusion culling
         PipelineObject m_initialDrawCullPipeline;
         PipelineObject m_lateDrawCullPipeline;
+        PipelineObject m_transparentDrawCullPipeline;
         PipelineLayout m_drawCullLayout;
 
         // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
