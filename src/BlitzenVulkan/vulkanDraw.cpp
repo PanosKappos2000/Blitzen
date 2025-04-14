@@ -196,8 +196,7 @@ namespace BlitzenVulkan
             DrawGeometry(fTools.commandBuffer, 
                 pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()), 
                 m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
-                context.pResources->renderObjectCount, 
-                1);
+                context.pResources->renderObjectCount, 1);
 
             if(m_stats.bObliqueNearPlaneClippingObjectsExist)
             {

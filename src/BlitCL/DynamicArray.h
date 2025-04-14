@@ -55,6 +55,9 @@ namespace BlitCL
             BlitzenCore::BlitMemCopy(m_pBlock, array.Data(), array.GetSize() * sizeof(T));
         }
 
+        DynamicArray(const DynamicArray<T>& copy) = delete;
+        DynamicArray<T> operator = (const DynamicArray<T>& copy) = delete;
+
         ~DynamicArray()
         {
             if (m_capacity > 0)
@@ -73,10 +76,17 @@ namespace BlitCL
         using Iterator = DynamicArrayIterator<T>;
         inline Iterator begin() { return Iterator(m_pBlock); }
         inline Iterator end() { return Iterator(m_pBlock + m_size); }
+        inline Iterator cbegin() const { return Iterator(m_pBlock); }
+        inline Iterator cend() const { return Iterator(m_pBlock + m_size); }
 
         inline size_t GetSize() const { return m_size; }
         inline T& operator [] (size_t index) const{ return m_pBlock[index]; }
-        inline T& Front() { m_pBlock[0]; }
+        inline T& At(size_t index) const 
+        { 
+            BLIT_ASSERT(index < m_size); 
+            return m_pBlock[index]; 
+        }
+        inline T& Front() { return m_pBlock[0]; }
         inline T& Back() { return m_pBlock[m_size - 1]; }
         inline T* Data() const { return m_pBlock; }
 
@@ -85,25 +95,27 @@ namespace BlitCL
         inline void Fill(T&& val)
         {
             for (size_t i = 0; i < m_size; ++i)
+            {
                 BlitzenCore::BlitMemCopy(&m_pBlock[i], &val, sizeof(T));
+            }
         }
 
         void Resize(size_t newSize)
         {
-            if (newSize < m_size)
-            {
-                m_size = newSize;
-            }
             if (newSize > m_capacity)
             {
                 RearrangeCapacity(newSize);
-                m_size = newSize;
             }
+            
+            m_size = newSize;
         }
 
         void Reserve(size_t size)
         {
-            RearrangeCapacity(size / ce_blitDynamiArrayCapacityMultiplier);
+            if (size > m_capacity)
+            {
+                RearrangeCapacity(size);
+            }
         }
 
         void PushBack(const T& newElement)
@@ -127,17 +139,14 @@ namespace BlitCL
             m_size += additional;
         }
 
-        // This one's terrible, should fix it when I am not bored
+        
         void RemoveAtIndex(size_t index)
         {
-            T* pTempBlock = m_pBlock;
-
-            m_pBlock = BlitzenCore::BlitAlloc<T>(DArrayAlloc, m_capacity);
-            BlitzenCore::BlitMemCopy(m_pBlock, pTempBlock, (index) * sizeof(T));
-            BlitzenCore::BlitMemCopy(m_pBlock + index, pTempBlock + index + 1, (m_size - index - 1) * sizeof(T));
-            BlitzenCore::BlitFree<T>(DArrayAlloc, pTempBlock, m_size);
-
-            m_size--;
+            for (size_t i = index; i < m_size - 1; ++i)
+            {
+                m_pBlock[i] = m_pBlock[i + 1];
+            }
+            --m_size;
         }
 
         void Clear()
