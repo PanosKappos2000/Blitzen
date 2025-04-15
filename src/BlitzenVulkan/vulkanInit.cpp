@@ -167,7 +167,8 @@ namespace BlitzenVulkan
         vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, availableExtensions.Data());
 
         // Store the names of all possible extensions to be used
-        const char* possibleRequestedExtensions[ce_maxRequestedInstanceExtensions] = {
+        const char* possibleRequestedExtensions[ce_maxRequestedInstanceExtensions] = 
+        {
             ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         };
         // Stores a boolean for each extension, telling the application if they were requested, if they are required and if they were found
@@ -222,8 +223,17 @@ namespace BlitzenVulkan
                 const char* layerNameRef[2] = { ce_baseValidationLayerName, "VK_LAYER_KHRONOS_synchronization2" };
                 if (EnableInstanceValidation(debugMessengerInfo))
                 {
+                    VkValidationFeaturesEXT validationFeatures{};
+                    VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
+                    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+                    validationFeatures.enabledValidationFeatureCount = 1;
+                    validationFeatures.pEnabledValidationFeatures = enables;
+                    validationFeatures.disabledValidationFeatureCount = 0;
+                    validationFeatures.pDisabledValidationFeatures = nullptr;
+                    validationFeatures.pNext = &debugMessengerInfo;
+
                     // The debug messenger needs to be referenced by the instance
-                    instanceInfo.pNext = &debugMessengerInfo;
+                    instanceInfo.pNext = &validationFeatures;
 
                     // If the layer for synchronization 2 is found, it enables that as well
                     if (ce_bSynchronizationValidationRequested && EnabledInstanceSynchronizationValidation())
@@ -237,6 +247,8 @@ namespace BlitzenVulkan
                 }
             }
         }
+
+        
 
         VkResult res = vkCreateInstance(&instanceInfo, nullptr, &instance);
         if(res != VK_SUCCESS)

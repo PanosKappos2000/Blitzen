@@ -561,7 +561,10 @@ namespace BlitzenEngine
                     }
                     else
                     {
-                        m_transparentRenders.PushBack({ surfaceOffset + static_cast<uint32_t>(j), transformId });
+                        RenderObject current;
+                        current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
+                        current.transformId = transformId;
+                        m_transparentRenders.PushBack(current);
                     }
                 }
 

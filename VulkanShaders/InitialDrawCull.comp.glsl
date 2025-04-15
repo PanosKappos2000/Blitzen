@@ -1,9 +1,7 @@
 #version 450
-
 #extension GL_GOOGLE_include_directive : require
-
+//#extension GL_EXT_debug_printf : enable
 #define COMPUTE_PIPELINE
-
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
 
@@ -16,10 +14,14 @@ void main()
     // The object index is for the current object's element in the render object
 	uint objectIndex = gl_GlobalInvocationID.x;
     if(cullPC.drawCount <= objectIndex)
+    {
         return;
+    }
     // This shader only processes objects that were visible last frame
     if(visibilityBuffer.visibilities[objectIndex] == 0)
+    {
         return;
+    }
     RenderObject currentObject = cullPC.renderObjectBufferAddress.objects[objectIndex];
     Transform transform = transformBuffer.instances[currentObject.meshInstanceId];
     Surface surface = surfaceBuffer.surfaces[currentObject.surfaceId];

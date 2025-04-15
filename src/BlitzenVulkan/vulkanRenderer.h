@@ -107,6 +107,7 @@ namespace BlitzenVulkan
             VkBuffer stagingVertexBuffer, VkDeviceSize vertexBufferSize,
             VkBuffer stagingIndexBuffer, VkDeviceSize indexBufferSize,
             VkBuffer renderObjectStagingBuffer, VkDeviceSize renderObjectBufferSize,
+            VkBuffer transparentObjectStagingBuffer, VkDeviceSize trasparentRenderBufferSize,
             VkBuffer onpcRenderObjectStagingBuffer, VkDeviceSize onpcRenderObjectBufferSize,
             VkBuffer surfaceStagingBuffer, VkDeviceSize surfaceBufferSize,
             VkBuffer materialStagingBuffer, VkDeviceSize materialBufferSize,

@@ -1121,6 +1121,7 @@ namespace BlitzenVulkan
         CopyStaticBufferDataToGPUBuffers(stagingVertexBuffer.bufferHandle, vertexBufferSize, 
             stagingIndexBuffer.bufferHandle, indexBufferSize, 
             renderObjectStagingBuffer.bufferHandle, renderObjectBufferSize, 
+            tranparentRenderObjectStagingBuffer.bufferHandle, transparentRenderObjectBufferSize,
             onpcRenderObjectStagingBuffer.bufferHandle, onpcRenderObjectBufferSize, 
             surfaceStagingBuffer.bufferHandle, surfaceBufferSize, 
             materialStagingBuffer.bufferHandle, materialBufferSize, 
@@ -1151,6 +1152,7 @@ namespace BlitzenVulkan
         VkBuffer stagingVertexBuffer, VkDeviceSize vertexBufferSize, 
         VkBuffer stagingIndexBuffer, VkDeviceSize indexBufferSize, 
         VkBuffer renderObjectStagingBuffer, VkDeviceSize renderObjectBufferSize, 
+        VkBuffer transparentObjectStagingBuffer, VkDeviceSize transparentRenderBufferSize,
         VkBuffer onpcRenderObjectStagingBuffer, VkDeviceSize onpcRenderObjectBufferSize,
         VkBuffer surfaceStagingBuffer, VkDeviceSize surfaceBufferSize, 
         VkBuffer materialStagingBuffer, VkDeviceSize materialBufferSize, 
@@ -1177,11 +1179,20 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle,
             renderObjectBufferSize, 0, 0);
 
+        if (transparentRenderBufferSize != 0)
+        {
+            CopyBufferToBuffer(commandBuffer, transparentObjectStagingBuffer,
+                m_currentStaticBuffers.transparentRenderObjectBuffer.buffer.bufferHandle,
+                transparentRenderBufferSize, 0, 0);
+        }
+
         // Render objects that use Oblique Near-Plane Clipping
-        if(onpcRenderObjectBufferSize != 0)
+        if (onpcRenderObjectBufferSize != 0)
+        {
             CopyBufferToBuffer(commandBuffer, onpcRenderObjectStagingBuffer,
                 m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.buffer.bufferHandle,
                 onpcRenderObjectBufferSize, 0, 0);
+        }
 
         // Primitive surfaces
         CopyBufferToBuffer(commandBuffer, surfaceStagingBuffer,

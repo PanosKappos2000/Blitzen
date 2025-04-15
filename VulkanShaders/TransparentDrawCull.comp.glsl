@@ -4,6 +4,8 @@
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
 
+#extension GL_EXT_debug_printf : enable
+
 #define CULL  true
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -32,7 +34,7 @@ void main()
     );
 
     // If an object passes frustum culling, it goes through occlusion culling
-    if (visible)
+    if (false)
 	{
 		vec4 aabb;
 		if (projectSphere(center, radius, viewData.zNear, viewData.proj0, viewData.proj5, aabb))

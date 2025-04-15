@@ -210,7 +210,7 @@ namespace BlitzenVulkan
                     1, 1, &pCamera->onbcProjectionMatrix);
             }
 
-            if (0)
+            if (m_stats.bTranspartentObjectsExist)
             {
                 // Replace the regular render object write with the transparent one
                 pushDescriptorWritesGraphics[2] =
@@ -221,11 +221,11 @@ namespace BlitzenVulkan
                 DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_transparentDrawCullPipeline.handle,
                     BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
                     uint32_t(context.pResources->GetTranparentRenders().GetSize()),
-                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, 1, 0);
+                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, 0, 0);
 
                 DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
                     uint32_t(pushDescriptorWritesGraphics.Size()),
-                    m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
+                    m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
                     uint32_t(context.pResources->GetTranparentRenders().GetSize()), 
                     m_currentStaticBuffers.transparentRenderObjectBufferAddress, 1);
             }
@@ -404,15 +404,18 @@ namespace BlitzenVulkan
             pDescriptorWrites);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
             layout, TextureDescriptorSetID, 1, &m_textureDescriptorSet, 0, nullptr);
-        // For oblique near-plane clipping render pass, the push constant that holds the modified matrix is needed
+
+        GlobalShaderDataPushConstant pcData{ renderObjectBufferAddress };
         if (onpcPass)
         {
             vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT,
                 0, sizeof(BlitML::mat4), pOnpcMatrix);
         }
-        GlobalShaderDataPushConstant pcData{ renderObjectBufferAddress };
-        vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
-            sizeof(GlobalShaderDataPushConstant), &pcData);
+        else
+        {
+            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                sizeof(GlobalShaderDataPushConstant), &pcData);
+        }
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         if(m_stats.meshShaderSupport)
         {
@@ -619,9 +622,8 @@ namespace BlitzenVulkan
 
         PresentToSwapchain(m_device, m_graphicsQueue.handle,
             &m_swapchainValues.swapchainHandle, 1,
-            1, &fTools.readyToPresentSemaphore.handle, // waits for this semaphore
-            &swapchainIdx
-        );
+            1, &fTools.readyToPresentSemaphore.handle,
+            &swapchainIdx);
     }
 
     void VulkanRenderer::DrawBackgroundImage(VkCommandBuffer commandBuffer)
@@ -646,7 +648,8 @@ namespace BlitzenVulkan
         uint32_t(std::ceil(m_drawExtent.height / 16.0)), 1);
     }
 
-    void VulkanRenderer::CopyColorAttachmentToSwapchainImage(VkCommandBuffer commandBuffer, VkImageView swapchainView, VkImage swapchainImage)
+    void VulkanRenderer::CopyColorAttachmentToSwapchainImage(VkCommandBuffer commandBuffer, 
+        VkImageView swapchainView, VkImage swapchainImage)
     {
         VkWriteDescriptorSet swapchainImageWrite{};
         VkDescriptorImageInfo swapchainImageDescriptorInfo{};

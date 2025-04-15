@@ -1,5 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
+//#extension GL_EXT_debug_printf : require
 #define COMPUTE_PIPELINE
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
@@ -10,7 +11,6 @@ void main()
 {
     // The object index is for the current object's element in the render object
 	uint objectIndex = gl_GlobalInvocationID.x;
-
     if(cullPC.drawCount <= objectIndex)
     {
         return;

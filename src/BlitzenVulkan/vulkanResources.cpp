@@ -40,23 +40,18 @@ namespace BlitzenVulkan
     }
 
     VkDeviceAddress CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
-    void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
-    VkBufferUsageFlags usage, VkDeviceSize size)
+        void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
+        VkBufferUsageFlags usage, VkDeviceSize size)
     {
         // Base buffer creation function for the storage buffer (GPU only)
-        if(!CreateBuffer(
-            allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
+        if(!CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
             size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
-            // The function returns null, if it fails to create one of the buffers
             storageBuffer.bufferHandle = VK_NULL_HANDLE;
             return VkDeviceAddress{};
         }
-
-        // Base buffer creation function for the staging buffer 
-        // (Will hold the data and can later copy it to the GPU only buffer)
-        if(!CreateBuffer(
-            allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, // Used for data transfer
+        // Staging buffer creation
+        if(!CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VMA_MEMORY_USAGE_CPU_TO_GPU, size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             storageBuffer.bufferHandle = VK_NULL_HANDLE;
