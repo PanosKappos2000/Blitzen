@@ -891,8 +891,8 @@ namespace BlitzenVulkan
         const auto& surfaces = pResources->GetSurfaceArray();
         auto pMaterials = pResources->GetMaterialArrayPointer();
         auto materialCount = pResources->GetMaterialCount();
-        const auto& meshlets = pResources->GetClusterArray();
-        const auto& meshletData = pResources->GetClusterIndices();
+        const auto& clusters = pResources->GetClusterArray();
+        const auto& clusterData = pResources->GetClusterIndices();
         auto pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
         auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
 		auto& transforms = pResources->transforms;
@@ -973,7 +973,7 @@ namespace BlitzenVulkan
         }
 
         AllocatedBuffer tranparentRenderObjectStagingBuffer;
-        VkDeviceSize transparentRenderObjectBufferSize;
+        VkDeviceSize transparentRenderObjectBufferSize = 0;
         if (transparentRenderobjects.GetSize() != 0)
         {
             transparentRenderObjectBufferSize =
@@ -1065,13 +1065,35 @@ namespace BlitzenVulkan
         }
 
         
+        VkDeviceSize clusterBufferSize = 0;
+        AllocatedBuffer meshletStagingBuffer;
+        VkDeviceSize clusterIndexBufferSize = 0;
+        AllocatedBuffer meshletDataStagingBuffer;
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            clusterBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
+                m_currentStaticBuffers.meshletBuffer, meshletStagingBuffer,
+                clusters.GetSize(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                clusters.Data());
+            if(clusterBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create cluster buffer");
+                return 0;
+            }
+            clusterIndexBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
+                m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer,
+                clusterData.GetSize(),
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                clusterData.Data());
+            if(clusterIndexBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create cluster indices buffer");
+                return 0;
+            }
+        }
+
         // Mesh shader indirect commands
         VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
-        VkDeviceSize meshletBufferSize = sizeof(BlitzenEngine::Cluster) * meshlets.GetSize();
-        AllocatedBuffer meshletStagingBuffer;
-        VkDeviceSize meshletDataBufferSize = sizeof(uint32_t) * meshletData.GetSize();
-        AllocatedBuffer meshletDataStagingBuffer;
-
         if(m_stats.meshShaderSupport)
         {
             // Indirect task buffer
@@ -1086,35 +1108,6 @@ namespace BlitzenVulkan
                 BLIT_ERROR("Falied to create indirect task buffer");
                 return 0;
             }
-
-            // Meshlets / Clusters
-            if (meshletBufferSize == 0)
-            {
-                return 0;
-            }
-            if (!SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.meshletBuffer, meshletStagingBuffer,
-                meshletBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                meshlets.Data()))
-            {
-                BLIT_ERROR("Failed to create cluster buffer");
-                return 0;
-            }
-
-            // Cluster indices
-            if (meshletDataBufferSize == 0)
-            {
-                return 0;
-            }
-            if (!SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer,
-                meshletDataBufferSize,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                meshletData.Data()))
-            {
-                BLIT_ERROR("Failed to create cluster indices buffer");
-                return 0;
-            }
         }
 
         // Copies the data uploaded to the staging buffer, to the GPU buffers
@@ -1125,8 +1118,8 @@ namespace BlitzenVulkan
             onpcRenderObjectStagingBuffer.bufferHandle, onpcRenderObjectBufferSize, 
             surfaceStagingBuffer.bufferHandle, surfaceBufferSize, 
             materialStagingBuffer.bufferHandle, materialBufferSize, 
-            visibilityBufferSize, meshletStagingBuffer.bufferHandle, meshletBufferSize, 
-            meshletDataStagingBuffer.bufferHandle, meshletDataBufferSize);
+            visibilityBufferSize, meshletStagingBuffer.bufferHandle, clusterBufferSize, 
+            meshletDataStagingBuffer.bufferHandle, clusterIndexBufferSize);
 
         // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)

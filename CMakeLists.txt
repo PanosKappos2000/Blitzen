@@ -166,6 +166,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Defines that the Engine is not in test mode (Dev mode)
                             BLIT_GDEV_EDT
 
+                            BLITZEN_CLUSTER_CULLING
+
                             #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros
                             BLITZEN_RENDERING_STRESS_TEST

@@ -77,23 +77,19 @@ namespace BlitzenEngine
             akMeshlets.GetSize() * maxTriangles * 3
         };
 
-        akMeshlets.Resize(meshopt_buildMeshlets(
-            akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), 
-            inIndices.Data(), inIndices.GetSize(), 
+        akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), 
+            meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(), 
             &inVertices[0].position.x, inVertices.GetSize(), 
-            sizeof(Vertex), maxVertices, maxTriangles, coneWeight
-        ));
+            sizeof(Vertex), maxVertices, maxTriangles, coneWeight));
 
 
         for(size_t i = 0; i < akMeshlets.GetSize(); ++i)
         {
-            meshopt_Meshlet& meshlet = akMeshlets[i];
+            auto& meshlet = akMeshlets[i];
 
-            meshopt_optimizeMeshlet(
-                &meshletVertices[meshlet.vertex_offset], 
+            meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset], 
                 &meshletTriangles[meshlet.triangle_offset], 
-                meshlet.triangle_count, meshlet.vertex_count
-            );
+                meshlet.triangle_count, meshlet.vertex_count);
 
             auto dataOffset = m_clusterIndices.GetSize();
             for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
@@ -102,16 +98,17 @@ namespace BlitzenEngine
             }
 
             auto indexGroups = reinterpret_cast<unsigned int*>(
-                &meshletTriangles[0] + meshlet.triangle_offset
-            );
-            unsigned int indexGroupCount = (meshlet.triangle_count * 3 + 3);
+                &meshletTriangles[0] + meshlet.triangle_offset);
+
+            // This was changed by chatGPT, might be wrong, be careful
+            unsigned int indexGroupCount = meshlet.triangle_count * 3;
 
             for(unsigned int i = 0; i < indexGroupCount; ++i)
             {
                 m_clusterIndices.PushBack(indexGroups[size_t(i)]);
             }
 
-            meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
+            auto bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
             &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, 
                 &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
 
@@ -194,7 +191,7 @@ namespace BlitzenEngine
             lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
             lod.firstMeshlet = static_cast<uint32_t>(m_clusters.GetSize());
-            lod.meshletCount = ce_buildClusters ?
+            lod.meshletCount = Ce_BuildClusters ?
                 static_cast<uint32_t>(GenerateClusters(surfaceVertices, surfaceIndices))
                 : 0;
 

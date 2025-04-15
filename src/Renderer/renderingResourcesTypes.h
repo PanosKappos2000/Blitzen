@@ -17,9 +17,9 @@ namespace BlitzenEngine
     constexpr uint32_t ce_maxONPC_Objects = 100;
 
     #ifdef BLITZEN_CLUSTER_CULLING
-        constexpr uint8_t ce_buildClusters = 1;
+        constexpr uint8_t Ce_BuildClusters = 1;
     #else
-        constexpr uint8_t ce_buildClusters = 0;
+        constexpr uint8_t Ce_BuildClusters = 0;
     #endif 
     
     // Data for each texture
