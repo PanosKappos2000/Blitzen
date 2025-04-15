@@ -44,7 +44,7 @@ namespace BlitzenEngine
         {
             return m_primitiveVertexCounts;
         }
-        inline const BlitCL::DynamicArray<Meshlet>& GetClusterArray() const
+        inline const BlitCL::DynamicArray<Cluster>& GetClusterArray() const
         {
             return m_clusters;
         }
@@ -316,7 +316,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> m_indices;
 
         // Holds all clusters for all the primitives that were loaded
-        BlitCL::DynamicArray<Meshlet> m_clusters;
+        BlitCL::DynamicArray<Cluster> m_clusters;
 
         // Holds the meshlet indices to index into the clusters above
         BlitCL::DynamicArray<uint32_t> m_clusterIndices;

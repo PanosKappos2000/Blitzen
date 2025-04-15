@@ -18,26 +18,30 @@ layout(set = 0, binding = 1, std430) readonly buffer VertexBuffer
 }vertexBuffer;
 
 // Meshlet used in the mesh shader to draw a surface or mesh
-struct Meshlet
+struct Cluster
 {
-    // Boudning sphere
+    // Bounding sphere for frustum culling
     vec3 center;
     float radius;
-    
-    // This is for backface culling
-    int8_t cone_axis[3];
-    int8_t cone_cutoff;
 
-    uint dataOffset; // dataOffset..dataOffset+vertexCount-1 stores vertex indices, indices are packed in 4b units after that
+    // This is for backface culling
+    int8_t coneAxisX;
+    int8_t coneAxisY;
+    int8_t coneAxisZ;
+    int8_t coneCutoff;
+
+    uint dataOffset; // Index into meshlet data
     uint8_t vertexCount;
     uint8_t triangleCount;
+    uint8_t padding0;
+    uint8_t padding1;
 };
 
 // The single buffer that holds all meshlet data in the scene
-layout(set = 0, binding = 12, std430) readonly buffer MeshletBuffer
+layout(set = 0, binding = 12, std430) readonly buffer ClusterBuffer
 {
-    Meshlet meshlets[];
-}meshletBuffer;
+    Cluster clusters[];
+}clusterBuffer;
 
 layout(set = 0, binding = 13, std430) readonly buffer MeshletDataBuffer
 {

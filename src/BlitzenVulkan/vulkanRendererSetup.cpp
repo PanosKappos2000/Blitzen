@@ -1067,7 +1067,7 @@ namespace BlitzenVulkan
         
         // Mesh shader indirect commands
         VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
-        VkDeviceSize meshletBufferSize = sizeof(BlitzenEngine::Meshlet) * meshlets.GetSize();
+        VkDeviceSize meshletBufferSize = sizeof(BlitzenEngine::Cluster) * meshlets.GetSize();
         AllocatedBuffer meshletStagingBuffer;
         VkDeviceSize meshletDataBufferSize = sizeof(uint32_t) * meshletData.GetSize();
         AllocatedBuffer meshletDataStagingBuffer;

@@ -44,19 +44,23 @@ namespace BlitzenEngine
     };
 
     // Data for each meshlet. Passed to the GPU
-    struct alignas(16) Meshlet
+    struct alignas(16) Cluster
     {
         // Bounding sphere for frustum culling
     	BlitML::vec3 center;
     	float radius;
 
         // This is for backface culling
-    	int8_t cone_axis[3];
-    	int8_t cone_cutoff;
+    	int8_t coneAxisX;
+        int8_t coneAxisY;
+        int8_t coneAxisZ;
+    	int8_t coneCutoff;
 
     	uint32_t dataOffset; // Index into meshlet data
     	uint8_t vertexCount;
     	uint8_t triangleCount;
+        uint8_t padding0;
+        uint8_t padding1;
     };
 
 	// Data for each material. Passed to the GPU
