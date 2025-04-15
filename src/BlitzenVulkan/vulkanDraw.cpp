@@ -370,7 +370,8 @@ namespace BlitzenVulkan
             VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
             VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 
             0, VK_WHOLE_SIZE);
-        PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
+        PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader),
+            waitForCullingShader, 0, nullptr);
     }
 
     void VulkanRenderer::DrawGeometry(VkCommandBuffer commandBuffer, 

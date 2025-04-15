@@ -68,7 +68,7 @@ namespace BlitzenVulkan
 
 
 	// The maximum number of device extensions that may be requested
-    constexpr uint32_t ce_maxRequestedDeviceExtensions = 6;
+    constexpr uint32_t ce_maxRequestedDeviceExtensions = 7;
 
 
     // Double buffering constant expression
@@ -111,6 +111,8 @@ namespace BlitzenVulkan
         uint8_t hasDiscreteGPU = 0;
 
         uint8_t meshShaderSupport = 0;
+
+        uint8_t bSynchronizationValidationSupported = 0;
 
         uint8_t bRayTracingSupported = 0;
 

@@ -557,7 +557,8 @@ namespace BlitzenVulkan
             { VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
             { VK_KHR_RAY_QUERY_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
             { VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
-            { VK_EXT_MESH_SHADER_EXTENSION_NAME, /*requested*/ce_bMeshShaders, /*required*/0 }
+            { VK_EXT_MESH_SHADER_EXTENSION_NAME, /*requested*/ce_bMeshShaders, /*required*/0 }, 
+            { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, ce_bSynchronizationValidationRequested, 0}
         };
 
         // Check for the required extension name with strcmp
@@ -580,6 +581,30 @@ namespace BlitzenVulkan
             {
                 BLIT_ERROR("Device extension with name: %s, not supported", data.extensionName)
                 return 0;
+            }
+        }
+
+        if (ce_bSynchronizationValidationRequested)
+        {
+            // Check for mesh shader feature in available features
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            VkPhysicalDeviceSynchronization2Features  syncFeatures{};
+            syncFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+            features2.pNext = &syncFeatures;
+            vkGetPhysicalDeviceFeatures2(pdv, &features2);
+
+            // Mesh shaders are supported if both the feature and the extensions are found
+            stats.bSynchronizationValidationSupported = extensionsData[6].extensionName
+                && syncFeatures.synchronization2;
+
+            if (stats.bSynchronizationValidationSupported)
+            {
+                BLIT_INFO("Sync validation support confirmed");
+            }
+            else
+            {
+                BLIT_INFO("No sync validation support");
             }
         }
 
@@ -711,6 +736,15 @@ namespace BlitzenVulkan
 
         VkPhysicalDeviceVulkan13Features vulkan13Features{};
         vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+        VkPhysicalDeviceSynchronization2Features sync2Features{};
+        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+        sync2Features.synchronization2 = VK_FALSE;
+        if (stats.bSynchronizationValidationSupported)
+        {
+            sync2Features.synchronization2 = VK_TRUE;
+        }
+        vulkan13Features.pNext = &sync2Features;
 
         // Dynamic rendering removes the need for VkRenderPass and allows the creation of rendering attachmets at draw time
         vulkan13Features.dynamicRendering = true;
