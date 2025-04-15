@@ -78,6 +78,12 @@ namespace BlitzenEngine
         size_t meshCount = 0;
 
 
+        struct IsPrimitiveTransparent
+        {
+            bool b = false;
+        };
+        BlitCL::DynamicArray<IsPrimitiveTransparent> bTransparencyList;
+
 
     public:
 

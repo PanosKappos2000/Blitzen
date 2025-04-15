@@ -47,34 +47,28 @@ layout(set = 0, binding = 13, std430) readonly buffer MeshletDataBuffer
 // Holds a specific level of detail's index offset and count (as well as the according data for mesh shaders)
 struct MeshLod
 {
-    // These allow the compute shader to give the index count and index offset to draw indirect for this specific level of detail
     uint indexCount;
     uint firstIndex;
-
-    uint meshletCount;
-    uint firstMeshlet;
-
     float error;
+
+    uint meshletOffset;
+    uint meshletCount;
+
+    uint padding0;
 };
 
 struct Surface
 {
-    // Bounding sphere
-    vec3 center;
-    float radius;
+    vec3 center;     
+    float radius;            
 
-    // Holds up to 8 level of detail data structs
-    MeshLod lod[8];
-    
-    // Indicates the active elements of the above array, the lod index needs to be clamped between 0 and this value
-    uint8_t lodCount;
-
-    // The vertex offset is the same for every level of details and must be passed to the indirect commands buffer based on the renderer's structure
     uint vertexOffset;
 
-    uint materialTag;
+    uint materialID;
 
-    uint8_t postPass;
+    uint lodCount;       
+    uint padding0;      
+    MeshLod lod[8];
 };
 
 layout(set = 0, binding = 2, std430) readonly buffer SurfaceBuffer

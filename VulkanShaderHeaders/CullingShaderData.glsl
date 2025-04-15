@@ -39,11 +39,7 @@ bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bo
 	// Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
     center = RotateQuat(boundCenter, orientation) * scale + pos;
     center = (view * vec4(center, 1)).xyz;
-
-    // The bounding sphere's radius only needs to be multiplied by the object's scale
 	radius = boundRadius * scale;
-
-    // Checks that the bounding sphere is inside the view frustum(frustum culling)
 	bool visible = true;
 
     // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time

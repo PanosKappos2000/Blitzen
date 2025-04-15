@@ -233,8 +233,9 @@ namespace BlitzenVulkan
             instance.transform.matrix[2][3] = transform.pos.z;
 
             instance.instanceCustomIndex = i;
-            instance.mask = 1 << surface.postPass;
-            instance.flags = surface.postPass ? VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR : 0;
+            instance.mask = 1 << 0/*surface.postPass*/; // No transparent objects are passed here, 
+            // TODO: Fix the above
+            instance.flags = /*surface.postPass*/ false ? VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR : 0;
             instance.accelerationStructureReference = blasAddresses[object.surfaceId];
 
             auto pData = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(

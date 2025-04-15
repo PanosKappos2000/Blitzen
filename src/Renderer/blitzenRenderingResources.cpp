@@ -510,8 +510,19 @@ namespace BlitzenEngine
 
                 if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
                 {
-                    m_surfaces.Back().postPass = 1;
+                    IsPrimitiveTransparent temp{ true };
+                    bTransparencyList.PushBack(temp);
                 }
+                else
+                {
+                    IsPrimitiveTransparent temp{ false };
+                    bTransparencyList.PushBack(temp);
+                }
+            }
+            else
+            {
+                IsPrimitiveTransparent temp{ false };
+                bTransparencyList.PushBack(temp);
             }
         }
     }
@@ -552,7 +563,7 @@ namespace BlitzenEngine
                             additional geometry was loaded \
                             which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value")
                     
-                    if (!m_surfaces[surfaceOffset + j].postPass)
+                    if (!bTransparencyList[surfaceOffset + j].b)
                     {
                         auto& current = renders[renderObjectCount];
                         current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);

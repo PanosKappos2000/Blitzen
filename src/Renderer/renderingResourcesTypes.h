@@ -37,13 +37,9 @@ namespace BlitzenEngine
     // Data for each vertex. Passed to the GPU
     struct alignas(16) Vertex
     {
-        // Vertex position (3 floats)
         BlitML::vec3 position;
-        // Uv maps (2 halfs floats)
         uint16_t uvX, uvY;
-        // Vertex normals (4 8-bit integers)
         uint8_t normalX, normalY, normalZ, normalW;
-        // Tangents (4 8-bit integers)
         uint8_t tangentX, tangentY, tangentZ, tangentW;
     };
 
@@ -66,7 +62,8 @@ namespace BlitzenEngine
 	// Data for each material. Passed to the GPU
     struct alignas(16) Material
     {
-        // Not using these 2 right now, might remove them when I'm not bored, but they (or something similar) will be used in the future
+        // Not using these 2 right now, might remove them when I'm not bored, 
+        // but they (or something similar) will be used in the future
         BlitML::vec4 diffuseColor;
         float shininess;
 
@@ -85,34 +82,29 @@ namespace BlitzenEngine
     // Mesh LOD data. An array of these is held by each primitive
     struct MeshLod
     {
-        // Accesses index data
         uint32_t indexCount;
         uint32_t firstIndex;
-
-        // Accesses meshlet data
-        uint32_t meshletCount = 0;
-        uint32_t firstMeshlet;
-
-        // LOD error
         float error;
+
+        uint32_t firstMeshlet;
+        uint32_t meshletCount;
+
+        uint32_t padding0; // Pad to 24 bytes total   
     };
 
     // Per primitive data. Passed to the GPU
     struct alignas(16) PrimitiveSurface
     {
-        // Bounding sphere data, needed for frustum culling
-        BlitML::vec3 center;
-        float radius;
-
-        // TODO: Will replace this with an index
-        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
-        uint8_t lodCount = 0;
+        BlitML::vec3 center;     
+        float radius;            
 
         uint32_t vertexOffset;
 
         uint32_t materialId;
 
-        uint8_t postPass = 0;
+        uint32_t lodCount = 0;       
+        uint32_t padding0;      
+        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
     };
 
     // A mesh is a collection of one or more primitives.

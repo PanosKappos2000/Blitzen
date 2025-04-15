@@ -34,7 +34,7 @@ void main()
     // Create a vec2 from the uvMap halfFloats to be passed to the fragment shader
     outUv = vec2(float(vertex.uvX), float(vertex.uvY));
 
-    outMaterialTag = surfaceBuffer.surfaces[object.surfaceId].materialTag;
+    outMaterialTag = surfaceBuffer.surfaces[object.surfaceId].materialID;
     
     // Unpack surface normals
     vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ) / 127.0 - 1.0;
