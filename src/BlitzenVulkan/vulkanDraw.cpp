@@ -13,7 +13,6 @@
 namespace BlitzenVulkan
 {
     constexpr uint32_t PushDescriptorSetID = 0;// Used when calling PuhsDesriptors for the set parameter
-    constexpr uint32_t DepthPyramidImageBindingID = 3;
     constexpr uint32_t TextureDescriptorSetID = 1;
 
     constexpr uint8_t Ce_LateCulling = 1;// Sets the late culling boolean to 1
@@ -290,7 +289,7 @@ namespace BlitzenVulkan
             VkDescriptorImageInfo depthPyramidImageInfo{};
             WriteImageDescriptorSets(depthPyramidWrite, depthPyramidImageInfo, 
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE,
-                DepthPyramidImageBindingID, VK_IMAGE_LAYOUT_GENERAL, 
+                Ce_DepthPyramidImageBindingID, VK_IMAGE_LAYOUT_GENERAL,
                 m_depthPyramid.image.imageView, m_depthAttachment.sampler.handle);
             pDescriptorWrites[descriptorWriteCount - 1] = depthPyramidWrite;
         }

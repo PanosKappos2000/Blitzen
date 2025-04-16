@@ -104,6 +104,7 @@ namespace BlitzenVulkan
 
     // Descriptor write array index constant epressions
     constexpr uint32_t ce_viewDataWriteElement = 0;
+    constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
 
 
     struct VulkanStats

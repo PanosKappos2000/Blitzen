@@ -89,11 +89,14 @@ namespace BlitzenVulkan
 
         bool CreateLoadingTrianglePipeline();
 
-        // Initializes the buffers that are included in frame tools
+        // Creates the buffers that are dynamic and might be updated each frame
         uint8_t VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
         // Creates the descriptor set latyouts that are not constant and need to have one instance for each frame in flight
         uint8_t CreateDescriptorLayouts();
+
+        VkDescriptorSetLayout CreateGPUBufferPushDescriptorBindings(VkDescriptorSetLayoutBinding* pBindings, 
+            uint32_t bindingCount);
 
         // Takes an opened DDS file's data and uploads the data to the void* parameter
         bool LoadDDSImageData(BlitzenEngine::DDS_HEADER& header,
