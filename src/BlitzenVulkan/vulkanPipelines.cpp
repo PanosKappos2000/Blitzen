@@ -302,7 +302,64 @@ namespace BlitzenVulkan
     }
 
 
+    uint8_t VulkanRenderer::CreateComputeShaders()
+    {
+        // Initial draw cull shader compute pipeline
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main",
+            m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
+                return 0;
+        }
 
+        // Generate depth pyramid compute shader
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
+            m_depthPyramidGenerationLayout.handle, &m_depthPyramidGenerationPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create DepthPyramidGeneration.comp shader program")
+                return 0;
+        }
+
+        // Late culling shader compute pipeline
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main",
+            m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
+                return 0;
+        }
+
+        // Redundant shader
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/OnpcDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle,
+            &m_onpcDrawCullPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program")
+                return 0;
+        }
+
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/TransparentDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle,
+            &m_transparentDrawCullPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program");
+            return 0;
+        }
+
+        // Creates the generate presentation image compute shader program
+        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/GeneratePresentation.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main",
+            m_generatePresentationLayout.handle, &m_generatePresentationPipeline.handle))
+        {
+            BLIT_ERROR("Failed to create GeneratePresentation.comp shader program")
+                return 0;
+        }
+
+        // Success
+        return 1;
+    }
 
     uint8_t VulkanRenderer::SetupMainGraphicsPipeline()
     {

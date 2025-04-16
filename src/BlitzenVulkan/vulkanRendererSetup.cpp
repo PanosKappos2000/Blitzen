@@ -133,7 +133,77 @@ namespace BlitzenVulkan
         m_stats.bResourceManagementReady = 1;
     }
 
-    uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight)
+    uint8_t VulkanRenderer::RenderingAttachmentsInit()
+    {
+        /*
+            Color attachment handle and value configuration
+        */
+        // Color attachment sammpler will be used to copy to the swapchain image
+        if (!m_colorAttachment.SamplerInit(m_device, VK_FILTER_NEAREST,
+            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr
+        ))
+        {
+            BLIT_ERROR("Failed to create color attachment sampler")
+                return 0;
+        }
+        // Create depth attachment image and image view
+        if (!CreatePushDescriptorImage(m_device, m_allocator, m_colorAttachment,
+            { m_drawExtent.width, m_drawExtent.height, 1 }, // extent
+            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage,
+            1, VMA_MEMORY_USAGE_GPU_ONLY
+        ))
+        {
+            BLIT_ERROR("Failed to create color attachment image resource")
+                return 0;
+        }
+        // Rendering attachment info, most values stay constant
+        CreateRenderingAttachmentInfo(m_colorAttachmentInfo, m_colorAttachment.image.imageView,
+            ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+            ce_WindowClearColor);
+        /*
+            Depth attachement value and handle configuration
+        */
+        // Creates a sampler for the depth attachment, used for the depth pyramid
+        VkSamplerReductionModeCreateInfo reductionInfo{};
+        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
+        if (!m_depthAttachment.SamplerInit(m_device,
+            VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST,
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo
+        ))
+        {
+            BLIT_ERROR("Failed to create depth attachment sampler")
+                return 0;
+        }
+        // Creates rendering attachment image resource for depth attachment
+        if (!CreatePushDescriptorImage(m_device, m_allocator, m_depthAttachment,
+            { m_drawExtent.width, m_drawExtent.height, 1 },
+            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage,
+            1, VMA_MEMORY_USAGE_GPU_ONLY
+        ))
+        {
+            BLIT_ERROR("Failed to create depth attachment image resource")
+                return 0;
+        }
+        // Rendering attachment info info, most values stay constant
+        CreateRenderingAttachmentInfo(m_depthAttachmentInfo, m_depthAttachment.image.imageView,
+            ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+            { 0, 0, 0, 0 }, { 0, 0 });
+        // Create the depth pyramid image and its mips that will be used for occlusion culling
+        if (!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent,
+            m_depthPyramidMips, m_depthPyramidMipLevels,
+            m_drawExtent, m_device, m_allocator))
+        {
+            BLIT_ERROR("Failed to create the depth pyramid")
+                return 0;
+        }
+
+        // Success
+        return 1;
+    }
+
+    uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
+        float& pyramidWidth, float& pyramidHeight)
     {
         // Checks if resource management has been setup
         if(!m_stats.bResourceManagementReady)
@@ -146,151 +216,40 @@ namespace BlitzenVulkan
                 return 0;
             }
         }
-        /*
-            Color attachment handle and value configuration
-        */
-        // Color attachment sammpler will be used to copy to the swapchain image
-        if(!m_colorAttachment.SamplerInit(m_device, VK_FILTER_NEAREST, 
-            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr
-        ))
+
+        if (!RenderingAttachmentsInit())
         {
-            BLIT_ERROR("Failed to create color attachment sampler")
-            return 0;
-        }
-        // Create depth attachment image and image view
-        if(!CreatePushDescriptorImage(m_device, m_allocator, m_colorAttachment, 
-            {m_drawExtent.width, m_drawExtent.height, 1}, // extent
-            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage, 
-            1, VMA_MEMORY_USAGE_GPU_ONLY 
-        ))
-        {
-            BLIT_ERROR("Failed to create color attachment image resource")
-            return 0;
-        }
-        // Rendering attachment info, most values stay constant
-        CreateRenderingAttachmentInfo(m_colorAttachmentInfo, m_colorAttachment.image.imageView,
-            ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD ,VK_ATTACHMENT_STORE_OP_STORE,
-            ce_WindowClearColor);
-        /*
-            Depth attachement value and handle configuration
-        */
-        // Creates a sampler for the depth attachment, used for the depth pyramid
-        VkSamplerReductionModeCreateInfo reductionInfo{};
-        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
-        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
-        if(!m_depthAttachment.SamplerInit(m_device, 
-            VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, 
-            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo
-        ))
-        {
-            BLIT_ERROR("Failed to create depth attachment sampler")
-            return 0;
-        }
-        // Creates rendering attachment image resource for depth attachment
-        if(!CreatePushDescriptorImage(m_device, m_allocator, m_depthAttachment, 
-            {m_drawExtent.width, m_drawExtent.height, 1}, 
-            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage, 
-            1, VMA_MEMORY_USAGE_GPU_ONLY
-        ))
-        {
-            BLIT_ERROR("Failed to create depth attachment image resource")
-            return 0;
-        }
-        // Rendering attachment info info, most values stay constant
-        CreateRenderingAttachmentInfo(m_depthAttachmentInfo, m_depthAttachment.image.imageView,
-            ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, 
-            { 0, 0, 0, 0 }, { 0, 0 });
-        // Create the depth pyramid image and its mips that will be used for occlusion culling
-        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
-            m_depthPyramidMips, m_depthPyramidMipLevels, // depth pyramid mip view and mip count
-            m_drawExtent, m_device, m_allocator
-        ))
-        {
-            BLIT_ERROR("Failed to create the depth pyramid")
+            BLIT_ERROR("Failed to create rendering attachments");
             return 0;
         }
 
-
-
-        // Creates all know descriptor layouts for all known pipelines
         if(!CreateDescriptorLayouts())
         {
             BLIT_ERROR("Failed to create descriptor set layouts")
             return 0;
         }
 
+        if (!CreatePipelineLayouts())
+        {
+            BLIT_ERROR("Failed to create pipeline layouts");
+            return 0;
+        }
 
-
-        // Creates the uniform buffers
         if(!VarBuffersInit(pResources->transforms))
         {
             BLIT_ERROR("Failed to create uniform buffers")
             return 0;
         }
 
-        // Upload static data to gpu (though some of these might not be static in the future)
-        if(!UploadDataToGPU(pResources))
+        if(!StaticBuffersInit(pResources))
         {
             BLIT_ERROR("Failed to upload data to the GPU")
             return 0;
         }
 
-
-        
-        // Initial draw cull shader compute pipeline
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
-            m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle 
-        ))
+        if (!CreateComputeShaders())
         {
-            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
-            return 0;
-        }
-        
-        // Generate depth pyramid compute shader
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", 
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
-            m_depthPyramidGenerationLayout.handle, &m_depthPyramidGenerationPipeline.handle
-        ))
-        {
-            BLIT_ERROR("Failed to create DepthPyramidGeneration.comp shader program")
-            return 0;
-        }
-        
-        // Late culling shader compute pipeline
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv", 
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle
-        ))
-        {
-            BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
-            return 0;
-        }
-
-        // Redundant shader
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/OnpcDrawCull.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle, 
-            &m_onpcDrawCullPipeline.handle))
-        {
-            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program")
-            return 0;
-        }
-
-        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/TransparentDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle,
-            &m_transparentDrawCullPipeline.handle))
-        {
-            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program");
-            return 0;
-        }
-
-        // Creates the generate presentation image compute shader program
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/GeneratePresentation.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_generatePresentationLayout.handle, &m_generatePresentationPipeline.handle   
-        ))
-        {
-            BLIT_ERROR("Failed to create GeneratePresentation.comp shader program")
+            BLIT_ERROR("Failed to create compute shaders");
             return 0;
         }
         
@@ -333,7 +292,7 @@ namespace BlitzenVulkan
     {
         VkCommandPoolCreateInfo commandPoolsInfo {};
         commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;// Allows reset
+        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
 
 		VkCommandPoolCreateInfo dedicatedCommandPoolsInfo{};
@@ -367,64 +326,59 @@ namespace BlitzenVulkan
         // Creates a set of frame tools for each possible frame in flight
         for(size_t i = 0; i < ce_framesInFlight; ++i)
         {
-            FrameTools& frameTools = m_frameToolsList[i];
+            auto& frameTools{ m_frameToolsList[i] };
 
             // Main command buffer
-            VkResult commandPoolResult = vkCreateCommandPool(
-                m_device, &commandPoolsInfo, 
-                m_pCustomAllocator, &frameTools.mainCommandPool.handle
-            );
-            if(commandPoolResult != VK_SUCCESS)
+            if (vkCreateCommandPool(m_device, &commandPoolsInfo,
+                m_pCustomAllocator, &frameTools.mainCommandPool.handle) != VK_SUCCESS)
+            {
                 return 0;
+            }
             commandBuffersInfo.commandPool = frameTools.mainCommandPool.handle;
-            VkResult commandBufferResult = vkAllocateCommandBuffers(
-                m_device, &commandBuffersInfo, &frameTools.commandBuffer
-            );
-            if(commandBufferResult != VK_SUCCESS)
+            if (vkAllocateCommandBuffers(m_device, &commandBuffersInfo,
+                &frameTools.commandBuffer) != VK_SUCCESS)
+            {
                 return 0;
+            }
 
-            // Dedicated command buffer
+            // Dedicated transfer command buffer
             if (vkCreateCommandPool(m_device, &dedicatedCommandPoolsInfo,
-				nullptr, &frameTools.transferCommandPool.handle) != VK_SUCCESS
-            )
+                nullptr, &frameTools.transferCommandPool.handle) != VK_SUCCESS)
+            {
                 return 0;
+            }
 			dedicatedCmbInfo.commandPool = frameTools.transferCommandPool.handle;
-			if (vkAllocateCommandBuffers(m_device, &dedicatedCmbInfo, 
-                &frameTools.transferCommandBuffer) != VK_SUCCESS
-            )
-				return 0;
-
-            // Fence that stops commands from being recorded with a used command buffer
-            VkResult fenceResult = vkCreateFence(
-                m_device, &fenceInfo, 
-                m_pCustomAllocator, &frameTools.inFlightFence.handle
-            );
-            if(fenceResult != VK_SUCCESS)
+            if (vkAllocateCommandBuffers(m_device, &dedicatedCmbInfo,
+                &frameTools.transferCommandBuffer) != VK_SUCCESS)
+            {
                 return 0;
+            }
 
-			// Samphore that command buffer from being submitted before the image is acquired
-            VkResult imageSemaphoreResult = vkCreateSemaphore(
-                m_device, &semaphoresInfo, 
-                m_pCustomAllocator, &frameTools.imageAcquiredSemaphore.handle
-            );
-            if(imageSemaphoreResult != VK_SUCCESS)
+            if (vkCreateFence(m_device, &fenceInfo, m_pCustomAllocator,
+                &frameTools.inFlightFence.handle) != VK_SUCCESS)
+            {
                 return 0;
+            }
+
+            if (vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator,
+                &frameTools.imageAcquiredSemaphore.handle) != VK_SUCCESS)
+            {
+                return 0;
+            }
 
             // Semaphore that blocks presentation before the commands are all executed
-            VkResult presentSemaphoreResult = vkCreateSemaphore(
-                m_device, &semaphoresInfo, 
-                m_pCustomAllocator, &frameTools.readyToPresentSemaphore.handle
-            );
-            if(presentSemaphoreResult != VK_SUCCESS)
+            if (vkCreateSemaphore(m_device, &semaphoresInfo,m_pCustomAllocator, 
+                &frameTools.readyToPresentSemaphore.handle) != VK_SUCCESS)
+            {
                 return 0;
+            }
 
             // Semaphore to wait for buffer to be updated
-			VkResult bufferSemaphoreResult = vkCreateSemaphore(
-				m_device, &semaphoresInfo,
-				m_pCustomAllocator, &frameTools.buffersReadySemaphore.handle
-			);
-			if (bufferSemaphoreResult != VK_SUCCESS)
-				return 0;
+            if (vkCreateSemaphore(m_device, &semaphoresInfo, m_pCustomAllocator,
+                &frameTools.buffersReadySemaphore.handle) != VK_SUCCESS)
+            {
+                return 0;
+            }
         }
 
         return 1;
@@ -436,33 +390,31 @@ namespace BlitzenVulkan
     )
     {
 		const VkFormat depthPyramidFormat = VK_FORMAT_R32_SFLOAT;
-        const VkImageUsageFlags depthPyramidUsage =
-            VK_IMAGE_USAGE_SAMPLED_BIT | // When a depth pyramid mip is passed as the dst image, it is sampled
-            VK_IMAGE_USAGE_STORAGE_BIT; // When a depth pyramid mip is passed as the src image, it is a storage image
+        const VkImageUsageFlags depthPyramidUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT; 
 
-    
         // Conservative starting extent
         depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
         depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
-    
-        // Mip level count
-		depthPyramidMipLevels = BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
+		depthPyramidMipLevels = 
+            BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
     
         // Creates the primary depth pyramid image
-        if(!CreatePushDescriptorImage(device, allocator, depthPyramidImage, 
-            {depthPyramidExtent.width, depthPyramidExtent.height, 1}, 
-            depthPyramidFormat, depthPyramidUsage, depthPyramidMipLevels, 
-            VMA_MEMORY_USAGE_GPU_ONLY
-        ))
+        if (!CreatePushDescriptorImage(device, allocator, depthPyramidImage,
+            { depthPyramidExtent.width, depthPyramidExtent.height, 1 },
+            depthPyramidFormat, depthPyramidUsage, depthPyramidMipLevels,
+            VMA_MEMORY_USAGE_GPU_ONLY))
+        {
             return 0;
+        }
     
         // Create the mip levels of the depth pyramid
         for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
         {
-            if(!CreateImageView(device, depthPyramidMips[size_t(i)], 
-                depthPyramidImage.image.image, depthPyramidFormat, i, 1
-            ))
+            if (!CreateImageView(device, depthPyramidMips[size_t(i)],
+                depthPyramidImage.image.image, depthPyramidFormat, i, 1))
+            {
                 return 0;
+            }
         }
     
         return 1;
@@ -665,15 +617,16 @@ namespace BlitzenVulkan
             return 0;
         }
 
+        // Success 
+        return 1;
+    }
 
+    uint8_t VulkanRenderer::CreatePipelineLayouts()
+    {
+        constexpr uint32_t Ce_SinglePointer = 1;
 
-
-        /*
-            Pipeline layouts. Different combinations of the descriptor set layout and push constants
-        */
-       
         // Grapchics pipeline layout
-        VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] = 
+        VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] =
         {
              m_pushDescriptorBufferLayout.handle, // Push descriptor layout
              m_textureDescriptorSetlayout.handle // Texture layout
@@ -682,20 +635,21 @@ namespace BlitzenVulkan
         CreatePushConstantRange(globalShaderDataPushContant, VK_SHADER_STAGE_VERTEX_BIT,
             sizeof(GlobalShaderDataPushConstant));
         if (!CreatePipelineLayout(m_device, &m_graphicsPipelineLayout.handle,
-            2, defaultGraphicsPipelinesDescriptorSetLayouts,
-            1, &globalShaderDataPushContant))
+            BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts), 
+            defaultGraphicsPipelinesDescriptorSetLayouts, 
+            Ce_SinglePointer, &globalShaderDataPushContant))
         {
             BLIT_ERROR("Failed to create main graphics pipeline layout");
             return 0;
         }
 
-        // Culling shaders shader their laout
-        VkPushConstantRange lateCullShaderPostPassPushConstant{};
-        CreatePushConstantRange(lateCullShaderPostPassPushConstant,
-            VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
+        // Culling shader shared layout (slight differences are not enough to create permutations
+        VkPushConstantRange cullShaderPushConstant{};
+        CreatePushConstantRange(cullShaderPushConstant,VK_SHADER_STAGE_COMPUTE_BIT, 
+            sizeof(DrawCullShaderPushConstant));
         if (!CreatePipelineLayout(m_device, &m_drawCullLayout.handle,
-            1, &m_pushDescriptorBufferLayout.handle, // push descriptor set layout
-            1, &lateCullShaderPostPassPushConstant))
+            Ce_SinglePointer, &m_pushDescriptorBufferLayout.handle, // push descriptor set layout
+            Ce_SinglePointer, &cullShaderPushConstant))
         {
             BLIT_ERROR("Failed to create culling pipeline layout");
             return 0;
@@ -703,36 +657,41 @@ namespace BlitzenVulkan
 
         // Layout for depth pyramid generation pipeline
         VkPushConstantRange depthPyramidMipExtentPushConstant{};
-        CreatePushConstantRange(
-            depthPyramidMipExtentPushConstant, // push constant for image extent
-            VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2) // takes one vec2
-        );
-        if (!CreatePipelineLayout(
-            m_device, &m_depthPyramidGenerationLayout.handle,
-            1, &m_depthPyramidDescriptorLayout.handle, // depth pyramid src and dst image push descriptor layout
-            1, &depthPyramidMipExtentPushConstant
-        ))
+        CreatePushConstantRange(depthPyramidMipExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
+            sizeof(BlitML::vec2));
+        if (!CreatePipelineLayout(m_device, &m_depthPyramidGenerationLayout.handle,
+            Ce_SinglePointer, &m_depthPyramidDescriptorLayout.handle,
+            Ce_SinglePointer, &depthPyramidMipExtentPushConstant))
+        {
+            BLIT_ERROR("Failed to create depth pyramid generation pipeline layout")
             return 0;
+        }
 
+        // I need to remove this one
         VkPushConstantRange onpcMatrixPushConstant{};
         CreatePushConstantRange(onpcMatrixPushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(BlitML::mat4));
-        if(!CreatePipelineLayout(m_device, &m_onpcReflectiveGeometryLayout.handle, 
-            2, defaultGraphicsPipelinesDescriptorSetLayouts, // Same descriptors as the default graphics pipeline
-            1, &onpcMatrixPushConstant // Push constant for onpc modified projection matrix (temporary)
-        ))
+        if (!CreatePipelineLayout(m_device, &m_onpcReflectiveGeometryLayout.handle,
+            BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts), 
+            defaultGraphicsPipelinesDescriptorSetLayouts,
+            Ce_SinglePointer, &onpcMatrixPushConstant))
+        {
+            BLIT_ERROR("Failed to create onpc graphics pipeline");
             return 0;
+        }
 
         // Generate present image compute shader layout
         VkPushConstantRange colorAttachmentExtentPushConstant{};
-        CreatePushConstantRange(colorAttachmentExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
-            sizeof(BlitML::vec2)
-        );
-        if(!CreatePipelineLayout(m_device, &m_generatePresentationLayout.handle, 
-            1, &m_generatePresentationImageSetLayout.handle, 
-            1, &colorAttachmentExtentPushConstant
-        ))
+        CreatePushConstantRange(colorAttachmentExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
+            sizeof(BlitML::vec2));
+        if (!CreatePipelineLayout(m_device, &m_generatePresentationLayout.handle,
+            Ce_SinglePointer, &m_generatePresentationImageSetLayout.handle,
+            Ce_SinglePointer, &colorAttachmentExtentPushConstant))
+        {
+            BLIT_ERROR("Failed to create presentation generation pipeline layout");
             return 0;
+        }
 
+        // Success
         return 1;
     }
 
@@ -790,7 +749,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::UploadDataToGPU(BlitzenEngine::RenderingResources* pResources)
+    uint8_t VulkanRenderer::StaticBuffersInit(BlitzenEngine::RenderingResources* pResources)
     {
         // The renderer is allow to continue even without render objects but this function should not do anything
         if(pResources->renderObjectCount == 0)

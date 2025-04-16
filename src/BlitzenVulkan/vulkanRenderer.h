@@ -78,19 +78,25 @@ namespace BlitzenVulkan
 
     private:
 
-        // Creates structures that allow Vulkan to allocate resources (command buffers, allocator, texture sampler) 
-        void SetupResourceManagement();
-
-        // Defined in vulkanInit. Initializes the frame tools which are handles that need to have one instance for each frame in flight
-        uint8_t FrameToolsInit();
-
         // Initalizes structure needed to call the DrawWhileWaiting function
         uint8_t CreateIdleDrawHandles();
 
+        // Creates loading triangle pipeline
         bool CreateLoadingTrianglePipeline();
 
-        // Creates the buffers that are dynamic and might be updated each frame
-        uint8_t VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
+        // Creates structures that allow Vulkan to allocate resources (command buffers, allocator, texture sampler) 
+        void SetupResourceManagement();
+
+        // Initializes the rendering attachments and the depth pyramid
+        uint8_t RenderingAttachmentsInit();
+
+        // Takes an opened DDS file's data and uploads the data to the void* parameter
+        bool LoadDDSImageData(BlitzenEngine::DDS_HEADER& header,
+            BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
+            VkFormat& vulkanImageFormat, void* pData);
+
+        // Initalizes the frame tools array
+        uint8_t FrameToolsInit();
 
         // Creates the descriptor set latyouts that are not constant and need to have one instance for each frame in flight
         uint8_t CreateDescriptorLayouts();
@@ -98,14 +104,15 @@ namespace BlitzenVulkan
         VkDescriptorSetLayout CreateGPUBufferPushDescriptorBindings(VkDescriptorSetLayoutBinding* pBindings, 
             uint32_t bindingCount);
 
-        // Takes an opened DDS file's data and uploads the data to the void* parameter
-        bool LoadDDSImageData(BlitzenEngine::DDS_HEADER& header,
-            BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
-            VkFormat& vulkanImageFormat, void* pData);
+        uint8_t CreatePipelineLayouts();
 
-        // Takes the data that is to be used in the scene (vertices, primitives, textures etc.) and uploads to the appropriate resource struct
-        uint8_t UploadDataToGPU(BlitzenEngine::RenderingResources* pResources);
+        // Creates the buffers that are dynamic and might be updated each frame
+        uint8_t VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
 
+        // Creates the constant buffers and upload their data
+        uint8_t StaticBuffersInit(BlitzenEngine::RenderingResources* pResources);
+
+        // Takes the staging buffers and copies their content to the GPU buffers
         void CopyStaticBufferDataToGPUBuffers(
             VkBuffer stagingVertexBuffer, VkDeviceSize vertexBufferSize,
             VkBuffer stagingIndexBuffer, VkDeviceSize indexBufferSize,
@@ -118,7 +125,10 @@ namespace BlitzenVulkan
             VkBuffer clusterStagingBuffer, VkDeviceSize clusterBufferSize,
             VkBuffer clusterIndicesStagingBuffer, VkDeviceSize clusterIndicesBufferSize);
 
-        // Since the way the graphics pipelines work is fixed and there are only 2 of them, the code is collected in this fixed function
+        // Creates main compute shaders. Implemented in vulkanPipeline.cpp
+        uint8_t CreateComputeShaders();
+
+        // Creates most of the graphics pipelines. I need to refactor this
         uint8_t SetupMainGraphicsPipeline();
 
         uint8_t BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces,
