@@ -305,12 +305,25 @@ namespace BlitzenVulkan
     uint8_t VulkanRenderer::CreateComputeShaders()
     {
         // Initial draw cull shader compute pipeline
-        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main",
-            m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
+        if (BlitzenEngine::Ce_BuildClusters)
         {
-            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
-                return 0;
+            if (!CreateComputeShaderProgram(m_device, "VulkanShaders/PreClusterDrawCull.comp.glsl.spv",
+                VK_SHADER_STAGE_COMPUTE_BIT, "main",
+                m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
+            {
+                BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
+                    return 0;
+            }
+        }
+        else
+        {
+            if (!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv",
+                VK_SHADER_STAGE_COMPUTE_BIT, "main",
+                m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
+            {
+                BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
+                    return 0;
+            }
         }
 
         // Generate depth pyramid compute shader

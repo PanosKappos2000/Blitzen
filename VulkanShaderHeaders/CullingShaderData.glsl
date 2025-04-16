@@ -53,6 +53,17 @@ bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bo
 	return visible;
 }
 
+struct ClusterDispatchCommand
+{
+    uint groupCountX;
+    uint groupCountY;
+    uint groupCountZ;
+
+    uint objectId;
+    uint lodIndex;
+    // Optional padding/alignment if needed
+};
+
 // The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
 // Will be incremented when necessary by a compute shader
 layout(set = 0, binding = 9, std430) writeonly buffer IndirectCount

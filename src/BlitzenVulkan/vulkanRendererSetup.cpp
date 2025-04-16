@@ -423,6 +423,7 @@ namespace BlitzenVulkan
     VkDescriptorSetLayout VulkanRenderer::CreateGPUBufferPushDescriptorBindings(
         VkDescriptorSetLayoutBinding* pBindings, uint32_t bindingCount)
     {
+        // This logic is terrible and needs to be fixed, TODO
         constexpr uint32_t viewDataBindingID = 0;
         constexpr uint32_t vertexBindingID = 1;
         constexpr uint32_t depthImageBindingID = 2;
@@ -436,8 +437,8 @@ namespace BlitzenVulkan
         constexpr uint32_t clustersBindingID = 10;
         constexpr uint32_t clusterIndicesBindingID = 11;
         constexpr uint32_t onpcObjectsBindingID = 12;
-        constexpr uint32_t tlasBindingID = 13;
-        constexpr uint32_t indirectTaskCommandsBindingID = 14;
+        constexpr uint32_t tlasBindingID = 14;
+        constexpr uint32_t dispatchClusterCommandsBindingID = 13;
         
         // Every binding in the pushDescriptorSetLayout will have one descriptor
         constexpr uint32_t descriptorCountOfEachPushDescriptorLayoutBinding = 1;
@@ -487,13 +488,13 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.meshletDataBuffer.descriptorType,
             clusterDataBufferShaderStageFlags);
 
-        if (m_stats.meshShaderSupport)
+        if (BlitzenEngine::Ce_BuildClusters)
         {
-            CreateDescriptorSetLayoutBinding(pBindings[indirectTaskCommandsBindingID],
-                m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding,
+            CreateDescriptorSetLayoutBinding(pBindings[dispatchClusterCommandsBindingID],
+                m_currentStaticBuffers.indirectClusterDispatchBuffer.descriptorBinding,
                 descriptorCountOfEachPushDescriptorLayoutBinding,
-                m_currentStaticBuffers.indirectTaskBuffer.descriptorType,
-                VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT);
+                m_currentStaticBuffers.indirectClusterDispatchBuffer.descriptorType,
+                VK_SHADER_STAGE_COMPUTE_BIT);
         }
 
         CreateDescriptorSetLayoutBinding(pBindings[depthImageBindingID], 
@@ -542,11 +543,14 @@ namespace BlitzenVulkan
             m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorType,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[tlasBindingID],
-            m_currentStaticBuffers.tlasBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            m_currentStaticBuffers.tlasBuffer.descriptorType,
-            VK_SHADER_STAGE_FRAGMENT_BIT);
+        if (m_stats.bRayTracingSupported)
+        {
+            CreateDescriptorSetLayoutBinding(pBindings[tlasBindingID],
+                m_currentStaticBuffers.tlasBuffer.descriptorBinding,
+                descriptorCountOfEachPushDescriptorLayoutBinding,
+                m_currentStaticBuffers.tlasBuffer.descriptorType,
+                VK_SHADER_STAGE_FRAGMENT_BIT);
+        }
 
         return CreateDescriptorSetLayout(m_device,bindingCount, pBindings, 
             VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
@@ -557,10 +561,17 @@ namespace BlitzenVulkan
         constexpr uint32_t descriptorCountOfEachPushDescriptorLayoutBinding = 1;
         
         // The big GPU push descriptor set layout. Holds most buffers
-        BlitCL::StaticArray<VkDescriptorSetLayoutBinding, 15> gpuPushDescriptorBindings{ {} };
+        BlitCL::DynamicArray<VkDescriptorSetLayoutBinding> gpuPushDescriptorBindings{ 13, {} };
+        if (m_stats.bRayTracingSupported)
+        {
+            gpuPushDescriptorBindings.PushBack({});
+        }
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            gpuPushDescriptorBindings.PushBack({});
+        }
         m_pushDescriptorBufferLayout.handle = CreateGPUBufferPushDescriptorBindings(
-            gpuPushDescriptorBindings.Data(), m_stats.bRayTracingSupported ?
-            (uint32_t)gpuPushDescriptorBindings.Size() - 1 : (uint32_t)gpuPushDescriptorBindings.Size() - 2);
+            gpuPushDescriptorBindings.Data(), (uint32_t)gpuPushDescriptorBindings.GetSize());
         if (m_pushDescriptorBufferLayout.handle == VK_NULL_HANDLE)
         {
             BLIT_ERROR("Failed to create GPU buffer push descriptor layout");
@@ -943,6 +954,7 @@ namespace BlitzenVulkan
         AllocatedBuffer meshletStagingBuffer;
         VkDeviceSize clusterIndexBufferSize = 0;
         AllocatedBuffer meshletDataStagingBuffer;
+        VkDeviceSize clusterDispatchBufferSize = 0;
         if (BlitzenEngine::Ce_BuildClusters)
         {
             clusterBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
@@ -962,6 +974,15 @@ namespace BlitzenVulkan
             if(clusterIndexBufferSize == 0)
             {
                 BLIT_ERROR("Failed to create cluster indices buffer");
+                return 0;
+            }
+            clusterDispatchBufferSize =
+                SetupPushDescriptorBuffer<ClusterDispatchCommand>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
+                    m_currentStaticBuffers.indirectClusterDispatchBuffer, renderObjectCount,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+            if (clusterDispatchBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create indirect dispatch cluster buffer");
                 return 0;
             }
         }

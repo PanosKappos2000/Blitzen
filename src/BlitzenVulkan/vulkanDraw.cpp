@@ -448,6 +448,10 @@ namespace BlitzenVulkan
         CopyBufferToBuffer(tools.transferCommandBuffer, buffers.transformStagingBuffer.bufferHandle,
             buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0);
         VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
+        // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT is used here because the signal comes from a transfer queue.
+        // More specific shader stages (like VERTEX or COMPUTE) are invalid for transfer queues per Vulkan spec.
+        // This ensures compatibility with graphics queue work that reads the transform buffer.
+        // DO NOT WASTE TIME TRYING TO CHANGE THIS
         CreateSemahoreSubmitInfo(bufferCopySemaphoreInfo, tools.buffersReadySemaphore.handle,
             VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
         SubmitCommandBuffer(m_transferQueue.handle, tools.transferCommandBuffer,
