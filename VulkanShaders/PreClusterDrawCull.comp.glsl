@@ -34,27 +34,19 @@ void main()
     if (visible)
     {
         uint lodIndex = 0;
-        if (visible)
+        float distance = max(length(center) - radius, 0);
+        float threshold = distance * viewData.lodTarget / transform.scale;
+        for (uint i = 1; i < surface.lodCount; ++i)
         {
-            float distance = max(length(center) - radius, 0);
-            float threshold = distance * viewData.lodTarget / transform.scale;
-
-            for (uint i = 1; i < surface.lodCount; ++i)
-            {
-                if (surface.lod[i].error < threshold)
-                    lodIndex = i;
-            }
+            if (surface.lod[i].error < threshold)
+                lodIndex = i;
         }
 
-        uint clusterCount = surface.lod[lodIndex].meshletCount;
-
         uint dispatchIndex = atomicAdd(indirectClusterCount.count, 1);
-
         // Placeholder dispatch command
-        indirectClusterDispatch.commands[dispatchIndex].groupCountX = surface.lod[lodIndex].meshletCount; // Dummy cluster count
+        indirectClusterDispatch.commands[dispatchIndex].groupCountX = surface.lod[lodIndex].meshletCount;
         indirectClusterDispatch.commands[dispatchIndex].groupCountY = 1;
         indirectClusterDispatch.commands[dispatchIndex].groupCountZ = 1;
-
         indirectClusterDispatch.commands[dispatchIndex].objectId = objectIndex;
         indirectClusterDispatch.commands[dispatchIndex].lodIndex = lodIndex;
     }

@@ -3,10 +3,8 @@
 #extension GL_GOOGLE_include_directive : require
 
 #define COMPUTE_PIPELINE
-
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
-
 #define CULL  true
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -43,17 +41,7 @@ void main()
 		vec4 aabb;
 		if (projectSphere(center, radius, viewData.zNear, viewData.proj0, viewData.proj5, aabb))
 		{
-			float width = (aabb.z - aabb.x) * viewData.pyramidWidth;
-			float height = (aabb.w - aabb.y) * viewData.pyramidHeight;
-
-            // Find the mip map level that will match the screen size of the sphere
-			float level = floor(log2(max(width, height)));
-
-			float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
-
-			float depthSphere = viewData.zNear / (center.z - radius);
-
-			visible = visible && depthSphere > depth;
+			visible = visible && OcclusionCullingPassed(aabb, depthPyramid, viewData.pyramidWidth, viewData.pyramidHeight, center, radius, viewData.zNear);
 		}
 	}
 

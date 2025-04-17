@@ -53,15 +53,28 @@ bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bo
 	return visible;
 }
 
+bool OcclusionCullingPassed(vec4 aabb, sampler2D depthPyramid, float pyramidWidth, float pyramidHeight, vec3 center, float radius, float zNear)
+{
+	float width = (aabb.z - aabb.x) * viewData.pyramidWidth;
+	float height = (aabb.w - aabb.y) * viewData.pyramidHeight;
+    // Find the mip map level that will match the screen size of the sphere
+	float level = floor(log2(max(width, height)));
+	float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
+	float depthSphere = viewData.zNear / (center.z - radius);
+	return depthSphere > depth;
+}
+
 struct ClusterDispatchCommand
 {
     uint groupCountX;
     uint groupCountY;
     uint groupCountZ;
+    uint padding0;     // Aligns next line to 16 bytes
 
     uint objectId;
     uint lodIndex;
-    // Optional padding/alignment if needed
+    uint padding1;
+    uint padding2;     // Ensures struct size is 32 bytes
 };
 
 #ifdef PRE_CLUSTER

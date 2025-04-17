@@ -305,14 +305,21 @@ namespace BlitzenVulkan
     uint8_t VulkanRenderer::CreateComputeShaders()
     {
         // Initial draw cull shader compute pipeline
-        if (BlitzenEngine::Ce_BuildClusters)
+        if constexpr (BlitzenEngine::Ce_BuildClusters)
         {
             if (!CreateComputeShaderProgram(m_device, "VulkanShaders/PreClusterDrawCull.comp.glsl.spv",
                 VK_SHADER_STAGE_COMPUTE_BIT, "main",
                 m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle))
             {
-                BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
-                    return 0;
+                BLIT_ERROR("Failed to create PreClusterDrawCull.comp shader program");
+                return 0;
+            }
+
+            if (!CreateComputeShaderProgram(m_device, "VulkanShaders/PreClusterLateDrawCull.comp.glsl.spv",
+                VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle,
+                &m_lateDrawCullPipeline.handle))
+            {
+                BLIT_ERROR("Failed to create PreClusterLateDrawCull.comp shader program")
             }
         }
         else
@@ -324,6 +331,15 @@ namespace BlitzenVulkan
                 BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
                     return 0;
             }
+
+            // Late culling shader compute pipeline
+            if (!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv",
+                VK_SHADER_STAGE_COMPUTE_BIT, "main",
+                m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle))
+            {
+                BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
+                    return 0;
+            }
         }
 
         // Generate depth pyramid compute shader
@@ -332,15 +348,6 @@ namespace BlitzenVulkan
             m_depthPyramidGenerationLayout.handle, &m_depthPyramidGenerationPipeline.handle))
         {
             BLIT_ERROR("Failed to create DepthPyramidGeneration.comp shader program")
-                return 0;
-        }
-
-        // Late culling shader compute pipeline
-        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main",
-            m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle))
-        {
-            BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
                 return 0;
         }
 

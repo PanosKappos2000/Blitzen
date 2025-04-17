@@ -260,6 +260,8 @@ namespace BlitzenVulkan
         inline static MemoryCrucialHandles* s_pInstance;
     };
 
+
+
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
     struct AllocatedImage
     {
@@ -381,10 +383,12 @@ namespace BlitzenVulkan
     struct ClusterDispatchCommand
     {
         VkDispatchIndirectCommand command;
+        uint32_t padding0;
 
         uint32_t objectId;
         uint32_t lodIndex;
-        // Optional padding/alignment if needed
+        uint32_t padding1;
+        uint32_t padding2;
     };
 
     // Culling shaders receive this shader as a push constant

@@ -565,6 +565,7 @@ namespace BlitzenEngine
                         auto& current = renders[renderObjectCount];
                         current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
                         current.transformId = transformId;
+
                         renderObjectCount++;
                     }
                     else

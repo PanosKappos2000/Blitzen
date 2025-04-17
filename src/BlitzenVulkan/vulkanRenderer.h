@@ -141,8 +141,9 @@ namespace BlitzenVulkan
 
         // Dispatches the culling shader to perform culling and prepare draw commands
         void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline,
-            uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, uint32_t drawCount, 
-            VkDeviceAddress renderObjectBufferAddress, uint8_t lateCulling, uint8_t postPass);
+            uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, VkBuffer indirectCountBuffer, 
+            VkBuffer indirectCommandsBuffer, uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress, 
+            uint8_t lateCulling);
 
         // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
         void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, 
