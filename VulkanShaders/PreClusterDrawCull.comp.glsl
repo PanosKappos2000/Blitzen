@@ -2,6 +2,7 @@
 #extension GL_GOOGLE_include_directive : require
 
 #define COMPUTE_PIPELINE
+#define PRE_CLUSTER
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
 
@@ -47,15 +48,14 @@ void main()
 
         uint clusterCount = surface.lod[lodIndex].meshletCount;
 
-        //uint dispatchIndex = atomicAdd(indirectTaskCountBuffer.drawCount, 1);
+        uint dispatchIndex = atomicAdd(indirectClusterCount.count, 1);
 
         // Placeholder dispatch command
-        /*indirectTaskBuffer.draws[dispatchIndex].groupCountX = surface.lod[lodIndex].meshletCount; // Dummy cluster count
-        indirectTaskBuffer.draws[dispatchIndex].groupCountY = 1;
-        indirectTaskBuffer.draws[dispatchIndex].groupCountZ = 1;*/
+        indirectClusterDispatch.commands[dispatchIndex].groupCountX = surface.lod[lodIndex].meshletCount; // Dummy cluster count
+        indirectClusterDispatch.commands[dispatchIndex].groupCountY = 1;
+        indirectClusterDispatch.commands[dispatchIndex].groupCountZ = 1;
 
-        // Optionally store object/LOD for metadata use later
-        // dispatchMetaBuffer.meta[dispatchIndex].objectId = objectIndex;
-        // dispatchMetaBuffer.meta[dispatchIndex].lodIndex = lodIndex;
+        indirectClusterDispatch.commands[dispatchIndex].objectId = objectIndex;
+        indirectClusterDispatch.commands[dispatchIndex].lodIndex = lodIndex;
     }
 }

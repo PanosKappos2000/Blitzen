@@ -100,11 +100,20 @@ namespace BlitzenVulkan
     constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
         VK_IMAGE_USAGE_SAMPLED_BIT; // For generate debug pyramid compute shader
+    constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
 
 
     // Descriptor write array index constant epressions
     constexpr uint32_t ce_viewDataWriteElement = 0;
     constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
+
+#if defined BLITZEN_CLUSTER_CULLING
+    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 10;
+    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
+#else
+    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 8;
+    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
+#endif
 
 
     struct VulkanStats

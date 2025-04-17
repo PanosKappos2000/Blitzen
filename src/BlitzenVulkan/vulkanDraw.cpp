@@ -128,7 +128,19 @@ namespace BlitzenVulkan
 
         if(context.pResources->renderObjectCount == 0)
         {
+            // TODO: Change this so that it instantly goes to present and quits the function before going further
 	        DrawBackgroundImage(fTools.commandBuffer);
+        }
+
+        if constexpr (BlitzenEngine::Ce_BuildClusters)
+        {
+            BLIT_ERROR("Not implemented yet");
+
+            // First culling pass
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle,
+                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
+                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
+                Ce_InitialCulling, 0);
         }
         else
         {

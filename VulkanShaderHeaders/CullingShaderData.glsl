@@ -64,12 +64,29 @@ struct ClusterDispatchCommand
     // Optional padding/alignment if needed
 };
 
+#ifdef PRE_CLUSTER
+layout(set = 0, binding = 16, std430) writeonly buffer IndirectClusterDispatch
+{
+	ClusterDispatchCommand commands[];
+}indirectClusterDispatch;
+#else
+layout(set = 0, binding = 16, std430) readonly buffer IndirectClusterDispatch
+{
+	ClusterDispatchCommand commands[];
+}indirectClusterDispatch;
+#endif
+
+layout(set = 0, binding = 16, std430) writeonly buffer IndirectClusterCount
+{
+	uint count;
+}indirectClusterCount;
+
 // The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
 // Will be incremented when necessary by a compute shader
-layout(set = 0, binding = 9, std430) writeonly buffer IndirectCount
+layout(set = 0, binding = 9, std430) writeonly buffer IndirectDrawCount
 {
     uint drawCount;
-}indirectCountBuffer;
+}indirectDrawCountBuffer;
 
 layout(set = 0, binding = 10, std430) buffer VisibilityBuffer
 {

@@ -41,7 +41,7 @@ void main()
     if(visible)
     {
         // Increments the draw count buffer, so that vkCmdDrawIndexedIndirectCount draws the current object
-        uint drawIndex = atomicAdd(indirectCountBuffer.drawCount, 1);
+        uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
  
         // The LOD index is calculated using a formula, 
         // where the distance to the bounding sphere's surface is taken
@@ -57,12 +57,12 @@ void main()
         // Get the selected LOD
         MeshLod currentLod = surface.lod[lodIndex];
         // The object index is needed to know which element to access in the per object data buffer
-        indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
+        indirectDrawBuffer.draws[drawID].objectId = objectIndex;
         // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface
-        indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
-        indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
-        indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
-        indirectDrawBuffer.draws[drawIndex].vertexOffset = surface.vertexOffset;
-        indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
+        indirectDrawBuffer.draws[drawID].indexCount = currentLod.indexCount;
+        indirectDrawBuffer.draws[drawID].instanceCount = 1;
+        indirectDrawBuffer.draws[drawID].firstIndex = currentLod.firstIndex;
+        indirectDrawBuffer.draws[drawID].vertexOffset = surface.vertexOffset;
+        indirectDrawBuffer.draws[drawID].firstInstance = 0;
     } 
 }

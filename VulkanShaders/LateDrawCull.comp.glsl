@@ -61,9 +61,6 @@ void main()
     // Transparent objects are only processed by this culling shader so last frame visibility is irrelevant
     if(visible && visibilityBuffer.visibilities[objectIndex] == 0)
     {
-        // Increments the draw count buffer, so that vkCmdDrawIndexedIndirectCount draws the current object
-        uint drawIndex = atomicAdd(indirectCountBuffer.drawCount, 1);
- 
         // The LOD index is calculated using a formula, 
         // where the distance to the bounding sphere's surface is taken
         // and the minimum error that would result in acceptable screen-space deviation
@@ -72,19 +69,25 @@ void main()
 		float threshold = distance * viewData.lodTarget / transform.scale;
         uint lodIndex = 0;
 		for (uint i = 1; i < surface.lodCount; ++i)
+        {
 			if (surface.lod[i].error < threshold)
+            {
 				lodIndex = i;
+            }
+        }
 
         // Gets the selected LOD
         MeshLod currentLod = surface.lod[lodIndex];
+        // Increments the draw count buffer, so that vkCmdDrawIndexedIndirectCount draws the current object
+        uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
         // The object index is needed to know which element to access in the per object data buffer
-        indirectDrawBuffer.draws[drawIndex].objectId = objectIndex;
+        indirectDrawBuffer.draws[drawID].objectId = objectIndex;
         // Sets up the indirect draw commands based on the selected LODs and the vertex offset of the current surface
-        indirectDrawBuffer.draws[drawIndex].indexCount = currentLod.indexCount;
-        indirectDrawBuffer.draws[drawIndex].instanceCount = 1;
-        indirectDrawBuffer.draws[drawIndex].firstIndex = currentLod.firstIndex;
-        indirectDrawBuffer.draws[drawIndex].vertexOffset = surface.vertexOffset;
-        indirectDrawBuffer.draws[drawIndex].firstInstance = 0;
+        indirectDrawBuffer.draws[drawID].indexCount = currentLod.indexCount;
+        indirectDrawBuffer.draws[drawID].instanceCount = 1;
+        indirectDrawBuffer.draws[drawID].firstIndex = currentLod.firstIndex;
+        indirectDrawBuffer.draws[drawID].vertexOffset = surface.vertexOffset;
+        indirectDrawBuffer.draws[drawID].firstInstance = 0;
     }
 
     // Save the current frame visibility for this object
