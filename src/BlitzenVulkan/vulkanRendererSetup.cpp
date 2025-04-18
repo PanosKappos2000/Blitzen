@@ -484,15 +484,15 @@ namespace BlitzenVulkan
         if (BlitzenEngine::Ce_BuildClusters)
         {
             CreateDescriptorSetLayoutBinding(pBindings[dispatchClusterCommandsBindingID],
-                m_currentStaticBuffers.indirectClusterDispatchBuffer.descriptorBinding,
+                m_currentStaticBuffers.clusterDispatchBuffer.descriptorBinding,
                 descriptorCountOfEachPushDescriptorLayoutBinding,
-                m_currentStaticBuffers.indirectClusterDispatchBuffer.descriptorType,
+                m_currentStaticBuffers.clusterDispatchBuffer.descriptorType,
                 VK_SHADER_STAGE_COMPUTE_BIT);
 
             CreateDescriptorSetLayoutBinding(pBindings[clusterCountBindingID], 
-                m_currentStaticBuffers.indirectClusterCountBuffer.descriptorBinding, 
+                m_currentStaticBuffers.clusterCountBuffer.descriptorBinding, 
                 descriptorCountOfEachPushDescriptorLayoutBinding, 
-                m_currentStaticBuffers.indirectClusterCountBuffer.descriptorType,
+                m_currentStaticBuffers.clusterCountBuffer.descriptorType,
                 VK_SHADER_STAGE_COMPUTE_BIT);
         }
 
@@ -980,8 +980,8 @@ namespace BlitzenVulkan
             }
 
             clusterDispatchBufferSize =
-                SetupPushDescriptorBuffer<ClusterDispatchCommand>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                    m_currentStaticBuffers.indirectClusterDispatchBuffer, renderObjectCount,
+                SetupPushDescriptorBuffer<ClusterDispatchData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
+                    m_currentStaticBuffers.clusterDispatchBuffer, renderObjectCount,
                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
             if (clusterDispatchBufferSize == 0)
             {
@@ -990,11 +990,19 @@ namespace BlitzenVulkan
             }
 
             if (!SetupPushDescriptorBuffer<uint32_t>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.indirectClusterCountBuffer, SingleElementBuffer,
-                VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                m_currentStaticBuffers.clusterCountBuffer, SingleElementBuffer,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
             {
                 BLIT_ERROR("Failed to create indirect count buffer");
+                return 0;
+            }
+
+            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountCopyBuffer,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect count copy buffer");
                 return 0;
             }
         }
@@ -1148,8 +1156,8 @@ namespace BlitzenVulkan
                 pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
                 pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
                 pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-                pushDescriptorWritesCompute[7] = m_currentStaticBuffers.indirectClusterDispatchBuffer.descriptorWrite;
-                pushDescriptorWritesCompute[8] = m_currentStaticBuffers.indirectClusterCountBuffer.descriptorWrite;
+                pushDescriptorWritesCompute[7] = m_currentStaticBuffers.clusterDispatchBuffer.descriptorWrite;
+                pushDescriptorWritesCompute[8] = m_currentStaticBuffers.clusterCountBuffer.descriptorWrite;
                 pushDescriptorWritesCompute[9] = {};
         }
         else

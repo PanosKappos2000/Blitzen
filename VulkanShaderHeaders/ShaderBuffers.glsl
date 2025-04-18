@@ -55,8 +55,8 @@ struct MeshLod
     uint firstIndex;
     float error;
 
-    uint meshletOffset;
-    uint meshletCount;
+    uint clusterOffset;
+    uint clusterCount;
 
     uint padding0;
 };

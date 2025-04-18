@@ -22,12 +22,12 @@ void main()
     // Access the object's data
     RenderObject object = cullPC.renderObjectBufferAddress.objects[objectIndex];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
-    Surface surface = surfaceBuffer.surfaces[object.surfaceId];
     
     // Frustum culling
     vec3 center;
 	float radius;
-	bool visible = IsObjectInsideViewFrustum(center, radius, surface.center, surface.radius, // bounding sphere
+	bool visible = IsObjectInsideViewFrustum(center, radius, 
+        surfaceBuffer.surfaces[object.surfaceId].center, surfaceBuffer.surfaces[object.surfaceId].radius, // bounding sphere
         transform.scale, transform.pos, transform.orientation, // object transform
         viewData.view, // view matrix
         viewData.frustumRight, viewData.frustumLeft, // frustum planes
@@ -56,16 +56,17 @@ void main()
 		float distance = max(length(center) - radius, 0);
 		float threshold = distance * viewData.lodTarget / transform.scale;
         uint lodIndex = 0;
-		for (uint i = 1; i < surface.lodCount; ++i)
+        uint lodCount = surfaceBuffer.surfaces[object.surfaceId].lodCount;
+		for (uint i = 1; i < lodCount; ++i)
         {
-			if (surface.lod[i].error < threshold)
+			if (surfaceBuffer.surfaces[object.surfaceId].lod[i].error < threshold)
             {
 				lodIndex = i;
             }
         }
 
         // Gets the selected LOD
-        MeshLod currentLod = surface.lod[lodIndex];
+        MeshLod currentLod = surfaceBuffer.surfaces[object.surfaceId].lod[lodIndex];
         // Increments the draw count buffer, so that vkCmdDrawIndexedIndirectCount draws the current object
         uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
         // The object index is needed to know which element to access in the per object data buffer
@@ -74,7 +75,7 @@ void main()
         indirectDrawBuffer.draws[drawID].indexCount = currentLod.indexCount;
         indirectDrawBuffer.draws[drawID].instanceCount = 1;
         indirectDrawBuffer.draws[drawID].firstIndex = currentLod.firstIndex;
-        indirectDrawBuffer.draws[drawID].vertexOffset = surface.vertexOffset;
+        indirectDrawBuffer.draws[drawID].vertexOffset = surfaceBuffer.surfaces[object.surfaceId].vertexOffset;
         indirectDrawBuffer.draws[drawID].firstInstance = 0;
     }
 

@@ -55,11 +55,7 @@ void main()
             lodIndex = i;
     }
 
-    uint dispatchIndex = atomicAdd(indirectClusterCount.count, 1);
-    // Placeholder dispatch command
-    indirectClusterDispatch.commands[dispatchIndex].groupCountX = surface.lod[lodIndex].meshletCount;
-    indirectClusterDispatch.commands[dispatchIndex].groupCountY = 1;
-    indirectClusterDispatch.commands[dispatchIndex].groupCountZ = 1;
-    indirectClusterDispatch.commands[dispatchIndex].objectId = objectIndex;
-    indirectClusterDispatch.commands[dispatchIndex].lodIndex = lodIndex;
+    MeshLod lod = surface.lod[lodIndex];
+
+    uint dispatchIndex = atomicAdd(indirectClusterCount.count, lod.clusterCount);
 }

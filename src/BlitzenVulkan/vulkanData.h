@@ -380,15 +380,11 @@ namespace BlitzenVulkan
         VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
     };
 
-    struct ClusterDispatchCommand
+    struct ClusterDispatchData
     {
-        VkDispatchIndirectCommand command;
-        uint32_t padding0;
-
         uint32_t objectId;
         uint32_t lodIndex;
-        uint32_t padding1;
-        uint32_t padding2;
+        uint32_t clusterId;
     };
 
     // Culling shaders receive this shader as a push constant

@@ -139,13 +139,13 @@ namespace BlitzenVulkan
             // First culling pass
             DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle,
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                m_currentStaticBuffers.indirectClusterCountBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indirectClusterDispatchBuffer.buffer.bufferHandle,
+                m_currentStaticBuffers.clusterCountBuffer.buffer.bufferHandle,
+                m_currentStaticBuffers.clusterDispatchBuffer.buffer.bufferHandle,
                 context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
                 Ce_InitialCulling);
 
             // Depth pyramid generation
-            GenerateDepthPyramid(fTools.commandBuffer);
+            /*GenerateDepthPyramid(fTools.commandBuffer);
 
             // Second culling pass 
             DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle,
@@ -153,7 +153,7 @@ namespace BlitzenVulkan
                 m_currentStaticBuffers.indirectClusterCountBuffer.buffer.bufferHandle,
                 m_currentStaticBuffers.indirectClusterDispatchBuffer.buffer.bufferHandle,
                 context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
-                Ce_LateCulling);
+                Ce_LateCulling);*/
         }
         else
         {

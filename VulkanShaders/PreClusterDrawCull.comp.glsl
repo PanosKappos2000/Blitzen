@@ -16,17 +16,18 @@ void main()
         return;
     }
     // This shader only processes objects that were visible last frame
-    if(visibilityBuffer.visibilities[objectIndex] == 0)
+    // Temporary disabled this is the only pre shader that will be called for now
+    /*if(visibilityBuffer.visibilities[objectIndex] == 0)
     {
         return;
-    }
+    }*/
     RenderObject obj = cullPC.renderObjectBufferAddress.objects[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
-    Surface surface = surfaceBuffer.surfaces[obj.surfaceId];
 
     vec3 center;
     float radius;
-    bool visible = IsObjectInsideViewFrustum(center, radius, surface.center, surface.radius,
+    bool visible = IsObjectInsideViewFrustum(center, radius, 
+        surfaceBuffer.surfaces[obj.surfaceId].center, surfaceBuffer.surfaces[obj.surfaceId].radius,
         transform.scale, transform.pos, transform.orientation,
         viewData.view, viewData.frustumRight, viewData.frustumLeft,
         viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar);
@@ -36,18 +37,21 @@ void main()
         uint lodIndex = 0;
         float distance = max(length(center) - radius, 0);
         float threshold = distance * viewData.lodTarget / transform.scale;
-        for (uint i = 1; i < surface.lodCount; ++i)
+        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
+        for (uint i = 1; i < lodCount; ++i)
         {
-            if (surface.lod[i].error < threshold)
+            if (surfaceBuffer.surfaces[obj.surfaceId].lod[i].error < threshold)
                 lodIndex = i;
         }
 
-        uint dispatchIndex = atomicAdd(indirectClusterCount.count, 1);
-        // Placeholder dispatch command
-        indirectClusterDispatch.commands[dispatchIndex].groupCountX = surface.lod[lodIndex].meshletCount;
-        indirectClusterDispatch.commands[dispatchIndex].groupCountY = 1;
-        indirectClusterDispatch.commands[dispatchIndex].groupCountZ = 1;
-        indirectClusterDispatch.commands[dispatchIndex].objectId = objectIndex;
-        indirectClusterDispatch.commands[dispatchIndex].lodIndex = lodIndex;
+        MeshLod lod = surfaceBuffer.surfaces[obj.surfaceId].lod[lodIndex];
+        uint dispatchIndex = atomicAdd(indirectClusterCount.count, lod.clusterCount);
+        
+        for(uint i = 0; i < lod.clusterCount; ++i)
+        {
+            indirectClusterDispatch.data[i + dispatchIndex].clusterId = lod.clusterOffset;
+            indirectClusterDispatch.data[i + dispatchIndex].lodIndex = lodIndex;
+            indirectClusterDispatch.data[i + dispatchIndex].objectId = objectIndex;
+        }
     }
 }

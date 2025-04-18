@@ -195,8 +195,9 @@ namespace BlitzenVulkan
 
             PushDescriptorBuffer<void> visibilityBuffer{ 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
 
-            PushDescriptorBuffer<void> indirectClusterDispatchBuffer{ 16, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            PushDescriptorBuffer<void> indirectClusterCountBuffer{ 17, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> clusterDispatchBuffer{ 16, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> clusterCountBuffer{ 17, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            AllocatedBuffer clusterCountCopyBuffer;
 
             AllocatedBuffer blasBuffer;
             BlitCL::DynamicArray<AccelerationStructure> blasData;

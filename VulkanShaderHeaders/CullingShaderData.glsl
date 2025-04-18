@@ -64,35 +64,31 @@ bool OcclusionCullingPassed(vec4 aabb, sampler2D depthPyramid, float pyramidWidt
 	return depthSphere > depth;
 }
 
-struct ClusterDispatchCommand
+struct ClusterDispatchData
 {
-    uint groupCountX;
-    uint groupCountY;
-    uint groupCountZ;
-    uint padding0;     // Aligns next line to 16 bytes
-
     uint objectId;
     uint lodIndex;
-    uint padding1;
-    uint padding2;     // Ensures struct size is 32 bytes
+    uint clusterId;
 };
 
 #ifdef PRE_CLUSTER
 layout(set = 0, binding = 16, std430) writeonly buffer IndirectClusterDispatch
 {
-	ClusterDispatchCommand commands[];
+	ClusterDispatchData data[];
 }indirectClusterDispatch;
 #else
 layout(set = 0, binding = 16, std430) readonly buffer IndirectClusterDispatch
 {
-	ClusterDispatchCommand commands[];
+	ClusterDispatchData data[];
 }indirectClusterDispatch;
 #endif
 
-layout(set = 0, binding = 16, std430) writeonly buffer IndirectClusterCount
+#ifdef PRE_CLUSTER
+layout(set = 0, binding = 17, std430) writeonly buffer IndirectClusterCount
 {
 	uint count;
 }indirectClusterCount;
+#endif
 
 // The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
 // Will be incremented when necessary by a compute shader
