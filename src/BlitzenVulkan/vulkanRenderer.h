@@ -25,6 +25,21 @@ namespace BlitzenVulkan
         // Function for DDS texture loading
         uint8_t UploadTexture(void* pData, const char* filepath);
 
+        // Shows a loading screen while waiting for resources to be loaded
+        void DrawWhileWaiting();
+
+        void SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context);
+
+        // Called each frame to draw the scene that is requested by the engine
+        void DrawFrame(BlitzenEngine::DrawContext& context);
+
+        // When a dynamic object moves, it should call this function to update the staging buffer
+        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
+
+        // Static function that allows access to vulkan renderer at any scope
+        inline static VulkanRenderer* GetRendererInstance() { return m_pThisRenderer; }
+        inline VulkanStats GetStats() const { return m_stats; }
+
     public:
 
         // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight
@@ -40,6 +55,8 @@ namespace BlitzenVulkan
             Semaphore imageAcquiredSemaphore;
             Semaphore buffersReadySemaphore;
             Semaphore readyToPresentSemaphore;
+
+            uint8_t Init(VkDevice device, Queue graphicsQueue, Queue transferQueue);
         };
 
         // The renderer will have one instance of these buffers, which will include buffers that my be updated
@@ -89,21 +106,6 @@ namespace BlitzenVulkan
             AccelerationStructure tlasData;
         };
 
-        // Shows a loading screen while waiting for resources to be loaded
-        void DrawWhileWaiting();
-
-        void SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context);
-
-        // Called each frame to draw the scene that is requested by the engine
-        void DrawFrame(BlitzenEngine::DrawContext& context);
-
-        // When a dynamic object moves, it should call this function to update the staging buffer
-        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
-
-        // Static function that allows access to vulkan renderer at any scope
-        inline static VulkanRenderer* GetRendererInstance() { return m_pThisRenderer; }
-        inline VulkanStats GetStats() const { return m_stats; }
-
         // Vulkan API and memory crucials
         VkInstance m_instance;
         VmaAllocator m_allocator;
@@ -111,59 +113,14 @@ namespace BlitzenVulkan
 
     private:
 
-        // Creates structures that allow Vulkan to allocate resources (command buffers, allocator, texture sampler) 
-        void SetupResourceManagement();
-
-        // Initializes the rendering attachments and the depth pyramid
-        uint8_t RenderingAttachmentsInit();
-
-        // Takes an opened DDS file's data and uploads the data to the void* parameter
-        bool LoadDDSImageData(BlitzenEngine::DDS_HEADER& header,
-            BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
-            VkFormat& vulkanImageFormat, void* pData);
-
-        // Initalizes the frame tools array
-        uint8_t FrameToolsInit();
-
-        // Creates the descriptor set latyouts that are not constant and need to have one instance for each frame in flight
-        uint8_t CreateDescriptorLayouts();
-
-        VkDescriptorSetLayout CreateGPUBufferPushDescriptorBindings(VkDescriptorSetLayoutBinding* pBindings, 
-            uint32_t bindingCount);
-
-        uint8_t CreatePipelineLayouts();
-
-        // Creates the buffers that are dynamic and might be updated each frame
-        uint8_t VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms);
-
-        // Creates the constant buffers and upload their data
+        // TODO: Remove this but remember that it might be harder because it calls the below funtions
+        // The best would be to pass the Vulkan renderer inside and make the below functions public temporarily
         uint8_t StaticBuffersInit(BlitzenEngine::RenderingResources* pResources);
 
-        // Takes the staging buffers and copies their content to the GPU buffers
-        void CopyStaticBufferDataToGPUBuffers(VkBuffer stagingVertexBuffer, VkDeviceSize vertexBufferSize,
-            VkBuffer stagingIndexBuffer, VkDeviceSize indexBufferSize,
-            VkBuffer renderObjectStagingBuffer, VkDeviceSize renderObjectBufferSize,
-            VkBuffer transparentObjectStagingBuffer, VkDeviceSize trasparentRenderBufferSize,
-            VkBuffer onpcRenderObjectStagingBuffer, VkDeviceSize onpcRenderObjectBufferSize,
-            VkBuffer surfaceStagingBuffer, VkDeviceSize surfaceBufferSize,
-            VkBuffer materialStagingBuffer, VkDeviceSize materialBufferSize,
-            VkDeviceSize visibilityBufferSize,
-            VkBuffer clusterStagingBuffer, VkDeviceSize clusterBufferSize,
-            VkBuffer clusterIndicesStagingBuffer, VkDeviceSize clusterIndicesBufferSize);
 
-        void SetupGpuBufferDescriptorWriteArrays();
-
-        // Creates main compute shaders. Implemented in vulkanPipeline.cpp
-        uint8_t CreateComputeShaders();
-
-        // Creates most of the graphics pipelines. I need to refactor this
-        uint8_t SetupMainGraphicsPipeline();
-
-        uint8_t BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces,
-            const BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts);
-
-        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount,
-            BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface);
+        // TODO: I should get this out of the class, but we can keep them for now
+        uint8_t BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, const BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts);
+        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface);
 
         /*
             API initialization handles section
