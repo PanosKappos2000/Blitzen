@@ -139,18 +139,6 @@ namespace BlitzenVulkan
         // Updates var buffers
         void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, FrameTools& tools, VarBuffers& buffers);
 
-        // Dispatches the culling shader to perform culling and prepare draw commands
-        void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer, VkPipeline pipeline,
-            uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, VkBuffer indirectCountBuffer, 
-            VkBuffer indirectCommandsBuffer, uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress, 
-            uint8_t lateCulling);
-
-        // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
-        void DrawGeometry(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, 
-            uint32_t descriptorWriteCount, VkPipeline pipeline, VkPipelineLayout layout,
-            uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress, uint8_t latePass,
-            uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr);
-
         // For occlusion culling to be possible a depth pyramid needs to be generated based on the depth attachment
         void GenerateDepthPyramid(VkCommandBuffer commandBuffer);
 
@@ -330,6 +318,8 @@ namespace BlitzenVulkan
         PipelineObject m_transparentDrawCullPipeline;
         PipelineLayout m_drawCullLayout;
 
+        PipelineObject m_intialClusterCullPipeline;
+
         // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
         // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 
         PipelineObject m_depthPyramidGenerationPipeline;
@@ -377,14 +367,12 @@ namespace BlitzenVulkan
         uint32_t windowWidth, uint32_t windowHeight,
         Queue graphicsQueue, Queue presentQueue, Queue computeQueue,
         VkAllocationCallbacks* pCustomAllocator,
-        Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE
-    );
+        Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 
     // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
     uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent,
         VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels,
-        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator
-    );
+        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator);
 
 
     // Creates VkWriteDescriptorSet for a buffer type descriptor set
@@ -394,7 +382,8 @@ namespace BlitzenVulkan
         VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
 
     // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
-    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet,
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, 
+        VkDescriptorType descriptorType, VkDescriptorSet dstSet,
         uint32_t descriptorCount, uint32_t binding, uint32_t dstArrayElement = 0);
 
     // Creates VkDescriptorImageInfo and uses it to create a VkWriteDescriptorSet for images. DescriptorCount is set to 1 by default
@@ -406,6 +395,41 @@ namespace BlitzenVulkan
 
     // Puts command buffer in the ready state. vkCmd type function can be called after this and until vkEndCommandBuffer is called
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
+
+    void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer,
+        VkPipeline pipeline, VkPipelineLayout layout,
+        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites,
+        VkBuffer indirectCountBuffer, VkBuffer indirectCommandsBuffer, VkBuffer visibilityBuffer,
+        PushDescriptorImage& depthAttachment, PushDescriptorImage& depthPyramid,
+        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
+        uint8_t lateCulling, VkInstance instance);
+
+    void DispatchPreClusterCullingShader(VkCommandBuffer, 
+        VkPipeline pipeline, VkPipelineLayout layout, 
+        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, 
+        VkBuffer clusterCountBuffer, VkBuffer clusterDataBuffer, VkBuffer clusterCountCopy,
+        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress, 
+        uint8_t lateCulling, VkInstance instance);
+
+    void DispatchClusterCullingComputeShader(VkCommandBuffer, 
+        VkPipeline pipeline, VkPipelineLayout layout,
+        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites,
+        VkBuffer clusterCountBuffer, AllocatedBuffer& clusterCountCopyBuffer, VkBuffer clusterDispatchBuffer,
+        VkBuffer drawCountBuffer, VkBuffer indirectDrawBuffer, 
+        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
+        VkInstance instance);
+
+    // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
+    void DrawGeometry(VkCommandBuffer commandBuffer,
+        VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
+        VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSet* textureSet,
+        VkRenderingAttachmentInfo& colorAttachmentInfo, VkRenderingAttachmentInfo& depthAttachmentInfo,
+        VkExtent2D drawExtent,
+        VkBuffer indirectDrawBuffer, VkBuffer indirectCountBuffer, VkBuffer indexBuffer,
+        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
+        uint8_t latePass, VkInstance instance,
+        uint8_t bRaytracing, uint32_t tlasCount, VkAccelerationStructureKHR* pTlas,
+        uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr);
 
     // Copies parts of one buffer to parts of another, depending on the offsets that are passed
     void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer,
@@ -431,21 +455,18 @@ namespace BlitzenVulkan
     // Submits the command buffer to excecute the recorded commands. Semaphores, fences and other sync structures can be specified 
     void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount = 0,
         VkSemaphoreSubmitInfo* pWaitInfo = nullptr, uint32_t signalSemaphoreCount = 0,
-        VkSemaphoreSubmitInfo* signalSemaphore = nullptr, VkFence fence = VK_NULL_HANDLE
-    );
+        VkSemaphoreSubmitInfo* signalSemaphore = nullptr, VkFence fence = VK_NULL_HANDLE);
 
     void PresentToSwapchain(VkDevice device, VkQueue queue,
         VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
         uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
-        uint32_t* pImageIndices, VkResult* pResults = nullptr, void* pNextChain = nullptr
-    );
+        uint32_t* pImageIndices, VkResult* pResults = nullptr, void* pNextChain = nullptr);
 
     // Records a command for a pipeline barrier with the specified memory, buffer and image barriers
     void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount,
         VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount,
         VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount,
-        VkImageMemoryBarrier2* pImageBarriers
-    );
+        VkImageMemoryBarrier2* pImageBarriers);
 
     // Sets up an image memory barrier to be passed to the above function
     void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier,
@@ -453,21 +474,18 @@ namespace BlitzenVulkan
         VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
         VkImageLayout oldLayout, VkImageLayout newLayout,
         VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount,
-        uint32_t baseArrayLayer = 0, uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS
-    );
+        uint32_t baseArrayLayer = 0, uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS);
 
     // Sets up a buffer memory barrier to be passed to the PipelineBarrier function
     void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier,
         VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage,
         VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
-        VkDeviceSize offset, VkDeviceSize size
-    );
+        VkDeviceSize offset, VkDeviceSize size);
 
     // Sets up a memory barrier to be passed to the PipelineBarrier function
     void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage,
         VkAccessFlags2 firstAccessStage, VkPipelineStageFlags2 secondSyncStage,
-        VkAccessFlags2 secondAccessStage
-    );
+        VkAccessFlags2 secondAccessStage);
 
 
 

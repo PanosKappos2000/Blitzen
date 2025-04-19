@@ -86,6 +86,8 @@ namespace BlitzenVulkan
     #endif
 
 
+    constexpr uint32_t Ce_SinglePointer = 1;
+
     // The format and usage flags that will be set for the color and depth attachments
     constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     constexpr VkClearColorValue ce_WindowClearColor = { 0.f, 0.2f, 0.4f, 1.f };
