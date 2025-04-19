@@ -52,6 +52,43 @@ namespace BlitzenVulkan
             BlitzenEngine::MeshTransform* pTransformData = nullptr;
         };
 
+        struct StaticBuffers
+        {
+            PushDescriptorBuffer<void> vertexBuffer{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            AllocatedBuffer indexBuffer;
+
+            PushDescriptorBuffer<void> clusterBuffer{ 12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> meshletDataBuffer{ 13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            PushDescriptorBuffer<void> materialBuffer{ 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            // TODO: Turn these into buffers that use Buffer Address
+            PushDescriptorBuffer<void> renderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            VkDeviceAddress renderObjectBufferAddress;
+            PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{ 14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            VkDeviceAddress onpcRenderObjectBufferAddress;
+            PushDescriptorBuffer<void> transparentRenderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            VkDeviceAddress transparentRenderObjectBufferAddress;
+
+            PushDescriptorBuffer<void> surfaceBuffer{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            PushDescriptorBuffer<void> indirectDrawBuffer{ 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> indirectCountBuffer{ 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            PushDescriptorBuffer<void> indirectTaskBuffer{ 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            PushDescriptorBuffer<void> visibilityBuffer{ 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+
+            PushDescriptorBuffer<void> clusterDispatchBuffer{ 16, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> clusterCountBuffer{ 17, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            AllocatedBuffer clusterCountCopyBuffer;
+
+            AllocatedBuffer blasBuffer;
+            BlitCL::DynamicArray<AccelerationStructure> blasData;
+            PushDescriptorBuffer<void> tlasBuffer{ 15, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR };
+            AccelerationStructure tlasData;
+        };
+
         // Shows a loading screen while waiting for resources to be loaded
         void DrawWhileWaiting();
 
@@ -73,12 +110,6 @@ namespace BlitzenVulkan
         VkDevice m_device;
 
     private:
-
-        // Initalizes structure needed to call the DrawWhileWaiting function
-        uint8_t CreateIdleDrawHandles();
-
-        // Creates loading triangle pipeline
-        bool CreateLoadingTrianglePipeline();
 
         // Creates structures that allow Vulkan to allocate resources (command buffers, allocator, texture sampler) 
         void SetupResourceManagement();
@@ -133,65 +164,6 @@ namespace BlitzenVulkan
 
         uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount,
             BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface);
-
-
-
-        // Updates var buffers
-        void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, FrameTools& tools, VarBuffers& buffers);
-
-        // For occlusion culling to be possible a depth pyramid needs to be generated based on the depth attachment
-        void GenerateDepthPyramid(VkCommandBuffer commandBuffer);
-
-        void DrawBackgroundImage(VkCommandBuffer commandBuffer);
-
-        // Calls the compute shader that copies the color attachment to the swapchain image
-        void CopyColorAttachmentToSwapchainImage(VkCommandBuffer commandBuffer, VkImageView swapchainView, VkImage swapchainImage);
-
-        // Recreates the swapchain when necessary (and other handles that are involved with the window, like the depth pyramid)
-        void RecreateSwapchain(uint32_t windowWidth, uint32_t windowHeight);
-
-        /*
-            Private helper structs
-        */
-    private:
-
-        // This struct is pointless, should just have what is inside separately
-        struct StaticBuffers
-        {
-            PushDescriptorBuffer<void> vertexBuffer{ 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            AllocatedBuffer indexBuffer;
-
-            PushDescriptorBuffer<void> clusterBuffer{ 12, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            PushDescriptorBuffer<void> meshletDataBuffer{ 13, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-
-            PushDescriptorBuffer<void> materialBuffer{ 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-
-            // TODO: Turn these into buffers that use Buffer Address
-            PushDescriptorBuffer<void> renderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            VkDeviceAddress renderObjectBufferAddress;
-            PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{ 14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            VkDeviceAddress onpcRenderObjectBufferAddress;
-            PushDescriptorBuffer<void> transparentRenderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            VkDeviceAddress transparentRenderObjectBufferAddress;
-
-            PushDescriptorBuffer<void> surfaceBuffer{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-
-            PushDescriptorBuffer<void> indirectDrawBuffer{ 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            PushDescriptorBuffer<void> indirectCountBuffer{ 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-
-            PushDescriptorBuffer<void> indirectTaskBuffer{ 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-
-            PushDescriptorBuffer<void> visibilityBuffer{ 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-
-            PushDescriptorBuffer<void> clusterDispatchBuffer{ 16, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            PushDescriptorBuffer<void> clusterCountBuffer{ 17, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            AllocatedBuffer clusterCountCopyBuffer;
-
-            AllocatedBuffer blasBuffer;
-            BlitCL::DynamicArray<AccelerationStructure> blasData;
-            PushDescriptorBuffer<void> tlasBuffer{ 15, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR };
-            AccelerationStructure tlasData;
-        };
 
         /*
             API initialization handles section
@@ -374,83 +346,20 @@ namespace BlitzenVulkan
         VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels,
         VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator);
 
+    // Initalizes structure needed to call the DrawWhileWaiting function
+    uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline,
+        VkPipelineLayout& layout, VkDescriptorSetLayout& setLayout,
+        uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
 
-    // Creates VkWriteDescriptorSet for a buffer type descriptor set
-    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo,
-        VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain = nullptr,
-        VkDescriptorSet dstSet = VK_NULL_HANDLE, VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
-        VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
-
-    // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
-    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, 
-        VkDescriptorType descriptorType, VkDescriptorSet dstSet,
-        uint32_t descriptorCount, uint32_t binding, uint32_t dstArrayElement = 0);
-
-    // Creates VkDescriptorImageInfo and uses it to create a VkWriteDescriptorSet for images. DescriptorCount is set to 1 by default
-    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo,
-        VkDescriptorType descirptorType, VkDescriptorSet dstSet,
-        uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler = VK_NULL_HANDLE);
+    // Creates loading triangle pipeline
+    uint8_t CreateLoadingTrianglePipeline(VkDevice device, VkPipeline& pipeline, VkPipelineLayout& layout);
 
 
 
     // Puts command buffer in the ready state. vkCmd type function can be called after this and until vkEndCommandBuffer is called
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
 
-    void DispatchRenderObjectCullingComputeShader(VkCommandBuffer commandBuffer,
-        VkPipeline pipeline, VkPipelineLayout layout,
-        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites,
-        VkBuffer indirectCountBuffer, VkBuffer indirectCommandsBuffer, VkBuffer visibilityBuffer,
-        PushDescriptorImage& depthAttachment, PushDescriptorImage& depthPyramid,
-        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
-        uint8_t lateCulling, VkInstance instance);
-
-    void DispatchPreClusterCullingShader(VkCommandBuffer, 
-        VkPipeline pipeline, VkPipelineLayout layout, 
-        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites, 
-        VkBuffer clusterCountBuffer, VkBuffer clusterDataBuffer, VkBuffer clusterCountCopy,
-        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress, 
-        uint8_t lateCulling, VkInstance instance);
-
-    void DispatchClusterCullingComputeShader(VkCommandBuffer, 
-        VkPipeline pipeline, VkPipelineLayout layout,
-        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites,
-        VkBuffer clusterCountBuffer, AllocatedBuffer& clusterCountCopyBuffer, VkBuffer clusterDispatchBuffer,
-        VkBuffer drawCountBuffer, VkBuffer indirectDrawBuffer, 
-        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
-        VkInstance instance);
-
-    // Handles draw calls using draw indirect commands that should already be set by culling compute shaders
-    void DrawGeometry(VkCommandBuffer commandBuffer,
-        VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
-        VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSet* textureSet,
-        VkRenderingAttachmentInfo& colorAttachmentInfo, VkRenderingAttachmentInfo& depthAttachmentInfo,
-        VkExtent2D drawExtent,
-        VkBuffer indirectDrawBuffer, VkBuffer indirectCountBuffer, VkBuffer indexBuffer,
-        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
-        uint8_t latePass, VkInstance instance,
-        uint8_t bRaytracing, uint32_t tlasCount, VkAccelerationStructureKHR* pTlas,
-        uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr);
-
-    // Copies parts of one buffer to parts of another, depending on the offsets that are passed
-    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer,
-        VkDeviceSize copySize, VkDeviceSize srcOffset, VkDeviceSize dstOffset);
-
-    // Defined in vulkanRenderer.cpp, create a rending attachment info needed to call vkCmdBeginRendering (dynamic rendering)
-    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
-        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
-        VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
-
-    // Starts a render pass using the dynamic rendering feature(command buffer should be in recording state)
-    void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset,
-        uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, VkRenderingAttachmentInfo* pDepthAttachment,
-        VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1);
-
-    // Calles the code needed to dynamically set the viewport and scissor. 
-    // The graphics pipeline uses a dynamic viewport and scissor by default, so this needs to be called during the frame loop
-    void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
-
-    void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo,
-        VkSemaphore semaphore, VkPipelineStageFlags2 stage);
+    void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo, VkSemaphore semaphore, VkPipelineStageFlags2 stage);
 
     // Submits the command buffer to excecute the recorded commands. Semaphores, fences and other sync structures can be specified 
     void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount = 0,
@@ -461,32 +370,6 @@ namespace BlitzenVulkan
         VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
         uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
         uint32_t* pImageIndices, VkResult* pResults = nullptr, void* pNextChain = nullptr);
-
-    // Records a command for a pipeline barrier with the specified memory, buffer and image barriers
-    void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount,
-        VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount,
-        VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount,
-        VkImageMemoryBarrier2* pImageBarriers);
-
-    // Sets up an image memory barrier to be passed to the above function
-    void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier,
-        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage,
-        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
-        VkImageLayout oldLayout, VkImageLayout newLayout,
-        VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount,
-        uint32_t baseArrayLayer = 0, uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS);
-
-    // Sets up a buffer memory barrier to be passed to the PipelineBarrier function
-    void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier,
-        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage,
-        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
-        VkDeviceSize offset, VkDeviceSize size);
-
-    // Sets up a memory barrier to be passed to the PipelineBarrier function
-    void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage,
-        VkAccessFlags2 firstAccessStage, VkPipelineStageFlags2 secondSyncStage,
-        VkAccessFlags2 secondAccessStage);
-
 
 
     /*

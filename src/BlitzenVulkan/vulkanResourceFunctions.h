@@ -29,8 +29,7 @@ namespace BlitzenVulkan
         uint8_t mipLevels = 1, VmaMemoryUsage memoryUsage =VMA_MEMORY_USAGE_GPU_ONLY);
 
     uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, 
-        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels
-    );
+        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
 
     // Allocate an image resource to be used specifically as texture. 
     // The 1st parameter should be the loaded image data that should be passed to the image resource
@@ -72,4 +71,55 @@ namespace BlitzenVulkan
     // Allocates one or more descriptor sets whose memory will be managed by a descriptor pool
     uint8_t AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
         uint32_t descriptorSetCount, VkDescriptorSet* pSets);
+
+    // Creates VkWriteDescriptorSet for a buffer type descriptor set
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo,
+        VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain = nullptr,
+        VkDescriptorSet dstSet = VK_NULL_HANDLE, VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
+        VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
+
+    // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, 
+        VkDescriptorType descriptorType, VkDescriptorSet dstSet,
+        uint32_t descriptorCount, uint32_t binding, uint32_t dstArrayElement = 0);
+
+    // Creates VkDescriptorImageInfo and uses it to create a VkWriteDescriptorSet for images. DescriptorCount is set to 1 by default
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo,
+        VkDescriptorType descirptorType, VkDescriptorSet dstSet,
+        uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler = VK_NULL_HANDLE);
+
+    // Records a command for a pipeline barrier with the specified memory, buffer and image barriers
+    void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount,
+        VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount,
+        VkBufferMemoryBarrier2* pBufferBarriers, uint32_t imageBarrierCount,
+        VkImageMemoryBarrier2* pImageBarriers);
+
+    // Sets up an image memory barrier to be passed to the above function
+    void ImageMemoryBarrier(VkImage image, VkImageMemoryBarrier2& barrier,
+        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage,
+        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
+        VkImageLayout oldLayout, VkImageLayout newLayout,
+        VkImageAspectFlags aspectMask, uint32_t baseMipLevel, uint32_t levelCount,
+        uint32_t baseArrayLayer = 0, uint32_t layerCount = VK_REMAINING_ARRAY_LAYERS);
+
+    // Sets up a buffer memory barrier to be passed to the PipelineBarrier function
+    void BufferMemoryBarrier(VkBuffer buffer, VkBufferMemoryBarrier2& barrier,
+        VkPipelineStageFlags2 firstSyncStage, VkAccessFlags2 firstAccessStage,
+        VkPipelineStageFlags2 secondSyncStage, VkAccessFlags2 secondAccessStage,
+        VkDeviceSize offset, VkDeviceSize size);
+
+    // Sets up a memory barrier to be passed to the PipelineBarrier function
+    void MemoryBarrier(VkMemoryBarrier2& barrier, VkPipelineStageFlags2 firstSyncStage,
+        VkAccessFlags2 firstAccessStage, VkPipelineStageFlags2 secondSyncStage,
+        VkAccessFlags2 secondAccessStage);
+
+        // Copies parts of one buffer to parts of another, depending on the offsets that are passed
+    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer,
+        VkDeviceSize copySize, VkDeviceSize srcOffset, VkDeviceSize dstOffset);
+
+    // Defined in vulkanRenderer.cpp, create a rending attachment info needed to call vkCmdBeginRendering (dynamic rendering)
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
+        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
+        VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
+
 }

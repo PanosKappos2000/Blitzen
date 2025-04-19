@@ -489,7 +489,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    bool VulkanRenderer::CreateLoadingTrianglePipeline()
+    uint8_t CreateLoadingTrianglePipeline(VkDevice device, VkPipeline& pipeline, VkPipelineLayout& layout)
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
@@ -510,16 +510,21 @@ namespace BlitzenVulkan
 
         ShaderModule vertexShaderModule;
         VkPipelineShaderStageCreateInfo shaderStages[2] = {};
-        if (!CreateShaderProgram(m_device, "VulkanShaders/LoadingTriangle.vert.glsl.spv",
-            VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]
-        ))
-            return false;
+        if (!CreateShaderProgram(device, "VulkanShaders/LoadingTriangle.vert.glsl.spv",
+            VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
+        {
+            BLIT_ERROR("Failed to create idle draw fragment shader program");
+            return 0;
+        }
 
         // Fragment shader is common
         ShaderModule fragShaderModule;
-        if (!CreateShaderProgram(m_device, "VulkanShaders/LoadingTriangle.frag.glsl.spv",
+        if (!CreateShaderProgram(device, "VulkanShaders/LoadingTriangle.frag.glsl.spv",
             VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
+        {
+            BLIT_ERROR("Failed to create idle draw fragment shader program");
             return 0;
+        }
 
         // mesh pipeline has additional task shader
         pipelineInfo.stageCount = 2;
@@ -527,18 +532,22 @@ namespace BlitzenVulkan
 
         VkPushConstantRange pushConstant{};
 		CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(BlitML::vec3));
-        if (!CreatePipelineLayout(m_device, &m_loadingTriangleLayout.handle,
+        if (!CreatePipelineLayout(device, &layout,
             0, nullptr, 1, &pushConstant))
-            return false;
+        {
+            BLIT_ERROR("Failed to create idle draw pipeline layout");
+            return 0;
+        }
 
         //Create the graphics pipeline
-        pipelineInfo.layout = m_loadingTriangleLayout.handle;
-        auto pipelineCreateFinalResult = vkCreateGraphicsPipelines(
-            m_device, VK_NULL_HANDLE, 1, &pipelineInfo, m_pCustomAllocator,
-            &m_loadingTrianglePipeline.handle);
-        if (pipelineCreateFinalResult != VK_SUCCESS)
-            return false;
+        pipelineInfo.layout = layout;
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, Ce_SinglePointer, &pipelineInfo,
+            nullptr, &pipeline) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create idle draw pipeline");
+            return 0;
+        }
 
-        return true;
+        return 1;
     }
 }

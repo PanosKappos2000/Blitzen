@@ -23,6 +23,9 @@ add_executable(BlitzenEngine
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
+                src/BlitzenVulkan/vulkanApiInitFunctions.h
+                src/BlitzenVulkan/vulkanResourceFunctions.h
+                src/BlitzenVulkan/vulkanPipelines.h
                 src/BlitzenVulkan/vulkanHandles.cpp
                 src/BlitzenVulkan/vulkanInit.cpp
                 src/BlitzenVulkan/vulkanResources.cpp
