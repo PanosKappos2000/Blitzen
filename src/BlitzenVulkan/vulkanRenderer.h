@@ -56,9 +56,12 @@ namespace BlitzenVulkan
 
             SyncFence preCulsterCullingFence;
             SyncFence inFlightFence;
+
             Semaphore imageAcquiredSemaphore;
             Semaphore buffersReadySemaphore;
             Semaphore readyToPresentSemaphore;
+
+            Semaphore preClusterCullingDoneSemaphore;
 
             uint8_t Init(VkDevice device, Queue graphicsQueue, Queue transferQueue, Queue computeQueue);
         };

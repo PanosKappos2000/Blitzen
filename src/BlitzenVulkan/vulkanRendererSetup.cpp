@@ -854,7 +854,9 @@ namespace BlitzenVulkan
         }
         if (BlitzenEngine::Ce_BuildClusters)
         {
-            if (vkCreateFence(device, &fenceInfo, nullptr, &preCulsterCullingFence.handle) != VK_SUCCESS)
+            VkFenceCreateInfo notSignaledFenceInfo{};
+            notSignaledFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            if (vkCreateFence(device, &notSignaledFenceInfo, nullptr, &preCulsterCullingFence.handle) != VK_SUCCESS)
             {
                 BLIT_ERROR("Failed to create pre culster culling fence");
                 return 0;
@@ -877,7 +879,13 @@ namespace BlitzenVulkan
         }
         if (vkCreateSemaphore(device, &semaphoresInfo, nullptr, &buffersReadySemaphore.handle) != VK_SUCCESS)
         {
-            BLIT_ERROR("Failed to create fence for var buffer data copy");
+            BLIT_ERROR("Failed to create semaphore for var buffer data copy");
+            return 0;
+        }
+        if (BlitzenEngine::Ce_BuildClusters && 
+            vkCreateSemaphore(device, &semaphoresInfo, nullptr, &preClusterCullingDoneSemaphore.handle) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create semaphore for pre cluster culling");
             return 0;
         }
 
@@ -930,6 +938,8 @@ namespace BlitzenVulkan
         }
 
         constexpr uint32_t SingleElementBuffer = 1;
+
+        const uint32_t IndirectDrawElementCount = 1'000'000;
 
         const auto& vertices = pResources->GetVerticesArray();
         const auto& indices = pResources->GetIndicesArray();
@@ -1078,7 +1088,7 @@ namespace BlitzenVulkan
         auto indirectDrawBufferSize
         {
             SetupPushDescriptorBuffer<IndirectDrawData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.indirectDrawBuffer, renderObjectCount,
+                m_currentStaticBuffers.indirectDrawBuffer, IndirectDrawElementCount,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
         };
         if(indirectDrawBufferSize == 0)

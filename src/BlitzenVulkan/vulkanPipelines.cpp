@@ -317,10 +317,10 @@ namespace BlitzenVulkan
                 return 0;
             }
 
-            if (!CreateComputeShaderProgram(device, "VulkanShaders/PreClusterLateDrawCull.comp.glsl.spv",
+            if (!CreateComputeShaderProgram(device, "VulkanShaders/InitialClusterCull.comp.glsl.spv",
                 VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, lateCullingPipeline))
             {
-                BLIT_ERROR("Failed to create PreClusterLateDrawCull.comp shader program");
+                BLIT_ERROR("Failed to create InitialClusterCull.comp shader program");
                 return 0;
             }
         }
