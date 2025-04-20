@@ -102,10 +102,10 @@ namespace BlitzenVulkan
 
         // Create the device
         if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, 
-            m_presentQueue, m_computeQueue, m_transferQueue, m_stats
-        ))
+            m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device");
+            return 0;
         }
 
         // Creates the swapchain
@@ -134,7 +134,19 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create loading triangle pipeline");
             return 0;
         }
-        
+
+        // Creates command buffers and synchronization structures in the frame tools struct
+        // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
+        for (size_t i = 0; i < ce_framesInFlight; ++i)
+        {
+            if (!m_frameToolsList[i].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
+            {
+                BLIT_ERROR("Failed to create frame tools");
+                return 0;
+            }
+        }
+
+        // Success
         return 1;
     }
 
@@ -424,29 +436,34 @@ namespace BlitzenVulkan
         vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
         // Check that all the required features are supported by the device
-        if(!features.multiDrawIndirect || !features.samplerAnisotropy ||
+        if (!features.multiDrawIndirect || !features.samplerAnisotropy ||
             // Vulkan 1.1 features
             !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
             // Vulkan 1.2 features
-            !features12.bufferDeviceAddress || 
-            !features12.descriptorIndexing || 
-            !features12.runtimeDescriptorArray ||  
-            !features12.storageBuffer8BitAccess || 
-            !features12.shaderFloat16 || 
+            !features12.bufferDeviceAddress ||
+            !features12.descriptorIndexing ||
+            !features12.runtimeDescriptorArray ||
+            !features12.storageBuffer8BitAccess ||
+            !features12.shaderFloat16 ||
             !features12.drawIndirectCount ||
-            !features12.samplerFilterMinmax || 
-            !features12.shaderInt8 || 
+            !features12.samplerFilterMinmax ||
+            !features12.shaderInt8 ||
             !features12.shaderSampledImageArrayNonUniformIndexing ||
-            !features12.uniformAndStorageBuffer8BitAccess || 
+            !features12.uniformAndStorageBuffer8BitAccess ||
             !features12.storagePushConstant8 ||
             // Vulkan 1.3 features
-            !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4
-        )
+            !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
+        {
+            BLIT_ERROR("Physical device does not support all features");
             return 0;
+        }
         
         // Looks for the requested extensions. Fails if the required ones are not found
-        if(!LookForRequestedExtensions(pdv, stats))
+        if (!LookForRequestedExtensions(pdv, stats))
+        {
+            BLIT_ERROR("Physical device does not support all extensions");
             return 0;
+        }
 
         //Retrieve queue families from device
         uint32_t queueFamilyPropertyCount = 0;
@@ -467,6 +484,7 @@ namespace BlitzenVulkan
         vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
 
         uint32_t queueIndex = 0;
+        // For the main graphics queue, find the first family with queue graphics bit set
         for (auto& queueProps : queueFamilyProperties)
         {
             // Checks for a graphics queue index, if one has not already been found 
@@ -480,30 +498,39 @@ namespace BlitzenVulkan
             ++queueIndex;
         }
 
-        queueIndex = 0;
+		queueIndex = 0;
         for (auto& queueProps : queueFamilyProperties)
         {
-            // Checks for a compute queue index, if one has not already been found 
-            if (queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT)
+            bool isComputeCapable = queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT;
+            bool isGraphicsCapable = queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+            bool isTransferCapable = queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT;
+
+            bool isDedicatedTransfer = isTransferCapable && !isGraphicsCapable && !isComputeCapable;
+
+            // Checks for a transfer queue index, if one has not already been found
+            if (isDedicatedTransfer && queueIndex != graphicsQueue.index)
             {
-                computeQueue.index = queueIndex;
-                computeQueue.hasIndex = 1;
+                transferQueue.index = queueIndex;
+                transferQueue.hasIndex = 1;
                 break;
             }
 
             ++queueIndex;
         }
 
-		queueIndex = 0;
-        for (auto& queueProps : queueFamilyProperties)
+        queueIndex = 0;
+        // Searches for a dedicated compute queue
+        for (auto& props : queueFamilyProperties)
         {
-            // Checks for a transfer queue index, if one has not already been found
-            if (queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT && 
-                queueIndex != graphicsQueue.index
-            )
+            bool isComputeCapable = props.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT;
+            bool isGraphicsCapable = props.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+
+            bool isDedicatedCompute = isComputeCapable && !isGraphicsCapable;
+
+            if (isDedicatedCompute && queueIndex != graphicsQueue.index && queueIndex != transferQueue.index)
             {
-                transferQueue.index = queueIndex;
-                transferQueue.hasIndex = 1;
+                computeQueue.index = queueIndex;
+                computeQueue.hasIndex = 1;
                 break;
             }
 
@@ -527,8 +554,11 @@ namespace BlitzenVulkan
         }
 
         // If one of the required queue families has no index, then it gets removed from the candidates
-        if(!presentQueue.hasIndex || !graphicsQueue.hasIndex || !computeQueue.hasIndex || !transferQueue.hasIndex)
+        if (!presentQueue.hasIndex || !graphicsQueue.hasIndex || !transferQueue.hasIndex)
+        {
+            BLIT_ERROR("Failed to find all required queue families on physical device");
             return 0;
+        }
 
         return 1;
         
@@ -799,6 +829,8 @@ namespace BlitzenVulkan
         VkDeviceQueueCreateInfo deviceQueueInfo{}; // temp
         queueInfos.PushBack(deviceQueueInfo);
         queueInfos[1].queueFamilyIndex = transferQueue.index;
+        queueInfos.PushBack(deviceQueueInfo);
+        queueInfos[2].queueFamilyIndex = computeQueue.index;
         
         // If compute has a different index from present, add a new info for it
         if(graphicsQueue.index != presentQueue.index)
@@ -821,15 +853,18 @@ namespace BlitzenVulkan
         deviceInfo.pQueueCreateInfos = queueInfos.Data();
 
         // Create the device
-        VkResult res = vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
-        if(res != VK_SUCCESS)
+        auto res = vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create device");
             return 0;
+        }
 
         // Retrieve graphics queue handle
         VkDeviceQueueInfo2 graphicsQueueInfo{};
         graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        graphicsQueueInfo.pNext = nullptr; // Not using this
-        graphicsQueueInfo.flags = 0; // Not using this
+        graphicsQueueInfo.pNext = nullptr;
+        graphicsQueueInfo.flags = 0;
         graphicsQueueInfo.queueFamilyIndex = graphicsQueue.index;
         graphicsQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &graphicsQueueInfo, &graphicsQueue.handle);
@@ -837,8 +872,8 @@ namespace BlitzenVulkan
         // Retrieve compute queue handle
         VkDeviceQueueInfo2 computeQueueInfo{};
         computeQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        computeQueueInfo.pNext = nullptr; // Not using this
-        computeQueueInfo.flags = 0; // Not using this
+        computeQueueInfo.pNext = nullptr; 
+        computeQueueInfo.flags = 0; 
         computeQueueInfo.queueFamilyIndex = computeQueue.index;
         computeQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &computeQueueInfo, &computeQueue.handle);
@@ -846,16 +881,16 @@ namespace BlitzenVulkan
         // Retrieve present queue handle
         VkDeviceQueueInfo2 presentQueueInfo{};
         presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        presentQueueInfo.pNext = nullptr; // Not using this
-        presentQueueInfo.flags = 0; // Not using this
+        presentQueueInfo.pNext = nullptr; 
+        presentQueueInfo.flags = 0; 
         presentQueueInfo.queueFamilyIndex = presentQueue.index;
         presentQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
 
         VkDeviceQueueInfo2 transferQueueInfo{};
 		transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-		transferQueueInfo.flags = 0; // Not using this
-		transferQueueInfo.pNext = nullptr; // Not using this
+		transferQueueInfo.flags = 0; 
+		transferQueueInfo.pNext = nullptr; 
         transferQueueInfo.queueFamilyIndex = transferQueue.index;
         transferQueueInfo.queueIndex = 0;
 		vkGetDeviceQueue2(device, &transferQueueInfo, &transferQueue.handle);

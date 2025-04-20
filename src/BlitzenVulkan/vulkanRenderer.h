@@ -51,12 +51,16 @@ namespace BlitzenVulkan
             CommandPool transferCommandPool;
             VkCommandBuffer transferCommandBuffer;
 
+            CommandPool computeCommandPool;
+            VkCommandBuffer computeCommandBuffer;
+
+            SyncFence preCulsterCullingFence;
             SyncFence inFlightFence;
             Semaphore imageAcquiredSemaphore;
             Semaphore buffersReadySemaphore;
             Semaphore readyToPresentSemaphore;
 
-            uint8_t Init(VkDevice device, Queue graphicsQueue, Queue transferQueue);
+            uint8_t Init(VkDevice device, Queue graphicsQueue, Queue transferQueue, Queue computeQueue);
         };
 
         // The renderer will have one instance of these buffers, which will include buffers that my be updated

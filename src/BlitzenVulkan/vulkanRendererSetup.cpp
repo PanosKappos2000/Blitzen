@@ -9,7 +9,7 @@ namespace BlitzenVulkan
 	constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
 
     static uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma,
-        VulkanRenderer::FrameTools* frameToolList, VkSampler& textureSampler, Queue graphicsQueue, Queue transferQueue)
+        VulkanRenderer::FrameTools* frameToolList, VkSampler& textureSampler)
     {
         // Initializes VMA allocator which will be used to allocate all Vulkan resources
         // Initialized here since textures can and will be given to Vulkan before the renderer is set up, and they need to be allocated
@@ -31,15 +31,6 @@ namespace BlitzenVulkan
         if (textureSampler == VK_NULL_HANDLE)
         {
             BLIT_ERROR("Failed to create texture sampler");
-            return 0;
-        }
-
-        // Creates command buffers and synchronization structures in the frame tools struct
-        // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
-        for(size_t i = 0; i < ce_framesInFlight; ++i)
-        if (!frameToolList[i].Init(device, graphicsQueue, transferQueue))
-        {
-            BLIT_ERROR("Failed to create frame tools");
             return 0;
         }
 
@@ -89,7 +80,7 @@ namespace BlitzenVulkan
             // Calls the function and checks if it succeeded. If it did not, it fails
             m_stats.bResourceManagementReady = 
                 SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, 
-                    m_frameToolsList, m_textureSampler.handle, m_graphicsQueue, m_transferQueue);
+                    m_frameToolsList, m_textureSampler.handle);
             if(!m_stats.bResourceManagementReady)
             {
                 BLIT_ERROR("Failed to setup resource management for Vulkan")
@@ -706,7 +697,7 @@ namespace BlitzenVulkan
             // Calls the function and checks if it succeeded. If it did not, it fails
             m_stats.bResourceManagementReady =
                 SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator,
-                    m_frameToolsList, m_textureSampler.handle, m_graphicsQueue, m_transferQueue);
+                    m_frameToolsList, m_textureSampler.handle);
             if (!m_stats.bResourceManagementReady)
             {
                 BLIT_ERROR("Failed to setup resource management for Vulkan");
@@ -781,7 +772,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::FrameTools::Init(VkDevice device, Queue graphicsQueue, Queue transferQueue)
+    uint8_t VulkanRenderer::FrameTools::Init(VkDevice device, Queue graphicsQueue, Queue transferQueue, Queue computeQueue)
     {
         // Main command buffer
         VkCommandPoolCreateInfo mainCommandPoolInfo {};
@@ -823,8 +814,33 @@ namespace BlitzenVulkan
         dedicatedCmbInfo.commandPool = transferCommandPool.handle;
         if (vkAllocateCommandBuffers(device, &dedicatedCmbInfo, &transferCommandBuffer) != VK_SUCCESS)
         {
-            BLIT_ERROR("Failed to create dedicated transfer command buffer")
+            BLIT_ERROR("Failed to create dedicated transfer command buffer");
             return 0;
+        }
+
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            // Dedicated compute command buffer
+            VkCommandPoolCreateInfo computeCommandPoolInfo{};
+            computeCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            computeCommandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            computeCommandPoolInfo.queueFamilyIndex = computeQueue.index;
+            if (vkCreateCommandPool(device, &computeCommandPoolInfo, nullptr, &computeCommandPool.handle) != VK_SUCCESS)
+            {
+                BLIT_ERROR("Failed to create compute dedicated command buffer pool");
+                return 0;
+            }
+            VkCommandBufferAllocateInfo computeDedicateCmbInfo{};
+            computeDedicateCmbInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            computeDedicateCmbInfo.pNext = nullptr;
+            computeDedicateCmbInfo.commandBufferCount = Ce_SinglePointer;
+            computeDedicateCmbInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            computeDedicateCmbInfo.commandPool = computeCommandPool.handle;
+            if (vkAllocateCommandBuffers(device, &computeDedicateCmbInfo, &computeCommandBuffer) != VK_SUCCESS)
+            {
+                BLIT_ERROR("Failed to create compute dedicated command buffer");
+                return 0;
+            }
         }
 
         VkFenceCreateInfo fenceInfo{};
@@ -835,6 +851,14 @@ namespace BlitzenVulkan
         {
             BLIT_ERROR("Failed to create fence");
             return 0;
+        }
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            if (vkCreateFence(device, &fenceInfo, nullptr, &preCulsterCullingFence.handle) != VK_SUCCESS)
+            {
+                BLIT_ERROR("Failed to create pre culster culling fence");
+                return 0;
+            }
         }
 
         VkSemaphoreCreateInfo semaphoresInfo{};

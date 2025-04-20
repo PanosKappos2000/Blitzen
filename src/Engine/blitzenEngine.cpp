@@ -83,8 +83,10 @@ int main(int argc, char* argv[])
     bool bRenderingSystem = false;
     BlitzenEngine::Renderer renderer;
     renderer.Make();
-    if(renderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight))
+    if (renderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight))
+    {
         bRenderingSystem = true;
+    }
     else
     {
         BLIT_FATAL("Failed to initialize rendering API");
@@ -110,7 +112,10 @@ int main(int argc, char* argv[])
     {
         BlitzenPlatform::PlatformPumpMessages();
         inputSystemState->UpdateInput(0.f);
-        renderer->DrawWhileWaiting();
+        if (bRenderingSystem)
+        {
+            renderer->DrawWhileWaiting();
+        }
     }
 
 
