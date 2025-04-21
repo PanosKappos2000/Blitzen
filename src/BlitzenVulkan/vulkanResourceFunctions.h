@@ -13,10 +13,9 @@ namespace BlitzenVulkan
     uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
     VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, VmaAllocationCreateFlags allocationFlags);
 
-    // Create a gpu only storage buffer and a staging buffer to hold its data
-    // If the buffer has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT set, the pAddr pointer is updated as well
-    VkDeviceAddress CreateStorageBufferWithStagingBuffer(
-    VmaAllocator allocator, VkDevice device, 
+    // Creates a staging buffer with transfer src bit and a storage buffer
+    // The pData is copied to the staging buffer
+    uint8_t CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
     void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
     VkBufferUsageFlags usage, VkDeviceSize size);
 

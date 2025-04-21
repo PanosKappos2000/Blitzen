@@ -352,9 +352,8 @@ namespace BlitzenVulkan
         {
             return 0;
         }
-        CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer,
-            stagingBuffer, usage, bufferSize);
-        if (pushBuffer.buffer.bufferHandle == VK_NULL_HANDLE)
+        if(!CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer,
+            stagingBuffer, usage, bufferSize))
         {
             return 0;
         }

@@ -344,7 +344,7 @@ namespace BlitzenVulkan
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexedIndirectCount(commandBuffer, indirectDrawBuffer, offsetof(IndirectDrawData, drawIndirect),
-                indirectCountBuffer, 0, drawCount, sizeof(IndirectDrawData));
+                indirectCountBuffer, 0, IndirectDrawElementCount, sizeof(IndirectDrawData));
         vkCmdEndRendering(commandBuffer);
 
         // If I reintroduce mesh shaders, this will be on its own function

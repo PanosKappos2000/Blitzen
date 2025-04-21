@@ -940,8 +940,6 @@ namespace BlitzenVulkan
 
         constexpr uint32_t SingleElementBuffer = 1;
 
-        const uint32_t IndirectDrawElementCount = 4'000'000;
-
         const auto& vertices = pResources->GetVerticesArray();
         const auto& indices = pResources->GetIndicesArray();
         auto pRenderObjects = pResources->renders;
@@ -978,13 +976,10 @@ namespace BlitzenVulkan
 
         // Global index buffer
         AllocatedBuffer stagingIndexBuffer;
-        auto indexBufferSize
-        { 
-            CreateGlobalIndexBuffer(m_device, m_allocator,
-            m_stats.bRayTracingSupported, stagingIndexBuffer, m_currentStaticBuffers.indexBuffer,
-            indices.Data(), indices.GetSize()) 
-        };
-        if (indexBufferSize == 0)
+        VkDeviceSize indexBufferSize = indices.GetSize() * sizeof(uint32_t);    
+        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), 
+            m_currentStaticBuffers.indexBuffer, stagingIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | 
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize))
         {
             BLIT_ERROR("Failed to create index buffer");
             return 0;

@@ -56,9 +56,9 @@ void main()
     // The object index is needed to know which element to access in the per object data buffer
     indirectDrawBuffer.draws[drawID].objectId = data.objectId;
     // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface
-    indirectDrawBuffer.draws[drawID].indexCount = clusterBuffer.clusters[data.clusterId].triangleCount * 3;
+    indirectDrawBuffer.draws[drawID].indexCount = clusterBuffer.clusters[0].triangleCount * 3;
     indirectDrawBuffer.draws[drawID].instanceCount = 1;
-    indirectDrawBuffer.draws[drawID].firstIndex = clusterBuffer.clusters[data.clusterId].dataOffset;
-    indirectDrawBuffer.draws[drawID].vertexOffset = surfaceBuffer.surfaces[obj.surfaceId].vertexOffset;
+    indirectDrawBuffer.draws[drawID].firstIndex = clusterBuffer.clusters[0].dataOffset * 3;
+    indirectDrawBuffer.draws[drawID].vertexOffset = 0;
     indirectDrawBuffer.draws[drawID].firstInstance = 0;
 }

@@ -73,9 +73,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<unsigned int> meshletVertices{
             akMeshlets.GetSize() * maxVertices 
         };
-        BlitCL::DynamicArray<unsigned char> meshletTriangles{
-            akMeshlets.GetSize() * maxTriangles * 3
-        };
+        BlitCL::DynamicArray<unsigned char> meshletTriangles{ akMeshlets.GetSize() * maxTriangles * 3 };
 
         akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), 
             meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(), 
