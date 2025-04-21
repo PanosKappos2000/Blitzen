@@ -61,7 +61,7 @@ namespace BlitzenEngine
 
     // Loads cluster using the meshoptimizer library
     size_t RenderingResources::GenerateClusters(BlitCL::DynamicArray<Vertex>& inVertices, 
-        BlitCL::DynamicArray<uint32_t>& inIndices)
+        BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
     {
         const size_t maxVertices = 64;
         const size_t maxTriangles = 124;
@@ -91,21 +91,31 @@ namespace BlitzenEngine
                 &meshletTriangles[meshlet.triangle_offset], 
                 meshlet.triangle_count, meshlet.vertex_count);
 
-            auto dataOffset = m_clusterIndices.GetSize();
+            /*auto dataOffset = m_clusterIndices.GetSize();
             for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
             {
                 m_clusterIndices.PushBack(meshletVertices[meshlet.vertex_offset + i]);
             }
-
             auto indexGroups = reinterpret_cast<unsigned int*>(
                 &meshletTriangles[0] + meshlet.triangle_offset);
-
-            // This was changed by chatGPT, might be wrong, be careful
             unsigned int indexGroupCount = meshlet.triangle_count * 3;
-
             for(unsigned int i = 0; i < indexGroupCount; ++i)
             {
                 m_clusterIndices.PushBack(indexGroups[size_t(i)]);
+            }*/
+
+            const unsigned int* vertexLookup = &meshletVertices[meshlet.vertex_offset];
+            const unsigned char* triangles = &meshletTriangles[meshlet.triangle_offset];
+            auto dataOffset = m_clusterIndices.GetSize();
+            for (unsigned int t = 0; t < meshlet.triangle_count; ++t)
+            {
+                // Each triangle has 3 indices into the local meshlet vertex array
+                for (int j = 0; j < 3; ++j)
+                {
+                    unsigned int localIndex = triangles[t * 3 + j];
+                    unsigned int globalIndex = vertexLookup[localIndex] + vertexOffset;
+                    m_clusterIndices.PushBack(globalIndex);
+                }
             }
 
             auto bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
@@ -136,12 +146,10 @@ namespace BlitzenEngine
     {
 		// Optimize vertices and indices using meshoptimizer
         meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(),
-            surfaceIndices.GetSize(), surfaceVertices.GetSize()
-        );
+            surfaceIndices.GetSize(), surfaceVertices.GetSize());
 	    meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(), 
             surfaceIndices.GetSize(), surfaceVertices.Data(),surfaceVertices.GetSize(), 
-            sizeof(Vertex)
-        );
+            sizeof(Vertex));
 
         // Creates a new primitive surface object and passes its vertices
         PrimitiveSurface newSurface;
@@ -162,8 +170,7 @@ namespace BlitzenEngine
     }
 
     void RenderingResources::AutomaticLevelOfDetailGenration(PrimitiveSurface& surface,
-        BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices
-    )
+        BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
         // Automatic LOD generation helpers
         BlitCL::DynamicArray<BlitML::vec3> normals{ surfaceVertices.GetSize() };
@@ -175,8 +182,7 @@ namespace BlitzenEngine
                 v.normalZ / 127.f - 1.f);
         }
         float lodScale = meshopt_simplifyScale(&surfaceVertices[0].position.x,
-            surfaceVertices.GetSize(), sizeof(Vertex)
-        );
+            surfaceVertices.GetSize(), sizeof(Vertex));
         float lodError = 0.f;
         float normalWeights[3] = { 1.f, 1.f, 1.f };
 
@@ -192,7 +198,7 @@ namespace BlitzenEngine
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
             lod.firstMeshlet = static_cast<uint32_t>(m_clusters.GetSize());
             lod.meshletCount = Ce_BuildClusters ?
-                static_cast<uint32_t>(GenerateClusters(surfaceVertices, surfaceIndices))
+                static_cast<uint32_t>(GenerateClusters(surfaceVertices, surfaceIndices, surface.vertexOffset))
                 : 0;
 
             // Adds level of details indices to the global indices array
@@ -333,7 +339,7 @@ namespace BlitzenEngine
         BLIT_INFO("Loading obj model form file: %s", filename);
 
         // Get the current mesh and give it the size surface array as its first surface index
-        Mesh& currentMesh = meshes[meshCount];
+        auto& currentMesh = meshes[meshCount];
         currentMesh.firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
 		currentMesh.meshId = uint32_t(meshCount);
         meshMap.Insert(meshName, currentMesh);

@@ -588,7 +588,8 @@ namespace BlitzenVulkan
             pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
             pushDescriptorWritesCompute[7] = m_currentStaticBuffers.clusterDispatchBuffer.descriptorWrite;
             pushDescriptorWritesCompute[8] = m_currentStaticBuffers.clusterCountBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[9] = {};
+			pushDescriptorWritesCompute[9] = m_currentStaticBuffers.clusterBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[10] = {};
         }
         else
         {
@@ -939,7 +940,7 @@ namespace BlitzenVulkan
 
         constexpr uint32_t SingleElementBuffer = 1;
 
-        const uint32_t IndirectDrawElementCount = 1'000'000;
+        const uint32_t IndirectDrawElementCount = 4'000'000;
 
         const auto& vertices = pResources->GetVerticesArray();
         const auto& indices = pResources->GetIndicesArray();
@@ -1141,7 +1142,7 @@ namespace BlitzenVulkan
             clusterIndexBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
                 m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer,
                 clusterData.GetSize(),
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 clusterData.Data());
             if(clusterIndexBufferSize == 0)
             {
@@ -1151,7 +1152,7 @@ namespace BlitzenVulkan
 
             clusterDispatchBufferSize =
                 SetupPushDescriptorBuffer<ClusterDispatchData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                    m_currentStaticBuffers.clusterDispatchBuffer, renderObjectCount,
+                    m_currentStaticBuffers.clusterDispatchBuffer, IndirectDrawElementCount,
                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
             if (clusterDispatchBufferSize == 0)
             {

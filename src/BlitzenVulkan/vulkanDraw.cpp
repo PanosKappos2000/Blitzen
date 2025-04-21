@@ -272,7 +272,6 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitBeforeDispatchingShaders),
             waitBeforeDispatchingShaders, 0, nullptr);
 
-        BLIT_INFO("Dispatch count: %i", dispatchCount);
         PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
             layout, PushDescriptorSetID, descriptorWriteCount - 1, pDescriptorWrites);
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -729,7 +728,8 @@ namespace BlitzenVulkan
             DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(), BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics),
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo,
                 m_depthAttachmentInfo, m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, m_currentStaticBuffers.indexBuffer.bufferHandle,
+                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
+                m_currentStaticBuffers.meshletDataBuffer.buffer.bufferHandle,
                 dispatchCount, m_currentStaticBuffers.renderObjectBufferAddress, 0, m_instance,
                 m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
 

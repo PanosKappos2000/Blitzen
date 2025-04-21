@@ -220,7 +220,7 @@ namespace BlitzenEngine
 
         // Generates clusters for a given array of vertices and indices
         size_t GenerateClusters(BlitCL::DynamicArray<Vertex>& vertices,
-            BlitCL::DynamicArray<uint32_t>& indices);
+            BlitCL::DynamicArray<uint32_t>& indices, uint32_t vertexOffset);
 
         void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices,
             BlitCL::DynamicArray<uint32_t>& indices);

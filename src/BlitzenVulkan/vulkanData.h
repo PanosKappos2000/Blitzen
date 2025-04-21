@@ -110,7 +110,7 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
 
 #if defined BLITZEN_CLUSTER_CULLING
-    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 10;
+    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 11;
     constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
 #else
     constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 8;
