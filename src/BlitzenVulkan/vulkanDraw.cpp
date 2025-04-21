@@ -624,11 +624,6 @@ namespace BlitzenVulkan
         pushDescriptorWritesCompute[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
         pushDescriptorWritesGraphics[3].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
         pushDescriptorWritesCompute[2].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
-        if (m_stats.bObliqueNearPlaneClippingObjectsExist)
-        {
-            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
-        }
     }
 
     void VulkanRenderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)
@@ -672,7 +667,7 @@ namespace BlitzenVulkan
             // Fist culling pass with separate command buffer
             BeginCommandBuffer(fTools.computeCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
             DispatchPreClusterCullingShader(fTools.computeCommandBuffer,
-                m_initialDrawCullPipeline.handle, m_drawCullLayout.handle,
+                m_preClusterCullPipeline.handle, m_drawCullLayout.handle,
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
                 m_currentStaticBuffers.clusterCountBuffer.buffer.bufferHandle,
                 m_currentStaticBuffers.clusterDispatchBuffer.buffer.bufferHandle,
@@ -717,7 +712,7 @@ namespace BlitzenVulkan
                         (m_currentStaticBuffers.clusterCountCopyBuffer.allocationInfo.pMappedData))
             };
 
-            DispatchClusterCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, m_drawCullLayout.handle,
+            DispatchClusterCullingComputeShader(fTools.commandBuffer, m_intialClusterCullPipeline.handle, m_drawCullLayout.handle,
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 m_currentStaticBuffers.clusterCountBuffer.buffer.bufferHandle,
                 m_currentStaticBuffers.clusterCountCopyBuffer, m_currentStaticBuffers.clusterDispatchBuffer.buffer.bufferHandle, 
@@ -730,7 +725,7 @@ namespace BlitzenVulkan
                 m_depthAttachmentInfo, m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
                 m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
                 m_currentStaticBuffers.meshletDataBuffer.buffer.bufferHandle,
-                dispatchCount, m_currentStaticBuffers.renderObjectBufferAddress, 0, m_instance,
+                dispatchCount, m_currentStaticBuffers.renderObjectBufferAddress, Ce_InitialCulling, m_instance,
                 m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
 
 
@@ -916,11 +911,6 @@ namespace BlitzenVulkan
 
             if (m_stats.bTranspartentObjectsExist)
             {
-                // Replace the regular render object write with the transparent one
-                pushDescriptorWritesGraphics[2] =
-                    m_currentStaticBuffers.transparentRenderObjectBuffer.descriptorWrite;
-                pushDescriptorWritesCompute[1] =
-                    m_currentStaticBuffers.transparentRenderObjectBuffer.descriptorWrite;
 
                 DispatchRenderObjectCullingComputeShader(fTools.commandBuffer,
                     m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle,

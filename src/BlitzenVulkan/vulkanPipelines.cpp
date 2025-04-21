@@ -302,44 +302,44 @@ namespace BlitzenVulkan
     }
 
 
+    uint8_t CreateClusterComputePipelines(VkDevice device, VkPipeline* preClusterPipeline, VkPipeline* initialCullingPipeline,
+        VkPipeline* lateCullingPipeline, VkPipelineLayout mainCullingShaderLayout)
+    {
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/PreClusterDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, preClusterPipeline))
+        {
+            BLIT_ERROR("Failed to create PreClusterDrawCull.comp shader program");
+            return 0;
+        }
+
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/InitialClusterCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, initialCullingPipeline))
+        {
+            BLIT_ERROR("Failed to create InitialClusterCull.comp shader program");
+            return 0;
+        }
+    }
+
+
     uint8_t CreateComputeShaders(VkDevice device, VkPipeline* cullingPipeline, VkPipeline* lateCullingPipeline, 
         VkPipeline* onpcCullPipeline, VkPipeline* transparentCullShaderPipeline, VkPipelineLayout mainCullingShaderLayout, 
         VkPipeline* depthPyramidGenerationPipeline, VkPipelineLayout depthPyramidGenerationLayout, 
         VkPipeline* presentImageGenerationPipeline, VkPipelineLayout presentImageGenerationPipelineLayout)
     {
-        // Initial draw cull shader compute pipeline
-        if constexpr (BlitzenEngine::Ce_BuildClusters)
-        {
-            if (!CreateComputeShaderProgram(device, "VulkanShaders/PreClusterDrawCull.comp.glsl.spv",
-                VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, cullingPipeline))
-            {
-                BLIT_ERROR("Failed to create PreClusterDrawCull.comp shader program");
-                return 0;
-            }
 
-            if (!CreateComputeShaderProgram(device, "VulkanShaders/InitialClusterCull.comp.glsl.spv",
-                VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, lateCullingPipeline))
-            {
-                BLIT_ERROR("Failed to create InitialClusterCull.comp shader program");
-                return 0;
-            }
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/InitialDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, cullingPipeline))
+        {
+            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program");
+            return 0;
         }
-        else
-        {
-            if (!CreateComputeShaderProgram(device, "VulkanShaders/InitialDrawCull.comp.glsl.spv",
-                VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, cullingPipeline))
-            {
-                BLIT_ERROR("Failed to create InitialDrawCull.comp shader program");
-                return 0;
-            }
 
-            // Late culling shader compute pipeline
-            if (!CreateComputeShaderProgram(device, "VulkanShaders/LateDrawCull.comp.glsl.spv",
-                VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, lateCullingPipeline))
-            {
-                BLIT_ERROR("Failed to create LateDrawCull.comp shader program");
-                return 0;
-            }
+        // Late culling shader compute pipeline
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/LateDrawCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, lateCullingPipeline))
+        {
+            BLIT_ERROR("Failed to create LateDrawCull.comp shader program");
+            return 0;
         }
 
         // Generate depth pyramid compute shader

@@ -86,15 +86,15 @@ namespace BlitzenVulkan
 
             PushDescriptorBuffer<void> materialBuffer{ 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
 
-            // TODO: Turn these into buffers that use Buffer Address
-            PushDescriptorBuffer<void> renderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            AllocatedBuffer renderObjectBuffer;
             VkDeviceAddress renderObjectBufferAddress;
+            AllocatedBuffer transparentRenderObjectBuffer;
+            VkDeviceAddress transparentRenderObjectBufferAddress;
             PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{ 14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
             VkDeviceAddress onpcRenderObjectBufferAddress;
-            PushDescriptorBuffer<void> transparentRenderObjectBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            VkDeviceAddress transparentRenderObjectBufferAddress;
 
             PushDescriptorBuffer<void> surfaceBuffer{ 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            PushDescriptorBuffer<void> lodBuffer{ 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
 
             PushDescriptorBuffer<void> indirectDrawBuffer{ 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
             PushDescriptorBuffer<void> indirectCountBuffer{ 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
@@ -255,6 +255,7 @@ namespace BlitzenVulkan
         PipelineLayout m_drawCullLayout;
 
         PipelineObject m_intialClusterCullPipeline;
+        PipelineObject m_preClusterCullPipeline;
 
         // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
         // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 

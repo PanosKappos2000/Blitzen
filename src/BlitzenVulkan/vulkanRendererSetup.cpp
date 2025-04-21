@@ -208,7 +208,7 @@ namespace BlitzenVulkan
         uint32_t viewDataBindingID = currentId++;
         uint32_t vertexBindingID = currentId++;
         uint32_t depthImageBindingID = currentId++;
-        uint32_t renderObjectsBindingID = currentId++;
+        uint32_t lodBufferBindingId = currentId++;
         uint32_t transformsBindingID = currentId++;
         uint32_t materialsBindingID = currentId++;
         uint32_t indirectCommandsBindingID = currentId++;
@@ -299,10 +299,10 @@ namespace BlitzenVulkan
             Ce_DepthPyramidImageBindingID, descriptorCountOfEachPushDescriptorLayoutBinding,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[renderObjectsBindingID],
-            staticBuffers.renderObjectBuffer.descriptorBinding,
+        CreateDescriptorSetLayoutBinding(pBindings[lodBufferBindingId],
+            staticBuffers.lodBuffer.descriptorBinding,
             descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.renderObjectBuffer.descriptorType,
+            staticBuffers.lodBuffer.descriptorType,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
         CreateDescriptorSetLayoutBinding(pBindings[transformsBindingID],
@@ -514,13 +514,13 @@ namespace BlitzenVulkan
 
         // Render objects
         CopyBufferToBuffer(commandBuffer, renderObjectStagingBuffer,
-            currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle,
+            currentStaticBuffers.renderObjectBuffer.bufferHandle,
             renderObjectBufferSize, 0, 0);
 
         if (transparentRenderBufferSize != 0)
         {
             CopyBufferToBuffer(commandBuffer, transparentObjectStagingBuffer,
-                currentStaticBuffers.transparentRenderObjectBuffer.buffer.bufferHandle,
+                currentStaticBuffers.transparentRenderObjectBuffer.bufferHandle,
                 transparentRenderBufferSize, 0, 0);
         }
 
@@ -572,7 +572,7 @@ namespace BlitzenVulkan
         {
             pushDescriptorWritesGraphics[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[3] = varBuffers.transformBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
@@ -580,7 +580,7 @@ namespace BlitzenVulkan
             pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
             pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
             pushDescriptorWritesCompute[2] = varBuffers.transformBuffer.descriptorWrite;
             pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
             pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
@@ -595,7 +595,7 @@ namespace BlitzenVulkan
         {
             pushDescriptorWritesGraphics[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[3] = varBuffers.transformBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
@@ -603,7 +603,7 @@ namespace BlitzenVulkan
             pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
             pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
             pushDescriptorWritesCompute[2] = varBuffers.transformBuffer.descriptorWrite;
             pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
             pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
@@ -754,6 +754,13 @@ namespace BlitzenVulkan
             &m_generatePresentationPipeline.handle, m_generatePresentationLayout.handle))
         {
             BLIT_ERROR("Failed to create compute shaders");
+            return 0;
+        }
+
+        if (!CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, &m_intialClusterCullPipeline.handle,
+            nullptr, m_drawCullLayout.handle))
+        {
+            BLIT_ERROR("Failed to create cluster shaders");
             return 0;
         }
         
@@ -987,22 +994,17 @@ namespace BlitzenVulkan
 
         // Standard render object buffer
         AllocatedBuffer renderObjectStagingBuffer;
-        auto renderObjectBufferSize
-        {
-            SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.renderObjectBuffer, 
-                renderObjectStagingBuffer,renderObjectCount, 
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
-                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                pRenderObjects)
-        };
-        if (renderObjectBufferSize == 0)
+        VkDeviceSize renderObjectBufferSize{ renderObjectCount * sizeof(BlitzenEngine::RenderObject) };
+        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pRenderObjects,
+            m_currentStaticBuffers.renderObjectBuffer, renderObjectStagingBuffer, 
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, renderObjectBufferSize))
         {
             BLIT_ERROR("Failed to create render object buffer");
             return 0;
         }
         m_currentStaticBuffers.renderObjectBufferAddress = GetBufferAddress(m_device,
-            m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle);
+            m_currentStaticBuffers.renderObjectBuffer.bufferHandle);
 
         // Render object buffer that holds objects that use Oblique near plane clipping
         AllocatedBuffer onpcRenderObjectStagingBuffer;
@@ -1026,17 +1028,15 @@ namespace BlitzenVulkan
         }
 
         AllocatedBuffer tranparentRenderObjectStagingBuffer;
-        VkDeviceSize transparentRenderObjectBufferSize = 0;
-        if (transparentRenderobjects.GetSize() != 0)
+        VkDeviceSize transparentRenderObjectBufferSize{ 
+            transparentRenderobjects.GetSize() * sizeof(BlitzenEngine::RenderObject) };
+        if (transparentRenderObjectBufferSize != 0)
         {
-            transparentRenderObjectBufferSize =
-                SetupPushDescriptorBuffer(m_device, m_allocator, 
-                    m_currentStaticBuffers.transparentRenderObjectBuffer, 
-                    tranparentRenderObjectStagingBuffer, transparentRenderobjects.GetSize(), 
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-                    transparentRenderobjects.Data());
-            if (transparentRenderObjectBufferSize == 0)
+            if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device,
+                transparentRenderobjects.Data(), m_currentStaticBuffers.transparentRenderObjectBuffer,
+                tranparentRenderObjectStagingBuffer, 
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, transparentRenderObjectBufferSize))
             {
                 BLIT_ERROR("Failed to create transparent render object buffer");
                 return 0;
@@ -1045,7 +1045,7 @@ namespace BlitzenVulkan
             m_stats.bTranspartentObjectsExist = 1;
 
             m_currentStaticBuffers.transparentRenderObjectBufferAddress = GetBufferAddress(m_device,
-                m_currentStaticBuffers.transparentRenderObjectBuffer.buffer.bufferHandle);
+                m_currentStaticBuffers.transparentRenderObjectBuffer.bufferHandle);
         }
 
         // Buffer that holds primitives (surfaces that can be drawn)
@@ -1059,6 +1059,23 @@ namespace BlitzenVulkan
             surfaces.Data())
         };
         if (surfaceBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create surface buffer");
+            return 0;
+        }
+
+        // Buffer that holds primitives (surfaces that can be drawn)
+        AllocatedBuffer lodStagingBuffer;
+        auto temp = 1;
+        auto lodBufferSize
+        {
+            SetupPushDescriptorBuffer(m_device, m_allocator,
+            m_currentStaticBuffers.lodBuffer,
+            lodStagingBuffer, 1,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            &temp)
+        };
+        if (lodBufferSize == 0)
         {
             BLIT_ERROR("Failed to create surface buffer");
             return 0;

@@ -35,6 +35,8 @@ struct Cluster
     uint8_t triangleCount;
     uint8_t padding0;
     uint8_t padding1;
+
+    uint gpuAlignment;
 };
 
 // The single buffer that holds all meshlet data in the scene

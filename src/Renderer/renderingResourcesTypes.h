@@ -61,6 +61,8 @@ namespace BlitzenEngine
     	uint8_t triangleCount;
         uint8_t padding0;
         uint8_t padding1;
+
+        uint32_t gpuAlignmentPad;
     };
 
 	// Data for each material. Passed to the GPU

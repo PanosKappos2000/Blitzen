@@ -6,6 +6,7 @@
 #include "Renderer/blitRenderer.h"
 #include "Core/blitTimeManager.h"
 #include <thread>
+#include <iostream>
 
 namespace BlitzenEngine
 {

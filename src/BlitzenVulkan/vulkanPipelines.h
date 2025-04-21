@@ -91,6 +91,9 @@ namespace BlitzenVulkan
         VkPipeline* depthPyramidGenerationPipeline, VkPipelineLayout depthPyramidGenerationLayout,
         VkPipeline* presentImageGenerationPipeline, VkPipelineLayout presentImageGenerationPipelineLayout);
 
+    uint8_t CreateClusterComputePipelines(VkDevice device, VkPipeline* preClusterPipeline, VkPipeline* initialCullingPipeline,
+        VkPipeline* lateCullingPipeline, VkPipelineLayout mainCullingShaderLayout);
+
     // Creates most of the graphics pipelines. I need to refactor this
     uint8_t SetupMainGraphicsPipeline(VkDevice device, uint8_t bMeshShaders,
         VkPipeline* mainGraphicsPipeline, VkPipeline* postPassGraphicsPipeline, VkPipelineLayout mainGraphicsPipelineLayout,
