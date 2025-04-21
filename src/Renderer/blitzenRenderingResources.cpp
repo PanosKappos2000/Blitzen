@@ -201,7 +201,7 @@ namespace BlitzenEngine
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
             lod.firstMeshlet = static_cast<uint32_t>(m_clusters.GetSize());
             lod.meshletCount = Ce_BuildClusters ?
-                static_cast<uint32_t>(GenerateClusters(surfaceVertices, surfaceIndices, surface.vertexOffset))
+                static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset))
                 : 0;
 
             // Adds level of details indices to the global indices array
@@ -407,7 +407,7 @@ namespace BlitzenEngine
     uint32_t RenderingResources::AddRenderObjectsFromMesh(uint32_t meshId,
         const BlitzenEngine::MeshTransform& transform)
     {
-        BlitzenEngine::Mesh& mesh = meshes[meshId];
+        auto& mesh = meshes[meshId];
         if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
         {
             BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count")
@@ -419,7 +419,7 @@ namespace BlitzenEngine
 
         for (uint32_t i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
         {
-            RenderObject& object = renders[renderObjectCount++];
+            auto& object = renders[renderObjectCount++];
 
             object.surfaceId = i;
             object.transformId = transformId;
@@ -645,6 +645,17 @@ namespace BlitzenEngine
         pResources->LoadMeshFromObj("Assets/Meshes/dragon.obj", "dragon");
         pResources->LoadMeshFromObj("Assets/Meshes/kitten.obj", "kitten");
         pResources->LoadMeshFromObj("Assets/Meshes/FinalBaseMesh.obj", "human");
+    }
+
+    void RenderingResources::CreateSingleObjectForTesting()
+    {
+		// Create a single object for testing
+		MeshTransform transform;
+		transform.pos = BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ);
+		transform.scale = 10.f;
+		transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
+            AddRenderObjectsFromMesh(meshMap["kitten"].meshId, transform);
+		
     }
 
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)

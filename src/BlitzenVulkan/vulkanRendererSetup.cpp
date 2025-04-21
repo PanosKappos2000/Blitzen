@@ -757,7 +757,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (!CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, &m_intialClusterCullPipeline.handle,
+        if (BlitzenEngine::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, &m_intialClusterCullPipeline.handle,
             nullptr, m_drawCullLayout.handle))
         {
             BLIT_ERROR("Failed to create cluster shaders");

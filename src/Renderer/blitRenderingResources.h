@@ -97,6 +97,8 @@ namespace BlitzenEngine
             float shininess, const char* diffuseMapName,
             const char* specularMapName, const char* materialName);
 
+        void CreateSingleObjectForTesting();
+
     public:
 
         // Load a texture from a specified file. Assumes DDS format

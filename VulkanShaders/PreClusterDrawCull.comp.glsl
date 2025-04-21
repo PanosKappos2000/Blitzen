@@ -44,12 +44,12 @@ void main()
                 lodIndex = i;
         }
 
-        MeshLod lod = surfaceBuffer.surfaces[obj.surfaceId].lod[lodIndex];
+        MeshLod lod = surfaceBuffer.surfaces[obj.surfaceId].lod[0];
         uint dispatchIndex = atomicAdd(indirectClusterCount.count, lod.clusterCount);
         
         for(uint i = 0; i < lod.clusterCount; ++i)
         {
-            indirectClusterDispatch.data[i + dispatchIndex].clusterId = lod.clusterOffset;
+            indirectClusterDispatch.data[i + dispatchIndex].clusterId = lod.clusterOffset + i;
             indirectClusterDispatch.data[i + dispatchIndex].lodIndex = lodIndex;
             indirectClusterDispatch.data[i + dispatchIndex].objectId = objectIndex;
         }

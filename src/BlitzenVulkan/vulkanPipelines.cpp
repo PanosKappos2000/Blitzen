@@ -318,6 +318,8 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create InitialClusterCull.comp shader program");
             return 0;
         }
+
+        return 1;
     }
 
 

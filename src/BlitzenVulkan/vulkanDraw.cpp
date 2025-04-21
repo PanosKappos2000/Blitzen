@@ -200,7 +200,7 @@ namespace BlitzenVulkan
         VkBufferMemoryBarrier2 waitForBuffersBeforeDispatch[2]{};
         BufferMemoryBarrier(clusterCountBuffer, waitForBuffersBeforeDispatch[0],
             VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 
             0, sizeof(uint32_t));
         // Cluster data buffer
         BufferMemoryBarrier(clusterDataBuffer, waitForBuffersBeforeDispatch[1],
