@@ -212,7 +212,6 @@ namespace BlitzenVulkan
             0, nullptr);
 
         // TODO: Consider parameters for buffer size
-
         PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
             layout, PushDescriptorSetID, descriptorWriteCount - 1, pDescriptorWrites);
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -527,8 +526,8 @@ namespace BlitzenVulkan
     static void PresentToSwapchain(VkDevice device, VkQueue queue, 
         VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
         uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
-        uint32_t* pImageIndices, VkResult* pResults /*=nullptr*/,
-        void* pNextChain /*=nullptr*/)
+        uint32_t* pImageIndices, VkResult* pResults = nullptr,
+        void* pNextChain = nullptr)
     {
         VkPresentInfoKHR info{};
         info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1067,68 +1066,5 @@ namespace BlitzenVulkan
             &m_swapchainValues.swapchainHandle, 1,
             1, &fTools.readyToPresentSemaphore.handle,
             &swapchainIdx);
-    }
-
-
-
-
-    // TODO: The function below belong in a different file since they are not only called at draw time
-    void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usageFlags)
-    {
-        vkResetCommandBuffer(commandBuffer, 0);
-        VkCommandBufferBeginInfo commandBufferInfo{};
-        commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        commandBufferInfo.pNext = nullptr;
-        commandBufferInfo.pInheritanceInfo = nullptr;
-        commandBufferInfo.flags = usageFlags;
-        VK_CHECK(vkBeginCommandBuffer(commandBuffer, &commandBufferInfo));
-    }
-
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer,
-        uint32_t waitSemaphoreCount /* =0 */, VkSemaphoreSubmitInfo* waitSemaphore /* =nullptr */,
-        uint32_t signalSemaphoreCount /* =0 */, VkSemaphoreSubmitInfo* signalSemaphore /* =nullptr */,
-        VkFence fence /* =VK_NULL_HANDLE */)
-    {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkCommandBufferSubmitInfo commandBufferInfo{};
-        commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-        commandBufferInfo.commandBuffer = commandBuffer;
-
-        VkSubmitInfo2 submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-
-        submitInfo.commandBufferInfoCount = 1;
-        submitInfo.pCommandBufferInfos = &commandBufferInfo;
-
-        submitInfo.waitSemaphoreInfoCount = waitSemaphoreCount;
-        submitInfo.pWaitSemaphoreInfos = waitSemaphore;
-
-        submitInfo.signalSemaphoreInfoCount = signalSemaphoreCount;
-        submitInfo.pSignalSemaphoreInfos = signalSemaphore;
-
-        VK_CHECK(vkQueueSubmit2(queue, 1, &submitInfo, fence))
-    }
-
-    void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo,
-        VkSemaphore semaphore, VkPipelineStageFlags2 stage)
-    {
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-        semaphoreInfo.pNext = nullptr;
-        semaphoreInfo.semaphore = semaphore;
-        semaphoreInfo.stageMask = stage;
-    }
-
-    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout,
-        VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor, VkClearDepthStencilValue clearValueDepth)
-    {
-        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        attachmentInfo.pNext = nullptr;
-        attachmentInfo.imageView = imageView;
-        attachmentInfo.imageLayout = imageLayout;
-        attachmentInfo.loadOp = loadOp;
-        attachmentInfo.storeOp = storeOp;
-        attachmentInfo.clearValue.color = clearValueColor;
-        attachmentInfo.clearValue.depthStencil = clearValueDepth;
     }
 }

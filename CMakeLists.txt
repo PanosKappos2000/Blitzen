@@ -33,6 +33,7 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanGpuUpload.cpp
                 src/BlitzenVulkan/vulkanRaytracing.cpp
                 src/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/BlitzenVulkan/vulkanCommands.cpp
                 src/BlitzenVulkan/vulkanDraw.cpp
 
                 src/BlitzenGL/openglData.h
@@ -102,6 +103,7 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanGpuUpload.cpp
                 src/BlitzenVulkan/vulkanRaytracing.cpp
                 src/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/BlitzenVulkan/vulkanCommands.cpp
                 src/BlitzenVulkan/vulkanDraw.cpp
 
                 src/Renderer/blitRenderingResources.h

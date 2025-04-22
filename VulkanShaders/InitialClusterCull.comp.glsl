@@ -11,9 +11,14 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
+    
     uint objectIndex = gl_GlobalInvocationID.x;
+    if (gl_GlobalInvocationID.x % 10000 == 0) {
+    debugPrintfEXT("PC.drawCount = %u, thread id = %u", cullPC.drawCount, gl_GlobalInvocationID.x);
+}
     if(cullPC.drawCount <= objectIndex)
     {
+        debugPrintfEXT("Don't hit this too much");
         return;
     }
     ClusterDispatchData data = indirectClusterDispatch.data[objectIndex];
@@ -68,4 +73,8 @@ void main()
     {
         debugPrintfEXT("Warning: indexCount is 0");
     }
+
+    if (gl_GlobalInvocationID.x == drawID - 1) {
+    debugPrintfEXT("Final drawCount value: %u", indirectDrawCountBuffer.drawCount);
+}
 }

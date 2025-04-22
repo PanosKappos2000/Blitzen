@@ -113,6 +113,8 @@ namespace BlitzenVulkan
             AccelerationStructure tlasData;
         };
 
+    public:
+
         // Vulkan API and memory crucials
         VkInstance m_instance;
         VmaAllocator m_allocator;
@@ -324,17 +326,18 @@ namespace BlitzenVulkan
     // Puts command buffer in the ready state. vkCmd type function can be called after this and until vkEndCommandBuffer is called
     void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
 
+    // Creates semaphore submit info which can be passed to VkSubmitInfo2 before queue submit
     void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo, VkSemaphore semaphore, VkPipelineStageFlags2 stage);
 
-    // Submits the command buffer to excecute the recorded commands. Semaphores, fences and other sync structures can be specified 
+    // Ends command buffer and submits it. Synchronization structures can also be specified
     void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount = 0,
         VkSemaphoreSubmitInfo* pWaitInfo = nullptr, uint32_t signalSemaphoreCount = 0,
         VkSemaphoreSubmitInfo* signalSemaphore = nullptr, VkFence fence = VK_NULL_HANDLE);
 
-    void PresentToSwapchain(VkDevice device, VkQueue queue,
-        VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
-        uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
-        uint32_t* pImageIndices, VkResult* pResults = nullptr, void* pNextChain = nullptr);
+    // Creates rendering attachment info needed for dynamic render pass to begin
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
+        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
+        VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
 
 
     /*

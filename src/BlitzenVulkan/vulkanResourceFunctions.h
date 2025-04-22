@@ -115,10 +115,4 @@ namespace BlitzenVulkan
         // Copies parts of one buffer to parts of another, depending on the offsets that are passed
     void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer,
         VkDeviceSize copySize, VkDeviceSize srcOffset, VkDeviceSize dstOffset);
-
-    // Defined in vulkanRenderer.cpp, create a rending attachment info needed to call vkCmdBeginRendering (dynamic rendering)
-    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
-        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
-        VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
-
 }
