@@ -149,14 +149,13 @@ namespace BlitzenEngine
     void RenderingResources::LoadPrimitiveSurface(BlitCL::DynamicArray<Vertex>& surfaceVertices, 
         BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
-		// Optimize vertices and indices using meshoptimizer
+        // Optimize vertices and indices using meshoptimizer
         meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(),
             surfaceIndices.GetSize(), surfaceVertices.GetSize());
-	    meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(), 
-            surfaceIndices.GetSize(), surfaceVertices.Data(),surfaceVertices.GetSize(), 
+        meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(),
+            surfaceIndices.GetSize(), surfaceVertices.Data(), surfaceVertices.GetSize(),
             sizeof(Vertex));
 
-        // Creates a new primitive surface object and passes its vertices
         PrimitiveSurface newSurface;
         newSurface.vertexOffset = static_cast<uint32_t>(m_vertices.GetSize());
         m_vertices.AppendArray(surfaceVertices);
@@ -194,13 +193,14 @@ namespace BlitzenEngine
 
         // Pass the original loaded indices of the surface to the new lod indices
         BlitCL::DynamicArray<uint32_t> lodIndices{ surfaceIndices };
+        BlitCL::DynamicArray<uint32_t> allLodIndices;
 
         while (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
         {
             auto& lod = surface.meshLod[surface.lodCount++];
             BLIT_INFO("Generating LOD %d", surface.lodCount);
 
-            lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize());
+            lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize() + allLodIndices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
 
             // TODO: Might want to make lod include one or the other, indices and clusters are not used together
@@ -209,25 +209,23 @@ namespace BlitzenEngine
                 static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset))
                 : 0;
 
-            // Adds level of details indices to the global indices array
-            m_indices.AppendArray(lodIndices);
+            // Adds current lod indices
+            allLodIndices.AppendArray(lodIndices);
             // Adjusts the error to the generated scale
             lod.error = lodError * lodScale;
 
             // Starts generating the next level of detail
             if (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
             {
-                auto nextIndicesTarget = static_cast<size_t>((
-                    double(lodIndices.GetSize()) * 0.65) / 3) * 3;
+                auto nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
                 const float maxError = 1e-1f;
                 float nextError = 0.f;
 
-                // Generates first level of detail indices
+                // Gets the size of the next level of detail
                 auto nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(),
                     lodIndices.GetSize(), &surfaceVertices[0].position.x, surfaceVertices.GetSize(),
                     sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3),
-                    normalWeights, 3, nullptr, nextIndicesTarget, maxError, 0, &nextError
-                );
+                    normalWeights, 3, nullptr, nextIndicesTarget, maxError, 0, &nextError);
 
                 if (nextIndicesSize > lodIndices.GetSize())
                 {
@@ -236,22 +234,33 @@ namespace BlitzenEngine
                 }
                 // Reached the error bounds
                 if (nextIndicesSize == lodIndices.GetSize() || nextIndicesSize == 0)
+                {
                     break;
+                }
                 // while I could keep this LOD, it's too close to the last one 
                 // (and it can't go below that due to constant error bound above)
                 if (nextIndicesSize >= size_t(double(lodIndices.GetSize()) * 0.95))
+                {
                     break;
-                lodIndices.Resize(nextIndicesSize);
+                }
 
-                // Optimize the level of detail vertex cache
+                // Resize and optimize
+                lodIndices.Resize(nextIndicesSize);
                 meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(),
-                    surfaceVertices.GetSize()
-                );
+                    surfaceVertices.GetSize());
 
                 // since it starts from next lod accumulate the error
                 lodError = BlitML::Max(lodError, nextError);
             }
         }
+
+        // Adds vertex offset before appending all lods to the global indices array
+		auto vertexOffset = surface.vertexOffset;
+		for (auto& index : allLodIndices)
+		{
+            index += vertexOffset;
+		}
+		m_indices.AppendArray(allLodIndices);
     }
 
     void RenderingResources::GenerateBoundingSphere(PrimitiveSurface& surface,
@@ -353,8 +362,10 @@ namespace BlitzenEngine
         meshMap.Insert(meshName, currentMesh);
 
         ObjFile file;
-        if(!objParseFile(file, filename))
+        if (!objParseFile(file, filename))
+        {
             return 0;
+        }
 
         size_t indexCount = file.f_size / 3;
 
@@ -389,12 +400,11 @@ namespace BlitzenEngine
 		    vtx.uvY = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1]);
         }
 
+        // Creates indices for the obj's vertices using meshopt
         BlitCL::DynamicArray<uint32_t> remap(indexCount);
 		size_t vertexCount = meshopt_generateVertexRemap(remap.Data(), 0, indexCount, triangleVertices.Data(), indexCount, sizeof(Vertex));
-
         BlitCL::DynamicArray<uint32_t> indices(indexCount);
         BlitCL::DynamicArray<Vertex> vertices(vertexCount);
-
         meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
 		meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
 

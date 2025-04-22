@@ -67,7 +67,7 @@ void main()
         indirectDrawBuffer.draws[drawID].indexCount = currentLod.indexCount;
         indirectDrawBuffer.draws[drawID].instanceCount = 1;
         indirectDrawBuffer.draws[drawID].firstIndex = currentLod.firstIndex;
-        indirectDrawBuffer.draws[drawID].vertexOffset = surfaceBuffer.surfaces[obj.surfaceId].vertexOffset;
+        indirectDrawBuffer.draws[drawID].vertexOffset = 0;
         indirectDrawBuffer.draws[drawID].firstInstance = 0;
     } 
 }
