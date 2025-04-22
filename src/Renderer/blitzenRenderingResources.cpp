@@ -195,20 +195,20 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> lodIndices{ surfaceIndices };
         BlitCL::DynamicArray<uint32_t> allLodIndices;
 
+        surface.lodOffset = static_cast<uint32_t>(m_lods.GetSize());
         while (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
         {
-            auto& lod = surface.meshLod[surface.lodCount++];
+            surface.lodCount++;
             BLIT_INFO("Generating LOD %d", surface.lodCount);
 
+            LodData lod;
             lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize() + allLodIndices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
-
             // TODO: Might want to make lod include one or the other, indices and clusters are not used together
-            lod.firstMeshlet = static_cast<uint32_t>(m_clusters.GetSize());
-            lod.meshletCount = Ce_BuildClusters ?
+            lod.clusterOffset = static_cast<uint32_t>(m_clusters.GetSize());
+            lod.clusterCount = Ce_BuildClusters ?
                 static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset))
                 : 0;
-
             lod.error = lodError * lodScale;
             m_lods.PushBack(lod);
 
@@ -254,6 +254,11 @@ namespace BlitzenEngine
                 // since it starts from next lod accumulate the error
                 lodError = BlitML::Max(lodError, nextError);
             }
+        }
+
+        if (surface.lodCount > ce_primitiveSurfaceMaxLODCount)
+        {
+            BLIT_ERROR("Should not be happening");
         }
 
         // Adds vertex offset before appending all lods to the global indices array

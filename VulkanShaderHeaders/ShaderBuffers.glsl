@@ -50,36 +50,45 @@ layout(set = 0, binding = 13, std430) readonly buffer MeshletDataBuffer
     uint data[];
 }meshletDataBuffer;
 
-// Holds a specific level of detail's index offset and count (as well as the according data for mesh shaders)
 struct Lod
 {
+    // Non cluster path, used to create draw commands
     uint indexCount;
     uint firstIndex;
-    float error;
 
+	// Cluster path, used to create draw commands
     uint clusterOffset;
     uint clusterCount;
 
+    // Used for more accurate LOD selection
+    float error;
+
+    // Pad to 32 bytes total
     uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 layout(set = 0, binding = 4, std430) readonly buffer LodBuffer
 {
     Lod levels[];
-}lodBufer;
+}lodBuffer;
 
 struct Surface
 {
+    // Bounding sphere
     vec3 center;     
     float radius;            
 
-    uint vertexOffset;
+    uint materialId;
 
-    uint materialID;
+    // Index to lod buffer
+    // Each primitive can be drawn in multiple ways, depending on its LODs
+    uint lodOffset;
+    uint lodCount;
 
-    uint lodCount;       
-    uint padding0;      
-    Lod lod[8];
+    uint vertexOffset; // Not used in the shaders but is useful on the CPU (NOT CRUCIAL)
+    uint padding0; // Explicit padding to 48 bytes total
 };
 
 layout(set = 0, binding = 2, std430) readonly buffer SurfaceBuffer
@@ -87,16 +96,12 @@ layout(set = 0, binding = 2, std430) readonly buffer SurfaceBuffer
     Surface surfaces[];
 }surfaceBuffer;
 
-// Draw indirect struct. Accessed by the vkCmdDrawIndexedIndirectCount command, but also written into by the culling compute shader
 struct IndirectDraw
 {
-    /* 
-        Since there will be fewer draw calls than the amount of objects in the scene, 
-        the indirect buffer will also hold the object ID to access per object data in the vertex shader
-    */
+    // Helps vertex shader access the correct object in the RenderObject array
     uint objectId;
 
-    // Everything needed for vkCmdDrawIndexedIndirectCount call
+    // Indirect command data, set by the culling compute shaders
     uint indexCount;
     uint instanceCount;
     uint firstIndex;
@@ -113,8 +118,7 @@ struct IndirectTask
     uint groupCountZ;
 };
 
-// The below are the same buffer but it is defined differently in the compute pipeline
-// This will be the final buffer used by vkCmdDrawIndexedIndirect and will be filled by a compute shader after doing culling and other operations
+// Indirect buffers are writeonly in compute and readonly in vertex
 #ifdef COMPUTE_PIPELINE
     layout(set = 0, binding = 7, std430) writeonly buffer IndirectDrawBuffer
     {
@@ -126,7 +130,6 @@ struct IndirectTask
         IndirectTask tasks[];
     }indirectTaskBuffer;
 #else
-    // In the graphics pipeline, this needs to be accessed to retrieve the object ID
     layout(set = 0, binding = 7, std430) readonly buffer IndirectDrawBuffer
     {
         IndirectDraw draws[];
@@ -138,11 +141,12 @@ struct IndirectTask
     }indirectTaskBuffer;
 #endif
 
-// Every possible draw call has one of these structs
 struct RenderObject
 {
-    uint meshInstanceId;// Index into the mesh instance buffer
-    uint surfaceId;// Index into the surface buffer
+    // Index transform buffer
+    uint meshInstanceId;
+    // Index surface buffer
+    uint surfaceId;
 };
 
 // TODO: Refactor the object buffers. There will be a single structure in the shader 
@@ -238,3 +242,22 @@ struct MeshTaskPayload
 	uint drawId;
 	uint meshletIndices[32];
 };
+
+// The LOD index is calculated using a formula, 
+// where the distance to the bounding sphere's surface is taken
+// and the minimum error that would result in acceptable screen-space deviation
+// is computed based on camera parameters
+uint LODSelection(vec3 center, float radius, float scale, float lodTarget, uint lodOffset, uint lodCount)
+{
+    float distance = max(length(center) - radius, 0);
+	float threshold = distance * lodTarget / scale;
+    uint lodIndex = 0;
+	for (uint i = 1; i < lodCount; ++i)
+    {
+		if (lodBuffer.levels[lodOffset + i].error < threshold)
+        {
+			lodIndex = lodOffset + i;
+        }
+    }
+    return lodIndex;
+}

@@ -15,9 +15,9 @@ void main()
     {
         return;
     }
-    RenderObject currentObject = onpcReflectiveObjectBuffer.objects[objectIndex];
-    Transform transform = transformBuffer.instances[currentObject.meshInstanceId];
-    Surface surface = surfaceBuffer.surfaces[currentObject.surfaceId];
+    RenderObject obj = onpcReflectiveObjectBuffer.objects[objectIndex];
+    Transform transform = transformBuffer.instances[obj.meshInstanceId];
+    Surface surface = surfaceBuffer.surfaces[obj.surfaceId];
 
     vec3 center;
     float radius;
@@ -34,22 +34,11 @@ void main()
     if(visible)
     {
         
-        // The LOD index is calculated using a formula where the distance to bounding sphere
-        // surface is taken and the minimum error that would result in acceptable
-        // screen-space deviation is computed based on camera parameters
-        uint lodIndex = 0;
-		float distance = max(length(center) - radius, 0);
-		float threshold = distance * viewData.lodTarget / transform.scale;
-		for (uint i = 1; i < surface.lodCount; ++i)
-        {
-			if (surface.lod[i].error < threshold)
-            {
-				lodIndex = i;
-            }
-        }
+        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, 
+            surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
+        Lod currentLod = lodBuffer.levels[lodIndex];
 
-        MeshLod currentLod = surface.lod[lodIndex];
-        // With each element that is added to the draw list, increment the count buffer
+        // Increases draw count
         uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
         // Draw commands + object id
         indirectDrawBuffer.draws[drawID].objectId = objectIndex;

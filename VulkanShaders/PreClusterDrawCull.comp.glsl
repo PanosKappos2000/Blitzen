@@ -34,19 +34,11 @@ void main()
 
     if (visible)
     {
-        uint lodIndex = 0;
-        float distance = max(length(center) - radius, 0);
-        float threshold = distance * viewData.lodTarget / transform.scale;
-        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
-        for (uint i = 1; i < lodCount; ++i)
-        {
-            if (surfaceBuffer.surfaces[obj.surfaceId].lod[i].error < threshold)
-                lodIndex = i;
-        }
+        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, 
+            surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
+        Lod lod = lodBuffer.levels[lodIndex];
 
-        Lod lod = surfaceBuffer.surfaces[obj.surfaceId].lod[lodIndex];
         uint dispatchIndex = atomicAdd(indirectClusterCount.count, lod.clusterCount);
-        
         for(uint i = 0; i < lod.clusterCount; ++i)
         {
             indirectClusterDispatch.data[i + dispatchIndex].clusterId = lod.clusterOffset + i;

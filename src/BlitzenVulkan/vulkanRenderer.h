@@ -128,7 +128,7 @@ namespace BlitzenVulkan
 
 
         // TODO: I should get this out of the class, but we can keep them for now
-        uint8_t BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces, const BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts);
+        uint8_t BuildBlas(BlitzenEngine::RenderingResources* pResources);
         uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface);
 
         /*

@@ -549,8 +549,7 @@ namespace BlitzenVulkan
 
         // Visibility buffer will start with only zeroes. The first frame will do noting, but that should be fine
         vkCmdFillBuffer(commandBuffer, currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
-            0, visibilityBufferSize, 0
-        );
+            0, visibilityBufferSize, 0);
 
         if (BlitzenEngine::Ce_BuildClusters)
         {
@@ -1109,8 +1108,10 @@ namespace BlitzenVulkan
         // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)
         {
-            if(!BuildBlas(surfaces, pResources->GetPrimitiveVertexCounts()))
+            if (!BuildBlas(pResources))
+            {
                 return 0;
+            }
             if(!BuildTlas(pRenderObjects, renderObjectCount, transforms.Data(), surfaces.Data()))
                 return 0;
         }

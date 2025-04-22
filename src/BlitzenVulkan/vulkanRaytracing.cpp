@@ -54,11 +54,15 @@ namespace BlitzenVulkan
         return (VkDeviceAddress)VK_NULL_HANDLE;
     }
 
-    uint8_t VulkanRenderer::BuildBlas(const BlitCL::DynamicArray<BlitzenEngine::PrimitiveSurface>& surfaces,
-        const BlitCL::DynamicArray<uint32_t>& primitiveVertexCounts)
+    uint8_t VulkanRenderer::BuildBlas(BlitzenEngine::RenderingResources* pResources)
     {
+        auto& surfaces = pResources->GetSurfaceArray();
+		auto& primitiveVertexCounts = pResources->GetPrimitiveVertexCounts();
+		auto& lods = pResources->GetLodData();
         if (!surfaces.GetSize())
+        {
             return 0;
+        }
 
         BlitCL::DynamicArray<uint32_t> primitiveCounts(surfaces.GetSize());
         BlitCL::DynamicArray<VkAccelerationStructureGeometryKHR> geometries(surfaces.GetSize(), {});
@@ -107,7 +111,7 @@ namespace BlitzenVulkan
             geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
             // Precise address of the index buffer
             geometry.geometry.triangles.indexData.deviceAddress =
-                static_cast<VkDeviceAddress>(indexBufferAddress + surface.meshLod[0].firstIndex * sizeof(uint32_t));
+                static_cast<VkDeviceAddress>(indexBufferAddress + lods[surface.lodOffset].firstIndex * sizeof(uint32_t));
 
 
             // Build info for the acceleration structu. Takes the geometry struct from above and some other configs
@@ -122,7 +126,7 @@ namespace BlitzenVulkan
             buildInfo.pGeometries = &geometry;
 
 
-            primitiveCounts[i] = surface.meshLod[0].indexCount / 3;
+            primitiveCounts[i] = lods[surface.lodOffset].indexCount / 3;
 
             VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
             sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;

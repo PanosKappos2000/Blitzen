@@ -127,6 +127,14 @@ int main(int argc, char* argv[])
 		}
     }
 
+	for (auto& S : renderingResources->GetSurfaceArray())
+	{
+        BLIT_INFO("lod count: %u", S.lodCount);
+        BLIT_INFO("lod offset: %u", S.lodOffset);
+
+		BLIT_ASSERT(S.lodCount + S.lodOffset <= renderingResources->GetLodData().GetSize());
+	}
+
 
     /*
         Main loop starts here
