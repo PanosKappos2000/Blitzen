@@ -68,7 +68,7 @@ namespace BlitzenVulkan
 
 
 	// The maximum number of device extensions that may be requested
-    constexpr uint32_t ce_maxRequestedDeviceExtensions = 7;
+    constexpr uint32_t ce_maxRequestedDeviceExtensions = 8;
 
 
     // Double buffering constant expression

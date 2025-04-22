@@ -13,12 +13,8 @@ void main()
 {
     
     uint objectIndex = gl_GlobalInvocationID.x;
-    if (gl_GlobalInvocationID.x % 10000 == 0) {
-    debugPrintfEXT("PC.drawCount = %u, thread id = %u", cullPC.drawCount, gl_GlobalInvocationID.x);
-}
     if(cullPC.drawCount <= objectIndex)
     {
-        debugPrintfEXT("Don't hit this too much");
         return;
     }
     ClusterDispatchData data = indirectClusterDispatch.data[objectIndex];
@@ -37,8 +33,8 @@ void main()
         viewData.zNear, viewData.zFar // zFar and zNear
     );*/
 
-    /*// TEMP: Hardcoded camera position, replace later
-    const vec3 cameraPosition = vec3(0.0, 0.0, -10.0);
+    // TEMP: Hardcoded camera position, replace later
+    /*const vec3 cameraPosition = vec3(0.0, 0.0, -10.0);
     // Estimate cluster center (you can replace this if you already have it precomputed)
     // Decode the normalized cone axis from packed int8
     vec3 coneAxis = normalize(vec3(
@@ -63,18 +59,9 @@ void main()
     // The object index is needed to know which element to access in the per object data buffer
     indirectDrawBuffer.draws[drawID].objectId = data.objectId;
     // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface
-    indirectDrawBuffer.draws[drawID].indexCount = 96; //clusterBuffer.clusters[data.clusterId].triangleCount * 3;
+    indirectDrawBuffer.draws[drawID].indexCount = clusterBuffer.clusters[data.clusterId].triangleCount * 3;
     indirectDrawBuffer.draws[drawID].instanceCount = 1;
     indirectDrawBuffer.draws[drawID].firstIndex = clusterBuffer.clusters[data.clusterId].dataOffset;
-    indirectDrawBuffer.draws[drawID].vertexOffset = 0;
+    indirectDrawBuffer.draws[drawID].vertexOffset =  0;
     indirectDrawBuffer.draws[drawID].firstInstance = 0;
-
-    if (clusterBuffer.clusters[data.clusterId].triangleCount * 3 == 0)
-    {
-        debugPrintfEXT("Warning: indexCount is 0");
-    }
-
-    if (gl_GlobalInvocationID.x == drawID - 1) {
-    debugPrintfEXT("Final drawCount value: %u", indirectDrawCountBuffer.drawCount);
-}
 }

@@ -49,19 +49,20 @@ namespace BlitzenVulkan
         switch (messageSeverity)
         {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
         {
             BLIT_INFO("Validation layer: %s", pCallbackData->pMessage);
             return VK_FALSE;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
         {
-            BLIT_WARN("Validation layer: %s", pCallbackData->pMessage)
-                return VK_FALSE;
+            BLIT_WARN("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
         {
-            BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage)
-                return VK_FALSE;
+            BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
         }
         default:
             return VK_FALSE;
@@ -232,6 +233,7 @@ namespace BlitzenVulkan
         // Keeps the debug messenger info and the validation layers enabled boolean here, they will be needed later
         uint8_t validationLayersEnabled = 0;
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
+        VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };// Shader printing
         // If validation layers are requested, the debut utils extension is also needed
         if (ce_bValidationLayersRequested)
         {
@@ -241,7 +243,6 @@ namespace BlitzenVulkan
                 if (EnableInstanceValidation(debugMessengerInfo))
                 {
                     VkValidationFeaturesEXT validationFeatures{};
-                    VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
                     validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
                     validationFeatures.enabledValidationFeatureCount = 1;
                     validationFeatures.pEnabledValidationFeatures = enables;
@@ -307,10 +308,13 @@ namespace BlitzenVulkan
         debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 
         debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | 
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
 
         debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | 
+            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
         // Debug messenger callback function defined at the top of this file
         debugMessengerInfo.pfnUserCallback = debugCallback;
@@ -593,7 +597,8 @@ namespace BlitzenVulkan
             { VK_KHR_RAY_QUERY_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
             { VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
             { VK_EXT_MESH_SHADER_EXTENSION_NAME, /*requested*/ce_bMeshShaders, /*required*/0 }, 
-            { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, ce_bSynchronizationValidationRequested, 0}
+            { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, ce_bSynchronizationValidationRequested, 0}, 
+            { VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, ce_bValidationLayersRequested, 0}
         };
 
         // Check for the required extension name with strcmp
@@ -708,10 +713,9 @@ namespace BlitzenVulkan
     {
         VkDeviceCreateInfo deviceInfo{};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceInfo.flags = 0; // Not using this
+        deviceInfo.flags = 0;
         deviceInfo.enabledLayerCount = 0;//Deprecated
 
-        // Vulkan should ignore the mesh shader extension if support for it was not found
         deviceInfo.enabledExtensionCount = stats.deviceExtensionCount;
         deviceInfo.ppEnabledExtensionNames = stats.deviceExtensionNames;
 

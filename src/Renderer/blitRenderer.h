@@ -95,8 +95,8 @@ namespace BlitzenEngine
     {
         LoadTestGeometry(pResources);
 #if defined(BLIT_DYNAMIC_OBJECT_TEST)
-        //CreateDynamicObjectRendererTest(pResources, pManager);
-        pResources->CreateSingleObjectForTesting();
+        CreateDynamicObjectRendererTest(pResources, pManager);
+        //pResources->CreateSingleObjectForTesting();
 #endif
         if (argc > 1)
         {

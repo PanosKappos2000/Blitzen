@@ -1,6 +1,5 @@
 #version 450
-
-#extension GL_EXT_debug_printf : enable
+//#extension GL_EXT_debug_printf : enable
 
 layout(push_constant) uniform constants 
 {
@@ -24,7 +23,6 @@ vec3 gVertices[3] =
 
 void main() 
 {
-    debugPrintfEXT("Hello from compute shader thread");
     gl_Position = vec4(gVertices[gl_VertexIndex], 1.0);
     fragColor = vertexColor;
 }
