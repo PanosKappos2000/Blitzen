@@ -74,8 +74,8 @@ namespace BlitCL
 
 
         using Iterator = DynamicArrayIterator<T>;
-        inline Iterator begin() { return Iterator(m_pBlock); }
-        inline Iterator end() { return Iterator(m_pBlock + m_size); }
+        inline Iterator begin() const { return Iterator(m_pBlock); }
+        inline Iterator end() const { return Iterator(m_pBlock + m_size); }
         inline Iterator cbegin() const { return Iterator(m_pBlock); }
         inline Iterator cend() const { return Iterator(m_pBlock + m_size); }
 

@@ -18,26 +18,32 @@ layout(set = 0, binding = 1, std430) readonly buffer VertexBuffer
 }vertexBuffer;
 
 // Meshlet used in the mesh shader to draw a surface or mesh
-struct Meshlet
+struct Cluster
 {
-    // Boudning sphere
+    // Bounding sphere for frustum culling
     vec3 center;
     float radius;
-    
-    // This is for backface culling
-    int8_t cone_axis[3];
-    int8_t cone_cutoff;
 
-    uint dataOffset; // dataOffset..dataOffset+vertexCount-1 stores vertex indices, indices are packed in 4b units after that
+    // This is for backface culling
+    int8_t coneAxisX;
+    int8_t coneAxisY;
+    int8_t coneAxisZ;
+    int8_t coneCutoff;
+
+    uint dataOffset; // Index into meshlet data
     uint8_t vertexCount;
     uint8_t triangleCount;
+    uint8_t padding0;
+    uint8_t padding1;
+
+    uint gpuAlignment;
 };
 
 // The single buffer that holds all meshlet data in the scene
-layout(set = 0, binding = 12, std430) readonly buffer MeshletBuffer
+layout(set = 0, binding = 12, std430) readonly buffer ClusterBuffer
 {
-    Meshlet meshlets[];
-}meshletBuffer;
+    Cluster clusters[];
+}clusterBuffer;
 
 layout(set = 0, binding = 13, std430) readonly buffer MeshletDataBuffer
 {
@@ -47,34 +53,28 @@ layout(set = 0, binding = 13, std430) readonly buffer MeshletDataBuffer
 // Holds a specific level of detail's index offset and count (as well as the according data for mesh shaders)
 struct MeshLod
 {
-    // These allow the compute shader to give the index count and index offset to draw indirect for this specific level of detail
     uint indexCount;
     uint firstIndex;
-
-    uint meshletCount;
-    uint firstMeshlet;
-
     float error;
+
+    uint clusterOffset;
+    uint clusterCount;
+
+    uint padding0;
 };
 
 struct Surface
 {
-    // Bounding sphere
-    vec3 center;
-    float radius;
+    vec3 center;     
+    float radius;            
 
-    // Holds up to 8 level of detail data structs
-    MeshLod lod[8];
-    
-    // Indicates the active elements of the above array, the lod index needs to be clamped between 0 and this value
-    uint8_t lodCount;
-
-    // The vertex offset is the same for every level of details and must be passed to the indirect commands buffer based on the renderer's structure
     uint vertexOffset;
 
-    uint materialTag;
+    uint materialID;
 
-    uint8_t postPass;
+    uint lodCount;       
+    uint padding0;      
+    MeshLod lod[8];
 };
 
 layout(set = 0, binding = 2, std430) readonly buffer SurfaceBuffer
@@ -140,22 +140,20 @@ struct RenderObject
     uint surfaceId;// Index into the surface buffer
 };
 
-// Holds an array of the above structs for every object in the scene. Passed to the GPU during load. Accessed using the objectId in the FinalIndirect buffer
+// TODO: Refactor the object buffers. There will be a single structure in the shader 
+// and the correct one will be accessed based on the pointer passed to push contants
 layout(set = 0, binding = 4, std430) readonly buffer ObjectBuffer
 {
     RenderObject objects[];
 }objectBuffer;
-
 layout(buffer_reference, std430) readonly buffer RenderObjectBuffer
 {
     RenderObject objects[];
 };
-
 layout(set = 0, binding = 14, std430) readonly buffer OnpcReflectiveObjectBuffer
 {
     RenderObject objects[];
 }onpcReflectiveObjectBuffer;
-
 layout(set = 0, binding = 15, std430) readonly buffer TransparentObjectBuffer
 {
     RenderObject objects[];
@@ -194,7 +192,6 @@ layout (set = 0, binding = 6, std430) readonly buffer MaterialBuffer
     Material materials[];
 }materialBuffer;
 
-// Temporary camera struct, I am going to make it more robust in the future
 layout(set = 0, binding = 0) uniform ViewData
 {
     // The view matrix is the most important responsibility of the camera and crucial for rendering

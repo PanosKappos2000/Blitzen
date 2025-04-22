@@ -8,13 +8,79 @@ namespace BlitzenVulkan
 {
 	constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
 
+    static uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma,
+        VulkanRenderer::FrameTools* frameToolList, VkSampler& textureSampler)
+    {
+        // Initializes VMA allocator which will be used to allocate all Vulkan resources
+        // Initialized here since textures can and will be given to Vulkan before the renderer is set up, and they need to be allocated
+        if (!CreateVmaAllocator(device, instance, pdv, vma, VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT))
+        {
+            BLIT_ERROR("Failed to create the vma allocator");
+            return 0;
+        }
+
+        auto pMemCrucials = MemoryCrucialHandles::GetInstance();
+        pMemCrucials->allocator = vma;
+        pMemCrucials->device = device;
+        pMemCrucials->instance = instance;
+
+        // This sampler will be used by all textures for now
+        // Initialized here since textures can and will be given to Vulkan before the renderer is set up
+        textureSampler = CreateSampler(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR,
+            VK_SAMPLER_ADDRESS_MODE_REPEAT);
+        if (textureSampler == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create texture sampler");
+            return 0;
+        }
+
+        // Success
+        return 1;
+    }
+
+    static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header,
+        BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
+        VkFormat& vulkanImageFormat, void* pData)
+    {
+        vulkanImageFormat = BlitzenVulkan::GetDDSVulkanFormat(header, header10);
+        if (vulkanImageFormat == VK_FORMAT_UNDEFINED)
+        {
+            return 0;
+        }
+
+        auto file = reinterpret_cast<FILE*>(handle.pHandle);
+        unsigned int blockSize =
+            (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK
+                || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK
+                || vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ?
+            8 : 16;
+        auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight,
+            header.dwMipMapCount, blockSize);
+        auto readSize = fread(pData, 1, imageSize, file);
+
+        // Checks for image read errors
+        if (!pData)
+        {
+            return 0;
+        }
+        if (readSize != imageSize)
+        {
+            return 0;
+        }
+
+        // Success
+        return 1;
+    }
+
     uint8_t VulkanRenderer::UploadTexture(void* pData, const char* filepath) 
     {
         // Checks if resource management has been setup
         if(!m_stats.bResourceManagementReady)
         {
             // Calls the function and checks if it succeeded. If it did not, it fails
-            SetupResourceManagement();
+            m_stats.bResourceManagementReady = 
+                SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, 
+                    m_frameToolsList, m_textureSampler.handle);
             if(!m_stats.bResourceManagementReady)
             {
                 BLIT_ERROR("Failed to setup resource management for Vulkan")
@@ -64,112 +130,35 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    bool VulkanRenderer::LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, 
-        BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle, 
-        VkFormat& vulkanImageFormat, void* pData)
+    static uint8_t RenderingAttachmentsInit(VkDevice device, VmaAllocator vma,
+        PushDescriptorImage& colorAttachment, VkRenderingAttachmentInfo& colorAttachmentInfo,
+        PushDescriptorImage& depthAttachment, VkRenderingAttachmentInfo& depthAttachmentInfo,
+        PushDescriptorImage& depthPyramid, uint8_t& depthPyramidMipCount, VkImageView* depthPyramidMips,
+        VkExtent2D drawExtent, VkExtent2D& depthPyramidExtent)
     {
-        vulkanImageFormat = BlitzenVulkan::GetDDSVulkanFormat(header, header10);
-
-		auto file = reinterpret_cast<FILE*>(handle.pHandle);
-
-        if (vulkanImageFormat == VK_FORMAT_UNDEFINED)
-            return false;
-
-        unsigned int blockSize =
-            (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK 
-                || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK
-                || vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 
-            8 : 16;
-
-        size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, 
-            header.dwMipMapCount, blockSize);
-
-        size_t readSize = fread(pData, 1, imageSize, file);
-
-        if (!pData)
-            return false;
-
-        if (readSize != imageSize)
-            return false;
-
-        return true;
-    }
-
-    void VulkanRenderer::SetupResourceManagement()
-    {
-        // Initializes VMA allocator which will be used to allocate all Vulkan resources
-        // Initialized here since textures can and will be given to Vulkan before the renderer is set up, and they need to be allocated
-        if(!CreateVmaAllocator(m_device, m_instance, m_physicalDevice, m_allocator, 
-        VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT))
-        {
-            BLIT_ERROR("Failed to create the vma allocator")
-            return;
-        }
-
-        auto pMemCrucials = MemoryCrucialHandles::GetInstance();
-        pMemCrucials->allocator = m_allocator;
-        pMemCrucials->device = m_device;
-        pMemCrucials->instance = m_instance;
-    
-        // This sampler will be used by all textures for now
-        // Initialized here since textures can and will be given to Vulkan before the renderer is set up
-        m_textureSampler.handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, 
-            VK_SAMPLER_ADDRESS_MODE_REPEAT);
-        if(m_textureSampler.handle == VK_NULL_HANDLE)
-        {
-            BLIT_ERROR("Failed to create texture sampler")
-            return;
-        }
-
-        // Creates command buffers and synchronization structures in the frame tools struct
-        // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
-        if (!FrameToolsInit())
-        {
-            BLIT_ERROR("Failed to create frame tools")
-            return;
-        }
-
-        // If it goes through everything, it updates the boolean
-        m_stats.bResourceManagementReady = 1;
-    }
-
-    uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight)
-    {
-        // Checks if resource management has been setup
-        if(!m_stats.bResourceManagementReady)
-        {
-            // Retry
-            SetupResourceManagement();
-            if(!m_stats.bResourceManagementReady)
-            {
-                BLIT_ERROR("Failed to setup resource management for Vulkan")
-                return 0;
-            }
-        }
         /*
             Color attachment handle and value configuration
         */
         // Color attachment sammpler will be used to copy to the swapchain image
-        if(!m_colorAttachment.SamplerInit(m_device, VK_FILTER_NEAREST, 
-            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr
-        ))
+        if (!colorAttachment.SamplerInit(device, VK_FILTER_NEAREST,
+            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr))
         {
-            BLIT_ERROR("Failed to create color attachment sampler")
+            BLIT_ERROR("Failed to create color attachment sampler");
             return 0;
         }
         // Create depth attachment image and image view
-        if(!CreatePushDescriptorImage(m_device, m_allocator, m_colorAttachment, 
-            {m_drawExtent.width, m_drawExtent.height, 1}, // extent
-            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage, 
-            1, VMA_MEMORY_USAGE_GPU_ONLY 
+        if (!CreatePushDescriptorImage(device, vma, colorAttachment,
+            { drawExtent.width, drawExtent.height, 1 }, // extent
+            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage,
+            1, VMA_MEMORY_USAGE_GPU_ONLY
         ))
         {
-            BLIT_ERROR("Failed to create color attachment image resource")
+            BLIT_ERROR("Failed to create color attachment image resource");
             return 0;
         }
         // Rendering attachment info, most values stay constant
-        CreateRenderingAttachmentInfo(m_colorAttachmentInfo, m_colorAttachment.image.imageView,
-            ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD ,VK_ATTACHMENT_STORE_OP_STORE,
+        CreateRenderingAttachmentInfo(colorAttachmentInfo, colorAttachment.image.imageView,
+            ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
             ce_WindowClearColor);
         /*
             Depth attachement value and handle configuration
@@ -178,605 +167,481 @@ namespace BlitzenVulkan
         VkSamplerReductionModeCreateInfo reductionInfo{};
         reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
         reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
-        if(!m_depthAttachment.SamplerInit(m_device, 
-            VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST, 
-            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo
-        ))
+        if (!depthAttachment.SamplerInit(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST,
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo))
         {
-            BLIT_ERROR("Failed to create depth attachment sampler")
+            BLIT_ERROR("Failed to create depth attachment sampler");
             return 0;
         }
         // Creates rendering attachment image resource for depth attachment
-        if(!CreatePushDescriptorImage(m_device, m_allocator, m_depthAttachment, 
-            {m_drawExtent.width, m_drawExtent.height, 1}, 
-            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage, 
-            1, VMA_MEMORY_USAGE_GPU_ONLY
-        ))
+        if (!CreatePushDescriptorImage(device, vma, depthAttachment,
+            { drawExtent.width, drawExtent.height, 1 },
+            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage,
+            1, VMA_MEMORY_USAGE_GPU_ONLY))
         {
-            BLIT_ERROR("Failed to create depth attachment image resource")
+            BLIT_ERROR("Failed to create depth attachment image resource");
             return 0;
         }
         // Rendering attachment info info, most values stay constant
-        CreateRenderingAttachmentInfo(m_depthAttachmentInfo, m_depthAttachment.image.imageView,
-            ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, 
+        CreateRenderingAttachmentInfo(depthAttachmentInfo, depthAttachment.image.imageView,
+            ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
             { 0, 0, 0, 0 }, { 0, 0 });
         // Create the depth pyramid image and its mips that will be used for occlusion culling
-        if(!CreateDepthPyramid(m_depthPyramid, m_depthPyramidExtent, 
-            m_depthPyramidMips, m_depthPyramidMipLevels, // depth pyramid mip view and mip count
-            m_drawExtent, m_device, m_allocator
-        ))
+        if (!CreateDepthPyramid(depthPyramid, depthPyramidExtent,
+            depthPyramidMips, depthPyramidMipCount,
+            drawExtent, device, vma))
         {
-            BLIT_ERROR("Failed to create the depth pyramid")
+            BLIT_ERROR("Failed to create the depth pyramid");
             return 0;
         }
 
-
-
-        // Creates all know descriptor layouts for all known pipelines
-        if(!CreateDescriptorLayouts())
-        {
-            BLIT_ERROR("Failed to create descriptor set layouts")
-            return 0;
-        }
-
-
-
-        // Creates the uniform buffers
-        if(!VarBuffersInit(pResources->transforms))
-        {
-            BLIT_ERROR("Failed to create uniform buffers")
-            return 0;
-        }
-
-        // Upload static data to gpu (though some of these might not be static in the future)
-        if(!UploadDataToGPU(pResources))
-        {
-            BLIT_ERROR("Failed to upload data to the GPU")
-            return 0;
-        }
-
-
-        
-        // Initial draw cull shader compute pipeline
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/InitialDrawCull.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
-            m_drawCullLayout.handle, &m_initialDrawCullPipeline.handle 
-        ))
-        {
-            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program")
-            return 0;
-        }
-        
-        // Generate depth pyramid compute shader
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv", 
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
-            m_depthPyramidGenerationLayout.handle, &m_depthPyramidGenerationPipeline.handle
-        ))
-        {
-            BLIT_ERROR("Failed to create DepthPyramidGeneration.comp shader program")
-            return 0;
-        }
-        
-        // Late culling shader compute pipeline
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/LateDrawCull.comp.glsl.spv", 
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_drawCullLayout.handle, &m_lateDrawCullPipeline.handle
-        ))
-        {
-            BLIT_ERROR("Failed to create LateDrawCull.comp shader program")
-            return 0;
-        }
-
-        // Redundant shader
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/OnpcDrawCull.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle, 
-            &m_onpcDrawCullPipeline.handle))
-        {
-            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program")
-            return 0;
-        }
-
-        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/TransparentDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", m_drawCullLayout.handle,
-            &m_transparentDrawCullPipeline.handle))
-        {
-            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program");
-            return 0;
-        }
-
-        // Creates the generate presentation image compute shader program
-        if(!CreateComputeShaderProgram(m_device, "VulkanShaders/GeneratePresentation.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            m_generatePresentationLayout.handle, &m_generatePresentationPipeline.handle   
-        ))
-        {
-            BLIT_ERROR("Failed to create GeneratePresentation.comp shader program")
-            return 0;
-        }
-        
-        // Create the graphics pipeline object 
-        if(!SetupMainGraphicsPipeline())
-        {
-            BLIT_ERROR("Failed to create the primary graphics pipeline object")
-            return 0;
-        }
-
-        // Updates the reference to the depth pyramid width held by the camera
-        pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
-        pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
-
-        // Since most of these descriptor writes are static they can be initialized here
-        pushDescriptorWritesGraphics[ce_viewDataWriteElement]
-            = m_varBuffers[0].viewDataBuffer.descriptorWrite;
-        pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite; 
-        pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite;
-        pushDescriptorWritesGraphics[3] = m_varBuffers[0].transformBuffer.descriptorWrite;
-        pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite; 
-        pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-        pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-        pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
-
-        pushDescriptorWritesCompute[ce_viewDataWriteElement] = 
-            m_varBuffers[0].viewDataBuffer.descriptorWrite;
-        pushDescriptorWritesCompute[1] = m_currentStaticBuffers.renderObjectBuffer.descriptorWrite; 
-        pushDescriptorWritesCompute[2] = m_varBuffers[0].transformBuffer.descriptorWrite;
-        pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-        pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite; 
-        pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite; 
-        pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite; 
-        pushDescriptorWritesCompute[7] = {};// Will hold the depth pyramid for late culling compute shaders
-
+        // Success
         return 1;
     }
 
-    uint8_t VulkanRenderer::FrameToolsInit()
+    static VkDescriptorSetLayout CreateGPUBufferPushDescriptorBindings(VkDevice device, VkDescriptorSetLayoutBinding* pBindings,
+        uint32_t bindingCount, VulkanRenderer::VarBuffers& varBuffers, VulkanRenderer::StaticBuffers& staticBuffers,
+        uint8_t bRaytracing, uint8_t bMeshShaders)
     {
-        VkCommandPoolCreateInfo commandPoolsInfo {};
-        commandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;// Allows reset
-        commandPoolsInfo.queueFamilyIndex = m_graphicsQueue.index;
+        uint32_t currentId = 0;
+        // This logic is terrible and needs to be fixed, TODO
+        uint32_t viewDataBindingID = currentId++;
+        uint32_t vertexBindingID = currentId++;
+        uint32_t depthImageBindingID = currentId++;
+        uint32_t lodBufferBindingId = currentId++;
+        uint32_t transformsBindingID = currentId++;
+        uint32_t materialsBindingID = currentId++;
+        uint32_t indirectCommandsBindingID = currentId++;
+        uint32_t indirectCountBindingID = currentId++;
+        uint32_t objectVisibilitiesBindingID = currentId++;
+        uint32_t primitivesBindingID = currentId++;
+        uint32_t clustersBindingID = currentId++;
+        uint32_t clusterIndicesBindingID = currentId++;
+        uint32_t onpcObjectsBindingID = currentId++;
 
-		VkCommandPoolCreateInfo dedicatedCommandPoolsInfo{};
-		dedicatedCommandPoolsInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		dedicatedCommandPoolsInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        dedicatedCommandPoolsInfo.queueFamilyIndex = m_transferQueue.index;
-
-        VkCommandBufferAllocateInfo commandBuffersInfo{};
-        commandBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        commandBuffersInfo.pNext = nullptr;
-        commandBuffersInfo.commandBufferCount = 1;
-        commandBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-        VkCommandBufferAllocateInfo dedicatedCmbInfo{};
-		dedicatedCmbInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		dedicatedCmbInfo.pNext = nullptr;
-		dedicatedCmbInfo.commandBufferCount = 1;
-		dedicatedCmbInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        fenceInfo.pNext = nullptr;
-
-        // Semaphore will be the same for both semaphores
-        VkSemaphoreCreateInfo semaphoresInfo{};
-        semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoresInfo.flags = 0;
-        semaphoresInfo.pNext = nullptr;
-
-        // Creates a set of frame tools for each possible frame in flight
-        for(size_t i = 0; i < ce_framesInFlight; ++i)
+        uint32_t tlasBindingID;
+        if (bRaytracing)
         {
-            FrameTools& frameTools = m_frameToolsList[i];
-
-            // Main command buffer
-            VkResult commandPoolResult = vkCreateCommandPool(
-                m_device, &commandPoolsInfo, 
-                m_pCustomAllocator, &frameTools.mainCommandPool.handle
-            );
-            if(commandPoolResult != VK_SUCCESS)
-                return 0;
-            commandBuffersInfo.commandPool = frameTools.mainCommandPool.handle;
-            VkResult commandBufferResult = vkAllocateCommandBuffers(
-                m_device, &commandBuffersInfo, &frameTools.commandBuffer
-            );
-            if(commandBufferResult != VK_SUCCESS)
-                return 0;
-
-            // Dedicated command buffer
-            if (vkCreateCommandPool(m_device, &dedicatedCommandPoolsInfo,
-				nullptr, &frameTools.transferCommandPool.handle) != VK_SUCCESS
-            )
-                return 0;
-			dedicatedCmbInfo.commandPool = frameTools.transferCommandPool.handle;
-			if (vkAllocateCommandBuffers(m_device, &dedicatedCmbInfo, 
-                &frameTools.transferCommandBuffer) != VK_SUCCESS
-            )
-				return 0;
-
-            // Fence that stops commands from being recorded with a used command buffer
-            VkResult fenceResult = vkCreateFence(
-                m_device, &fenceInfo, 
-                m_pCustomAllocator, &frameTools.inFlightFence.handle
-            );
-            if(fenceResult != VK_SUCCESS)
-                return 0;
-
-			// Samphore that command buffer from being submitted before the image is acquired
-            VkResult imageSemaphoreResult = vkCreateSemaphore(
-                m_device, &semaphoresInfo, 
-                m_pCustomAllocator, &frameTools.imageAcquiredSemaphore.handle
-            );
-            if(imageSemaphoreResult != VK_SUCCESS)
-                return 0;
-
-            // Semaphore that blocks presentation before the commands are all executed
-            VkResult presentSemaphoreResult = vkCreateSemaphore(
-                m_device, &semaphoresInfo, 
-                m_pCustomAllocator, &frameTools.readyToPresentSemaphore.handle
-            );
-            if(presentSemaphoreResult != VK_SUCCESS)
-                return 0;
-
-            // Semaphore to wait for buffer to be updated
-			VkResult bufferSemaphoreResult = vkCreateSemaphore(
-				m_device, &semaphoresInfo,
-				m_pCustomAllocator, &frameTools.buffersReadySemaphore.handle
-			);
-			if (bufferSemaphoreResult != VK_SUCCESS)
-				return 0;
+            tlasBindingID = currentId++;
         }
-
-        return 1;
-    }
-
-    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
-        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
-        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator
-    )
-    {
-		const VkFormat depthPyramidFormat = VK_FORMAT_R32_SFLOAT;
-        const VkImageUsageFlags depthPyramidUsage =
-            VK_IMAGE_USAGE_SAMPLED_BIT | // When a depth pyramid mip is passed as the dst image, it is sampled
-            VK_IMAGE_USAGE_STORAGE_BIT; // When a depth pyramid mip is passed as the src image, it is a storage image
-
-    
-        // Conservative starting extent
-        depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
-        depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
-    
-        // Mip level count
-		depthPyramidMipLevels = BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
-    
-        // Creates the primary depth pyramid image
-        if(!CreatePushDescriptorImage(device, allocator, depthPyramidImage, 
-            {depthPyramidExtent.width, depthPyramidExtent.height, 1}, 
-            depthPyramidFormat, depthPyramidUsage, depthPyramidMipLevels, 
-            VMA_MEMORY_USAGE_GPU_ONLY
-        ))
-            return 0;
-    
-        // Create the mip levels of the depth pyramid
-        for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
+        uint32_t dispatchClusterCommandsBindingID;
+        uint32_t clusterCountBindingID;
+        if (BlitzenEngine::Ce_BuildClusters)
         {
-            if(!CreateImageView(device, depthPyramidMips[size_t(i)], 
-                depthPyramidImage.image.image, depthPyramidFormat, i, 1
-            ))
-                return 0;
+            dispatchClusterCommandsBindingID = currentId++;
+            clusterCountBindingID = currentId++;
         }
-    
-        return 1;
-    }
-
-    uint8_t VulkanRenderer::CreateDescriptorLayouts()
-    {
-        /*
-            The first descriptor set layout that is going to be configured is the push descriptor set layout.
-            It is used by both compute pipelines and graphics pipelines
-        */
-
-        // Binding used by both compute and graphics pipelines, to access global data like the view matrix
-        VkDescriptorSetLayoutBinding viewDataLayoutBinding{};
-        // Binding used by both compute and graphics pipelines, to access the vertex buffer
-        VkDescriptorSetLayoutBinding vertexBufferBinding{};
-        // Binding used for indirect commands in mesh shaders
-        VkDescriptorSetLayoutBinding indirectTaskBufferBinding{};
-        // Binding used for surface storage buffer, accessed by either mesh or vertex shader and compute
-        VkDescriptorSetLayoutBinding surfaceBufferBinding{};
-        // Binding used for clusters. Cluster can be used by either mesh or vertex shader and compute shaders
-        VkDescriptorSetLayoutBinding meshletBufferBinding{};
-        // Binding used for meshlet indices
-        VkDescriptorSetLayoutBinding meshletDataBinding{};
 
         // Every binding in the pushDescriptorSetLayout will have one descriptor
         constexpr uint32_t descriptorCountOfEachPushDescriptorLayoutBinding = 1;
 
-        // Descriptor set layout binding for view data uniform buffer descriptor
-        VkShaderStageFlags viewDataShaderStageFlags = m_stats.meshShaderSupport ? 
+        auto viewDataShaderStageFlags = bMeshShaders ?
             VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT :
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-        CreateDescriptorSetLayoutBinding(
-            viewDataLayoutBinding, 
-            m_varBuffers[0].viewDataBuffer.descriptorBinding, 
+        CreateDescriptorSetLayoutBinding(pBindings[viewDataBindingID],
+            varBuffers.viewDataBuffer.descriptorBinding,
             descriptorCountOfEachPushDescriptorLayoutBinding,
-            m_varBuffers[0].viewDataBuffer.descriptorType, 
+            varBuffers.viewDataBuffer.descriptorType,
             viewDataShaderStageFlags);
 
-        // Descriptor set layout binding for vertex buffer
-        VkShaderStageFlags vertexBufferShaderStageFlags = m_stats.meshShaderSupport ? 
+        auto vertexBufferShaderStageFlags = bMeshShaders ?
             VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
             VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(
-            vertexBufferBinding, 
-            m_currentStaticBuffers.vertexBuffer.descriptorBinding, 
+        CreateDescriptorSetLayoutBinding(pBindings[vertexBindingID],
+            staticBuffers.vertexBuffer.descriptorBinding,
             descriptorCountOfEachPushDescriptorLayoutBinding,
-            m_currentStaticBuffers.vertexBuffer.descriptorType, 
+            staticBuffers.vertexBuffer.descriptorType,
             vertexBufferShaderStageFlags);
 
-        // Descriptor set layout binding for surface SSBO
-        VkShaderStageFlags surfaceBufferShaderStageFlags = m_stats.meshShaderSupport ?
+        auto surfaceBufferShaderStageFlags = bMeshShaders ?
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(
-            surfaceBufferBinding, 
-            m_currentStaticBuffers.surfaceBuffer.descriptorBinding, 
+        CreateDescriptorSetLayoutBinding(pBindings[primitivesBindingID],
+            staticBuffers.surfaceBuffer.descriptorBinding,
             descriptorCountOfEachPushDescriptorLayoutBinding,
-            m_currentStaticBuffers.surfaceBuffer.descriptorType, 
+            staticBuffers.surfaceBuffer.descriptorType,
             surfaceBufferShaderStageFlags);
 
-        // Descriptor set layout binding for cluster / meshlet SSBO
-        VkShaderStageFlags clusterBufferShaderStageFlags = m_stats.meshShaderSupport ?
+        auto clusterBufferShaderStageFlags = bMeshShaders ?
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(meshletBufferBinding, 
-            m_currentStaticBuffers.meshletBuffer.descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.meshletBuffer.descriptorType, 
+        CreateDescriptorSetLayoutBinding(pBindings[clustersBindingID],
+            staticBuffers.clusterBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.clusterBuffer.descriptorType,
             clusterBufferShaderStageFlags);
 
-        VkShaderStageFlags clusterDataBufferShaderStageFlags = m_stats.meshShaderSupport ? 
+        auto clusterDataBufferShaderStageFlags = bMeshShaders ?
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(
-            meshletDataBinding, 
-            m_currentStaticBuffers.meshletDataBuffer.descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.meshletDataBuffer.descriptorType, 
-            clusterDataBufferShaderStageFlags
-        );
+        CreateDescriptorSetLayoutBinding(pBindings[clusterIndicesBindingID],
+            staticBuffers.meshletDataBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.meshletDataBuffer.descriptorType,
+            clusterDataBufferShaderStageFlags);
 
-        // If mesh shaders are used the bindings needs to be accessed by mesh shaders, otherwise they will be accessed by vertex shader stage
-        if(m_stats.meshShaderSupport)
-            CreateDescriptorSetLayoutBinding(indirectTaskBufferBinding, 
-                m_currentStaticBuffers.indirectTaskBuffer.descriptorBinding, 
-                descriptorCountOfEachPushDescriptorLayoutBinding, 
-                m_currentStaticBuffers.indirectTaskBuffer.descriptorType, 
-                VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT); 
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            CreateDescriptorSetLayoutBinding(pBindings[dispatchClusterCommandsBindingID],
+                staticBuffers.clusterDispatchBuffer.descriptorBinding,
+                descriptorCountOfEachPushDescriptorLayoutBinding,
+                staticBuffers.clusterDispatchBuffer.descriptorType,
+                VK_SHADER_STAGE_COMPUTE_BIT);
 
-        // Sets the binding for the depth image
-        VkDescriptorSetLayoutBinding depthImageBinding{};
-        CreateDescriptorSetLayoutBinding(depthImageBinding, 3,
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 
-            VK_SHADER_STAGE_COMPUTE_BIT);
+            CreateDescriptorSetLayoutBinding(pBindings[clusterCountBindingID],
+                staticBuffers.clusterCountBuffer.descriptorBinding,
+                descriptorCountOfEachPushDescriptorLayoutBinding,
+                staticBuffers.clusterCountBuffer.descriptorType,
+                VK_SHADER_STAGE_COMPUTE_BIT);
+        }
 
-        // Sets the binding for the render object buffer
-        VkDescriptorSetLayoutBinding renderObjectBufferBinding{};
-        CreateDescriptorSetLayoutBinding(renderObjectBufferBinding, 
-            m_currentStaticBuffers.renderObjectBuffer.descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.renderObjectBuffer.descriptorType, 
+        CreateDescriptorSetLayoutBinding(pBindings[depthImageBindingID],
+            Ce_DepthPyramidImageBindingID, descriptorCountOfEachPushDescriptorLayoutBinding,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        CreateDescriptorSetLayoutBinding(pBindings[lodBufferBindingId],
+            staticBuffers.lodBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.lodBuffer.descriptorType,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-        // Set the binding of the transform buffer
-        VkDescriptorSetLayoutBinding transformBufferBinding{};
-        CreateDescriptorSetLayoutBinding(transformBufferBinding, 
-            m_varBuffers[0].transformBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_varBuffers[0].transformBuffer.descriptorType,
+        CreateDescriptorSetLayoutBinding(pBindings[transformsBindingID],
+            varBuffers.transformBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            varBuffers.transformBuffer.descriptorType,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-        // Sets the binding of the material buffer
-        VkDescriptorSetLayoutBinding materialBufferBinding{};
-        CreateDescriptorSetLayoutBinding(materialBufferBinding, 
-            m_currentStaticBuffers.materialBuffer.descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.materialBuffer.descriptorType, 
+        CreateDescriptorSetLayoutBinding(pBindings[materialsBindingID],
+            staticBuffers.materialBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.materialBuffer.descriptorType,
             VK_SHADER_STAGE_FRAGMENT_BIT);
 
-        // Sets the binding of the indirect draw buffer
-        VkDescriptorSetLayoutBinding indirectDrawBufferBinding{};
-        CreateDescriptorSetLayoutBinding(indirectDrawBufferBinding, 
-            m_currentStaticBuffers.indirectDrawBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.indirectDrawBuffer.descriptorType, 
+        CreateDescriptorSetLayoutBinding(pBindings[indirectCommandsBindingID],
+            staticBuffers.indirectDrawBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.indirectDrawBuffer.descriptorType,
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
 
-        // Sets the binding of the indirect count buffer
-        VkDescriptorSetLayoutBinding indirectDrawCountBinding{};
-        CreateDescriptorSetLayoutBinding(indirectDrawCountBinding, 
-            m_currentStaticBuffers.indirectCountBuffer.descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.indirectCountBuffer.descriptorType, 
+        CreateDescriptorSetLayoutBinding(pBindings[indirectCountBindingID],
+            staticBuffers.indirectCountBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.indirectCountBuffer.descriptorType,
             VK_SHADER_STAGE_COMPUTE_BIT);
 
-        // Sets the binding of the visibility buffer
-        VkDescriptorSetLayoutBinding visibilityBufferBinding{};
-        CreateDescriptorSetLayoutBinding(visibilityBufferBinding, 
-            m_currentStaticBuffers.visibilityBuffer.descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.visibilityBuffer.descriptorType, 
+        CreateDescriptorSetLayoutBinding(pBindings[objectVisibilitiesBindingID],
+            staticBuffers.visibilityBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.visibilityBuffer.descriptorType,
             VK_SHADER_STAGE_COMPUTE_BIT);
 
-        // Oblique near plance clipping objects
-        VkDescriptorSetLayoutBinding onpcRenderObjectBufferBinding{};
-        CreateDescriptorSetLayoutBinding(onpcRenderObjectBufferBinding,
-            m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorType,
+        CreateDescriptorSetLayoutBinding(pBindings[onpcObjectsBindingID],
+            staticBuffers.onpcReflectiveRenderObjectBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.onpcReflectiveRenderObjectBuffer.descriptorType,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-        // Acceleration structure binding 
-        VkDescriptorSetLayoutBinding accelerationStructureTlasBinding{};
-        CreateDescriptorSetLayoutBinding(accelerationStructureTlasBinding, 
-            m_currentStaticBuffers.tlasBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            m_currentStaticBuffers.tlasBuffer.descriptorType, 
-            VK_SHADER_STAGE_FRAGMENT_BIT);
-        
-        // All bindings combined to create the global shader data descriptor set layout
-        VkDescriptorSetLayoutBinding shaderDataBindings[15] = 
+        if (bRaytracing)
         {
-            viewDataLayoutBinding, 
-            vertexBufferBinding, 
-            depthImageBinding, 
-            renderObjectBufferBinding, 
-            transformBufferBinding, 
-            materialBufferBinding, 
-            indirectDrawBufferBinding, 
-            indirectDrawCountBinding, 
-            visibilityBufferBinding, 
-            surfaceBufferBinding, 
-            meshletBufferBinding, 
-            meshletDataBinding,
-            onpcRenderObjectBufferBinding, 
-            accelerationStructureTlasBinding,
-            indirectTaskBufferBinding
-        };
-        m_pushDescriptorBufferLayout.handle = CreateDescriptorSetLayout(m_device, 
-            m_stats.bRayTracingSupported ? 
-            BLIT_ARRAY_SIZE(shaderDataBindings) - 1 : // Indirect task buffer not added for now
-            BLIT_ARRAY_SIZE(shaderDataBindings) - 2, // acceleration structure also removed when raytracing is not active
-            shaderDataBindings, 
+            CreateDescriptorSetLayoutBinding(pBindings[tlasBindingID],
+                staticBuffers.tlasBuffer.descriptorBinding,
+                descriptorCountOfEachPushDescriptorLayoutBinding,
+                staticBuffers.tlasBuffer.descriptorType,
+                VK_SHADER_STAGE_FRAGMENT_BIT);
+        }
+
+        return CreateDescriptorSetLayout(device, bindingCount, pBindings,
             VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-        if(m_pushDescriptorBufferLayout.handle == VK_NULL_HANDLE)
+    }
+
+    static uint8_t CreateDescriptorLayouts(VkDevice device, VkDescriptorSetLayout& ssboPushDescriptorLayout,
+        VulkanRenderer::VarBuffers& varBuffers, VulkanRenderer::StaticBuffers& staticBuffers,
+        uint8_t bRaytracing, uint8_t bMeshShaders, uint32_t textureCount, VkDescriptorSetLayout& textureSetLayout,
+        const PushDescriptorImage& depthAttachment, const PushDescriptorImage& depthPyramid,
+        VkDescriptorSetLayout& depthPyramidSetLayout, const PushDescriptorImage& colorAttachment,
+        VkDescriptorSetLayout& presentationSetLayout)
+    {
+        constexpr uint32_t descriptorCountOfEachPushDescriptorLayoutBinding = 1;
+
+        // The big GPU push descriptor set layout. Holds most buffers
+        BlitCL::DynamicArray<VkDescriptorSetLayoutBinding> gpuPushDescriptorBindings{ 13, {} };
+        if (bRaytracing)
+        {
+            gpuPushDescriptorBindings.PushBack({});
+        }
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            gpuPushDescriptorBindings.PushBack({});
+            gpuPushDescriptorBindings.PushBack({});
+        }
+        ssboPushDescriptorLayout = CreateGPUBufferPushDescriptorBindings(device,
+            gpuPushDescriptorBindings.Data(), (uint32_t)gpuPushDescriptorBindings.GetSize(),
+            varBuffers, staticBuffers, bRaytracing, bMeshShaders);
+        if (ssboPushDescriptorLayout == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create GPU buffer push descriptor layout");
             return 0;
-
-        /*
-            End of descriptor set layout configurations.
-        */
-
-
-
-
-        /*
-            The next descriptor set layout is the texture descriptor set layout.
-            All descriptors / textures held by it will be allocated at setup time.
-            Used by the fragment shader(s) only
-        */
+        }
 
         // Descriptor set layout for textures
         VkDescriptorSetLayoutBinding texturesLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0,static_cast<uint32_t>(textureCount), 
+        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, 0, static_cast<uint32_t>(textureCount),
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-        m_textureDescriptorSetlayout.handle = CreateDescriptorSetLayout(m_device, 1, &texturesLayoutBinding);
-        if(m_textureDescriptorSetlayout.handle == VK_NULL_HANDLE)
+        textureSetLayout = CreateDescriptorSetLayout(device, 1, &texturesLayoutBinding);
+        if (textureSetLayout == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create texture descriptor set layout");
             return 0;
+        }
 
-        /*
-            Texture descriptor set layout complete.
-        */
-
-
-
-
-        /*
-            The descriptor set layout below is for the src and dst images of the debug pyramid.
-            Used by the depth generation compute shader only.
-        */
-
-        // Binding for input image in depth pyramid creation shader
-        VkDescriptorSetLayoutBinding inImageLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(inImageLayoutBinding, m_depthPyramid.m_descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, m_depthPyramid.m_descriptorType, 
+        // Depth pyramid generation layout
+        constexpr uint32_t Ce_DepthPyramidGenerationBindingCount = 2;
+        BlitCL::StaticArray<VkDescriptorSetLayoutBinding, Ce_DepthPyramidGenerationBindingCount>
+            depthPyramidBindings{ {} };
+        CreateDescriptorSetLayoutBinding(depthPyramidBindings[0], depthPyramid.m_descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, depthPyramid.m_descriptorType,
             VK_SHADER_STAGE_COMPUTE_BIT);
-
-        // Bindng for output image in depth pyramid creation shader
-        VkDescriptorSetLayoutBinding outImageLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(
-            outImageLayoutBinding, 
-            m_depthAttachment.m_descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            m_depthAttachment.m_descriptorType, 
-            VK_SHADER_STAGE_COMPUTE_BIT
-        );
-
-        // Combine the bindings for the final descriptor layout
-        VkDescriptorSetLayoutBinding storageImageBindings[2] = 
+        CreateDescriptorSetLayoutBinding(depthPyramidBindings[1], depthAttachment.m_descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, depthAttachment.m_descriptorType,
+            VK_SHADER_STAGE_COMPUTE_BIT);
+        depthPyramidSetLayout = CreateDescriptorSetLayout(device, Ce_DepthPyramidGenerationBindingCount,
+            depthPyramidBindings.Data(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        if (depthPyramidSetLayout == VK_NULL_HANDLE)
         {
-            inImageLayoutBinding, outImageLayoutBinding
-        };
-        m_depthPyramidDescriptorLayout.handle = 
-            CreateDescriptorSetLayout(m_device, 2, storageImageBindings, 
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-        if(m_depthPyramidDescriptorLayout.handle == VK_NULL_HANDLE)
-            return 0;
+            BLIT_ERROR("Failed to create depth pyramid descriptor set layout")
+                return 0;
+        }
 
-        /*
-            Depth pyramid descriptor set layout complete.
-        */
-
-
-
-        /*
-            Descriptor used for generate presentation image. Holds the color attachment sampler and the presentation image
-        */
-
-        VkDescriptorSetLayoutBinding presentImageLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(presentImageLayoutBinding, 0, 1, 
+        // Generate presentation image layout
+        constexpr uint32_t Ce_PresentationGenerationBindingCount = 2;
+        BlitCL::StaticArray<VkDescriptorSetLayoutBinding, Ce_DepthPyramidGenerationBindingCount>
+            presentGenerationBindings{ {} };
+        CreateDescriptorSetLayoutBinding(presentGenerationBindings[0],
+            0, descriptorCountOfEachPushDescriptorLayoutBinding,
             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-        VkDescriptorSetLayoutBinding colorAttachmentSamplerLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(colorAttachmentSamplerLayoutBinding, 
-            m_colorAttachment.m_descriptorBinding, 
-            descriptorCountOfEachPushDescriptorLayoutBinding, 
-            m_colorAttachment.m_descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
-        VkDescriptorSetLayoutBinding generatePresentationSetLayoutBindings[2] = 
+        CreateDescriptorSetLayoutBinding(presentGenerationBindings[1],
+            colorAttachment.m_descriptorBinding, descriptorCountOfEachPushDescriptorLayoutBinding,
+            colorAttachment.m_descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
+        presentationSetLayout = CreateDescriptorSetLayout(device,
+            Ce_PresentationGenerationBindingCount, presentGenerationBindings.Data(),
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        if (presentationSetLayout == VK_NULL_HANDLE)
         {
-            presentImageLayoutBinding, 
-            colorAttachmentSamplerLayoutBinding
-        };
-        m_generatePresentationImageSetLayout.handle = CreateDescriptorSetLayout(m_device, 
-            2, generatePresentationSetLayoutBindings, 
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR
+            BLIT_ERROR("Failed to create present image generation layout")
+                return 0;
+        }
+
+        // Success 
+        return 1;
+    }
+
+    static uint8_t VarBuffersInit(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue,
+        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms, VulkanRenderer::VarBuffers* varBuffers)
+    {
+        for (size_t i = 0; i < ce_framesInFlight; ++i)
+        {
+            auto& buffers = varBuffers[i];
+
+            // Creates the uniform buffer for view data
+            if (!CreateBuffer(vma, buffers.viewDataBuffer.buffer,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
+                sizeof(BlitzenEngine::CameraViewData), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create view data buffer");
+                return 0;
+            }
+            // Persistently mapped pointer
+            buffers.viewDataBuffer.pData =
+                reinterpret_cast<BlitzenEngine::CameraViewData*>(
+                    buffers.viewDataBuffer.buffer.allocation->GetMappedData());
+            // Descriptor write. Only thing that changes per frame is buffer info
+            WriteBufferDescriptorSets(buffers.viewDataBuffer.descriptorWrite,
+                buffers.viewDataBuffer.bufferInfo, buffers.viewDataBuffer.descriptorType,
+                buffers.viewDataBuffer.descriptorBinding,
+                buffers.viewDataBuffer.buffer.bufferHandle);
+
+            // Transform buffer is also dynamic
+            auto transformBufferSize
+            {
+                SetupPushDescriptorBuffer(device, vma,buffers.transformBuffer,
+                    buffers.transformStagingBuffer, transforms.GetSize(),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    transforms.Data())
+            };
+            if (transformBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create transform buffer");
+                return 0;
+            }
+            // Persistently mapped pointer (staging buffer)
+            buffers.pTransformData = reinterpret_cast<BlitzenEngine::MeshTransform*>(
+                buffers.transformStagingBuffer.allocationInfo.pMappedData);
+            // Records command to copy staging buffer data to GPU buffers
+            BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+            CopyBufferToBuffer(commandBuffer, buffers.transformStagingBuffer.bufferHandle,
+                buffers.transformBuffer.buffer.bufferHandle, transformBufferSize, 0, 0);
+            SubmitCommandBuffer(queue, commandBuffer);
+            vkQueueWaitIdle(queue);
+        }
+
+        return 1;
+    }
+
+    static void CopyStaticBufferDataToGPUBuffers(VkCommandBuffer commandBuffer, VkQueue queue,
+        VulkanRenderer::StaticBuffers& currentStaticBuffers,
+        VkBuffer stagingVertexBuffer, VkDeviceSize vertexBufferSize,
+        VkBuffer stagingIndexBuffer, VkDeviceSize indexBufferSize,
+        VkBuffer renderObjectStagingBuffer, VkDeviceSize renderObjectBufferSize,
+        VkBuffer transparentObjectStagingBuffer, VkDeviceSize transparentRenderBufferSize,
+        VkBuffer onpcRenderObjectStagingBuffer, VkDeviceSize onpcRenderObjectBufferSize,
+        VkBuffer surfaceStagingBuffer, VkDeviceSize surfaceBufferSize,
+        VkBuffer materialStagingBuffer, VkDeviceSize materialBufferSize,
+        VkDeviceSize visibilityBufferSize,
+        VkBuffer clusterStagingBuffer, VkDeviceSize clusterBufferSize,
+        VkBuffer clusterIndicesStagingBuffer, VkDeviceSize clusterIndicesBufferSize)
+    {
+        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        // Vertex data copy
+        CopyBufferToBuffer(commandBuffer, stagingVertexBuffer,
+            currentStaticBuffers.vertexBuffer.buffer.bufferHandle,
+            vertexBufferSize, 0, 0);
+
+        // Index data copy
+        CopyBufferToBuffer(commandBuffer, stagingIndexBuffer,
+            currentStaticBuffers.indexBuffer.bufferHandle,
+            indexBufferSize, 0, 0);
+
+        // Render objects
+        CopyBufferToBuffer(commandBuffer, renderObjectStagingBuffer,
+            currentStaticBuffers.renderObjectBuffer.bufferHandle,
+            renderObjectBufferSize, 0, 0);
+
+        if (transparentRenderBufferSize != 0)
+        {
+            CopyBufferToBuffer(commandBuffer, transparentObjectStagingBuffer,
+                currentStaticBuffers.transparentRenderObjectBuffer.bufferHandle,
+                transparentRenderBufferSize, 0, 0);
+        }
+
+        // Render objects that use Oblique Near-Plane Clipping
+        if (onpcRenderObjectBufferSize != 0)
+        {
+            CopyBufferToBuffer(commandBuffer, onpcRenderObjectStagingBuffer,
+                currentStaticBuffers.onpcReflectiveRenderObjectBuffer.buffer.bufferHandle,
+                onpcRenderObjectBufferSize, 0, 0);
+        }
+
+        // Primitive surfaces
+        CopyBufferToBuffer(commandBuffer, surfaceStagingBuffer,
+            currentStaticBuffers.surfaceBuffer.buffer.bufferHandle,
+            surfaceBufferSize, 0, 0);
+
+        // Materials
+        CopyBufferToBuffer(commandBuffer, materialStagingBuffer,
+            currentStaticBuffers.materialBuffer.buffer.bufferHandle,
+            materialBufferSize, 0, 0);
+
+        // Visibility buffer will start with only zeroes. The first frame will do noting, but that should be fine
+        vkCmdFillBuffer(commandBuffer, currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
+            0, visibilityBufferSize, 0
         );
-        if(m_generatePresentationImageSetLayout.handle == VK_NULL_HANDLE)
-            return 0;
 
-        /*
-            Present compute shader descriptor set layout complete
-        */
-
-
-
-
-        /*
-            Pipeline layouts. Different combinations of the descriptor set layout and push constants
-        */
-       
-        // Grapchics pipeline layout
-        VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] = 
+        if (BlitzenEngine::Ce_BuildClusters)
         {
-             m_pushDescriptorBufferLayout.handle, // Push descriptor layout
-             m_textureDescriptorSetlayout.handle // Texture layout
+            // Copies the cluster data held by the staging buffer to the meshlet buffer
+            CopyBufferToBuffer(commandBuffer, clusterStagingBuffer,
+                currentStaticBuffers.clusterBuffer.buffer.bufferHandle,
+                clusterBufferSize, 0, 0);
+
+            CopyBufferToBuffer(commandBuffer, clusterIndicesStagingBuffer,
+                currentStaticBuffers.meshletDataBuffer.buffer.bufferHandle, clusterIndicesBufferSize,
+                0, 0);
+        }
+
+        // Submit the commands and wait for the queue to finish
+        SubmitCommandBuffer(queue, commandBuffer);
+        vkQueueWaitIdle(queue);
+    }
+
+    static void SetupGpuBufferDescriptorWriteArrays(const VulkanRenderer::StaticBuffers& m_currentStaticBuffers,
+        const VulkanRenderer::VarBuffers& varBuffers,
+        VkWriteDescriptorSet* pushDescriptorWritesGraphics, VkWriteDescriptorSet* pushDescriptorWritesCompute)
+    {
+        if constexpr (BlitzenEngine::Ce_BuildClusters)
+        {
+            pushDescriptorWritesGraphics[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[3] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
+
+            pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[2] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[7] = m_currentStaticBuffers.clusterDispatchBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[8] = m_currentStaticBuffers.clusterCountBuffer.descriptorWrite;
+			pushDescriptorWritesCompute[9] = m_currentStaticBuffers.clusterBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[10] = {};
+        }
+        else
+        {
+            pushDescriptorWritesGraphics[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[3] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
+
+            pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[2] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[7] = {};
+        }
+    }
+
+    static uint8_t CreatePipelineLayouts(VkDevice device, VkDescriptorSetLayout bufferPushDescriptorLayout,
+        VkDescriptorSetLayout textureSetLayout, VkPipelineLayout* mainGraphicsLayout, VkPipelineLayout* drawCullLayout,
+        VkDescriptorSetLayout depthPyramidSetLayout, VkPipelineLayout* depthPyramidGenerationLayout,
+        VkPipelineLayout* onpcGeometryLayout, VkDescriptorSetLayout presentationSetLayout,
+        VkPipelineLayout* generatePresentationLayout)
+    {
+
+        // Grapchics pipeline layout
+        VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] =
+        {
+             bufferPushDescriptorLayout,
+            textureSetLayout
         };
         VkPushConstantRange globalShaderDataPushContant{};
         CreatePushConstantRange(globalShaderDataPushContant, VK_SHADER_STAGE_VERTEX_BIT,
             sizeof(GlobalShaderDataPushConstant));
-        if (!CreatePipelineLayout(m_device, &m_graphicsPipelineLayout.handle,
-            2, defaultGraphicsPipelinesDescriptorSetLayouts,
-            1, &globalShaderDataPushContant))
+        if (!CreatePipelineLayout(device, mainGraphicsLayout, BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts),
+            defaultGraphicsPipelinesDescriptorSetLayouts, Ce_SinglePointer, &globalShaderDataPushContant))
         {
             BLIT_ERROR("Failed to create main graphics pipeline layout");
             return 0;
         }
 
-        // Culling shaders shader their laout
-        VkPushConstantRange lateCullShaderPostPassPushConstant{};
-        CreatePushConstantRange(lateCullShaderPostPassPushConstant,
-            VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
-        if (!CreatePipelineLayout(m_device, &m_drawCullLayout.handle,
-            1, &m_pushDescriptorBufferLayout.handle, // push descriptor set layout
-            1, &lateCullShaderPostPassPushConstant))
+        // Culling shader shared layout (slight differences are not enough to create permutations
+        VkPushConstantRange cullShaderPushConstant{};
+        CreatePushConstantRange(cullShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
+            sizeof(DrawCullShaderPushConstant));
+        if (!CreatePipelineLayout(device, drawCullLayout, Ce_SinglePointer, &bufferPushDescriptorLayout,
+            Ce_SinglePointer, &cullShaderPushConstant))
         {
             BLIT_ERROR("Failed to create culling pipeline layout");
             return 0;
@@ -784,105 +649,182 @@ namespace BlitzenVulkan
 
         // Layout for depth pyramid generation pipeline
         VkPushConstantRange depthPyramidMipExtentPushConstant{};
-        CreatePushConstantRange(
-            depthPyramidMipExtentPushConstant, // push constant for image extent
-            VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2) // takes one vec2
-        );
-        if (!CreatePipelineLayout(
-            m_device, &m_depthPyramidGenerationLayout.handle,
-            1, &m_depthPyramidDescriptorLayout.handle, // depth pyramid src and dst image push descriptor layout
-            1, &depthPyramidMipExtentPushConstant
-        ))
-            return 0;
+        CreatePushConstantRange(depthPyramidMipExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
+            sizeof(BlitML::vec2));
+        if (!CreatePipelineLayout(device, depthPyramidGenerationLayout, Ce_SinglePointer, &depthPyramidSetLayout,
+            Ce_SinglePointer, &depthPyramidMipExtentPushConstant))
+        {
+            BLIT_ERROR("Failed to create depth pyramid generation pipeline layout")
+                return 0;
+        }
 
+        // I need to remove this one
         VkPushConstantRange onpcMatrixPushConstant{};
         CreatePushConstantRange(onpcMatrixPushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(BlitML::mat4));
-        if(!CreatePipelineLayout(m_device, &m_onpcReflectiveGeometryLayout.handle, 
-            2, defaultGraphicsPipelinesDescriptorSetLayouts, // Same descriptors as the default graphics pipeline
-            1, &onpcMatrixPushConstant // Push constant for onpc modified projection matrix (temporary)
-        ))
+        if (!CreatePipelineLayout(device, onpcGeometryLayout,
+            BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts),
+            defaultGraphicsPipelinesDescriptorSetLayouts,
+            Ce_SinglePointer, &onpcMatrixPushConstant))
+        {
+            BLIT_ERROR("Failed to create onpc graphics pipeline");
             return 0;
+        }
 
         // Generate present image compute shader layout
         VkPushConstantRange colorAttachmentExtentPushConstant{};
-        CreatePushConstantRange(colorAttachmentExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, 
-            sizeof(BlitML::vec2)
-        );
-        if(!CreatePipelineLayout(m_device, &m_generatePresentationLayout.handle, 
-            1, &m_generatePresentationImageSetLayout.handle, 
-            1, &colorAttachmentExtentPushConstant
-        ))
-            return 0;
-
-        return 1;
-    }
-
-    uint8_t VulkanRenderer::VarBuffersInit(BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms)
-    {
-        for(size_t i = 0; i < ce_framesInFlight; ++i)
+        CreatePushConstantRange(colorAttachmentExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
+            sizeof(BlitML::vec2));
+        if (!CreatePipelineLayout(device, generatePresentationLayout, Ce_SinglePointer, &presentationSetLayout,
+            Ce_SinglePointer, &colorAttachmentExtentPushConstant))
         {
-            auto& buffers = m_varBuffers[i];
-
-            // Creates the uniform buffer for view data
-            if (!CreateBuffer(m_allocator, buffers.viewDataBuffer.buffer,
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
-                sizeof(BlitzenEngine::CameraViewData), VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("Failed to create view data buffer");
-                return 0;
-            }
-
-            buffers.viewDataBuffer.pData = reinterpret_cast<BlitzenEngine::CameraViewData*>(
-                buffers.viewDataBuffer.buffer.allocation->GetMappedData()
-            );
-            
-            WriteBufferDescriptorSets(buffers.viewDataBuffer.descriptorWrite, 
-                buffers.viewDataBuffer.bufferInfo, buffers.viewDataBuffer.descriptorType, 
-                buffers.viewDataBuffer.descriptorBinding, buffers.viewDataBuffer.buffer.bufferHandle
-            );
-
-            auto transformBufferSize
-            {
-                SetupPushDescriptorBuffer(m_device, m_allocator,buffers.transformBuffer, 
-                    buffers.transformStagingBuffer, transforms.GetSize(),
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                    transforms.Data()) 
-            };
-            if (transformBufferSize == 0)
-            {
-                BLIT_ERROR("Failed to create transform buffer");
-                return 0;
-            }
-
-			buffers.pTransformData = reinterpret_cast<BlitzenEngine::MeshTransform*>(
-				buffers.transformStagingBuffer.allocationInfo.pMappedData
-			);
-
-			BeginCommandBuffer(m_frameToolsList[i].transferCommandBuffer, 
-                VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-            );
-
-			CopyBufferToBuffer(m_frameToolsList[i].transferCommandBuffer,
-				buffers.transformStagingBuffer.bufferHandle,
-				buffers.transformBuffer.buffer.bufferHandle,
-				transformBufferSize, 0, 0
-			);
-
-			SubmitCommandBuffer(m_transferQueue.handle, m_frameToolsList[i].transferCommandBuffer);
-            vkQueueWaitIdle(m_transferQueue.handle);
+            BLIT_ERROR("Failed to create presentation generation pipeline layout");
+            return 0;
         }
 
+        // Success
         return 1;
     }
 
-    uint8_t VulkanRenderer::UploadDataToGPU(BlitzenEngine::RenderingResources* pResources)
+
+
+
+
+    uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
+        float& pyramidWidth, float& pyramidHeight)
+    {
+        // Checks if resource management has been setup
+        if (!m_stats.bResourceManagementReady)
+        {
+            // Calls the function and checks if it succeeded. If it did not, it fails
+            m_stats.bResourceManagementReady =
+                SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator,
+                    m_frameToolsList, m_textureSampler.handle);
+            if (!m_stats.bResourceManagementReady)
+            {
+                BLIT_ERROR("Failed to setup resource management for Vulkan");
+                return 0;
+            }
+        }
+
+        if (!RenderingAttachmentsInit(m_device, m_allocator, m_colorAttachment, m_colorAttachmentInfo, 
+            m_depthAttachment, m_depthAttachmentInfo, m_depthPyramid, m_depthPyramidMipLevels, m_depthPyramidMips, 
+            m_drawExtent, m_depthPyramidExtent))
+        {
+            BLIT_ERROR("Failed to create rendering attachments");
+            return 0;
+        }
+
+        if(!CreateDescriptorLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_varBuffers[0], m_currentStaticBuffers, 
+            m_stats.bRayTracingSupported, m_stats.meshShaderSupport, (uint32_t)textureCount, m_textureDescriptorSetlayout.handle, 
+            m_depthAttachment, m_depthPyramid, m_depthPyramidDescriptorLayout.handle, m_colorAttachment, 
+            m_generatePresentationImageSetLayout.handle))
+        {
+            BLIT_ERROR("Failed to create descriptor set layouts");
+            return 0;
+        }
+
+        if (!CreatePipelineLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle, 
+            &m_graphicsPipelineLayout.handle, &m_drawCullLayout.handle, m_depthPyramidDescriptorLayout.handle, 
+            &m_depthPyramidGenerationLayout.handle, &m_onpcReflectiveGeometryLayout.handle, 
+            m_generatePresentationImageSetLayout.handle, &m_generatePresentationLayout.handle))
+        {
+            BLIT_ERROR("Failed to create pipeline layouts");
+            return 0;
+        }
+
+        if(!VarBuffersInit(m_device, m_allocator, m_frameToolsList[0].transferCommandBuffer, 
+            m_transferQueue.handle, pResources->transforms, m_varBuffers))
+        {
+            BLIT_ERROR("Failed to create uniform buffers");
+            return 0;
+        }
+
+        if(!StaticBuffersInit(pResources))
+        {
+            BLIT_ERROR("Failed to upload data to the GPU");
+            return 0;
+        }
+
+        SetupGpuBufferDescriptorWriteArrays(m_currentStaticBuffers, m_varBuffers[0], 
+            pushDescriptorWritesGraphics.Data(), pushDescriptorWritesCompute);
+
+        if (!CreateComputeShaders(m_device, &m_initialDrawCullPipeline.handle, &m_lateDrawCullPipeline.handle, 
+            &m_onpcDrawCullPipeline.handle, &m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle, 
+            &m_depthPyramidGenerationPipeline.handle, m_depthPyramidGenerationLayout.handle, 
+            &m_generatePresentationPipeline.handle, m_generatePresentationLayout.handle))
+        {
+            BLIT_ERROR("Failed to create compute shaders");
+            return 0;
+        }
+
+        if (BlitzenEngine::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, &m_intialClusterCullPipeline.handle,
+            nullptr, m_drawCullLayout.handle))
+        {
+            BLIT_ERROR("Failed to create cluster shaders");
+            return 0;
+        }
+        
+        // Create the graphics pipeline object 
+        if(!SetupMainGraphicsPipeline(m_device, m_stats.meshShaderSupport, &m_opaqueGeometryPipeline.handle, 
+            &m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
+            &m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle))
+        {
+            BLIT_ERROR("Failed to create the primary graphics pipeline object");
+            return 0;
+        }
+
+        // Updates the reference to the depth pyramid width held by the camera
+        pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+        pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+
+        return 1;
+    }
+
+    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
+        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
+        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator)
+    {
+		const VkFormat depthPyramidFormat = VK_FORMAT_R32_SFLOAT;
+        const VkImageUsageFlags depthPyramidUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT; 
+
+        // Conservative starting extent
+        depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
+        depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
+		depthPyramidMipLevels = 
+            BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
+    
+        // Creates the primary depth pyramid image
+        if (!CreatePushDescriptorImage(device, allocator, depthPyramidImage,
+            { depthPyramidExtent.width, depthPyramidExtent.height, 1 },
+            depthPyramidFormat, depthPyramidUsage, depthPyramidMipLevels,
+            VMA_MEMORY_USAGE_GPU_ONLY))
+        {
+            return 0;
+        }
+    
+        // Create the mip levels of the depth pyramid
+        for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
+        {
+            if (!CreateImageView(device, depthPyramidMips[size_t(i)],
+                depthPyramidImage.image.image, depthPyramidFormat, i, 1))
+            {
+                return 0;
+            }
+        }
+    
+        return 1;
+    }
+
+    uint8_t VulkanRenderer::StaticBuffersInit(BlitzenEngine::RenderingResources* pResources)
     {
         // The renderer is allow to continue even without render objects but this function should not do anything
         if(pResources->renderObjectCount == 0)
         {
             BLIT_WARN("No objects given to the renderer")
-            return 1;
+            return 1;// Is this a mistake or intended?
         }
+
+        constexpr uint32_t SingleElementBuffer = 1;
 
         const auto& vertices = pResources->GetVerticesArray();
         const auto& indices = pResources->GetIndicesArray();
@@ -891,8 +833,8 @@ namespace BlitzenVulkan
         const auto& surfaces = pResources->GetSurfaceArray();
         auto pMaterials = pResources->GetMaterialArrayPointer();
         auto materialCount = pResources->GetMaterialCount();
-        const auto& meshlets = pResources->GetClusterArray();
-        const auto& meshletData = pResources->GetClusterIndices();
+        const auto& clusters = pResources->GetClusterArray();
+        const auto& clusterData = pResources->GetClusterIndices();
         auto pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
         auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
 		auto& transforms = pResources->transforms;
@@ -920,13 +862,10 @@ namespace BlitzenVulkan
 
         // Global index buffer
         AllocatedBuffer stagingIndexBuffer;
-        auto indexBufferSize
-        { 
-            CreateGlobalIndexBuffer(m_device, m_allocator,
-            m_stats.bRayTracingSupported, stagingIndexBuffer, m_currentStaticBuffers.indexBuffer,
-            indices.Data(), indices.GetSize()) 
-        };
-        if (indexBufferSize == 0)
+        VkDeviceSize indexBufferSize = indices.GetSize() * sizeof(uint32_t);    
+        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), 
+            m_currentStaticBuffers.indexBuffer, stagingIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | 
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize))
         {
             BLIT_ERROR("Failed to create index buffer");
             return 0;
@@ -934,22 +873,17 @@ namespace BlitzenVulkan
 
         // Standard render object buffer
         AllocatedBuffer renderObjectStagingBuffer;
-        auto renderObjectBufferSize
-        {
-            SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.renderObjectBuffer, 
-                renderObjectStagingBuffer,renderObjectCount, 
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
-                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                pRenderObjects)
-        };
-        if (renderObjectBufferSize == 0)
+        VkDeviceSize renderObjectBufferSize{ renderObjectCount * sizeof(BlitzenEngine::RenderObject) };
+        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pRenderObjects,
+            m_currentStaticBuffers.renderObjectBuffer, renderObjectStagingBuffer, 
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, renderObjectBufferSize))
         {
             BLIT_ERROR("Failed to create render object buffer");
             return 0;
         }
         m_currentStaticBuffers.renderObjectBufferAddress = GetBufferAddress(m_device,
-            m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle);
+            m_currentStaticBuffers.renderObjectBuffer.bufferHandle);
 
         // Render object buffer that holds objects that use Oblique near plane clipping
         AllocatedBuffer onpcRenderObjectStagingBuffer;
@@ -973,17 +907,15 @@ namespace BlitzenVulkan
         }
 
         AllocatedBuffer tranparentRenderObjectStagingBuffer;
-        VkDeviceSize transparentRenderObjectBufferSize;
-        if (transparentRenderobjects.GetSize() != 0)
+        VkDeviceSize transparentRenderObjectBufferSize{ 
+            transparentRenderobjects.GetSize() * sizeof(BlitzenEngine::RenderObject) };
+        if (transparentRenderObjectBufferSize != 0)
         {
-            transparentRenderObjectBufferSize =
-                SetupPushDescriptorBuffer(m_device, m_allocator, 
-                    m_currentStaticBuffers.transparentRenderObjectBuffer, 
-                    tranparentRenderObjectStagingBuffer, transparentRenderobjects.GetSize(), 
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                    VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-                    transparentRenderobjects.Data());
-            if (transparentRenderObjectBufferSize == 0)
+            if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device,
+                transparentRenderobjects.Data(), m_currentStaticBuffers.transparentRenderObjectBuffer,
+                tranparentRenderObjectStagingBuffer, 
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, transparentRenderObjectBufferSize))
             {
                 BLIT_ERROR("Failed to create transparent render object buffer");
                 return 0;
@@ -992,7 +924,7 @@ namespace BlitzenVulkan
             m_stats.bTranspartentObjectsExist = 1;
 
             m_currentStaticBuffers.transparentRenderObjectBufferAddress = GetBufferAddress(m_device,
-                m_currentStaticBuffers.transparentRenderObjectBuffer.buffer.bufferHandle);
+                m_currentStaticBuffers.transparentRenderObjectBuffer.bufferHandle);
         }
 
         // Buffer that holds primitives (surfaces that can be drawn)
@@ -1006,6 +938,23 @@ namespace BlitzenVulkan
             surfaces.Data())
         };
         if (surfaceBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create surface buffer");
+            return 0;
+        }
+
+        // Buffer that holds primitives (surfaces that can be drawn)
+        AllocatedBuffer lodStagingBuffer;
+        auto temp = 1;
+        auto lodBufferSize
+        {
+            SetupPushDescriptorBuffer(m_device, m_allocator,
+            m_currentStaticBuffers.lodBuffer,
+            lodStagingBuffer, 1,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            &temp)
+        };
+        if (lodBufferSize == 0)
         {
             BLIT_ERROR("Failed to create surface buffer");
             return 0;
@@ -1031,7 +980,7 @@ namespace BlitzenVulkan
         auto indirectDrawBufferSize
         {
             SetupPushDescriptorBuffer<IndirectDrawData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.indirectDrawBuffer, renderObjectCount,
+                m_currentStaticBuffers.indirectDrawBuffer, IndirectDrawElementCount,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
         };
         if(indirectDrawBufferSize == 0)
@@ -1042,9 +991,8 @@ namespace BlitzenVulkan
 
         // Indirect count buffer
         if (!SetupPushDescriptorBuffer<uint32_t>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.indirectCountBuffer, 1, 
-                VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT 
-                | VK_BUFFER_USAGE_TRANSFER_DST_BIT 
+                m_currentStaticBuffers.indirectCountBuffer, SingleElementBuffer,
+                VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT 
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
         {
             BLIT_ERROR("Failed to create indirect count buffer");
@@ -1065,13 +1013,64 @@ namespace BlitzenVulkan
         }
 
         
+        VkDeviceSize clusterBufferSize = 0;
+        AllocatedBuffer meshletStagingBuffer;
+        VkDeviceSize clusterIndexBufferSize = 0;
+        AllocatedBuffer meshletDataStagingBuffer;
+        VkDeviceSize clusterDispatchBufferSize = 0;
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            clusterBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
+                m_currentStaticBuffers.clusterBuffer, meshletStagingBuffer,
+                clusters.GetSize(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                clusters.Data());
+            if(clusterBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create cluster buffer");
+                return 0;
+            }
+
+            clusterIndexBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
+                m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer,
+                clusterData.GetSize(),
+                VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                clusterData.Data());
+            if(clusterIndexBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create cluster indices buffer");
+                return 0;
+            }
+
+            clusterDispatchBufferSize =
+                SetupPushDescriptorBuffer<ClusterDispatchData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
+                    m_currentStaticBuffers.clusterDispatchBuffer, IndirectDrawElementCount,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+            if (clusterDispatchBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create indirect dispatch cluster buffer");
+                return 0;
+            }
+
+            if (!SetupPushDescriptorBuffer<uint32_t>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
+                m_currentStaticBuffers.clusterCountBuffer, SingleElementBuffer,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect count buffer");
+                return 0;
+            }
+
+            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountCopyBuffer,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect count copy buffer");
+                return 0;
+            }
+        }
+
         // Mesh shader indirect commands
         VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
-        VkDeviceSize meshletBufferSize = sizeof(BlitzenEngine::Meshlet) * meshlets.GetSize();
-        AllocatedBuffer meshletStagingBuffer;
-        VkDeviceSize meshletDataBufferSize = sizeof(uint32_t) * meshletData.GetSize();
-        AllocatedBuffer meshletDataStagingBuffer;
-
         if(m_stats.meshShaderSupport)
         {
             // Indirect task buffer
@@ -1086,47 +1085,20 @@ namespace BlitzenVulkan
                 BLIT_ERROR("Falied to create indirect task buffer");
                 return 0;
             }
-
-            // Meshlets / Clusters
-            if (meshletBufferSize == 0)
-            {
-                return 0;
-            }
-            if (!SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.meshletBuffer, meshletStagingBuffer,
-                meshletBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                meshlets.Data()))
-            {
-                BLIT_ERROR("Failed to create cluster buffer");
-                return 0;
-            }
-
-            // Cluster indices
-            if (meshletDataBufferSize == 0)
-            {
-                return 0;
-            }
-            if (!SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer,
-                meshletDataBufferSize,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                meshletData.Data()))
-            {
-                BLIT_ERROR("Failed to create cluster indices buffer");
-                return 0;
-            }
         }
 
         // Copies the data uploaded to the staging buffer, to the GPU buffers
-        CopyStaticBufferDataToGPUBuffers(stagingVertexBuffer.bufferHandle, vertexBufferSize, 
+        auto commandBuffer = m_frameToolsList[0].transferCommandBuffer;
+        CopyStaticBufferDataToGPUBuffers(commandBuffer, m_transferQueue.handle, 
+            m_currentStaticBuffers, stagingVertexBuffer.bufferHandle, vertexBufferSize, 
             stagingIndexBuffer.bufferHandle, indexBufferSize, 
             renderObjectStagingBuffer.bufferHandle, renderObjectBufferSize, 
             tranparentRenderObjectStagingBuffer.bufferHandle, transparentRenderObjectBufferSize,
             onpcRenderObjectStagingBuffer.bufferHandle, onpcRenderObjectBufferSize, 
             surfaceStagingBuffer.bufferHandle, surfaceBufferSize, 
             materialStagingBuffer.bufferHandle, materialBufferSize, 
-            visibilityBufferSize, meshletStagingBuffer.bufferHandle, meshletBufferSize, 
-            meshletDataStagingBuffer.bufferHandle, meshletDataBufferSize);
+            visibilityBufferSize, meshletStagingBuffer.bufferHandle, clusterBufferSize, 
+            meshletDataStagingBuffer.bufferHandle, clusterIndexBufferSize);
 
         // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)
@@ -1146,83 +1118,5 @@ namespace BlitzenVulkan
         }
 
         return 1;
-    }
-
-    void VulkanRenderer::CopyStaticBufferDataToGPUBuffers(
-        VkBuffer stagingVertexBuffer, VkDeviceSize vertexBufferSize, 
-        VkBuffer stagingIndexBuffer, VkDeviceSize indexBufferSize, 
-        VkBuffer renderObjectStagingBuffer, VkDeviceSize renderObjectBufferSize, 
-        VkBuffer transparentObjectStagingBuffer, VkDeviceSize transparentRenderBufferSize,
-        VkBuffer onpcRenderObjectStagingBuffer, VkDeviceSize onpcRenderObjectBufferSize,
-        VkBuffer surfaceStagingBuffer, VkDeviceSize surfaceBufferSize, 
-        VkBuffer materialStagingBuffer, VkDeviceSize materialBufferSize, 
-        VkDeviceSize visibilityBufferSize, 
-        VkBuffer clusterStagingBuffer, VkDeviceSize clusterBufferSize, 
-        VkBuffer clusterIndicesStagingBuffer, VkDeviceSize clusterIndicesBufferSize)
-    {
-        // Start recording the transfer commands
-        auto& commandBuffer = m_frameToolsList[0].transferCommandBuffer;
-        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-        // Vertex data copy
-        CopyBufferToBuffer(commandBuffer, stagingVertexBuffer,
-            m_currentStaticBuffers.vertexBuffer.buffer.bufferHandle,
-            vertexBufferSize, 0, 0);
-
-        // Index data copy
-        CopyBufferToBuffer(commandBuffer, stagingIndexBuffer, 
-            m_currentStaticBuffers.indexBuffer.bufferHandle, 
-            indexBufferSize, 0, 0);
-
-        // Render objects
-        CopyBufferToBuffer(commandBuffer, renderObjectStagingBuffer,
-            m_currentStaticBuffers.renderObjectBuffer.buffer.bufferHandle,
-            renderObjectBufferSize, 0, 0);
-
-        if (transparentRenderBufferSize != 0)
-        {
-            CopyBufferToBuffer(commandBuffer, transparentObjectStagingBuffer,
-                m_currentStaticBuffers.transparentRenderObjectBuffer.buffer.bufferHandle,
-                transparentRenderBufferSize, 0, 0);
-        }
-
-        // Render objects that use Oblique Near-Plane Clipping
-        if (onpcRenderObjectBufferSize != 0)
-        {
-            CopyBufferToBuffer(commandBuffer, onpcRenderObjectStagingBuffer,
-                m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.buffer.bufferHandle,
-                onpcRenderObjectBufferSize, 0, 0);
-        }
-
-        // Primitive surfaces
-        CopyBufferToBuffer(commandBuffer, surfaceStagingBuffer,
-            m_currentStaticBuffers.surfaceBuffer.buffer.bufferHandle, 
-            surfaceBufferSize, 0, 0);
-
-        // Materials
-        CopyBufferToBuffer(commandBuffer, materialStagingBuffer,
-            m_currentStaticBuffers.materialBuffer.buffer.bufferHandle,
-            materialBufferSize, 0, 0);
-
-        // Visibility buffer will start with only zeroes. The first frame will do noting, but that should be fine
-        vkCmdFillBuffer(commandBuffer, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
-            0, visibilityBufferSize, 0
-        );
-        
-        if(m_stats.meshShaderSupport)
-        {
-            // Copies the cluster data held by the staging buffer to the meshlet buffer
-            CopyBufferToBuffer(commandBuffer, clusterStagingBuffer, 
-            m_currentStaticBuffers.meshletBuffer.buffer.bufferHandle, 
-            clusterBufferSize, 0, 0);
-
-            CopyBufferToBuffer(commandBuffer, clusterIndicesStagingBuffer, 
-            m_currentStaticBuffers.meshletDataBuffer.buffer.bufferHandle, clusterIndicesBufferSize, 
-            0, 0);
-        }
-        
-        // Submit the commands and wait for the queue to finish
-        SubmitCommandBuffer(m_transferQueue.handle, commandBuffer);
-        vkQueueWaitIdle(m_transferQueue.handle);
     }
 }

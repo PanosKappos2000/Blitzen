@@ -44,7 +44,7 @@ namespace BlitzenEngine
         {
             return m_primitiveVertexCounts;
         }
-        inline const BlitCL::DynamicArray<Meshlet>& GetClusterArray() const
+        inline const BlitCL::DynamicArray<Cluster>& GetClusterArray() const
         {
             return m_clusters;
         }
@@ -78,6 +78,12 @@ namespace BlitzenEngine
         size_t meshCount = 0;
 
 
+        struct IsPrimitiveTransparent
+        {
+            bool b = false;
+        };
+        BlitCL::DynamicArray<IsPrimitiveTransparent> bTransparencyList;
+
 
     public:
 
@@ -90,6 +96,9 @@ namespace BlitzenEngine
         void DefineMaterial(const BlitML::vec4& diffuseColor,
             float shininess, const char* diffuseMapName,
             const char* specularMapName, const char* materialName);
+
+        // Lovely piece of debug helper
+        void CreateSingleObjectForTesting();
 
     public:
 
@@ -214,7 +223,7 @@ namespace BlitzenEngine
 
         // Generates clusters for a given array of vertices and indices
         size_t GenerateClusters(BlitCL::DynamicArray<Vertex>& vertices,
-            BlitCL::DynamicArray<uint32_t>& indices);
+            BlitCL::DynamicArray<uint32_t>& indices, uint32_t vertexOffset);
 
         void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices,
             BlitCL::DynamicArray<uint32_t>& indices);
@@ -310,7 +319,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> m_indices;
 
         // Holds all clusters for all the primitives that were loaded
-        BlitCL::DynamicArray<Meshlet> m_clusters;
+        BlitCL::DynamicArray<Cluster> m_clusters;
 
         // Holds the meshlet indices to index into the clusters above
         BlitCL::DynamicArray<uint32_t> m_clusterIndices;

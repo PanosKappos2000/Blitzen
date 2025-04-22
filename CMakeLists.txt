@@ -23,6 +23,9 @@ add_executable(BlitzenEngine
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
+                src/BlitzenVulkan/vulkanApiInitFunctions.h
+                src/BlitzenVulkan/vulkanResourceFunctions.h
+                src/BlitzenVulkan/vulkanPipelines.h
                 src/BlitzenVulkan/vulkanHandles.cpp
                 src/BlitzenVulkan/vulkanInit.cpp
                 src/BlitzenVulkan/vulkanResources.cpp
@@ -30,6 +33,7 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanGpuUpload.cpp
                 src/BlitzenVulkan/vulkanRaytracing.cpp
                 src/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/BlitzenVulkan/vulkanCommands.cpp
                 src/BlitzenVulkan/vulkanDraw.cpp
 
                 src/BlitzenGL/openglData.h
@@ -99,6 +103,7 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanGpuUpload.cpp
                 src/BlitzenVulkan/vulkanRaytracing.cpp
                 src/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/BlitzenVulkan/vulkanCommands.cpp
                 src/BlitzenVulkan/vulkanDraw.cpp
 
                 src/Renderer/blitRenderingResources.h
@@ -166,10 +171,12 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Defines that the Engine is not in test mode (Dev mode)
                             BLIT_GDEV_EDT
 
+                            #BLITZEN_CLUSTER_CULLING
+
                             #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros
                             BLITZEN_RENDERING_STRESS_TEST
-                            BLIT_VSYNC
+                            #BLIT_VSYNC
 
                             # Vulkan specific preprocessor macros
                             BLITZEN_VULKAN # Never undef this, it's broken because of VulkanMemoryCrucials

@@ -17,9 +17,9 @@ namespace BlitzenEngine
     constexpr uint32_t ce_maxONPC_Objects = 100;
 
     #ifdef BLITZEN_CLUSTER_CULLING
-        constexpr uint8_t ce_buildClusters = 1;
+        constexpr uint8_t Ce_BuildClusters = 1;
     #else
-        constexpr uint8_t ce_buildClusters = 0;
+        constexpr uint8_t Ce_BuildClusters = 0;
     #endif 
     
     // Data for each texture
@@ -37,36 +37,39 @@ namespace BlitzenEngine
     // Data for each vertex. Passed to the GPU
     struct alignas(16) Vertex
     {
-        // Vertex position (3 floats)
         BlitML::vec3 position;
-        // Uv maps (2 halfs floats)
         uint16_t uvX, uvY;
-        // Vertex normals (4 8-bit integers)
         uint8_t normalX, normalY, normalZ, normalW;
-        // Tangents (4 8-bit integers)
         uint8_t tangentX, tangentY, tangentZ, tangentW;
     };
 
     // Data for each meshlet. Passed to the GPU
-    struct alignas(16) Meshlet
+    struct alignas(16) Cluster
     {
         // Bounding sphere for frustum culling
     	BlitML::vec3 center;
     	float radius;
 
         // This is for backface culling
-    	int8_t cone_axis[3];
-    	int8_t cone_cutoff;
+    	int8_t coneAxisX;
+        int8_t coneAxisY;
+        int8_t coneAxisZ;
+    	int8_t coneCutoff;
 
     	uint32_t dataOffset; // Index into meshlet data
     	uint8_t vertexCount;
     	uint8_t triangleCount;
+        uint8_t padding0;
+        uint8_t padding1;
+
+        uint32_t gpuAlignmentPad;
     };
 
 	// Data for each material. Passed to the GPU
     struct alignas(16) Material
     {
-        // Not using these 2 right now, might remove them when I'm not bored, but they (or something similar) will be used in the future
+        // Not using these 2 right now, might remove them when I'm not bored, 
+        // but they (or something similar) will be used in the future
         BlitML::vec4 diffuseColor;
         float shininess;
 
@@ -85,34 +88,29 @@ namespace BlitzenEngine
     // Mesh LOD data. An array of these is held by each primitive
     struct MeshLod
     {
-        // Accesses index data
         uint32_t indexCount;
         uint32_t firstIndex;
-
-        // Accesses meshlet data
-        uint32_t meshletCount = 0;
-        uint32_t firstMeshlet;
-
-        // LOD error
         float error;
+
+        uint32_t firstMeshlet;
+        uint32_t meshletCount;
+
+        uint32_t padding0; // Pad to 24 bytes total   
     };
 
     // Per primitive data. Passed to the GPU
     struct alignas(16) PrimitiveSurface
     {
-        // Bounding sphere data, needed for frustum culling
-        BlitML::vec3 center;
-        float radius;
-
-        // TODO: Will replace this with an index
-        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
-        uint8_t lodCount = 0;
+        BlitML::vec3 center;     
+        float radius;            
 
         uint32_t vertexOffset;
 
         uint32_t materialId;
 
-        uint8_t postPass = 0;
+        uint32_t lodCount = 0;       
+        uint32_t padding0;      
+        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
     };
 
     // A mesh is a collection of one or more primitives.

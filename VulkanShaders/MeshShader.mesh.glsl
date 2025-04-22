@@ -27,10 +27,10 @@ void main()
     Surface currentSurface = surfaceBuffer.surfaces[currentObject.surfaceId];
 
     // Meshlet data
-    uint vertexCount = uint(meshletBuffer.meshlets[meshletId].vertexCount);
-	uint triangleCount = uint(meshletBuffer.meshlets[meshletId].triangleCount);
+    uint vertexCount = uint(clusterBuffer.clusters[meshletId].vertexCount);
+	uint triangleCount = uint(clusterBuffer.clusters[meshletId].triangleCount);
 
-    uint dataOffset = meshletBuffer.meshlets[meshletId].dataOffset;
+    uint dataOffset = clusterBuffer.clusters[meshletId].dataOffset;
 	uint vertexOffset = dataOffset;
 	uint indexOffset = dataOffset + vertexCount;
 

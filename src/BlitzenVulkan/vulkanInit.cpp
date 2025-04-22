@@ -49,19 +49,20 @@ namespace BlitzenVulkan
         switch (messageSeverity)
         {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
         {
             BLIT_INFO("Validation layer: %s", pCallbackData->pMessage);
             return VK_FALSE;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
         {
-            BLIT_WARN("Validation layer: %s", pCallbackData->pMessage)
-                return VK_FALSE;
+            BLIT_WARN("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
         {
-            BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage)
-                return VK_FALSE;
+            BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
         }
         default:
             return VK_FALSE;
@@ -72,26 +73,23 @@ namespace BlitzenVulkan
         m_pCustomAllocator{ nullptr }, m_debugMessenger {VK_NULL_HANDLE}, 
         m_currentFrame{ 0 }, m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f }, 
         m_depthPyramidMipLevels{ 0 }, textureCount{ 0 }
-    {}
+    {
+        m_pThisRenderer = this;
+    }
 
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
     {
-        m_pCustomAllocator = nullptr;
-
-        // Save the renderer's instance 
-        m_pThisRenderer = this;
-
         // Creates the Vulkan instance
         if(!CreateInstance(m_instance, &m_debugMessenger))
         {
-            BLIT_ERROR("Failed to create vulkan instance")
+            BLIT_ERROR("Failed to create vulkan instance");
             return 0;
         }
 
         // Create the surface depending on the implementation on Platform.cpp
         if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator))
         {
-            BLIT_ERROR("Failed to create Vulkan window surface")
+            BLIT_ERROR("Failed to create Vulkan window surface");
             return 0;
         }
 
@@ -99,16 +97,16 @@ namespace BlitzenVulkan
         if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, 
         m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
         {
-            BLIT_ERROR("Failed to pick suitable physical device")
+            BLIT_ERROR("Failed to pick suitable physical device");
             return 0;
         }
 
         // Create the device
         if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, 
-            m_presentQueue, m_computeQueue, m_transferQueue, m_stats
-        ))
+            m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
         {
-            BLIT_ERROR("Failed to pick suitable physical device")
+            BLIT_ERROR("Failed to pick suitable physical device");
+            return 0;
         }
 
         // Creates the swapchain
@@ -116,7 +114,7 @@ namespace BlitzenVulkan
         windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
         m_pCustomAllocator, m_swapchainValues))
         {
-            BLIT_ERROR("Failed to create Vulkan swapchain")
+            BLIT_ERROR("Failed to create Vulkan swapchain");
             return 0;
         }
 
@@ -124,12 +122,32 @@ namespace BlitzenVulkan
         m_drawExtent = {m_swapchainValues.swapchainExtent.width, m_swapchainValues.swapchainExtent.height};
 
         
-		if (!CreateIdleDrawHandles())
+		if (!CreateIdleDrawHandles(m_device, m_basicBackgroundPipeline.handle, 
+            m_basicBackgroundLayout.handle, m_backgroundImageSetLayout.handle, 
+            m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
 		{
-			BLIT_ERROR("Failed to create idle draw handles")
+            BLIT_ERROR("Failed to create idle draw handles");
 		    return 0;
 		}
-        
+
+        if (!CreateLoadingTrianglePipeline(m_device, m_loadingTrianglePipeline.handle, m_loadingTriangleLayout.handle))
+        {
+            BLIT_ERROR("Failed to create loading triangle pipeline");
+            return 0;
+        }
+
+        // Creates command buffers and synchronization structures in the frame tools struct
+        // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
+        for (size_t i = 0; i < ce_framesInFlight; ++i)
+        {
+            if (!m_frameToolsList[i].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
+            {
+                BLIT_ERROR("Failed to create frame tools");
+                return 0;
+            }
+        }
+
+        // Success
         return 1;
     }
 
@@ -215,6 +233,7 @@ namespace BlitzenVulkan
         // Keeps the debug messenger info and the validation layers enabled boolean here, they will be needed later
         uint8_t validationLayersEnabled = 0;
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
+        VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };// Shader printing
         // If validation layers are requested, the debut utils extension is also needed
         if (ce_bValidationLayersRequested)
         {
@@ -224,7 +243,6 @@ namespace BlitzenVulkan
                 if (EnableInstanceValidation(debugMessengerInfo))
                 {
                     VkValidationFeaturesEXT validationFeatures{};
-                    VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
                     validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
                     validationFeatures.enabledValidationFeatureCount = 1;
                     validationFeatures.pEnabledValidationFeatures = enables;
@@ -290,10 +308,13 @@ namespace BlitzenVulkan
         debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 
         debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | 
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
 
         debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | 
+            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
         // Debug messenger callback function defined at the top of this file
         debugMessengerInfo.pfnUserCallback = debugCallback;
@@ -419,29 +440,34 @@ namespace BlitzenVulkan
         vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
         // Check that all the required features are supported by the device
-        if(!features.multiDrawIndirect || !features.samplerAnisotropy ||
+        if (!features.multiDrawIndirect || !features.samplerAnisotropy ||
             // Vulkan 1.1 features
             !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
             // Vulkan 1.2 features
-            !features12.bufferDeviceAddress || 
-            !features12.descriptorIndexing || 
-            !features12.runtimeDescriptorArray ||  
-            !features12.storageBuffer8BitAccess || 
-            !features12.shaderFloat16 || 
+            !features12.bufferDeviceAddress ||
+            !features12.descriptorIndexing ||
+            !features12.runtimeDescriptorArray ||
+            !features12.storageBuffer8BitAccess ||
+            !features12.shaderFloat16 ||
             !features12.drawIndirectCount ||
-            !features12.samplerFilterMinmax || 
-            !features12.shaderInt8 || 
+            !features12.samplerFilterMinmax ||
+            !features12.shaderInt8 ||
             !features12.shaderSampledImageArrayNonUniformIndexing ||
-            !features12.uniformAndStorageBuffer8BitAccess || 
+            !features12.uniformAndStorageBuffer8BitAccess ||
             !features12.storagePushConstant8 ||
             // Vulkan 1.3 features
-            !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4
-        )
+            !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
+        {
+            BLIT_ERROR("Physical device does not support all features");
             return 0;
+        }
         
         // Looks for the requested extensions. Fails if the required ones are not found
-        if(!LookForRequestedExtensions(pdv, stats))
+        if (!LookForRequestedExtensions(pdv, stats))
+        {
+            BLIT_ERROR("Physical device does not support all extensions");
             return 0;
+        }
 
         //Retrieve queue families from device
         uint32_t queueFamilyPropertyCount = 0;
@@ -462,6 +488,7 @@ namespace BlitzenVulkan
         vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
 
         uint32_t queueIndex = 0;
+        // For the main graphics queue, find the first family with queue graphics bit set
         for (auto& queueProps : queueFamilyProperties)
         {
             // Checks for a graphics queue index, if one has not already been found 
@@ -475,30 +502,39 @@ namespace BlitzenVulkan
             ++queueIndex;
         }
 
-        queueIndex = 0;
+		queueIndex = 0;
         for (auto& queueProps : queueFamilyProperties)
         {
-            // Checks for a compute queue index, if one has not already been found 
-            if (queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT)
+            bool isComputeCapable = queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT;
+            bool isGraphicsCapable = queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+            bool isTransferCapable = queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT;
+
+            bool isDedicatedTransfer = isTransferCapable && !isGraphicsCapable && !isComputeCapable;
+
+            // Checks for a transfer queue index, if one has not already been found
+            if (isDedicatedTransfer && queueIndex != graphicsQueue.index)
             {
-                computeQueue.index = queueIndex;
-                computeQueue.hasIndex = 1;
+                transferQueue.index = queueIndex;
+                transferQueue.hasIndex = 1;
                 break;
             }
 
             ++queueIndex;
         }
 
-		queueIndex = 0;
-        for (auto& queueProps : queueFamilyProperties)
+        queueIndex = 0;
+        // Searches for a dedicated compute queue
+        for (auto& props : queueFamilyProperties)
         {
-            // Checks for a transfer queue index, if one has not already been found
-            if (queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT && 
-                queueIndex != graphicsQueue.index
-            )
+            bool isComputeCapable = props.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT;
+            bool isGraphicsCapable = props.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+
+            bool isDedicatedCompute = isComputeCapable && !isGraphicsCapable;
+
+            if (isDedicatedCompute && queueIndex != graphicsQueue.index && queueIndex != transferQueue.index)
             {
-                transferQueue.index = queueIndex;
-                transferQueue.hasIndex = 1;
+                computeQueue.index = queueIndex;
+                computeQueue.hasIndex = 1;
                 break;
             }
 
@@ -522,8 +558,11 @@ namespace BlitzenVulkan
         }
 
         // If one of the required queue families has no index, then it gets removed from the candidates
-        if(!presentQueue.hasIndex || !graphicsQueue.hasIndex || !computeQueue.hasIndex || !transferQueue.hasIndex)
+        if (!presentQueue.hasIndex || !graphicsQueue.hasIndex || !transferQueue.hasIndex)
+        {
+            BLIT_ERROR("Failed to find all required queue families on physical device");
             return 0;
+        }
 
         return 1;
         
@@ -558,7 +597,8 @@ namespace BlitzenVulkan
             { VK_KHR_RAY_QUERY_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
             { VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
             { VK_EXT_MESH_SHADER_EXTENSION_NAME, /*requested*/ce_bMeshShaders, /*required*/0 }, 
-            { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, ce_bSynchronizationValidationRequested, 0}
+            { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, ce_bSynchronizationValidationRequested, 0}, 
+            { VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, ce_bValidationLayersRequested, 0}
         };
 
         // Check for the required extension name with strcmp
@@ -673,10 +713,9 @@ namespace BlitzenVulkan
     {
         VkDeviceCreateInfo deviceInfo{};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceInfo.flags = 0; // Not using this
+        deviceInfo.flags = 0;
         deviceInfo.enabledLayerCount = 0;//Deprecated
 
-        // Vulkan should ignore the mesh shader extension if support for it was not found
         deviceInfo.enabledExtensionCount = stats.deviceExtensionCount;
         deviceInfo.ppEnabledExtensionNames = stats.deviceExtensionNames;
 
@@ -794,6 +833,8 @@ namespace BlitzenVulkan
         VkDeviceQueueCreateInfo deviceQueueInfo{}; // temp
         queueInfos.PushBack(deviceQueueInfo);
         queueInfos[1].queueFamilyIndex = transferQueue.index;
+        queueInfos.PushBack(deviceQueueInfo);
+        queueInfos[2].queueFamilyIndex = computeQueue.index;
         
         // If compute has a different index from present, add a new info for it
         if(graphicsQueue.index != presentQueue.index)
@@ -816,15 +857,18 @@ namespace BlitzenVulkan
         deviceInfo.pQueueCreateInfos = queueInfos.Data();
 
         // Create the device
-        VkResult res = vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
-        if(res != VK_SUCCESS)
+        auto res = vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create device");
             return 0;
+        }
 
         // Retrieve graphics queue handle
         VkDeviceQueueInfo2 graphicsQueueInfo{};
         graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        graphicsQueueInfo.pNext = nullptr; // Not using this
-        graphicsQueueInfo.flags = 0; // Not using this
+        graphicsQueueInfo.pNext = nullptr;
+        graphicsQueueInfo.flags = 0;
         graphicsQueueInfo.queueFamilyIndex = graphicsQueue.index;
         graphicsQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &graphicsQueueInfo, &graphicsQueue.handle);
@@ -832,8 +876,8 @@ namespace BlitzenVulkan
         // Retrieve compute queue handle
         VkDeviceQueueInfo2 computeQueueInfo{};
         computeQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        computeQueueInfo.pNext = nullptr; // Not using this
-        computeQueueInfo.flags = 0; // Not using this
+        computeQueueInfo.pNext = nullptr; 
+        computeQueueInfo.flags = 0; 
         computeQueueInfo.queueFamilyIndex = computeQueue.index;
         computeQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &computeQueueInfo, &computeQueue.handle);
@@ -841,16 +885,16 @@ namespace BlitzenVulkan
         // Retrieve present queue handle
         VkDeviceQueueInfo2 presentQueueInfo{};
         presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        presentQueueInfo.pNext = nullptr; // Not using this
-        presentQueueInfo.flags = 0; // Not using this
+        presentQueueInfo.pNext = nullptr; 
+        presentQueueInfo.flags = 0; 
         presentQueueInfo.queueFamilyIndex = presentQueue.index;
         presentQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
 
         VkDeviceQueueInfo2 transferQueueInfo{};
 		transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-		transferQueueInfo.flags = 0; // Not using this
-		transferQueueInfo.pNext = nullptr; // Not using this
+		transferQueueInfo.flags = 0; 
+		transferQueueInfo.pNext = nullptr; 
         transferQueueInfo.queueFamilyIndex = transferQueue.index;
         transferQueueInfo.queueIndex = 0;
 		vkGetDeviceQueue2(device, &transferQueueInfo, &transferQueue.handle);
@@ -1071,37 +1115,35 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::CreateIdleDrawHandles()
+    uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline,
+        VkPipelineLayout& layout, VkDescriptorSetLayout& setLayout, 
+        uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer)
     {
         VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
         CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0,
-            1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT
-        );
-        m_backgroundImageSetLayout.handle = CreateDescriptorSetLayout(m_device,
-            1, &backgroundImageLayoutBinding, // storage image binding
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR // uses push descriptors
-        );
-        if (m_backgroundImageSetLayout.handle == VK_NULL_HANDLE)
+            1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        setLayout = CreateDescriptorSetLayout(device, 1, &backgroundImageLayoutBinding,
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        if (setLayout == VK_NULL_HANDLE)
+        {
             return 0;
+        }
 
         // Creates the layout for the background compute shader
         VkPushConstantRange backgroundImageShaderPushConstant{};
         CreatePushConstantRange(
             backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
-            sizeof(BackgroundShaderPushConstant)
-        );
-        if (!CreatePipelineLayout(
-            m_device, &m_basicBackgroundLayout.handle,
-            1, &m_backgroundImageSetLayout.handle, // Image push descriptor layout
-            1, &backgroundImageShaderPushConstant // Push constant for use data
-        ))
+            sizeof(BackgroundShaderPushConstant));
+        if (!CreatePipelineLayout(device, &layout, Ce_SinglePointer, &setLayout,
+            Ce_SinglePointer, &backgroundImageShaderPushConstant))
+        {
             return 0;
+        }
 
         // Create the background shader in case the renderer has not objects
-        if (!CreateComputeShaderProgram(m_device, "VulkanShaders/BasicBackground.comp.glsl.spv", // filepath
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", // entry point
-            m_basicBackgroundLayout.handle, &m_basicBackgroundPipeline.handle
-        ))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/BasicBackground.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", layout, &pipeline))
         {
             BLIT_ERROR("Failed to create BasicBackground.comp shader program")
                 return 0;
@@ -1111,30 +1153,23 @@ namespace BlitzenVulkan
         idleCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         idleCommandPoolInfo.pNext = nullptr;
         idleCommandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        idleCommandPoolInfo.queueFamilyIndex = m_graphicsQueue.index;
-        if (vkCreateCommandPool(m_device, &idleCommandPoolInfo, nullptr,
-            &m_idleCommandBufferPool.handle) != VK_SUCCESS)
+        idleCommandPoolInfo.queueFamilyIndex = queueIndex;
+        if (vkCreateCommandPool(device, &idleCommandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
         {
-            BLIT_ERROR("Failed to create idle draw command buffer pool")
-                return 0;
+            BLIT_ERROR("Failed to create idle draw command buffer pool");
+            return 0;
         }
         VkCommandBufferAllocateInfo idleCommandBufferInfo{};
         idleCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         idleCommandBufferInfo.pNext = nullptr;
         idleCommandBufferInfo.commandBufferCount = 1;
         idleCommandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        idleCommandBufferInfo.commandPool = m_idleCommandBufferPool.handle;
-        if (vkAllocateCommandBuffers(m_device, &idleCommandBufferInfo, &m_idleDrawCommandBuffer) != VK_SUCCESS)
+        idleCommandBufferInfo.commandPool = commandPool;
+        if (vkAllocateCommandBuffers(device, &idleCommandBufferInfo, &commandBuffer) != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to allocate idle draw command buffer")
                 return 0;
         }
-
-		if (!CreateLoadingTrianglePipeline())
-		{
-			BLIT_ERROR("Failed to create loading triangle pipeline")
-				return 0;
-		}
 
         return 1;
     }

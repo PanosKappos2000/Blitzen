@@ -39,11 +39,7 @@ bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bo
 	// Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
     center = RotateQuat(boundCenter, orientation) * scale + pos;
     center = (view * vec4(center, 1)).xyz;
-
-    // The bounding sphere's radius only needs to be multiplied by the object's scale
 	radius = boundRadius * scale;
-
-    // Checks that the bounding sphere is inside the view frustum(frustum culling)
 	bool visible = true;
 
     // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time
@@ -57,12 +53,49 @@ bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bo
 	return visible;
 }
 
+bool OcclusionCullingPassed(vec4 aabb, sampler2D depthPyramid, float pyramidWidth, float pyramidHeight, vec3 center, float radius, float zNear)
+{
+	float width = (aabb.z - aabb.x) * viewData.pyramidWidth;
+	float height = (aabb.w - aabb.y) * viewData.pyramidHeight;
+    // Find the mip map level that will match the screen size of the sphere
+	float level = floor(log2(max(width, height)));
+	float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
+	float depthSphere = viewData.zNear / (center.z - radius);
+	return depthSphere > depth;
+}
+
+struct ClusterDispatchData
+{
+    uint objectId;
+    uint lodIndex;
+    uint clusterId;
+};
+
+#ifdef PRE_CLUSTER
+layout(set = 0, binding = 16, std430) writeonly buffer IndirectClusterDispatch
+{
+	ClusterDispatchData data[];
+}indirectClusterDispatch;
+#else
+layout(set = 0, binding = 16, std430) readonly buffer IndirectClusterDispatch
+{
+	ClusterDispatchData data[];
+}indirectClusterDispatch;
+#endif
+
+#ifdef PRE_CLUSTER
+layout(set = 0, binding = 17, std430) writeonly buffer IndirectClusterCount
+{
+	uint count;
+}indirectClusterCount;
+#endif
+
 // The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
 // Will be incremented when necessary by a compute shader
-layout(set = 0, binding = 9, std430) writeonly buffer IndirectCount
+layout(set = 0, binding = 9, std430) writeonly buffer IndirectDrawCount
 {
     uint drawCount;
-}indirectCountBuffer;
+}indirectDrawCountBuffer;
 
 layout(set = 0, binding = 10, std430) buffer VisibilityBuffer
 {

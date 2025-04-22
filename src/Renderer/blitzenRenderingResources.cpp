@@ -61,7 +61,7 @@ namespace BlitzenEngine
 
     // Loads cluster using the meshoptimizer library
     size_t RenderingResources::GenerateClusters(BlitCL::DynamicArray<Vertex>& inVertices, 
-        BlitCL::DynamicArray<uint32_t>& inIndices)
+        BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
     {
         const size_t maxVertices = 64;
         const size_t maxTriangles = 124;
@@ -73,59 +73,69 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<unsigned int> meshletVertices{
             akMeshlets.GetSize() * maxVertices 
         };
-        BlitCL::DynamicArray<unsigned char> meshletTriangles{
-            akMeshlets.GetSize() * maxTriangles * 3
-        };
+        BlitCL::DynamicArray<unsigned char> meshletTriangles{ akMeshlets.GetSize() * maxTriangles * 3 };
 
-        akMeshlets.Resize(meshopt_buildMeshlets(
-            akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), 
-            inIndices.Data(), inIndices.GetSize(), 
+        akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), 
+            meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(), 
             &inVertices[0].position.x, inVertices.GetSize(), 
-            sizeof(Vertex), maxVertices, maxTriangles, coneWeight
-        ));
+            sizeof(Vertex), maxVertices, maxTriangles, coneWeight));
 
 
         for(size_t i = 0; i < akMeshlets.GetSize(); ++i)
         {
-            meshopt_Meshlet& meshlet = akMeshlets[i];
+            auto& meshlet = akMeshlets[i];
 
-            meshopt_optimizeMeshlet(
-                &meshletVertices[meshlet.vertex_offset], 
+            meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset], 
                 &meshletTriangles[meshlet.triangle_offset], 
-                meshlet.triangle_count, meshlet.vertex_count
-            );
+                meshlet.triangle_count, meshlet.vertex_count);
 
-            auto dataOffset = m_clusterIndices.GetSize();
+            /*auto dataOffset = m_clusterIndices.GetSize();
             for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
             {
                 m_clusterIndices.PushBack(meshletVertices[meshlet.vertex_offset + i]);
             }
-
             auto indexGroups = reinterpret_cast<unsigned int*>(
-                &meshletTriangles[0] + meshlet.triangle_offset
-            );
-            unsigned int indexGroupCount = (meshlet.triangle_count * 3 + 3);
-
+                &meshletTriangles[0] + meshlet.triangle_offset);
+            unsigned int indexGroupCount = meshlet.triangle_count * 3;
             for(unsigned int i = 0; i < indexGroupCount; ++i)
             {
                 m_clusterIndices.PushBack(indexGroups[size_t(i)]);
+            }*/
+
+            const unsigned int* vertexLookup = &meshletVertices[meshlet.vertex_offset];
+            const unsigned char* triangles = &meshletTriangles[meshlet.triangle_offset];
+            auto dataOffset = m_clusterIndices.GetSize();
+            for (unsigned int t = 0; t < meshlet.triangle_count; ++t)
+            {
+                // Each triangle has 3 indices into the local meshlet vertex array
+                for (int j = 0; j < 3; ++j)
+                {
+                    unsigned int localIndex = triangles[t * 3 + j];
+                    unsigned int globalIndex = vertexLookup[localIndex] + vertexOffset;
+                    m_clusterIndices.PushBack(globalIndex);
+                }
             }
 
-            meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
+            auto bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
             &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, 
                 &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
 
-            Meshlet m = {};
+            Cluster m = {};
             m.dataOffset = static_cast<uint32_t>(dataOffset);
             m.triangleCount = meshlet.triangle_count;
             m.vertexCount = meshlet.vertex_count;
 
+            if (meshlet.triangle_count == 0)
+            {
+                BLIT_ERROR("SHOULD NOT BE HAPPENING");
+            }
+
             m.center = BlitML::vec3(bounds.center[0], bounds.center[1], bounds.center[2]);
             m.radius = bounds.radius;
-            m.cone_axis[0] = bounds.cone_axis_s8[0];
-		    m.cone_axis[1] = bounds.cone_axis_s8[1];
-		    m.cone_axis[2] = bounds.cone_axis_s8[2];
-		    m.cone_cutoff = bounds.cone_cutoff_s8; 
+            m.coneAxisX = bounds.cone_axis_s8[0];
+		    m.coneAxisY = bounds.cone_axis_s8[1];
+		    m.coneAxisZ = bounds.cone_axis_s8[2];
+		    m.coneCutoff = bounds.cone_cutoff_s8; 
 
             m_clusters.PushBack(m);
         }
@@ -139,12 +149,10 @@ namespace BlitzenEngine
     {
 		// Optimize vertices and indices using meshoptimizer
         meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(),
-            surfaceIndices.GetSize(), surfaceVertices.GetSize()
-        );
+            surfaceIndices.GetSize(), surfaceVertices.GetSize());
 	    meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(), 
             surfaceIndices.GetSize(), surfaceVertices.Data(),surfaceVertices.GetSize(), 
-            sizeof(Vertex)
-        );
+            sizeof(Vertex));
 
         // Creates a new primitive surface object and passes its vertices
         PrimitiveSurface newSurface;
@@ -165,8 +173,7 @@ namespace BlitzenEngine
     }
 
     void RenderingResources::AutomaticLevelOfDetailGenration(PrimitiveSurface& surface,
-        BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices
-    )
+        BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
         // Automatic LOD generation helpers
         BlitCL::DynamicArray<BlitML::vec3> normals{ surfaceVertices.GetSize() };
@@ -178,8 +185,7 @@ namespace BlitzenEngine
                 v.normalZ / 127.f - 1.f);
         }
         float lodScale = meshopt_simplifyScale(&surfaceVertices[0].position.x,
-            surfaceVertices.GetSize(), sizeof(Vertex)
-        );
+            surfaceVertices.GetSize(), sizeof(Vertex));
         float lodError = 0.f;
         float normalWeights[3] = { 1.f, 1.f, 1.f };
 
@@ -194,8 +200,8 @@ namespace BlitzenEngine
             lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
             lod.firstMeshlet = static_cast<uint32_t>(m_clusters.GetSize());
-            lod.meshletCount = ce_buildClusters ?
-                static_cast<uint32_t>(GenerateClusters(surfaceVertices, surfaceIndices))
+            lod.meshletCount = Ce_BuildClusters ?
+                static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset))
                 : 0;
 
             // Adds level of details indices to the global indices array
@@ -336,7 +342,7 @@ namespace BlitzenEngine
         BLIT_INFO("Loading obj model form file: %s", filename);
 
         // Get the current mesh and give it the size surface array as its first surface index
-        Mesh& currentMesh = meshes[meshCount];
+        auto& currentMesh = meshes[meshCount];
         currentMesh.firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
 		currentMesh.meshId = uint32_t(meshCount);
         meshMap.Insert(meshName, currentMesh);
@@ -401,7 +407,7 @@ namespace BlitzenEngine
     uint32_t RenderingResources::AddRenderObjectsFromMesh(uint32_t meshId,
         const BlitzenEngine::MeshTransform& transform)
     {
-        BlitzenEngine::Mesh& mesh = meshes[meshId];
+        auto& mesh = meshes[meshId];
         if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
         {
             BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count")
@@ -413,7 +419,7 @@ namespace BlitzenEngine
 
         for (uint32_t i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
         {
-            RenderObject& object = renders[renderObjectCount++];
+            auto& object = renders[renderObjectCount++];
 
             object.surfaceId = i;
             object.transformId = transformId;
@@ -510,8 +516,19 @@ namespace BlitzenEngine
 
                 if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
                 {
-                    m_surfaces.Back().postPass = 1;
+                    IsPrimitiveTransparent temp{ true };
+                    bTransparencyList.PushBack(temp);
                 }
+                else
+                {
+                    IsPrimitiveTransparent temp{ false };
+                    bTransparencyList.PushBack(temp);
+                }
+            }
+            else
+            {
+                IsPrimitiveTransparent temp{ false };
+                bTransparencyList.PushBack(temp);
             }
         }
     }
@@ -552,11 +569,12 @@ namespace BlitzenEngine
                             additional geometry was loaded \
                             which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value")
                     
-                    if (!m_surfaces[surfaceOffset + j].postPass)
+                    if (!bTransparencyList[surfaceOffset + j].b)
                     {
                         auto& current = renders[renderObjectCount];
                         current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
                         current.transformId = transformId;
+
                         renderObjectCount++;
                     }
                     else
@@ -627,6 +645,17 @@ namespace BlitzenEngine
         pResources->LoadMeshFromObj("Assets/Meshes/dragon.obj", "dragon");
         pResources->LoadMeshFromObj("Assets/Meshes/kitten.obj", "kitten");
         pResources->LoadMeshFromObj("Assets/Meshes/FinalBaseMesh.obj", "human");
+    }
+
+    void RenderingResources::CreateSingleObjectForTesting()
+    {
+		// Create a single object for testing
+		MeshTransform transform;
+		transform.pos = BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ);
+		transform.scale = 10.f;
+		transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
+            AddRenderObjectsFromMesh(meshMap["kitten"].meshId, transform);
+		
     }
 
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)

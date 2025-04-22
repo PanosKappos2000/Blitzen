@@ -68,7 +68,7 @@ namespace BlitzenVulkan
 
 
 	// The maximum number of device extensions that may be requested
-    constexpr uint32_t ce_maxRequestedDeviceExtensions = 7;
+    constexpr uint32_t ce_maxRequestedDeviceExtensions = 8;
 
 
     // Double buffering constant expression
@@ -86,6 +86,8 @@ namespace BlitzenVulkan
     #endif
 
 
+    constexpr uint32_t Ce_SinglePointer = 1;
+
     // The format and usage flags that will be set for the color and depth attachments
     constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     constexpr VkClearColorValue ce_WindowClearColor = { 0.f, 0.2f, 0.4f, 1.f };
@@ -100,10 +102,22 @@ namespace BlitzenVulkan
     constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = 
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
         VK_IMAGE_USAGE_SAMPLED_BIT; // For generate debug pyramid compute shader
+    constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
 
 
     // Descriptor write array index constant epressions
     constexpr uint32_t ce_viewDataWriteElement = 0;
+    constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
+
+#if defined BLITZEN_CLUSTER_CULLING
+    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 11;
+    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
+#else
+    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 8;
+    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
+#endif
+
+    const uint32_t IndirectDrawElementCount = 10'000'000;
 
 
     struct VulkanStats
@@ -250,6 +264,8 @@ namespace BlitzenVulkan
         inline static MemoryCrucialHandles* s_pInstance;
     };
 
+
+
     // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
     struct AllocatedImage
     {
@@ -366,6 +382,13 @@ namespace BlitzenVulkan
     {
         uint32_t taskId;
         VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
+    };
+
+    struct ClusterDispatchData
+    {
+        uint32_t objectId;
+        uint32_t lodIndex;
+        uint32_t clusterId;
     };
 
     // Culling shaders receive this shader as a push constant
