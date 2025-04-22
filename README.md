@@ -1,6 +1,6 @@
-# BlitzenEngine0
+# Blitzen
 
-Minimal, console Game Engine.
+Minimal Game Engine.
 
 Its most important aspect is its Vulkan Renderer, which uses GPU draw culling with compute shaders, that set the draw commands for actual rendering. Cluster culling without mesh shaders is also being developed. Currently, it can generate per cluster commands, after doing draw culling, but it does not cull the clusters yet. Ray tracing is also a secondary feature of the renderer. The renderer can accept loaded resources, that are requested from the command line arguments(gltf scene filepaths or some mode strings that load other tests). It has shown the capability of processing 4'000'000+ objects at the same time with 60+ fps on an NVidia 3060. Important to note is that it does not graphics effects like shadow maps and the fragment shader just uses directional light and textures. It has only been tested on Nvidia hardware. It is uncertain, for example, if it would work on an AMD GPU.
 
