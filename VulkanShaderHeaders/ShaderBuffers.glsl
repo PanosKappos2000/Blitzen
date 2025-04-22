@@ -35,8 +35,6 @@ struct Cluster
     uint8_t triangleCount;
     uint8_t padding0;
     uint8_t padding1;
-
-    uint gpuAlignment;
 };
 
 // The single buffer that holds all meshlet data in the scene
@@ -256,7 +254,7 @@ uint LODSelection(vec3 center, float radius, float scale, float lodTarget, uint 
     {
 		if (lodBuffer.levels[lodOffset + i].error < threshold)
         {
-			lodIndex = lodOffset + i;
+			lodIndex = i;
         }
     }
     return lodIndex;

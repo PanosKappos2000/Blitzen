@@ -49,18 +49,10 @@ void main()
     // Transparent objects are only processed by this culling shader so last frame visibility is irrelevant
     if(visible && visibilityBuffer.visibilities[objectIndex] == 0)
     {
-        float distance = max(length(center) - radius, 0);
-		float threshold = distance * viewData.lodTarget / transform.scale;
-        uint lodIndex = 0;
-        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
         uint lodOffset = surfaceBuffer.surfaces[obj.surfaceId].lodOffset;
-		for (uint i = 1; i < lodCount; ++i)
-        {
-			if (lodBuffer.levels[lodOffset + i].error < threshold)
-            {
-				lodIndex = lodOffset + i;
-            }
-        }
+        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
+        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, lodOffset, lodCount);
+        lodIndex += lodOffset;
         Lod currentLod = lodBuffer.levels[lodIndex];
 
         // Increments draw count

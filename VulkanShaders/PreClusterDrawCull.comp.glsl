@@ -34,8 +34,10 @@ void main()
 
     if (visible)
     {
-        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, 
-            surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
+        uint lodOffset = surfaceBuffer.surfaces[obj.surfaceId].lodOffset;
+        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
+        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, lodOffset, lodCount);
+        lodIndex += lodOffset;
         Lod lod = lodBuffer.levels[lodIndex];
 
         uint dispatchIndex = atomicAdd(indirectClusterCount.count, lod.clusterCount);

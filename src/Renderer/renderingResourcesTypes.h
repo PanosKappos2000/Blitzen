@@ -57,8 +57,6 @@ namespace BlitzenEngine
     	uint8_t triangleCount;
         uint8_t padding0;
         uint8_t padding1;
-
-        uint32_t gpuAlignmentPad;// Final alignment
     };
 
     struct alignas(16) Material
@@ -80,7 +78,7 @@ namespace BlitzenEngine
         uint32_t materialId;
     };
 
-    struct LodData
+    struct alignas(16) LodData
     {
         // Non cluster path, used to create draw commands
         uint32_t indexCount;
