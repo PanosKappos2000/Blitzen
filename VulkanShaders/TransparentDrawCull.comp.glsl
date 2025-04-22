@@ -63,7 +63,7 @@ void main()
             }
         }
 
-        MeshLod currentLod = surfaceBuffer.surfaces[object.surfaceId].lod[lodIndex];
+        Lod currentLod = surfaceBuffer.surfaces[object.surfaceId].lod[lodIndex];
         // Increments draw command count
         uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
         // Indirect commands + object id (the object id is needed for the vertex shader to access object data)

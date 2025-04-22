@@ -86,7 +86,7 @@ namespace BlitzenEngine
     };
 
     // Mesh LOD data. An array of these is held by each primitive
-    struct MeshLod
+    struct LodData
     {
         uint32_t indexCount;
         uint32_t firstIndex;
@@ -110,7 +110,7 @@ namespace BlitzenEngine
 
         uint32_t lodCount = 0;       
         uint32_t padding0;      
-        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
+        LodData meshLod[ce_primitiveSurfaceMaxLODCount];
     };
 
     // A mesh is a collection of one or more primitives.

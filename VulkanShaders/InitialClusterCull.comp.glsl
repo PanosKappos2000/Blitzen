@@ -55,7 +55,7 @@ void main()
 
     uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
     // Get the selected LOD
-    MeshLod currentLod = surfaceBuffer.surfaces[obj.surfaceId].lod[data.lodIndex];
+    Lod currentLod = surfaceBuffer.surfaces[obj.surfaceId].lod[data.lodIndex];
     // The object index is needed to know which element to access in the per object data buffer
     indirectDrawBuffer.draws[drawID].objectId = data.objectId;
     // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface

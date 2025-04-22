@@ -66,7 +66,7 @@ void main()
         }
 
         // Gets the selected LOD
-        MeshLod currentLod = surfaceBuffer.surfaces[object.surfaceId].lod[lodIndex];
+        Lod currentLod = surfaceBuffer.surfaces[object.surfaceId].lod[lodIndex];
         // Increments the draw count buffer, so that vkCmdDrawIndexedIndirectCount draws the current object
         uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
         // The object index is needed to know which element to access in the per object data buffer

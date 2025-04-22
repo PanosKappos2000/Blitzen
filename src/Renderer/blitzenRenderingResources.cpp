@@ -209,10 +209,12 @@ namespace BlitzenEngine
                 static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset))
                 : 0;
 
+            lod.error = lodError * lodScale;
+            m_lods.PushBack(lod);
+
             // Adds current lod indices
             allLodIndices.AppendArray(lodIndices);
-            // Adjusts the error to the generated scale
-            lod.error = lodError * lodScale;
+            
 
             // Starts generating the next level of detail
             if (surface.lodCount < ce_primitiveSurfaceMaxLODCount)

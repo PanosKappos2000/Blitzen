@@ -56,6 +56,10 @@ namespace BlitzenEngine
         {
             return m_transparentRenders;
         }
+		inline const BlitCL::DynamicArray<LodData>& GetLodData() const
+		{
+			return m_lods;
+		}
       
     public:
 
@@ -308,6 +312,8 @@ namespace BlitzenEngine
 
         // Holds all the primitives / surfaces
         BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;
+
+        BlitCL::DynamicArray<LodData> m_lods;
 
         // Holds the vertex count of each primitive. This does not need to be passed to shader for now. But I do need it for ray tracing
         BlitCL::DynamicArray<uint32_t> m_primitiveVertexCounts;

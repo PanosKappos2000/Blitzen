@@ -60,7 +60,7 @@ void main()
         }
 
         // Get the selected LOD
-        MeshLod currentLod = surfaceBuffer.surfaces[obj.surfaceId].lod[lodIndex];
+        Lod currentLod = surfaceBuffer.surfaces[obj.surfaceId].lod[lodIndex];
         // The object index is needed to know which element to access in the per object data buffer
         indirectDrawBuffer.draws[drawID].objectId = objectIndex;
         // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface

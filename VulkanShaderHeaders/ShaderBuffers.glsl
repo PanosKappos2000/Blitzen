@@ -51,7 +51,7 @@ layout(set = 0, binding = 13, std430) readonly buffer MeshletDataBuffer
 }meshletDataBuffer;
 
 // Holds a specific level of detail's index offset and count (as well as the according data for mesh shaders)
-struct MeshLod
+struct Lod
 {
     uint indexCount;
     uint firstIndex;
@@ -62,6 +62,11 @@ struct MeshLod
 
     uint padding0;
 };
+
+layout(set = 0, binding = 4, std430) readonly buffer LodBuffer
+{
+    Lod levels[];
+}lodBufer;
 
 struct Surface
 {
@@ -74,7 +79,7 @@ struct Surface
 
     uint lodCount;       
     uint padding0;      
-    MeshLod lod[8];
+    Lod lod[8];
 };
 
 layout(set = 0, binding = 2, std430) readonly buffer SurfaceBuffer
