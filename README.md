@@ -1,10 +1,8 @@
 # BlitzenEngine0
 
-Game engine focused on the rendering aspect and on implementing acceleration algorithms that are calculated on the GPU.
+Minimal, console Game Engine.
 
-Vulkan is the initial targeted graphics API but OpenGL has been implemented as well. For now OpenGL does not support occlusion culling or textures but it is as performant as Vulkan.
-
-Capable of loading .obj models and .gltf scenes (with some constraints):
+Its most important aspect is its Vulkan Renderer, which uses GPU draw culling with compute shaders, that set the draw commands for actual rendering. Cluster culling without mesh shaders is also being developed. Currently, it can generate per cluster commands, after doing draw culling, but it does not cull the clusters yet. Ray tracing is also a secondary feature of the renderer. The renderer can accept loaded resources, that are requested from the command line arguments(gltf scene filepaths or some mode strings that load other tests). It has shown the capability of processing 4'000'000+ objects at the same time with 60+ fps on an NVidia 3060. Important to note is that it does not graphics effects like shadow maps and the fragment shader just uses directional light and textures. It has only been tested on Nvidia hardware. It is uncertain, for example, if it would work on an AMD GPU.
 
 -To load obj models it uses the fast_obj library from thisistherk : https://github.com/thisistherk/fast_obj
 
@@ -12,14 +10,10 @@ Capable of loading .obj models and .gltf scenes (with some constraints):
 
 -For the vertices that are loaded, the incredible meshoptimizer library is used to generate indices, LODs, clusters and optimize the vertex cache. Meshoptimizer is written by Arseny Kapoulkine (zeux on github) https://github.com/zeux/meshoptimizer. 
 
-Uses compute shaders to perform frustum and occlusion culling on each surface. It also loads LODs automatically for each surface loaded. With all of these active it is capable of handling scenes with millions of objects (tested on an RTX3060).
-
-It implements a very basic, flawed camera system that moves with the mouse and WASD keys to fly around the scene.
-
 The engine only supports DDS textures. Textures with unsupported formats can be converted offline by using something like NVIDIA's texture tools. They will otherwise fail to load.
 
-It has only been tested on Nvidia hardware. It is uncertain, for example, if it works on any type of AMD GPU.
+Other systems include a minimal camera system, dynamic objects (but not 4'000'000 of them), an event system and its own container library. Usage of Stl is minimal throughout the project.
 
-It supports Windows and Linux but the Linux build has not been tested as heavily as the Windows build and can only use Vulkan, not OpenGL.
+It supports windows and linux, but development is done on a windows environment and linux stays behind sometimes.
 
 The project can be built and compiled with CMake. Starting the Engine without command line arguments, simply opens a default, colored window. It can also take command line arguments -which should be gltf filepaths with DDS textures- in which case it will draw the gltf scene found in the filepath. There is also a special command line argument "RenderingStressTest", which will load a scene with millions of objects in "random" positions. This serves to test the acceleration algorithms mentioned earlier. Some machines might not be able to handle this, as the renderer will load 4'500'000 objects when the BLITZEN_RENDERING_STRESS_TEST preprocessor macro is defined in CMakeLists.txt (defined by default).
