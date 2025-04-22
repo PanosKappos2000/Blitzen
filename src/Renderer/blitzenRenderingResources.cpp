@@ -63,6 +63,8 @@ namespace BlitzenEngine
     size_t RenderingResources::GenerateClusters(BlitCL::DynamicArray<Vertex>& inVertices, 
         BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
     {
+        BLIT_INFO("Generating clusters");
+
         const size_t maxVertices = 64;
         const size_t maxTriangles = 124;
         const float coneWeight = 0.25f;
@@ -159,12 +161,13 @@ namespace BlitzenEngine
         newSurface.vertexOffset = static_cast<uint32_t>(m_vertices.GetSize());
         m_vertices.AppendArray(surfaceVertices);
 
+        BLIT_INFO("Generating Level Of Detail Indices");
         AutomaticLevelOfDetailGenration(newSurface, surfaceVertices, surfaceIndices);
 
-        // Bounding sphere generation
+        BLIT_INFO("Generating bounding sphere");
         GenerateBoundingSphere(newSurface, surfaceVertices, surfaceIndices);
 
-        // No logic for materials for now (TODO)
+        // TODO: Add logic for material without relying on gltf
         newSurface.materialId = 0;
 
 		// Adds the surface to the global surfaces array
@@ -195,10 +198,12 @@ namespace BlitzenEngine
         while (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
         {
             auto& lod = surface.meshLod[surface.lodCount++];
+            BLIT_INFO("Generating LOD %d", surface.lodCount);
 
-            // Depending on the implementation, LOD will use either indices or meshlets
             lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
+
+            // TODO: Might want to make lod include one or the other, indices and clusters are not used together
             lod.firstMeshlet = static_cast<uint32_t>(m_clusters.GetSize());
             lod.meshletCount = Ce_BuildClusters ?
                 static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset))
