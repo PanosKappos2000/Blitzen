@@ -117,7 +117,7 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
 #endif
 
-    const uint32_t IndirectDrawElementCount = 4'000'000;
+    const uint32_t IndirectDrawElementCount = 10'000'000;
 
 
     struct VulkanStats
