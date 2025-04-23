@@ -20,14 +20,14 @@ void main()
         return;
 
     // Access the object's data
-    RenderObject object = cullPC.renderObjectBufferAddress.objects[objectIndex];
-    Transform transform = transformBuffer.instances[object.meshInstanceId];
+    RenderObject obj = cullPC.renderObjectBufferAddress.objects[objectIndex];
+    Transform transform = transformBuffer.instances[obj.meshInstanceId];
     
     // Frustum culling
     vec3 center;
 	float radius;
 	bool visible = IsObjectInsideViewFrustum(center, radius, 
-        surfaceBuffer.surfaces[object.surfaceId].center, surfaceBuffer.surfaces[object.surfaceId].radius, // bounding sphere
+        surfaceBuffer.surfaces[obj.surfaceId].center, surfaceBuffer.surfaces[obj.surfaceId].radius, // bounding sphere
         transform.scale, transform.pos, transform.orientation, // object transform
         viewData.view, // view matrix
         viewData.frustumRight, viewData.frustumLeft, // frustum planes
@@ -49,29 +49,16 @@ void main()
     // Transparent objects are only processed by this culling shader so last frame visibility is irrelevant
     if(visible && visibilityBuffer.visibilities[objectIndex] == 0)
     {
-        // The LOD index is calculated using a formula, 
-        // where the distance to the bounding sphere's surface is taken
-        // and the minimum error that would result in acceptable screen-space deviation
-        // is computed based on camera parameters
-		float distance = max(length(center) - radius, 0);
-		float threshold = distance * viewData.lodTarget / transform.scale;
-        uint lodIndex = 0;
-        uint lodCount = surfaceBuffer.surfaces[object.surfaceId].lodCount;
-		for (uint i = 1; i < lodCount; ++i)
-        {
-			if (surfaceBuffer.surfaces[object.surfaceId].lod[i].error < threshold)
-            {
-				lodIndex = i;
-            }
-        }
+        uint lodOffset = surfaceBuffer.surfaces[obj.surfaceId].lodOffset;
+        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
+        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, lodOffset, lodCount);
+        lodIndex += lodOffset;
+        Lod currentLod = lodBuffer.levels[lodIndex];
 
-        // Gets the selected LOD
-        MeshLod currentLod = surfaceBuffer.surfaces[object.surfaceId].lod[lodIndex];
-        // Increments the draw count buffer, so that vkCmdDrawIndexedIndirectCount draws the current object
+        // Increments draw count
         uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
-        // The object index is needed to know which element to access in the per object data buffer
+        // Passes draw commands and object id
         indirectDrawBuffer.draws[drawID].objectId = objectIndex;
-        // Sets up the indirect draw commands based on the selected LODs and the vertex offset of the current surface
         indirectDrawBuffer.draws[drawID].indexCount = currentLod.indexCount;
         indirectDrawBuffer.draws[drawID].instanceCount = 1;
         indirectDrawBuffer.draws[drawID].firstIndex = currentLod.firstIndex;

@@ -498,7 +498,8 @@ namespace BlitzenVulkan
         VkBuffer materialStagingBuffer, VkDeviceSize materialBufferSize,
         VkDeviceSize visibilityBufferSize,
         VkBuffer clusterStagingBuffer, VkDeviceSize clusterBufferSize,
-        VkBuffer clusterIndicesStagingBuffer, VkDeviceSize clusterIndicesBufferSize)
+        VkBuffer clusterIndicesStagingBuffer, VkDeviceSize clusterIndicesBufferSize, 
+        VkBuffer lodStagingBuffer, VkDeviceSize lodBufferSize)
     {
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -537,6 +538,10 @@ namespace BlitzenVulkan
             currentStaticBuffers.surfaceBuffer.buffer.bufferHandle,
             surfaceBufferSize, 0, 0);
 
+		CopyBufferToBuffer(commandBuffer, lodStagingBuffer,
+			currentStaticBuffers.lodBuffer.buffer.bufferHandle,
+			lodBufferSize, 0, 0);
+
         // Materials
         CopyBufferToBuffer(commandBuffer, materialStagingBuffer,
             currentStaticBuffers.materialBuffer.buffer.bufferHandle,
@@ -544,8 +549,7 @@ namespace BlitzenVulkan
 
         // Visibility buffer will start with only zeroes. The first frame will do noting, but that should be fine
         vkCmdFillBuffer(commandBuffer, currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
-            0, visibilityBufferSize, 0
-        );
+            0, visibilityBufferSize, 0);
 
         if (BlitzenEngine::Ce_BuildClusters)
         {
@@ -839,6 +843,7 @@ namespace BlitzenVulkan
         auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
 		auto& transforms = pResources->transforms;
         const auto& transparentRenderobjects = pResources->GetTranparentRenders();
+		const auto& lodData = pResources->GetLodData();
 
         // Raytracing support needs additional flags
         uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
@@ -945,14 +950,13 @@ namespace BlitzenVulkan
 
         // Buffer that holds primitives (surfaces that can be drawn)
         AllocatedBuffer lodStagingBuffer;
-        auto temp = 1;
         auto lodBufferSize
         {
             SetupPushDescriptorBuffer(m_device, m_allocator,
             m_currentStaticBuffers.lodBuffer,
-            lodStagingBuffer, 1,
+            lodStagingBuffer, lodData.GetSize(),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            &temp)
+            lodData.Data())
         };
         if (lodBufferSize == 0)
         {
@@ -1098,13 +1102,16 @@ namespace BlitzenVulkan
             surfaceStagingBuffer.bufferHandle, surfaceBufferSize, 
             materialStagingBuffer.bufferHandle, materialBufferSize, 
             visibilityBufferSize, meshletStagingBuffer.bufferHandle, clusterBufferSize, 
-            meshletDataStagingBuffer.bufferHandle, clusterIndexBufferSize);
+            meshletDataStagingBuffer.bufferHandle, clusterIndexBufferSize, 
+            lodStagingBuffer.bufferHandle, lodBufferSize);
 
         // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)
         {
-            if(!BuildBlas(surfaces, pResources->GetPrimitiveVertexCounts()))
+            if (!BuildBlas(pResources))
+            {
                 return 0;
+            }
             if(!BuildTlas(pRenderObjects, renderObjectCount, transforms.Data(), surfaces.Data()))
                 return 0;
         }

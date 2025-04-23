@@ -22,19 +22,13 @@ namespace BlitzenEngine
         constexpr uint8_t Ce_BuildClusters = 0;
     #endif 
     
-    // Data for each texture
     struct TextureStats
     {
-        std::string filepath;
-
-        // TODO: this is no longer used, might want to remove later
-        uint8_t* pTextureData;
-
-        // This tag is for the shaders to know which image memory to access, when a material uses this texture
-        uint32_t textureTag;
+		std::string filepath;// Probably useless, but whatever
+        uint8_t* pTextureData;// Probably useless, but whatever
+        uint32_t textureTag;// Do I even use this piece of crap?
     };
 
-    // Data for each vertex. Passed to the GPU
     struct alignas(16) Vertex
     {
         BlitML::vec3 position;
@@ -43,10 +37,9 @@ namespace BlitzenEngine
         uint8_t tangentX, tangentY, tangentZ, tangentW;
     };
 
-    // Data for each meshlet. Passed to the GPU
     struct alignas(16) Cluster
     {
-        // Bounding sphere for frustum culling
+        // Bounding sphere
     	BlitML::vec3 center;
     	float radius;
 
@@ -56,16 +49,16 @@ namespace BlitzenEngine
         int8_t coneAxisZ;
     	int8_t coneCutoff;
 
-    	uint32_t dataOffset; // Index into meshlet data
+        // Offset into the cluster data buffer (index buffer for clusters)
+    	uint32_t dataOffset;
+
+        // I am not sure why I have vertex count AND triangle count but whatever
     	uint8_t vertexCount;
     	uint8_t triangleCount;
         uint8_t padding0;
         uint8_t padding1;
-
-        uint32_t gpuAlignmentPad;
     };
 
-	// Data for each material. Passed to the GPU
     struct alignas(16) Material
     {
         // Not using these 2 right now, might remove them when I'm not bored, 
@@ -85,32 +78,41 @@ namespace BlitzenEngine
         uint32_t materialId;
     };
 
-    // Mesh LOD data. An array of these is held by each primitive
-    struct MeshLod
+    struct alignas(16) LodData
     {
+        // Non cluster path, used to create draw commands
         uint32_t indexCount;
         uint32_t firstIndex;
+
+		// Cluster path, used to create draw commands
+        uint32_t clusterOffset;
+        uint32_t clusterCount;
+
+        // Used for more accurate LOD selection
         float error;
 
-        uint32_t firstMeshlet;
-        uint32_t meshletCount;
-
-        uint32_t padding0; // Pad to 24 bytes total   
+        // Pad to 32 bytes total 
+        uint32_t padding0;  
+        uint32_t padding1; 
+        uint32_t padding2;
     };
 
-    // Per primitive data. Passed to the GPU
     struct alignas(16) PrimitiveSurface
     {
+        // Bounding sphere
         BlitML::vec3 center;     
         float radius;            
 
-        uint32_t vertexOffset;
-
         uint32_t materialId;
 
-        uint32_t lodCount = 0;       
-        uint32_t padding0;      
-        MeshLod meshLod[ce_primitiveSurfaceMaxLODCount];
+        // Index to lod buffer
+        // Each primitive can be drawn in multiple ways, depending on its LODs
+        // The LOD is selected in compute shaders
+        uint32_t lodOffset;
+        uint32_t lodCount = 0;
+
+        uint32_t vertexOffset; // Not used in the shaders but can hold the offset when loading
+        uint32_t padding0; // Explicit padding to 48 bytes total
     };
 
     // A mesh is a collection of one or more primitives.

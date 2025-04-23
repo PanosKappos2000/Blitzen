@@ -31,7 +31,7 @@ void main()
     // Uv map for frag
     outUv = vec2(float(vertex.uvX), float(vertex.uvY));
     // Material tag for frag
-    outMaterialTag = surfaceBuffer.surfaces[object.surfaceId].materialID;
+    outMaterialTag = surfaceBuffer.surfaces[object.surfaceId].materialId;
     
     // Unpacks surface normals for frag
     vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ) / 127.0 - 1.0;
