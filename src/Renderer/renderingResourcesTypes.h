@@ -1,27 +1,10 @@
+#pragma once
+#include "Engine/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include <string>
 
 namespace BlitzenEngine
 {
-    constexpr uint32_t ce_maxTextureCount = 5'000;
-
-    constexpr uint32_t ce_maxMaterialCount = 10'000;
-
-    constexpr uint8_t ce_primitiveSurfaceMaxLODCount = 8;
-
-    constexpr uint32_t ce_maxMeshCount = 1'000'000; 
-	constexpr const char* ce_defaultMeshName = "bunny";
-
-    constexpr uint32_t ce_maxRenderObjects = 5'000'000;
-
-    constexpr uint32_t ce_maxONPC_Objects = 100;
-
-    #ifdef BLITZEN_CLUSTER_CULLING
-        constexpr uint8_t Ce_BuildClusters = 1;
-    #else
-        constexpr uint8_t Ce_BuildClusters = 0;
-    #endif 
-    
     struct TextureStats
     {
 		std::string filepath;// Probably useless, but whatever

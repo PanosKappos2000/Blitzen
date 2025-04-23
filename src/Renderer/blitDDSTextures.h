@@ -1,13 +1,10 @@
 #pragma once
 #include <stdio.h>
+#include "Engine/blitzenEngine.h"
 #include "Platform/filesystem.h"
 
 namespace BlitzenEngine
 {
-    constexpr uint32_t DDSCAPS2_CUBEMAP = 0x200;
-    constexpr uint32_t DDSCAPS2_VOLUME = 0x200000;
-    constexpr uint32_t DDS_DIMENSION_TEXTURE2D = 3;
-
     // Copied form https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-pixelformat
     struct DDS_PIXELFORMAT
     {

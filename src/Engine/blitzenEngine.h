@@ -1,11 +1,9 @@
 #pragma once
-
 #include <stdio.h>
 #include <cstdint>
 #include <cstddef>
 
 //#define LAMBDA_GAME_OBJECT_TEST
-#define VK_DRAW_WHILE_WAITING
 
 namespace BlitzenEngine
 {
@@ -15,7 +13,7 @@ namespace BlitzenEngine
     constexpr uint32_t ce_initialWindowWidth = 1280;
     constexpr uint32_t ce_initialWindowHeight = 768;
 
-    // Camera values
+    // Camera initial settings
     constexpr float ce_initialCameraX = 20.f;
     constexpr float ce_initialCameraY = 70.f;
     constexpr float ce_initialCameraZ = 0.f;
@@ -23,7 +21,24 @@ namespace BlitzenEngine
     constexpr float ce_initialFOV = 70.f;
     constexpr float ce_initialDrawDistance = 650.f;
 
-    constexpr const char* ce_blitzenVersion = "Blitzen Engine 0";
+    // Renderer settings
+    constexpr uint32_t DDSCAPS2_CUBEMAP = 0x200;
+    constexpr uint32_t DDSCAPS2_VOLUME = 0x200000;
+    constexpr uint32_t DDS_DIMENSION_TEXTURE2D = 3;
+    constexpr uint32_t ce_maxTextureCount = 5'000;
+    constexpr uint32_t ce_maxMaterialCount = 10'000;
+    constexpr uint8_t ce_primitiveSurfaceMaxLODCount = 8;
+    constexpr uint32_t ce_maxMeshCount = 1'000'000; 
+	constexpr const char* ce_defaultMeshName = "bunny";
+    constexpr uint32_t ce_maxRenderObjects = 5'000'000;
+    constexpr uint32_t ce_maxONPC_Objects = 100;
+    #ifdef BLITZEN_CLUSTER_CULLING
+        constexpr uint8_t Ce_BuildClusters = 1;
+    #else
+        constexpr uint8_t Ce_BuildClusters = 0;
+    #endif 
+
+    constexpr const char* ce_blitzenVersion = "Blitzen Engine";
     constexpr uint32_t ce_blitzenMajor = 0;
 
     class Engine
