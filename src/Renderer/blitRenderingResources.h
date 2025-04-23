@@ -101,6 +101,8 @@ namespace BlitzenEngine
             float shininess, const char* diffuseMapName,
             const char* specularMapName, const char* materialName);
 
+        bool CreateRenderObject(uint32_t transformId, uint32_t surfaceId);
+
         // Lovely piece of debug helper
         void CreateSingleObjectForTesting();
 

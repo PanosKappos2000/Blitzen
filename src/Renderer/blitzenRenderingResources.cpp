@@ -172,6 +172,8 @@ namespace BlitzenEngine
 		// Adds the surface to the global surfaces array
         m_surfaces.PushBack(newSurface);
         m_primitiveVertexCounts.PushBack(static_cast<uint32_t>(m_vertices.GetSize()));
+        // Default, if a caller wants transparency, they should handle it
+		bTransparencyList.PushBack({ false });
     }
 
     void RenderingResources::AutomaticLevelOfDetailGenration(PrimitiveSurface& surface,
@@ -349,6 +351,33 @@ namespace BlitzenEngine
             vertices[i2].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
             vertices[i2].tangentW = uint8_t(t4.w * 127.f + 127.5f);
         }
+    }
+
+    bool RenderingResources::CreateRenderObject(uint32_t transformId, uint32_t surfaceId)
+    {
+        if (renderObjectCount >= ce_maxRenderObjects)
+        {
+            BLIT_FATAL("Max render object count reached");
+            return false;
+        }
+
+        if (!bTransparencyList[surfaceId].b)
+        {
+            auto& current = renders[renderObjectCount];
+            current.surfaceId = surfaceId;
+            current.transformId = transformId;
+
+            renderObjectCount++;
+        }
+        else
+        {
+            RenderObject current;
+            current.surfaceId = surfaceId;
+            current.transformId = transformId;
+            m_transparentRenders.PushBack(current);
+        }
+
+        return true;
     }
 
     uint8_t RenderingResources::LoadMeshFromObj(const char* filename, const char* meshName)
@@ -538,19 +567,8 @@ namespace BlitzenEngine
 
                 if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
                 {
-                    IsPrimitiveTransparent temp{ true };
-                    bTransparencyList.PushBack(temp);
+					bTransparencyList[m_surfaces.GetSize() - 1].b = true;
                 }
-                else
-                {
-                    IsPrimitiveTransparent temp{ false };
-                    bTransparencyList.PushBack(temp);
-                }
-            }
-            else
-            {
-                IsPrimitiveTransparent temp{ false };
-                bTransparencyList.PushBack(temp);
             }
         }
     }
@@ -582,32 +600,10 @@ namespace BlitzenEngine
                 // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
                 auto surfaceOffset = surfaceIndices[cgltf_mesh_index(pGltfData, node->mesh)];
                 auto transformId = static_cast<uint32_t>(transforms.GetSize());
-
                 for (size_t j = 0; j < node->mesh->primitives_count; ++j)
                 {
-                    // If the gltf goes over BLITZEN_MAX_DRAW_OBJECTS after already loading resources, I have no choice but to assert
-                    BLIT_ASSERT_MESSAGE(renderObjectCount <= ce_maxRenderObjects,
-                        "While Loading a GLTF, \
-                            additional geometry was loaded \
-                            which surpassed the BLITZEN_MAX_DRAW_OBJECT limiter value")
-                    
-                    if (!bTransparencyList[surfaceOffset + j].b)
-                    {
-                        auto& current = renders[renderObjectCount];
-                        current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
-                        current.transformId = transformId;
-
-                        renderObjectCount++;
-                    }
-                    else
-                    {
-                        RenderObject current;
-                        current.surfaceId = surfaceOffset + static_cast<uint32_t>(j);
-                        current.transformId = transformId;
-                        m_transparentRenders.PushBack(current);
-                    }
+                    CreateRenderObject(transformId, surfaceOffset + static_cast<uint32_t>(j));
                 }
-
                 transforms.PushBack(transform);
             }
         }
