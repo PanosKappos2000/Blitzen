@@ -4,7 +4,7 @@
 namespace BlitzenVulkan
 {
     void GetDefaultPipelineInfo(VkGraphicsPipelineCreateInfo& pipelineInfo,
-        VkPipelineRenderingCreateInfo dynamicRenderingInfo, VkFormat* pFormat,
+        VkPipelineRenderingCreateInfo& dynamicRenderingInfo, VkFormat* pFormat,
         VkPipelineInputAssemblyStateCreateInfo& inputAssembly,
         VkPipelineViewportStateCreateInfo& viewport,
         VkPipelineDynamicStateCreateInfo& dynamicState,

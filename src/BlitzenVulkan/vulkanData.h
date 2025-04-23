@@ -107,7 +107,8 @@ namespace BlitzenVulkan
     #endif
 
     // The allocation size of the indirect draw buffer and all buffers that depend on it
-    const uint32_t IndirectDrawElementCount = 10'000'000;
+    constexpr uint32_t IndirectDrawElementCount = 10'000'000;
+    constexpr uint32_t Ce_TrasparentDispatchElementCount = 500'000;// I'm not expecting too many transparent objects
 
 	// When passing a pointer to a vulkan API function, with only one element(common occurence),
     // prefer passing this instead of one for clarity

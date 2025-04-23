@@ -670,6 +670,44 @@ namespace BlitzenVulkan
         return 1;
     }
 
+    static uint8_t AllocateTextureDescriptorSet(VkDevice device, uint32_t textureCount, TextureData* pTextures,
+        VkDescriptorPool& descriptorPool, VkDescriptorSetLayout* pLayout, VkDescriptorSet& descriptorSet)
+    {
+        if (textureCount == 0)
+        {
+            return 0;
+        }
+        // Creates descriptor pool to allocate combined image samplers
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSize.descriptorCount = textureCount;
+        descriptorPool = CreateDescriptorPool(device, 1, &poolSize, 1);
+        if (descriptorPool == VK_NULL_HANDLE)
+        {
+            return 0;
+        }
+        // Allocates the descriptor sets
+        if (!AllocateDescriptorSets(device, descriptorPool, pLayout, 1, &descriptorSet))
+        {
+            return 0;
+        }
+
+        // Creates image infos for every texture to be passed to the VkWriteDescriptorSet
+        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(textureCount);
+        for (size_t i = 0; i < imageInfos.GetSize(); ++i)
+        {
+            imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfos[i].imageView = pTextures[i].image.imageView;
+            imageInfos[i].sampler = pTextures[i].sampler;
+        }
+        VkWriteDescriptorSet write{};
+        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            descriptorSet, static_cast<uint32_t>(imageInfos.GetSize()), 0);
+        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+
+        return 1;
+    }
+
 
 
 
@@ -742,8 +780,10 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (BlitzenEngine::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, &m_intialClusterCullPipeline.handle,
-            nullptr, m_clusterCullLayout.handle))
+        if (BlitzenEngine::Ce_BuildClusters && 
+            !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, 
+                &m_intialClusterCullPipeline.handle, &m_transparentClusterCullPipeline.handle, 
+                m_clusterCullLayout.handle))
         {
             BLIT_ERROR("Failed to create cluster shaders");
             return 0;
@@ -1003,6 +1043,7 @@ namespace BlitzenVulkan
         VkDeviceSize clusterIndexBufferSize = 0;
         AllocatedBuffer meshletDataStagingBuffer;
         VkDeviceSize clusterDispatchBufferSize = 0;
+        VkDeviceSize transparentClusterDispatchBufferSize = 0;
         if (BlitzenEngine::Ce_BuildClusters)
         {
             clusterBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
@@ -1026,6 +1067,10 @@ namespace BlitzenVulkan
                 return 0;
             }
 
+            // Creates cluster dispatch buffers for opaque objects
+            // When per render object culling is done, the cluster dispatch buffer is filled with cluster data
+            // The cluster count buffer has the element count of the cluster data
+            // The cluster count copy buffer receives the count to be accessed for cluster dispatch call
 			clusterDispatchBufferSize = IndirectDrawElementCount * sizeof(ClusterDispatchData);
             if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterDispatchBuffer, 
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
@@ -1036,7 +1081,6 @@ namespace BlitzenVulkan
             }
 			m_currentStaticBuffers.clusterDispatchBufferAddress = GetBufferAddress(m_device,
 				m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle);
-
             if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountBuffer, 
                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -1047,8 +1091,41 @@ namespace BlitzenVulkan
             }
 			m_currentStaticBuffers.clusterCountBufferAddress = GetBufferAddress(m_device,
 				m_currentStaticBuffers.clusterCountBuffer.bufferHandle);
-
             if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountCopyBuffer,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect count copy buffer");
+                return 0;
+            }
+
+            // Creates cluster dispatch buffers for transparent objects
+            // When per render object culling is done, the cluster dispatch buffer is filled with cluster data
+            // The cluster count buffer has the element count of the cluster data
+            // The cluster count copy buffer receives the count to be accessed for cluster dispatch call
+            transparentClusterDispatchBufferSize = Ce_TrasparentDispatchElementCount * sizeof(ClusterDispatchData);
+            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.transparentClusterDispatchBuffer,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY, transparentClusterDispatchBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create transparent indirect dispatch cluster buffer");
+                return 0;
+            }
+            m_currentStaticBuffers.transparentClusterDispatchBufferAddress = GetBufferAddress(m_device,
+                m_currentStaticBuffers.transparentClusterDispatchBuffer.bufferHandle);
+
+            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.transparentClusterCountBuffer,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create transparent indirect count buffer");
+                return 0;
+            }
+            m_currentStaticBuffers.transparentClusterCountBufferAddress = GetBufferAddress(m_device,
+                m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle);
+
+            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.transparentClusterCountCopyBuffer,
                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                 VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
             {

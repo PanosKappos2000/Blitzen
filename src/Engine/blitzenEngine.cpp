@@ -119,14 +119,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    for (auto& c : renderingResources->GetClusterArray())
-    {
-		if (c.dataOffset > renderingResources->GetClusterIndices().GetSize())
-		{
-			BLIT_FATAL("Cluster index out of bounds");
-		}
-    }
-
 
     /*
         Main loop starts here

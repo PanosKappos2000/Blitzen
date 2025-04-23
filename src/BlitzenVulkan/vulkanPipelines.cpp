@@ -5,7 +5,7 @@
 namespace BlitzenVulkan
 {
     void GetDefaultPipelineInfo(VkGraphicsPipelineCreateInfo& pipelineInfo, 
-        VkPipelineRenderingCreateInfo dynamicRenderingInfo, VkFormat* pFormat, 
+        VkPipelineRenderingCreateInfo& dynamicRenderingInfo, VkFormat* pFormat, 
         VkPipelineInputAssemblyStateCreateInfo& inputAssembly, 
         VkPipelineViewportStateCreateInfo& viewport, 
         VkPipelineDynamicStateCreateInfo& dynamicState, 
@@ -25,7 +25,7 @@ namespace BlitzenVulkan
         dynamicRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         dynamicRenderingInfo.colorAttachmentCount = 1;
         dynamicRenderingInfo.pColorAttachmentFormats = pFormat;
-        dynamicRenderingInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+        dynamicRenderingInfo.depthAttachmentFormat = ce_depthAttachmentFormat;
         pipelineInfo.pNext = &dynamicRenderingInfo;
 
         // Setting up triangle primitive assembly
@@ -303,7 +303,7 @@ namespace BlitzenVulkan
 
 
     uint8_t CreateClusterComputePipelines(VkDevice device, VkPipeline* preClusterPipeline, VkPipeline* initialCullingPipeline,
-        VkPipeline* lateCullingPipeline, VkPipelineLayout mainCullingShaderLayout)
+        VkPipeline* transparentClusterCullPipeline, VkPipelineLayout mainCullingShaderLayout)
     {
         if (!CreateComputeShaderProgram(device, "VulkanShaders/PreClusterDrawCull.comp.glsl.spv",
             VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, preClusterPipeline))
@@ -319,6 +319,14 @@ namespace BlitzenVulkan
             return 0;
         }
 
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/TransparentClusterCull.comp.glsl.spv",
+            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, transparentClusterCullPipeline))
+        {
+			BLIT_ERROR("Failed to create transparentClusterCull.comp shader program");
+            return 0;
+        }
+
+		// Success
         return 1;
     }
 
@@ -385,7 +393,7 @@ namespace BlitzenVulkan
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
-        VkFormat colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+        VkFormat colorAttachmentFormat = ce_colorAttachmentFormat;
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		VkPipelineViewportStateCreateInfo viewport{};
         VkPipelineDynamicStateCreateInfo dynamicState{};
@@ -431,8 +439,6 @@ namespace BlitzenVulkan
                 return 0;
             }
         }
-
-        // Fragment shader is common
         ShaderModule fragShaderModule;
         if (!CreateShaderProgram(device, "VulkanShaders/MainObjectShader.frag.glsl.spv",
             VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
@@ -441,11 +447,9 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        // mesh pipeline has additional task shader
+        // Main graphics pipeline
 		pipelineInfo.stageCount = bMeshShaders ? 3 : 2;
         pipelineInfo.pStages = shaderStages;
-
-        //Create the graphics pipeline
         pipelineInfo.layout = mainGraphicsPipelineLayout;
         if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
             mainGraphicsPipeline) != VK_SUCCESS)
@@ -454,29 +458,62 @@ namespace BlitzenVulkan
             return 0;
         }
         
-        // For the post pass pipeline, all that changes is that the fragment shader has specialization constants
-        // That specialization constant will specify how it should behave differently to the original
+        // Tranparent pipeline specialization
+		VkPipelineShaderStageCreateInfo postPassShaderStages[2] = {};
+		postPassShaderStages[0] = shaderStages[0];
         VkSpecializationMapEntry postPassSpecializationMapEntry{};
         VkSpecializationInfo postPassSpecialization{};
         uint32_t postPass = 1;
-		CreateShaderProgramSpecializationConstant(postPassSpecializationMapEntry, 
+        CreateShaderProgramSpecializationConstant(postPassSpecializationMapEntry,
             0, 0, sizeof(uint32_t), postPassSpecialization, &postPass);
         ShaderModule postPassFragShaderModule;
         if (!CreateShaderProgram(device, "VulkanShaders/MainObjectShader.frag.glsl.spv",
             VK_SHADER_STAGE_FRAGMENT_BIT, "main", postPassFragShaderModule.handle,
-            shaderStages[1], &postPassSpecialization))
+            postPassShaderStages[1], &postPassSpecialization))
         {
             BLIT_ERROR("Failed to create MainObjectShader.frag post pass specialization shader program");
             return 0;
         }
+        pipelineInfo = {};
+        dynamicRenderingInfo = {};
+        colorAttachmentFormat = ce_colorAttachmentFormat;
+        inputAssembly = {};
+        viewport = {};
+        dynamicState = {};
+        rasterization = {};
+        multisampling = {};
+        depthState = {};
+        colorBlendAttachment = {};
+        colorBlendState = {};
+        vertexInput = {};
+        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
+            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
+            colorBlendState, vertexInput, dynamicStates);
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = postPassShaderStages;
+        pipelineInfo.layout = mainGraphicsPipelineLayout;
         if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
             postPassGraphicsPipeline) != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create post pass graphics pipeline")
             return 0;
         }
-
         
+        pipelineInfo = {};
+        dynamicRenderingInfo = {};
+        colorAttachmentFormat = ce_colorAttachmentFormat;
+        inputAssembly = {};
+        viewport = {};
+        dynamicState = {};
+        rasterization = {};
+        multisampling = {};
+        depthState = {};
+        colorBlendAttachment = {};
+        colorBlendState = {};
+        vertexInput = {};
+        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
+            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
+            colorBlendState, vertexInput, dynamicStates);
         ShaderModule onpcVertexShaderModule;
         VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
         if (!CreateShaderProgram(device, "VulkanShaders/OnpcGeometry.vert.glsl.spv",
@@ -485,7 +522,6 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create OnpcGeometry.vert shader program");
             return 0;
         }
-
         onpcGeometryShaderStages[1] = shaderStages[1];
         pipelineInfo.stageCount = 2;
         pipelineInfo.pStages = onpcGeometryShaderStages;

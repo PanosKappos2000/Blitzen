@@ -267,8 +267,10 @@ namespace BlitzenVulkan
         PipelineObject m_transparentDrawCullPipeline;
         PipelineLayout m_drawCullLayout;
 
-        PipelineObject m_intialClusterCullPipeline;
+        // Culling shader for clusters (no mesh shaders)
         PipelineObject m_preClusterCullPipeline;
+        PipelineObject m_intialClusterCullPipeline;
+        PipelineObject m_transparentClusterCullPipeline;
         PipelineLayout m_clusterCullLayout;
 
         // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
@@ -405,13 +407,4 @@ namespace BlitzenVulkan
     uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image,
         VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels,
         VmaMemoryUsage memoryUsage);
-
-
-    // Creates a global index buffer. Return its size or 0 if it fails
-    VkDeviceSize CreateGlobalIndexBuffer(VkDevice device, VmaAllocator allocator, uint8_t bRaytracingSupported,
-        AllocatedBuffer& indexStagingBuffer, AllocatedBuffer& indexBuffer, uint32_t* pIndexData, size_t indicesCount);
-
-    uint8_t AllocateTextureDescriptorSet(VkDevice device, uint32_t textureCount, TextureData* pTextures, 
-        VkDescriptorPool& descriptorPool, VkDescriptorSetLayout* pLayout, VkDescriptorSet& descriptorSet);
-
 }

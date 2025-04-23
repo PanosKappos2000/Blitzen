@@ -678,6 +678,8 @@ namespace BlitzenVulkan
         {
             // Fist culling pass with separate command buffer
             BeginCommandBuffer(fTools.computeCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+			// Generates cluster dispatch data and count for the opaque render objects
             DispatchPreClusterCullingShader(fTools.computeCommandBuffer,
                 m_preClusterCullPipeline.handle, m_clusterCullLayout.handle,
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
@@ -686,8 +688,24 @@ namespace BlitzenVulkan
                 m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle,
                 m_currentStaticBuffers.clusterDispatchBufferAddress,
                 m_currentStaticBuffers.clusterCountCopyBuffer.bufferHandle,
-                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
+                context.pResources->renderObjectCount, 
+                m_currentStaticBuffers.renderObjectBufferAddress,
                 Ce_InitialCulling, m_instance);
+
+			// Generates cluster dispatch data and count for the transparent render objects
+            DispatchPreClusterCullingShader(fTools.computeCommandBuffer, 
+                m_preClusterCullPipeline.handle, m_clusterCullLayout.handle, 
+				BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
+                m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle, 
+				m_currentStaticBuffers.transparentClusterCountBufferAddress, 
+				m_currentStaticBuffers.transparentClusterDispatchBuffer.bufferHandle, 
+				m_currentStaticBuffers.transparentClusterDispatchBufferAddress, 
+				m_currentStaticBuffers.transparentClusterCountCopyBuffer.bufferHandle, 
+				static_cast<uint32_t>(context.pResources->GetTranparentRenders().GetSize()), 
+                m_currentStaticBuffers.transparentRenderObjectBufferAddress,
+				Ce_InitialCulling, m_instance);
+
+            // Submits command buffer to generate cluster dispatch count
             VkSemaphoreSubmitInfo bufferUpdateWaitSemaphore{};
             CreateSemahoreSubmitInfo(bufferUpdateWaitSemaphore, fTools.buffersReadySemaphore.handle, 
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
@@ -698,7 +716,6 @@ namespace BlitzenVulkan
                 &bufferUpdateWaitSemaphore, Ce_SinglePointer, &waitForClusterData, fTools.preCulsterCullingFence.handle);
             vkWaitForFences(m_device, Ce_SinglePointer, &fTools.preCulsterCullingFence.handle, VK_TRUE, ce_fenceTimeout);
             vkResetFences(m_device, Ce_SinglePointer, &fTools.preCulsterCullingFence.handle);
-
 
 
             // Command recording begins again
@@ -725,11 +742,19 @@ namespace BlitzenVulkan
                     *reinterpret_cast<uint32_t*>
                         (m_currentStaticBuffers.clusterCountCopyBuffer.allocationInfo.pMappedData))
             };
+			auto transparentDispatchCount
+			{
+				static_cast<uint32_t>(
+					*reinterpret_cast<uint32_t*>
+						(m_currentStaticBuffers.transparentClusterCountCopyBuffer.allocationInfo.pMappedData))
+			};
 
+            // Culls opaque render object clusters
             DispatchClusterCullingComputeShader(fTools.commandBuffer, m_intialClusterCullPipeline.handle, m_clusterCullLayout.handle,
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
                 m_currentStaticBuffers.clusterCountBuffer.bufferHandle,
-                m_currentStaticBuffers.clusterCountCopyBuffer, m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle, 
+                m_currentStaticBuffers.clusterCountCopyBuffer, 
+                m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle, 
 				m_currentStaticBuffers.clusterDispatchBufferAddress,
                 m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
                 m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, dispatchCount,
@@ -742,6 +767,31 @@ namespace BlitzenVulkan
                 m_currentStaticBuffers.meshletDataBuffer.buffer.bufferHandle,
                 dispatchCount, m_currentStaticBuffers.renderObjectBufferAddress, Ce_InitialCulling, m_instance,
                 m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
+            
+            if (m_stats.bTranspartentObjectsExist)
+            {
+                DispatchClusterCullingComputeShader(fTools.commandBuffer, m_transparentClusterCullPipeline.handle, m_clusterCullLayout.handle,
+                    BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
+                    m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle,
+                    m_currentStaticBuffers.transparentClusterCountCopyBuffer,
+                    m_currentStaticBuffers.transparentClusterDispatchBuffer.bufferHandle,
+                    m_currentStaticBuffers.transparentClusterDispatchBufferAddress,
+                    m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                    m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, transparentDispatchCount,
+                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, m_instance);
+
+                DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
+                    uint32_t(pushDescriptorWritesGraphics.Size()),
+                    m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
+                    &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
+                    m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
+                    m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                    m_currentStaticBuffers.meshletDataBuffer.buffer.bufferHandle,
+                    transparentDispatchCount,
+                    m_currentStaticBuffers.transparentRenderObjectBufferAddress,
+                    Ce_LateCulling, m_instance,
+                    m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
+            }
 
 
 
@@ -840,7 +890,6 @@ namespace BlitzenVulkan
                   It takes the commands from the 3rd culling shader.
                   Its fragment shader also has a modified specialization constant for alpha discard
             */
-
             // First culling pass
             DispatchRenderObjectCullingComputeShader(fTools.commandBuffer,
                 m_initialDrawCullPipeline.handle, m_drawCullLayout.handle,
