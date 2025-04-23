@@ -99,3 +99,21 @@ layout(set = 0, binding = 10, std430) buffer VisibilityBuffer
 {
     uint visibilities[];
 }visibilityBuffer;
+
+#ifdef CLUSTER_CULLING
+layout (push_constant) uniform PushConstants
+{
+    RenderObjectBuffer renderObjectBuffer;
+    ClusterDispatchBuffer clusterDispatchBuffer;
+    ClusterCountBuffer clusterCountBuffer;
+    uint drawCount;
+	uint padding0;
+}pushConstant;
+#else
+layout (push_constant) uniform CullingConstants
+{
+    RenderObjectBuffer renderObjectBuffer;
+    uint drawCount;
+	uint padding0;
+}pushConstant;
+#endif

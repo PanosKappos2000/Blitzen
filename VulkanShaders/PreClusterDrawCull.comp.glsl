@@ -3,19 +3,12 @@
 #extension GL_EXT_debug_printf : enable
 
 #define COMPUTE_PIPELINE
+#define CLUSTER_CULLING
 #define PRE_CLUSTER
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 #include "../VulkanShaderHeaders/CullingShaderData.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
-
-layout (push_constant) uniform PushConstants
-{
-    RenderObjectBuffer renderObjectBuffer;
-    ClusterDispatchBuffer clusterDispatchBuffer;
-    ClusterCountBuffer clusterCountBuffer;
-    uint drawCount;
-}pushConstant;
 
 void main()
 {

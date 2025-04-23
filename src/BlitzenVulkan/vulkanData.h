@@ -362,7 +362,7 @@ namespace BlitzenVulkan
     /*
         Vulkan specific shader data structs
     */
-    // TODO: Test alignment
+    
     struct IndirectDrawData
     {
         uint32_t drawId;
@@ -375,7 +375,7 @@ namespace BlitzenVulkan
         VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
     };
 
-    // TODO: This is std430, TEST ALIGNMENT!!!
+    // TODO: Either remove lodIndex or add padding in the future
     struct ClusterDispatchData
     {
         uint32_t objectId;
@@ -383,19 +383,25 @@ namespace BlitzenVulkan
         uint32_t clusterId;
     };
 
-	struct ClusterCullShaderPushConstant
+	struct alignas(16) ClusterCullShaderPushConstant
 	{
         VkDeviceAddress renderObjectBufferAddress;
         VkDeviceAddress clusterDispatchBufferAddress;
         VkDeviceAddress clusterCountBufferAddress;
         uint32_t drawCount;
+        uint32_t padding0;
 	};
+    static_assert(sizeof(ClusterCullShaderPushConstant) == 32, "Unexpected size for ClusterCullShaderPushConstant");
+    static_assert(alignof(ClusterCullShaderPushConstant) == 16, "Unexpected alignment for ClusterCullShaderPushConstant");
 
     struct alignas(16) DrawCullShaderPushConstant
     {
         VkDeviceAddress renderObjectBufferDeviceAddress;
         uint32_t drawCount;
+        uint32_t padding0;
     };
+    static_assert(sizeof(DrawCullShaderPushConstant) == 16, "Unexpected size for DrawCullShaderPushConstant");
+    static_assert(alignof(DrawCullShaderPushConstant) == 16, "Unexpected alignment for DrawCullShaderPushConstant");
 
     struct GlobalShaderDataPushConstant
     {

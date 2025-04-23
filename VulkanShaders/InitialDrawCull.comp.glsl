@@ -9,12 +9,6 @@
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-layout (push_constant) uniform CullingConstants
-{
-    RenderObjectBuffer renderObjectBuffer;
-    uint drawCount;
-}pushConstant;
-
 void main()
 {
     // The object index is for the current object's element in the render object
