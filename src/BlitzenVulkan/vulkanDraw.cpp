@@ -160,10 +160,11 @@ namespace BlitzenVulkan
         PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, 
             layout, PushDescriptorSetID, lateCulling ? descriptorWriteCount : descriptorWriteCount - 1,
             pDescriptorWrites);
+		// Binds the pipeline before push constants
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        DrawCullShaderPushConstant pc{ renderObjectBufferAddress, drawCount, 0/*TODO:this is useless now, will fix later*/};
+        DrawCullShaderPushConstant pushConstant{ renderObjectBufferAddress, drawCount };
         vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 
-            0,sizeof(DrawCullShaderPushConstant), &pc);
+            0,sizeof(DrawCullShaderPushConstant), &pushConstant);
         vkCmdDispatch(commandBuffer, (drawCount / 64) + 1, 1, 1);
 
         // Stops the indirect stage from reading command and count, until the shader is done
@@ -184,8 +185,9 @@ namespace BlitzenVulkan
     static void DispatchPreClusterCullingShader(VkCommandBuffer commandBuffer,
         VkPipeline pipeline, VkPipelineLayout layout,
         uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites,
-        VkBuffer clusterCountBuffer, VkBuffer clusterDataBuffer, VkBuffer clusterCountCopy,
-        uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
+        VkBuffer clusterCountBuffer, VkDeviceAddress clusterCountBufferAddress,
+        VkBuffer clusterDataBuffer, VkDeviceAddress clusterDispatchBufferAddress, 
+        VkBuffer clusterCountCopy, uint32_t drawCount, VkDeviceAddress renderObjectBufferAddress,
         uint8_t lateCulling, VkInstance instance)
     {
         VkBufferMemoryBarrier2 waitBeforeZeroingClusterCount{};
@@ -214,10 +216,15 @@ namespace BlitzenVulkan
         // TODO: Consider parameters for buffer size
         PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
             layout, PushDescriptorSetID, descriptorWriteCount - 1, pDescriptorWrites);
+		// Binds before push constants
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        DrawCullShaderPushConstant pc{ renderObjectBufferAddress, drawCount, 0 };
+        ClusterCullShaderPushConstant pushConstant
+        {
+            renderObjectBufferAddress, clusterDispatchBufferAddress, 
+            clusterCountBufferAddress, drawCount
+        };
         vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_COMPUTE_BIT,
-            0, sizeof(DrawCullShaderPushConstant), &pc);
+            0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         vkCmdDispatch(commandBuffer, (drawCount / 64) + 1, 1, 1);
 
         VkBufferMemoryBarrier2 clusterDispatchVisibilityBarrier{};
@@ -239,8 +246,10 @@ namespace BlitzenVulkan
     static void DispatchClusterCullingComputeShader(VkCommandBuffer commandBuffer,
         VkPipeline pipeline, VkPipelineLayout layout,
         uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites,
-        VkBuffer clusterCountBuffer, AllocatedBuffer& clusterCountCopyBuffer, VkBuffer clusterDispatchBuffer,
-        VkBuffer drawCountBuffer, VkBuffer indirectDrawBuffer, uint32_t dispatchCount,
+        VkBuffer clusterCountBuffer, AllocatedBuffer& clusterCountCopyBuffer, 
+        VkBuffer clusterDispatchBuffer, VkDeviceAddress clusterDispatchBufferAddress, 
+        VkBuffer drawCountBuffer, 
+        VkBuffer indirectDrawBuffer, uint32_t dispatchCount,
         VkDeviceAddress renderObjectBufferAddress, VkInstance instance)
     {
         VkBufferMemoryBarrier2 drawCountFillBarrier{};
@@ -273,10 +282,14 @@ namespace BlitzenVulkan
 
         PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
             layout, PushDescriptorSetID, descriptorWriteCount - 1, pDescriptorWrites);
+        // Binds before epush constants
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        DrawCullShaderPushConstant pc{ renderObjectBufferAddress, dispatchCount, 0 };
+        ClusterCullShaderPushConstant pushConstant
+        { 
+            renderObjectBufferAddress, clusterDispatchBufferAddress, 0, dispatchCount
+        };
         vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_COMPUTE_BIT,
-            0, sizeof(DrawCullShaderPushConstant), &pc);
+            0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         vkCmdDispatch(commandBuffer, (dispatchCount / 64) + 1, 1, 1);
 
         // Stops the indirect stage from reading command and count, until the shader is done
@@ -666,10 +679,12 @@ namespace BlitzenVulkan
             // Fist culling pass with separate command buffer
             BeginCommandBuffer(fTools.computeCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
             DispatchPreClusterCullingShader(fTools.computeCommandBuffer,
-                m_preClusterCullPipeline.handle, m_drawCullLayout.handle,
+                m_preClusterCullPipeline.handle, m_clusterCullLayout.handle,
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                m_currentStaticBuffers.clusterCountBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.clusterDispatchBuffer.buffer.bufferHandle,
+                m_currentStaticBuffers.clusterCountBuffer.bufferHandle,
+                m_currentStaticBuffers.clusterCountBufferAddress,
+                m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle,
+                m_currentStaticBuffers.clusterDispatchBufferAddress,
                 m_currentStaticBuffers.clusterCountCopyBuffer.bufferHandle,
                 context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
                 Ce_InitialCulling, m_instance);
@@ -711,10 +726,11 @@ namespace BlitzenVulkan
                         (m_currentStaticBuffers.clusterCountCopyBuffer.allocationInfo.pMappedData))
             };
 
-            DispatchClusterCullingComputeShader(fTools.commandBuffer, m_intialClusterCullPipeline.handle, m_drawCullLayout.handle,
+            DispatchClusterCullingComputeShader(fTools.commandBuffer, m_intialClusterCullPipeline.handle, m_clusterCullLayout.handle,
                 BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, 
-                m_currentStaticBuffers.clusterCountBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.clusterCountCopyBuffer, m_currentStaticBuffers.clusterDispatchBuffer.buffer.bufferHandle, 
+                m_currentStaticBuffers.clusterCountBuffer.bufferHandle,
+                m_currentStaticBuffers.clusterCountCopyBuffer, m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle, 
+				m_currentStaticBuffers.clusterDispatchBufferAddress,
                 m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
                 m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, dispatchCount,
                 m_currentStaticBuffers.renderObjectBufferAddress, m_instance);

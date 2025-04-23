@@ -72,23 +72,21 @@ struct ClusterDispatchData
 };
 
 #ifdef PRE_CLUSTER
-layout(set = 0, binding = 16, std430) writeonly buffer IndirectClusterDispatch
+layout(buffer_reference, std430) writeonly buffer ClusterDispatchBuffer
 {
 	ClusterDispatchData data[];
-}indirectClusterDispatch;
+};
 #else
-layout(set = 0, binding = 16, std430) readonly buffer IndirectClusterDispatch
+layout(buffer_reference, std430) readonly buffer ClusterDispatchBuffer
 {
 	ClusterDispatchData data[];
-}indirectClusterDispatch;
+};
 #endif
 
-#ifdef PRE_CLUSTER
-layout(set = 0, binding = 17, std430) writeonly buffer IndirectClusterCount
+layout(buffer_reference, std430) writeonly buffer ClusterCountBuffer
 {
 	uint count;
-}indirectClusterCount;
-#endif
+};
 
 // The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
 // Will be incremented when necessary by a compute shader
@@ -101,10 +99,3 @@ layout(set = 0, binding = 10, std430) buffer VisibilityBuffer
 {
     uint visibilities[];
 }visibilityBuffer;
-
-layout (push_constant) uniform CullingConstants
-{
-    RenderObjectBuffer renderObjectBufferAddress;
-    uint drawCount;
-    uint8_t postPass;
-}cullPC;

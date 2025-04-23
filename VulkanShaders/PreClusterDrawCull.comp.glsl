@@ -1,5 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_debug_printf : enable
 
 #define COMPUTE_PIPELINE
 #define PRE_CLUSTER
@@ -8,20 +9,22 @@
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
+layout (push_constant) uniform PushConstants
+{
+    RenderObjectBuffer renderObjectBuffer;
+    ClusterDispatchBuffer clusterDispatchBuffer;
+    ClusterCountBuffer clusterCountBuffer;
+    uint drawCount;
+}pushConstant;
+
 void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x;
-    if (cullPC.drawCount <= objectIndex)
+    if (pushConstant.drawCount <= objectIndex)
     {
         return;
     }
-    // This shader only processes objects that were visible last frame
-    // Temporary disabled this is the only pre shader that will be called for now
-    /*if(visibilityBuffer.visibilities[objectIndex] == 0)
-    {
-        return;
-    }*/
-    RenderObject obj = cullPC.renderObjectBufferAddress.objects[objectIndex];
+    RenderObject obj = pushConstant.renderObjectBuffer.objects[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
 
     vec3 center;
@@ -40,12 +43,12 @@ void main()
         lodIndex += lodOffset;
         Lod lod = lodBuffer.levels[lodIndex];
 
-        uint dispatchIndex = atomicAdd(indirectClusterCount.count, lod.clusterCount);
+        uint dispatchIndex = atomicAdd(pushConstant.clusterCountBuffer.count, lod.clusterCount);
         for(uint i = 0; i < lod.clusterCount; ++i)
         {
-            indirectClusterDispatch.data[i + dispatchIndex].clusterId = lod.clusterOffset + i;
-            indirectClusterDispatch.data[i + dispatchIndex].lodIndex = lodIndex;
-            indirectClusterDispatch.data[i + dispatchIndex].objectId = objectIndex;
+            pushConstant.clusterDispatchBuffer.data[i + dispatchIndex].clusterId = lod.clusterOffset + i;
+            pushConstant.clusterDispatchBuffer.data[i + dispatchIndex].lodIndex = lodIndex;
+            pushConstant.clusterDispatchBuffer.data[i + dispatchIndex].objectId = objectIndex;
         }
     }
 }

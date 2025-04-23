@@ -90,6 +90,7 @@ namespace BlitzenVulkan
             VkDeviceAddress renderObjectBufferAddress;
             AllocatedBuffer transparentRenderObjectBuffer;
             VkDeviceAddress transparentRenderObjectBufferAddress;
+
             PushDescriptorBuffer<void> onpcReflectiveRenderObjectBuffer{ 14, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
             VkDeviceAddress onpcRenderObjectBufferAddress;
 
@@ -103,9 +104,19 @@ namespace BlitzenVulkan
 
             PushDescriptorBuffer<void> visibilityBuffer{ 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
 
-            PushDescriptorBuffer<void> clusterDispatchBuffer{ 16, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-            PushDescriptorBuffer<void> clusterCountBuffer{ 17, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+            // Used for transfering data from pre cluster culling pass, to cluster culling pass
+            // The buffer changes for transparent objects, 
+            // so device addresses to the correct buffer need to be given to the shaders
+            AllocatedBuffer clusterDispatchBuffer;
+			VkDeviceAddress clusterDispatchBufferAddress;
+            AllocatedBuffer clusterCountBuffer;
+			VkDeviceAddress clusterCountBufferAddress;
             AllocatedBuffer clusterCountCopyBuffer;
+			AllocatedBuffer transparentClusterDispatchBuffer;
+			VkDeviceAddress transparentClusterDispatchBufferAddress;
+			AllocatedBuffer transparentClusterCountBuffer;
+            VkDeviceAddress transparentClusterCountBufferAddress;
+			AllocatedBuffer transparentClusterCountCopyBuffer;
 
             AllocatedBuffer blasBuffer;
             BlitCL::DynamicArray<AccelerationStructure> blasData;
@@ -258,6 +269,7 @@ namespace BlitzenVulkan
 
         PipelineObject m_intialClusterCullPipeline;
         PipelineObject m_preClusterCullPipeline;
+        PipelineLayout m_clusterCullLayout;
 
         // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
         // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 

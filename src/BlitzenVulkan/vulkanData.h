@@ -26,22 +26,20 @@
 
 namespace BlitzenVulkan
 {
-	// VkApplicationInfo constant expressions
+	// VkApplicationInfo
     constexpr const char* ce_userApp = "Blitzen Game";
     constexpr uint32_t ce_appVersion = VK_MAKE_VERSION (1, 0, 0);
     constexpr const char* ce_hostEngine =  "Blitzen Engine";                             
     constexpr uint32_t ce_userEngineVersion = VK_MAKE_VERSION (BlitzenEngine::ce_blitzenMajor, 0, 0);
 
-
-	// Present mode depends on if vsync is enabled
+	// Swapchain
     #ifdef BLIT_VSYNC
         constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
     #else
         constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
     #endif
 
-
-    // Debug constant expressions (mainly validation layers)
+    // Validation layer definitions
     #if defined(BLIT_VK_VALIDATION_LAYERS) && !defined(NDEBUG)
         constexpr uint8_t ce_bValidationLayersRequested = 1;
         #if defined(BLIT_VK_SYNCHRONIZATION_VALIDATION)
@@ -54,39 +52,30 @@ namespace BlitzenVulkan
         constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
     #endif
 
-
-	// The maximum number of instance extensions that may be requested
+	// Total extensions count
     constexpr uint32_t ce_maxRequestedInstanceExtensions = 3;
+    constexpr uint32_t ce_maxRequestedDeviceExtensions = 8;
 
-
-    // Raytracing constant expression
-    #ifdef BLIT_VK_RAYTRACING
+	// Is raytracing requested?
+    #if defined(BLIT_VK_RAYTRACING)
         constexpr uint8_t ce_bRaytracing = 1;
     #else
         constexpr uint8_t ce_bRaytracing = 0;
     #endif
-
-
-	// The maximum number of device extensions that may be requested
-    constexpr uint32_t ce_maxRequestedDeviceExtensions = 8;
-
-
-    // Double buffering constant expression
+    
+    // Double buffering 
     #if defined(BLIT_DOUBLE_BUFFERING)
         constexpr uint8_t ce_framesInFlight = 2;
     #else
         constexpr uint8_t ce_framesInFlight = 1;
     #endif
 
-	// Mesh shader constant expression
+    // Are mesh shaders requested?
     #if defined(BLIT_VK_MESH_EXT)
         constexpr uint8_t ce_bMeshShaders = 1;
     #else
         constexpr uint8_t ce_bMeshShaders = 0; 
     #endif
-
-
-    constexpr uint32_t Ce_SinglePointer = 1;
 
     // The format and usage flags that will be set for the color and depth attachments
     constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -103,21 +92,26 @@ namespace BlitzenVulkan
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
         VK_IMAGE_USAGE_SAMPLED_BIT; // For generate debug pyramid compute shader
     constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
-
-
-    // Descriptor write array index constant epressions
+    
+    // Indices into the push descriptor writes array
     constexpr uint32_t ce_viewDataWriteElement = 0;
     constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
 
-#if defined BLITZEN_CLUSTER_CULLING
-    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 11;
-    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
-#else
-    constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 8;
-    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
-#endif
+    // The size of the stack arrays that hold push descriptor writes
+    #if defined(BLITZEN_CLUSTER_CULLING)
+        constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 9;
+        constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
+    #else
+        constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 8;
+        constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
+    #endif
 
+    // The allocation size of the indirect draw buffer and all buffers that depend on it
     const uint32_t IndirectDrawElementCount = 10'000'000;
+
+	// When passing a pointer to a vulkan API function, with only one element(common occurence),
+    // prefer passing this instead of one for clarity
+    constexpr uint32_t Ce_SinglePointer = 1;
 
 
     struct VulkanStats
@@ -143,6 +137,9 @@ namespace BlitzenVulkan
 
 
 
+    /*
+        RAII wappers for Vulkan handles
+    */
     struct SurfaceKHR
     {
         VkSurfaceKHR handle = VK_NULL_HANDLE;
@@ -226,16 +223,27 @@ namespace BlitzenVulkan
         VkAccelerationStructureKHR handle = VK_NULL_HANDLE;
 
         ~AccelerationStructure();
+    };
 
-        // I have this here if I were want to handle this type of thing like this, but just saying handle is probably better
-        inline VkAccelerationStructureKHR get() {return handle;}
+    struct Swapchain
+    {
+        VkSwapchainKHR swapchainHandle;
+
+        VkExtent2D swapchainExtent;
+
+        VkFormat swapchainFormat;
+
+        BlitCL::DynamicArray<VkImage> swapchainImages;
+
+        BlitCL::DynamicArray<VkImageView> swapchainImageViews;
+
+        ~Swapchain();
     };
 
 
 
 
-    // Needs to be created before the Vulkan Renderer, 
-    // so that the device, instance and allocator are destroyed after everything else
+    // TODO: There are better way to offset the functionality of this struct
     struct MemoryCrucialHandles
     {
         VmaAllocator allocator;
@@ -266,7 +274,10 @@ namespace BlitzenVulkan
 
 
 
-    // This is the way Vulkan image resoureces are represented by the Blitzen VulkanRenderer
+    
+    /*
+        Vulkan resources structs (image, buffers)
+    */
     struct AllocatedImage
     {
         VkImage image = VK_NULL_HANDLE;
@@ -312,57 +323,34 @@ namespace BlitzenVulkan
             VkSamplerAddressMode addressMode, void* pNextChain);
     };
 
-    struct Swapchain
-    {
-        VkSwapchainKHR swapchainHandle;
-
-        VkExtent2D swapchainExtent;
-
-        VkFormat swapchainFormat;
-
-        BlitCL::DynamicArray<VkImage> swapchainImages;
-
-        BlitCL::DynamicArray<VkImageView> swapchainImageViews;
-
-        ~Swapchain();
-    };
-
-    // This will be used to momentarily hold all the textures while loading and then pass them to the descriptor all at once
     struct TextureData
     {
         AllocatedImage image;
         VkSampler sampler;
     };
 
-    // Represents a buffer allocated by VMA
     struct AllocatedBuffer
     {
         VkBuffer bufferHandle = VK_NULL_HANDLE;
         VmaAllocation allocation;
         VmaAllocationInfo allocationInfo;
 
-        // Implemented on vulkanResources.cpp
         ~AllocatedBuffer();
     };
 
-    // Holds a buffer that is bound to a descriptor binding using push descriptors
     template<typename T>
     struct PushDescriptorBuffer
     {
         AllocatedBuffer buffer;
 
-        // Most buffers have a VkWriteDescriptor struct that remains static at runtime
         VkDescriptorBufferInfo bufferInfo{};
         VkWriteDescriptorSet descriptorWrite{};
 
-        // Set these up so that they are defined on the constructor and not hardcoded for every descriptor struct
         uint32_t descriptorBinding;
         VkDescriptorType descriptorType;
 
-        // Persistently mapped pointer, useful for uniform buffers
         T* pData;
 
-        // The constructor expects the binding and the type to be known at initialization
         inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type)
             : descriptorBinding{binding}, descriptorType{type} {}
     };
@@ -370,20 +358,24 @@ namespace BlitzenVulkan
 
 
 
-    // Holds the command struct for a call to vkCmdDrawIndexedIndirectCount, as well as a draw Id to access the correct RenderObject
+
+    /*
+        Vulkan specific shader data structs
+    */
+    // TODO: Test alignment
     struct IndirectDrawData
     {
         uint32_t drawId;
         VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
     };
 
-    // Holds the command struct for a call to vkCmdDrawMeshTasksIndirectCountExt, as well as a task Id to access the correct task
     struct IndirectTaskData
     {
         uint32_t taskId;
         VkDrawMeshTasksIndirectCommandEXT drawIndirectTasks;// 3 32bit integers
     };
 
+    // TODO: This is std430, TEST ALIGNMENT!!!
     struct ClusterDispatchData
     {
         uint32_t objectId;
@@ -391,16 +383,18 @@ namespace BlitzenVulkan
         uint32_t clusterId;
     };
 
-    // Culling shaders receive this shader as a push constant
+	struct ClusterCullShaderPushConstant
+	{
+        VkDeviceAddress renderObjectBufferAddress;
+        VkDeviceAddress clusterDispatchBufferAddress;
+        VkDeviceAddress clusterCountBufferAddress;
+        uint32_t drawCount;
+	};
+
     struct alignas(16) DrawCullShaderPushConstant
     {
         VkDeviceAddress renderObjectBufferDeviceAddress;
         uint32_t drawCount;
-        uint8_t bPostPass;
-
-        inline DrawCullShaderPushConstant(VkDeviceAddress rodv, uint32_t dc, uint8_t bPP)
-            :renderObjectBufferDeviceAddress{ rodv }, drawCount {dc}, bPostPass{ bPP } 
-        {}
     };
 
     struct GlobalShaderDataPushConstant

@@ -224,13 +224,6 @@ namespace BlitzenVulkan
         {
             tlasBindingID = currentId++;
         }
-        uint32_t dispatchClusterCommandsBindingID;
-        uint32_t clusterCountBindingID;
-        if (BlitzenEngine::Ce_BuildClusters)
-        {
-            dispatchClusterCommandsBindingID = currentId++;
-            clusterCountBindingID = currentId++;
-        }
 
         // Every binding in the pushDescriptorSetLayout will have one descriptor
         constexpr uint32_t descriptorCountOfEachPushDescriptorLayoutBinding = 1;
@@ -279,21 +272,6 @@ namespace BlitzenVulkan
             descriptorCountOfEachPushDescriptorLayoutBinding,
             staticBuffers.meshletDataBuffer.descriptorType,
             clusterDataBufferShaderStageFlags);
-
-        if (BlitzenEngine::Ce_BuildClusters)
-        {
-            CreateDescriptorSetLayoutBinding(pBindings[dispatchClusterCommandsBindingID],
-                staticBuffers.clusterDispatchBuffer.descriptorBinding,
-                descriptorCountOfEachPushDescriptorLayoutBinding,
-                staticBuffers.clusterDispatchBuffer.descriptorType,
-                VK_SHADER_STAGE_COMPUTE_BIT);
-
-            CreateDescriptorSetLayoutBinding(pBindings[clusterCountBindingID],
-                staticBuffers.clusterCountBuffer.descriptorBinding,
-                descriptorCountOfEachPushDescriptorLayoutBinding,
-                staticBuffers.clusterCountBuffer.descriptorType,
-                VK_SHADER_STAGE_COMPUTE_BIT);
-        }
 
         CreateDescriptorSetLayoutBinding(pBindings[depthImageBindingID],
             Ce_DepthPyramidImageBindingID, descriptorCountOfEachPushDescriptorLayoutBinding,
@@ -369,11 +347,6 @@ namespace BlitzenVulkan
         {
             gpuPushDescriptorBindings.PushBack({});
         }
-        if (BlitzenEngine::Ce_BuildClusters)
-        {
-            gpuPushDescriptorBindings.PushBack({});
-            gpuPushDescriptorBindings.PushBack({});
-        }
         ssboPushDescriptorLayout = CreateGPUBufferPushDescriptorBindings(device,
             gpuPushDescriptorBindings.Data(), (uint32_t)gpuPushDescriptorBindings.GetSize(),
             varBuffers, staticBuffers, bRaytracing, bMeshShaders);
@@ -427,8 +400,8 @@ namespace BlitzenVulkan
             VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
         if (presentationSetLayout == VK_NULL_HANDLE)
         {
-            BLIT_ERROR("Failed to create present image generation layout")
-                return 0;
+            BLIT_ERROR("Failed to create present image generation layout");
+            return 0;
         }
 
         // Success 
@@ -590,10 +563,8 @@ namespace BlitzenVulkan
             pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
             pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
             pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[7] = m_currentStaticBuffers.clusterDispatchBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[8] = m_currentStaticBuffers.clusterCountBuffer.descriptorWrite;
-			pushDescriptorWritesCompute[9] = m_currentStaticBuffers.clusterBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[10] = {};
+			pushDescriptorWritesCompute[7] = m_currentStaticBuffers.clusterBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[8] = {};
         }
         else
         {
@@ -621,7 +592,7 @@ namespace BlitzenVulkan
         VkDescriptorSetLayout textureSetLayout, VkPipelineLayout* mainGraphicsLayout, VkPipelineLayout* drawCullLayout,
         VkDescriptorSetLayout depthPyramidSetLayout, VkPipelineLayout* depthPyramidGenerationLayout,
         VkPipelineLayout* onpcGeometryLayout, VkDescriptorSetLayout presentationSetLayout,
-        VkPipelineLayout* generatePresentationLayout)
+        VkPipelineLayout* generatePresentationLayout, VkPipelineLayout* clusterCullLayout)
     {
 
         // Grapchics pipeline layout
@@ -646,6 +617,16 @@ namespace BlitzenVulkan
             sizeof(DrawCullShaderPushConstant));
         if (!CreatePipelineLayout(device, drawCullLayout, Ce_SinglePointer, &bufferPushDescriptorLayout,
             Ce_SinglePointer, &cullShaderPushConstant))
+        {
+            BLIT_ERROR("Failed to create culling pipeline layout");
+            return 0;
+        }
+
+        VkPushConstantRange clusterCullPushConstant{};
+        CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
+            sizeof(ClusterCullShaderPushConstant));
+        if (!CreatePipelineLayout(device, clusterCullLayout, Ce_SinglePointer, &bufferPushDescriptorLayout,
+            Ce_SinglePointer, &clusterCullPushConstant))
         {
             BLIT_ERROR("Failed to create culling pipeline layout");
             return 0;
@@ -730,7 +711,7 @@ namespace BlitzenVulkan
         if (!CreatePipelineLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle, 
             &m_graphicsPipelineLayout.handle, &m_drawCullLayout.handle, m_depthPyramidDescriptorLayout.handle, 
             &m_depthPyramidGenerationLayout.handle, &m_onpcReflectiveGeometryLayout.handle, 
-            m_generatePresentationImageSetLayout.handle, &m_generatePresentationLayout.handle))
+            m_generatePresentationImageSetLayout.handle, &m_generatePresentationLayout.handle, &m_clusterCullLayout.handle))
         {
             BLIT_ERROR("Failed to create pipeline layouts");
             return 0;
@@ -762,7 +743,7 @@ namespace BlitzenVulkan
         }
 
         if (BlitzenEngine::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, &m_intialClusterCullPipeline.handle,
-            nullptr, m_drawCullLayout.handle))
+            nullptr, m_clusterCullLayout.handle))
         {
             BLIT_ERROR("Failed to create cluster shaders");
             return 0;
@@ -1045,24 +1026,27 @@ namespace BlitzenVulkan
                 return 0;
             }
 
-            clusterDispatchBufferSize =
-                SetupPushDescriptorBuffer<ClusterDispatchData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                    m_currentStaticBuffers.clusterDispatchBuffer, IndirectDrawElementCount,
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
-            if (clusterDispatchBufferSize == 0)
+			clusterDispatchBufferSize = IndirectDrawElementCount * sizeof(ClusterDispatchData);
+            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterDispatchBuffer, 
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+                VMA_MEMORY_USAGE_GPU_ONLY, clusterDispatchBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
             {
                 BLIT_ERROR("Failed to create indirect dispatch cluster buffer");
                 return 0;
             }
+			m_currentStaticBuffers.clusterDispatchBufferAddress = GetBufferAddress(m_device,
+				m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle);
 
-            if (!SetupPushDescriptorBuffer<uint32_t>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.clusterCountBuffer, SingleElementBuffer,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountBuffer, 
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
             {
                 BLIT_ERROR("Failed to create indirect count buffer");
                 return 0;
             }
+			m_currentStaticBuffers.clusterCountBufferAddress = GetBufferAddress(m_device,
+				m_currentStaticBuffers.clusterCountBuffer.bufferHandle);
 
             if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountCopyBuffer,
                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,

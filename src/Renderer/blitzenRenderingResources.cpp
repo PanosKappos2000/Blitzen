@@ -461,19 +461,17 @@ namespace BlitzenEngine
         auto& mesh = meshes[meshId];
         if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
         {
-            BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count")
+            BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count");
+            // This is really strange behavior for this function, since the caller expects a transform id
+            // BE CAREFUL
             return 0;
         }
 
-        uint32_t transformId = static_cast<uint32_t>(transforms.GetSize());
+        auto transformId = static_cast<uint32_t>(transforms.GetSize());
         transforms.PushBack(transform);
-
-        for (uint32_t i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
+        for (auto i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
         {
-            auto& object = renders[renderObjectCount++];
-
-            object.surfaceId = i;
-            object.transformId = transformId;
+			CreateRenderObject(transformId, i);
         }
 
         return transformId;
@@ -672,7 +670,7 @@ namespace BlitzenEngine
 		transform.pos = BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ);
 		transform.scale = 10.f;
 		transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
-            AddRenderObjectsFromMesh(meshMap["kitten"].meshId, transform);
+        AddRenderObjectsFromMesh(meshMap["kitten"].meshId, transform);
 		
     }
 
@@ -707,20 +705,19 @@ namespace BlitzenEngine
 		}
 
 		// Get the mesh used by the current game object
-		BlitzenEngine::Mesh& currentMesh = pResources->meshes[meshId];
+		auto& currentMesh = pResources->meshes[meshId];
         if (currentMesh.surfaceCount > 1)
 		{
 			BLIT_WARN("Only meshes with one primitive are allowed")
 			return;
 		}
 
+        // Creates a new transform, radomizes and creates surface based on it
         BlitzenEngine::MeshTransform transform;
         RandomizeTransform(transform, randomTransformMultiplier, scale);
+		uint32_t transformId = static_cast<uint32_t>(pResources->transforms.GetSize());
         pResources->transforms.PushBack(transform);
-
-		RenderObject& currentObject = pResources->renders[pResources->renderObjectCount++];
-        currentObject.surfaceId = pResources->meshes[meshId].firstSurface;
-        currentObject.transformId = static_cast<uint32_t>(pResources->transforms.GetSize() - 1);
+        pResources->CreateRenderObject(transformId, pResources->meshes[meshId].firstSurface);
     }
 
     // Creates the rendering stress test scene. 

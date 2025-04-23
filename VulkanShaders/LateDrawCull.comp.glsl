@@ -1,5 +1,4 @@
 #version 450
-
 #extension GL_GOOGLE_include_directive : require
 
 #define COMPUTE_PIPELINE
@@ -11,16 +10,22 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
 
+layout (push_constant) uniform CullingConstants
+{
+    RenderObjectBuffer renderObjectBuffer;
+    uint drawCount;
+}pushConstant;
+
 void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x;
 
     // This a guard so that the compute shader does not go over the draw count
-    if(cullPC.drawCount <= objectIndex)
+    if(pushConstant.drawCount <= objectIndex)
         return;
 
     // Access the object's data
-    RenderObject obj = cullPC.renderObjectBufferAddress.objects[objectIndex];
+    RenderObject obj = pushConstant.renderObjectBuffer.objects[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
     
     // Frustum culling

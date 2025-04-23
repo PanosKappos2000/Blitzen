@@ -1,7 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
-
-#extension GL_EXT_debug_printf : enable
+//#extension GL_EXT_debug_printf : enable
 
 #define COMPUTE_PIPELINE
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
@@ -9,29 +8,25 @@
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
+layout (push_constant) uniform PushConstants
+{
+    RenderObjectBuffer renderObjectBuffer;
+    ClusterDispatchBuffer clusterDispatchBuffer;
+    ClusterCountBuffer clusterCountBuffer;
+    uint drawCount;
+}pushConstant;
+
 void main()
 {
     
     uint objectIndex = gl_GlobalInvocationID.x;
-    if(cullPC.drawCount <= objectIndex)
+    if(pushConstant.drawCount <= objectIndex)
     {
         return;
     }
-    ClusterDispatchData data = indirectClusterDispatch.data[objectIndex];
-    RenderObject obj = cullPC.renderObjectBufferAddress.objects[data.objectId];
+    ClusterDispatchData data = pushConstant.clusterDispatchBuffer.data[objectIndex];
+    RenderObject obj = pushConstant.renderObjectBuffer.objects[data.objectId];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
-
-    // Frustum culling
-    /*vec3 center;
-	float radius;
-	bool visible = IsObjectInsideViewFrustum(center, radius, 
-        surfaceBuffer.surfaces[obj.surfaceId].center, surfaceBuffer.surfaces[obj.surfaceId].radius, // bounding sphere
-        transform.scale, transform.pos, transform.orientation, // object transform
-        viewData.view, // view matrix
-        viewData.frustumRight, viewData.frustumLeft, // frustum planes
-        viewData.frustumTop, viewData.frustumBottom, // frustum planes part 2
-        viewData.zNear, viewData.zFar // zFar and zNear
-    );*/
 
     // TEMP: Hardcoded camera position, replace later
     /*const vec3 cameraPosition = vec3(0.0, 0.0, -10.0);
