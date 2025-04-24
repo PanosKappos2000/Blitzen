@@ -168,21 +168,17 @@ target_include_directories(
 )
 
 target_compile_definitions(BlitzenEngine PUBLIC
+                            BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
+                            BLIT_GDEV_EDT # Defines that the Engine is in Game Dev mode
+                            BLIT_ASSERTIONS_ENABLED
 
-                            # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
-                            BLIT_REIN_SANT_ENG
-
-                            # Defines that the Engine is in Game Dev mode
-                            BLIT_GDEV_EDT
-
-                            BLITZEN_CLUSTER_CULLING
-
-                            BLITZEN_VULKAN_OVERRIDE
-                            # General rendering preprocessor macros
-                            BLITZEN_RENDERING_STRESS_TEST
-                            #BLIT_VSYNC
-
-                            #LAMBDA_GAME_OBJECT_TEST
+                            #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
+                            BLITZEN_VULKAN_OVERRIDE # Overrides Vulkan as the main graphics API
+                            #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
+                            #BLIT_VSYNC #Enables vsync logic for all APIs
+                            BLITZEN_RENDERING_STRESS_TEST #I don't think this is used anymore
+                            #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
+                            BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
 
                             # Vulkan specific preprocessor macros
                             BLITZEN_VULKAN # Never undef this, it's broken because of VulkanMemoryCrucials
@@ -190,13 +186,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_VK_RAYTRACING
                             BLIT_VK_SYNCHRONIZATION_VALIDATION
 
-                            BLIT_DYNAMIC_OBJECT_TEST
-
-                            # Opengl preprocessor marcors
-                            #BLIT_GL_LEGACY_OVERRIDE
-
-                            # Engine core preprocessor macros
-                            BLIT_ASSERTIONS_ENABLED
+                            # Dx12 specific preprocessor macros
+                            DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
                             )
 
 # Linker file directories and libraries to link for linux and Windows

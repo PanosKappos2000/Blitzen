@@ -1,3 +1,4 @@
+#pragma once
 #include "dx12Data.h"
 #include "Renderer/blitRenderingResources.h"
 #include "Renderer/blitDDSTextures.h"
@@ -76,4 +77,6 @@ namespace BlitzenDX12
 
 		static Dx12Renderer* s_pThis;
     };
+
+    uint8_t CheckForDeviceRemoval(ID3D12Device* device);
 }

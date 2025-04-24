@@ -1,5 +1,5 @@
 #include "dx12Renderer.h"
-#include "Engine/blitzenEngine.h"
+#include "dx12Commands.h"
 
 
 namespace BlitzenDX12
@@ -46,16 +46,24 @@ namespace BlitzenDX12
         return SUCCEEDED(D3D12CreateDevice(adapter, Ce_DeviceFeatureLevel, IID_PPV_ARGS(ppDevice)));
     }
 
-    static void CreateDebugController(ID3D12Debug* pDebugController, Microsoft::WRL::ComPtr<ID3D12Debug1>& debugController1)
+    static uint8_t CreateDebugController(ID3D12Debug* pDebugController, Microsoft::WRL::ComPtr<ID3D12Debug1>& debugController1, 
+        ID3D12Device* device)
     {
         if (SUCCEEDED(pDebugController->QueryInterface(IID_PPV_ARGS(debugController1.ReleaseAndGetAddressOf()))))
         {
             debugController1->SetEnableGPUBasedValidation(TRUE);
+            if (!CheckForDeviceRemoval(device))
+            {
+                BLIT_ERROR("Device removed");
+                return 0;
+            }
         }
         else
         {
-			BLIT_ERROR("Failed to create debug controller 1");
+            return 0;
         }
+
+        return 1;
     }
 
     uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight)
@@ -77,13 +85,48 @@ namespace BlitzenDX12
             BLIT_ERROR("Failed to create device");
             return 0;
         }
-
-		if (ce_bDebugController)
+		if (!m_device)
 		{
-			CreateDebugController(m_debugController.Get(), m_debugController1);
+			BLIT_ERROR("Device is null");
+			return 0;
+		}
+		if (!CheckForDeviceRemoval(m_device.Get()))
+		{
+			BLIT_ERROR("Device removed");
+			return 0;
+		}
+
+		if (Ce_GPUValidationRequested)
+		{
+            if (!CreateDebugController(m_debugController.Get(), m_debugController1, m_device.Get()))
+            {
+				BLIT_ERROR("Failed to create debug controller 1");
+                return 0;
+            }
 		}
         //TODO: Think about adding ID3D12DebugDevice or whatever it is called to watchout for unfreed resources
 
+		if (!CreateCommandQueue(m_device.Get(), m_commandQueue.ReleaseAndGetAddressOf(),
+            D3D12_COMMAND_QUEUE_FLAG_NONE, D3D12_COMMAND_LIST_TYPE_DIRECT))
+		{
+			BLIT_ERROR("Failed to create command queue");
+			return 0;
+		}
+
+        return 1;
+    }
+
+    uint8_t CheckForDeviceRemoval(ID3D12Device* device)
+    {
+        auto removalReason = device->GetDeviceRemovedReason();
+        if (FAILED(removalReason))
+        {
+            _com_error err{ removalReason };
+            BLIT_FATAL("Device removal reason: %s", err.ErrorMessage());
+            return 0;
+        }
+
+        // Safe
         return 1;
     }
 
