@@ -17,7 +17,7 @@ namespace BlitzenDX12
         Dx12Renderer operator = (const Dx12Renderer& dx) = delete;
     
         // API initialization (after this it should have the data and handles to do simple things)
-        uint8_t Init(HWND hwnd, uint32_t windowWidth, uint32_t windowHeight);
+        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, HWND hwnd);
     
         // Synchronizes the backend with the loaded resources and sets it up for GPU driven rendering
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);

@@ -67,7 +67,7 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t Dx12Renderer::Init(HWND hwnd, uint32_t windowWidth, uint32_t windowHeight)
+    uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight, HWND hwnd)
     {
         if (!CreateFactory(&m_factory, m_debugController))
         {
@@ -163,6 +163,13 @@ namespace BlitzenDX12
         {
 			BLIT_ERROR("Invalid window handle");
             return 0;
+        }
+        WINDOWINFO info{};
+        info.cbSize = sizeof(info);
+        if (!GetWindowInfo(hWnd, &info)) 
+        {
+            BLIT_ERROR("GetWindowInfo failed");
+            return false;
         }
         if (!queue)
         {
