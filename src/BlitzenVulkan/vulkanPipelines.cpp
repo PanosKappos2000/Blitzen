@@ -14,7 +14,7 @@ namespace BlitzenVulkan
         VkPipelineDepthStencilStateCreateInfo& depthState, 
         VkPipelineColorBlendAttachmentState& colorBlendAttachment,
         VkPipelineColorBlendStateCreateInfo& colorBlendState, 
-        VkPipelineVertexInputStateCreateInfo vertexInput, 
+        VkPipelineVertexInputStateCreateInfo& vertexInput, 
         VkDynamicState* pDynamicStates
     )
     {
@@ -77,8 +77,10 @@ namespace BlitzenVulkan
     {
         // Tries to open the file with the provided path
         BlitzenPlatform::FileHandle handle;
-        if(!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        if (!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        {
             return 0;
+        }
         
         // Reads the shader code in byte format
         size_t filesize = 0;
@@ -93,9 +95,10 @@ namespace BlitzenVulkan
         shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         shaderModuleInfo.codeSize = static_cast<uint32_t>(filesize);
         shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(bytes.Data());
-        VkResult res = vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule);
-        if(res != VK_SUCCESS)
+        if (vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule) != VK_SUCCESS)
+        {
             return 0;
+        }
 
         //Adds a new shader stage based on that shader module
         pipelineShaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -115,9 +118,11 @@ namespace BlitzenVulkan
         // Creates the shader module and the shader stage
         ShaderModule module{};
         VkPipelineShaderStageCreateInfo shaderStageInfo{};
-        if(!CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, module.handle, 
-        shaderStageInfo, pSpecializationInfo))
+        if (!CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, module.handle,
+            shaderStageInfo, pSpecializationInfo))
+        {
             return 0;
+        }
 
         // Sets the pipeline info based on the above
         VkComputePipelineCreateInfo pipelineInfo{};
@@ -128,10 +133,12 @@ namespace BlitzenVulkan
         pipelineInfo.layout = layout;
 
         // Creates the compute pipeline
-        VkResult res = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
-        if(res != VK_SUCCESS)
+        if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline) != VK_SUCCESS)
+        {
             return 0;
+        }
         
+        // Success
         return 1;
     }
 
@@ -278,7 +285,7 @@ namespace BlitzenVulkan
     }
 
     VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, uint32_t bindingCount, VkDescriptorSetLayoutBinding* pBindings, 
-    VkDescriptorSetLayoutCreateFlags flags /* = 0 */, void* pNextChain /*=nullptr*/)
+    VkDescriptorSetLayoutCreateFlags flags /*=0*/, void* pNextChain /*=nullptr*/)
     {
         VkDescriptorSetLayoutCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -387,32 +394,47 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t SetupMainGraphicsPipeline(VkDevice device, uint8_t bMeshShaders, 
-        VkPipeline* mainGraphicsPipeline, VkPipeline* postPassGraphicsPipeline, VkPipelineLayout mainGraphicsPipelineLayout, 
-        VkPipeline* onpcPipeline, VkPipelineLayout onpcPipelineLayout)
+    static uint8_t CreateGraphicsPipelineWithShader(VkDevice device, VkPipelineLayout layout, VkPipeline* pPipeline, 
+        uint32_t shaderStageCount, VkPipelineShaderStageCreateInfo* pShaderStages)
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
         VkFormat colorAttachmentFormat = ce_colorAttachmentFormat;
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-		VkPipelineViewportStateCreateInfo viewport{};
+        VkPipelineViewportStateCreateInfo viewport{};
         VkPipelineDynamicStateCreateInfo dynamicState{};
-		VkPipelineRasterizationStateCreateInfo rasterization{}; 
-		VkPipelineMultisampleStateCreateInfo multisampling{};
+        VkPipelineRasterizationStateCreateInfo rasterization{};
+        VkPipelineMultisampleStateCreateInfo multisampling{};
         VkPipelineDepthStencilStateCreateInfo depthState{};
-		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-		VkPipelineColorBlendStateCreateInfo colorBlendState{};
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        VkPipelineColorBlendStateCreateInfo colorBlendState{};
         VkPipelineVertexInputStateCreateInfo vertexInput{};
-        VkDynamicState dynamicStates[2];
-		GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat, 
-            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment, 
+        VkDynamicState dynamicStates[2] = {};
+        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
+            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
             colorBlendState, vertexInput, dynamicStates);
-        
+        // Main graphics pipeline
+        pipelineInfo.stageCount = shaderStageCount;
+        pipelineInfo.pStages = pShaderStages;
+        pipelineInfo.layout = layout;
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
+            pPipeline) != VK_SUCCESS)
+        {
+            return 0;
+        }
+
+        // Success 
+        return 1;
+    }
+
+    uint8_t CreateGraphicsPipelines(VkDevice device, uint8_t bMeshShaders, 
+        VkPipeline* mainGraphicsPipeline, VkPipeline* postPassGraphicsPipeline, VkPipelineLayout mainGraphicsPipelineLayout, 
+        VkPipeline* onpcPipeline, VkPipelineLayout onpcPipelineLayout)
+    {
+        // Main(opaque) graphics pipeline
         ShaderModule vertexShaderModule;
         ShaderModule taskShaderModule;
         VkPipelineShaderStageCreateInfo shaderStages[3] = {};
-        
-        // Mesh shaders need mesh shader and task shader
         if(bMeshShaders)
         {
             if (!CreateShaderProgram(device, "VulkanShaders/MeshShader.mesh.glsl.spv",
@@ -446,18 +468,13 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create MainObjectShader.frag shader program");
             return 0;
         }
+		if (!CreateGraphicsPipelineWithShader(device, mainGraphicsPipelineLayout, mainGraphicsPipeline, 
+            bMeshShaders ? 3 : 2, shaderStages))
+		{
+			BLIT_ERROR("Failed to create main graphics pipeline");
+			return 0;
+		}
 
-        // Main graphics pipeline
-		pipelineInfo.stageCount = bMeshShaders ? 3 : 2;
-        pipelineInfo.pStages = shaderStages;
-        pipelineInfo.layout = mainGraphicsPipelineLayout;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-            mainGraphicsPipeline) != VK_SUCCESS)
-        {
-            BLIT_ERROR("Failed to create main graphics pipeline");
-            return 0;
-        }
-        
         // Tranparent pipeline specialization
 		VkPipelineShaderStageCreateInfo postPassShaderStages[2] = {};
 		postPassShaderStages[0] = shaderStages[0];
@@ -474,46 +491,14 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create MainObjectShader.frag post pass specialization shader program");
             return 0;
         }
-        pipelineInfo = {};
-        dynamicRenderingInfo = {};
-        colorAttachmentFormat = ce_colorAttachmentFormat;
-        inputAssembly = {};
-        viewport = {};
-        dynamicState = {};
-        rasterization = {};
-        multisampling = {};
-        depthState = {};
-        colorBlendAttachment = {};
-        colorBlendState = {};
-        vertexInput = {};
-        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
-            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
-            colorBlendState, vertexInput, dynamicStates);
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = postPassShaderStages;
-        pipelineInfo.layout = mainGraphicsPipelineLayout;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-            postPassGraphicsPipeline) != VK_SUCCESS)
+        if (!CreateGraphicsPipelineWithShader(device, mainGraphicsPipelineLayout, postPassGraphicsPipeline, 
+            BLIT_ARRAY_SIZE(postPassShaderStages), postPassShaderStages))
         {
             BLIT_ERROR("Failed to create post pass graphics pipeline")
             return 0;
         }
         
-        pipelineInfo = {};
-        dynamicRenderingInfo = {};
-        colorAttachmentFormat = ce_colorAttachmentFormat;
-        inputAssembly = {};
-        viewport = {};
-        dynamicState = {};
-        rasterization = {};
-        multisampling = {};
-        depthState = {};
-        colorBlendAttachment = {};
-        colorBlendState = {};
-        vertexInput = {};
-        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
-            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
-            colorBlendState, vertexInput, dynamicStates);
+        // This was for a temporary math test, I will keep it for some time
         ShaderModule onpcVertexShaderModule;
         VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
         if (!CreateShaderProgram(device, "VulkanShaders/OnpcGeometry.vert.glsl.spv",
@@ -523,12 +508,10 @@ namespace BlitzenVulkan
             return 0;
         }
         onpcGeometryShaderStages[1] = shaderStages[1];
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = onpcGeometryShaderStages;
-        pipelineInfo.layout = onpcPipelineLayout;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, Ce_SinglePointer, &pipelineInfo, nullptr,
-            onpcPipeline) != VK_SUCCESS)
+        if (!CreateGraphicsPipelineWithShader(device, onpcPipelineLayout, onpcPipeline, 
+            BLIT_ARRAY_SIZE(onpcGeometryShaderStages), onpcGeometryShaderStages))
         {
+			BLIT_ERROR("Failed to create onpc graphics pipeline");
             return 0;
         }
 

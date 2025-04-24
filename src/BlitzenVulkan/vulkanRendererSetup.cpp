@@ -790,7 +790,7 @@ namespace BlitzenVulkan
         }
         
         // Create the graphics pipeline object 
-        if(!SetupMainGraphicsPipeline(m_device, m_stats.meshShaderSupport, &m_opaqueGeometryPipeline.handle, 
+        if(!CreateGraphicsPipelines(m_device, m_stats.meshShaderSupport, &m_opaqueGeometryPipeline.handle,
             &m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
             &m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle))
         {

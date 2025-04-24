@@ -13,7 +13,7 @@ namespace BlitzenVulkan
         VkPipelineDepthStencilStateCreateInfo& depthState,
         VkPipelineColorBlendAttachmentState& colorBlendAttachment,
         VkPipelineColorBlendStateCreateInfo& colorBlendState,
-        VkPipelineVertexInputStateCreateInfo vertexInput, 
+        VkPipelineVertexInputStateCreateInfo& vertexInput, 
         VkDynamicState* pDynamicStates);
 
     // Creates a shader stage with a given module handle and a filepath to a shader
@@ -95,7 +95,7 @@ namespace BlitzenVulkan
         VkPipeline* lateCullingPipeline, VkPipelineLayout mainCullingShaderLayout);
 
     // Creates most of the graphics pipelines. I need to refactor this
-    uint8_t SetupMainGraphicsPipeline(VkDevice device, uint8_t bMeshShaders,
+    uint8_t CreateGraphicsPipelines(VkDevice device, uint8_t bMeshShaders,
         VkPipeline* mainGraphicsPipeline, VkPipeline* postPassGraphicsPipeline, VkPipelineLayout mainGraphicsPipelineLayout,
         VkPipeline* onpcPipeline, VkPipelineLayout onpcPipelineLayout);
 }
