@@ -77,7 +77,7 @@ namespace BlitzenVulkan
         m_pThisRenderer = this;
     }
 
-    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
+    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle)
     {
         // Creates the Vulkan instance
         if(!CreateInstance(m_instance, &m_debugMessenger))

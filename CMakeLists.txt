@@ -187,7 +187,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VK_SYNCHRONIZATION_VALIDATION
 
                             # Dx12 specific preprocessor macros
-                            DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
+                            #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
                             )
 
 # Linker file directories and libraries to link for linux and Windows
@@ -197,8 +197,11 @@ IF(WIN32)
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/lib/Release/x64")
     target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1
+
                         D3d12
                         DXGI
+                        #d3d12sdklayers.lib
+
                         glew32s
                         OpenGL32)
 ELSEIF(UNIX)

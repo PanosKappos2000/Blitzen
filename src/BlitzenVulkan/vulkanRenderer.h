@@ -17,7 +17,7 @@ namespace BlitzenVulkan
         VulkanRenderer operator = (const VulkanRenderer& vk) = delete;
 
         // Initalizes the Vulkan API.
-        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
+        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle);
 
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);

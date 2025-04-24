@@ -1,5 +1,6 @@
 #include "dx12Renderer.h"
 #include "dx12Commands.h"
+#include "Platform/platform.h"
 
 
 namespace BlitzenDX12
@@ -66,7 +67,7 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight)
+    uint8_t Dx12Renderer::Init(HWND hwnd, uint32_t windowWidth, uint32_t windowHeight)
     {
         if (!CreateFactory(&m_factory, m_debugController))
         {
@@ -113,20 +114,91 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		for (uint32_t i = 0; i < ce_framesInFlight; i++)
+		{
+			if (!m_frameTools[i].Init(m_device.Get()))
+			{
+				BLIT_ERROR("Failed to create frame tools");
+				return 0;
+			}
+		}
+
+		if (!CreateSwapchain(m_factory.Get(), m_commandQueue.Get(), windowWidth, windowHeight, 
+            hwnd, &m_swapchain.comPrt))
+		{
+			BLIT_ERROR("Failed to create swapchain");
+            if (CheckForDeviceRemoval(m_device.Get()))
+            {
+                BLIT_INFO("Device was not removed");
+            }
+			return 0;
+		}
+
         return 1;
     }
 
-    uint8_t CheckForDeviceRemoval(ID3D12Device* device)
+    uint8_t CreateSwapchain(IDXGIFactory6* factory, ID3D12CommandQueue* queue, uint32_t windowWidth, uint32_t windowHeight, 
+        HWND hWnd, Microsoft::WRL::ComPtr <IDXGISwapChain3>* pSwapchain)
     {
-        auto removalReason = device->GetDeviceRemovedReason();
-        if (FAILED(removalReason))
+        DXGI_SWAP_CHAIN_DESC1 scDesc = {};
+        scDesc.BufferCount = ce_framesInFlight;
+        scDesc.Width = windowWidth;
+        scDesc.Height = windowHeight;
+        scDesc.Format = Ce_SwapchainFormat;
+        scDesc.BufferUsage = Ce_SwapchainBufferUsage;
+        scDesc.SwapEffect = Ce_SwapchainSwapEffect;
+        scDesc.SampleDesc.Count = 1;// No mutlisampling for now, so this is hardcoded
+        scDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;// No reason to ever change this for a 3D renderer
+        scDesc.Scaling = DXGI_SCALING_STRETCH;
+        scDesc.Stereo = FALSE;// Only relevant for stereoscopic 3D rendering... so no
+
+        // Protection (bad experience with this one)
+        Microsoft::WRL::ComPtr<IDXGISwapChain1> tempSwapchain;
+		if (!hWnd)
+		{
+			BLIT_ERROR("Invalid window handle");
+			return 0;
+		}
+        if (!IsWindow(hWnd))
         {
-            _com_error err{ removalReason };
-            BLIT_FATAL("Device removal reason: %s", err.ErrorMessage());
+			BLIT_ERROR("Invalid window handle");
             return 0;
         }
+        if (!queue)
+        {
+			BLIT_ERROR("Invalid command queue");
+			return 0;
+        }
 
-        // Safe
+        // Extra protection settings
+        BOOL allowTearing = FALSE;
+        factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
+        if (allowTearing)
+        {
+            scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        }
+        else
+        {
+            scDesc.Flags = 0;
+        }
+        factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_WINDOW_CHANGES);
+        ShowWindow(hWnd, SW_SHOWDEFAULT);
+        UpdateWindow(hWnd);
+
+        // Creates the swapchain
+        auto swapchainRes{ factory->CreateSwapChainForHwnd(queue, hWnd, &scDesc, nullptr, nullptr, &tempSwapchain) };
+		if (FAILED(swapchainRes))
+		{
+			return LOG_ERROR_MESSAGE_AND_RETURN(swapchainRes);
+		}
+        // Casted to IDXGISwapChain3
+        auto swapchainCastRest = tempSwapchain.As(pSwapchain);
+        if (FAILED(swapchainCastRest))
+        {
+			return LOG_ERROR_MESSAGE_AND_RETURN(swapchainCastRest);
+        }
+
+        // success
         return 1;
     }
 

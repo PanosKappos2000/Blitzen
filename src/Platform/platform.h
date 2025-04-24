@@ -8,7 +8,7 @@ namespace BlitzenPlatform
     size_t GetPlatformMemoryRequirements();
 
     bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEvents, 
-        BlitzenCore::InputSystemState* pInput);
+        BlitzenCore::InputSystemState* pInput, void* pRenderer);
 
     // Called when engine shuts down to shutdown the platform system
     void PlatformShutdown();

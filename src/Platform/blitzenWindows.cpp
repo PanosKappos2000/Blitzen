@@ -6,6 +6,7 @@
 #include "BlitzenVulkan/vulkanData.h"
 #include <vulkan/vulkan_win32.h>
 #include "BlitzenGl/openglRenderer.h"
+#include "Renderer//blitRenderer.h"
 #include <GL/wglew.h>
 #include "platform.h"
 #include "Core/blitInput.h"
@@ -42,77 +43,76 @@ namespace BlitzenPlatform
         return sizeof(PlatformState);
     }
 
-    bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEvents, 
-        BlitzenCore::InputSystemState* pInputs)
+    static HWND CreateStandardWindow(HINSTANCE hInstance, int width, int height, const char* appName)
     {
-        // Platform cannot startup if the engine or the event system have not been initialized first
-        if (!BlitzenEngine::Engine::GetEngineInstancePointer())
-            return 0;
+        const char* className = "BlitzenStandardWindowClass";
 
+        // Register the window class
+        WNDCLASSEXA wc = {};
+        wc.cbSize = sizeof(WNDCLASSEXA);
+        wc.style = CS_HREDRAW | CS_VREDRAW;
+        wc.lpfnWndProc = Win32ProcessMessage;
+        wc.hInstance = hInstance;
+        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wc.lpszClassName = className;
+
+        if (!RegisterClassExA(&wc))
+        {
+            MessageBoxA(NULL, "Window Registration Failed!", "Error", MB_ICONEXCLAMATION | MB_OK);
+            return nullptr;
+        }
+
+        // Adjust the window size so the client area is correct
+        RECT rect = { 0, 0, width, height };
+        AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+        int winWidth = rect.right - rect.left;
+        int winHeight = rect.bottom - rect.top;
+
+        HWND hwnd = CreateWindowExA(
+            0,                  // Optional window styles
+            className,          // Window class
+            appName, // Title
+            WS_OVERLAPPEDWINDOW,   // Window style
+            CW_USEDEFAULT, CW_USEDEFAULT, winWidth, winHeight,
+            nullptr, nullptr, hInstance, nullptr);
+
+        if (!hwnd)
+        {
+            MessageBoxA(NULL, "Window Creation Failed!", "Error", MB_ICONEXCLAMATION | MB_OK);
+            return nullptr;
+        }
+
+        ShowWindow(hwnd, SW_SHOW);
+        UpdateWindow(hwnd);
+
+        return hwnd;
+    }
+
+    bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEvents, 
+        BlitzenCore::InputSystemState* pInputs, void* pRenderer)
+    {
         inl_pPlatformState.pEvents = pEvents;
         inl_pPlatformState.pInputs = pInputs;
 
-        inl_pPlatformState.winInstance = GetModuleHandleA(0);
-
-        auto icon = LoadIcon(inl_pPlatformState.winInstance, IDI_APPLICATION);
-        tagWNDCLASSA wc;
-        memset(&wc, 0, sizeof(wc));
-        wc.style = CS_DBLCLKS;
-        wc.lpfnWndProc = Win32ProcessMessage;
-        wc.cbClsExtra = 0;
-        wc.cbWndExtra = 0;
-        wc.hInstance = inl_pPlatformState.winInstance;
-        wc.hIcon = icon;
-        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-        wc.hbrBackground = nullptr;
-        wc.lpszClassName = "BlitzenWindowClass";
-
-        if (!RegisterClassA(&wc))
+        HINSTANCE hInstance = GetModuleHandleA(nullptr);
+        HWND hwnd = CreateStandardWindow(hInstance, BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, appName);
+        if (!hwnd)
         {
-            MessageBoxA(inl_pPlatformState.winWindow, "Window registration failed", "Error", MB_ICONEXCLAMATION | MB_OK);
+            BLIT_FATAL("Window creation failed");
+            return false;
+        }
+        inl_pPlatformState.winInstance = hInstance;
+        inl_pPlatformState.winWindow = hwnd;
+
+		auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
+        if (!pBackendRenderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, hwnd))
+        {
+            BLIT_FATAL("Failed to initialize rendering API");
             return false;
         }
 
-        // Window size initial
-        auto clientX = BlitzenEngine::ce_windowStartingX;
-        auto clientY = BlitzenEngine::ce_windowStartingY;
-        auto clientWidth = BlitzenEngine::ce_initialWindowWidth;
-        auto clientHeight = BlitzenEngine::ce_initialWindowHeight;
-        auto windowX = clientX;
-        auto windowY = clientY;
-        auto windowWidth = clientWidth;
-        auto windowHeight = clientHeight;
-        auto windowStyle = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION;
-        auto windowExStyle = WS_EX_APPWINDOW;
-
-        windowStyle |= WS_MAXIMIZEBOX;
-        windowStyle |= WS_MINIMIZEBOX;
-        windowStyle |= WS_THICKFRAME;
-
-        // Window size with border
-        RECT borderRect = { 0, 0, 0, 0 };
-        AdjustWindowRectEx(&borderRect, windowStyle, 0, windowExStyle);
-        windowX += borderRect.left;
-        windowY += borderRect.top;
-        windowWidth += borderRect.right - borderRect.left;
-        windowHeight -= borderRect.top - borderRect.bottom;
-
-        //Creates the window
-        auto handle = CreateWindowExA(windowExStyle, "BlitzenWindowClass", appName,
-            windowStyle, windowX, windowY, windowWidth, windowHeight,
-            0, 0, inl_pPlatformState.winInstance, 0);
-        if (!handle)
-        {
-            MessageBoxA(nullptr, "Window creation failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-            return false;
-        }
-        else
-        {
-            inl_pPlatformState.winWindow = handle;
-        }
-        int32_t show = SW_SHOW; //: SW_SHOWNOACTIVATE;
-        ShowWindow(inl_pPlatformState.winWindow, show);
-
+        // Success
         return true;
     }
 

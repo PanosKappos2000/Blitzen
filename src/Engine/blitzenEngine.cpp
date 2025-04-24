@@ -35,17 +35,14 @@ using Entities = BlitCL::SmartPointer<BlitzenEngine::GameObjectManager, BlitzenC
 
 static void LoadRenderingResources(int argc, char** argv,
     BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer,
-    BlitzenEngine::GameObjectManager* pManager, BlitzenEngine::Camera& camera, bool& bRenderingSystem)
+    BlitzenEngine::GameObjectManager* pManager, BlitzenEngine::Camera& camera)
 {
     BlitzenEngine::CreateSceneFromArguments(argc, argv, pResources,
         pRenderer, pManager);
-    if (!bRenderingSystem ||
-        !pRenderer->SetupForRendering(pResources, camera.viewData.pyramidWidth,
-            camera.viewData.pyramidHeight
-        ))
+    if (!pRenderer->SetupForRendering(pResources, camera.viewData.pyramidWidth, camera.viewData.pyramidHeight))
     {
         BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");
-        bRenderingSystem = false;
+        return;
     }
 
     BlitzenEngine::Engine::GetEngineInstancePointer()->ReActivate();
@@ -72,27 +69,18 @@ int main(int argc, char* argv[])
 	eventSystemState.Make();
     InputSystem inputSystemState;
     inputSystemState.Make();
-    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion, 
-        eventSystemState.Data(), inputSystemState.Data()))        
+
+    BlitzenEngine::Renderer renderer;
+    renderer.Make();
+    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion,
+        eventSystemState.Data(), inputSystemState.Data(), renderer.Data()));
+
     BlitzenEngine::RegisterDefaultEvents();
 
     BlitzenEngine::CameraSystem cameraSystem;
     auto& mainCamera = cameraSystem.GetCamera();
     BlitzenEngine::SetupCamera(mainCamera);
-
-    
-    bool bRenderingSystem = false;
-    BlitzenEngine::Renderer renderer;
-    renderer.Make();
-    if (renderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight))
-    {
-        bRenderingSystem = true;
-    }
-    else
-    {
-        BLIT_FATAL("Failed to initialize rendering API");
-        bRenderingSystem = false;
-    }    
+   
     PRenderingResources renderingResources;
     renderingResources.Make(renderer.Data());
 
@@ -102,7 +90,7 @@ int main(int argc, char* argv[])
     // Loading resources
     std::thread loadingThread{ [&]() {
         LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
-            entities.Data(), mainCamera, bRenderingSystem);
+            entities.Data(), mainCamera);
     }};
     loadingThread.detach();
 
@@ -113,10 +101,7 @@ int main(int argc, char* argv[])
     {
         BlitzenPlatform::PlatformPumpMessages();
         inputSystemState->UpdateInput(0.f);
-        if (bRenderingSystem)
-        {
-            renderer->DrawWhileWaiting();
-        }
+        renderer->DrawWhileWaiting();
     }
 
 
@@ -139,16 +124,12 @@ int main(int argc, char* argv[])
             UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
 			entities->UpdateDynamicObjects();
-
-            if(bRenderingSystem)
-            {
-                renderer->SetupWhileWaitingForPreviousFrame(drawContext);
-                renderer->DrawFrame(drawContext);
-            }
+            renderer->SetupWhileWaitingForPreviousFrame(drawContext);
+            renderer->DrawFrame(drawContext);
+        }
 
             // Reset window resize, TODO: Why is this here??????
             mainCamera.transformData.bWindowResize = false;
-        }
 
         inputSystemState->UpdateInput(coreClock.GetDeltaTime());
     }

@@ -9,7 +9,7 @@ namespace BlitzenEngine
     constexpr uint32_t ce_windowStartingX = 100;
     constexpr uint32_t ce_windowStartingY = 100;
     constexpr uint32_t ce_initialWindowWidth = 1280;
-    constexpr uint32_t ce_initialWindowHeight = 768;
+    constexpr uint32_t ce_initialWindowHeight = 720;
 
     // Camera initial settings
     constexpr float ce_initialCameraX = 20.f;
