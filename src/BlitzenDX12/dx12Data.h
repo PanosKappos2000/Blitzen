@@ -19,6 +19,8 @@ namespace BlitzenDX12
         constexpr uint8_t ce_frameInFlight = 2;
     #endif
 
+    constexpr D3D_FEATURE_LEVEL Ce_DeviceFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+
     struct Dx12Stats
     {
         uint8_t bDiscreteGPU = 0;

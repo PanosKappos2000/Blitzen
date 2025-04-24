@@ -38,15 +38,17 @@ namespace BlitzenDX12
         inline static Dx12Renderer* GetRendererInstance() { return s_pThis; }
 
     public:
-        Microsoft::WRL::ComPtr<IDXGIFactory2> m_factory;
+        Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 
         Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 
     private:
 
-        Microsoft::WRL::ComPtr<IDXGIAdapter> m_adapter;
+        Microsoft::WRL::ComPtr<ID3D12Debug> m_debugController;
 
-        ID3D12DebugDevice* m_debugDevice;
+        Microsoft::WRL::ComPtr<IDXGIAdapter4> m_chosenAdapter;
+
+        Microsoft::WRL::ComPtr<ID3D12Debug1> m_debugController1;
 
         Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 
@@ -60,6 +62,8 @@ namespace BlitzenDX12
             Microsoft::WRL::ComPtr<ID3D12CommandList> commandList;
 
             Microsoft::WRL::ComPtr<ID3D12Fence> inFlightFence;
+
+            uint8_t Init();
         };
         BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
 
@@ -72,14 +76,4 @@ namespace BlitzenDX12
 
 		static Dx12Renderer* s_pThis;
     };
-
-
-    uint8_t CreateFactory(IDXGIFactory2** ppFactory);
-
-    uint8_t GetAdapterFromFactory(IDXGIFactory2* pFactory, IDXGIAdapter** ppAdapter);
-
-    uint8_t CreateCommandQueue(ID3D12CommandQueue** ppQueue, ID3D12Device* pDevice);
-
-    uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
-    IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue, ID3D12Device* pDevice);
 }

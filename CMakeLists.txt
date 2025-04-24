@@ -17,6 +17,8 @@ add_executable(BlitzenEngine
 
                 src/BlitzenDX12/dx12Data.h
                 src/BlitzenDX12/dx12Renderer.h
+                src/BlitzenDX12/dx12Commands.h 
+                src/BlitzenDX12/dx12Commands.cpp
                 src/BlitzenDX12/dx12Init.cpp
                 src/BlitzenDX12/dx12RendererSetup.cpp
                 src/BlitzenDX12/dx12Draw.cpp
