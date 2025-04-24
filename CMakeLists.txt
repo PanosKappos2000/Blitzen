@@ -53,6 +53,7 @@ add_executable(BlitzenEngine
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
                 
+                src/Core/blitzenCore.h
                 src/Core/blitMemory.h
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
@@ -118,6 +119,7 @@ add_executable(BlitzenEngine
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
                 
+                src/Core/blitzenCore.h
                 src/Core/blitMemory.h
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
@@ -168,15 +170,17 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
                             BLIT_REIN_SANT_ENG
 
-                            # Defines that the Engine is not in test mode (Dev mode)
+                            # Defines that the Engine is in Game Dev mode
                             BLIT_GDEV_EDT
 
-                            #BLITZEN_CLUSTER_CULLING
+                            BLITZEN_CLUSTER_CULLING
 
                             #BLITZEN_VULKAN_OVERRIDE
                             # General rendering preprocessor macros
                             BLITZEN_RENDERING_STRESS_TEST
                             #BLIT_VSYNC
+
+                            #LAMBDA_GAME_OBJECT_TEST
 
                             # Vulkan specific preprocessor macros
                             BLITZEN_VULKAN # Never undef this, it's broken because of VulkanMemoryCrucials

@@ -1,13 +1,10 @@
 #pragma once
-
-#include "BlitCL/blitzenContainerLibrary.h"
 #include "Engine/blitzenEngine.h"
+#include "BlitCL/blitzenContainerLibrary.h"
 #include "Renderer/blitRenderingResources.h"
 
 namespace BlitzenEngine
 {
-    constexpr uint32_t ce_maxObjectCount = 1'000;
-
 #if defined(LAMBDA_GAME_OBJECT_TEST)
     struct GameObject
     {

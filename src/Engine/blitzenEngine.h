@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <cstddef>
 
-//#define LAMBDA_GAME_OBJECT_TEST
-
 namespace BlitzenEngine
 {
     // Window constants
@@ -21,6 +19,10 @@ namespace BlitzenEngine
     constexpr float ce_initialFOV = 70.f;
     constexpr float ce_initialDrawDistance = 650.f;
 
+    // Other camera values
+    constexpr uint8_t MaxCameraCount = 1;
+    constexpr uint8_t MainCameraId = 0;
+
     // Renderer settings
     constexpr uint32_t DDSCAPS2_CUBEMAP = 0x200;
     constexpr uint32_t DDSCAPS2_VOLUME = 0x200000;
@@ -36,7 +38,10 @@ namespace BlitzenEngine
         constexpr uint8_t Ce_BuildClusters = 1;
     #else
         constexpr uint8_t Ce_BuildClusters = 0;
-    #endif 
+    #endif
+    
+    // Entity settings
+    constexpr uint32_t ce_maxObjectCount = 1'000;
 
     constexpr const char* ce_blitzenVersion = "Blitzen Engine";
     constexpr uint32_t ce_blitzenMajor = 0;

@@ -51,11 +51,11 @@ namespace BlitzenEngine
     template<typename MT>
     void CreateDynamicObjectRendererTest(RenderingResources* pResources, MT* pManager)
     {
-        constexpr uint32_t ce_objectCount = 1000;
+        constexpr uint32_t ce_objectCount = ce_maxObjectCount;
         if (pResources->renderObjectCount + ce_objectCount > ce_maxRenderObjects)
         {
-            BLIT_ERROR("Could not add dynamic object renderer test, object count exceeds limit")
-                return;
+            BLIT_ERROR("Could not add dynamic object renderer test, object count exceeds limit");
+            return;
         }
 
         for (size_t i = 0; i < ce_objectCount; ++i)

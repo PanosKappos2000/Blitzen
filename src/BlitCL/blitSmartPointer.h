@@ -2,8 +2,6 @@
 
 namespace BlitCL
 {
-    constexpr BlitzenCore::AllocationType SpnAlloc = BlitzenCore::AllocationType::SmartPointer;
-
     template<typename T, BlitzenCore::AllocationType alloc = SpnAlloc>
     class SmartPointer
     {

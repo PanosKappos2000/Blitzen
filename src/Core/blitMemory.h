@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/blitzenCore.h"
 #if defined(BLIT_REIN_SANT_ENG)
     #include "Core/blitLogger.h"
     #include "Core/blitAssert.h"
@@ -45,24 +46,6 @@ namespace BlitzenPlatform
 
 namespace BlitzenCore
 {
-    enum class AllocationType : uint8_t
-    {  
-        DynamicArray = 0,
-        Hashmap = 1,
-        Queue = 2, 
-        Bst = 3,
-        String = 4, 
-        Engine = 5, 
-        Renderer = 6, 
-        Entity = 7,
-        EntityNode = 8,
-        Scene = 9,
-        SmartPointer = 10,
-        LinearAlloc = 11,
-
-        MaxTypes = 12
-    };
-
     struct LinearAllocator
     {
         size_t totalAllocated = 0;

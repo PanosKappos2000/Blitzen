@@ -1,5 +1,5 @@
 #pragma once
-#include <cstdint>
+#include "blitzenCore.h"
 
 namespace BlitzenCore
 {
@@ -10,8 +10,6 @@ namespace BlitzenCore
         Middle,
         MaxButtons
     };
-
-    constexpr uint16_t KeyCallbackCount = 256;
 
     //This will create a custom define
     #define DEFINE_KEY(name, code) __##name = code

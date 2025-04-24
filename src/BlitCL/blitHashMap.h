@@ -3,8 +3,6 @@
 
 namespace BlitCL
 {
-    constexpr BlitzenCore::AllocationType MapAlloc = BlitzenCore::AllocationType::Hashmap;
-
     template<typename T>
     class HashMap
     {

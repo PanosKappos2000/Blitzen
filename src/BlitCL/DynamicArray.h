@@ -4,9 +4,6 @@
 
 namespace BlitCL
 {
-    constexpr uint8_t ce_blitDynamiArrayCapacityMultiplier = 2;
-    constexpr BlitzenCore::AllocationType DArrayAlloc = BlitzenCore::AllocationType::DynamicArray;
-
     // Warning this class is way more dangerous than std::vector. 
     // It initializes all memory with malloc and expects the user to provide data for each struct when they wish to do so.
     template<typename T>

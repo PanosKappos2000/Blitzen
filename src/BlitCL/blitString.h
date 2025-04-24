@@ -5,10 +5,6 @@
 
 namespace BlitCL
 {
-    constexpr uint8_t ce_blitStringCapacityMultiplier = 2;
-
-    constexpr BlitzenCore::AllocationType StrAlloc = BlitzenCore::AllocationType::String;
-
     // Allocates a set amount of size on the heap, until the instance goes out of scope (Constructors not called)
     template<typename T, BlitzenCore::AllocationType A>
     class StoragePointer

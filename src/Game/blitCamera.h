@@ -1,11 +1,9 @@
 #pragma once
+#include "Engine/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenEngine
 {
-	constexpr uint8_t MaxCameraCount = 1;
-    constexpr uint8_t MainCameraId = 0;
-
     // This is struct that is needed for camera movement logic and window size stats
     struct CameraTransformData
     {
