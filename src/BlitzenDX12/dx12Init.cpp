@@ -4,7 +4,14 @@
 
 namespace BlitzenDX12
 {
+	Dx12Renderer* Dx12Renderer::s_pThis = nullptr;
+
     Dx12Renderer::Dx12Renderer()
+    {
+        s_pThis = this;
+    }
+
+    static void SetupResourceManagement()
     {
 
     }
@@ -84,34 +91,6 @@ namespace BlitzenDX12
         IID_PPV_ARGS(ppQueue)));
     }
 
-    void Dx12Renderer::SetupResourceManagement()
-	{
-		for (auto& tools : m_frameTools)
-		{
-			if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, 
-            IID_PPV_ARGS(tools.commandAllocator.GetAddressOf()))))
-			{
-				m_stats.bResourceManagement = 0;
-				return;
-			}
-
-            if(FAILED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, tools.commandAllocator.Get(), 
-            nullptr, IID_PPV_ARGS(tools.commandList.GetAddressOf()))))
-            {
-				m_stats.bResourceManagement = 0;
-				return;
-			}
-
-			if(FAILED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, 
-            IID_PPV_ARGS(tools.inFlightFence.GetAddressOf()))))
-			{
-				m_stats.bResourceManagement = 0;
-				return;
-			}
-		}
-		m_stats.bResourceManagement = 1;
-	}
-
     uint8_t CreateSwapchain(Swapchain& swapchain, uint32_t windowWidth, uint32_t windowHeight, 
     IDXGIFactory2* factory, ID3D12CommandQueue* commandQueue, ID3D12Device* pDevice)
     {
@@ -166,11 +145,6 @@ namespace BlitzenDX12
             return 0;
         
         return 1;
-    }
-
-    void Dx12Renderer::Shutdown()
-    {
-
     }
 
     Dx12Renderer::~Dx12Renderer()

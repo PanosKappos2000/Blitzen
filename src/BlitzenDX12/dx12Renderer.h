@@ -10,22 +10,32 @@ namespace BlitzenDX12
     public:
 
         Dx12Renderer();
-
-        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
-
-        void SetupResourceManagement();
-
-        uint8_t UploadTexture(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10,
-        void* pData, const char* filepath);
-
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
-        float& pyramidWidth, float& pyramidHeight);
-
-        void DrawFrame(BlitzenEngine::DrawContext& context);
-
-        void Shutdown();
-
         ~Dx12Renderer();
+
+        Dx12Renderer(const Dx12Renderer& dx) = delete;
+        Dx12Renderer operator = (const Dx12Renderer& dx) = delete;
+    
+        // API initialization (after this it should have the data and handles to do simple things)
+        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight);
+    
+        // Synchronizes the backend with the loaded resources and sets it up for GPU driven rendering
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
+    
+        // Function for DDS texture loading
+        uint8_t UploadTexture(void* pData, const char* filepath);
+    
+        // Shows a loading screen while waiting for resources to be loaded
+        void DrawWhileWaiting();
+    
+        void SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context);
+    
+        // Called each frame to draw the scene that is requested by the engine
+        void DrawFrame(BlitzenEngine::DrawContext& context);
+    
+        // When a dynamic object moves, it should call this function to update the staging buffer
+        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
+
+        inline static Dx12Renderer* GetRendererInstance() { return s_pThis; }
 
     public:
         Microsoft::WRL::ComPtr<IDXGIFactory2> m_factory;
@@ -58,6 +68,9 @@ namespace BlitzenDX12
         Dx12Stats m_stats;
 
         uint32_t m_currentFrame = 0;
+    private:
+
+		static Dx12Renderer* s_pThis;
     };
 
 
