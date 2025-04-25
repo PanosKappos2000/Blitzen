@@ -37,15 +37,4 @@ namespace BlitzenDX12
 
         uint8_t bResourceManagement = 0;
     };
-
-
-
-    struct Swapchain
-    {
-        Microsoft::WRL::ComPtr<IDXGISwapChain3> comPrt;
-        D3D12_RECT extent;
-
-        UINT m_heapIncrement = 0;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_renderTargetViewDescriptor;
-    };
 }

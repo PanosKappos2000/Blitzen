@@ -43,7 +43,7 @@ namespace BlitzenPlatform
         return sizeof(PlatformState);
     }
 
-    static HWND CreateStandardWindow(HINSTANCE hInstance, int width, int height, const char* appName)
+    static HWND CreateStandardWindow(HINSTANCE hInstance, LONG width, LONG height, const char* appName)
     {
         const char* className = "BlitzenStandardWindowClass";
 
@@ -66,14 +66,11 @@ namespace BlitzenPlatform
         // Adjust the window size so the client area is correct
         RECT rect = { 0, 0, width, height };
         AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
-        int winWidth = rect.right - rect.left;
-        int winHeight = rect.bottom - rect.top;
+        LONG winWidth = rect.right - rect.left;
+        LONG winHeight = rect.bottom - rect.top;
 
-        HWND hwnd = CreateWindowExA(
-            0,                  // Optional window styles
-            className,          // Window class
-            appName, // Title
-            WS_OVERLAPPEDWINDOW,   // Window style
+        // TODO: Maybe add styles?
+        HWND hwnd = CreateWindowExA(0,className, appName, WS_OVERLAPPEDWINDOW,   
             CW_USEDEFAULT, CW_USEDEFAULT, winWidth, winHeight,
             nullptr, nullptr, hInstance, nullptr);
 
@@ -83,9 +80,9 @@ namespace BlitzenPlatform
             return nullptr;
         }
 
+        // Success
         ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
-
         return hwnd;
     }
 

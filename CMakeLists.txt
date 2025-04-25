@@ -19,6 +19,8 @@ add_executable(BlitzenEngine
                 src/BlitzenDX12/dx12Renderer.h
                 src/BlitzenDX12/dx12Commands.h 
                 src/BlitzenDX12/dx12Commands.cpp
+                src/BlitzenDX12/dx12Resources.h
+                src/BlitzenDX12/dx12Resources.cpp
                 src/BlitzenDX12/dx12Init.cpp
                 src/BlitzenDX12/dx12RendererSetup.cpp
                 src/BlitzenDX12/dx12Draw.cpp
@@ -173,7 +175,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_ASSERTIONS_ENABLED
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
-                            #BLITZEN_VULKAN_OVERRIDE # Overrides Vulkan as the main graphics API
+                            BLITZEN_VULKAN_OVERRIDE # Overrides Vulkan as the main graphics API
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             BLITZEN_RENDERING_STRESS_TEST #I don't think this is used anymore

@@ -1,6 +1,7 @@
 #include "dx12Renderer.h"
 #include "dx12Commands.h"
 #include "Platform/platform.h"
+#include "dx12Resources.h"
 
 
 namespace BlitzenDX12
@@ -128,13 +129,20 @@ namespace BlitzenDX12
 		}
 
 		if (!CreateSwapchain(m_factory.Get(), m_commandQueue.Get(), windowWidth, windowHeight, 
-            hwnd, &m_swapchain.comPrt))
+            hwnd, &m_swapchain))
 		{
 			BLIT_ERROR("Failed to create swapchain");
             if (CheckForDeviceRemoval(m_device.Get()))
             {
                 BLIT_INFO("Device was not removed");
             }
+			return 0;
+		}
+
+		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), 
+            m_swapchainRtvHeap, m_swapchainBackBuffers, m_swapchainRtvHandles, m_swapchainRtvHandle))
+		{
+			BLIT_ERROR("Failed to create swapchain resources");
 			return 0;
 		}
 

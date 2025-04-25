@@ -46,9 +46,10 @@ namespace BlitzenDX12
             Microsoft::WRL::ComPtr<ID3D12CommandList> mainGraphicsCommandList;
             Microsoft::WRL::ComPtr<ID3D12Fence> inFlightFence;
 
-            uint8_t Init(ID3D12Device* device);
             uint64_t inFlightFenceValue;
 			HANDLE inFlightFenceEvent;
+
+            uint8_t Init(ID3D12Device* device);
         };
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
@@ -58,23 +59,27 @@ namespace BlitzenDX12
     private:
 
         Microsoft::WRL::ComPtr<ID3D12Debug> m_debugController;
+        Microsoft::WRL::ComPtr<ID3D12Debug1> m_debugController1;
 
         Microsoft::WRL::ComPtr<IDXGIAdapter4> m_chosenAdapter;
 
-        Microsoft::WRL::ComPtr<ID3D12Debug1> m_debugController1;
-
         Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 
-        Swapchain m_swapchain;
+        Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapchain;
+        // Swapchain resources
+        Microsoft::WRL::ComPtr<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
+        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_swapchainRtvHeap;
+        D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandle;
+        D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandles [ce_framesInFlight];
 
     private:
+
         BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
-
-    private:
 
         Dx12Stats m_stats;
 
         uint32_t m_currentFrame = 0;
+
     private:
 
 		static Dx12Renderer* s_pThis;
