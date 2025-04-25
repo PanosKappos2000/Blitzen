@@ -21,6 +21,8 @@ add_executable(BlitzenEngine
                 src/BlitzenDX12/dx12Commands.cpp
                 src/BlitzenDX12/dx12Resources.h
                 src/BlitzenDX12/dx12Resources.cpp
+                src/BlitzenDX12/dx12Pipelines.h
+                src/BlitzenDX12/dx12Pipelines.cpp
                 src/BlitzenDX12/dx12Init.cpp
                 src/BlitzenDX12/dx12RendererSetup.cpp
                 src/BlitzenDX12/dx12Draw.cpp
@@ -203,6 +205,7 @@ IF(WIN32)
 
                         D3d12
                         DXGI
+                        D3DCompiler
                         #d3d12sdklayers.lib
 
                         glew32s
