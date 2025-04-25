@@ -69,6 +69,10 @@ namespace BlitzenDX12
 
     uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight, HWND hwnd)
     {
+        #if !defined(BLIT_DOUBLE_BUFFERING)
+            BLIT_WARN("Double buffering enabled by default for Dx12");
+        #endif
+
         if (!CreateFactory(&m_factory, m_debugController))
         {
 			BLIT_ERROR("Failed to create DXGI factory");
@@ -152,31 +156,6 @@ namespace BlitzenDX12
         scDesc.Scaling = DXGI_SCALING_STRETCH;
         scDesc.Stereo = FALSE;// Only relevant for stereoscopic 3D rendering... so no
 
-        // Protection (bad experience with this one)
-        Microsoft::WRL::ComPtr<IDXGISwapChain1> tempSwapchain;
-		if (!hWnd)
-		{
-			BLIT_ERROR("Invalid window handle");
-			return 0;
-		}
-        if (!IsWindow(hWnd))
-        {
-			BLIT_ERROR("Invalid window handle");
-            return 0;
-        }
-        WINDOWINFO info{};
-        info.cbSize = sizeof(info);
-        if (!GetWindowInfo(hWnd, &info)) 
-        {
-            BLIT_ERROR("GetWindowInfo failed");
-            return false;
-        }
-        if (!queue)
-        {
-			BLIT_ERROR("Invalid command queue");
-			return 0;
-        }
-
         // Extra protection settings
         BOOL allowTearing = FALSE;
         factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
@@ -188,10 +167,8 @@ namespace BlitzenDX12
         {
             scDesc.Flags = 0;
         }
-        factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_WINDOW_CHANGES);
-        ShowWindow(hWnd, SW_SHOWDEFAULT);
-        UpdateWindow(hWnd);
 
+        Microsoft::WRL::ComPtr<IDXGISwapChain1> tempSwapchain;
         // Creates the swapchain
         auto swapchainRes{ factory->CreateSwapChainForHwnd(queue, hWnd, &scDesc, nullptr, nullptr, &tempSwapchain) };
 		if (FAILED(swapchainRes))

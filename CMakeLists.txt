@@ -173,12 +173,13 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_ASSERTIONS_ENABLED
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
-                            BLITZEN_VULKAN_OVERRIDE # Overrides Vulkan as the main graphics API
+                            #BLITZEN_VULKAN_OVERRIDE # Overrides Vulkan as the main graphics API
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             BLITZEN_RENDERING_STRESS_TEST #I don't think this is used anymore
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
+                            #BLIT_DOUBLE_BUFFERING #Enables double buffering (some APIs ignore this, and activate it anyway)
 
                             # Vulkan specific preprocessor macros
                             BLITZEN_VULKAN # Never undef this, it's broken because of VulkanMemoryCrucials

@@ -102,9 +102,11 @@ namespace BlitzenPlatform
             BLIT_FATAL("Window creation failed");
             return false;
         }
+
+        // These two need to be set before the renderer for some APIs
         inl_pPlatformState.winInstance = hInstance;
         inl_pPlatformState.winWindow = hwnd;
-
+        
 		auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
         if (!pBackendRenderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, hwnd))
         {
@@ -190,8 +192,10 @@ namespace BlitzenPlatform
         info.hwnd = inl_pPlatformState.winWindow;
 
         auto res = vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
             return 0;
+        }
         return 1;
     }
 

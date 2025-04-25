@@ -1,3 +1,4 @@
+#pragma once 
 #include <D3d12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
@@ -20,13 +21,9 @@ namespace BlitzenDX12
     #else
         constexpr uint8_t ce_bDebugController = 0;
     #endif
-
-
-    #if !defined(BLIT_DOUBLE_BUFFERING)
-        constexpr uint8_t ce_framesInFlight = 1;
-    #else
-        constexpr uint8_t ce_frameInFlight = 2;
-    #endif
+    
+    // Dx12 ignores the double buffering compile flag for now
+    constexpr uint8_t ce_framesInFlight = 2;
 
     constexpr D3D_FEATURE_LEVEL Ce_DeviceFeatureLevel = D3D_FEATURE_LEVEL_11_0;
 
