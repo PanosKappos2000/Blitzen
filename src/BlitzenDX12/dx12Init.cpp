@@ -2,6 +2,7 @@
 #include "dx12Commands.h"
 #include "Platform/platform.h"
 #include "dx12Resources.h"
+#include "dx12Pipelines.h"
 
 
 namespace BlitzenDX12
@@ -11,11 +12,6 @@ namespace BlitzenDX12
     Dx12Renderer::Dx12Renderer()
     {
         s_pThis = this;
-    }
-
-    static void SetupResourceManagement()
-    {
-
     }
 
     static uint8_t CreateFactory(IDXGIFactory6** ppFactory, Microsoft::WRL::ComPtr<ID3D12Debug>& debugController)
@@ -143,6 +139,12 @@ namespace BlitzenDX12
             m_swapchainRtvHeap, m_swapchainBackBuffers, m_swapchainRtvHandles, m_swapchainRtvHandle))
 		{
 			BLIT_ERROR("Failed to create swapchain resources");
+			return 0;
+		}
+
+		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_triangleRootSignature, m_trianglePso.ReleaseAndGetAddressOf()))
+		{
+			BLIT_ERROR("Failed to create triangle graphics pipeline");
 			return 0;
 		}
 

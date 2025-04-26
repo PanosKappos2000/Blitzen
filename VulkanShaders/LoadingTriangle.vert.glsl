@@ -8,12 +8,6 @@ layout(push_constant) uniform constants
 
 layout(location = 0) out vec3 fragColor;
 
-struct Vertex 
-{
-    vec3 pos;
-    vec3 color;
-};
-
 vec3 gVertices[3] =
 {
     vec3(0.0, -0.5, 0.0),

@@ -230,9 +230,13 @@ add_dependencies(BlitzenEngine copy_assets)
 
 # Copy the glsl shaders to the binary directory
 add_custom_target(copy_glsl_shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders
-)
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders)
 add_dependencies(BlitzenEngine copy_glsl_shaders)
+
+# Copy the hlsl shaders to the binary directory
+add_custom_target(copy_hlsl_shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/HlslShaders ${CMAKE_CURRENT_BINARY_DIR}/HlslShaders)
+add_dependencies(BlitzenEngine copy_hlsl_shaders)
 
 
 #---------------------------------------------------------------------------------------------------
@@ -276,19 +280,23 @@ ENDIF(WIN32)
       COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders/"
       COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${PROJECT_BINARY_DIR}/VulkanShaders"
-          "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders"
-          )
+          "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders")
 
     # Copy the assets to the target directory
     add_custom_command(TARGET BlitzenEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/Assets/"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${PROJECT_BINARY_DIR}/Assets"
-        "$<TARGET_FILE_DIR:BlitzenEngine>/Assets"
-      )
+        "$<TARGET_FILE_DIR:BlitzenEngine>/Assets")
 
     # Copy the glsl shaders to the target directory
     add_custom_command(TARGET BlitzenEngine POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/GlslShaders"
         "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders")
+
+    # Copy the hlsl shaders to the target directory
+    add_custom_command(TARGET BlitzenEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/HlslShaders"
+        "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders")

@@ -26,13 +26,16 @@ namespace BlitzenDX12
             auto geBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].ReleaseAndGetAddressOf()));
             if (FAILED(geBackBufferResult))
             {
-                LOG_ERROR_MESSAGE_AND_RETURN(geBackBufferResult);
-                return 0;
+                return LOG_ERROR_MESSAGE_AND_RETURN(geBackBufferResult);
             }
+
+            D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+            rtvDesc.Format = Ce_SwapchainFormat;
+            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
             // Assign the handle to the specific RTV in the heap
             rtvHandles[i] = rtvHandle;
-            device->CreateRenderTargetView(backBuffers[i].Get(), nullptr, rtvHandles[i]);
+            device->CreateRenderTargetView(backBuffers[i].Get(), &rtvDesc, rtvHandles[i]);
 
             // Move the handle to the next slot in the heap
             rtvHandle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -52,8 +55,7 @@ namespace BlitzenDX12
         auto descriptorHeapResult = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(ppRtvHeap));
         if (FAILED(descriptorHeapResult))
         {
-            LOG_ERROR_MESSAGE_AND_RETURN(descriptorHeapResult);
-            return 0;
+            return LOG_ERROR_MESSAGE_AND_RETURN(descriptorHeapResult);
         }
 
         // Success

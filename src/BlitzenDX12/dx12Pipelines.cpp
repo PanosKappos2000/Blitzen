@@ -4,6 +4,54 @@
 
 namespace BlitzenDX12
 {
+    void CreateRootParameterPushConstants(D3D12_ROOT_PARAMETER& rootParameter, UINT shaderRegister, UINT registerSpace, 
+        UINT num32BitValues, D3D12_SHADER_VISIBILITY shaderVisibility)
+    {
+        rootParameter = {};
+
+		rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootParameter.Constants.ShaderRegister = shaderRegister;
+        rootParameter.Constants.RegisterSpace = registerSpace;
+		rootParameter.Constants.Num32BitValues = num32BitValues;
+
+		rootParameter.ShaderVisibility = shaderVisibility;
+    }
+
+
+    uint8_t CreateRootSignature(ID3D12Device* device, ID3D12RootSignature** ppRootSignature, 
+        UINT numParameters, D3D12_ROOT_PARAMETER* pParameters,
+        D3D12_ROOT_SIGNATURE_FLAGS flags /*=D3D12_ROOT_SIGNATURE_FLAG_NONE*/, 
+        D3D_ROOT_SIGNATURE_VERSION rootSignatureVersion /*=D3D_ROOT_SIGNATURE_VERSION::D3D_ROOT_SIGNATURE_VERSION_1*/)
+    {
+        D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+        rootSignatureDesc.NumParameters = numParameters;
+        rootSignatureDesc.pParameters = pParameters;
+        rootSignatureDesc.Flags = flags;
+
+        Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSignature;
+        Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
+        auto serializeRes = D3D12SerializeRootSignature(&rootSignatureDesc, rootSignatureVersion,
+            serializedRootSignature.GetAddressOf(), errorBlob.GetAddressOf());
+        if (FAILED(serializeRes))
+        {
+            // Handle serialization error, log message from errorBlob if available
+            if (errorBlob)
+            {
+                OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+            }
+            return LOG_ERROR_MESSAGE_AND_RETURN(serializeRes);
+        }
+
+        auto rootSignatureResult = device->CreateRootSignature(0, serializedRootSignature->GetBufferPointer(), serializedRootSignature->GetBufferSize(),
+            IID_PPV_ARGS(ppRootSignature));
+        if (FAILED(rootSignatureResult))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(rootSignatureResult);
+        }
+
+        return 1;
+    }
+
     uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, ID3DBlob** shaderBlob)
     {
         Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
@@ -14,7 +62,6 @@ namespace BlitzenDX12
             {
                 OutputDebugStringA((char*)errorBlob->GetBufferPointer());
             }
-            BLIT_ERROR("Failed to compile shader from %s", filepath);
             return 0;
         }
 
@@ -70,12 +117,59 @@ namespace BlitzenDX12
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     }
 
+    uint8_t CreateTriangleGraphicsPipeline(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12RootSignature>& rootSignature, ID3D12PipelineState** ppPso)
+    {
+        D3D12_ROOT_PARAMETER rootParameters[1] = {};
+        CreateRootParameterPushConstants(rootParameters[0], 0, 0, 3, D3D12_SHADER_VISIBILITY_VERTEX);
+
+        if (!CreateRootSignature(device, rootSignature.ReleaseAndGetAddressOf(), 1, rootParameters))
+        {
+            BLIT_ERROR("Failed to create opaque root signature");
+            return 0;
+        }
+
+        Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", &vertexShader))
+        {
+            BLIT_ERROR("Failed to create triangle loading vertex shader");
+            return 0;
+        }
+        Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", &pixelShader))
+        {
+            BLIT_ERROR("Failed to create triangle loading pixel shader");
+            return 0;
+        }
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+        CreateDefaultPsoDescription(psoDesc);
+        psoDesc.pRootSignature = rootSignature.Get();
+        psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
+        psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
+
+        auto psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
+        if (FAILED(psoResult))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
+        }
+
+        return 1;
+    }
+
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso)
     {
         Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
-		CreateShaderProgram(L"Shaders/VertexShader.hlsl", "vs_5_0", &vertexShader);
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", &vertexShader))
+        {
+			BLIT_ERROR("Failed to create main opaque vertex shader");
+			return 0;
+        }
         Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-		CreateShaderProgram(L"Shaders/PixelShader.hlsl", "ps_5_0", &pixelShader);
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", &pixelShader))
+        {
+			BLIT_ERROR("Failed to create main opaque pixel shader");
+            return 0;
+        }
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 		CreateDefaultPsoDescription(psoDesc);
@@ -86,8 +180,7 @@ namespace BlitzenDX12
         auto psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
         if (FAILED(psoResult))
         {
-            LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
-            return 0;
+            return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
         }
 
         return 1;

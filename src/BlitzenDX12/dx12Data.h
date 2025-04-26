@@ -20,6 +20,7 @@ namespace BlitzenDX12
         #endif
     #else
         constexpr uint8_t ce_bDebugController = 0;
+        constexpr uint8_t Ce_GPUValidationRequested = 0;
     #endif
     
     // Dx12 ignores the double buffering compile flag for now

@@ -15,16 +15,13 @@ namespace BlitzenDX12
 
 	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature)
 	{
-		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-		rootSignatureDesc.NumParameters = 0;
-		rootSignatureDesc.pParameters = nullptr;
-		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		// Temp
+		D3D12_ROOT_PARAMETER rootParameters[1] = {};
+		CreateRootParameterPushConstants(rootParameters[0], 0, 0, 3, D3D12_SHADER_VISIBILITY_VERTEX);
 
-		auto rootSignatureResult = device->CreateRootSignature(0, &rootSignatureDesc, sizeof(rootSignatureDesc), 
-			IID_PPV_ARGS(ppOpaqueRootSignature));
-		if (FAILED(rootSignatureResult)) 
+		if (!CreateRootSignature(device, ppOpaqueRootSignature, 1, rootParameters))
 		{
-			LOG_ERROR_MESSAGE_AND_RETURN(rootSignatureResult);
+			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
 		}
 
@@ -45,16 +42,17 @@ namespace BlitzenDX12
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
 	float& pyramidWidth, float& pyramidHeight)
 	{
-		if (!CreateRootSignatures(m_device.Get(), m_opaqueGraphicsRootSignature.ReleaseAndGetAddressOf()))
+		/*if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create opaque graphics root signature");
 			return 0;
-		}
-		if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueGraphicsRootSignature.Get(), m_opaqueGraphicsPipeline.ReleaseAndGetAddressOf()))
+		}*/
+
+		/*if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueGraphicsRootSignature.Get(), m_opaqueGraphicsPipeline.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create graphics pipelines");
 			return 0;
-		}
+		}*/
 		return 1;
 	}
 }

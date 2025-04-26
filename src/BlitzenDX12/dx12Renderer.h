@@ -42,8 +42,8 @@ namespace BlitzenDX12
         struct FrameTools
         {
             Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mainGraphicsCommandAllocator;
+            Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mainGraphicsCommandList;
 
-            Microsoft::WRL::ComPtr<ID3D12CommandList> mainGraphicsCommandList;
             Microsoft::WRL::ComPtr<ID3D12Fence> inFlightFence;
 
             uint64_t inFlightFenceValue;
@@ -82,8 +82,11 @@ namespace BlitzenDX12
     */
     private:
 
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_opaqueGraphicsRootSignature;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_opaqueGraphicsPipeline;
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_triangleRootSignature;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_trianglePso;
+
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_opaqueRootSignature;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_opaqueGraphicsPso;
 
     private:
 

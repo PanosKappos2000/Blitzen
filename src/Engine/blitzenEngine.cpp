@@ -95,19 +95,16 @@ int main(int argc, char* argv[])
     loadingThread.detach();
 
 
-    // Secondary loop allows for window interaction while loading thread does its thing
+    // Placeholder loop, waiting to load
     BlitzenCore::WorldTimerManager coreClock;
-    while (!engine.IsActive())
+    while (!engine.IsActive() && engine.IsRunning())
     {
         BlitzenPlatform::PlatformPumpMessages();
         inputSystemState->UpdateInput(0.f);
         renderer->DrawWhileWaiting();
     }
 
-
-    /*
-        Main loop starts here
-    */
+    // Main loop
     BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data()};
     while(engine.IsRunning())
     {
@@ -119,20 +116,34 @@ int main(int argc, char* argv[])
 
         if(engine.IsActive())
         {
+            // Update delta time
             coreClock.Update();
 
+            // Updates camera
             UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
+            // Updates dynamic entities
 			entities->UpdateDynamicObjects();
+            
+            // Render
             renderer->SetupWhileWaitingForPreviousFrame(drawContext);
             renderer->DrawFrame(drawContext);
         }
 
-            // Reset window resize, TODO: Why is this here??????
-            mainCamera.transformData.bWindowResize = false;
+        // Reset window resize, TODO: Why is this here??????
+        mainCamera.transformData.bWindowResize = false;
 
         inputSystemState->UpdateInput(coreClock.GetDeltaTime());
     }
+
+	// Wait for the loading thread to finish (Got to fix this shit)
+    if (!engine.IsActive())
+    {
+        BLIT_ERROR("Wait for resource loading");
+        BlitzenPlatform::PlatformSleep(100'000);// Wait for 100 seconds because I am too lazy to create a mutex for this (idiot)
+    }
+
+    // Actual shutdown
     engine.BeginShutdown();
     BlitzenPlatform::PlatformShutdown();
 }
