@@ -15,7 +15,6 @@ VSOutput main(uint vertexIndex : SV_VertexID)
 {
     VSOutput output;
     output.position = float4(gVertices[vertexIndex], 1.0f);
-    printf("Vertex Position: %f, %f, %f\n", gVertices[vertexIndex].x, gVertices[vertexIndex].y, gVertices[vertexIndex].z);
     output.color = float3(0, 0.8, 0.4);
     
     return output;

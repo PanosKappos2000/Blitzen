@@ -134,6 +134,8 @@ namespace BlitzenDX12
             }
 			return 0;
 		}
+		m_swapchainWidth = windowWidth;
+		m_swapchainHeight = windowHeight;
 
 		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), 
             m_swapchainRtvHeap, m_swapchainBackBuffers, m_swapchainRtvHandles, m_swapchainRtvHandle))

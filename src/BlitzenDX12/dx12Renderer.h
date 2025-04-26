@@ -52,6 +52,25 @@ namespace BlitzenDX12
             uint8_t Init(ID3D12Device* device);
         };
 
+        struct VarBuffers
+        {
+            Microsoft::WRL::ComPtr<ID3D12Resource> transformBuffer;
+
+            Microsoft::WRL::ComPtr<ID3D12Resource> viewDataBuffer;
+        };
+
+        struct ConstBuffers
+        {
+            Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
+            Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer;
+
+            Microsoft::WRL::ComPtr<ID3D12Resource> surfaceBuffer;
+
+            Microsoft::WRL::ComPtr<ID3D12Resource> renderBuffer;
+
+            Microsoft::WRL::ComPtr<ID3D12Resource> indirectDrawBuffer;
+        };
+
         Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 
         Microsoft::WRL::ComPtr<ID3D12Device> m_device;
@@ -67,6 +86,8 @@ namespace BlitzenDX12
 
         Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapchain;
         // Swapchain resources
+		UINT m_swapchainWidth;
+		UINT m_swapchainHeight;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_swapchainRtvHeap;
         D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandle;
@@ -91,6 +112,9 @@ namespace BlitzenDX12
     private:
 
         BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
+		VarBuffers m_varBuffers[ce_framesInFlight];
+
+        ConstBuffers m_constBuffers;
 
         Dx12Stats m_stats;
 

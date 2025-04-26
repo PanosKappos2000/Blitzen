@@ -4,6 +4,19 @@
 
 namespace BlitzenDX12
 {
+    void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
+        UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace /*=0*/)
+    {
+		range = {};
+
+		range.BaseShaderRegister = baseShaderRegister;
+		range.RegisterSpace = registerSpace;
+		range.NumDescriptors = numDescriptors;
+		range.RangeType = rangeType;
+
+		range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    }
+
     void CreateRootParameterPushConstants(D3D12_ROOT_PARAMETER& rootParameter, UINT shaderRegister, UINT registerSpace, 
         UINT num32BitValues, D3D12_SHADER_VISIBILITY shaderVisibility)
     {
@@ -13,6 +26,18 @@ namespace BlitzenDX12
 		rootParameter.Constants.ShaderRegister = shaderRegister;
         rootParameter.Constants.RegisterSpace = registerSpace;
 		rootParameter.Constants.Num32BitValues = num32BitValues;
+
+		rootParameter.ShaderVisibility = shaderVisibility;
+    }
+
+    void CreateRootParameterDescriptor(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges, 
+        D3D12_SHADER_VISIBILITY shaderVisibility)
+    {
+        rootParameter = {};
+
+		rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParameter.DescriptorTable.NumDescriptorRanges = numRanges;
+		rootParameter.DescriptorTable.pDescriptorRanges = pRanges;
 
 		rootParameter.ShaderVisibility = shaderVisibility;
     }
@@ -111,7 +136,7 @@ namespace BlitzenDX12
 
         
         psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;  
+        psoDesc.RTVFormats[0] = Ce_SwapchainFormat;  
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -122,27 +147,31 @@ namespace BlitzenDX12
         D3D12_ROOT_PARAMETER rootParameters[1] = {};
         CreateRootParameterPushConstants(rootParameters[0], 0, 0, 3, D3D12_SHADER_VISIBILITY_VERTEX);
 
-        if (!CreateRootSignature(device, rootSignature.ReleaseAndGetAddressOf(), 1, rootParameters))
+        if (!CreateRootSignature(device, rootSignature.ReleaseAndGetAddressOf(), 0, nullptr, 
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT))
         {
             BLIT_ERROR("Failed to create opaque root signature");
             return 0;
         }
 
         Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", &vertexShader))
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", vertexShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading vertex shader");
             return 0;
         }
         Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", &pixelShader))
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", pixelShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading pixel shader");
             return 0;
         }
 
+        // Sets default values
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
         CreateDefaultPsoDescription(psoDesc);
+
+        // Adds specialized values (shader and root signature)
         psoDesc.pRootSignature = rootSignature.Get();
         psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };

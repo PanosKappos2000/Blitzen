@@ -30,6 +30,7 @@ namespace BlitzenDX12
             BLIT_ERROR("Failed to create graphics command list");
 			return LOG_ERROR_MESSAGE_AND_RETURN(commandListRes);
         }
+        mainGraphicsCommandList->Close();
 
         // Fence
 		if (!CheckForDeviceRemoval(device))

@@ -32,10 +32,33 @@ namespace BlitzenDX12
     constexpr DXGI_USAGE Ce_SwapchainBufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	constexpr DXGI_SWAP_EFFECT Ce_SwapchainSwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
+    constexpr uint32_t Ce_OpaqueGraphicsRangeCount = 5;
+
+    constexpr UINT Ce_VertexBufferRegister = 0;
+	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
+
     struct Dx12Stats
     {
         uint8_t bDiscreteGPU = 0;
 
         uint8_t bResourceManagement = 0;
+    };
+
+    struct SSBO
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
+        Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+        D3D12_SHADER_RESOURCE_VIEW_DESC ssboDesc;
+    };
+
+	template<typename DATA>
+    struct VarSSBO
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
+        Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
+        D3D12_SHADER_RESOURCE_VIEW_DESC ssboDesc;
+
+        Microsoft::WRL::ComPtr<ID3D12Resource> staging;
+        DATA* pData;
     };
 }

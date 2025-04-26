@@ -15,9 +15,11 @@ namespace BlitzenDX12
 
 	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature)
 	{
-		// Temp
+		D3D12_DESCRIPTOR_RANGE descriptorRanges[Ce_OpaqueGraphicsRangeCount] = {};
+		CreateDescriptorRange(descriptorRanges[0], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister, 0);
+
 		D3D12_ROOT_PARAMETER rootParameters[1] = {};
-		CreateRootParameterPushConstants(rootParameters[0], 0, 0, 3, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterDescriptor(rootParameters[0], descriptorRanges, 1/*BLIT_ARRAY_SIZE(descriptorRanges)*/, D3D12_SHADER_VISIBILITY_VERTEX);
 
 		if (!CreateRootSignature(device, ppOpaqueRootSignature, 1, rootParameters))
 		{
@@ -42,17 +44,17 @@ namespace BlitzenDX12
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
 	float& pyramidWidth, float& pyramidHeight)
 	{
-		/*if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf()))
+		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create opaque graphics root signature");
 			return 0;
-		}*/
+		}
 
-		/*if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueGraphicsRootSignature.Get(), m_opaqueGraphicsPipeline.ReleaseAndGetAddressOf()))
+		if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create graphics pipelines");
 			return 0;
-		}*/
+		}
 		return 1;
 	}
 }
