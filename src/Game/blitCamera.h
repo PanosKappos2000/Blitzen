@@ -37,7 +37,7 @@ namespace BlitzenEngine
     };
 
     // Shader struct. Shaders are expected to have a struct that is aligned with this
-    struct alignas(16) CameraViewData
+    struct alignas(256) CameraViewData
     {
         // The view matrix is the most important responsibility of the camera and crucial for rendering
         BlitML::mat4 viewMatrix;

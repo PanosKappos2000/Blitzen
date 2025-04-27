@@ -77,7 +77,6 @@ namespace BlitzenDX12
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     };
 
-	template<typename DATA>
     struct VarSSBO
     {
         DX12WRAPPER<ID3D12DescriptorHeap> srvHeap{};
@@ -85,7 +84,7 @@ namespace BlitzenDX12
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 
         DX12WRAPPER<ID3D12Resource> staging{ nullptr };
-        DATA* pData{ nullptr };
+        void* pData{ nullptr };
     };
 
 

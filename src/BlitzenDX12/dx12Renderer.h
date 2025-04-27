@@ -63,7 +63,7 @@ namespace BlitzenDX12
 
         struct VarBuffers
         {
-            VarSSBO<BlitzenEngine::MeshTransform> transformBuffer;
+            VarSSBO transformBuffer;
 
             CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
         };

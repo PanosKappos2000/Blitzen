@@ -44,16 +44,47 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateVarBuffers(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, Dx12Renderer::VarBuffers* varBuffers)
+	static uint8_t CreateVarBuffers(ID3D12Device* device, ID3D12CommandQueue* commandQueue, Dx12Renderer::FrameTools& frameTools, 
+		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources)
 	{
+		const auto& transforms{ pResources->transforms };
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			auto& buffers = varBuffers[i];
 
-			if (!CreateCBuffer(device, varBuffers->viewDataBuffer))
+			if (!CreateCBuffer(device, buffers.viewDataBuffer))
 			{
 				BLIT_ERROR("Failed to create view data buffer");
 				return 0;
+			}
+
+			if (!CreateVarSSBO(device, buffers.transformBuffer, transforms.GetSize(), transforms.Data()))
+			{
+				BLIT_ERROR("Failed to create transform buffer");
+				return 0;
+			}
+
+			frameTools.transferCommandAllocator->Reset();
+			frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
+
+			D3D12_RESOURCE_BARRIER copyBarriers[2]{};
+			CreateResourcesTransitionBarrier(copyBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			CreateResourcesTransitionBarrier(copyBarriers[1], buffers.transformBuffer.staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			frameTools.transferCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(copyBarriers), copyBarriers);
+
+			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), buffers.transformBuffer.staging.Get());
+
+			frameTools.transferCommandList->Close();
+			ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
+			commandQueue->ExecuteCommandLists(1, commandLists);
+
+			const UINT64 fence = frameTools.copyFenceValue++;
+			commandQueue->Signal(frameTools.copyFence.Get(), fence);
+			// Waits for the previous frame
+			if (frameTools.copyFence->GetCompletedValue() < fence)
+			{
+				frameTools.copyFence->SetEventOnCompletion(fence, frameTools.copyFenceEvent);
+				WaitForSingleObject(frameTools.copyFenceEvent, INFINITE);
 			}
 		}
 		// Success
@@ -136,7 +167,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateVarBuffers(m_device.Get(), m_frameTools[m_currentFrame], m_varBuffers))
+		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources))
 		{
 			BLIT_ERROR("Failed to create var buffers");
 			return 0;

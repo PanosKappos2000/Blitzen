@@ -225,8 +225,7 @@ ENDIF(WIN32)
 
 # Copy the assets folder to the binary directory
 add_custom_target(copy_assets
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets
-)
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets)
 add_dependencies(BlitzenEngine copy_assets)
 
 # Copy the glsl shaders to the binary directory

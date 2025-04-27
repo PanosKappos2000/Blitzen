@@ -62,6 +62,44 @@ namespace BlitzenDX12
     }
 
     template<typename DATA>
+    UINT64 CreateVarSSBO(ID3D12Device* device, VarSSBO& ssbo, size_t elementCount,
+        DATA* data)
+    {
+        // SSBO (GPU side buffer)
+        if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
+            D3D12_HEAP_TYPE_DEFAULT))
+        {
+            return 0;
+        }
+        // Descriptor heap
+        if (!CreateDescriptorHeap(device, ssbo.srvHeap.ReleaseAndGetAddressOf(), 1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        {
+            return 0;
+        }
+        // Buffer shader view
+        CreateBufferShaderResourceView(device, ssbo.buffer.Get(), ssbo.srvHeap->GetCPUDescriptorHandleForHeapStart(),
+            ssbo.srvDesc, (UINT)elementCount, sizeof(DATA));
+
+        // Staging buffer (CPU side buffer)
+        if (!CreateBuffer(device, ssbo.staging.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
+            D3D12_HEAP_TYPE_UPLOAD))
+        {
+            return 0;
+        }
+        // Staging buffer holds the data for the SSBO
+        auto mappingRes{ ssbo.staging->Map(0, nullptr, &ssbo.pData) };
+        if (FAILED(mappingRes))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+        }
+        BlitzenCore::BlitMemCopy(ssbo.pData, data, sizeof(DATA) * elementCount);
+
+        // Success
+        return sizeof(DATA) * elementCount;
+    }
+
+    template<typename DATA>
     uint8_t CreateCBuffer(ID3D12Device* device, CBuffer<DATA>& cBuffer)
     {
         if (!CreateBuffer(device, cBuffer.buffer.ReleaseAndGetAddressOf(), sizeof(DATA), D3D12_RESOURCE_STATE_COMMON,
