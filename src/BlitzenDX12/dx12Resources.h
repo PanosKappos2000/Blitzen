@@ -7,11 +7,57 @@ namespace BlitzenDX12
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& rtvHeap, Microsoft::WRL::ComPtr<ID3D12Resource>* backBuffers,
         D3D12_CPU_DESCRIPTOR_HANDLE* rtvHandles, D3D12_CPU_DESCRIPTOR_HANDLE& rtvHandle);
 
-    uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, D3D12_DESCRIPTOR_HEAP_TYPE type,
-        D3D12_DESCRIPTOR_HEAP_FLAGS flags);
+    uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, UINT bufferCount, 
+        D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags);
+
+    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle,
+		D3D12_SHADER_RESOURCE_VIEW_DESC& pDesc, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags = D3D12_BUFFER_SRV_FLAG_NONE);
 
     void CreateResourcesTransitionBarrier(D3D12_RESOURCE_BARRIER& barrier, ID3D12Resource* pResource,
         D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter,
         UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
         D3D12_RESOURCE_BARRIER_FLAGS flags = D3D12_RESOURCE_BARRIER_FLAG_NONE);
+
+    uint8_t CreateBuffer(ID3D12Device* device, ID3D12Resource** ppBuffer, UINT64 bufferSize,
+        D3D12_RESOURCE_STATES initialState, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
+
+
+    template<typename DATA>
+    UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, ID3D12Resource* stagingBuffer, size_t elementCount, 
+        DATA* data)
+    {
+        // SSBO (GPU side buffer)
+		if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
+            D3D12_HEAP_TYPE_DEFAULT))
+		{
+            return 0;
+		}
+        // Descriptor heap
+		if (!CreateDescriptorHeap(device, ssbo.srvHeap.ReleaseAndGetAddressOf(), 1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+		{
+            return 0;
+		}
+        // Buffer shader view
+		CreateBufferShaderResourceView(device, ssbo.buffer.Get(), ssbo.srvHeap->GetCPUDescriptorHandleForHeapStart(),
+			ssbo.srvDesc, (UINT)elementCount, sizeof(DATA));
+
+		// Staging buffer (CPU side buffer)
+        if (!CreateBuffer(device, &stagingBuffer, sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
+            D3D12_HEAP_TYPE_READBACK))
+        {
+            return 0;
+        }
+        // Staging buffer holds the data for the SSBO
+		void* pMappedData{ nullptr };
+        auto mappingRes{ stagingBuffer->Map(0, nullptr, &pMappedData) };
+        if (FAILED(mappingRes))
+        {
+			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+        }
+		BlitzenCore::BlitMemCopy(pMappedData, data, sizeof(DATA) * elementCount);
+
+        // Success
+        return sizeof(DATA) * elementCount;
+    }
 }

@@ -61,14 +61,14 @@ namespace BlitzenDX12
 
         struct ConstBuffers
         {
-            Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
-            Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer;
+            SSBO vertexBuffer;
+            SSBO indexBuffer;
 
-            Microsoft::WRL::ComPtr<ID3D12Resource> surfaceBuffer;
+            SSBO surfaceBuffer;
 
-            Microsoft::WRL::ComPtr<ID3D12Resource> renderBuffer;
+            SSBO renderBuffer;
 
-            Microsoft::WRL::ComPtr<ID3D12Resource> indirectDrawBuffer;
+            SSBO indirectDrawBuffer;
         };
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
@@ -124,29 +124,6 @@ namespace BlitzenDX12
 
 		static Dx12Renderer* s_pThis;
     };
-
-    // Useful helper to check for device removal before calling a function that uses it
-    inline uint8_t CheckForDeviceRemoval(ID3D12Device* device)
-    {
-        auto removalReason = device->GetDeviceRemovedReason();
-        if (FAILED(removalReason))
-        {
-            _com_error err{ removalReason };
-            BLIT_FATAL("Device removal reason: %s", err.ErrorMessage());
-            return 0;
-        }
-
-        // Safe
-        return 1;
-    }
-
-    // If a dx12 functcion fails, it can calls this to log the result and return 0
-    inline uint8_t LOG_ERROR_MESSAGE_AND_RETURN(HRESULT res)
-    {
-        _com_error err{ res };
-        BLIT_ERROR("Dx12Error: %s", err.ErrorMessage());
-        return 0;
-    }
 
     uint8_t CreateSwapchain(IDXGIFactory6* factory, ID3D12CommandQueue* queue, uint32_t windowWidth, uint32_t windowHeight, 
         HWND hwnd, Microsoft::WRL::ComPtr <IDXGISwapChain3>* pSwapchain);

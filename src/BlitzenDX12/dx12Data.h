@@ -37,6 +37,10 @@ namespace BlitzenDX12
     constexpr UINT Ce_VertexBufferRegister = 0;
 	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
 
+    constexpr UINT Ce_ConstDataSSBOCount = 1;
+
+    constexpr UINT Ce_VertexStagingBufferIndex = 0;
+
     struct Dx12Stats
     {
         uint8_t bDiscreteGPU = 0;
@@ -44,21 +48,50 @@ namespace BlitzenDX12
         uint8_t bResourceManagement = 0;
     };
 
+    template<typename HANDLE>
+	using DX12WRAPPER = Microsoft::WRL::ComPtr<HANDLE>;
+
     struct SSBO
     {
-        D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
-        Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
-        D3D12_SHADER_RESOURCE_VIEW_DESC ssboDesc;
+        DX12WRAPPER<ID3D12DescriptorHeap> srvHeap{};
+        DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     };
 
 	template<typename DATA>
     struct VarSSBO
     {
-        D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
-        Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
-        D3D12_SHADER_RESOURCE_VIEW_DESC ssboDesc;
+        DX12WRAPPER<ID3D12DescriptorHeap> srvHeap{};
+        DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> staging;
-        DATA* pData;
+        DX12WRAPPER<ID3D12Resource> staging{ nullptr };
+        DATA* pData{ nullptr };
     };
+
+
+
+
+    // Useful helper to check for device removal before calling a function that uses it
+    inline uint8_t CheckForDeviceRemoval(ID3D12Device* device)
+    {
+        auto removalReason = device->GetDeviceRemovedReason();
+        if (FAILED(removalReason))
+        {
+            _com_error err{ removalReason };
+            BLIT_FATAL("Device removal reason: %s", err.ErrorMessage());
+            return 0;
+        }
+
+        // Safe
+        return 1;
+    }
+
+    // If a dx12 functcion fails, it can calls this to log the result and return 0
+    inline uint8_t LOG_ERROR_MESSAGE_AND_RETURN(HRESULT res)
+    {
+        _com_error err{ res };
+        BLIT_ERROR("Dx12Error: %s", err.ErrorMessage());
+        return 0;
+    }
 }

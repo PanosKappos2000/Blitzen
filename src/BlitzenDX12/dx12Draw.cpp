@@ -53,8 +53,6 @@ namespace BlitzenDX12
 		rtvHandle.ptr += swapchainIndex * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-		BLIT_ERROR("RTV handle: %u", rtvHandle.ptr);
-
 		FLOAT clearColor[4] = { 0.f, 0.2f, 0.4f, 1.0f };
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 		BlitML::vec3 triangleColor{ 0, 0.8f, 0.4f };
