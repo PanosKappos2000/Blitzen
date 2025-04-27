@@ -21,6 +21,9 @@ namespace BlitzenDX12
     
         // Synchronizes the backend with the loaded resources and sets it up for GPU driven rendering
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
+
+        // Because of some command list incompatibility, I need this function as well
+        void FinalSetup();
     
         // Function for DDS texture loading
         uint8_t UploadTexture(void* pData, const char* filepath);
@@ -41,22 +44,28 @@ namespace BlitzenDX12
     public:
         struct FrameTools
         {
-            Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mainGraphicsCommandAllocator;
-            Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mainGraphicsCommandList;
+            DX12WRAPPER<ID3D12CommandAllocator> mainGraphicsCommandAllocator;
+            DX12WRAPPER<ID3D12GraphicsCommandList> mainGraphicsCommandList;
 
-            Microsoft::WRL::ComPtr<ID3D12Fence> inFlightFence;
+            DX12WRAPPER<ID3D12CommandAllocator> transferCommandAllocator;
+            DX12WRAPPER<ID3D12GraphicsCommandList> transferCommandList;
 
-            uint64_t inFlightFenceValue;
-			HANDLE inFlightFenceEvent;
+            DX12WRAPPER<ID3D12Fence> inFlightFence;
+            UINT64 inFlightFenceValue;
+            HANDLE inFlightFenceEvent;
+
+            DX12WRAPPER<ID3D12Fence> copyFence;
+            UINT64 copyFenceValue;
+            HANDLE copyFenceEvent;
 
             uint8_t Init(ID3D12Device* device);
         };
 
         struct VarBuffers
         {
-            Microsoft::WRL::ComPtr<ID3D12Resource> transformBuffer;
+            VarSSBO<BlitzenEngine::MeshTransform> transformBuffer;
 
-            Microsoft::WRL::ComPtr<ID3D12Resource> viewDataBuffer;
+            CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
         };
 
         struct ConstBuffers
@@ -82,8 +91,6 @@ namespace BlitzenDX12
 
         Microsoft::WRL::ComPtr<IDXGIAdapter4> m_chosenAdapter;
 
-        Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
-
         Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapchain;
         // Swapchain resources
 		UINT m_swapchainWidth;
@@ -106,10 +113,13 @@ namespace BlitzenDX12
         Microsoft::WRL::ComPtr<ID3D12RootSignature> m_triangleRootSignature;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> m_trianglePso;
 
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_opaqueRootSignature;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_opaqueGraphicsPso;
+        DX12WRAPPER<ID3D12RootSignature> m_opaqueRootSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_opaqueGraphicsPso;
 
     private:
+
+        DX12WRAPPER<ID3D12CommandQueue> m_commandQueue;
+        DX12WRAPPER<ID3D12CommandQueue> m_transferCommandQueue;
 
         BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
 		VarBuffers m_varBuffers[ce_framesInFlight];

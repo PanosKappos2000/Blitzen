@@ -805,6 +805,11 @@ namespace BlitzenVulkan
         return 1;
     }
 
+    void VulkanRenderer::FinalSetup()
+    {
+
+    }
+
     uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
         VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
         VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator)

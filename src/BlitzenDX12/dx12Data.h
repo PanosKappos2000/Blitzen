@@ -32,10 +32,19 @@ namespace BlitzenDX12
     constexpr DXGI_USAGE Ce_SwapchainBufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	constexpr DXGI_SWAP_EFFECT Ce_SwapchainSwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
+    /* SSBO descriptors for main graphics pipeline */
     constexpr uint32_t Ce_OpaqueGraphicsRangeCount = 5;
 
     constexpr UINT Ce_VertexBufferRegister = 0;
 	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
+
+    constexpr UINT Ce_TransformBufferRegister = 3;
+    constexpr UINT Ce_TransformBufferDescriptorCount = 1;
+
+    constexpr UINT Ce_ViewDataBufferRegister = 0;
+    constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
+
+
 
     constexpr UINT Ce_ConstDataSSBOCount = 1;
 
@@ -50,6 +59,16 @@ namespace BlitzenDX12
 
     template<typename HANDLE>
 	using DX12WRAPPER = Microsoft::WRL::ComPtr<HANDLE>;
+
+    template<typename DATA>
+    struct CBuffer
+    {
+        DX12WRAPPER<ID3D12DescriptorHeap> cbvHeap;
+        DX12WRAPPER<ID3D12Resource> buffer;
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
+
+        DATA* pData;
+    };
 
     struct SSBO
     {

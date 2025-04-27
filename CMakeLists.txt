@@ -47,6 +47,7 @@ add_executable(BlitzenEngine
                 src/BlitzenGL/openglResources.cpp
                 src/BlitzenGl/openglRenderer.cpp
 
+                src/Renderer/renderingResourcesTypes.h
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
                 src/Renderer/blitRenderer.h

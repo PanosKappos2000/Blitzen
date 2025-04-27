@@ -24,7 +24,8 @@ namespace BlitzenDX12
 
     void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-
+		BLIT_INFO("This is temporary");
+		DrawWhileWaiting();
     }
 
 	void Dx12Renderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)

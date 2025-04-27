@@ -201,13 +201,8 @@ layout (set = 0, binding = 6, std430) readonly buffer MaterialBuffer
 
 layout(set = 0, binding = 0) uniform ViewData
 {
-    // The view matrix is the most important responsibility of the camera and crucial for rendering
     mat4 view;
-
-    // The result of projection * view, recalculated when either of the values changes
     mat4 projectionView;
-
-    // Position of the camera, used to change the translation matrix which becomes part of the view matrix
     vec3 position;
 
     float frustumRight;
@@ -215,10 +210,9 @@ layout(set = 0, binding = 0) uniform ViewData
     float frustumTop;
     float frustumBottom;
 
-    float proj0;// The 1st element of the projection matrix
-    float proj5;// The 12th element of the projection matrix
+    float proj0;
+    float proj5;
 
-    // The values below are used to create the projection matrix. Stored to recreate the projection matrix if necessary
     float zNear;
     float zFar;
 

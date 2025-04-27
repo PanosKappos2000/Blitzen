@@ -104,6 +104,8 @@ int main(int argc, char* argv[])
         renderer->DrawWhileWaiting();
     }
 
+    renderer->FinalSetup();
+
     // Main loop
     BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data()};
     while(engine.IsRunning())

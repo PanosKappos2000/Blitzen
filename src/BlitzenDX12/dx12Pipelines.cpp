@@ -188,13 +188,13 @@ namespace BlitzenDX12
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso)
     {
         Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", &vertexShader))
+        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.vs.hlsl", "vs_5_0", &vertexShader))
         {
 			BLIT_ERROR("Failed to create main opaque vertex shader");
 			return 0;
         }
         Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", &pixelShader))
+        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.ps.hlsl", "ps_5_0", &pixelShader))
         {
 			BLIT_ERROR("Failed to create main opaque pixel shader");
             return 0;

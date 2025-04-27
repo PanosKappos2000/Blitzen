@@ -23,7 +23,7 @@ namespace BlitzenDX12
 
 
     template<typename DATA>
-    UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, ID3D12Resource* stagingBuffer, size_t elementCount, 
+    UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& stagingBuffer, size_t elementCount, 
         DATA* data)
     {
         // SSBO (GPU side buffer)
@@ -43,8 +43,8 @@ namespace BlitzenDX12
 			ssbo.srvDesc, (UINT)elementCount, sizeof(DATA));
 
 		// Staging buffer (CPU side buffer)
-        if (!CreateBuffer(device, &stagingBuffer, sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
-            D3D12_HEAP_TYPE_READBACK))
+        if (!CreateBuffer(device, stagingBuffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
+            D3D12_HEAP_TYPE_UPLOAD))
         {
             return 0;
         }
@@ -59,5 +59,28 @@ namespace BlitzenDX12
 
         // Success
         return sizeof(DATA) * elementCount;
+    }
+
+    template<typename DATA>
+    uint8_t CreateCBuffer(ID3D12Device* device, CBuffer<DATA>& cBuffer)
+    {
+        if (!CreateBuffer(device, cBuffer.buffer.ReleaseAndGetAddressOf(), sizeof(DATA), D3D12_RESOURCE_STATE_COMMON,
+            D3D12_HEAP_TYPE_DEFAULT))
+        {
+            return 0;
+        }
+        if (!CreateDescriptorHeap(device, cBuffer.cbvHeap.ReleaseAndGetAddressOf(), 1, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        {
+            return 0;
+        }
+
+        cBuffer.cbvDesc = {};
+        cBuffer.cbvDesc.BufferLocation = cBuffer.buffer->GetGPUVirtualAddress();
+        cBuffer.cbvDesc.SizeInBytes = sizeof(DATA);
+        device->CreateConstantBufferView(&cBuffer.cbvDesc, cBuffer.cbvHeap->GetCPUDescriptorHandleForHeapStart());
+
+        // Success
+        return 1;
     }
 }

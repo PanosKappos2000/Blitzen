@@ -22,6 +22,9 @@ namespace BlitzenVulkan
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
 
+        // Needed for dx12, not used here for now
+        void FinalSetup();
+
         // Function for DDS texture loading
         uint8_t UploadTexture(void* pData, const char* filepath);
 

@@ -115,6 +115,13 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+        if (!CreateCommandQueue(m_device.Get(), m_transferCommandQueue.ReleaseAndGetAddressOf(),
+            D3D12_COMMAND_QUEUE_FLAG_NONE, D3D12_COMMAND_LIST_TYPE_COPY))
+        {
+            BLIT_ERROR("Failed to create transfer command queue");
+            return 0;
+        }
+
 		for (uint32_t i = 0; i < ce_framesInFlight; i++)
 		{
 			if (!m_frameTools[i].Init(m_device.Get()))
