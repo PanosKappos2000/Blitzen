@@ -103,7 +103,7 @@ namespace BlitzenDX12
     uint8_t CreateCBuffer(ID3D12Device* device, CBuffer<DATA>& cBuffer)
     {
         if (!CreateBuffer(device, cBuffer.buffer.ReleaseAndGetAddressOf(), sizeof(DATA), D3D12_RESOURCE_STATE_COMMON,
-            D3D12_HEAP_TYPE_DEFAULT))
+            D3D12_HEAP_TYPE_UPLOAD))
         {
             return 0;
         }
@@ -117,6 +117,12 @@ namespace BlitzenDX12
         cBuffer.cbvDesc.BufferLocation = cBuffer.buffer->GetGPUVirtualAddress();
         cBuffer.cbvDesc.SizeInBytes = sizeof(DATA);
         device->CreateConstantBufferView(&cBuffer.cbvDesc, cBuffer.cbvHeap->GetCPUDescriptorHandleForHeapStart());
+
+        auto mappingRes{ cBuffer.buffer->Map(0, nullptr, &(reinterpret_cast<void*>(cBuffer.pData))) };
+        if (FAILED(mappingRes))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+        }
 
         // Success
         return 1;

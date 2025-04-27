@@ -67,7 +67,7 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12Resource> buffer;
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
 
-        DATA* pData;
+        DATA* pData{ nullptr };
     };
 
     struct SSBO

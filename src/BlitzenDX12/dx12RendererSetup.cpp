@@ -196,8 +196,19 @@ namespace BlitzenDX12
 
 		D3D12_RESOURCE_BARRIER vertexBufferBarrier{};
 		CreateResourcesTransitionBarrier(vertexBufferBarrier, m_constBuffers.vertexBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &vertexBufferBarrier);
+
+		uint32_t varBufferId = 0;
+		D3D12_RESOURCE_BARRIER varBuffersFinalState[1 * ce_framesInFlight];
+		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers->transformBuffer.buffer.Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			varBufferId++;
+		}
+
+		frameTools.mainGraphicsCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(varBuffersFinalState), varBuffersFinalState);
 
 		frameTools.mainGraphicsCommandList->Close();
 		ID3D12CommandList* commandLists[] = { frameTools.mainGraphicsCommandList.Get() };

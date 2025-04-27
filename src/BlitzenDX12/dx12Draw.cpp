@@ -17,15 +17,61 @@ namespace BlitzenDX12
 		commandList->RSSetScissorRects(1, &scissorRect);
 	}
 
+	static void Present(Dx12Renderer::FrameTools& tools, IDXGISwapChain3* swapchain, ID3D12CommandQueue* commandQueue, ID3D12Resource* swapchainBackBuffer)
+	{
+		D3D12_RESOURCE_BARRIER presentBarrier{};
+		CreateResourcesTransitionBarrier(presentBarrier, swapchainBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		tools.mainGraphicsCommandList->ResourceBarrier(1, &presentBarrier);
+
+		tools.mainGraphicsCommandList->Close();
+		ID3D12CommandList* commandLists[] = { tools.mainGraphicsCommandList.Get() };
+		commandQueue->ExecuteCommandLists(1, commandLists);
+
+		swapchain->Present(1, 0);
+	}
+
 	void Dx12Renderer::SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context)
 	{
-		
+		auto& frameTools = m_frameTools[m_currentFrame];
+
+		const UINT64 fence = frameTools.inFlightFenceValue;
+		m_commandQueue->Signal(frameTools.inFlightFence.Get(), fence);
+		frameTools.inFlightFenceValue++;
+		// Waits for the previous frame
+		if (frameTools.inFlightFence->GetCompletedValue() < fence)
+		{
+			frameTools.inFlightFence->SetEventOnCompletion(fence, frameTools.inFlightFenceEvent);
+			WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
+		}
 	}
 
     void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-		BLIT_INFO("This is temporary");
-		DrawWhileWaiting();
+		
+		auto& frameTools = m_frameTools[m_currentFrame];
+		const auto pCamera = context.pCamera;
+
+		*m_varBuffers[m_currentFrame].viewDataBuffer.pData = pCamera->viewData;
+
+		UINT swapchainIndex = m_swapchain->GetCurrentBackBufferIndex();
+		frameTools.mainGraphicsCommandAllocator->Reset();
+		frameTools.mainGraphicsCommandList->Reset(frameTools.mainGraphicsCommandAllocator.Get(), m_trianglePso.Get());
+
+		frameTools.mainGraphicsCommandList->SetGraphicsRootSignature(m_opaqueRootSignature.Get());
+		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
+
+		D3D12_RESOURCE_BARRIER attachmentBarrier{};
+		CreateResourcesTransitionBarrier(attachmentBarrier, m_swapchainBackBuffers[swapchainIndex].Get(),
+			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &attachmentBarrier);
+		auto rtvHandle = m_swapchainRtvHeap->GetCPUDescriptorHandleForHeapStart();
+		rtvHandle.ptr += swapchainIndex * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
+		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
     }
 
 	void Dx12Renderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)

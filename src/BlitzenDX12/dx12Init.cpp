@@ -207,6 +207,16 @@ namespace BlitzenDX12
 
     Dx12Renderer::~Dx12Renderer()
     {
-        
+        auto& frameTools = m_frameTools[m_currentFrame];
+
+        const UINT64 fence = frameTools.inFlightFenceValue;
+        m_commandQueue->Signal(frameTools.inFlightFence.Get(), fence);
+        frameTools.inFlightFenceValue++;
+        // Waits for the previous frame
+        if (frameTools.inFlightFence->GetCompletedValue() < fence)
+        {
+            frameTools.inFlightFence->SetEventOnCompletion(fence, frameTools.inFlightFenceEvent);
+            WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
+        }
     }
 }
