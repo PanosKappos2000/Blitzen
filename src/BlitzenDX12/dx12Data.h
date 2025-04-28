@@ -50,6 +50,8 @@ namespace BlitzenDX12
 
     constexpr UINT Ce_VertexStagingBufferIndex = 0;
 
+
+
     struct Dx12Stats
     {
         uint8_t bDiscreteGPU = 0;
@@ -63,7 +65,6 @@ namespace BlitzenDX12
     template<typename DATA>
     struct CBuffer
     {
-        DX12WRAPPER<ID3D12DescriptorHeap> cbvHeap;
         DX12WRAPPER<ID3D12Resource> buffer;
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
 
@@ -72,14 +73,12 @@ namespace BlitzenDX12
 
     struct SSBO
     {
-        DX12WRAPPER<ID3D12DescriptorHeap> srvHeap{};
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     };
 
     struct VarSSBO
     {
-        DX12WRAPPER<ID3D12DescriptorHeap> srvHeap{};
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 

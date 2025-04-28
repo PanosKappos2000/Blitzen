@@ -47,8 +47,8 @@ namespace BlitzenDX12
 
     void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-		
 		auto& frameTools = m_frameTools[m_currentFrame];
+		auto& varBuffers = m_varBuffers[m_currentFrame];
 		const auto pCamera = context.pCamera;
 
 		*m_varBuffers[m_currentFrame].viewDataBuffer.pData = pCamera->viewData;
@@ -60,6 +60,7 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetGraphicsRootSignature(m_opaqueRootSignature.Get());
 		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
+		// Render target
 		D3D12_RESOURCE_BARRIER attachmentBarrier{};
 		CreateResourcesTransitionBarrier(attachmentBarrier, m_swapchainBackBuffers[swapchainIndex].Get(),
 			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -67,6 +68,15 @@ namespace BlitzenDX12
 		auto rtvHandle = m_swapchainRtvHeap->GetCPUDescriptorHandleForHeapStart();
 		rtvHandle.ptr += swapchainIndex * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+		// Bind descriptors
+		ID3D12DescriptorHeap* ppHeaps[] = { m_bufferDescriptorHeap.Get() };
+		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, ppHeaps);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, m_bufferDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
+		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		frameTools.mainGraphicsCommandList->DrawInstanced(20000, 1, 0, 0);
 
 		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -102,6 +112,7 @@ namespace BlitzenDX12
 
 		FLOAT clearColor[4] = { 0.f, 0.2f, 0.4f, 1.0f };
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
 		BlitML::vec3 triangleColor{ 0, 0.8f, 0.4f };
 		//frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstants(0, 3, &triangleColor, 0);
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_trianglePso.Get());

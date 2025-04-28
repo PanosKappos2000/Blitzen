@@ -80,6 +80,12 @@ namespace BlitzenDX12
             SSBO indirectDrawBuffer;
         };
 
+        struct DescriptorContext
+        {
+            UINT srvOffset{ 0 };
+            UINT cbvOffset{ 0 };
+        };
+
         Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 
         Microsoft::WRL::ComPtr<ID3D12Device> m_device;
@@ -104,6 +110,12 @@ namespace BlitzenDX12
         Descriptors
     */
     private:
+
+        DescriptorContext m_descriptorContext;
+
+        DX12WRAPPER<ID3D12DescriptorHeap> m_bufferDescriptorHeap;
+
+        D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueGraphicsRangeCount]{};
 
     /*
         Pipelines and Root Signatures

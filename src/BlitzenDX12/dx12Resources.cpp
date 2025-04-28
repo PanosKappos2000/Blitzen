@@ -62,7 +62,7 @@ namespace BlitzenDX12
         return 1;
     }
 
-    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle,
+    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, UINT& srvOffset,
         D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags /*=D3D12_BUFFER_SRV_FLAG_NONE*/)
     {
 		srvDesc = {};
@@ -73,7 +73,13 @@ namespace BlitzenDX12
 		srvDesc.Buffer.NumElements = numElements;
 		srvDesc.Buffer.StructureByteStride = stride;
 		srvDesc.Buffer.Flags = flags;
+
+        // Find the offset of the srv registers for this heap
+        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		device->CreateShaderResourceView(resource, &srvDesc, handle);
+
+        // Increase srv offset
+        srvOffset++;
     }
 
     uint8_t CreateBuffer(ID3D12Device* device, ID3D12Resource** ppBuffer, UINT64 bufferSize,
