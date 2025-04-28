@@ -115,7 +115,7 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12DescriptorHeap> m_bufferDescriptorHeap;
 
-        D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueGraphicsRangeCount]{};
+        D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueRangeCount]{};
 
     /*
         Pipelines and Root Signatures

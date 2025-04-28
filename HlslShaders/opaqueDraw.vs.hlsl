@@ -56,7 +56,7 @@ VSOutput main(uint vertexIndex : SV_VertexID)
     Vertex vtx = vertexBuffer[vertexIndex];
     VSOutput output;
     float3 modelPos = RotateQuat(vtx.position, transformBuffer[0].orientation) * transformBuffer[0].scale + transformBuffer[0].position;
-    output.position = mul(projectionView, float4(modelPos, 1.0f)); 
+    output.position = mul(projectionView(float4(modelPos, 1.0f)); 
 
     return output;
 }

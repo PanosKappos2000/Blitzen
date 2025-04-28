@@ -69,6 +69,9 @@ namespace BlitzenDX12
 		rtvHandle.ptr += swapchainIndex * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
+		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
+		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
 		// Bind descriptors
 		ID3D12DescriptorHeap* ppHeaps[] = { m_bufferDescriptorHeap.Get() };
 		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, ppHeaps);
@@ -77,9 +80,6 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->DrawInstanced(20000, 1, 0, 0);
-
-		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
-		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
     }

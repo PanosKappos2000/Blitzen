@@ -16,12 +16,12 @@ namespace BlitzenDX12
 
 	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature, D3D12_DESCRIPTOR_RANGE* pOpaqueRanges)
 	{
-		CreateDescriptorRange(pOpaqueRanges[0], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
-		CreateDescriptorRange(pOpaqueRanges[1], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
-		CreateDescriptorRange(pOpaqueRanges[2], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
+		CreateDescriptorRange(pOpaqueRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
+		CreateDescriptorRange(pOpaqueRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
+		CreateDescriptorRange(pOpaqueRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
 
 		D3D12_ROOT_PARAMETER rootParameters[1] = {};
-		CreateRootParameterDescriptor(rootParameters[0], pOpaqueRanges, 3/*BLIT_ARRAY_SIZE(descriptorRanges)*/, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterDescriptor(rootParameters[0], pOpaqueRanges, Ce_OpaqueRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 
 		if (!CreateRootSignature(device, ppOpaqueRootSignature, 1, rootParameters))
 		{
@@ -35,7 +35,7 @@ namespace BlitzenDX12
 
 	static uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppBufferHeap)
 	{
-		if (!CreateDescriptorHeap(device, ppBufferHeap, 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+		if (!CreateDescriptorHeap(device, ppBufferHeap, Ce_OpaqueDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
 		{
 			BLIT_ERROR("Failed to create shader buffer descriptor heap");
 			return 0;
@@ -65,7 +65,7 @@ namespace BlitzenDX12
 		{
 			auto& buffers = varBuffers[i];
 
-			if (!CreateCBuffer(device, buffers.viewDataBuffer, descriptorContext.cbvOffset, bufferHeap))
+			if (!CreateCBuffer(device, buffers.viewDataBuffer, descriptorContext.srvOffset, bufferHeap))
 			{
 				BLIT_ERROR("Failed to create view data buffer");
 				return 0;
@@ -174,6 +174,32 @@ namespace BlitzenDX12
 		return 1;
 	}
 
+	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* bufferHeap, Dx12Renderer::ConstBuffers& staticBuffers, 
+		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, Dx12Renderer::DescriptorContext& descriptorContext)
+	{
+		const auto& vertices{ pResources->GetVerticesArray() };
+		const auto& transforms{ pResources->transforms };
+		// Buffer shader view
+		for (size_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			auto& vars = varBuffers[i];
+
+			vars.viewDataBuffer.cbvDesc = {};
+			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();
+			vars.viewDataBuffer.cbvDesc.SizeInBytes = sizeof(BlitzenEngine::CameraViewData);
+			auto descriptorHandle = bufferHeap->GetCPUDescriptorHandleForHeapStart();
+			descriptorHandle.ptr += descriptorContext.srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
+			descriptorContext.srvOffset++;
+
+			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), bufferHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
+
+			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), bufferHeap->GetCPUDescriptorHandleForHeapStart(), 
+				descriptorContext.srvOffset, staticBuffers.vertexBuffer.srvDesc[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+		}
+	}
+
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
 	float& pyramidWidth, float& pyramidHeight)
 	{
@@ -189,19 +215,21 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources, 
-			m_descriptorContext, m_bufferDescriptorHeap.Get()))
-		{
-			BLIT_ERROR("Failed to create var buffers");
-			return 0;
-		}
-
 		if (!CreateConstBuffers(m_device.Get(), m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), pResources, m_constBuffers, 
 			m_descriptorContext, m_bufferDescriptorHeap.Get()))
 		{
 			BLIT_ERROR("Failed to create constant buffers");
 			return 0;
 		}
+
+		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources,
+			m_descriptorContext, m_bufferDescriptorHeap.Get()))
+		{
+			BLIT_ERROR("Failed to create var buffers");
+			return 0;
+		}
+
+		CreateResourceViews(m_device.Get(), m_bufferDescriptorHeap.Get(), m_constBuffers, m_varBuffers, pResources, m_descriptorContext);
 
 		if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf()))
 		{

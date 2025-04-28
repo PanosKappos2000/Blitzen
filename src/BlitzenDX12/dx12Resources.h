@@ -32,9 +32,6 @@ namespace BlitzenDX12
 		{
             return 0;
 		}
-        // Buffer shader view
-		CreateBufferShaderResourceView(device, ssbo.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(), srvOffset, 
-			ssbo.srvDesc, (UINT)elementCount, sizeof(DATA));
 
 		// Staging buffer (CPU side buffer)
         if (!CreateBuffer(device, stagingBuffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
@@ -65,9 +62,6 @@ namespace BlitzenDX12
         {
             return 0;
         }
-        // Buffer shader view
-        CreateBufferShaderResourceView(device, ssbo.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(), srvOffset,
-            ssbo.srvDesc, (UINT)elementCount, sizeof(DATA));
 
         // Staging buffer (CPU side buffer)
         if (!CreateBuffer(device, ssbo.staging.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
@@ -95,15 +89,6 @@ namespace BlitzenDX12
         {
             return 0;
         }
-
-        cBuffer.cbvDesc = {};
-        cBuffer.cbvDesc.BufferLocation = cBuffer.buffer->GetGPUVirtualAddress();
-        cBuffer.cbvDesc.SizeInBytes = sizeof(DATA);
-
-        auto descriptorHandle = cbvHeap->GetCPUDescriptorHandleForHeapStart();
-        descriptorHandle.ptr += cbvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        device->CreateConstantBufferView(&cBuffer.cbvDesc, descriptorHandle);
-        cbvOffset++;
 
         auto mappingRes{ cBuffer.buffer->Map(0, nullptr, &(reinterpret_cast<void*>(cBuffer.pData))) };
         if (FAILED(mappingRes))
