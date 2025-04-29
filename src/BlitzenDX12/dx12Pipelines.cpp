@@ -30,7 +30,7 @@ namespace BlitzenDX12
 		rootParameter.ShaderVisibility = shaderVisibility;
     }
 
-    void CreateRootParameterDescriptor(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges, 
+    void CreateRootParameterDescriptorTable(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges, 
         D3D12_SHADER_VISIBILITY shaderVisibility)
     {
         rootParameter = {};
@@ -40,6 +40,17 @@ namespace BlitzenDX12
 		rootParameter.DescriptorTable.pDescriptorRanges = pRanges;
 
 		rootParameter.ShaderVisibility = shaderVisibility;
+    }
+
+    void CreateRootParameterCBV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility)
+    {
+        rootParameter = {};
+
+        rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        rootParameter.Descriptor.ShaderRegister = baseRegister;
+        rootParameter.Descriptor.RegisterSpace = registerSpace;
+
+        rootParameter.ShaderVisibility = shaderVisibility;
     }
 
 

@@ -6,8 +6,11 @@ namespace BlitzenDX12
     void CreateRootParameterPushConstants(D3D12_ROOT_PARAMETER& rootParameter, UINT shaderRegister, UINT registerSpace,
         UINT num32BitValues, D3D12_SHADER_VISIBILITY shaderVisibility);
 
-    void CreateRootParameterDescriptor(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges,
+    void CreateRootParameterDescriptorTable(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges,
         D3D12_SHADER_VISIBILITY shaderVisibility);
+
+    void CreateRootParameterCBV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister,
+        UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility);
 
 	void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
 		UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace = 0);

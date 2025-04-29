@@ -33,20 +33,21 @@ namespace BlitzenDX12
 	constexpr DXGI_SWAP_EFFECT Ce_SwapchainSwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
     /* SSBO descriptors for main graphics pipeline */
-    constexpr uint32_t Ce_OpaqueRangeCount = 3;
-    constexpr uint32_t Ce_OpaqueDescriptorCount = Ce_OpaqueRangeCount * ce_framesInFlight;// Double or triple buffering
+    constexpr uint32_t Ce_OpaqueSrvRangeCount = 2;
 
     constexpr UINT Ce_VertexBufferRegister = 0;
 	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
-    constexpr UINT Ce_VertexBufferRangeElement = 2;
+    constexpr UINT Ce_VertexBufferRangeElement = 1;
 
     constexpr UINT Ce_TransformBufferRegister = 3;
     constexpr UINT Ce_TransformBufferDescriptorCount = 1;
-    constexpr UINT Ce_TransformBufferRangeElement = 1;
+    constexpr UINT Ce_TransformBufferRangeElement = 0;
 
     constexpr UINT Ce_ViewDataBufferRegister = 0;
     constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
     constexpr UINT Ce_ViewDataBufferRangeElement = 0;
+
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + 1) * ce_framesInFlight;// Double or triple buffering
 
     
     /* SSBO data copy helpers */

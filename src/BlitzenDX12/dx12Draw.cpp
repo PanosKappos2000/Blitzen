@@ -60,23 +60,30 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetGraphicsRootSignature(m_opaqueRootSignature.Get());
 		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
-		// Render target
+		// Render target barrier
 		D3D12_RESOURCE_BARRIER attachmentBarrier{};
 		CreateResourcesTransitionBarrier(attachmentBarrier, m_swapchainBackBuffers[swapchainIndex].Get(),
 			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		// Render target bind
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &attachmentBarrier);
 		auto rtvHandle = m_swapchainRtvHeap->GetCPUDescriptorHandleForHeapStart();
 		rtvHandle.ptr += swapchainIndex * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
+		// Render target clear
 		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-		// Bind descriptors
-		ID3D12DescriptorHeap* ppHeaps[] = { m_bufferDescriptorHeap.Get() };
-		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, ppHeaps);
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, m_bufferDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		// Binds descriptors
+		ID3D12DescriptorHeap* opaqueSrvHeaps[] = { m_srvHeap.Get()};
+		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, opaqueSrvHeaps);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootConstantBufferView(1, varBuffers.viewDataBuffer.buffer->GetGPUVirtualAddress());
+		auto srvHeapHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+		srvHeapHandle.ptr += m_descriptorContext.opaqueSrvOffset * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, srvHeapHandle);
 
+		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->DrawInstanced(20000, 1, 0, 0);

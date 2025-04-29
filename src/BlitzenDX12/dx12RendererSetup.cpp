@@ -14,16 +14,17 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature, D3D12_DESCRIPTOR_RANGE* pOpaqueRanges)
+	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature)
 	{
-		CreateDescriptorRange(pOpaqueRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
-		CreateDescriptorRange(pOpaqueRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
-		CreateDescriptorRange(pOpaqueRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
+		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueSrvRangeCount]{};
+		CreateDescriptorRange(opaqueSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
+		CreateDescriptorRange(opaqueSrvRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
 
-		D3D12_ROOT_PARAMETER rootParameters[1] = {};
-		CreateRootParameterDescriptor(rootParameters[0], pOpaqueRanges, Ce_OpaqueRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		D3D12_ROOT_PARAMETER rootParameters[2] = {};
+		CreateRootParameterDescriptorTable(rootParameters[0], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterCBV(rootParameters[1], Ce_ViewDataBufferRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
-		if (!CreateRootSignature(device, ppOpaqueRootSignature, 1, rootParameters))
+		if (!CreateRootSignature(device, ppOpaqueRootSignature, 2, rootParameters))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
@@ -33,11 +34,11 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppBufferHeap)
+	static uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppSrvHeap)
 	{
-		if (!CreateDescriptorHeap(device, ppBufferHeap, Ce_OpaqueDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+		if (!CreateDescriptorHeap(device, ppSrvHeap, Ce_SrvDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
 		{
-			BLIT_ERROR("Failed to create shader buffer descriptor heap");
+			BLIT_ERROR("Failed to create srv descriptor heap");
 			return 0;
 		}
 
@@ -57,22 +58,20 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t CreateVarBuffers(ID3D12Device* device, ID3D12CommandQueue* commandQueue, Dx12Renderer::FrameTools& frameTools, 
-		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, 
-		Dx12Renderer::DescriptorContext& descriptorContext, ID3D12DescriptorHeap* bufferHeap)
+		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources)
 	{
 		const auto& transforms{ pResources->transforms };
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			auto& buffers = varBuffers[i];
 
-			if (!CreateCBuffer(device, buffers.viewDataBuffer, descriptorContext.srvOffset, bufferHeap))
+			if (!CreateCBuffer(device, buffers.viewDataBuffer))
 			{
 				BLIT_ERROR("Failed to create view data buffer");
 				return 0;
 			}
 
-			if (!CreateVarSSBO(device, buffers.transformBuffer, transforms.GetSize(), transforms.Data(), 
-				descriptorContext.srvOffset, bufferHeap))
+			if (!CreateVarSSBO(device, buffers.transformBuffer, transforms.GetSize(), transforms.Data()))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
 				return 0;
@@ -147,14 +146,12 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t CreateConstBuffers(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, ID3D12CommandQueue* commandQueue,
-		BlitzenEngine::RenderingResources* pResources, Dx12Renderer::ConstBuffers& buffers, Dx12Renderer::DescriptorContext& descriptorContext, 
-		ID3D12DescriptorHeap* bufferHeap)
+		BlitzenEngine::RenderingResources* pResources, Dx12Renderer::ConstBuffers& buffers)
 	{
 		const auto& vertices{ pResources->GetVerticesArray() };
 
 		DX12WRAPPER<ID3D12Resource> vertexStagingBuffer{ nullptr };
-		UINT64 vertexBufferSize{ CreateSSBO(device, buffers.vertexBuffer, vertexStagingBuffer, vertices.GetSize(), vertices.Data(), 
-			descriptorContext.srvOffset, bufferHeap)};
+		UINT64 vertexBufferSize{ CreateSSBO(device, buffers.vertexBuffer, vertexStagingBuffer, vertices.GetSize(), vertices.Data())};
 		if (!vertexBufferSize)
 		{
 			BLIT_ERROR("Failed to create vertex buffer");
@@ -174,62 +171,70 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* bufferHeap, Dx12Renderer::ConstBuffers& staticBuffers, 
-		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, Dx12Renderer::DescriptorContext& descriptorContext)
+	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
+		Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources)
 	{
 		const auto& vertices{ pResources->GetVerticesArray() };
 		const auto& transforms{ pResources->transforms };
-		// Buffer shader view
+		
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
+			// Saves the offset of this group of descriptors
+			descriptorContext.opaqueSrvOffset = descriptorContext.srvHeapOffset;
+			auto& vars = varBuffers[i];
+
+			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
+
+			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, staticBuffers.vertexBuffer.srvDesc[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+		}
+
+		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			// Saves the offset of this group of descriptors
+			descriptorContext.sharedCbvOffset = descriptorContext.srvHeapOffset;
 			auto& vars = varBuffers[i];
 
 			vars.viewDataBuffer.cbvDesc = {};
 			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();
 			vars.viewDataBuffer.cbvDesc.SizeInBytes = sizeof(BlitzenEngine::CameraViewData);
-			auto descriptorHandle = bufferHeap->GetCPUDescriptorHandleForHeapStart();
-			descriptorHandle.ptr += descriptorContext.srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			auto descriptorHandle = srvHeap->GetCPUDescriptorHandleForHeapStart();
+			descriptorHandle.ptr += descriptorContext.srvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
-			descriptorContext.srvOffset++;
-
-			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), bufferHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
-
-			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), bufferHeap->GetCPUDescriptorHandleForHeapStart(), 
-				descriptorContext.srvOffset, staticBuffers.vertexBuffer.srvDesc[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+			descriptorContext.srvHeapOffset++;
 		}
 	}
 
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
 	float& pyramidWidth, float& pyramidHeight)
 	{
-		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf(), m_opaqueDescriptorRanges))
+		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create root signatures");
 			return 0;
 		}
 
-		if (!CreateDescriptorHeaps(m_device.Get(), m_bufferDescriptorHeap.ReleaseAndGetAddressOf()))
+		if (!CreateDescriptorHeaps(m_device.Get(), m_srvHeap.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create descriptor heaps");
 			return 0;
 		}
 
-		if (!CreateConstBuffers(m_device.Get(), m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), pResources, m_constBuffers, 
-			m_descriptorContext, m_bufferDescriptorHeap.Get()))
+		if (!CreateConstBuffers(m_device.Get(), m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), pResources, m_constBuffers))
 		{
 			BLIT_ERROR("Failed to create constant buffers");
 			return 0;
 		}
 
-		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources,
-			m_descriptorContext, m_bufferDescriptorHeap.Get()))
+		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources))
 		{
 			BLIT_ERROR("Failed to create var buffers");
 			return 0;
 		}
 
-		CreateResourceViews(m_device.Get(), m_bufferDescriptorHeap.Get(), m_constBuffers, m_varBuffers, pResources, m_descriptorContext);
+		CreateResourceViews(m_device.Get(), m_srvHeap.Get(), m_descriptorContext, 
+			m_constBuffers, m_varBuffers, pResources);
 
 		if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf()))
 		{

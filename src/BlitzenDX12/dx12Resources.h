@@ -23,8 +23,7 @@ namespace BlitzenDX12
 
 
     template<typename DATA>
-    UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& stagingBuffer, size_t elementCount, 
-        DATA* data, UINT& srvOffset, ID3D12DescriptorHeap* srvHeap)
+    UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& stagingBuffer, size_t elementCount, DATA* data)
     {
         // SSBO (GPU side buffer)
 		if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
@@ -53,8 +52,7 @@ namespace BlitzenDX12
     }
 
     template<typename DATA>
-    UINT64 CreateVarSSBO(ID3D12Device* device, VarSSBO& ssbo, size_t elementCount,DATA* data, 
-        UINT& srvOffset, ID3D12DescriptorHeap* srvHeap)
+    UINT64 CreateVarSSBO(ID3D12Device* device, VarSSBO& ssbo, size_t elementCount,DATA* data)
     {
         // SSBO (GPU side buffer)
         if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
@@ -82,7 +80,7 @@ namespace BlitzenDX12
     }
 
     template<typename DATA>
-    uint8_t CreateCBuffer(ID3D12Device* device, CBuffer<DATA>& cBuffer, UINT& cbvOffset, ID3D12DescriptorHeap* cbvHeap)
+    uint8_t CreateCBuffer(ID3D12Device* device, CBuffer<DATA>& cBuffer)
     {
         if (!CreateBuffer(device, cBuffer.buffer.ReleaseAndGetAddressOf(), sizeof(DATA), D3D12_RESOURCE_STATE_COMMON,
             D3D12_HEAP_TYPE_UPLOAD))

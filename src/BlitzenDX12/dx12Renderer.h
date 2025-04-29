@@ -82,17 +82,18 @@ namespace BlitzenDX12
 
         struct DescriptorContext
         {
-            UINT srvOffset{ 0 };
-            UINT cbvOffset{ 0 };
+            UINT srvHeapOffset{ 0 };// Current offset into the srv heap for adding views
+            UINT opaqueSrvOffset;// Offset of srvHeap for opaque pipeline descriptor table
+            UINT sharedCbvOffset;// Offset of srvHeap for shared cbvDescriptors
         };
 
-        Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
+        DX12WRAPPER<IDXGIFactory6> m_factory;
 
-        Microsoft::WRL::ComPtr<ID3D12Device> m_device;
+        DX12WRAPPER<ID3D12Device> m_device;
 
     private:
 
-        Microsoft::WRL::ComPtr<ID3D12Debug> m_debugController;
+        DX12WRAPPER<ID3D12Debug> m_debugController;
         Microsoft::WRL::ComPtr<ID3D12Debug1> m_debugController1;
 
         Microsoft::WRL::ComPtr<IDXGIAdapter4> m_chosenAdapter;
@@ -101,8 +102,8 @@ namespace BlitzenDX12
         // Swapchain resources
 		UINT m_swapchainWidth;
 		UINT m_swapchainHeight;
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_swapchainRtvHeap;
+        DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
+        DX12WRAPPER<ID3D12DescriptorHeap> m_swapchainRtvHeap;
         D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandle;
         D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandles [ce_framesInFlight];
 
@@ -113,17 +114,17 @@ namespace BlitzenDX12
 
         DescriptorContext m_descriptorContext;
 
-        DX12WRAPPER<ID3D12DescriptorHeap> m_bufferDescriptorHeap;
+        DX12WRAPPER<ID3D12DescriptorHeap> m_srvHeap;
 
-        D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueRangeCount]{};
+        D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueSrvRangeCount]{};
 
     /*
         Pipelines and Root Signatures
     */
     private:
 
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_triangleRootSignature;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_trianglePso;
+        DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
 
         DX12WRAPPER<ID3D12RootSignature> m_opaqueRootSignature;
         DX12WRAPPER<ID3D12PipelineState> m_opaqueGraphicsPso;
@@ -150,54 +151,3 @@ namespace BlitzenDX12
     uint8_t CreateSwapchain(IDXGIFactory6* factory, ID3D12CommandQueue* queue, uint32_t windowWidth, uint32_t windowHeight, 
         HWND hwnd, Microsoft::WRL::ComPtr <IDXGISwapChain3>* pSwapchain);
 }
-
-/*
-// Define descriptor ranges for your large SSBOs (Shader Resource Views)
-D3D12_DESCRIPTOR_RANGE range1 = {};
-range1.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // Shader Resource View (e.g., SSBO)
-range1.NumDescriptors = 1; // Number of descriptors (e.g., 1 large buffer for vertices)
-range1.BaseShaderRegister = 0; // The register for the resource (e.g., register 0)
-range1.RegisterSpace = 0; // The space for the descriptor
-
-D3D12_DESCRIPTOR_RANGE range2 = {};
-range2.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // Another SSBO (e.g., global index buffer)
-range2.NumDescriptors = 1;
-range2.BaseShaderRegister = 1; // Next register (e.g., register 1)
-range2.RegisterSpace = 0;
-
-D3D12_DESCRIPTOR_RANGE range3 = {};
-range3.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // Another SSBO (e.g., global transform buffer)
-range3.NumDescriptors = 1;
-range3.BaseShaderRegister = 2; // Next register
-range3.RegisterSpace = 0;
-
-// Define the root parameters (which bind the ranges to the shaders)
-D3D12_ROOT_PARAMETER rootParameters[3] = {};
-
-// Set up the root parameter to bind the descriptor ranges to the root signature
-rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-rootParameters[0].DescriptorTable.pDescriptorRanges = &range1;
-
-rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-rootParameters[1].DescriptorTable.pDescriptorRanges = &range2;
-
-rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
-rootParameters[2].DescriptorTable.pDescriptorRanges = &range3;
-
-// Define the root signature descriptor
-D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-rootSignatureDesc.NumParameters = ARRAYSIZE(rootParameters);
-rootSignatureDesc.pParameters = rootParameters;
-rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;  // Can be used in fixed input assembler stages
-
-// Create the root signature
-ComPtr<ID3D12RootSignature> rootSignature;
-hr = device->CreateRootSignature(0, &rootSignatureDesc, sizeof(rootSignatureDesc), IID_PPV_ARGS(&rootSignature));
-if (FAILED(hr)) {
-    std::cerr << "Failed to create root signature!" << std::endl;
-    return -1;
-}
-*/
