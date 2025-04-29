@@ -71,7 +71,9 @@ namespace BlitzenDX12
         struct ConstBuffers
         {
             SSBO vertexBuffer;
-            SSBO indexBuffer;
+
+            DX12WRAPPER<ID3D12Resource> indexBuffer;
+            D3D12_INDEX_BUFFER_VIEW indexBufferView;
 
             SSBO surfaceBuffer;
 
@@ -82,9 +84,13 @@ namespace BlitzenDX12
 
         struct DescriptorContext
         {
-            UINT srvHeapOffset{ 0 };// Current offset into the srv heap for adding views
-            UINT opaqueSrvOffset;// Offset of srvHeap for opaque pipeline descriptor table
-            UINT sharedCbvOffset;// Offset of srvHeap for shared cbvDescriptors
+            SIZE_T srvHeapOffset{ 0 };// Current offset into the srv heap for adding views
+            SIZE_T opaqueSrvOffset;// Offset of srvHeap for opaque pipeline descriptor table
+            SIZE_T sharedCbvOffset;// Offset of srvHeap for shared cbvDescriptors
+
+            SIZE_T rtvHeapOffset{ 0 };
+            SIZE_T swapchainRtvOffset;
+            SIZE_T depthRtvOffset;
         };
 
         DX12WRAPPER<IDXGIFactory6> m_factory;
@@ -94,18 +100,15 @@ namespace BlitzenDX12
     private:
 
         DX12WRAPPER<ID3D12Debug> m_debugController;
-        Microsoft::WRL::ComPtr<ID3D12Debug1> m_debugController1;
+        DX12WRAPPER<ID3D12Debug1> m_debugController1;
 
-        Microsoft::WRL::ComPtr<IDXGIAdapter4> m_chosenAdapter;
+        DX12WRAPPER<IDXGIAdapter4> m_chosenAdapter;
 
-        Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapchain;
+        DX12WRAPPER<IDXGISwapChain3> m_swapchain;
         // Swapchain resources
 		UINT m_swapchainWidth;
 		UINT m_swapchainHeight;
         DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
-        DX12WRAPPER<ID3D12DescriptorHeap> m_swapchainRtvHeap;
-        D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandle;
-        D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandles [ce_framesInFlight];
 
     /*
         Descriptors
@@ -115,6 +118,7 @@ namespace BlitzenDX12
         DescriptorContext m_descriptorContext;
 
         DX12WRAPPER<ID3D12DescriptorHeap> m_srvHeap;
+        DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
 
         D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueSrvRangeCount]{};
 
@@ -150,4 +154,8 @@ namespace BlitzenDX12
 
     uint8_t CreateSwapchain(IDXGIFactory6* factory, ID3D12CommandQueue* queue, uint32_t windowWidth, uint32_t windowHeight, 
         HWND hwnd, Microsoft::WRL::ComPtr <IDXGISwapChain3>* pSwapchain);
+
+    // Creates backbuffers and render target view needed to present on the swapchain
+    uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers,
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, Dx12Renderer::DescriptorContext& descriptorContext);
 }

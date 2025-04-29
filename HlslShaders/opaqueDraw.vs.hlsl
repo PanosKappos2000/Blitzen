@@ -1,9 +1,9 @@
 struct Vertex
 {
     float3 position; 
-    uint2 uvCoordU, uvCoordV;     
-    uint normalX, normalY, normalZ, normalW; 
-    uint tangentX, tangentY, tangentZ, tangentW;
+    uint uv;    
+    uint normalX; 
+    uint tangentX;
 };
 
 StructuredBuffer<Vertex> vertexBuffer : register(t0);
@@ -51,7 +51,7 @@ float3 RotateQuat(float3 v, float4 quat)
 }
 
 // The main vertex shader function
-VSOutput main(uint vertexIndex : SV_VertexID)
+VSOutput main(uint vertexIndex : SV_VERTEXID)
 {
     Vertex vtx = vertexBuffer[vertexIndex];
     VSOutput output;

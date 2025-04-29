@@ -144,10 +144,15 @@ namespace BlitzenDX12
 		m_swapchainWidth = windowWidth;
 		m_swapchainHeight = windowHeight;
 
-		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), 
-            m_swapchainRtvHeap, m_swapchainBackBuffers, m_swapchainRtvHandles, m_swapchainRtvHandle))
+        if (!CreateDescriptorHeaps(m_device.Get(), m_rtvHeap.ReleaseAndGetAddressOf(), m_srvHeap.ReleaseAndGetAddressOf()))
+        {
+            BLIT_ERROR("Failed to create descriptor heaps")
+        }
+
+		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), m_swapchainBackBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
+            m_descriptorContext))
 		{
-			BLIT_ERROR("Failed to create swapchain resources");
+			BLIT_ERROR("Failed to create swapchain back buffers");
 			return 0;
 		}
 

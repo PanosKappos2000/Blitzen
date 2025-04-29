@@ -3,24 +3,33 @@
 
 namespace BlitzenDX12
 {
-    uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, 
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& rtvHeap, Microsoft::WRL::ComPtr<ID3D12Resource>* backBuffers,
-        D3D12_CPU_DESCRIPTOR_HANDLE* rtvHandles, D3D12_CPU_DESCRIPTOR_HANDLE& rtvHandle)
+    uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, ID3D12DescriptorHeap** ppSrvHeap)
     {
         if (!CheckForDeviceRemoval(device))
         {
             return 0;
         }
 
-        // Creates the RTV heap first
-		if (!CreateDescriptorHeap(device, rtvHeap.ReleaseAndGetAddressOf(), ce_framesInFlight,
-            D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
-		{
+        if (!CreateDescriptorHeap(device, ppSrvHeap, Ce_SrvDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        {
+            BLIT_ERROR("Failed to create srv descriptor heap");
             return 0;
-		}
+        }
 
-        // Creates back buffers and render target views
-		rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+        if (!CreateDescriptorHeap(device, ppRtvHeap, ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
+        {
+            BLIT_ERROR("Failed to create rtv descriptor heap");
+            return 0;
+        }
+
+        // success
+        return 1;
+    }
+
+    uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers,
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, Dx12Renderer::DescriptorContext& descriptorContext)
+    {
+        descriptorContext.swapchainRtvOffset = descriptorContext.rtvHeapOffset;
         for (UINT i = 0; i < ce_framesInFlight; i++)
         {
             auto geBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].ReleaseAndGetAddressOf()));
@@ -28,30 +37,21 @@ namespace BlitzenDX12
             {
                 return LOG_ERROR_MESSAGE_AND_RETURN(geBackBufferResult);
             }
-
-            D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-            rtvDesc.Format = Ce_SwapchainFormat;
-            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-            // Assign the handle to the specific RTV in the heap
-            rtvHandles[i] = rtvHandle;
-            device->CreateRenderTargetView(backBuffers[i].Get(), &rtvDesc, rtvHandles[i]);
-
-            // Move the handle to the next slot in the heap
-            rtvHandle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            CreateRenderTargetView(device, Ce_SwapchainFormat, D3D12_RTV_DIMENSION_TEXTURE2D, backBuffers[i].Get(), rtvHeapHandle, descriptorContext.rtvHeapOffset);
         }
 
         // Success
         return 1;
     }
 
-    uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, UINT bufferCount,
+    uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, UINT descriptorCount,
         D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags)
     {
         D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-        rtvHeapDesc.NumDescriptors = bufferCount;
+        rtvHeapDesc.NumDescriptors = descriptorCount;
         rtvHeapDesc.Type = type;
         rtvHeapDesc.Flags = flags;
+
         auto descriptorHeapResult = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(ppRtvHeap));
         if (FAILED(descriptorHeapResult))
         {
@@ -62,7 +62,21 @@ namespace BlitzenDX12
         return 1;
     }
 
-    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, UINT& srvOffset,
+    void CreateRenderTargetView(ID3D12Device* device, DXGI_FORMAT format, D3D12_RTV_DIMENSION dimension, ID3D12Resource* resource, 
+        D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& rtvOffset)
+    {
+        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+        rtvDesc.Format = Ce_SwapchainFormat;
+        rtvDesc.ViewDimension = dimension;
+
+        handle.ptr += rtvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        device->CreateRenderTargetView(resource, &rtvDesc, handle);
+
+        // Increase the srv offset
+        rtvOffset++;
+    }
+
+    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& srvOffset,
         D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags /*=D3D12_BUFFER_SRV_FLAG_NONE*/)
     {
 		srvDesc = {};
@@ -131,5 +145,39 @@ namespace BlitzenDX12
         barrier.Transition.StateAfter = stateAfter;
         barrier.Transition.Subresource = subresource;
 
+    }
+
+    UINT64 CreateIndexBuffer(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>& indexBuffer, DX12WRAPPER<ID3D12Resource>& stagingBuffer,
+        size_t elementCount, void* pData, D3D12_INDEX_BUFFER_VIEW& ibv)
+    {
+        // SSBO (GPU side buffer)
+        if (!CreateBuffer(device, indexBuffer.ReleaseAndGetAddressOf(), sizeof(uint32_t) * elementCount, 
+            D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT))
+        {
+            return 0;
+        }
+
+        // Staging buffer (CPU side buffer)
+        if (!CreateBuffer(device, stagingBuffer.ReleaseAndGetAddressOf(), sizeof(uint32_t) * elementCount, 
+            D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+        {
+            return 0;
+        }
+        // Staging buffer holds the data for the SSBO
+        void* pMappedData{ nullptr };
+        auto mappingRes{ stagingBuffer->Map(0, nullptr, &pMappedData) };
+        if (FAILED(mappingRes))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+        }
+        BlitzenCore::BlitMemCopy(pMappedData, pData, sizeof(uint32_t) * elementCount);
+
+        ibv = {};
+        ibv.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+        ibv.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * elementCount);
+        ibv.Format = DXGI_FORMAT_R32_UINT;
+
+        // Success
+        return sizeof(uint32_t) * elementCount;
     }
 }

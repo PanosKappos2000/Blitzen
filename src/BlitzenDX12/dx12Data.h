@@ -51,9 +51,11 @@ namespace BlitzenDX12
 
     
     /* SSBO data copy helpers */
-    constexpr UINT Ce_ConstDataSSBOCount = 1;
-    constexpr UINT Ce_VarBuffersCount = 2;
+    constexpr UINT Ce_ConstDataSSBOCount = 2;
     constexpr UINT Ce_VertexStagingBufferIndex = 0;
+    constexpr UINT Ce_IndexStagingBufferIndex = 1;
+
+    constexpr UINT Ce_VarBuffersCount = 2;
 
 
 
