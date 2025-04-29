@@ -39,6 +39,11 @@ namespace BlitzenEngine
     #else
         constexpr uint8_t Ce_BuildClusters = 0;
     #endif
+    #if defined(_WIN32) && defined(BLITZEN_VULKAN_OVERRIDE) && !defined(BLIT_GL_LEGACY_OVERRIDE)
+        constexpr bool Ce_HLSL = 1;// Row major?
+    #else
+        constexpr bool Ce_HLSL = 0;
+    #endif
     
     // Entity settings
     constexpr uint32_t ce_maxObjectCount = 1'000;

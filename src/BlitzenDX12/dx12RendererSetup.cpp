@@ -141,7 +141,7 @@ namespace BlitzenDX12
 	static uint8_t CreateConstBuffers(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, ID3D12CommandQueue* commandQueue,
 		BlitzenEngine::RenderingResources* pResources, Dx12Renderer::ConstBuffers& buffers)
 	{
-		const auto& vertices{ pResources->GetVerticesArray() };
+		const auto& vertices{ pResources->GetHlslVertices() };
 		const auto& indices{ pResources->GetIndicesArray() };
 
 		DX12WRAPPER<ID3D12Resource> vertexStagingBuffer{ nullptr };
@@ -179,7 +179,7 @@ namespace BlitzenDX12
 	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
 		Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources)
 	{
-		const auto& vertices{ pResources->GetVerticesArray() };
+		const auto& vertices{ pResources->GetHlslVertices() };
 		const auto& transforms{ pResources->transforms };
 
 		// Saves the offset of this group of descriptors and begins
@@ -214,6 +214,8 @@ namespace BlitzenDX12
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
 	float& pyramidWidth, float& pyramidHeight)
 	{
+		pResources->GenerateHlslVertices();
+
 		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create root signatures");

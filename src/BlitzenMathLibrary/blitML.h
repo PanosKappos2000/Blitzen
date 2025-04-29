@@ -260,6 +260,7 @@ namespace BlitML
         res.data[5] = halfTanFov;
         res.data[11] = 1.0f;
         res.data[14] = znear;
+
         return res;
 
 	    /*return glm::mat4(
@@ -299,30 +300,6 @@ namespace BlitML
         res.data[15] = 1.0f;
         return res;
     }
-
-    // Returns a transposed copy of the provided matrix (rows->colums)
-    inline mat4 Transpose(const mat4& matrix)
-    {
-        mat4 res;
-        res.data[0] = matrix.data[0];
-        res.data[1] = matrix.data[4];
-        res.data[2] = matrix.data[8];
-        res.data[3] = matrix.data[12];
-        res.data[4] = matrix.data[1];
-        res.data[5] = matrix.data[5];
-        res.data[6] = matrix.data[9];
-        res.data[7] = matrix.data[13];
-        res.data[8] = matrix.data[2];
-        res.data[9] = matrix.data[6];
-        res.data[10] = matrix.data[10];
-        res.data[11] = matrix.data[14];
-        res.data[12] = matrix.data[3];
-        res.data[13] = matrix.data[7];
-        res.data[14] = matrix.data[11];
-        res.data[15] = matrix.data[15];
-        return res;
-    }
-
 
     // Creates and returns an inverse of the provided matrix.
     inline mat4 Mat4Inverse(const mat4& matrix) 

@@ -1,6 +1,5 @@
 #include "blitRenderingResources.h"
 #include "blitRenderer.h"
-
 // Single file .png and .jpeg image loader, to be used for textures
 // https://github.com/nothings/stb
 #define STB_IMAGE_IMPLEMENTATION
@@ -10,7 +9,6 @@
 #define FAST_OBJ_IMPLEMENTATION
 #include "fast_obj.h"
 #include "objparser.h"
-
 // Not necessary since I have my own math library, but I use glm for random values in textures
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -36,6 +34,28 @@ namespace BlitzenEngine
         LoadTextureFromFile("Assets/Textures/base_baseColor.dds","dds_texture_default", pRenderer);
         DefineMaterial(BlitML::vec4{ 0.1f }, 65.f, "dds_texture_default", "unknown", "loaded_material");
         LoadMeshFromObj("Assets/Meshes/bunny.obj", ce_defaultMeshName);
+    }
+
+    void RenderingResources::GenerateHlslVertices()
+    {
+        if (m_hlslVtxs.GetSize())
+        {
+            return;
+        }
+
+        for (size_t i = 0; i < m_vertices.GetSize(); ++i)
+        {
+            const auto& classic = m_vertices[i];
+            HlslVtx hlsl;
+
+            hlsl.position = classic.position;
+            hlsl.mappingU = classic.uvX;
+            hlsl.mappingV = classic.uvY;
+            hlsl.normals = classic.normalX << 24 | classic.normalY << 16 | classic.normalZ << 8 | classic.normalW;
+            hlsl.tangents = classic.tangentX << 24 | classic.tangentY << 16 | classic.tangentZ << 8 | classic.tangentW;
+
+            m_hlslVtxs.PushBack(hlsl);
+        }
     }
 
     void RenderingResources::DefineMaterial(const BlitML::vec4& diffuseColor, 

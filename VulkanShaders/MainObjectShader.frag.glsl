@@ -3,6 +3,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : require
 
+//#define MESH_TEST
 //#define RAYTRACING
 
 #ifdef RAYTRACING
@@ -27,6 +28,7 @@ layout(set = 1, binding = 0) uniform sampler2D textures[];
 // The color that will be calculated for the current fragment
 layout (location = 0) out vec4 outColor;
 
+#ifndef MESH_TEST
 void main()
 {
     // Get the material from the material buffer based on the material tag that was passed from the vertex shader
@@ -67,3 +69,9 @@ void main()
     if(POST_PASS != 0 && albedoMap.a < 0.5)
         discard;
 }
+#else
+void main()
+{
+    outColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+#endif

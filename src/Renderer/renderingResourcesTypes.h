@@ -20,6 +20,20 @@ namespace BlitzenEngine
         uint8_t tangentX, tangentY, tangentZ, tangentW;
     };
 
+    struct alignas(16) HlslVtx
+    {
+        BlitML::vec3 position;
+
+        uint32_t mappingU;
+        uint32_t mappingV;
+
+        uint32_t normals;
+        uint32_t tangents;
+
+        uint32_t padding0;
+    };
+    static_assert(sizeof(HlslVtx) % 16 == 0);
+
     struct alignas(16) Cluster
     {
         // Bounding sphere

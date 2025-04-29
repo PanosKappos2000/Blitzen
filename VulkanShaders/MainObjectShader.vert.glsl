@@ -5,6 +5,8 @@
 #define GRAPHICS_PIPELINE 
 #include "../VulkanShaderHeaders/ShaderBuffers.glsl"
 
+//#define MESH_TEST
+
 // All the values needed by the fragment shader
 layout(location = 0) out vec2 outUv;
 layout(location = 1) out vec3 outNormal;
@@ -17,6 +19,7 @@ layout(push_constant) uniform Constants
     RenderObjectBuffer renderObjects;
 }rodvpc;
 
+#ifndef MESH_TEST
 void main()
 {
     Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
@@ -42,3 +45,13 @@ void main()
     tangent.xyz = RotateQuat(tangent.xyz, transform.orientation);
     outTangent = tangent;
 }
+#else
+void main()
+{
+    Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
+    Transform transform = transformBuffer.instances[object.meshInstanceId];
+
+    vec3 modelPosition = RotateQuat(vertex.position, transform.orientation) * transform.scale + transform.pos;
+    gl_Position = viewData.projectionView * vec4(modelPosition, 1.0);
+}
+#endif

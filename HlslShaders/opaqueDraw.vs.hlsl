@@ -1,9 +1,14 @@
 struct Vertex
 {
-    float3 position; 
-    uint uv;    
-    uint normalX; 
-    uint tangentX;
+    float3 position;
+
+    uint mappingU;
+    uint mappingV;
+
+    uint normals;
+    uint tangents;
+
+    uint padding0;
 };
 
 StructuredBuffer<Vertex> vertexBuffer : register(t0);

@@ -36,6 +36,10 @@ namespace BlitzenEngine
         {
             return m_vertices;
         }
+        inline const BlitCL::DynamicArray<HlslVtx>& GetHlslVertices() const
+        {
+            return m_hlslVtxs;
+        }
         inline const BlitCL::DynamicArray<uint32_t>& GetIndicesArray() const
         {
            return m_indices;
@@ -105,6 +109,8 @@ namespace BlitzenEngine
 
         // Lovely piece of debug helper
         void CreateSingleObjectForTesting();
+
+        void GenerateHlslVertices();
 
     public:
 
@@ -322,6 +328,7 @@ namespace BlitzenEngine
 
         // Holds the vertices of all the primitives that were loaded
         BlitCL::DynamicArray<Vertex> m_vertices;
+        BlitCL::DynamicArray<HlslVtx> m_hlslVtxs;
 
         // Holds the indices of all the primitives that were loaded
         BlitCL::DynamicArray<uint32_t> m_indices;

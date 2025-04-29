@@ -1,7 +1,5 @@
 #pragma once
-
 #include <cstdint>
-
 #include "Core/blitMemory.h"
 
 namespace BlitML
@@ -140,18 +138,42 @@ namespace BlitML
         :data{one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, thirteen, fourteen, fifteen, sixteen}
         {}
 
-        inline float& operator [] (size_t index) { return this->data[index]; }
+        inline float& operator [] (uint32_t index) { return this->data[index]; }
 
         inline vec4 GetRow(uint8_t row) { 
             return vec4(this->data[0 + row * 4], this->data[1 + row * 4], this->data[2 + row * 4], this->data[3 + row * 4]); 
         }
     };
 
+    // Returns a transposed copy of the provided matrix (rows->colums)
+    // Defined here as it is a good helper when dealing with different shader languages
+    inline mat4 Transpose(const mat4& matrix)
+    {
+        mat4 res;
+        res.data[0] = matrix.data[0];
+        res.data[1] = matrix.data[4];
+        res.data[2] = matrix.data[8];
+        res.data[3] = matrix.data[12];
+        res.data[4] = matrix.data[1];
+        res.data[5] = matrix.data[5];
+        res.data[6] = matrix.data[9];
+        res.data[7] = matrix.data[13];
+        res.data[8] = matrix.data[2];
+        res.data[9] = matrix.data[6];
+        res.data[10] = matrix.data[10];
+        res.data[11] = matrix.data[14];
+        res.data[12] = matrix.data[3];
+        res.data[13] = matrix.data[7];
+        res.data[14] = matrix.data[11];
+        res.data[15] = matrix.data[15];
+        return res;
+    }
+
     inline mat4 operator * (mat4& mat1, mat4& mat2) 
     {
         mat4 res;
-        for (uint8_t i = 0; i < 4; ++i) {
-            for (uint8_t j = 0; j < 4; ++j) 
+        for (uint32_t i = 0; i < 4; ++i) {
+            for (uint32_t j = 0; j < 4; ++j) 
             {
                 res[j + i * 4] = mat1[0 + j] * mat2[0 + i * 4] + mat1[4 + j] * mat2[1 + i * 4] + mat1[8 + j] * mat2[2 + i * 4] + mat1[12 + j] * mat2[3 + i * 4];
             }
