@@ -254,9 +254,7 @@ ENDIF(WIN32)
   
   # Find all glsl shaders files
   file(GLOB_RECURSE GLSL_SOURCE_FILES
-      "VulkanShaders/*.glsl"
-      )
-  
+      "VulkanShaders/*.glsl")
   foreach(GLSL ${GLSL_SOURCE_FILES})
     get_filename_component(FILE_NAME ${GLSL} NAME)
     set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/${FILE_NAME}.spv")
@@ -267,13 +265,21 @@ ENDIF(WIN32)
       DEPENDS ${GLSL})
     list(APPEND SPIRV_BINARY_FILES ${SPIRV})
   endforeach(GLSL)
-  
-  add_custom_target(
-      VulkanShaders 
-      DEPENDS ${SPIRV_BINARY_FILES}
-      )
-  
+  add_custom_target(VulkanShaders DEPENDS ${SPIRV_BINARY_FILES})
   add_dependencies(BlitzenEngine VulkanShaders)
+
+#  # HLSL
+#  file(GLOB_RECURSE HLSL_SOURCE_FILES
+#      "HlslShaders/*.hlsl")
+#  foreach(HLSL ${HLSL_SOURCE_FILES})
+#  get_filename_component(FILE_NAME ${HLSL} NAME)
+#  set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/${FILE_NAME}.spv")
+#  add_custom_command(OUTPUT ${SPIRV}
+#    COMMAND dxc -T ps_6_0 -E main -Fo ${HLSL}.spv ${CMAKE_SOURCE_DIR}/shaders/${shader_name}.hlsl
+#    DEPENDS ${GLSL})
+#    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+#add_custom_target(VkHLSL_shaders DEPENDS ${SPIRV_BINARY_FILES})
+#add_dependencies(BlitzenEngine VkHLSL_shaders)
   
   # Copy the spir-v shaders to the target directory
   add_custom_command(TARGET BlitzenEngine POST_BUILD

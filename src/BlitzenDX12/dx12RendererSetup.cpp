@@ -292,11 +292,11 @@ namespace BlitzenDX12
 			descriptorContext.sharedSrvOffset[i] = descriptorContext.srvHeapOffset;
 			auto& vars = varBuffers[i];
 
-			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
-
 			CreateBufferShaderResourceView(device, staticBuffers.surfaceBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.surfaceBuffer.srvDesc[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
+
+			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
 
 			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.srvDesc[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::RenderObject));
