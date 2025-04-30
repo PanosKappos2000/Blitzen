@@ -71,6 +71,8 @@ namespace BlitzenDX12
         struct VarBuffers
         {
             VarSSBO transformBuffer;
+            SSBO indirectDrawBuffer;
+            SSBO indirectDrawCount;
 
             CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
         };
@@ -78,21 +80,20 @@ namespace BlitzenDX12
         struct ConstBuffers
         {
             SSBO vertexBuffer;
+            SSBO surfaceBuffer;
+            SSBO renderBuffer;
 
             DX12WRAPPER<ID3D12Resource> indexBuffer;
             D3D12_INDEX_BUFFER_VIEW indexBufferView;
-
-            SSBO surfaceBuffer;
-
-            SSBO renderBuffer;
-
-            SSBO indirectDrawBuffer;
         };
 
         struct DescriptorContext
         {
+            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle;
+            SIZE_T srvIncrementSize;
             SIZE_T srvHeapOffset{ 0 };// Current offset into the srv heap for adding views
-            SIZE_T opaqueSrvOffset;// Offset of srvHeap for opaque pipeline descriptor table
+            SIZE_T sharedSrvOffset[ce_framesInFlight];// Offset of srvHeap for shared descriptor table
+            SIZE_T opaqueSrvOffset[ce_framesInFlight];// Offset of srvHeap for opaque pipeline descriptor table
             SIZE_T sharedCbvOffset;// Offset of srvHeap for shared cbvDescriptors
 
             SIZE_T rtvHeapOffset{ 0 };

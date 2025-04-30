@@ -1,9 +1,52 @@
 #include "dx12Pipelines.h"
 #include "dx12Renderer.h"
-#include <d3dcompiler.h>
+
+// Temporary
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <iostream>
 
 namespace BlitzenDX12
 {
+    // Create an instance of ShaderIncludeHandler
+    inline ShaderIncludeHandler inl_shaderIncludeHandler;
+
+    HRESULT ShaderIncludeHandler::QueryInterface(REFIID riid, void** ppvObj)
+    {
+        //if (riid == __uuidof(ID3DInclude))
+        //{
+        //    *ppvObj = static_cast<ID3DInclude*>(this);
+            return S_OK;
+        //}
+        //return E_NOINTERFACE;
+    }
+
+    HRESULT ShaderIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
+    {
+        std::ifstream file(pFileName);
+        if (!file.is_open())
+        {
+            return E_FAIL;
+        }
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string content = buffer.str();
+
+        // Allocate memory for the content
+        *ppData = content.c_str();
+        *pBytes = (UINT)content.size();
+
+        return S_OK;
+    }
+
+    HRESULT ShaderIncludeHandler::Close(LPCVOID pData)
+    {
+        // No action needed here as we're not dynamically allocating memory
+        return S_OK;
+    }
+
     void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
         UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace /*=0*/)
     {
@@ -91,7 +134,7 @@ namespace BlitzenDX12
     uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, ID3DBlob** shaderBlob)
     {
         Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-        auto compileResult = D3DCompileFromFile(filepath, nullptr, nullptr, "main", target, 0, 0, shaderBlob, errorBlob.GetAddressOf());
+        auto compileResult = D3DCompileFromFile(filepath, nullptr, &inl_shaderIncludeHandler, "main", target, 0, 0, shaderBlob, errorBlob.GetAddressOf());
         if (FAILED(compileResult))
         {
             if (errorBlob) 
@@ -198,7 +241,7 @@ namespace BlitzenDX12
 
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso)
     {
-        Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
+        DX12WRAPPER<ID3DBlob> vertexShader;
         if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.vs.hlsl", "vs_5_0", &vertexShader))
         {
 			BLIT_ERROR("Failed to create main opaque vertex shader");

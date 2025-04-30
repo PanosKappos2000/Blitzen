@@ -76,16 +76,20 @@ namespace BlitzenDX12
 		// Render target clear
 		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-		FLOAT clearDepth = 0.f;
-		frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, clearDepth, 0, 0, nullptr);
+		frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 
 		// Binds descriptors
 		ID3D12DescriptorHeap* opaqueSrvHeaps[] = { m_srvHeap.Get()};
 		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, opaqueSrvHeaps);
-		frameTools.mainGraphicsCommandList->SetGraphicsRootConstantBufferView(1, varBuffers.viewDataBuffer.buffer->GetGPUVirtualAddress());
-		auto srvHeapHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-		srvHeapHandle.ptr += m_descriptorContext.opaqueSrvOffset * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, srvHeapHandle);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootConstantBufferView(2, varBuffers.viewDataBuffer.buffer->GetGPUVirtualAddress());
+		// Opaque graphics pipeline exclusive descriptors
+		auto opaqueSrvHandle = m_descriptorContext.srvHandle;
+		opaqueSrvHandle.ptr += m_descriptorContext.opaqueSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, opaqueSrvHandle);
+		// Shared descriptors
+		auto sharedSrvHandle = m_descriptorContext.srvHandle;
+		sharedSrvHandle.ptr += m_descriptorContext.sharedSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(1, sharedSrvHandle);
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
@@ -93,6 +97,7 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
 		auto indexCount = context.pResources->GetLodData()[0].indexCount;
 		frameTools.mainGraphicsCommandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
+		//frameTools.mainGraphicsCommandList->ExecuteIndirect();
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
 

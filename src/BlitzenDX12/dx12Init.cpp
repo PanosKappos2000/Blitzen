@@ -149,6 +149,9 @@ namespace BlitzenDX12
             BLIT_ERROR("Failed to create descriptor heaps");
             return 0;
         }
+        m_descriptorContext.srvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+        m_descriptorContext.srvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
 
 		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), m_swapchainBackBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
             m_descriptorContext))

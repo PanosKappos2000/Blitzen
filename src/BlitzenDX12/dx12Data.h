@@ -35,30 +35,61 @@ namespace BlitzenDX12
     constexpr DXGI_FORMAT Ce_DepthTargetFormat = DXGI_FORMAT_D32_FLOAT;
     constexpr FLOAT Ce_ClearDepth = 0.f;
 
+
+    /* Srv desriptors for both compute and graphics pipelines*/
+    constexpr uint32_t Ce_SharedSrvRangeCount = 4;
+
+    constexpr UINT Ce_SurfaceBufferRegister = 2;
+    constexpr UINT Ce_SurfaceBufferDescriptorCount = 1;
+    constexpr UINT Ce_SurfaceBufferRangeElement = 0;
+     
+    constexpr UINT Ce_TransformBufferRegister = 3;
+    constexpr UINT Ce_TransformBufferDescriptorCount = 1;
+    constexpr UINT Ce_TransformBufferRangeElement = 1;
+
+    constexpr UINT Ce_RenderObjectBufferRegister = 4;
+    constexpr UINT Ce_RenderObjectBufferDescriptorCount = 1;
+    constexpr UINT Ce_RenderObjectBufferRangeElement = 2;
+
+    constexpr UINT Ce_IndirectDrawBufferRegister = 0;
+    constexpr UINT Ce_IndirectDrawBufferDescriptorCount = 1;
+    constexpr UINT Ce_IndirectDrawBufferRangeElement = 3;
+
+    /* Srv Descriptors for compute pipeline */
+    constexpr uint32_t Ce_CullSrvRangeCount = 2;
+    
+    constexpr UINT Ce_IndirectCountBufferRegister = 1;
+    constexpr UINT Ce_IndirectCountBufferDescriptorCount = 1;
+    constexpr UINT Ce_IndirectCountBufferRangeElement = 0;
+
+    constexpr UINT Ce_LODBufferRegister = 7;
+    constexpr UINT Ce_LODBufferDescriptorCount = 1;
+    constexpr UINT Ce_LODBufferRangeElement = 1;
+
     /* SSBO descriptors for main graphics pipeline */
-    constexpr uint32_t Ce_OpaqueSrvRangeCount = 2;
+    constexpr uint32_t Ce_OpaqueSrvRangeCount = 1;
 
     constexpr UINT Ce_VertexBufferRegister = 0;
 	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
-    constexpr UINT Ce_VertexBufferRangeElement = 1;
+    constexpr UINT Ce_VertexBufferRangeElement = 0;
 
-    constexpr UINT Ce_TransformBufferRegister = 3;
-    constexpr UINT Ce_TransformBufferDescriptorCount = 1;
-    constexpr UINT Ce_TransformBufferRangeElement = 0;
-
+    // TODO: This is seperate currently but I could probably put it in shared and make it descriptor table
     constexpr UINT Ce_ViewDataBufferRegister = 0;
     constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
     constexpr UINT Ce_ViewDataBufferRangeElement = 0;
 
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + 1) * ce_framesInFlight;// Double or triple buffering
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + 1) * ce_framesInFlight;// Double or triple buffering
 
     
     /* SSBO data copy helpers */
-    constexpr UINT Ce_ConstDataSSBOCount = 2;
+    constexpr UINT Ce_ConstDataSSBOCount = 4;
     constexpr UINT Ce_VertexStagingBufferIndex = 0;
     constexpr UINT Ce_IndexStagingBufferIndex = 1;
+    constexpr UINT Ce_SurfaceStagingBufferIndex = 2;
+    constexpr UINT Ce_RenderStagingBufferIndex = 3;
 
-    constexpr UINT Ce_VarBuffersCount = 2;
+    constexpr UINT Ce_VarSSBODataCount = 1;
+    constexpr UINT Ce_TransformStagingBufferIndex = 0;
 
 
 
@@ -84,18 +115,25 @@ namespace BlitzenDX12
     struct SSBO
     {
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc[ce_framesInFlight]{};
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc[ce_framesInFlight]{};// TODO: Should replace this with the offset of the srv, that might actually be useful in the future
     };
 
     struct VarSSBO
     {
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};// TODO: Should replace this with the offset of the srv, that might actually be useful in the future
 
         DX12WRAPPER<ID3D12Resource> staging{ nullptr };
         void* pData{ nullptr };
     };
 
+
+
+    struct IndirectDrawCmd
+    {
+        uint32_t drawId;
+        D3D12_DRAW_INDEXED_ARGUMENTS command;// 5 32bit integers
+    };
 
 
 

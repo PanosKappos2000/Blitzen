@@ -1,5 +1,6 @@
 #pragma once
 #include "dx12Data.h"
+#include <d3dcompiler.h>
 
 namespace BlitzenDX12
 {
@@ -27,4 +28,21 @@ namespace BlitzenDX12
 	uint8_t CreateTriangleGraphicsPipeline(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12RootSignature>& rootSignature, ID3D12PipelineState** ppPso);
 
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso);
+
+    class ShaderIncludeHandler : public ID3DInclude 
+    {
+    public:
+        // Implementing QueryInterface
+        STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj);
+
+        // Ref counting
+        inline STDMETHOD_(ULONG, AddRef)() { return 1; }
+        inline STDMETHOD_(ULONG, Release)() { return 1; }
+
+        STDMETHOD(Open)(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) override;
+
+        STDMETHOD(Close)(LPCVOID pData) override;
+    };
+
+    
 }

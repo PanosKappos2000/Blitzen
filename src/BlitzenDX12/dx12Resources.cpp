@@ -15,7 +15,7 @@ namespace BlitzenDX12
         {
             BLIT_ERROR("Failed to create srv descriptor heap");
             return 0;
-        }
+        } 
 
         if (!CreateDescriptorHeap(device, ppRtvHeap, ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
         {
@@ -57,8 +57,11 @@ namespace BlitzenDX12
         descriptorContext.depthTargetOffset = descriptorContext.dsvHeapOffset;
         for (UINT i = 0; i < ce_framesInFlight; i++)
         {
+            D3D12_CLEAR_VALUE clear{};
+            clear.Format = Ce_DepthTargetFormat;
+            clear.DepthStencil.Depth = Ce_ClearDepth;
             auto resourceRes{ CreateImageResource(device, depthBuffers[i].ReleaseAndGetAddressOf(), swapchainWidth, swapchainHeight, 1,
-                Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE) };
+                Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear) };
             if (FAILED(resourceRes))
             {
                 return LOG_ERROR_MESSAGE_AND_RETURN(resourceRes);
@@ -130,6 +133,24 @@ namespace BlitzenDX12
         srvOffset++;
     }
 
+    void CreateUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, ID3D12Resource* counterResource, D3D12_CPU_DESCRIPTOR_HANDLE handle, 
+        SIZE_T& srvOffset, UINT numElements, UINT stride, UINT64 counterOffsetInBytes, D3D12_BUFFER_UAV_FLAGS flags /*=D3D12_BUFFER_UAV_FLAG_NONE*/)
+    {
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        uavDesc.Buffer.FirstElement = 0;
+        uavDesc.Buffer.NumElements = numElements;
+        uavDesc.Buffer.StructureByteStride = stride;
+        uavDesc.Buffer.Flags = flags;
+        uavDesc.Buffer.CounterOffsetInBytes = counterOffsetInBytes;
+
+        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        device->CreateUnorderedAccessView(resource, counterResource, &uavDesc, handle);
+
+        srvOffset++;
+    }
+
     uint8_t CreateBuffer(ID3D12Device* device, ID3D12Resource** ppBuffer, UINT64 bufferSize,
         D3D12_RESOURCE_STATES initialState, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_FLAGS flags /*=D3D12_RESOURCE_FLAG_NONE*/)
     {
@@ -166,7 +187,7 @@ namespace BlitzenDX12
     }
 
     uint8_t CreateImageResource(ID3D12Device* device, ID3D12Resource** ppResource, UINT width, UINT height, UINT mipLevels, 
-        DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES state)
+        DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES state, D3D12_CLEAR_VALUE* pClear)
     {
         if (!CheckForDeviceRemoval(device))
         {
@@ -192,7 +213,7 @@ namespace BlitzenDX12
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = flags;
 
-        auto res = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &desc, state, nullptr, IID_PPV_ARGS(ppResource));
+        auto res = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &desc, state, pClear, IID_PPV_ARGS(ppResource));
         if (FAILED(res))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(res);

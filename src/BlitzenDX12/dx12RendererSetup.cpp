@@ -17,14 +17,20 @@ namespace BlitzenDX12
 	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature)
 	{
 		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueSrvRangeCount]{};
-		CreateDescriptorRange(opaqueSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
 		CreateDescriptorRange(opaqueSrvRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
 
-		D3D12_ROOT_PARAMETER rootParameters[2] = {};
-		CreateRootParameterDescriptorTable(rootParameters[0], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterCBV(rootParameters[1], Ce_ViewDataBufferRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		D3D12_DESCRIPTOR_RANGE sharedSrvRanges[Ce_SharedSrvRangeCount]{};
+		CreateDescriptorRange(sharedSrvRanges[Ce_SurfaceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_SurfaceBufferDescriptorCount, Ce_SurfaceBufferRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 
-		if (!CreateRootSignature(device, ppOpaqueRootSignature, 2, rootParameters))
+		D3D12_ROOT_PARAMETER rootParameters[3] = {};
+		CreateRootParameterDescriptorTable(rootParameters[0], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterDescriptorTable(rootParameters[1], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterCBV(rootParameters[2], Ce_ViewDataBufferRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+		if (!CreateRootSignature(device, ppOpaqueRootSignature, 3, rootParameters))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
@@ -40,6 +46,42 @@ namespace BlitzenDX12
 		{
 			BLIT_ERROR("Failed to create opaque grahics pipeline");
 			return 0;
+		}
+
+		return 1;
+	}
+
+	static uint8_t CopyDataToVarSSBOs(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, Dx12Renderer::VarBuffers& buffers,
+		ID3D12CommandQueue* commandQueue)
+	{
+		frameTools.transferCommandAllocator->Reset();
+		frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
+
+		// Transitions SSBOs to copy dest
+		D3D12_RESOURCE_BARRIER copyDestBarriers[Ce_VarSSBODataCount]{};
+		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_TransformStagingBufferIndex], buffers.transformBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		frameTools.transferCommandList->ResourceBarrier(Ce_VarSSBODataCount, copyDestBarriers);
+
+		// Transitions stagingBuffers to copy source
+		D3D12_RESOURCE_BARRIER copySourceBarriers[Ce_VarSSBODataCount]{};
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_TransformStagingBufferIndex], buffers.transformBuffer.staging.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		frameTools.transferCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(copySourceBarriers), copySourceBarriers);
+
+		frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), buffers.transformBuffer.staging.Get());
+
+		frameTools.transferCommandList->Close();
+		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
+		commandQueue->ExecuteCommandLists(1, commandLists);
+
+		const UINT64 fence = frameTools.copyFenceValue++;
+		commandQueue->Signal(frameTools.copyFence.Get(), fence);
+		// Waits for the previous frame
+		if (frameTools.copyFence->GetCompletedValue() < fence)
+		{
+			frameTools.copyFence->SetEventOnCompletion(fence, frameTools.copyFenceEvent);
+			WaitForSingleObject(frameTools.copyFenceEvent, INFINITE);
 		}
 
 		return 1;
@@ -62,6 +104,21 @@ namespace BlitzenDX12
 			if (!CreateVarSSBO(device, buffers.transformBuffer, transforms.GetSize(), transforms.Data()))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
+				return 0;
+			}
+
+			UINT64 indirectBufferSize{ 1000 * sizeof(IndirectDrawCmd) };
+			if (!CreateBuffer(device, buffers.indirectDrawBuffer.buffer.ReleaseAndGetAddressOf(), indirectBufferSize,
+				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("Failed to create indirect draw buffer");
+				return 0;
+			}
+
+			if (!CreateBuffer(device, buffers.indirectDrawCount.buffer.ReleaseAndGetAddressOf(), sizeof(uint32_t),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("Failed to create indirect count buffer");
 				return 0;
 			}
 
@@ -109,6 +166,10 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_IndexStagingBufferIndex], buffers.indexBuffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_SurfaceStagingBufferIndex], buffers.surfaceBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_RenderStagingBufferIndex], buffers.renderBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		frameTools.transferCommandList->ResourceBarrier(Ce_ConstDataSSBOCount, copyDestBarriers);
 
 		// Transitions stagingBuffers to copy source
@@ -117,10 +178,16 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_IndexStagingBufferIndex], context.stagingBuffers[Ce_IndexStagingBufferIndex],
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_SurfaceStagingBufferIndex], context.stagingBuffers[Ce_SurfaceStagingBufferIndex],
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_RenderStagingBufferIndex], context.stagingBuffers[Ce_RenderStagingBufferIndex],
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		frameTools.transferCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(copySourceBarriers), copySourceBarriers);
 
 		frameTools.transferCommandList->CopyResource(buffers.vertexBuffer.buffer.Get(), context.stagingBuffers[Ce_VertexStagingBufferIndex]);
 		frameTools.transferCommandList->CopyResource(buffers.indexBuffer.Get(), context.stagingBuffers[Ce_IndexStagingBufferIndex]);
+		frameTools.transferCommandList->CopyResource(buffers.surfaceBuffer.buffer.Get(), context.stagingBuffers[Ce_SurfaceStagingBufferIndex]);
+		frameTools.transferCommandList->CopyResource(buffers.renderBuffer.buffer.Get(), context.stagingBuffers[Ce_RenderStagingBufferIndex]);
 
 		frameTools.transferCommandList->Close();
 		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
@@ -143,6 +210,9 @@ namespace BlitzenDX12
 	{
 		const auto& vertices{ pResources->GetHlslVertices() };
 		const auto& indices{ pResources->GetIndicesArray() };
+		const auto& surfaces{ pResources->GetSurfaceArray() };
+		BlitzenEngine::RenderObject* renders{ pResources->renders };
+		auto renderObjectCount{ pResources->renderObjectCount };
 
 		DX12WRAPPER<ID3D12Resource> vertexStagingBuffer{ nullptr };
 		UINT64 vertexBufferSize{ CreateSSBO(device, buffers.vertexBuffer, vertexStagingBuffer, vertices.GetSize(), vertices.Data())};
@@ -161,11 +231,31 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		DX12WRAPPER<ID3D12Resource> surfaceStagingBuffer{ nullptr };
+		UINT64 surfaceBufferSize{ CreateSSBO(device, buffers.surfaceBuffer, surfaceStagingBuffer, surfaces.GetSize(), surfaces.Data()) };
+		if (!surfaceBufferSize)
+		{
+			BLIT_ERROR("Failed to create surface buffer");
+			return 0;
+		}
+
+		DX12WRAPPER<ID3D12Resource> renderStagingBuffer{ nullptr };
+		UINT64 renderBufferSize{ CreateSSBO(device, buffers.renderBuffer, renderStagingBuffer, renderObjectCount, renders) };
+		if(!renderBufferSize)
+		{
+			BLIT_ERROR("Failed to create render buffer");
+			return 0;
+		}
+
 		SSBOCopyContext copyContext;
 		copyContext.stagingBuffers[Ce_VertexStagingBufferIndex] = vertexStagingBuffer.Get();
 		copyContext.stagingBuffers[Ce_IndexStagingBufferIndex] = indexStagingBuffer.Get();
+		copyContext.stagingBuffers[Ce_SurfaceStagingBufferIndex] = surfaceStagingBuffer.Get();
+		copyContext.stagingBuffers[Ce_RenderStagingBufferIndex] = renderStagingBuffer.Get();
 		copyContext.stagingBufferSizes[Ce_VertexStagingBufferIndex] = vertexBufferSize;
 		copyContext.stagingBufferSizes[Ce_IndexStagingBufferIndex] = indexBufferSize;
+		copyContext.stagingBufferSizes[Ce_SurfaceStagingBufferIndex] = surfaceBufferSize;
+		copyContext.stagingBufferSizes[Ce_RenderStagingBufferIndex] = renderBufferSize;
 		if (!CopyDataToSSBOs(device, frameTools, buffers, copyContext, commandQueue))
 		{
 			BLIT_ERROR("Failed to copy data to GPU");
@@ -181,18 +271,41 @@ namespace BlitzenDX12
 	{
 		const auto& vertices{ pResources->GetHlslVertices() };
 		const auto& transforms{ pResources->transforms };
+		const auto& surfaces{ pResources->GetSurfaceArray() };
+		BlitzenEngine::RenderObject* pRenders{ pResources->renders };
+		auto renderCount{ pResources->renderObjectCount };
 
-		// Saves the offset of this group of descriptors and begins
-		descriptorContext.opaqueSrvOffset = descriptorContext.srvHeapOffset;
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
+			// Saves the offset of this group of descriptors and begins
+			descriptorContext.opaqueSrvOffset[i] = descriptorContext.srvHeapOffset;
+			auto& vars = varBuffers[i];
+
+			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, staticBuffers.vertexBuffer.srvDesc[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+		}
+
+		// Teams of descriptors used by both graphics and compute pipelines
+		for (size_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			// Saves the offset of this group of descriptors and begins
+			descriptorContext.sharedSrvOffset[i] = descriptorContext.srvHeapOffset;
 			auto& vars = varBuffers[i];
 
 			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
 
-			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.vertexBuffer.srvDesc[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+			CreateBufferShaderResourceView(device, staticBuffers.surfaceBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, staticBuffers.surfaceBuffer.srvDesc[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
+
+			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.srvDesc[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::RenderObject));
+
+			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
+				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 1000, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
+
+			//CreateUnorderedAccessView(device, vars.indirectDrawCount.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
+			//	descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0); CAREFUL, this is compute only
 		}
 
 		// Saves the offset of this group of descriptors and begins
@@ -236,6 +349,10 @@ namespace BlitzenDX12
 
 		CreateResourceViews(m_device.Get(), m_srvHeap.Get(), m_descriptorContext, 
 			m_constBuffers, m_varBuffers, pResources);
+		if (!CheckForDeviceRemoval(m_device.Get()))
+		{
+			return 0;
+		}
 
 		if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf()))
 		{
@@ -259,10 +376,17 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_IndexStagingBufferIndex], m_constBuffers.indexBuffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_SurfaceStagingBufferIndex], m_constBuffers.surfaceBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_RenderStagingBufferIndex], m_constBuffers.renderBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(Ce_ConstDataSSBOCount, staticBufferBarriers);
 
+		/*
+			Creates a barrier for each copy of a var buffer. Uses varBufferId to keep track of the array element
+		*/
 		uint32_t varBufferId = 0;
-		D3D12_RESOURCE_BARRIER varBuffersFinalState[2 * ce_framesInFlight];
+		D3D12_RESOURCE_BARRIER varBuffersFinalState[4 * ce_framesInFlight];
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].transformBuffer.buffer.Get(),
@@ -275,6 +399,20 @@ namespace BlitzenDX12
 		{
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].viewDataBuffer.buffer.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ); // Might want to change this design later
+			varBufferId++;
+		}
+
+		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawBuffer.buffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			varBufferId++;
+		}
+
+		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawCount.buffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			varBufferId++;
 		}
 

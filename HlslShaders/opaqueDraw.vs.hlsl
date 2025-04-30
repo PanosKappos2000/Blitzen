@@ -1,3 +1,6 @@
+#include "sharedBuffers.hlsl"
+
+
 struct Vertex
 {
     float3 position;
@@ -10,40 +13,7 @@ struct Vertex
 
     uint padding0;
 };
-
 StructuredBuffer<Vertex> vertexBuffer : register(t0);
-
-struct Transform
-{
-    float3 position;
-    float scale;
-    float4 orientation;
-};
-
-StructuredBuffer<Transform> transformBuffer : register(t3);
-
-cbuffer ViewData : register(b0)  
-{
-    float4x4 view;
-    float4x4 projectionView;
-    float3 position;
-
-    float frustumRight;
-    float frustumLeft;
-    float frustumTop;
-    float frustumBottom;
-
-    float proj0;
-    float proj5;
-
-    float zNear;
-    float zFar;
-
-    float pyramidWidth;
-    float pyramidHeight;
-
-    float lodTarget;
-};
 
 struct VSOutput
 {
