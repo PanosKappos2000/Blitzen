@@ -3,7 +3,8 @@
 
 namespace BlitzenDX12
 {
-    uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, ID3D12DescriptorHeap** ppSrvHeap)
+    uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, ID3D12DescriptorHeap** ppSrvHeap, 
+        ID3D12DescriptorHeap** ppDsvHeap)
     {
         if (!CheckForDeviceRemoval(device))
         {
@@ -22,6 +23,12 @@ namespace BlitzenDX12
             return 0;
         }
 
+        if (!CreateDescriptorHeap(device, ppDsvHeap, ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
+        {
+            BLIT_ERROR("Failed to create dsv descriptor heap");
+            return 0;
+        }
+
         // success
         return 1;
     }
@@ -32,15 +39,42 @@ namespace BlitzenDX12
         descriptorContext.swapchainRtvOffset = descriptorContext.rtvHeapOffset;
         for (UINT i = 0; i < ce_framesInFlight; i++)
         {
-            auto geBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].ReleaseAndGetAddressOf()));
-            if (FAILED(geBackBufferResult))
+            auto getBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].ReleaseAndGetAddressOf()));
+            if (FAILED(getBackBufferResult))
             {
-                return LOG_ERROR_MESSAGE_AND_RETURN(geBackBufferResult);
+                return LOG_ERROR_MESSAGE_AND_RETURN(getBackBufferResult);
             }
             CreateRenderTargetView(device, Ce_SwapchainFormat, D3D12_RTV_DIMENSION_TEXTURE2D, backBuffers[i].Get(), rtvHeapHandle, descriptorContext.rtvHeapOffset);
         }
 
         // Success
+        return 1;
+    }
+
+    uint8_t CreateDepthTargets(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* depthBuffers, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle,
+        Dx12Renderer::DescriptorContext& descriptorContext, uint32_t swapchainWidth, uint32_t swapchainHeight)
+    {
+        descriptorContext.depthTargetOffset = descriptorContext.dsvHeapOffset;
+        for (UINT i = 0; i < ce_framesInFlight; i++)
+        {
+            auto resourceRes{ CreateImageResource(device, depthBuffers[i].ReleaseAndGetAddressOf(), swapchainWidth, swapchainHeight, 1,
+                Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE) };
+            if (FAILED(resourceRes))
+            {
+                return LOG_ERROR_MESSAGE_AND_RETURN(resourceRes);
+            }
+
+            D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc{};
+            viewDesc.Format = Ce_DepthTargetFormat;
+            viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+            // Creates the view with the right offset
+            dsvHeapHandle.ptr += descriptorContext.dsvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+            device->CreateDepthStencilView(depthBuffers[i].Get(), &viewDesc, dsvHeapHandle);
+            // Increments the offset
+            descriptorContext.dsvHeapOffset++;
+        }
+
+        // success
         return 1;
     }
 
@@ -128,6 +162,43 @@ namespace BlitzenDX12
         }
 
         //Success
+        return 1;
+    }
+
+    uint8_t CreateImageResource(ID3D12Device* device, ID3D12Resource** ppResource, UINT width, UINT height, UINT mipLevels, 
+        DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES state)
+    {
+        if (!CheckForDeviceRemoval(device))
+        {
+            return 0;
+        }
+
+        D3D12_HEAP_PROPERTIES heapProperties{};
+        heapProperties.Type = heapType;
+        heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;// probably no need for change
+        heapProperties.CreationNodeMask = 0;
+
+        D3D12_RESOURCE_DESC desc = {};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Alignment = 0;
+        desc.Width = width;  
+        desc.Height = height; 
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = mipLevels;
+        desc.Format = format; 
+        desc.SampleDesc.Count = 1;  
+        desc.SampleDesc.Quality = 0;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Flags = flags;
+
+        auto res = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &desc, state, nullptr, IID_PPV_ARGS(ppResource));
+        if (FAILED(res))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(res);
+        }
+
+        // success
         return 1;
     }
 

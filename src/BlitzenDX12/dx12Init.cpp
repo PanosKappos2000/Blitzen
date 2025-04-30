@@ -144,9 +144,10 @@ namespace BlitzenDX12
 		m_swapchainWidth = windowWidth;
 		m_swapchainHeight = windowHeight;
 
-        if (!CreateDescriptorHeaps(m_device.Get(), m_rtvHeap.ReleaseAndGetAddressOf(), m_srvHeap.ReleaseAndGetAddressOf()))
+        if (!CreateDescriptorHeaps(m_device.Get(), m_rtvHeap.ReleaseAndGetAddressOf(), m_srvHeap.ReleaseAndGetAddressOf(), m_dsvHeap.ReleaseAndGetAddressOf()))
         {
-            BLIT_ERROR("Failed to create descriptor heaps")
+            BLIT_ERROR("Failed to create descriptor heaps");
+            return 0;
         }
 
 		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), m_swapchainBackBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -155,6 +156,13 @@ namespace BlitzenDX12
 			BLIT_ERROR("Failed to create swapchain back buffers");
 			return 0;
 		}
+
+        if (!CreateDepthTargets(m_device.Get(), m_depthBuffers, m_dsvHeap->GetCPUDescriptorHandleForHeapStart(),
+            m_descriptorContext, m_swapchainWidth, m_swapchainHeight))
+        {
+            BLIT_ERROR("Failed to create swapchain back buffers");
+            return 0;
+        }
 
 		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_triangleRootSignature, m_trianglePso.ReleaseAndGetAddressOf()))
 		{

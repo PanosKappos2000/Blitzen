@@ -32,6 +32,9 @@ namespace BlitzenDX12
     constexpr DXGI_USAGE Ce_SwapchainBufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	constexpr DXGI_SWAP_EFFECT Ce_SwapchainSwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
+    constexpr DXGI_FORMAT Ce_DepthTargetFormat = DXGI_FORMAT_D32_FLOAT;
+    constexpr FLOAT Ce_ClearDepth = 0.f;
+
     /* SSBO descriptors for main graphics pipeline */
     constexpr uint32_t Ce_OpaqueSrvRangeCount = 2;
 

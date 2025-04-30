@@ -258,8 +258,16 @@ namespace BlitML
         mat4 res(0);
         res.data[0] = halfTanFov / aspectRatio;
         res.data[5] = halfTanFov;
-        res.data[11] = 1.0f;
-        res.data[14] = znear;
+        if constexpr (BlitzenEngine::Ce_HLSL)
+        {
+            res.data[14] = 1.0f;
+            res.data[11] = znear;
+        }
+        else
+        {
+            res.data[11] = 1.0f;
+            res.data[14] = znear;
+        }
 
         return res;
 

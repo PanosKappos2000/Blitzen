@@ -16,27 +16,28 @@ namespace BlitzenDX12
         Dx12Renderer(const Dx12Renderer& dx) = delete;
         Dx12Renderer operator = (const Dx12Renderer& dx) = delete;
     
-        // API initialization (after this it should have the data and handles to do simple things)
+        // API initialization. Basically loads thing that do not need to depend on CPU resources
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, HWND hwnd);
     
-        // Synchronizes the backend with the loaded resources and sets it up for GPU driven rendering
+        // 2nd part of initialization. Initializes handles that require context from the CPU's loaded resources
         uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
 
-        // Because of some command list incompatibility, I need this function as well
+        // Layout transition throwaway function. Some command list incompatibility makes it necessary
         void FinalSetup();
     
         // Function for DDS texture loading
         uint8_t UploadTexture(void* pData, const char* filepath);
     
-        // Shows a loading screen while waiting for resources to be loaded
+        // Draws a simple loading screen using a shader that should be valid after Init.
         void DrawWhileWaiting();
-    
+        
+        // CPU work while the GPU is busy. Call the fence at the end
         void SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context);
     
-        // Called each frame to draw the scene that is requested by the engine
+        // Speaks for itself
         void DrawFrame(BlitzenEngine::DrawContext& context);
     
-        // When a dynamic object moves, it should call this function to update the staging buffer
+        // Updates transform data on the cpu side side buffer
         void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
 
         inline static Dx12Renderer* GetRendererInstance() { return s_pThis; }
@@ -44,11 +45,17 @@ namespace BlitzenDX12
     public:
         struct FrameTools
         {
+            // Used for graphics and most other operations
             DX12WRAPPER<ID3D12CommandAllocator> mainGraphicsCommandAllocator;
             DX12WRAPPER<ID3D12GraphicsCommandList> mainGraphicsCommandList;
 
+            // Used for transfer commands in the loading phase, to get better access to all commands
             DX12WRAPPER<ID3D12CommandAllocator> transferCommandAllocator;
             DX12WRAPPER<ID3D12GraphicsCommandList> transferCommandList;
+
+            // Used for transfer commands while drawing, for efficiency
+            DX12WRAPPER<ID3D12CommandAllocator> dedicatedTransferAllocator;
+            DX12WRAPPER<ID3D12CommandList> dedicatedTransferList;
 
             DX12WRAPPER<ID3D12Fence> inFlightFence;
             UINT64 inFlightFenceValue;
@@ -90,11 +97,12 @@ namespace BlitzenDX12
 
             SIZE_T rtvHeapOffset{ 0 };
             SIZE_T swapchainRtvOffset;
-            SIZE_T depthRtvOffset;
+
+            SIZE_T dsvHeapOffset{ 0 };
+            SIZE_T depthTargetOffset;
         };
 
         DX12WRAPPER<IDXGIFactory6> m_factory;
-
         DX12WRAPPER<ID3D12Device> m_device;
 
     private:
@@ -105,10 +113,12 @@ namespace BlitzenDX12
         DX12WRAPPER<IDXGIAdapter4> m_chosenAdapter;
 
         DX12WRAPPER<IDXGISwapChain3> m_swapchain;
-        // Swapchain resources
 		UINT m_swapchainWidth;
 		UINT m_swapchainHeight;
+        // The swapchain will be the color target
         DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
+
+        DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];
 
     /*
         Descriptors
@@ -119,6 +129,7 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12DescriptorHeap> m_srvHeap;
         DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
+        DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
 
         D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueSrvRangeCount]{};
 
@@ -158,4 +169,7 @@ namespace BlitzenDX12
     // Creates backbuffers and render target view needed to present on the swapchain
     uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers,
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, Dx12Renderer::DescriptorContext& descriptorContext);
+
+    uint8_t CreateDepthTargets(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* depthBuffers, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle,
+        Dx12Renderer::DescriptorContext& descriptorContext, uint32_t swapchainWidth, uint32_t swapchainHeight);
 }

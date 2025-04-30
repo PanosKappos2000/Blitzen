@@ -61,19 +61,23 @@ namespace BlitzenDX12
 		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
 		// Render target barrier
-		D3D12_RESOURCE_BARRIER attachmentBarrier{};
-		CreateResourcesTransitionBarrier(attachmentBarrier, m_swapchainBackBuffers[swapchainIndex].Get(),
+		D3D12_RESOURCE_BARRIER attachmentBarriers[2]{};
+		CreateResourcesTransitionBarrier(attachmentBarriers[0], m_swapchainBackBuffers[swapchainIndex].Get(),
 			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		frameTools.mainGraphicsCommandList->ResourceBarrier(1, attachmentBarriers);
 
 		// Render target bind
-		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &attachmentBarrier);
 		auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
 		rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+		auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+		dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 		// Render target clear
 		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+		FLOAT clearDepth = 0.f;
+		frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, clearDepth, 0, 0, nullptr);
 
 		// Binds descriptors
 		ID3D12DescriptorHeap* opaqueSrvHeaps[] = { m_srvHeap.Get()};
@@ -91,6 +95,8 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
+
+		m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
 
 	void Dx12Renderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)

@@ -147,7 +147,7 @@ namespace BlitzenDX12
 
         
         psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = Ce_SwapchainFormat;  
+        psoDesc.RTVFormats[0] = Ce_SwapchainFormat;
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -216,6 +216,7 @@ namespace BlitzenDX12
         psoDesc.pRootSignature = rootSignature;
         psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
+        psoDesc.DSVFormat = Ce_DepthTargetFormat;
 
         auto psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
         if (FAILED(psoResult))
