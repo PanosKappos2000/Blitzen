@@ -9,11 +9,6 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateComputePipelines()
-	{
-		return 1;
-	}
-
 	static uint8_t CreateTestIndirectCmds(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, ID3D12CommandQueue* commandQueue,
 		Dx12Renderer::VarBuffers& buffers, BlitzenEngine::RenderingResources* pResources)
 	{
@@ -173,9 +168,17 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateGraphicsPipelines(ID3D12Device* device, ID3D12RootSignature* opaqueGrahpicsRootSignature, ID3D12PipelineState** ppPso)
+	struct PipelineCreationContext
 	{
-		if (!CreateOpaqueGraphicsPipeline(device, opaqueGrahpicsRootSignature, ppPso))
+		ID3D12RootSignature* opaqueRoot; 
+		ID3D12PipelineState** ppOpaquePso;
+
+		ID3D12RootSignature* drawCull1Root;
+		ID3D12PipelineState** ppDrawCull1Pso;
+	};
+	static uint8_t CreatePipelines(ID3D12Device* device, PipelineCreationContext& context)
+	{
+		if (!CreateOpaqueGraphicsPipeline(device, context.opaqueRoot, context.ppOpaquePso))
 		{
 			BLIT_ERROR("Failed to create opaque grahics pipeline");
 			return 0;
@@ -303,6 +306,8 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_RenderStagingBufferIndex], buffers.renderBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_LodStagingIndex], buffers.lodBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		frameTools.transferCommandList->ResourceBarrier(Ce_ConstDataSSBOCount, copyDestBarriers);
 
 		// Transitions stagingBuffers to copy source
@@ -315,12 +320,15 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_RenderStagingBufferIndex], context.stagingBuffers[Ce_RenderStagingBufferIndex],
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_LodStagingIndex], context.stagingBuffers[Ce_LodStagingIndex],
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		frameTools.transferCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(copySourceBarriers), copySourceBarriers);
 
 		frameTools.transferCommandList->CopyResource(buffers.vertexBuffer.buffer.Get(), context.stagingBuffers[Ce_VertexStagingBufferIndex]);
 		frameTools.transferCommandList->CopyResource(buffers.indexBuffer.Get(), context.stagingBuffers[Ce_IndexStagingBufferIndex]);
 		frameTools.transferCommandList->CopyResource(buffers.surfaceBuffer.buffer.Get(), context.stagingBuffers[Ce_SurfaceStagingBufferIndex]);
 		frameTools.transferCommandList->CopyResource(buffers.renderBuffer.buffer.Get(), context.stagingBuffers[Ce_RenderStagingBufferIndex]);
+		frameTools.transferCommandList->CopyResource(buffers.lodBuffer.buffer.Get(), context.stagingBuffers[Ce_LodStagingIndex]);
 
 		frameTools.transferCommandList->Close();
 		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
@@ -346,6 +354,7 @@ namespace BlitzenDX12
 		const auto& surfaces{ pResources->GetSurfaceArray() };
 		BlitzenEngine::RenderObject* renders{ pResources->renders };
 		auto renderObjectCount{ pResources->renderObjectCount };
+		const auto& lods{ pResources->GetLodData() };
 
 		DX12WRAPPER<ID3D12Resource> vertexStagingBuffer{ nullptr };
 		UINT64 vertexBufferSize{ CreateSSBO(device, buffers.vertexBuffer, vertexStagingBuffer, vertices.GetSize(), vertices.Data())};
@@ -380,15 +389,25 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		DX12WRAPPER<ID3D12Resource> lodStaging{ nullptr };
+		UINT64 lodBufferSize{ CreateSSBO(device, buffers.lodBuffer, lodStaging, lods.GetSize(), lods.Data()) };
+		if (!lodBufferSize)
+		{
+			BLIT_ERROR("Failed to create lod buffer");
+			return 0;
+		}
+
 		SSBOCopyContext copyContext;
 		copyContext.stagingBuffers[Ce_VertexStagingBufferIndex] = vertexStagingBuffer.Get();
 		copyContext.stagingBuffers[Ce_IndexStagingBufferIndex] = indexStagingBuffer.Get();
 		copyContext.stagingBuffers[Ce_SurfaceStagingBufferIndex] = surfaceStagingBuffer.Get();
 		copyContext.stagingBuffers[Ce_RenderStagingBufferIndex] = renderStagingBuffer.Get();
+		copyContext.stagingBuffers[Ce_LodStagingIndex] = lodStaging.Get();
 		copyContext.stagingBufferSizes[Ce_VertexStagingBufferIndex] = vertexBufferSize;
 		copyContext.stagingBufferSizes[Ce_IndexStagingBufferIndex] = indexBufferSize;
 		copyContext.stagingBufferSizes[Ce_SurfaceStagingBufferIndex] = surfaceBufferSize;
 		copyContext.stagingBufferSizes[Ce_RenderStagingBufferIndex] = renderBufferSize;
+		copyContext.stagingBufferSizes[Ce_LodStagingIndex] = lodBufferSize;
 		if (!CopyDataToSSBOs(device, frameTools, buffers, copyContext, commandQueue))
 		{
 			BLIT_ERROR("Failed to copy data to GPU");
@@ -407,6 +426,7 @@ namespace BlitzenDX12
 		const auto& surfaces{ pResources->GetSurfaceArray() };
 		BlitzenEngine::RenderObject* pRenders{ pResources->renders };
 		auto renderCount{ pResources->renderObjectCount };
+		const auto& lods{ pResources->GetLodData() };
 
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -415,7 +435,7 @@ namespace BlitzenDX12
 			auto& vars = varBuffers[i];
 
 			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.vertexBuffer.srvDesc[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+				descriptorContext.srvHeapOffset, staticBuffers.vertexBuffer.heapOffset[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
 		}
 
 		// Teams of descriptors used by both graphics and compute pipelines
@@ -426,13 +446,13 @@ namespace BlitzenDX12
 			auto& vars = varBuffers[i];
 
 			CreateBufferShaderResourceView(device, staticBuffers.surfaceBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.surfaceBuffer.srvDesc[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
+				descriptorContext.srvHeapOffset, staticBuffers.surfaceBuffer.heapOffset[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
 
 			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
+				descriptorContext.srvHeapOffset, vars.transformBuffer.heapOffset, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
 
 			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.srvDesc[i], renderCount, sizeof(BlitzenEngine::RenderObject));
+				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));
 
 			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
 				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 1000, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
@@ -444,9 +464,20 @@ namespace BlitzenDX12
 			descriptorHandle.ptr += descriptorContext.srvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
 			descriptorContext.srvHeapOffset++;
+		}
 
-			//CreateUnorderedAccessView(device, vars.indirectDrawCount.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
-			//	descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0); CAREFUL, this is compute only
+		// Teams of descriptors used for draw culling shaders
+		for (size_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			// Saves the offset of this group of descriptors and begins
+			descriptorContext.cullSrvOffset[i] = descriptorContext.srvHeapOffset;
+			auto& vars = varBuffers[i];
+
+			CreateUnorderedAccessView(device, vars.indirectDrawCount.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
+				descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0);
+
+			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
 		}
 	}
 
@@ -486,7 +517,9 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateGraphicsPipelines(m_device.Get(), m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf()))
+		PipelineCreationContext pipelineContext{ m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf(), 
+			m_drawCullSignature.Get(), m_drawCull1Pso.ReleaseAndGetAddressOf()};
+		if (!CreatePipelines(m_device.Get(), pipelineContext))
 		{
 			BLIT_ERROR("Failed to create graphics pipelines");
 			return 0;
@@ -517,9 +550,11 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_IndexStagingBufferIndex], m_constBuffers.indexBuffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_SurfaceStagingBufferIndex], m_constBuffers.surfaceBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_RenderStagingBufferIndex], m_constBuffers.renderBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_LodStagingIndex], m_constBuffers.lodBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(Ce_ConstDataSSBOCount, staticBufferBarriers);
 
 		/*
@@ -546,7 +581,7 @@ namespace BlitzenDX12
 		{
 			// TODO: temporary before compute shaders, this should be unordered access first
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawBuffer.buffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			varBufferId++;
 		}
 
@@ -554,7 +589,7 @@ namespace BlitzenDX12
 		{
 			// TODO: temporary before compute shaders, this should be unordered access first
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawCount.buffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			varBufferId++;
 		}
 

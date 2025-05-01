@@ -82,6 +82,7 @@ namespace BlitzenDX12
             SSBO vertexBuffer;
             SSBO surfaceBuffer;
             SSBO renderBuffer;
+            SSBO lodBuffer;
 
             DX12WRAPPER<ID3D12Resource> indexBuffer;
             D3D12_INDEX_BUFFER_VIEW indexBufferView;
@@ -94,7 +95,7 @@ namespace BlitzenDX12
             SIZE_T srvHeapOffset{ 0 };// Current offset into the srv heap for adding views
             SIZE_T sharedSrvOffset[ce_framesInFlight];// Offset of srvHeap for shared descriptor table
             SIZE_T opaqueSrvOffset[ce_framesInFlight];// Offset of srvHeap for opaque pipeline descriptor table
-            SIZE_T sharedCbvOffset;// Offset of srvHeap for shared cbvDescriptors
+            SIZE_T cullSrvOffset[ce_framesInFlight];// Offset of srvHeap for cull pipeline descriptor table
 
             SIZE_T rtvHeapOffset{ 0 };
             SIZE_T swapchainRtvOffset;
@@ -141,6 +142,9 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
+
+        DX12WRAPPER<ID3D12PipelineState> m_drawCull1Pso;
+        DX12WRAPPER<ID3D12RootSignature> m_drawCullSignature;
 
         DX12WRAPPER<ID3D12CommandSignature> m_opaqueCmdSingature;
         DX12WRAPPER<ID3D12RootSignature> m_opaqueRootSignature;

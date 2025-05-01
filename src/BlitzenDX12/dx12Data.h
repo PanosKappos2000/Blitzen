@@ -77,15 +77,16 @@ namespace BlitzenDX12
 	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
     constexpr UINT Ce_VertexBufferRangeElement = 0;
 
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
 
     
     /* SSBO data copy helpers */
-    constexpr UINT Ce_ConstDataSSBOCount = 4;
+    constexpr UINT Ce_ConstDataSSBOCount = 5;
     constexpr UINT Ce_VertexStagingBufferIndex = 0;
     constexpr UINT Ce_IndexStagingBufferIndex = 1;
     constexpr UINT Ce_SurfaceStagingBufferIndex = 2;
     constexpr UINT Ce_RenderStagingBufferIndex = 3;
+    constexpr UINT Ce_LodStagingIndex = 4;
 
     constexpr UINT Ce_VarSSBODataCount = 1;
     constexpr UINT Ce_TransformStagingBufferIndex = 0;
@@ -114,13 +115,13 @@ namespace BlitzenDX12
     struct SSBO
     {
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc[ce_framesInFlight]{};// TODO: Should replace this with the offset of the srv, that might actually be useful in the future
+        SIZE_T heapOffset[ce_framesInFlight]{};
     };
 
     struct VarSSBO
     {
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};// TODO: Should replace this with the offset of the srv, that might actually be useful in the future
+        SIZE_T heapOffset{};
 
         DX12WRAPPER<ID3D12Resource> staging{ nullptr };
         void* pData{ nullptr };
