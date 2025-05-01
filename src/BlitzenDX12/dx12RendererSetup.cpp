@@ -130,14 +130,15 @@ namespace BlitzenDX12
 		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
 
-		D3D12_ROOT_PARAMETER rootParameters[4] = {};
+		D3D12_ROOT_PARAMETER rootParameters[3] = {};
 		CreateRootParameterDescriptorTable(rootParameters[0], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[1], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterCBV(rootParameters[2], Ce_ViewDataBufferRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterPushConstants(rootParameters[3], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
+		//CreateRootParameterCBV(rootParameters[1], Ce_ViewDataBufferRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterPushConstants(rootParameters[2], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 
-		if (!CreateRootSignature(device, ppOpaqueRootSignature, 4, rootParameters))
+		if (!CreateRootSignature(device, ppOpaqueRootSignature, 3, rootParameters))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
@@ -155,7 +156,7 @@ namespace BlitzenDX12
 		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
 		indirectDescs[1].Constant.DestOffsetIn32BitValues = 0;
 		indirectDescs[1].Constant.Num32BitValuesToSet = 1;
-		indirectDescs[1].Constant.RootParameterIndex = 3;
+		indirectDescs[1].Constant.RootParameterIndex = 2;
 
 		D3D12_COMMAND_SIGNATURE_DESC sigDesc{};
 		sigDesc.NodeMask = 0;
@@ -436,16 +437,6 @@ namespace BlitzenDX12
 			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
 				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 1000, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
 
-			//CreateUnorderedAccessView(device, vars.indirectDrawCount.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
-			//	descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0); CAREFUL, this is compute only
-		}
-
-		// Saves the offset of this group of descriptors and begins
-		descriptorContext.sharedCbvOffset = descriptorContext.srvHeapOffset;
-		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			auto& vars = varBuffers[i];
-
 			vars.viewDataBuffer.cbvDesc = {};
 			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();
 			vars.viewDataBuffer.cbvDesc.SizeInBytes = sizeof(BlitzenEngine::CameraViewData);
@@ -453,6 +444,9 @@ namespace BlitzenDX12
 			descriptorHandle.ptr += descriptorContext.srvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
 			descriptorContext.srvHeapOffset++;
+
+			//CreateUnorderedAccessView(device, vars.indirectDrawCount.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
+			//	descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0); CAREFUL, this is compute only
 		}
 	}
 

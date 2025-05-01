@@ -37,7 +37,7 @@ namespace BlitzenDX12
 
 
     /* Srv desriptors for both compute and graphics pipelines*/
-    constexpr uint32_t Ce_SharedSrvRangeCount = 4;
+    constexpr uint32_t Ce_SharedSrvRangeCount = 5;
 
     constexpr UINT Ce_SurfaceBufferRegister = 2;
     constexpr UINT Ce_SurfaceBufferDescriptorCount = 1;
@@ -51,9 +51,13 @@ namespace BlitzenDX12
     constexpr UINT Ce_RenderObjectBufferDescriptorCount = 1;
     constexpr UINT Ce_RenderObjectBufferRangeElement = 2;
 
-    constexpr UINT Ce_IndirectDrawBufferRegister = 0;
+    constexpr UINT Ce_IndirectDrawBufferRegister = 0;// First Uav
     constexpr UINT Ce_IndirectDrawBufferDescriptorCount = 1;
     constexpr UINT Ce_IndirectDrawBufferRangeElement = 3;
+
+    constexpr UINT Ce_ViewDataBufferRegister = 0;// First Cbv
+    constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
+    constexpr UINT Ce_ViewDataBufferRangeElement = 4;
 
     /* Srv Descriptors for compute pipeline */
     constexpr uint32_t Ce_CullSrvRangeCount = 2;
@@ -73,12 +77,7 @@ namespace BlitzenDX12
 	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
     constexpr UINT Ce_VertexBufferRangeElement = 0;
 
-    // TODO: This is seperate currently but I could probably put it in shared and make it descriptor table
-    constexpr UINT Ce_ViewDataBufferRegister = 0;
-    constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
-    constexpr UINT Ce_ViewDataBufferRangeElement = 0;
-
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + 1) * ce_framesInFlight;// Double or triple buffering
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
 
     
     /* SSBO data copy helpers */

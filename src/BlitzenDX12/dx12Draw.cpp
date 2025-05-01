@@ -81,7 +81,6 @@ namespace BlitzenDX12
 		// Binds descriptors
 		ID3D12DescriptorHeap* opaqueSrvHeaps[] = { m_srvHeap.Get()};
 		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, opaqueSrvHeaps);
-		frameTools.mainGraphicsCommandList->SetGraphicsRootConstantBufferView(2, varBuffers.viewDataBuffer.buffer->GetGPUVirtualAddress());
 		// Opaque graphics pipeline exclusive descriptors
 		auto opaqueSrvHandle = m_descriptorContext.srvHandle;
 		opaqueSrvHandle.ptr += m_descriptorContext.opaqueSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
@@ -90,7 +89,6 @@ namespace BlitzenDX12
 		auto sharedSrvHandle = m_descriptorContext.srvHandle;
 		sharedSrvHandle.ptr += m_descriptorContext.sharedSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(1, sharedSrvHandle);
-		frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(3, 0, 0);
 
 		D3D12_RESOURCE_BARRIER indirectCommandReadBarriers[2]{};
 		//CreateResourcesTransitionBarrier(indirectCommandReadBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(), 
@@ -103,7 +101,7 @@ namespace BlitzenDX12
 		
 		for (uint32_t i = 0; i < 1000; ++i)
 		{
-			frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(3, i, 0);
+			frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, i, 0);
 			frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), 1/*context.pResources->renderObjectCount*/,
 				varBuffers.indirectDrawBuffer.buffer.Get(), offsetof(IndirectDrawCmd, command), nullptr/*varBuffers.indirectDrawCount.buffer.Get()*/, 0);
 		}
