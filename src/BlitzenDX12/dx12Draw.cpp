@@ -90,14 +90,23 @@ namespace BlitzenDX12
 		auto sharedSrvHandle = m_descriptorContext.srvHandle;
 		sharedSrvHandle.ptr += m_descriptorContext.sharedSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(1, sharedSrvHandle);
+		frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(3, 0, 0);
+
+		D3D12_RESOURCE_BARRIER indirectCommandReadBarriers[2]{};
+		//CreateResourcesTransitionBarrier(indirectCommandReadBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(), 
+			//)
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
-		auto indexCount = context.pResources->GetLodData()[0].indexCount;
-		frameTools.mainGraphicsCommandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
-		//frameTools.mainGraphicsCommandList->ExecuteIndirect();
+		
+		for (uint32_t i = 0; i < 1000; ++i)
+		{
+			frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(3, i, 0);
+			frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), 1/*context.pResources->renderObjectCount*/,
+				varBuffers.indirectDrawBuffer.buffer.Get(), offsetof(IndirectDrawCmd, command), nullptr/*varBuffers.indirectDrawCount.buffer.Get()*/, 0);
+		}
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
 

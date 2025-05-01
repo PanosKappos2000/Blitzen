@@ -131,15 +131,41 @@ namespace BlitzenDX12
 		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 
-		D3D12_ROOT_PARAMETER rootParameters[3] = {};
+		D3D12_ROOT_PARAMETER rootParameters[4] = {};
 		CreateRootParameterDescriptorTable(rootParameters[0], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[1], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterCBV(rootParameters[2], Ce_ViewDataBufferRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterPushConstants(rootParameters[3], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 
-		if (!CreateRootSignature(device, ppOpaqueRootSignature, 3, rootParameters))
+		if (!CreateRootSignature(device, ppOpaqueRootSignature, 4, rootParameters))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
+		}
+
+		// success
+		return 1;
+	}
+
+	static uint8_t CreateCmdSignatures(ID3D12Device* device, ID3D12RootSignature* opaqueRootSignature, ID3D12CommandSignature** ppOpaqueCmdSignature)
+	{
+		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[2]{};
+		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+		indirectDescs[1].Constant.DestOffsetIn32BitValues = 0;
+		indirectDescs[1].Constant.Num32BitValuesToSet = 1;
+		indirectDescs[1].Constant.RootParameterIndex = 3;
+
+		D3D12_COMMAND_SIGNATURE_DESC sigDesc{};
+		sigDesc.NodeMask = 0;
+		sigDesc.NumArgumentDescs = 1;
+		sigDesc.pArgumentDescs = indirectDescs;
+		sigDesc.ByteStride = sizeof(IndirectDrawCmd);
+		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
+		if (FAILED(opaqueCmdRes))
+		{
+			return LOG_ERROR_MESSAGE_AND_RETURN(opaqueCmdRes);
 		}
 
 		// success
@@ -405,7 +431,7 @@ namespace BlitzenDX12
 				descriptorContext.srvHeapOffset, vars.transformBuffer.srvDesc, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
 
 			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.srvDesc[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::RenderObject));
+				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.srvDesc[i], renderCount, sizeof(BlitzenEngine::RenderObject));
 
 			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
 				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 1000, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
@@ -438,6 +464,12 @@ namespace BlitzenDX12
 		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create root signatures");
+			return 0;
+		}
+
+		if (!CreateCmdSignatures(m_device.Get(), m_opaqueRootSignature.Get(), m_opaqueCmdSingature.ReleaseAndGetAddressOf()))
+		{
+			BLIT_ERROR("Failed to create command signatures");
 			return 0;
 		}
 
@@ -518,15 +550,17 @@ namespace BlitzenDX12
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
+			// TODO: temporary before compute shaders, this should be unordered access first
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawBuffer.buffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			varBufferId++;
 		}
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
+			// TODO: temporary before compute shaders, this should be unordered access first
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawCount.buffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			varBufferId++;
 		}
 
