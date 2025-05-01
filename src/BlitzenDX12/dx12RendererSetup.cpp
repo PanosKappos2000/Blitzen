@@ -51,30 +51,58 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		void* pMappedData{ nullptr };
-		auto mappingRes{ cmdStagingBuffer->Map(0, nullptr, &pMappedData) };
+		DX12WRAPPER<ID3D12Resource> countStagingBuffer{ nullptr };
+		if (!CreateBuffer(device, countStagingBuffer.ReleaseAndGetAddressOf(), sizeof(uint32_t), D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+		{
+			BLIT_ERROR("Failed test function CreateTestIndirectCmds");
+			return 0;
+		}
+
+		void* pMappedCmd{ nullptr };
+		auto mappingRes{ cmdStagingBuffer->Map(0, nullptr, &pMappedCmd) };
 		if (FAILED(mappingRes))
 		{
 			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
 		}
-		BlitzenCore::BlitMemCopy(pMappedData, cmds.Data(), sizeof(IndirectDrawCmd) * cmdCount);
+		BlitzenCore::BlitMemCopy(pMappedCmd, cmds.Data(), sizeof(IndirectDrawCmd) * cmdCount);
+
+		void* pMappedCount{ nullptr };
+		mappingRes = cmdStagingBuffer->Map(0, nullptr, &pMappedCount);
+		if (FAILED(mappingRes))
+		{
+			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+		}
+		BlitzenCore::BlitMemCopy(pMappedCount, &cmdCount, sizeof(uint32_t));
 
 		frameTools.transferCommandAllocator->Reset();
 		frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
 
 		// Transitions SSBOs to copy dest
-		D3D12_RESOURCE_BARRIER copyDestBarriers{};
-		CreateResourcesTransitionBarrier(copyDestBarriers, buffers.indirectDrawBuffer.buffer.Get(),
+		D3D12_RESOURCE_BARRIER copyDestBarriers[2]{};
+		CreateResourcesTransitionBarrier(copyDestBarriers[0], buffers.indirectDrawBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-		frameTools.transferCommandList->ResourceBarrier(1, &copyDestBarriers);
+		CreateResourcesTransitionBarrier(copyDestBarriers[1], buffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		frameTools.transferCommandList->ResourceBarrier(2, copyDestBarriers);
 
 		// Transitions stagingBuffers to copy source
-		D3D12_RESOURCE_BARRIER copySourceBarriers{};
-		CreateResourcesTransitionBarrier(copySourceBarriers, cmdStagingBuffer.Get(),
+		D3D12_RESOURCE_BARRIER copySourceBarriers[2]{};
+		CreateResourcesTransitionBarrier(copySourceBarriers[0], cmdStagingBuffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		frameTools.transferCommandList->ResourceBarrier(1, &copySourceBarriers);
+		CreateResourcesTransitionBarrier(copySourceBarriers[1], countStagingBuffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		frameTools.transferCommandList->ResourceBarrier(2, copySourceBarriers);
 
 		frameTools.transferCommandList->CopyResource(buffers.indirectDrawBuffer.buffer.Get(), cmdStagingBuffer.Get());
+		frameTools.transferCommandList->CopyResource(buffers.indirectDrawCount.buffer.Get(), countStagingBuffer.Get());
+
+		// Switches back to common, because it will be expected to be in that state later
+		D3D12_RESOURCE_BARRIER switchBack[2]{};
+		CreateResourcesTransitionBarrier(switchBack[0], buffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+		CreateResourcesTransitionBarrier(switchBack[1], buffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+		frameTools.transferCommandList->ResourceBarrier(2, switchBack);
 
 		frameTools.transferCommandList->Close();
 		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
@@ -89,7 +117,7 @@ namespace BlitzenDX12
 			WaitForSingleObject(frameTools.copyFenceEvent, INFINITE);
 		}
 
-
+		return 1;
 	}
 
 	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature)
@@ -100,7 +128,7 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE sharedSrvRanges[Ce_SharedSrvRangeCount]{};
 		CreateDescriptorRange(sharedSrvRanges[Ce_SurfaceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_SurfaceBufferDescriptorCount, Ce_SurfaceBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
-		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 
 		D3D12_ROOT_PARAMETER rootParameters[3] = {};
@@ -438,6 +466,14 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		for (auto& buffers : m_varBuffers)
+		{
+			if (!CreateTestIndirectCmds(m_device.Get(), m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), buffers, pResources))
+			{
+				BLIT_WARN("Failed to load tests for indirect draw buffer");
+				BLIT_WARN("This will not cause failure, but it might break the expected tests");
+			}
+		}
 
 		return 1;
 	}

@@ -28,9 +28,13 @@ float3 RotateQuat(float3 v, float4 quat)
 VSOutput main(uint vertexIndex : SV_VERTEXID)
 {
     Vertex vtx = vertexBuffer[vertexIndex];
+    Render obj = renderBuffer[drawCmdBuffer[0].drawId];
+
     VSOutput output;
-    float3 modelPos = RotateQuat(vtx.position, transformBuffer[0].orientation) * transformBuffer[0].scale + transformBuffer[0].position;
+    float3 modelPos = RotateQuat(vtx.position, transformBuffer[obj.transformId].orientation) * transformBuffer[obj.transformId].scale + transformBuffer[obj.transformId].position;
     output.position = mul(projectionView, (float4(modelPos, 1.0f))); 
+
+    uint materialId = surfaceBuffer[obj.surfaceId].materialId;
 
     return output;
 }
