@@ -206,7 +206,7 @@ IF(WIN32)
 
                         D3d12
                         DXGI
-                        D3DCompiler
+                        D3DCompiler 
                         #d3d12sdklayers.lib
 
                         glew32s

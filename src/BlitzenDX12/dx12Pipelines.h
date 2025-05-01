@@ -1,6 +1,7 @@
 #pragma once
 #include "dx12Data.h"
 #include <d3dcompiler.h>
+#include <string>
 
 namespace BlitzenDX12
 {
@@ -32,8 +33,6 @@ namespace BlitzenDX12
     class ShaderIncludeHandler : public ID3DInclude 
     {
     public:
-        // Implementing QueryInterface
-        STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj);
 
         // Ref counting
         inline STDMETHOD_(ULONG, AddRef)() { return 1; }
@@ -42,6 +41,8 @@ namespace BlitzenDX12
         STDMETHOD(Open)(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) override;
 
         STDMETHOD(Close)(LPCVOID pData) override;
+    private:
+        std::string m_content;
     };
 
     

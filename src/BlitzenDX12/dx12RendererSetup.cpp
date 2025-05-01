@@ -14,6 +14,84 @@ namespace BlitzenDX12
 		return 1;
 	}
 
+	static uint8_t CreateTestIndirectCmds(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, ID3D12CommandQueue* commandQueue,
+		Dx12Renderer::VarBuffers& buffers, BlitzenEngine::RenderingResources* pResources)
+	{
+		const uint32_t maxCmdCount = 1000;
+		auto pRenders{ pResources->renders };
+		uint32_t cmdCount = maxCmdCount;
+		auto renderCount{ pResources->renderObjectCount };
+		if (cmdCount > renderCount)
+		{
+			cmdCount = renderCount;
+		}
+
+		const auto& surfaces{ pResources->GetSurfaceArray() };
+		const auto& lods{ pResources->GetLodData() };
+		BlitCL::StaticArray<IndirectDrawCmd, maxCmdCount> cmds;
+
+		for (uint32_t i = 0; i < cmdCount; ++i)
+		{
+			auto& cmd = cmds[i];
+			auto& surface = surfaces[pRenders[i].surfaceId];
+			auto& lod = lods[surface.lodOffset];
+
+			cmd.drawId = i;
+			cmd.command.IndexCountPerInstance = lod.indexCount;
+			cmd.command.StartIndexLocation = lod.firstIndex;
+			cmd.command.BaseVertexLocation = 0;
+			cmd.command.InstanceCount = 1;
+			cmd.command.StartInstanceLocation = 0;
+		}
+
+		DX12WRAPPER<ID3D12Resource> cmdStagingBuffer{ nullptr };
+		if (!CreateBuffer(device, cmdStagingBuffer.ReleaseAndGetAddressOf(), cmdCount * sizeof(IndirectDrawCmd), D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+		{
+			BLIT_ERROR("Failed test function CreateTestIndirectCmds");
+			return 0;
+		}
+
+		void* pMappedData{ nullptr };
+		auto mappingRes{ cmdStagingBuffer->Map(0, nullptr, &pMappedData) };
+		if (FAILED(mappingRes))
+		{
+			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+		}
+		BlitzenCore::BlitMemCopy(pMappedData, cmds.Data(), sizeof(IndirectDrawCmd) * cmdCount);
+
+		frameTools.transferCommandAllocator->Reset();
+		frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
+
+		// Transitions SSBOs to copy dest
+		D3D12_RESOURCE_BARRIER copyDestBarriers{};
+		CreateResourcesTransitionBarrier(copyDestBarriers, buffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		frameTools.transferCommandList->ResourceBarrier(1, &copyDestBarriers);
+
+		// Transitions stagingBuffers to copy source
+		D3D12_RESOURCE_BARRIER copySourceBarriers{};
+		CreateResourcesTransitionBarrier(copySourceBarriers, cmdStagingBuffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		frameTools.transferCommandList->ResourceBarrier(1, &copySourceBarriers);
+
+		frameTools.transferCommandList->CopyResource(buffers.indirectDrawBuffer.buffer.Get(), cmdStagingBuffer.Get());
+
+		frameTools.transferCommandList->Close();
+		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
+		commandQueue->ExecuteCommandLists(1, commandLists);
+
+		const UINT64 fence = frameTools.copyFenceValue++;
+		commandQueue->Signal(frameTools.copyFence.Get(), fence);
+		// Waits for the previous frame
+		if (frameTools.copyFence->GetCompletedValue() < fence)
+		{
+			frameTools.copyFence->SetEventOnCompletion(fence, frameTools.copyFenceEvent);
+			WaitForSingleObject(frameTools.copyFenceEvent, INFINITE);
+		}
+
+
+	}
+
 	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature)
 	{
 		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueSrvRangeCount]{};

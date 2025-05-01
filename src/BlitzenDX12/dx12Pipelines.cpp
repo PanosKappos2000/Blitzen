@@ -4,23 +4,12 @@
 // Temporary
 #include <fstream>
 #include <sstream>
-#include <string>
 #include <iostream>
 
 namespace BlitzenDX12
 {
     // Create an instance of ShaderIncludeHandler
     inline ShaderIncludeHandler inl_shaderIncludeHandler;
-
-    HRESULT ShaderIncludeHandler::QueryInterface(REFIID riid, void** ppvObj)
-    {
-        //if (riid == __uuidof(ID3DInclude))
-        //{
-        //    *ppvObj = static_cast<ID3DInclude*>(this);
-            return S_OK;
-        //}
-        //return E_NOINTERFACE;
-    }
 
     HRESULT ShaderIncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
     {
@@ -32,11 +21,11 @@ namespace BlitzenDX12
 
         std::stringstream buffer;
         buffer << file.rdbuf();
-        std::string content = buffer.str();
+        m_content = buffer.str();
 
         // Allocate memory for the content
-        *ppData = content.c_str();
-        *pBytes = (UINT)content.size();
+        *ppData = m_content.c_str();
+        *pBytes = (UINT)m_content.size();
 
         return S_OK;
     }
