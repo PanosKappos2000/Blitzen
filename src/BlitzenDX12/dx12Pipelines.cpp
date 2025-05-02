@@ -85,6 +85,17 @@ namespace BlitzenDX12
         rootParameter.ShaderVisibility = shaderVisibility;
     }
 
+    void CreateRootParameterUAV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility)
+    {
+        rootParameter = {};
+
+        rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+        rootParameter.Descriptor.ShaderRegister = baseRegister;
+        rootParameter.Descriptor.RegisterSpace = registerSpace;
+
+        rootParameter.ShaderVisibility = shaderVisibility;
+    }
+
 
     uint8_t CreateRootSignature(ID3D12Device* device, ID3D12RootSignature** ppRootSignature, 
         UINT numParameters, D3D12_ROOT_PARAMETER* pParameters,
@@ -120,10 +131,10 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, ID3DBlob** shaderBlob)
+    uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, const char* entryPoint, ID3DBlob** shaderBlob)
     {
         Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-        auto compileResult = D3DCompileFromFile(filepath, nullptr, &inl_shaderIncludeHandler, "main", target, 0, 0, shaderBlob, errorBlob.GetAddressOf());
+        auto compileResult = D3DCompileFromFile(filepath, nullptr, &inl_shaderIncludeHandler, entryPoint, target, 0, 0, shaderBlob, errorBlob.GetAddressOf());
         if (FAILED(compileResult))
         {
             if (errorBlob) 
@@ -198,13 +209,13 @@ namespace BlitzenDX12
         }
 
         Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", vertexShader.ReleaseAndGetAddressOf()))
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", "main", vertexShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading vertex shader");
             return 0;
         }
         Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", pixelShader.ReleaseAndGetAddressOf()))
+        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", "main", pixelShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading pixel shader");
             return 0;
@@ -231,13 +242,13 @@ namespace BlitzenDX12
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso)
     {
         DX12WRAPPER<ID3DBlob> vertexShader;
-        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.vs.hlsl", "vs_5_0", &vertexShader))
+        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.vs.hlsl", "vs_5_0", "main", &vertexShader))
         {
 			BLIT_ERROR("Failed to create main opaque vertex shader");
 			return 0;
         }
         Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.ps.hlsl", "ps_5_0", &pixelShader))
+        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.ps.hlsl", "ps_5_0", "main", &pixelShader))
         {
 			BLIT_ERROR("Failed to create main opaque pixel shader");
             return 0;
@@ -254,6 +265,27 @@ namespace BlitzenDX12
         if (FAILED(psoResult))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
+        }
+
+        return 1;
+    }
+
+    uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const WCHAR* filename)
+    {
+        DX12WRAPPER<ID3DBlob> shader;
+        if (!CreateShaderProgram(filename, "cs_5_0", "csMain", &shader))
+        {
+            return 0;
+        }
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+        psoDesc.CS = { shader->GetBufferPointer(), shader->GetBufferSize() };
+        psoDesc.pRootSignature = root;
+
+        auto cullPsoResult = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso));
+        if (FAILED(cullPsoResult))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(cullPsoResult);
         }
 
         return 1;

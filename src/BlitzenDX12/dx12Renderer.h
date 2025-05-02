@@ -143,6 +143,9 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
 
+        DX12WRAPPER<ID3D12PipelineState> m_drawCountResetPso;
+        DX12WRAPPER<ID3D12RootSignature> m_drawCountResetRoot;
+
         DX12WRAPPER<ID3D12PipelineState> m_drawCull1Pso;
         DX12WRAPPER<ID3D12RootSignature> m_drawCullSignature;
 

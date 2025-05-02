@@ -60,6 +60,11 @@ namespace BlitML
         return result;
     }
 
+    inline uint32_t GetCompueShaderGroupSize(uint32_t totalWorkCount, uint32_t threadsPerGroup) 
+    {
+        return (totalWorkCount / threadsPerGroup) + 1;
+    }
+
     inline float ClipSpaceSignGL(float a){ return (a > 0.f) ?  1.f : (a < 0.f) ? -1.f : 0.f; }
 
     static uint8_t sRandSeeded = 0;

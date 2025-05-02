@@ -45,8 +45,8 @@ namespace BlitzenDX12
 		}
 	}
 
-    void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)
-    {
+	void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)
+	{
 		auto& frameTools = m_frameTools[m_currentFrame];
 		auto& varBuffers = m_varBuffers[m_currentFrame];
 		const auto pCamera = context.pCamera;
@@ -56,6 +56,44 @@ namespace BlitzenDX12
 		UINT swapchainIndex = m_swapchain->GetCurrentBackBufferIndex();
 		frameTools.mainGraphicsCommandAllocator->Reset();
 		frameTools.mainGraphicsCommandList->Reset(frameTools.mainGraphicsCommandAllocator.Get(), m_trianglePso.Get());
+
+		// Binds heap for compute
+		ID3D12DescriptorHeap* opaqueSrvHeaps[] = { m_srvHeap.Get() };
+		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, opaqueSrvHeaps);
+		frameTools.mainGraphicsCommandList->SetComputeRootSignature(m_drawCountResetRoot.Get());
+
+		// Compute heap handles
+		auto sharedSrvHandle = m_descriptorContext.srvHandle;
+		sharedSrvHandle.ptr += m_descriptorContext.sharedSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
+		auto cullSrvHandle = m_descriptorContext.srvHandle;
+		cullSrvHandle.ptr += m_descriptorContext.cullSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
+
+		D3D12_RESOURCE_BARRIER preCullingDispatchBarriers[2]{};
+		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		frameTools.mainGraphicsCommandList->ResourceBarrier(2, preCullingDispatchBarriers);
+
+		// Resets count
+		frameTools.mainGraphicsCommandList->SetPipelineState(m_drawCountResetPso.Get());
+		frameTools.mainGraphicsCommandList->SetComputeRootDescriptorTable(0, cullSrvHandle);
+		frameTools.mainGraphicsCommandList->Dispatch(1, 1, 1);
+
+		// Cull pass
+		frameTools.mainGraphicsCommandList->SetComputeRootSignature(m_drawCullSignature.Get());
+		frameTools.mainGraphicsCommandList->SetComputeRootDescriptorTable(1, sharedSrvHandle);
+		frameTools.mainGraphicsCommandList->SetComputeRootDescriptorTable(0, cullSrvHandle);
+		frameTools.mainGraphicsCommandList->SetPipelineState(m_drawCull1Pso.Get());
+		frameTools.mainGraphicsCommandList->SetComputeRoot32BitConstant(2, 1000/*context.pResources->renderObjectCount*/, 0);
+		frameTools.mainGraphicsCommandList->Dispatch(BlitML::GetCompueShaderGroupSize(1000, 64), 1, 1);
+
+		D3D12_RESOURCE_BARRIER postCullingBarriers[2]{};
+		CreateResourcesTransitionBarrier(postCullingBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		CreateResourcesTransitionBarrier(postCullingBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		frameTools.mainGraphicsCommandList->ResourceBarrier(2, postCullingBarriers);
 
 		frameTools.mainGraphicsCommandList->SetGraphicsRootSignature(m_opaqueRootSignature.Get());
 		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
@@ -78,33 +116,19 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 		frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 
-		// Binds descriptors
-		ID3D12DescriptorHeap* opaqueSrvHeaps[] = { m_srvHeap.Get()};
-		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(1, opaqueSrvHeaps);
 		// Opaque graphics pipeline exclusive descriptors
 		auto opaqueSrvHandle = m_descriptorContext.srvHandle;
 		opaqueSrvHandle.ptr += m_descriptorContext.opaqueSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, opaqueSrvHandle);
 		// Shared descriptors
-		auto sharedSrvHandle = m_descriptorContext.srvHandle;
-		sharedSrvHandle.ptr += m_descriptorContext.sharedSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(1, sharedSrvHandle);
-
-		D3D12_RESOURCE_BARRIER indirectCommandReadBarriers[2]{};
-		//CreateResourcesTransitionBarrier(indirectCommandReadBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(), 
-			//)
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
-		
-		for (uint32_t i = 0; i < 1000; ++i)
-		{
-			frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, i, 0);
-			frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), 1/*context.pResources->renderObjectCount*/,
-				varBuffers.indirectDrawBuffer.buffer.Get(), offsetof(IndirectDrawCmd, command), nullptr/*varBuffers.indirectDrawCount.buffer.Get()*/, 0);
-		}
+		//frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), context.pResources->renderObjectCount,
+				//varBuffers.indirectDrawBuffer.buffer.Get(), offsetof(IndirectDrawCmd, command), varBuffers.indirectDrawCount.buffer.Get(), 0);
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
 

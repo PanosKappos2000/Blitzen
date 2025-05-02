@@ -133,6 +133,9 @@ namespace BlitzenDX12
     {
         uint32_t drawId;
         D3D12_DRAW_INDEXED_ARGUMENTS command;// 5 32bit integers
+
+        uint32_t padding0;
+        uint32_t padding1;
     };
 
 

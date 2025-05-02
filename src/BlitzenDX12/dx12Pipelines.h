@@ -14,21 +14,35 @@ namespace BlitzenDX12
     void CreateRootParameterCBV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister,
         UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility);
 
+    void CreateRootParameterUAV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility);
+
+    // Descriptor parameter to be passed to root parameter of type descriptor table
 	void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
 		UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace = 0);
 
+    // Single root signature creation for use by one or more pipelines
     uint8_t CreateRootSignature(ID3D12Device* device, ID3D12RootSignature** ppRootSignature,
         UINT numParameters, D3D12_ROOT_PARAMETER* pParameters,
         D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE,
         D3D_ROOT_SIGNATURE_VERSION rootSignatureVersion = D3D_ROOT_SIGNATURE_VERSION::D3D_ROOT_SIGNATURE_VERSION_1);
 
-    uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, ID3DBlob** shaderBlob);
+    // Compiles a specified shader inside the shader blob parameter
+    uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, const char* entryPoint, ID3DBlob** shaderBlob);
 
+    // Compiles a compute shader and creates its pipeline state object
+    uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const WCHAR* filename);
+
+    // Sets the most used values of a pso description 
     void CreateDefaultPsoDescription(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc);
 
+    // Creates a pipeline that draws a single static triangle
 	uint8_t CreateTriangleGraphicsPipeline(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12RootSignature>& rootSignature, ID3D12PipelineState** ppPso);
 
+    // Main drawing pipeline creation
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso);
+
+    // Creates the all shaders used for draw culling
+    uint8_t CreateCullingShaders(ID3D12Device* device, ID3D12RootSignature* cullingRootSignature, ID3D12PipelineState** ppCullPso);
 
     class ShaderIncludeHandler : public ID3DInclude 
     {

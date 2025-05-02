@@ -109,7 +109,6 @@ namespace BlitzenEngine
         uint32_t lodCount = 0;
 
         uint32_t vertexOffset; // Not used in the shaders but can hold the offset when loading
-        uint32_t padding0; // Explicit padding to 48 bytes total
     };
 
     // A mesh is a collection of one or more primitives.

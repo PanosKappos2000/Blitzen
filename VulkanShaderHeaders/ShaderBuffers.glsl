@@ -86,7 +86,6 @@ struct Surface
     uint lodCount;
 
     uint vertexOffset; // Not used in the shaders but is useful on the CPU (NOT CRUCIAL)
-    uint padding0; // Explicit padding to 48 bytes total
 };
 
 layout(set = 0, binding = 2, std430) readonly buffer SurfaceBuffer

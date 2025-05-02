@@ -115,7 +115,8 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature)
+	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature, 
+		ID3D12RootSignature** ppCullRootSignature, ID3D12RootSignature** ppResetSignature)
 	{
 		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueSrvRangeCount]{};
 		CreateDescriptorRange(opaqueSrvRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
@@ -127,15 +128,39 @@ namespace BlitzenDX12
 		CreateDescriptorRange(sharedSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
 
-		D3D12_ROOT_PARAMETER rootParameters[3] = {};
+		D3D12_ROOT_PARAMETER rootParameters[3]{};
 		CreateRootParameterDescriptorTable(rootParameters[0], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[1], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
-		//CreateRootParameterCBV(rootParameters[1], Ce_ViewDataBufferRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterPushConstants(rootParameters[2], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 
 		if (!CreateRootSignature(device, ppOpaqueRootSignature, 3, rootParameters))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
+			return 0;
+		}
+
+		D3D12_DESCRIPTOR_RANGE cullSrvRanges[Ce_CullSrvRangeCount]{};
+		CreateDescriptorRange(cullSrvRanges[Ce_IndirectCountBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectCountBufferDescriptorCount, Ce_IndirectCountBufferRegister);
+		CreateDescriptorRange(cullSrvRanges[Ce_LODBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_LODBufferDescriptorCount, Ce_LODBufferRegister);
+
+		D3D12_ROOT_PARAMETER drawCullRootParameters[3]{};
+		CreateRootParameterDescriptorTable(drawCullRootParameters[0], cullSrvRanges, Ce_CullSrvRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterDescriptorTable(drawCullRootParameters[1], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterPushConstants(drawCullRootParameters[2], 2, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+
+		if (!CreateRootSignature(device, ppCullRootSignature, 3, drawCullRootParameters))
+		{
+			BLIT_ERROR("Failed to create draw cull root signature");
+			return 0;
+		}
+
+		D3D12_DESCRIPTOR_RANGE resetRange{};
+		CreateDescriptorRange(resetRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectCountBufferDescriptorCount, Ce_IndirectCountBufferRegister);
+		D3D12_ROOT_PARAMETER resetShaderRootParameter{};
+		CreateRootParameterDescriptorTable(resetShaderRootParameter, &resetRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+		if (!CreateRootSignature(device, ppResetSignature, 1, &resetShaderRootParameter))
+		{
+			BLIT_ERROR("Failed to create draw count reset shader push constant");
 			return 0;
 		}
 
@@ -146,19 +171,19 @@ namespace BlitzenDX12
 	static uint8_t CreateCmdSignatures(ID3D12Device* device, ID3D12RootSignature* opaqueRootSignature, ID3D12CommandSignature** ppOpaqueCmdSignature)
 	{
 		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[2]{};
-		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
-		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-		indirectDescs[1].Constant.DestOffsetIn32BitValues = 0;
-		indirectDescs[1].Constant.Num32BitValuesToSet = 1;
-		indirectDescs[1].Constant.RootParameterIndex = 2;
+		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+		indirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
+		indirectDescs[0].Constant.Num32BitValuesToSet = 1;
+		indirectDescs[0].Constant.RootParameterIndex = 2;
 
 		D3D12_COMMAND_SIGNATURE_DESC sigDesc{};
 		sigDesc.NodeMask = 0;
-		sigDesc.NumArgumentDescs = 1;
+		sigDesc.NumArgumentDescs = 2;
 		sigDesc.pArgumentDescs = indirectDescs;
-		sigDesc.ByteStride = sizeof(IndirectDrawCmd);
-		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
+		sigDesc.ByteStride = sizeof(IndirectDrawCmd) + sizeof(uint32_t);
+		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, opaqueRootSignature, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
 		if (FAILED(opaqueCmdRes))
 		{
 			return LOG_ERROR_MESSAGE_AND_RETURN(opaqueCmdRes);
@@ -175,12 +200,27 @@ namespace BlitzenDX12
 
 		ID3D12RootSignature* drawCull1Root;
 		ID3D12PipelineState** ppDrawCull1Pso;
+
+		ID3D12RootSignature* resetRoot;
+		ID3D12PipelineState** ppResetPso;
 	};
 	static uint8_t CreatePipelines(ID3D12Device* device, PipelineCreationContext& context)
 	{
 		if (!CreateOpaqueGraphicsPipeline(device, context.opaqueRoot, context.ppOpaquePso))
 		{
 			BLIT_ERROR("Failed to create opaque grahics pipeline");
+			return 0;
+		}
+
+		if (!CreateComputeShaderProgram(device, context.drawCull1Root, context.ppDrawCull1Pso, L"HlslShaders/drawCull.cs.hlsl"))
+		{
+			BLIT_ERROR("Failed to create drawCull.cs shader program");
+			return 0;
+		}
+
+		if (!CreateComputeShaderProgram(device, context.resetRoot, context.ppResetPso, L"HlslShaders/drawCountReset.cs.hlsl"))
+		{
+			BLIT_ERROR("Failed to create drawCountReset.cs shader program");
 			return 0;
 		}
 
@@ -486,7 +526,8 @@ namespace BlitzenDX12
 	{
 		pResources->GenerateHlslVertices();
 
-		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf()))
+		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf(), m_drawCullSignature.ReleaseAndGetAddressOf(), 
+			m_drawCountResetRoot.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create root signatures");
 			return 0;
@@ -518,20 +559,11 @@ namespace BlitzenDX12
 		}
 
 		PipelineCreationContext pipelineContext{ m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf(), 
-			m_drawCullSignature.Get(), m_drawCull1Pso.ReleaseAndGetAddressOf()};
+			m_drawCullSignature.Get(), m_drawCull1Pso.ReleaseAndGetAddressOf(), m_drawCountResetRoot.Get(), m_drawCountResetPso.ReleaseAndGetAddressOf()};
 		if (!CreatePipelines(m_device.Get(), pipelineContext))
 		{
 			BLIT_ERROR("Failed to create graphics pipelines");
 			return 0;
-		}
-
-		for (auto& buffers : m_varBuffers)
-		{
-			if (!CreateTestIndirectCmds(m_device.Get(), m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), buffers, pResources))
-			{
-				BLIT_WARN("Failed to load tests for indirect draw buffer");
-				BLIT_WARN("This will not cause failure, but it might break the expected tests");
-			}
 		}
 
 		return 1;
@@ -581,7 +613,7 @@ namespace BlitzenDX12
 		{
 			// TODO: temporary before compute shaders, this should be unordered access first
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawBuffer.buffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			varBufferId++;
 		}
 
@@ -589,7 +621,7 @@ namespace BlitzenDX12
 		{
 			// TODO: temporary before compute shaders, this should be unordered access first
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawCount.buffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			varBufferId++;
 		}
 
