@@ -2,7 +2,11 @@
 
 Minimal Game Engine.
 
-Its most important aspect is its Vulkan Renderer, which uses GPU draw culling with compute shaders, that set the draw commands for actual rendering. Cluster culling without mesh shaders is also being developed. Currently, it can generate per cluster commands, after doing draw culling, but it does not cull the clusters yet. Ray tracing is also a secondary feature of the renderer. The renderer can accept loaded resources, that are requested from the command line arguments(gltf scene filepaths or some mode strings that load other tests). It has shown the capability of processing 4'000'000+ objects at the same time with 60+ fps on an NVidia 3060. Important to note is that it does not graphics effects like shadow maps and the fragment shader just uses directional light and textures. It has only been tested on Nvidia hardware. It is uncertain, for example, if it would work on an AMD GPU.
+Its most developed aspect is its Vulkan Renderer. It focuses on gpu driven rendering and culling with compute shaders. The renderer can accept loaded resources, that are requested from the command line arguments(gltf scene filepaths or some mode strings that load other tests). It has shown the capability of processing 4'000'000+ objects at the same time with 60+ fps on an NVidia 3060. Important to note is that it does not do graphics effects like shadow maps and the fragment shader just uses directional light and textures. Cluster culling without mesh shaders is also being developed.
+
+A DIRECT3D 12 backend is also being developed and can already draw a similar scene to what Vulkan is capable of with similar performance. The goal is to leverage Directx's ExecuteIndirect to perform cluster culling without CPU intervention.
+
+The render backends have only been tested on Nvidia hardware. It is uncertain, for example, if they would work on an AMD GPU.
 
 -To load obj models it uses the fast_obj library from thisistherk : https://github.com/thisistherk/fast_obj
 
