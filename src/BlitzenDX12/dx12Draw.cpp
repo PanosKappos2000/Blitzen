@@ -137,13 +137,10 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
 		UINT drawCmdOffset{ offsetof(IndirectDrawCmd, command) };
-		for (uint32_t i = 0; i < 1000; ++i)
-		{
-			frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, i, 0);
-			frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), 1,
-				varBuffers.indirectDrawBuffer.buffer.Get(), sizeof(IndirectDrawCmd) * i + drawCmdOffset,
-				nullptr, 0);
-		}
+
+		frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, 0, 0);
+		frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), 1000,
+			varBuffers.indirectDrawBuffer.buffer.Get(), 0, varBuffers.indirectDrawCount.buffer.Get(), 0);
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
 

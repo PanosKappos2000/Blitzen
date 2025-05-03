@@ -265,8 +265,8 @@ namespace BlitML
         res.data[5] = halfTanFov;
         if constexpr (BlitzenEngine::Ce_HLSL)
         {
-            res.data[14] = 1.0f;
-            res.data[11] = znear;
+            res.data[11] = 1.0f;
+            res.data[14] = znear;
         }
         else
         {

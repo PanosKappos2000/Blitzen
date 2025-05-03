@@ -14,9 +14,9 @@ struct Vertex
 };
 StructuredBuffer<Vertex> vertexBuffer : register(t0);
 
-cbuffer DrawId : register(b1)
+cbuffer ObjId : register(b1)
 {
-    uint drawId;
+    uint objId;
 }
 
 struct VSOutput
@@ -33,7 +33,7 @@ float3 RotateQuat(float3 v, float4 quat)
 VSOutput main(uint vertexIndex : SV_VERTEXID)
 {
     Vertex vtx = vertexBuffer[vertexIndex];
-    Render obj = renderBuffer[drawCmdBuffer[drawId].drawId];
+    Render obj = renderBuffer[objId];
 
     VSOutput output;
     float3 modelPos = RotateQuat(vtx.position, transformBuffer[obj.transformId].orientation) * transformBuffer[obj.transformId].scale + transformBuffer[obj.transformId].position;

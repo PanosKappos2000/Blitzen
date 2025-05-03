@@ -11,7 +11,7 @@ cbuffer ObjCountConstant: register (b2)
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
 {
-    uint objId = dispatchThreadID.x + dispatchGroupID.x * 64;
+    uint objId = dispatchThreadID.x;
 
     if(objId >= objCount)
     {

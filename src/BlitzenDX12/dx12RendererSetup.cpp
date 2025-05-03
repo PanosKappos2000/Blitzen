@@ -171,19 +171,19 @@ namespace BlitzenDX12
 	static uint8_t CreateCmdSignatures(ID3D12Device* device, ID3D12RootSignature* opaqueRootSignature, ID3D12CommandSignature** ppOpaqueCmdSignature)
 	{
 		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[2]{};
-		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
-		//indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-		//indirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
-		//indirectDescs[0].Constant.Num32BitValuesToSet = 1;
-		//indirectDescs[0].Constant.RootParameterIndex = 2;
+		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+		indirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
+		indirectDescs[0].Constant.Num32BitValuesToSet = 1;
+		indirectDescs[0].Constant.RootParameterIndex = 2;
 
 		D3D12_COMMAND_SIGNATURE_DESC sigDesc{};
 		sigDesc.NodeMask = 0;
-		sigDesc.NumArgumentDescs = 1;
+		sigDesc.NumArgumentDescs = 2;
 		sigDesc.pArgumentDescs = indirectDescs;
-		sigDesc.ByteStride = sizeof(IndirectDrawCmd); //+ sizeof(uint32_t);
-		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
+		sigDesc.ByteStride = sizeof(IndirectDrawCmd);
+		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, opaqueRootSignature, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
 		if (FAILED(opaqueCmdRes))
 		{
 			return LOG_ERROR_MESSAGE_AND_RETURN(opaqueCmdRes);
@@ -501,7 +501,7 @@ namespace BlitzenDX12
 				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));
 
 			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
-				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 1000, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
+				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 100000, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
 
 			vars.viewDataBuffer.cbvDesc = {};
 			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();
