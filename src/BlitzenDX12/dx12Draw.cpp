@@ -92,8 +92,8 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetComputeRootDescriptorTable(1, sharedSrvHandle);
 		frameTools.mainGraphicsCommandList->SetComputeRootDescriptorTable(0, cullSrvHandle);
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_drawCull1Pso.Get());
-		frameTools.mainGraphicsCommandList->SetComputeRoot32BitConstant(2, 100'000/*context.pResources->renderObjectCount*/, 0);
-		frameTools.mainGraphicsCommandList->Dispatch(BlitML::GetCompueShaderGroupSize(100'000, 64), 1, 1);
+		frameTools.mainGraphicsCommandList->SetComputeRoot32BitConstant(2, context.pResources->renderObjectCount, 0);
+		frameTools.mainGraphicsCommandList->Dispatch(BlitML::GetCompueShaderGroupSize(context.pResources->renderObjectCount, 64), 1, 1);
 
 		D3D12_RESOURCE_BARRIER postCullingBarriers[4]{};
 		CreateResourcesTransitionBarrier(postCullingBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
@@ -136,7 +136,6 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
-		UINT drawCmdOffset{ offsetof(IndirectDrawCmd, command) };
 
 		frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, 0, 0);
 		frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), Ce_IndirectDrawCmdBufferSize,

@@ -31,12 +31,14 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
     if(visible)
     {
+        uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
+
         uint cmdId;
         InterlockedAdd(drawCountBuffer[0], 1, cmdId);
         drawCmdBuffer[cmdId].objId = objId;
-        drawCmdBuffer[cmdId].indexCount = lodBuffer[0 + surface.lodOffset].indexCount;
+        drawCmdBuffer[cmdId].indexCount = lodBuffer[lodId].indexCount;
         drawCmdBuffer[cmdId].instCount = 1;
-        drawCmdBuffer[cmdId].indexOffset = lodBuffer[0 + surface.lodOffset].indexOffset;
+        drawCmdBuffer[cmdId].indexOffset = lodBuffer[lodId].indexOffset;
         drawCmdBuffer[cmdId].vertOffset = 0;
         drawCmdBuffer[cmdId].insOffset = 0;
     }
