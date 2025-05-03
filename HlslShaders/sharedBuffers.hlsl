@@ -33,7 +33,7 @@ StructuredBuffer<Render> renderBuffer : register(t4);
 
 struct DrawCmd
 {
-    uint drawId;// Index into render object buffer
+    uint objId;// Index into render object buffer
 
     // Draw command
     uint indexCount;
@@ -49,7 +49,7 @@ RWStructuredBuffer<DrawCmd> drawCmdBuffer : register(u0);
 
 cbuffer ViewData : register(b0)  
 {
-    float4x4 view;
+    float4x4 viewMatrix;
     float4x4 projectionView;
     float3 position;
 

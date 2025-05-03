@@ -1,4 +1,5 @@
 #include "HlslShaders/sharedBuffers.hlsl"
+#include "HlslShaders/hlslMath.hlsl"
 
 struct Vertex
 {
@@ -23,11 +24,6 @@ struct VSOutput
 {
     float4 position : SV_POSITION;
 };
-
-float3 RotateQuat(float3 v, float4 quat)
-{
-    return v + 2.0 * cross(quat.xyz, cross(quat.xyz, v) + quat.w * v);
-}
 
 // The main vertex shader function
 VSOutput main(uint vertexIndex : SV_VERTEXID)

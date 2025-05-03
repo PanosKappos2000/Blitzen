@@ -283,7 +283,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			UINT64 indirectBufferSize{ 100000 * sizeof(IndirectDrawCmd) };
+			UINT64 indirectBufferSize{ Ce_IndirectDrawCmdBufferSize * sizeof(IndirectDrawCmd) };
 			if (!CreateBuffer(device, buffers.indirectDrawBuffer.buffer.ReleaseAndGetAddressOf(), indirectBufferSize,
 				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
@@ -295,12 +295,6 @@ namespace BlitzenDX12
 				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
 				BLIT_ERROR("Failed to create indirect count buffer");
-				return 0;
-			}
-			if (!CreateBuffer(device, buffers.indirectDrawCount.staging.ReleaseAndGetAddressOf(), sizeof(uint32_t),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_READBACK))
-			{
-				BLIT_ERROR("Failed to create indirect count staging buffer");
 				return 0;
 			}
 
@@ -501,7 +495,8 @@ namespace BlitzenDX12
 				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));
 
 			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
-				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 100000, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
+				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 
+				Ce_IndirectDrawCmdBufferSize, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
 
 			vars.viewDataBuffer.cbvDesc = {};
 			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();

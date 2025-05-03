@@ -137,6 +137,7 @@ namespace BlitzenDX12
         uint32_t padding0;
         uint32_t padding1;
     };
+    constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 1'000'000;
 
 
 
