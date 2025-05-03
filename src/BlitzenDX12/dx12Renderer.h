@@ -32,7 +32,7 @@ namespace BlitzenDX12
         void DrawWhileWaiting();
         
         // CPU work while the GPU is busy. Call the fence at the end
-        void SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context);
+        void Update(const BlitzenEngine::DrawContext& context);
     
         // Speaks for itself
         void DrawFrame(BlitzenEngine::DrawContext& context);

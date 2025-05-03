@@ -612,7 +612,7 @@ namespace BlitzenVulkan
 
 
 
-    void VulkanRenderer::SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context)
+    void VulkanRenderer::Update(const BlitzenEngine::DrawContext& context)
     {
         auto pCamera = context.pCamera;
         if (pCamera->transformData.bWindowResize)

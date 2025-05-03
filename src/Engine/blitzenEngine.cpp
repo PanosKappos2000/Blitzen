@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
 			entities->UpdateDynamicObjects();
             
             // Render
-            renderer->SetupWhileWaitingForPreviousFrame(drawContext);
+            renderer->Update(drawContext);
             renderer->DrawFrame(drawContext);
         }
 

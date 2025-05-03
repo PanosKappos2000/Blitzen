@@ -31,7 +31,7 @@ namespace BlitzenVulkan
         // Shows a loading screen while waiting for resources to be loaded
         void DrawWhileWaiting();
 
-        void SetupWhileWaitingForPreviousFrame(const BlitzenEngine::DrawContext& context);
+        void Update(const BlitzenEngine::DrawContext& context);
 
         // Called each frame to draw the scene that is requested by the engine
         void DrawFrame(BlitzenEngine::DrawContext& context);

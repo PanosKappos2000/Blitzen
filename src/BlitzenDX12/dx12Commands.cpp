@@ -58,6 +58,28 @@ namespace BlitzenDX12
         }
         transferCommandList->Close();
 
+        // Dedicated transfer (used at runtime)
+        auto dedicatedTransferRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY,
+            IID_PPV_ARGS(dedicatedTransferAllocator.ReleaseAndGetAddressOf()));
+        if (FAILED(dedicatedTransferRes))
+        {
+            BLIT_ERROR("Failed to create transfer command allocator");
+            return LOG_ERROR_MESSAGE_AND_RETURN(dedicatedTransferRes);
+        }
+        // Transfer Command list
+        if (!CheckForDeviceRemoval(device))
+        {
+            return 0;
+        }
+        dedicatedTransferRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY,
+            dedicatedTransferAllocator.Get(), nullptr,
+            IID_PPV_ARGS(dedicatedTransferList.ReleaseAndGetAddressOf()));
+        if (FAILED(dedicatedTransferRes))
+        {
+            BLIT_ERROR("Failed to create transfer command list");
+            return LOG_ERROR_MESSAGE_AND_RETURN(dedicatedTransferRes);
+        }
+
 
 
         // Fence
