@@ -230,7 +230,7 @@ namespace BlitzenDX12
         UINT subresource/*=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES*/,
         D3D12_RESOURCE_BARRIER_FLAGS flags/*=D3D12_RESOURCE_BARRIER_FLAG_NONE*/)
     {
-        barrier = {};
+        barrier = {}; 
 
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags = flags;
@@ -238,7 +238,16 @@ namespace BlitzenDX12
         barrier.Transition.StateBefore = stateBefore;
         barrier.Transition.StateAfter = stateAfter;
         barrier.Transition.Subresource = subresource;
+    }
 
+    void CreateResourceUAVBarrier(D3D12_RESOURCE_BARRIER& barrier, ID3D12Resource* pResource, 
+        D3D12_RESOURCE_BARRIER_FLAGS flags /*=D3D12_RESOURCE_BARRIER_FLAG_NONE*/)
+    {
+        barrier = {};
+
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barrier.UAV.pResource = pResource;
+        barrier.Flags = flags;
     }
 
     UINT64 CreateIndexBuffer(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>& indexBuffer, DX12WRAPPER<ID3D12Resource>& stagingBuffer,

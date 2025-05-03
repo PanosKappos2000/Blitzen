@@ -171,19 +171,19 @@ namespace BlitzenDX12
 	static uint8_t CreateCmdSignatures(ID3D12Device* device, ID3D12RootSignature* opaqueRootSignature, ID3D12CommandSignature** ppOpaqueCmdSignature)
 	{
 		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[2]{};
-		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
-		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-		indirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
-		indirectDescs[0].Constant.Num32BitValuesToSet = 1;
-		indirectDescs[0].Constant.RootParameterIndex = 2;
+		//indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+		//indirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
+		//indirectDescs[0].Constant.Num32BitValuesToSet = 1;
+		//indirectDescs[0].Constant.RootParameterIndex = 2;
 
 		D3D12_COMMAND_SIGNATURE_DESC sigDesc{};
 		sigDesc.NodeMask = 0;
-		sigDesc.NumArgumentDescs = 2;
+		sigDesc.NumArgumentDescs = 1;
 		sigDesc.pArgumentDescs = indirectDescs;
-		sigDesc.ByteStride = sizeof(IndirectDrawCmd) + sizeof(uint32_t);
-		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, opaqueRootSignature, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
+		sigDesc.ByteStride = sizeof(IndirectDrawCmd); //+ sizeof(uint32_t);
+		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
 		if (FAILED(opaqueCmdRes))
 		{
 			return LOG_ERROR_MESSAGE_AND_RETURN(opaqueCmdRes);
@@ -283,7 +283,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			UINT64 indirectBufferSize{ 1000 * sizeof(IndirectDrawCmd) };
+			UINT64 indirectBufferSize{ 100000 * sizeof(IndirectDrawCmd) };
 			if (!CreateBuffer(device, buffers.indirectDrawBuffer.buffer.ReleaseAndGetAddressOf(), indirectBufferSize,
 				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
@@ -295,6 +295,12 @@ namespace BlitzenDX12
 				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
 				BLIT_ERROR("Failed to create indirect count buffer");
+				return 0;
+			}
+			if (!CreateBuffer(device, buffers.indirectDrawCount.staging.ReleaseAndGetAddressOf(), sizeof(uint32_t),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_READBACK))
+			{
+				BLIT_ERROR("Failed to create indirect count staging buffer");
 				return 0;
 			}
 

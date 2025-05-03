@@ -68,17 +68,24 @@ namespace BlitzenDX12
 		auto cullSrvHandle = m_descriptorContext.srvHandle;
 		cullSrvHandle.ptr += m_descriptorContext.cullSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
 
-		D3D12_RESOURCE_BARRIER preCullingDispatchBarriers[2]{};
+		// Reource barrier before count is reset and commands are rewritten
+		D3D12_RESOURCE_BARRIER preCullingDispatchBarriers[4]{};
 		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
 			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		frameTools.mainGraphicsCommandList->ResourceBarrier(2, preCullingDispatchBarriers);
+		CreateResourceUAVBarrier(preCullingDispatchBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		CreateResourceUAVBarrier(preCullingDispatchBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
+		frameTools.mainGraphicsCommandList->ResourceBarrier(4, preCullingDispatchBarriers);
 
 		// Resets count
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_drawCountResetPso.Get());
 		frameTools.mainGraphicsCommandList->SetComputeRootDescriptorTable(0, cullSrvHandle);
 		frameTools.mainGraphicsCommandList->Dispatch(1, 1, 1);
+
+		D3D12_RESOURCE_BARRIER drawCountResetBarrier{};
+		CreateResourceUAVBarrier(drawCountResetBarrier, varBuffers.indirectDrawCount.buffer.Get());
+		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &drawCountResetBarrier);
 
 		// Cull pass
 		frameTools.mainGraphicsCommandList->SetComputeRootSignature(m_drawCullSignature.Get());
@@ -88,12 +95,14 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetComputeRoot32BitConstant(2, 1000/*context.pResources->renderObjectCount*/, 0);
 		frameTools.mainGraphicsCommandList->Dispatch(BlitML::GetCompueShaderGroupSize(1000, 64), 1, 1);
 
-		D3D12_RESOURCE_BARRIER postCullingBarriers[2]{};
+		D3D12_RESOURCE_BARRIER postCullingBarriers[4]{};
 		CreateResourcesTransitionBarrier(postCullingBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 		CreateResourcesTransitionBarrier(postCullingBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		frameTools.mainGraphicsCommandList->ResourceBarrier(2, postCullingBarriers);
+		CreateResourceUAVBarrier(postCullingBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		CreateResourceUAVBarrier(postCullingBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
+		frameTools.mainGraphicsCommandList->ResourceBarrier(4, postCullingBarriers);
 
 		frameTools.mainGraphicsCommandList->SetGraphicsRootSignature(m_opaqueRootSignature.Get());
 		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
@@ -127,8 +136,14 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
-		//frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), context.pResources->renderObjectCount,
-				//varBuffers.indirectDrawBuffer.buffer.Get(), offsetof(IndirectDrawCmd, command), varBuffers.indirectDrawCount.buffer.Get(), 0);
+		UINT drawCmdOffset{ offsetof(IndirectDrawCmd, command) };
+		for (uint32_t i = 0; i < 1000; ++i)
+		{
+			frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, i, 0);
+			frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), 1,
+				varBuffers.indirectDrawBuffer.buffer.Get(), sizeof(IndirectDrawCmd) * i + drawCmdOffset,
+				nullptr, 0);
+		}
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
 

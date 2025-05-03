@@ -72,7 +72,7 @@ namespace BlitzenDX12
         {
             VarSSBO transformBuffer;
             SSBO indirectDrawBuffer;
-            SSBO indirectDrawCount;
+            VarSSBO indirectDrawCount;
 
             CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
         };

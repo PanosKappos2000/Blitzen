@@ -9,9 +9,9 @@ cbuffer ObjCountConstant: register (b2)
 };
 
 [numthreads(64, 1, 1)]
-void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
+void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
 {
-    uint objId = dispatchThreadID.x;
+    uint objId = dispatchThreadID.x + dispatchGroupID.x * 64;
 
     if(objId >= objCount)
     {
@@ -21,8 +21,8 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     Render obj = renderBuffer[objId];
     Surface surface = surfaceBuffer[obj.surfaceId];
 
-    uint cmdId = drawCountBuffer[0]; 
-    InterlockedAdd(drawCountBuffer[0], 1);
+    uint cmdId;
+    InterlockedAdd(drawCountBuffer[0], 1, cmdId);
     drawCmdBuffer[cmdId].drawId = objId;
     drawCmdBuffer[cmdId].indexCount = lodBuffer[0 + surface.lodOffset].indexCount;
     drawCmdBuffer[cmdId].instCount = 1;
