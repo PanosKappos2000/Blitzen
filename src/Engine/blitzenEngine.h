@@ -34,6 +34,7 @@ namespace BlitzenEngine
 	constexpr const char* ce_defaultMeshName = "bunny";
     constexpr uint32_t ce_maxRenderObjects = 5'000'000;
     constexpr uint32_t ce_maxONPC_Objects = 100;
+    constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;
     #ifdef BLITZEN_CLUSTER_CULLING
         constexpr uint8_t Ce_BuildClusters = 1;
     #else
@@ -45,8 +46,6 @@ namespace BlitzenEngine
         constexpr bool Ce_HLSL = 0;
     #endif
     
-    // Entity settings
-    constexpr uint32_t ce_maxObjectCount = 1'000;
 
     constexpr const char* ce_blitzenVersion = "Blitzen Engine";
     constexpr uint32_t ce_blitzenMajor = 0;

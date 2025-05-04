@@ -125,10 +125,12 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12Resource> staging{ nullptr };
         void* pData{ nullptr };
+        uint32_t dataCopySize{ 0 };
     };
 
 
 
+    // Draw Indirect command struct (passed to the shaders)
     struct IndirectDrawCmd
     {
         uint32_t drawId;
@@ -137,6 +139,7 @@ namespace BlitzenDX12
         uint32_t padding0;
         uint32_t padding1;
     };
+    static_assert(sizeof(IndirectDrawCmd) % 16 == 0);
     constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 1'000'000;
 
 
