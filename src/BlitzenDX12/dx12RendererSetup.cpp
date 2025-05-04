@@ -594,14 +594,7 @@ namespace BlitzenDX12
 			Creates a barrier for each copy of a var buffer. Uses varBufferId to keep track of the array element
 		*/
 		uint32_t varBufferId = 0;
-		D3D12_RESOURCE_BARRIER varBuffersFinalState[4 * ce_framesInFlight];
-		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].transformBuffer.buffer.Get(),
-				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			varBufferId++;
-		}
-
+		D3D12_RESOURCE_BARRIER varBuffersFinalState[3 * ce_framesInFlight];
 		// TODO: Consider making the viewDataBuffer gpu only, there alot of reads to it in the shaders, I am not feeling it.
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{

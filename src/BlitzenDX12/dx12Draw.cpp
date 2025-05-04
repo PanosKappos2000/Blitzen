@@ -3,11 +3,28 @@
 
 namespace BlitzenDX12
 {
-	static void UpdateBuffers(Dx12Renderer::FrameTools& frameTools, Dx12Renderer::VarBuffers& varBuffers, BlitzenEngine::Camera* pCamera)
+	static void UpdateBuffers(Dx12Renderer::FrameTools& frameTools, Dx12Renderer::VarBuffers& varBuffers, 
+		BlitzenEngine::Camera* pCamera, ID3D12CommandQueue* commandQueue)
 	{
 		*varBuffers.viewDataBuffer.pData = pCamera->viewData;
 
-		// TODO: Update transform buffer
+		frameTools.transferCommandAllocator->Reset();
+		frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
+		
+		frameTools.transferCommandList->CopyBufferRegion(varBuffers.transformBuffer.buffer.Get(), 0, varBuffers.transformBuffer.staging.Get(), 0, 4'100'000);
+		
+		frameTools.transferCommandList->Close();
+		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
+		commandQueue->ExecuteCommandLists(1, commandLists);
+		
+		const UINT64 fence = frameTools.copyFenceValue++;
+		commandQueue->Signal(frameTools.copyFence.Get(), fence);
+		// Waits for the previous frame
+		if (frameTools.copyFence->GetCompletedValue() < fence)
+		{
+			frameTools.copyFence->SetEventOnCompletion(fence, frameTools.copyFenceEvent);
+			WaitForSingleObject(frameTools.copyFenceEvent, INFINITE);
+		}
 	}
 
 	static void DefineViewportAndScissor(ID3D12GraphicsCommandList* commandList, float width, float height)
@@ -112,11 +129,17 @@ namespace BlitzenDX12
 			WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
 		}
 
-		UpdateBuffers(frameTools, varBuffers, context.pCamera);
+		// Dynamic buffers
+		UpdateBuffers(frameTools, varBuffers, context.pCamera, m_transferCommandQueue.Get());
 
 		UINT swapchainIndex = m_swapchain->GetCurrentBackBufferIndex();
 		frameTools.mainGraphicsCommandAllocator->Reset();
 		frameTools.mainGraphicsCommandList->Reset(frameTools.mainGraphicsCommandAllocator.Get(), m_trianglePso.Get());
+
+		D3D12_RESOURCE_BARRIER transformAfterCopyBarrier{};
+		CreateResourcesTransitionBarrier(transformAfterCopyBarrier, varBuffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformAfterCopyBarrier);
 
 		auto sharedSrvHandle = m_descriptorContext.srvHandle;
 		sharedSrvHandle.ptr += m_descriptorContext.sharedSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
@@ -164,6 +187,11 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, 0, 0);
 		frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), Ce_IndirectDrawCmdBufferSize,
 			varBuffers.indirectDrawBuffer.buffer.Get(), 0, varBuffers.indirectDrawCount.buffer.Get(), 0);
+
+		D3D12_RESOURCE_BARRIER transformCopyBarrier{};
+		CreateResourcesTransitionBarrier(transformCopyBarrier, varBuffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 
+			D3D12_RESOURCE_STATE_COPY_DEST);
+		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformCopyBarrier);
 
 		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
 
