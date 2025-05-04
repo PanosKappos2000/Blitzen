@@ -277,7 +277,9 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateVarSSBO(device, buffers.transformBuffer, transforms.GetSize(), transforms.Data()))
+			DX12WRAPPER<ID3D12Resource> transformStaging;
+			if (!CreateVarSSBO(device, buffers.transformBuffer, transformStaging, transforms.GetSize(), transforms.Data(), 
+				pResources->dynamicTransformCount))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
 				return 0;
@@ -301,12 +303,13 @@ namespace BlitzenDX12
 			frameTools.transferCommandAllocator->Reset();
 			frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
 
-			D3D12_RESOURCE_BARRIER copyBarriers[2]{};
+			D3D12_RESOURCE_BARRIER copyBarriers[3]{};
 			CreateResourcesTransitionBarrier(copyBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-			CreateResourcesTransitionBarrier(copyBarriers[1], buffers.transformBuffer.staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			CreateResourcesTransitionBarrier(copyBarriers[1], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			CreateResourcesTransitionBarrier(copyBarriers[2], buffers.transformBuffer.staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			frameTools.transferCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(copyBarriers), copyBarriers);
 
-			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), buffers.transformBuffer.staging.Get());
+			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), transformStaging.Get());
 
 			frameTools.transferCommandList->Close();
 			ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };

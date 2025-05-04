@@ -49,15 +49,14 @@ namespace BlitzenEngine
         {
             if (m_objectCount >= Ce_MaxDynamicObjectCount)
             {
-                BLIT_ERROR("Maximum object count reached")
-                    return 0;
+                BLIT_ERROR("Maximum object count reached");
+                return false;
             }
 
+            // Adds a derived game object
             auto& entity = m_gameObjects[m_objectCount++];
-            entity.MakeAs<T>(args...);// Adds a derived game object to the array
-            entity->m_transformId = pResources->AddRenderObjectsFromMesh(
-                entity->m_meshId, initialTransform
-            );
+            entity.MakeAs<T>(args...);
+            entity->m_transformId = pResources->AddRenderObjectsFromMesh(entity->m_meshId, initialTransform, entity->IsDynamic());
 
             if (entity->IsDynamic())
             {

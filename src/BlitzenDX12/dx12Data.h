@@ -125,7 +125,7 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12Resource> staging{ nullptr };
         void* pData{ nullptr };
-        uint32_t dataCopySize{ 0 };
+        size_t dataCopySize{ 0 };
     };
 
 

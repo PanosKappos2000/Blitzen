@@ -64,21 +64,21 @@ namespace BlitzenEngine
 		{
 			return m_lods;
 		}
-      
+     
+    /*
+        Per instance data
+    */
     public:
-
-        /*
-            Per instance data
-        */
-        // Holds the transforms of every render object / instance on the scene 
-        BlitCL::DynamicArray<MeshTransform> transforms;
+ 
+        BlitCL::DynamicArray<MeshTransform> transforms{ Ce_MaxDynamicObjectCount };
+        uint32_t dynamicTransformCount{ 0 };
 
         // Holds all the render objects / primitives. They index into one primitive and one transform each
         RenderObject renders[ce_maxRenderObjects];
-        uint32_t renderObjectCount = 0; 
+        uint32_t renderObjectCount{ 0 };
 
         RenderObject onpcReflectiveRenderObjects[ce_maxONPC_Objects];
-        uint32_t onpcReflectiveRenderObjectCount = 0;
+        uint32_t onpcReflectiveRenderObjectCount{ 0 };
         
         // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives.
         Mesh meshes[ce_maxMeshCount];
@@ -96,13 +96,12 @@ namespace BlitzenEngine
     public:
 
         // Takes a mesh id and adds a render object based on that ID and a transform
-        uint32_t AddRenderObjectsFromMesh(uint32_t meshId, const BlitzenEngine::MeshTransform& transform);
+        uint32_t AddRenderObjectsFromMesh(uint32_t meshId, const BlitzenEngine::MeshTransform& transform, bool isDynamic);
 
         // Takes a filepath and adds a mesh
         uint8_t LoadMeshFromObj(const char* filename, const char* meshName);
 
-        void DefineMaterial(const BlitML::vec4& diffuseColor,
-            float shininess, const char* diffuseMapName,
+        void DefineMaterial(const BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName,
             const char* specularMapName, const char* materialName);
 
         bool CreateRenderObject(uint32_t transformId, uint32_t surfaceId);
@@ -292,11 +291,6 @@ namespace BlitzenEngine
                 LoadTextureFromFile(path.c_str(), path.c_str(), pRenderer);
             }
         }
-
-
-    private:
-
-		static RenderingResources* s_pResources;
     
     /*
         Textures and materials
@@ -318,30 +312,32 @@ namespace BlitzenEngine
     */
     private:
 
-        // Holds all the primitives / surfaces
         BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;
-
         BlitCL::DynamicArray<LodData> m_lods;
 
-        // Holds the vertex count of each primitive. This does not need to be passed to shader for now. But I do need it for ray tracing
+        // Holds the vertex count of each primitive. 
+        // This does not need to be passed to shader for now. 
+        // But I do need it for ray tracing
         BlitCL::DynamicArray<uint32_t> m_primitiveVertexCounts;
 
-        // Holds the vertices of all the primitives that were loaded
         BlitCL::DynamicArray<Vertex> m_vertices;
         BlitCL::DynamicArray<HlslVtx> m_hlslVtxs;
-
-        // Holds the indices of all the primitives that were loaded
         BlitCL::DynamicArray<uint32_t> m_indices;
 
-        // Holds all clusters for all the primitives that were loaded
         BlitCL::DynamicArray<Cluster> m_clusters;
-
-        // Holds the meshlet indices to index into the clusters above
+        // Cluster index buffer
         BlitCL::DynamicArray<uint32_t> m_clusterIndices;
-
+    
+    /*
+        Per object data
+    */
     private:
 
         BlitCL::DynamicArray<RenderObject> m_transparentRenders;
+
+    private:
+
+        static RenderingResources* s_pResources;
     };
 
 

@@ -88,10 +88,10 @@ int main(int argc, char* argv[])
 	entities.Make();
 
     // Loading resources
-    std::thread loadingThread{ [&]() {
-        LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(),
-            entities.Data(), mainCamera);
-    }};
+    std::thread loadingThread{ [&]() 
+        {
+            LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(), entities.Data(), mainCamera);
+        }};
     loadingThread.detach();
 
 

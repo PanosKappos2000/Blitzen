@@ -11,7 +11,7 @@ namespace BlitzenDX12
 		frameTools.transferCommandAllocator->Reset();
 		frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
 		
-		frameTools.transferCommandList->CopyBufferRegion(varBuffers.transformBuffer.buffer.Get(), 0, varBuffers.transformBuffer.staging.Get(), 0, 4'100'000);
+		frameTools.transferCommandList->CopyBufferRegion(varBuffers.transformBuffer.buffer.Get(), 0, varBuffers.transformBuffer.staging.Get(), 0, varBuffers.transformBuffer.dataCopySize);
 		
 		frameTools.transferCommandList->Close();
 		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };

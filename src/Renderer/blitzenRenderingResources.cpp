@@ -377,7 +377,7 @@ namespace BlitzenEngine
     {
         if (renderObjectCount >= ce_maxRenderObjects)
         {
-            BLIT_FATAL("Max render object count reached");
+            BLIT_ERROR("Max render object count reached");
             return false;
         }
 
@@ -476,7 +476,7 @@ namespace BlitzenEngine
     }
 
     uint32_t RenderingResources::AddRenderObjectsFromMesh(uint32_t meshId,
-        const BlitzenEngine::MeshTransform& transform)
+        const BlitzenEngine::MeshTransform& transform, bool bDynamic)
     {
         auto& mesh = meshes[meshId];
         if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
@@ -488,7 +488,16 @@ namespace BlitzenEngine
         }
 
         auto transformId = static_cast<uint32_t>(transforms.GetSize());
-        transforms.PushBack(transform);
+        if (bDynamic)
+        {
+            transformId = dynamicTransformCount;
+            transforms[dynamicTransformCount++] = transform;
+        }
+        else
+        {
+            transforms.PushBack(transform);
+        }
+        
         for (auto i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
         {
 			CreateRenderObject(transformId, i);
@@ -497,8 +506,7 @@ namespace BlitzenEngine
         return transformId;
     }
 
-    void RenderingResources::AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& gltfMesh, 
-        uint32_t previousMaterialCount)
+    void RenderingResources::AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount)
     {
         for (size_t j = 0; j < gltfMesh.primitives_count; ++j)
         {
@@ -507,8 +515,7 @@ namespace BlitzenEngine
             // Skips primitives that do not consist of triangles
             if (prim.type != cgltf_primitive_type_triangles || !prim.indices)
             {
-                BLIT_ERROR("Blitzen supports only primitives with \
-                    cgltf_primitive_type_triangles flags set and with indices")
+                BLIT_ERROR("Blitzen supports only primitives with cgltf_primitive_type_triangles flags set and with indices");
                 continue;
             }
 
@@ -580,8 +587,7 @@ namespace BlitzenEngine
             // Get the material index and pass it to the surface if there is material index
             if (prim.material)
             {
-                m_surfaces.Back().materialId = m_materials[previousMaterialCount +
-                    cgltf_material_index(pGltfData, prim.material)].materialId;
+                m_surfaces.Back().materialId = m_materials[previousMaterialCount + cgltf_material_index(pGltfData, prim.material)].materialId;
 
                 if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
                 {
@@ -632,40 +638,35 @@ namespace BlitzenEngine
     {
         for (size_t i = 0; i < pGltfData->materials_count; ++i)
         {
-            cgltf_material& cgltf_mat = pGltfData->materials[i];
+            auto& cgltf_mat = pGltfData->materials[i];
 
-            Material& mat = m_materials[m_materialCount++];
+            auto& mat = m_materials[m_materialCount++];
             mat.materialId = m_materialCount - 1;
 
             mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
                 uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.pbr_metallic_roughness.base_color_texture.texture
-                ))
+                    cgltf_mat.pbr_metallic_roughness.base_color_texture.texture))
                 : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
                 uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture
-                ))
+                    cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture))
                 : 0;
 
             mat.normalTag =
                 cgltf_mat.normal_texture.texture ?
                 uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.normal_texture.texture
-                ))
+                    cgltf_mat.normal_texture.texture))
                 : 0;
 
             mat.specularTag =
                 cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ?
                 uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture
-                ))
+                    cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture))
                 : 0;
 
             mat.emissiveTag =
                 cgltf_mat.emissive_texture.texture ?
                 uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.emissive_texture.texture
-                ))
+                    cgltf_mat.emissive_texture.texture))
                 : 0;
 
         }
@@ -690,29 +691,18 @@ namespace BlitzenEngine
 		transform.pos = BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ);
 		transform.scale = 10.f;
 		transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
-        AddRenderObjectsFromMesh(meshMap["kitten"].meshId, transform);
+        AddRenderObjectsFromMesh(meshMap["kitten"].meshId, transform, false);
 		
     }
 
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
     {
-        transform.pos = BlitML::vec3(
-            (float(rand()) / RAND_MAX) * multiplier,//x 
-            (float(rand()) / RAND_MAX) * multiplier,//y
-            (float(rand()) / RAND_MAX) * multiplier
-        );
+        transform.pos = BlitML::vec3((float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier);
 
         transform.scale = scale;
 
-        transform.orientation = BlitML::QuatFromAngleAxis(
-            BlitML::vec3(
-                (float(rand()) / RAND_MAX) * 2 - 1, // x
-                (float(rand()) / RAND_MAX) * 2 - 1, // y
-                (float(rand()) / RAND_MAX) * 2 - 1
-            ),
-            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), // Angle 
-            0
-        );
+        transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3((float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1),
+            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), 0);
     }
 
     static void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderingResources* pResources,
@@ -720,7 +710,7 @@ namespace BlitzenEngine
     {
 		if (pResources->renderObjectCount >= ce_maxRenderObjects)
 		{
-			BLIT_WARN("Max render object count reached")
+            BLIT_WARN("Max render object count reached");
 			return;
 		}
 
@@ -728,20 +718,20 @@ namespace BlitzenEngine
 		auto& currentMesh = pResources->meshes[meshId];
         if (currentMesh.surfaceCount > 1)
 		{
-			BLIT_WARN("Only meshes with one primitive are allowed")
+            BLIT_WARN("Only meshes with one primitive are allowed");
 			return;
 		}
 
-        // Creates a new transform, radomizes and creates surface based on it
+        // Creates a new transform, radomizes and creates render object based on it
         BlitzenEngine::MeshTransform transform;
         RandomizeTransform(transform, randomTransformMultiplier, scale);
-		uint32_t transformId = static_cast<uint32_t>(pResources->transforms.GetSize());
+		auto transformId = static_cast<uint32_t>(pResources->transforms.GetSize());
         pResources->transforms.PushBack(transform);
         pResources->CreateRenderObject(transformId, pResources->meshes[meshId].firstSurface);
     }
 
     // Creates the rendering stress test scene. 
-    // TODO: This function is unsafe, calling it after another function that create render object will cause issues
+    // TODO: This function is unsafe, calling it after another function that creates render object will cause issues
     void LoadGeometryStressTest(RenderingResources* pResources)
     {
         // Don't load the stress test if ray tracing is on
@@ -762,25 +752,25 @@ namespace BlitzenEngine
 		uint32_t start = pResources->renderObjectCount;
 
         // Bunnies
-        for(size_t i = start; i < start + bunnyCount; ++i)
+        for(uint32_t i = start; i < start + bunnyCount; ++i)
         {
 			CreateRenderObjectWithRandomTransform(0, pResources, ce_stressTestRandomTransformMultiplier, 5.f);
         }
         start += bunnyCount;
         // Kittens
-        for (size_t i = start; i < start + kittenCount; ++i)
+        for (uint32_t i = start; i < start + kittenCount; ++i)
         {
             CreateRenderObjectWithRandomTransform(2, pResources, ce_stressTestRandomTransformMultiplier, 1.f);
         }
         // Standford dragons
         start += kittenCount;
-        for (size_t i = start; i < start + dragonCount; ++i)
+        for (uint32_t i = start; i < start + dragonCount; ++i)
         {
 			CreateRenderObjectWithRandomTransform(1, pResources, ce_stressTestRandomTransformMultiplier, 0.5f);
         }
         // Humans
         start += dragonCount;
-        for (size_t i = start; i < start + maleCount; ++i)
+        for (uint32_t i = start; i < start + maleCount; ++i)
         {
 			CreateRenderObjectWithRandomTransform(3, pResources, ce_stressTestRandomTransformMultiplier, 0.2f);
         }
@@ -795,10 +785,7 @@ namespace BlitzenEngine
         transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
         pResources->transforms.PushBack(transform);
 
-        RenderObject& currentObject = 
-            pResources->onpcReflectiveRenderObjects[
-                pResources->onpcReflectiveRenderObjectCount++
-            ];
+        auto& currentObject = pResources->onpcReflectiveRenderObjects[pResources->onpcReflectiveRenderObjectCount++];
         currentObject.surfaceId = pResources->meshes[3].firstSurface;
         currentObject.transformId = static_cast<uint32_t>(pResources->transforms.GetSize() - 1);
 

@@ -101,14 +101,15 @@ namespace BlitzenEngine
         RenderingResources* pResources, RT* pRenderer, MT* pManager)
     {
         LoadTestGeometry(pResources);
-#if defined(BLIT_DYNAMIC_OBJECT_TEST)
         //pResources->CreateSingleObjectForTesting();
+
+        #if defined(BLIT_DYNAMIC_OBJECT_TEST)
         CreateDynamicObjectRendererTest(pResources, pManager);
-#endif
+        #endif
+
         if (argc > 1)
         {
-            
-            // Special argument. Loads heavy scene to stress test the culling
+            // Special argument. Loads heavy scene to stress test the culling algorithms
             if (strcmp(argv[1], "RenderingStressTest") == 0)
             {
                 LoadGeometryStressTest(pResources);

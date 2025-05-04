@@ -65,7 +65,8 @@ namespace BlitzenDX12
     }
 
     template<typename DATA>
-    UINT64 CreateVarSSBO(ID3D12Device* device, VarSSBO& ssbo, size_t elementCount,DATA* data)
+    UINT64 CreateVarSSBO(ID3D12Device* device, VarSSBO& ssbo, DX12WRAPPER<ID3D12Resource>& tempStaging, 
+        size_t elementCount, DATA* data, UINT persistentStagingBufferSize)
     {
         // SSBO (GPU side buffer)
         if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
@@ -75,18 +76,32 @@ namespace BlitzenDX12
         }
 
         // Staging buffer (CPU side buffer)
-        if (!CreateBuffer(device, ssbo.staging.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
+        if (!CreateBuffer(device, tempStaging.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
             D3D12_HEAP_TYPE_UPLOAD))
         {
             return 0;
         }
         // Staging buffer holds the data for the SSBO
-        auto mappingRes{ ssbo.staging->Map(0, nullptr, &ssbo.pData) };
+        void* pMappedData{ nullptr };
+        auto mappingRes{ tempStaging->Map(0, nullptr, &pMappedData) };
         if (FAILED(mappingRes))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
         }
-        BlitzenCore::BlitMemCopy(ssbo.pData, data, sizeof(DATA) * elementCount);
+        BlitzenCore::BlitMemCopy(pMappedData, data, sizeof(DATA) * elementCount);
+
+        if (!CreateBuffer(device, ssbo.staging.ReleaseAndGetAddressOf(), sizeof(DATA) * persistentStagingBufferSize,
+            D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+        {
+            return 0;
+        }
+        mappingRes = ssbo.staging->Map(0, nullptr, &ssbo.pData);
+        if (FAILED(mappingRes))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+        }
+        ssbo.dataCopySize = sizeof(DATA) * persistentStagingBufferSize;
+        BlitzenCore::BlitMemCopy(ssbo.pData, data, ssbo.dataCopySize);
 
         // Success
         return sizeof(DATA) * elementCount;
