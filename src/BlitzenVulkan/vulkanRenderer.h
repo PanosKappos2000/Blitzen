@@ -135,11 +135,6 @@ namespace BlitzenVulkan
         VmaAllocator m_allocator;
         VkDevice m_device;
 
-    private:
-
-        // TODO: Remove this 
-        uint8_t StaticBuffersInit(BlitzenEngine::RenderingResources* pResources);
-
         /*
             API initialization handles section
         */

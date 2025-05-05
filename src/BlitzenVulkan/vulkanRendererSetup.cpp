@@ -709,6 +709,306 @@ namespace BlitzenVulkan
         return 1;
     }
 
+    static uint8_t StaticBuffersInit(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue transferQueue,
+        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::RenderingResources* pResources, VulkanStats& stats)
+    {
+        // The renderer is allow to continue even without render objects but this function should not do anything
+        if (pResources->renderObjectCount == 0)
+        {
+            BLIT_WARN("No objects given to the renderer");
+            return 1;// I don't want to fail the application here, it is just handled differently, but it is pretty stupid and has probably broken
+        }
+
+        constexpr uint32_t SingleElementBuffer = 1;
+
+        const auto& vertices = pResources->GetVerticesArray();
+        const auto& indices = pResources->GetIndicesArray();
+        auto pRenderObjects = pResources->renders;
+        auto renderObjectCount = pResources->renderObjectCount;
+        const auto& surfaces = pResources->GetSurfaceArray();
+        auto pMaterials = pResources->GetMaterialArrayPointer();
+        auto materialCount = pResources->GetMaterialCount();
+        const auto& clusters = pResources->GetClusterArray();
+        const auto& clusterData = pResources->GetClusterIndices();
+        auto pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
+        auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
+        auto& transforms = pResources->transforms;
+        const auto& transparentRenderobjects = pResources->GetTranparentRenders();
+        const auto& lodData = pResources->GetLodData();
+
+
+        auto bRT{ stats.bRayTracingSupported };
+        uint32_t geometryBuffersRaytracingFlags = bRT ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT : 0;
+
+        // Creates vertex buffer
+        AllocatedBuffer stagingVertexBuffer;
+        auto vertexBufferSize
+        {
+            SetupPushDescriptorBuffer(device, vma, staticBuffers.vertexBuffer, stagingVertexBuffer, vertices.GetSize(),
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryBuffersRaytracingFlags, vertices.Data())
+        };
+        if (vertexBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create vertex buffer");
+            return 0;
+        }
+
+        // Global index buffer
+        AllocatedBuffer stagingIndexBuffer;
+        VkDeviceSize indexBufferSize = indices.GetSize() * sizeof(uint32_t);
+        if (!CreateStorageBufferWithStagingBuffer(vma, device, indices.Data(), staticBuffers.indexBuffer, stagingIndexBuffer,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize))
+        {
+            BLIT_ERROR("Failed to create index buffer");
+            return 0;
+        }
+
+        // Distinct render object buffers have GPU pointers to be accessed by the same shaders
+        // Standard render object buffer
+        AllocatedBuffer renderObjectStagingBuffer;
+        VkDeviceSize renderObjectBufferSize{ renderObjectCount * sizeof(BlitzenEngine::RenderObject) };
+        if (!CreateStorageBufferWithStagingBuffer(vma, device, pRenderObjects, staticBuffers.renderObjectBuffer, renderObjectStagingBuffer,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, renderObjectBufferSize))
+        {
+            BLIT_ERROR("Failed to create render object buffer");
+            return 0;
+        }
+        staticBuffers.renderObjectBufferAddress = GetBufferAddress(device, staticBuffers.renderObjectBuffer.bufferHandle);
+        // Render object buffer that holds objects that use Oblique near plane clipping
+        AllocatedBuffer onpcRenderObjectStagingBuffer;
+        VkDeviceSize onpcRenderObjectBufferSize = 0;
+        if (onpcRenderObjectCount != 0)
+        {
+
+            onpcRenderObjectBufferSize = SetupPushDescriptorBuffer(device, vma, staticBuffers.onpcReflectiveRenderObjectBuffer,
+                onpcRenderObjectStagingBuffer, onpcRenderObjectCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, pOnpcRenderObjects);
+            if (onpcRenderObjectBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create Oblique Near-Plane Clipping render object buffer");
+                return 0;
+            }
+            stats.bObliqueNearPlaneClippingObjectsExist = 1;
+        }
+
+        AllocatedBuffer tranparentRenderObjectStagingBuffer;
+        auto transparentRenderObjectBufferSize{ transparentRenderobjects.GetSize() * sizeof(BlitzenEngine::RenderObject) };
+        if (transparentRenderObjectBufferSize != 0)
+        {
+            if (!CreateStorageBufferWithStagingBuffer(vma, device, transparentRenderobjects.Data(), staticBuffers.transparentRenderObjectBuffer,
+                tranparentRenderObjectStagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, transparentRenderObjectBufferSize))
+            {
+                BLIT_ERROR("Failed to create transparent render object buffer");
+                return 0;
+            }
+            stats.bTranspartentObjectsExist = 1;
+            staticBuffers.transparentRenderObjectBufferAddress = GetBufferAddress(device, staticBuffers.transparentRenderObjectBuffer.bufferHandle);
+        }
+
+        // Buffer that holds primitives (surfaces that can be drawn)
+        AllocatedBuffer surfaceStagingBuffer;
+        auto surfaceBufferSize
+        {
+            SetupPushDescriptorBuffer(device, vma, staticBuffers.surfaceBuffer, surfaceStagingBuffer, surfaces.GetSize(),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, surfaces.Data())
+        };
+        if (surfaceBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create surface buffer");
+            return 0;
+        }
+
+        // Buffer that holds primitives (surfaces that can be drawn)
+        AllocatedBuffer lodStagingBuffer;
+        auto lodBufferSize
+        {
+            SetupPushDescriptorBuffer(device, vma, staticBuffers.lodBuffer, lodStagingBuffer, lodData.GetSize(),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, lodData.Data())
+        };
+        if (lodBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create surface buffer");
+            return 0;
+        }
+
+        // Global material buffer
+        AllocatedBuffer materialStagingBuffer;
+        auto materialBufferSize
+        {
+            SetupPushDescriptorBuffer(device, vma, staticBuffers.materialBuffer, materialStagingBuffer, materialCount,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, const_cast<BlitzenEngine::Material*>(pMaterials))
+        };
+        if (materialBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create material buffer");
+            return 0;
+        }
+
+        // Indirect draw buffer (VkDrawIndexedIndirectCommand holder and render object id)
+        auto indirectDrawBufferSize
+        {
+            SetupPushDescriptorBuffer<IndirectDrawData>(vma, VMA_MEMORY_USAGE_GPU_ONLY, staticBuffers.indirectDrawBuffer, IndirectDrawElementCount,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
+        };
+        if (indirectDrawBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create indirect draw buffer");
+            return 0;
+        }
+
+        // Indirect count buffer
+        if (!SetupPushDescriptorBuffer<uint32_t>(vma, VMA_MEMORY_USAGE_GPU_ONLY, staticBuffers.indirectCountBuffer, SingleElementBuffer,
+            VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+        {
+            BLIT_ERROR("Failed to create indirect count buffer");
+            return 0;
+        }
+
+        // Visiblity buffer for every render object (could be integrated to the render object as 8bit integer)
+        auto visibilityBufferSize
+        {
+            SetupPushDescriptorBuffer<uint32_t>(vma, VMA_MEMORY_USAGE_GPU_ONLY, staticBuffers.visibilityBuffer, renderObjectCount,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+        };
+        if (visibilityBufferSize == 0)
+        {
+            BLIT_ERROR("Failed to create render object visibility buffer");
+            return 0;
+        }
+
+
+        VkDeviceSize clusterBufferSize = 0;
+        AllocatedBuffer meshletStagingBuffer;
+        VkDeviceSize clusterIndexBufferSize = 0;
+        AllocatedBuffer meshletDataStagingBuffer;
+        VkDeviceSize clusterDispatchBufferSize = 0;
+        VkDeviceSize transparentClusterDispatchBufferSize = 0;
+        if (BlitzenEngine::Ce_BuildClusters)
+        {
+            clusterBufferSize = SetupPushDescriptorBuffer(device, vma, staticBuffers.clusterBuffer, meshletStagingBuffer,
+                clusters.GetSize(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, clusters.Data());
+            if (clusterBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create cluster buffer");
+                return 0;
+            }
+
+            clusterIndexBufferSize = SetupPushDescriptorBuffer(device, vma, staticBuffers.meshletDataBuffer, meshletDataStagingBuffer,
+                clusterData.GetSize(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, clusterData.Data());
+            if (clusterIndexBufferSize == 0)
+            {
+                BLIT_ERROR("Failed to create cluster indices buffer");
+                return 0;
+            }
+
+            // Creates cluster dispatch buffers for opaque objects
+            // When per render object culling is done, the cluster dispatch buffer is filled with cluster data
+            // The cluster count buffer has the element count of the cluster data
+            // The cluster count copy buffer receives the count to be accessed for cluster dispatch call
+            clusterDispatchBufferSize = IndirectDrawElementCount * sizeof(ClusterDispatchData);
+            if (!CreateBuffer(vma, staticBuffers.clusterDispatchBuffer,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY, clusterDispatchBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect dispatch cluster buffer");
+                return 0;
+            }
+            staticBuffers.clusterDispatchBufferAddress = GetBufferAddress(device, staticBuffers.clusterDispatchBuffer.bufferHandle);
+            if (!CreateBuffer(vma, staticBuffers.clusterCountBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, 
+                sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect count buffer");
+                return 0;
+            }
+            staticBuffers.clusterCountBufferAddress = GetBufferAddress(device, staticBuffers.clusterCountBuffer.bufferHandle);
+            if (!CreateBuffer(vma, staticBuffers.clusterCountCopyBuffer, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect count copy buffer");
+                return 0;
+            }
+
+            // Creates cluster dispatch buffers for transparent objects
+            // When per render object culling is done, the cluster dispatch buffer is filled with cluster data
+            // The cluster count buffer has the element count of the cluster data
+            // The cluster count copy buffer receives the count to be accessed for cluster dispatch call
+            transparentClusterDispatchBufferSize = Ce_TrasparentDispatchElementCount * sizeof(ClusterDispatchData);
+            if (!CreateBuffer(vma, staticBuffers.transparentClusterDispatchBuffer,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY, transparentClusterDispatchBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create transparent indirect dispatch cluster buffer");
+                return 0;
+            }
+            staticBuffers.transparentClusterDispatchBufferAddress = GetBufferAddress(device, staticBuffers.transparentClusterDispatchBuffer.bufferHandle);
+
+            if (!CreateBuffer(vma, staticBuffers.transparentClusterCountBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY, 
+                sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create transparent indirect count buffer");
+                return 0;
+            }
+            staticBuffers.transparentClusterCountBufferAddress = GetBufferAddress(device, staticBuffers.transparentClusterCountBuffer.bufferHandle);
+
+            if (!CreateBuffer(vma, staticBuffers.transparentClusterCountCopyBuffer, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            {
+                BLIT_ERROR("Failed to create indirect count copy buffer");
+                return 0;
+            }
+        }
+
+        // Mesh shader indirect commands
+        VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
+        if (stats.meshShaderSupport)
+        {
+            // Indirect task buffer
+            if (indirectTaskBufferSize == 0)
+            {
+                return 0;
+            }
+            if (!SetupPushDescriptorBuffer<IndirectTaskData>(vma, VMA_MEMORY_USAGE_GPU_ONLY, staticBuffers.indirectTaskBuffer, indirectTaskBufferSize,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+            {
+                BLIT_ERROR("Falied to create indirect task buffer");
+                return 0;
+            }
+        }
+
+        // Copies the data uploaded to the staging buffer, to the GPU buffers
+        auto commandBuffer = frameTools.transferCommandBuffer;
+        CopyStaticBufferDataToGPUBuffers(commandBuffer, transferQueue, staticBuffers, 
+            stagingVertexBuffer.bufferHandle, vertexBufferSize,
+            stagingIndexBuffer.bufferHandle, indexBufferSize,
+            renderObjectStagingBuffer.bufferHandle, renderObjectBufferSize,
+            tranparentRenderObjectStagingBuffer.bufferHandle, transparentRenderObjectBufferSize,
+            onpcRenderObjectStagingBuffer.bufferHandle, onpcRenderObjectBufferSize,
+            surfaceStagingBuffer.bufferHandle, surfaceBufferSize,
+            materialStagingBuffer.bufferHandle, materialBufferSize,
+            visibilityBufferSize, meshletStagingBuffer.bufferHandle, clusterBufferSize,
+            meshletDataStagingBuffer.bufferHandle, clusterIndexBufferSize,
+            lodStagingBuffer.bufferHandle, lodBufferSize);
+
+        // Sets up raytracing acceleration structures, if it is requested and supported
+        if (stats.bRayTracingSupported)
+        {
+            if (!BuildBlas(instance, device, vma, frameTools, transferQueue, pResources, staticBuffers))
+            {
+                BLIT_ERROR("Failed to build blas for RT");
+                return 0;
+            }
+            if (!BuildTlas(instance, device, vma, frameTools, transferQueue, staticBuffers, pResources))
+            {
+                BLIT_ERROR("Failed to build tlas for RT");
+                return 0;
+            }
+        }
+
+        return 1;
+    }
+
 
 
 
@@ -762,9 +1062,18 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!StaticBuffersInit(pResources))
+        if(!StaticBuffersInit(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_currentStaticBuffers, 
+            pResources, m_stats))
         {
             BLIT_ERROR("Failed to upload data to the GPU");
+            return 0;
+        }
+
+        if (!AllocateTextureDescriptorSet(m_device, (uint32_t)textureCount, loadedTextures,
+            m_textureDescriptorPool.handle, &m_textureDescriptorSetlayout.handle,
+            m_textureDescriptorSet))
+        {
+            BLIT_ERROR("Failed to allocate texture descriptor sets");
             return 0;
         }
 
@@ -842,342 +1151,6 @@ namespace BlitzenVulkan
             }
         }
     
-        return 1;
-    }
-
-    uint8_t VulkanRenderer::StaticBuffersInit(BlitzenEngine::RenderingResources* pResources)
-    {
-        // The renderer is allow to continue even without render objects but this function should not do anything
-        if(pResources->renderObjectCount == 0)
-        {
-            BLIT_WARN("No objects given to the renderer")
-            return 1;// Is this a mistake or intended?
-        }
-
-        constexpr uint32_t SingleElementBuffer = 1;
-
-        const auto& vertices = pResources->GetVerticesArray();
-        const auto& indices = pResources->GetIndicesArray();
-        auto pRenderObjects = pResources->renders;
-        auto renderObjectCount = pResources->renderObjectCount;
-        const auto& surfaces = pResources->GetSurfaceArray();
-        auto pMaterials = pResources->GetMaterialArrayPointer();
-        auto materialCount = pResources->GetMaterialCount();
-        const auto& clusters = pResources->GetClusterArray();
-        const auto& clusterData = pResources->GetClusterIndices();
-        auto pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
-        auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
-		auto& transforms = pResources->transforms;
-        const auto& transparentRenderobjects = pResources->GetTranparentRenders();
-		const auto& lodData = pResources->GetLodData();
-
-        // Raytracing support needs additional flags
-        uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
-            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT : 0;
-
-        // Creates vertex buffer
-        AllocatedBuffer stagingVertexBuffer;
-        auto vertexBufferSize
-        { 
-            SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.vertexBuffer, stagingVertexBuffer, vertices.GetSize(),
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryBuffersRaytracingFlags, vertices.Data()) 
-        };
-        if (vertexBufferSize == 0)
-        {
-            BLIT_ERROR("Failed to create vertex buffer");
-            return 0;
-        }
-
-        // Global index buffer
-        AllocatedBuffer stagingIndexBuffer;
-        VkDeviceSize indexBufferSize = indices.GetSize() * sizeof(uint32_t);    
-        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), m_currentStaticBuffers.indexBuffer, stagingIndexBuffer, 
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize))
-        {
-            BLIT_ERROR("Failed to create index buffer");
-            return 0;
-        }
-
-        // Standard render object buffer
-        AllocatedBuffer renderObjectStagingBuffer;
-        VkDeviceSize renderObjectBufferSize{ renderObjectCount * sizeof(BlitzenEngine::RenderObject) };
-        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pRenderObjects, m_currentStaticBuffers.renderObjectBuffer, renderObjectStagingBuffer, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, renderObjectBufferSize))
-        {
-            BLIT_ERROR("Failed to create render object buffer");
-            return 0;
-        }
-        m_currentStaticBuffers.renderObjectBufferAddress = GetBufferAddress(m_device,
-            m_currentStaticBuffers.renderObjectBuffer.bufferHandle);
-
-        // Render object buffer that holds objects that use Oblique near plane clipping
-        AllocatedBuffer onpcRenderObjectStagingBuffer;
-        VkDeviceSize onpcRenderObjectBufferSize = 0;
-        if (onpcRenderObjectCount != 0)
-        {
-            
-            onpcRenderObjectBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer,
-                onpcRenderObjectStagingBuffer, onpcRenderObjectCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                pOnpcRenderObjects);
-            if (onpcRenderObjectBufferSize == 0)
-            {
-                BLIT_ERROR("Failed to create Oblique Near-Plane Clipping render object buffer");
-                return 0;
-            }
-
-            m_stats.bObliqueNearPlaneClippingObjectsExist = 1;
-        }
-
-        AllocatedBuffer tranparentRenderObjectStagingBuffer;
-        auto transparentRenderObjectBufferSize{ transparentRenderobjects.GetSize() * sizeof(BlitzenEngine::RenderObject) };
-        if (transparentRenderObjectBufferSize != 0)
-        {
-            if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device,
-                transparentRenderobjects.Data(), m_currentStaticBuffers.transparentRenderObjectBuffer,
-                tranparentRenderObjectStagingBuffer, 
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, transparentRenderObjectBufferSize))
-            {
-                BLIT_ERROR("Failed to create transparent render object buffer");
-                return 0;
-            }
-
-            m_stats.bTranspartentObjectsExist = 1;
-
-            m_currentStaticBuffers.transparentRenderObjectBufferAddress = GetBufferAddress(m_device,
-                m_currentStaticBuffers.transparentRenderObjectBuffer.bufferHandle);
-        }
-
-        // Buffer that holds primitives (surfaces that can be drawn)
-        AllocatedBuffer surfaceStagingBuffer;
-        auto surfaceBufferSize
-        {
-            SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.surfaceBuffer, surfaceStagingBuffer, surfaces.GetSize(),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, surfaces.Data())
-        };
-        if (surfaceBufferSize == 0)
-        {
-            BLIT_ERROR("Failed to create surface buffer");
-            return 0;
-        }
-
-        // Buffer that holds primitives (surfaces that can be drawn)
-        AllocatedBuffer lodStagingBuffer;
-        auto lodBufferSize
-        {
-            SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.lodBuffer, lodStagingBuffer, lodData.GetSize(),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, lodData.Data())
-        };
-        if (lodBufferSize == 0)
-        {
-            BLIT_ERROR("Failed to create surface buffer");
-            return 0;
-        }
-
-        // Global material buffer
-        AllocatedBuffer materialStagingBuffer; 
-        auto materialBufferSize
-        {
-            SetupPushDescriptorBuffer(m_device, m_allocator,
-            m_currentStaticBuffers.materialBuffer,
-            materialStagingBuffer, materialCount,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            const_cast<BlitzenEngine::Material*>(pMaterials))
-        };
-        if (materialBufferSize == 0)
-        {
-            BLIT_ERROR("Failed to create material buffer");
-            return 0;
-        }
-
-        // Indirect draw buffer (VkDrawIndexedIndirectCommand holder and render object id)
-        auto indirectDrawBufferSize
-        {
-            SetupPushDescriptorBuffer<IndirectDrawData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.indirectDrawBuffer, IndirectDrawElementCount,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
-        };
-        if(indirectDrawBufferSize == 0)
-        {
-            BLIT_ERROR("Failed to create indirect draw buffer");
-            return 0;
-        }
-
-        // Indirect count buffer
-        if (!SetupPushDescriptorBuffer<uint32_t>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.indirectCountBuffer, SingleElementBuffer,
-                VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT 
-                | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
-        {
-            BLIT_ERROR("Failed to create indirect count buffer");
-            return 0;
-        }
-
-        // Visiblity buffer for every render object (could be integrated to the render object as 8bit integer)
-        auto visibilityBufferSize
-        {
-            SetupPushDescriptorBuffer<uint32_t>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.visibilityBuffer, renderObjectCount,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
-        };
-        if(visibilityBufferSize == 0)
-        {
-            BLIT_ERROR("Failed to create render object visibility buffer");
-            return 0;
-        }
-
-        
-        VkDeviceSize clusterBufferSize = 0;
-        AllocatedBuffer meshletStagingBuffer;
-        VkDeviceSize clusterIndexBufferSize = 0;
-        AllocatedBuffer meshletDataStagingBuffer;
-        VkDeviceSize clusterDispatchBufferSize = 0;
-        VkDeviceSize transparentClusterDispatchBufferSize = 0;
-        if (BlitzenEngine::Ce_BuildClusters)
-        {
-            clusterBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.clusterBuffer, meshletStagingBuffer,
-                clusters.GetSize(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                clusters.Data());
-            if(clusterBufferSize == 0)
-            {
-                BLIT_ERROR("Failed to create cluster buffer");
-                return 0;
-            }
-
-            clusterIndexBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.meshletDataBuffer, meshletDataStagingBuffer,
-                clusterData.GetSize(),
-                VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                clusterData.Data());
-            if(clusterIndexBufferSize == 0)
-            {
-                BLIT_ERROR("Failed to create cluster indices buffer");
-                return 0;
-            }
-
-            // Creates cluster dispatch buffers for opaque objects
-            // When per render object culling is done, the cluster dispatch buffer is filled with cluster data
-            // The cluster count buffer has the element count of the cluster data
-            // The cluster count copy buffer receives the count to be accessed for cluster dispatch call
-			clusterDispatchBufferSize = IndirectDrawElementCount * sizeof(ClusterDispatchData);
-            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterDispatchBuffer, 
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
-                VMA_MEMORY_USAGE_GPU_ONLY, clusterDispatchBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("Failed to create indirect dispatch cluster buffer");
-                return 0;
-            }
-			m_currentStaticBuffers.clusterDispatchBufferAddress = GetBufferAddress(m_device,
-				m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle);
-            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountBuffer, 
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                VMA_MEMORY_USAGE_GPU_ONLY, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("Failed to create indirect count buffer");
-                return 0;
-            }
-			m_currentStaticBuffers.clusterCountBufferAddress = GetBufferAddress(m_device,
-				m_currentStaticBuffers.clusterCountBuffer.bufferHandle);
-            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.clusterCountCopyBuffer,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("Failed to create indirect count copy buffer");
-                return 0;
-            }
-
-            // Creates cluster dispatch buffers for transparent objects
-            // When per render object culling is done, the cluster dispatch buffer is filled with cluster data
-            // The cluster count buffer has the element count of the cluster data
-            // The cluster count copy buffer receives the count to be accessed for cluster dispatch call
-            transparentClusterDispatchBufferSize = Ce_TrasparentDispatchElementCount * sizeof(ClusterDispatchData);
-            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.transparentClusterDispatchBuffer,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                VMA_MEMORY_USAGE_GPU_ONLY, transparentClusterDispatchBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("Failed to create transparent indirect dispatch cluster buffer");
-                return 0;
-            }
-            m_currentStaticBuffers.transparentClusterDispatchBufferAddress = GetBufferAddress(m_device,
-                m_currentStaticBuffers.transparentClusterDispatchBuffer.bufferHandle);
-
-            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.transparentClusterCountBuffer,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                VMA_MEMORY_USAGE_GPU_ONLY, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("Failed to create transparent indirect count buffer");
-                return 0;
-            }
-            m_currentStaticBuffers.transparentClusterCountBufferAddress = GetBufferAddress(m_device,
-                m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle);
-
-            if (!CreateBuffer(m_allocator, m_currentStaticBuffers.transparentClusterCountCopyBuffer,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("Failed to create indirect count copy buffer");
-                return 0;
-            }
-        }
-
-        // Mesh shader indirect commands
-        VkDeviceSize indirectTaskBufferSize = sizeof(IndirectTaskData) * renderObjectCount;
-        if(m_stats.meshShaderSupport)
-        {
-            // Indirect task buffer
-            if (indirectTaskBufferSize == 0)
-            {
-                return 0;
-            }
-            if (!SetupPushDescriptorBuffer<IndirectTaskData>(m_allocator, VMA_MEMORY_USAGE_GPU_ONLY,
-                m_currentStaticBuffers.indirectTaskBuffer, indirectTaskBufferSize,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT))
-            {
-                BLIT_ERROR("Falied to create indirect task buffer");
-                return 0;
-            }
-        }
-
-        // Copies the data uploaded to the staging buffer, to the GPU buffers
-        auto commandBuffer = m_frameToolsList[0].transferCommandBuffer;
-        CopyStaticBufferDataToGPUBuffers(commandBuffer, m_transferQueue.handle, 
-            m_currentStaticBuffers, stagingVertexBuffer.bufferHandle, vertexBufferSize, 
-            stagingIndexBuffer.bufferHandle, indexBufferSize, 
-            renderObjectStagingBuffer.bufferHandle, renderObjectBufferSize, 
-            tranparentRenderObjectStagingBuffer.bufferHandle, transparentRenderObjectBufferSize,
-            onpcRenderObjectStagingBuffer.bufferHandle, onpcRenderObjectBufferSize, 
-            surfaceStagingBuffer.bufferHandle, surfaceBufferSize, 
-            materialStagingBuffer.bufferHandle, materialBufferSize, 
-            visibilityBufferSize, meshletStagingBuffer.bufferHandle, clusterBufferSize, 
-            meshletDataStagingBuffer.bufferHandle, clusterIndexBufferSize, 
-            lodStagingBuffer.bufferHandle, lodBufferSize);
-
-        // Sets up raytracing acceleration structures, if it is requested and supported
-        if(m_stats.bRayTracingSupported)
-        {
-            if (!BuildBlas(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, pResources, m_currentStaticBuffers))
-            {
-                BLIT_ERROR("Failed to build blas for RT");
-                return 0;
-            }
-            if (!BuildTlas(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_currentStaticBuffers, pResources))
-            {
-                BLIT_ERROR("Failed to build tlas for RT");
-                return 0;
-            }
-        }
-
-        if (!AllocateTextureDescriptorSet(m_device, (uint32_t)textureCount, loadedTextures,
-            m_textureDescriptorPool.handle, &m_textureDescriptorSetlayout.handle,
-            m_textureDescriptorSet))
-        {
-            BLIT_ERROR("Failed to allocate texture descriptor sets");
-            return 0;
-        }
-
         return 1;
     }
 }
