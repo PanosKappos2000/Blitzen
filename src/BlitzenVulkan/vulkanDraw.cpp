@@ -373,12 +373,9 @@ namespace BlitzenVulkan
     static void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, VulkanRenderer::FrameTools& tools,
         VulkanRenderer::VarBuffers& buffers, VkQueue queue)
     {
-        VkDeviceSize transformDataSize = sizeof(BlitzenEngine::MeshTransform) *
-            pResources->transforms.GetSize();
-
         BeginCommandBuffer(tools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         CopyBufferToBuffer(tools.transferCommandBuffer, buffers.transformStagingBuffer.bufferHandle,
-            buffers.transformBuffer.buffer.bufferHandle, transformDataSize, 0, 0);
+            buffers.transformBuffer.buffer.bufferHandle, buffers.dynamicTransformDataSize, 0, 0);
         VkSemaphoreSubmitInfo bufferCopySemaphoreInfo{};
         // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT is used here because the signal comes from a transfer queue.
         // More specific shader stages (like VERTEX or COMPUTE) are invalid for transfer queues per Vulkan spec.

@@ -77,6 +77,7 @@ namespace BlitzenVulkan
             PushDescriptorBuffer<void> transformBuffer{ 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
             AllocatedBuffer transformStagingBuffer;
             BlitzenEngine::MeshTransform* pTransformData = nullptr;
+            size_t dynamicTransformDataSize{ 0 };
         };
 
         struct StaticBuffers

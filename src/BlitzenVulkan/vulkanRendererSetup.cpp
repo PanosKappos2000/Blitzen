@@ -150,8 +150,7 @@ namespace BlitzenVulkan
         if (!CreatePushDescriptorImage(device, vma, colorAttachment,
             { drawExtent.width, drawExtent.height, 1 }, // extent
             ce_colorAttachmentFormat, ce_colorAttachmentImageUsage,
-            1, VMA_MEMORY_USAGE_GPU_ONLY
-        ))
+            1, VMA_MEMORY_USAGE_GPU_ONLY))
         {
             BLIT_ERROR("Failed to create color attachment image resource");
             return 0;
@@ -409,15 +408,17 @@ namespace BlitzenVulkan
     }
 
     static uint8_t VarBuffersInit(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue,
-        BlitCL::DynamicArray<BlitzenEngine::MeshTransform>& transforms, VulkanRenderer::VarBuffers* varBuffers)
+        BlitzenEngine::RenderingResources* pResources, VulkanRenderer::VarBuffers* varBuffers)
     {
+        const auto& transforms{ pResources->transforms };
+        size_t transformDynamicDataSize{ pResources->dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform)};
+
         for (size_t i = 0; i < ce_framesInFlight; ++i)
         {
             auto& buffers = varBuffers[i];
 
             // Creates the uniform buffer for view data
-            if (!CreateBuffer(vma, buffers.viewDataBuffer.buffer,
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
+            if (!CreateBuffer(vma, buffers.viewDataBuffer.buffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
                 sizeof(BlitzenEngine::CameraViewData), VMA_ALLOCATION_CREATE_MAPPED_BIT))
             {
                 BLIT_ERROR("Failed to create view data buffer");
@@ -425,36 +426,36 @@ namespace BlitzenVulkan
             }
             // Persistently mapped pointer
             buffers.viewDataBuffer.pData =
-                reinterpret_cast<BlitzenEngine::CameraViewData*>(
-                    buffers.viewDataBuffer.buffer.allocation->GetMappedData());
+                reinterpret_cast<BlitzenEngine::CameraViewData*>(buffers.viewDataBuffer.buffer.allocation->GetMappedData());
             // Descriptor write. Only thing that changes per frame is buffer info
-            WriteBufferDescriptorSets(buffers.viewDataBuffer.descriptorWrite,
-                buffers.viewDataBuffer.bufferInfo, buffers.viewDataBuffer.descriptorType,
-                buffers.viewDataBuffer.descriptorBinding,
-                buffers.viewDataBuffer.buffer.bufferHandle);
+            WriteBufferDescriptorSets(buffers.viewDataBuffer.descriptorWrite, buffers.viewDataBuffer.bufferInfo, buffers.viewDataBuffer.descriptorType,
+                buffers.viewDataBuffer.descriptorBinding, buffers.viewDataBuffer.buffer.bufferHandle);
 
             // Transform buffer is also dynamic
+            AllocatedBuffer transformStagingBufferTemp;
             auto transformBufferSize
             {
-                SetupPushDescriptorBuffer(device, vma,buffers.transformBuffer,
-                    buffers.transformStagingBuffer, transforms.GetSize(),
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                    transforms.Data())
+                SetupPushDescriptorBuffer(device, vma,buffers.transformBuffer, transformStagingBufferTemp, transforms.GetSize(),
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, transforms.Data())
             };
             if (transformBufferSize == 0)
             {
                 BLIT_ERROR("Failed to create transform buffer");
                 return 0;
             }
-            // Persistently mapped pointer (staging buffer)
-            buffers.pTransformData = reinterpret_cast<BlitzenEngine::MeshTransform*>(
-                buffers.transformStagingBuffer.allocationInfo.pMappedData);
             // Records command to copy staging buffer data to GPU buffers
             BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-            CopyBufferToBuffer(commandBuffer, buffers.transformStagingBuffer.bufferHandle,
+            CopyBufferToBuffer(commandBuffer, transformStagingBufferTemp.bufferHandle,
                 buffers.transformBuffer.buffer.bufferHandle, transformBufferSize, 0, 0);
             SubmitCommandBuffer(queue, commandBuffer);
             vkQueueWaitIdle(queue);
+
+            // Persistently mapped staging buffer
+            CreateBuffer(vma, buffers.transformStagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+                transformDynamicDataSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
+            buffers.pTransformData = 
+                reinterpret_cast<BlitzenEngine::MeshTransform*>(buffers.transformStagingBuffer.allocationInfo.pMappedData);
+            buffers.dynamicTransformDataSize = transformDynamicDataSize;
         }
 
         return 1;
@@ -598,7 +599,7 @@ namespace BlitzenVulkan
         // Grapchics pipeline layout
         VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] =
         {
-             bufferPushDescriptorLayout,
+            bufferPushDescriptorLayout,
             textureSetLayout
         };
         VkPushConstantRange globalShaderDataPushContant{};
@@ -755,8 +756,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!VarBuffersInit(m_device, m_allocator, m_frameToolsList[0].transferCommandBuffer, 
-            m_transferQueue.handle, pResources->transforms, m_varBuffers))
+        if(!VarBuffersInit(m_device, m_allocator, m_frameToolsList[0].transferCommandBuffer, m_transferQueue.handle, pResources, m_varBuffers))
         {
             BLIT_ERROR("Failed to create uniform buffers");
             return 0;
@@ -962,11 +962,8 @@ namespace BlitzenVulkan
         AllocatedBuffer surfaceStagingBuffer;
         auto surfaceBufferSize
         {
-            SetupPushDescriptorBuffer(m_device, m_allocator,
-            m_currentStaticBuffers.surfaceBuffer, 
-            surfaceStagingBuffer, surfaces.GetSize(),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            surfaces.Data())
+            SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.surfaceBuffer, surfaceStagingBuffer, surfaces.GetSize(),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, surfaces.Data())
         };
         if (surfaceBufferSize == 0)
         {
@@ -978,11 +975,8 @@ namespace BlitzenVulkan
         AllocatedBuffer lodStagingBuffer;
         auto lodBufferSize
         {
-            SetupPushDescriptorBuffer(m_device, m_allocator,
-            m_currentStaticBuffers.lodBuffer,
-            lodStagingBuffer, lodData.GetSize(),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            lodData.Data())
+            SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.lodBuffer, lodStagingBuffer, lodData.GetSize(),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, lodData.Data())
         };
         if (lodBufferSize == 0)
         {
