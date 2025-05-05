@@ -6,8 +6,6 @@
 
 namespace BlitzenVulkan
 {
-	constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
-
     static uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma,
         VulkanRenderer::FrameTools* frameToolList, VkSampler& textureSampler)
     {
@@ -38,27 +36,20 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header,
-        BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
+    static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
         VkFormat& vulkanImageFormat, void* pData)
     {
-        vulkanImageFormat = BlitzenVulkan::GetDDSVulkanFormat(header, header10);
+        vulkanImageFormat = GetDDSVulkanFormat(header, header10);
         if (vulkanImageFormat == VK_FORMAT_UNDEFINED)
         {
             return 0;
         }
 
         auto file = reinterpret_cast<FILE*>(handle.pHandle);
-        unsigned int blockSize =
-            (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK
-                || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK
-                || vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ?
+        uint32_t blockSize = (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 
             8 : 16;
-        auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight,
-            header.dwMipMapCount, blockSize);
+        auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
         auto readSize = fread(pData, 1, imageSize, file);
-
-        // Checks for image read errors
         if (!pData)
         {
             return 0;
@@ -78,23 +69,21 @@ namespace BlitzenVulkan
         if(!m_stats.bResourceManagementReady)
         {
             // Calls the function and checks if it succeeded. If it did not, it fails
-            m_stats.bResourceManagementReady = 
-                SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, 
-                    m_frameToolsList, m_textureSampler.handle);
+            m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_frameToolsList, m_textureSampler.handle);
             if(!m_stats.bResourceManagementReady)
             {
-                BLIT_ERROR("Failed to setup resource management for Vulkan")
+                BLIT_ERROR("Failed to setup resource management for Vulkan");
                 return 0;
             }
         }
 
         // Creates a big buffer to hold the texture data temporarily. It will pass it later
         // This buffer has a random big size, as it needs to be allocated so that pData is not null in the next function
-        BlitzenVulkan::AllocatedBuffer stagingBuffer;
-        if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VMA_MEMORY_USAGE_CPU_TO_GPU, ce_textureStagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        AllocatedBuffer stagingBuffer;
+        if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
+            ce_textureStagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
-            BLIT_ERROR("Failed to create staging buffer for texture data copy")
+            BLIT_ERROR("Failed to create staging buffer for texture data copy");
             return 0;
         }
         pData = stagingBuffer.allocationInfo.pMappedData;
@@ -106,13 +95,13 @@ namespace BlitzenVulkan
         VkFormat format = VK_FORMAT_UNDEFINED;
         if(!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle))
         {
-            BLIT_ERROR("Failed to open texture file")
+            BLIT_ERROR("Failed to open texture file");
             return 0;
         }
 		if (!LoadDDSImageData(header, header10, handle, format, pData))
 		{
-			BLIT_ERROR("Failed to load texture data")
-				return 0;
+            BLIT_ERROR("Failed to load texture data");
+            return 0;
 		}
 
         // Creates the texture image for Vulkan by copying the data from the staging buffer

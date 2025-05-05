@@ -92,6 +92,9 @@ namespace BlitzenDX12
     constexpr UINT Ce_TransformStagingBufferIndex = 0;
 
 
+    constexpr SIZE_T Ce_TextureDataStagingSize = 128 * 1024 * 1024;
+
+
 
     struct Dx12Stats
     {

@@ -68,10 +68,7 @@ namespace BlitzenEngine
 
     inline unsigned int FourCC(const char (&str)[5])
     {
-	      return (unsigned(str[0]) << 0) 
-              | (unsigned(str[1]) << 8) 
-              | (unsigned(str[2]) << 16) 
-              | (unsigned(str[3]) << 24);
+	      return (unsigned(str[0]) << 0) | (unsigned(str[1]) << 8) | (unsigned(str[2]) << 16) | (unsigned(str[3]) << 24);
     }
 
     uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, 

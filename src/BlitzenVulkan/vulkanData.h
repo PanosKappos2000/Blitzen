@@ -114,6 +114,8 @@ namespace BlitzenVulkan
     // prefer passing this instead of one for clarity
     constexpr uint32_t Ce_SinglePointer = 1;
 
+    constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
+
 
     struct VulkanStats
     {

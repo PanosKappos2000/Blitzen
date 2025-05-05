@@ -531,11 +531,7 @@ namespace BlitzenEngine
                 cgltf_accessor_unpack_floats(pos, scratch.Data(), vertexCount * 3);
                 for (size_t j = 0; j < vertexCount; ++j)
                 {
-                    vertices[j].position = BlitML::vec3(
-                        scratch[j * 3 + 0],
-                        scratch[j * 3 + 1],
-                        scratch[j * 3 + 2]
-                    );
+                    vertices[j].position = BlitML::vec3(scratch[j * 3 + 0], scratch[j * 3 + 1], scratch[j * 3 + 2]);
                 }
             }
 

@@ -4,8 +4,111 @@
 
 namespace BlitzenDX12
 {
+	static DXGI_FORMAT GetDDSFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10)
+	{
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
+		{
+			//return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+			return DXGI_FORMAT_BC1_UNORM;
+			
+		}
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
+		{
+			//return VK_FORMAT_BC2_UNORM_BLOCK;
+			return DXGI_FORMAT_BC2_UNORM;
+		}
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
+		{
+			//return VK_FORMAT_BC3_UNORM_BLOCK;
+			return DXGI_FORMAT_BC3_UNORM;
+		}
+
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
+		{
+			switch (header10.dxgiFormat)
+			{
+			case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
+			case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
+			case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
+			case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
+			case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
+			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
+			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+				return (DXGI_FORMAT)header10.dxgiFormat;
+			}
+		}
+
+		return DXGI_FORMAT_UNKNOWN;
+	}
+
+	static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle, 
+		DXGI_FORMAT& format, void* pData)
+	{
+		format = GetDDSFormat(header, header10);
+		if (format == DXGI_FORMAT_UNKNOWN)
+		{
+			return 0;
+		}
+
+		auto file = reinterpret_cast<FILE*>(handle.pHandle);
+		uint32_t blockSize = (format == DXGI_FORMAT_BC1_UNORM || format == DXGI_FORMAT_BC1_UNORM_SRGB || format == DXGI_FORMAT_BC4_SNORM || format == DXGI_FORMAT_BC4_UNORM) ?
+			8 : 16;
+		auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+		auto readSize = fread(pData, 1, imageSize, file);
+		if (!pData)
+		{
+			return 0;
+		}
+		if (readSize != imageSize)
+		{
+			return 0;
+		}
+
+		// Success
+		return 1;
+	}
+
 	uint8_t Dx12Renderer::UploadTexture(void* pData, const char* filepath)
 	{
+		// Creates a big buffer to hold the texture data temporarily. It will pass it later
+		// This buffer has a random big size, as it needs to be allocated so that pData is not null in the next function
+		DX12WRAPPER<ID3D12Resource> stagingBuffer;
+		if (!CreateBuffer(m_device.Get(), stagingBuffer.ReleaseAndGetAddressOf(), Ce_TextureDataStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+		{
+			BLIT_ERROR("Failed to create staging buffer for texture data copy");
+			return 0;
+		}
+		auto mappingRes = stagingBuffer->Map(0, nullptr, &pData);
+		if (FAILED(mappingRes))
+		{
+			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+		}
+
+		// Initializes necessary data for DDS texture
+		BlitzenEngine::DDS_HEADER header{};
+		BlitzenEngine::DDS_HEADER_DXT10 header10{};
+		BlitzenPlatform::FileHandle handle{};
+		DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle))
+		{
+			BLIT_ERROR("Failed to open texture file");
+			return 0;
+		}
+		if (!LoadDDSImageData(header, header10, handle, format, pData))
+		{
+			BLIT_ERROR("Failed to load texture data");
+			return 0;
+		}
+
+		//TODO: Load the actual thing
+
 		return 1;
 	}
 

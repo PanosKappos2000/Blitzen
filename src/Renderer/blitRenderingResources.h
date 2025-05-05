@@ -128,12 +128,12 @@ namespace BlitzenEngine
 			// Don't go over the texture limit, might want to throw a warning here
 			if (m_textureCount >= ce_maxTextureCount)
 			{
-				BLIT_WARN("Max texture count: %i, has been reached", ce_maxTextureCount)
-				BLIT_ERROR("Texture from file: %s, failed to load", filename)
+                BLIT_WARN("Max texture count: %i, has been reached", ce_maxTextureCount);
+                BLIT_ERROR("Texture from file: %s, failed to load", filename);
 				return 0;
 			}
 
-			TextureStats& texture = m_textures[m_textureCount];
+			auto& texture = m_textures[m_textureCount];
 			// If texture upload to the renderer succeeds, the texture count is incremented and the function returns successfully
 			if (pRenderer->UploadTexture(texture.pTextureData, filename))
 			{
@@ -142,7 +142,7 @@ namespace BlitzenEngine
 			}
             else
             {
-                BLIT_ERROR("Texture from file: %s, failed to load", filename)
+                BLIT_ERROR("Texture from file: %s, failed to load", filename);
                 return false;
             }
 		}
@@ -273,25 +273,35 @@ namespace BlitzenEngine
             {
                 auto pTexture = &(pGltfData->textures[i]);
                 if (!pTexture->image)
+                {
                     break;
+                }
 
                 auto pImage = pTexture->image;
                 if (!pImage->uri)
+                {
                     break;
+                }
 
                 std::string ipath = gltfFilepath;
                 auto pos = ipath.find_last_of('/');
                 if (pos == std::string::npos)
+                {
                     ipath = "";
+                }
                 else
+                {
                     ipath = ipath.substr(0, pos + 1);
+                }
 
-                std::string uri = pImage->uri;
+                std::string uri{ pImage->uri };
                 uri.resize(cgltf_decode_uri(&uri[0]));
                 auto dot = uri.find_last_of('.');
 
                 if (dot != std::string::npos)
+                {
                     uri.replace(dot, uri.size() - dot, ".dds");
+                }
 
                 auto path = ipath + uri;
 
