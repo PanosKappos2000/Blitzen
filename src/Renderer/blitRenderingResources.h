@@ -92,6 +92,13 @@ namespace BlitzenEngine
         };
         BlitCL::DynamicArray<IsPrimitiveTransparent> bTransparencyList;
 
+    public:
+
+        inline const BlitCL::DynamicArray<IsPrimitiveTransparent>& GetSurfaceTransparencies() const
+        {
+            return bTransparencyList;
+        }
+
 
     public:
 

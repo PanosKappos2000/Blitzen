@@ -137,14 +137,8 @@ namespace BlitzenVulkan
 
     private:
 
-        // TODO: Remove this but remember that it might be harder because it calls the below funtions
-        // The best would be to pass the Vulkan renderer inside and make the below functions public temporarily
+        // TODO: Remove this 
         uint8_t StaticBuffersInit(BlitzenEngine::RenderingResources* pResources);
-
-
-        // TODO: I should get this out of the class, but we can keep them for now
-        uint8_t BuildBlas(BlitzenEngine::RenderingResources* pResources);
-        uint8_t BuildTlas(BlitzenEngine::RenderObject* pDraws, uint32_t drawCount, BlitzenEngine::MeshTransform* pTransforms, BlitzenEngine::PrimitiveSurface* pSurface);
 
         /*
             API initialization handles section
@@ -356,6 +350,12 @@ namespace BlitzenVulkan
     void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
         VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
         VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
+
+    uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
+        BlitzenEngine::RenderingResources* pResources, VulkanRenderer::StaticBuffers& staticBuffers);
+
+    uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
+        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::RenderingResources* pResources);
 
 
     /*

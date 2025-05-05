@@ -873,17 +873,14 @@ namespace BlitzenVulkan
 
         // Raytracing support needs additional flags
         uint32_t geometryBuffersRaytracingFlags = m_stats.bRayTracingSupported ?
-            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-            | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-            : 0;
+            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT : 0;
+
         // Creates vertex buffer
         AllocatedBuffer stagingVertexBuffer;
-        VkDeviceSize vertexBufferSize
+        auto vertexBufferSize
         { 
-            SetupPushDescriptorBuffer(m_device, m_allocator,
-                m_currentStaticBuffers.vertexBuffer, stagingVertexBuffer, vertices.GetSize(),
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT 
-                | geometryBuffersRaytracingFlags, vertices.Data()) 
+            SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.vertexBuffer, stagingVertexBuffer, vertices.GetSize(),
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryBuffersRaytracingFlags, vertices.Data()) 
         };
         if (vertexBufferSize == 0)
         {
@@ -894,9 +891,8 @@ namespace BlitzenVulkan
         // Global index buffer
         AllocatedBuffer stagingIndexBuffer;
         VkDeviceSize indexBufferSize = indices.GetSize() * sizeof(uint32_t);    
-        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), 
-            m_currentStaticBuffers.indexBuffer, stagingIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | 
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize))
+        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, indices.Data(), m_currentStaticBuffers.indexBuffer, stagingIndexBuffer, 
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexBufferSize))
         {
             BLIT_ERROR("Failed to create index buffer");
             return 0;
@@ -905,10 +901,8 @@ namespace BlitzenVulkan
         // Standard render object buffer
         AllocatedBuffer renderObjectStagingBuffer;
         VkDeviceSize renderObjectBufferSize{ renderObjectCount * sizeof(BlitzenEngine::RenderObject) };
-        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pRenderObjects,
-            m_currentStaticBuffers.renderObjectBuffer, renderObjectStagingBuffer, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, renderObjectBufferSize))
+        if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device, pRenderObjects, m_currentStaticBuffers.renderObjectBuffer, renderObjectStagingBuffer, 
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, renderObjectBufferSize))
         {
             BLIT_ERROR("Failed to create render object buffer");
             return 0;
@@ -922,12 +916,9 @@ namespace BlitzenVulkan
         if (onpcRenderObjectCount != 0)
         {
             
-            onpcRenderObjectBufferSize =
-                SetupPushDescriptorBuffer(m_device, m_allocator,
-                    m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer,
-                    onpcRenderObjectStagingBuffer, onpcRenderObjectCount,
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                    pOnpcRenderObjects);
+            onpcRenderObjectBufferSize = SetupPushDescriptorBuffer(m_device, m_allocator, m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer,
+                onpcRenderObjectStagingBuffer, onpcRenderObjectCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                pOnpcRenderObjects);
             if (onpcRenderObjectBufferSize == 0)
             {
                 BLIT_ERROR("Failed to create Oblique Near-Plane Clipping render object buffer");
@@ -938,8 +929,7 @@ namespace BlitzenVulkan
         }
 
         AllocatedBuffer tranparentRenderObjectStagingBuffer;
-        VkDeviceSize transparentRenderObjectBufferSize{ 
-            transparentRenderobjects.GetSize() * sizeof(BlitzenEngine::RenderObject) };
+        auto transparentRenderObjectBufferSize{ transparentRenderobjects.GetSize() * sizeof(BlitzenEngine::RenderObject) };
         if (transparentRenderObjectBufferSize != 0)
         {
             if (!CreateStorageBufferWithStagingBuffer(m_allocator, m_device,
@@ -1168,12 +1158,16 @@ namespace BlitzenVulkan
         // Sets up raytracing acceleration structures, if it is requested and supported
         if(m_stats.bRayTracingSupported)
         {
-            if (!BuildBlas(pResources))
+            if (!BuildBlas(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, pResources, m_currentStaticBuffers))
             {
+                BLIT_ERROR("Failed to build blas for RT");
                 return 0;
             }
-            if(!BuildTlas(pRenderObjects, renderObjectCount, transforms.Data(), surfaces.Data()))
+            if (!BuildTlas(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_currentStaticBuffers, pResources))
+            {
+                BLIT_ERROR("Failed to build tlas for RT");
                 return 0;
+            }
         }
 
         if (!AllocateTextureDescriptorSet(m_device, (uint32_t)textureCount, loadedTextures,
