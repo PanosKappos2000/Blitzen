@@ -188,8 +188,8 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateImageResource(ID3D12Device* device, ID3D12Resource** ppResource, UINT width, UINT height, UINT mipLevels, 
-        DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES state, D3D12_CLEAR_VALUE* pClear)
+    uint8_t CreateImageResource(ID3D12Device* device, ID3D12Resource** ppResource, UINT width, UINT height, UINT mipLevels, DXGI_FORMAT format, 
+        D3D12_RESOURCE_FLAGS flags, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES state, D3D12_CLEAR_VALUE* pClear, D3D12_TEXTURE_LAYOUT layout)
     {
         if (!CheckForDeviceRemoval(device))
         {
@@ -212,7 +212,7 @@ namespace BlitzenDX12
         desc.Format = format; 
         desc.SampleDesc.Count = 1;  
         desc.SampleDesc.Quality = 0;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Layout = layout;
         desc.Flags = flags;
 
         auto res = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &desc, state, pClear, IID_PPV_ARGS(ppResource));
@@ -282,5 +282,17 @@ namespace BlitzenDX12
 
         // Success
         return sizeof(uint32_t) * elementCount;
+    }
+
+    void PlaceFence(UINT64& fenceValue, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE& event)
+    {
+        const UINT64 fenceV = fenceValue++;
+        commandQueue->Signal(fence, fenceV);
+        // Waits for the previous frame
+        if (fence->GetCompletedValue() < fenceV)
+        {
+            fence->SetEventOnCompletion(fenceV, event);
+            WaitForSingleObject(event, INFINITE);
+        }
     }
 }

@@ -13,8 +13,10 @@ namespace BlitzenVulkan
         allocatorInfo.flags = flags;
 
         VkResult res = vmaCreateAllocator(&allocatorInfo, &allocator);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
             return 0;
+        }
         return 1;
     }
 
@@ -34,8 +36,10 @@ namespace BlitzenVulkan
 
         VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, 
         &(buffer.bufferHandle), &(buffer.allocation), &(buffer.allocationInfo));
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
             return 0;
+        }
         return 1;
     }
 
@@ -68,15 +72,14 @@ namespace BlitzenVulkan
     {
         VkBufferDeviceAddressInfo indirectBufferAddressInfo{};
         indirectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-        indirectBufferAddressInfo.pNext = nullptr;// For now I'm assuming that no extension will be needed here (I think there are none in the spec anyway)
+        indirectBufferAddressInfo.pNext = nullptr;
         indirectBufferAddressInfo.buffer = buffer;
         return vkGetBufferDeviceAddress(device, &indirectBufferAddressInfo);
     }
 
     uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
         VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
-        uint8_t mipLevels /*= 1*/, VmaMemoryUsage memoryUsage /*=VMA_MEMORY_USAGE_GPU_ONLY*/
-    )
+        uint8_t mipLevels /*= 1*/, VmaMemoryUsage memoryUsage /*=VMA_MEMORY_USAGE_GPU_ONLY*/)
     {
         // Save the extent and format of the image in the AllocatedImage structure
         image.extent = extent;
@@ -104,41 +107,39 @@ namespace BlitzenVulkan
         imageAllocationInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, 
-            &image.image, &image.allocation, nullptr
-        );
-        if(res != VK_SUCCESS)
+            &image.image, &image.allocation, nullptr);
+        if (res != VK_SUCCESS)
+        {
             return 0;
+        }
 
         // Creates an image view for the image by default
-        if(!CreateImageView(device, image.imageView, image.image, format, 0, mipLevels))
+        if (!CreateImageView(device, image.imageView, image.image, format, 0, mipLevels))
+        {
             return 0;
+        }
 
         return 1;
     }
 
     uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image, 
         VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, 
-        VmaMemoryUsage memoryUsage
-    )
+        VmaMemoryUsage memoryUsage)
     {
-        if(!CreateImage(device, allocator, image.image, extent, format, 
-            usage, mipLevels, memoryUsage
-        ))
+        if (!CreateImage(device, allocator, image.image, extent, format,
+            usage, mipLevels, memoryUsage))
+        {
             return 0;
+        }
 
-        WriteImageDescriptorSets(image.descriptorWrite, image.descriptorInfo, 
-            image.m_descriptorType, VK_NULL_HANDLE, image.m_descriptorBinding, 
-            image.m_layout, image.image.imageView, 
-            (image.sampler.handle != VK_NULL_HANDLE) ? 
-            image.sampler.handle : VK_NULL_HANDLE // Passes the sampler if it is initialized
-        );
+        WriteImageDescriptorSets(image.descriptorWrite, image.descriptorInfo, image.m_descriptorType, VK_NULL_HANDLE, image.m_descriptorBinding, 
+            image.m_layout, image.image.imageView, (image.sampler.handle != VK_NULL_HANDLE) ? image.sampler.handle : VK_NULL_HANDLE );
 
         return 1;
     }
 
     uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, 
-        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels
-    )
+        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
     {
         VkImageViewCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -158,8 +159,10 @@ namespace BlitzenVulkan
 
         // Create the image view
         VkResult res = vkCreateImageView(device, &info, nullptr, &imageView);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
             return 0;
+        }
         return 1;
     }
 
@@ -209,21 +212,20 @@ namespace BlitzenVulkan
     {
         // Create an image for the texture data to be copied into. 
         // Adds the VK_IMAGE_USAGE_TRANSFER_DST_BIT, so that it can accept the data transfer from the buffer
-        if(!CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels))
+        if (!CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels))
+        {
+            BLIT_ERROR("Failed to create image resource for texture");
             return 0;
+        }
 
         // Get the initial offset for the first mip level to be copied
         uint32_t bufferOffset = 0;
         uint32_t mipWidth = extent.width;
         uint32_t mipHeight = extent.height;
+        uint32_t blockSize = (format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || format == VK_FORMAT_BC4_SNORM_BLOCK || format == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
 
-        uint32_t blockSize = (format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || format == VK_FORMAT_BC4_SNORM_BLOCK 
-		|| format == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
-
-        // Create an array that will hold the copy regions for all mip levels
-        BlitCL::DynamicArray<VkBufferImageCopy2> copyRegions(mipLevels);
-
-        // Create the copy regions
+        // Copy regions
+        BlitCL::DynamicArray<VkBufferImageCopy2> copyRegions{ mipLevels };
         for(uint8_t i = 0; i < mipLevels; ++i)
         {
             CreateCopyBufferToImageRegion(copyRegions[i], {mipWidth, mipHeight, 1}, {0, 0, 0}, VK_IMAGE_ASPECT_COLOR_BIT, 

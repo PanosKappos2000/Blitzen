@@ -78,5 +78,5 @@ namespace BlitzenEngine
     size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels,
         unsigned int blockSize);
 
-    size_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10);
+    uint32_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10);
 }

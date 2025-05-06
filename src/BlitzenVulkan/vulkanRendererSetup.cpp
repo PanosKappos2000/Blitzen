@@ -109,7 +109,7 @@ namespace BlitzenVulkan
         {header.dwWidth, header.dwHeight, 1}, format, VK_IMAGE_USAGE_SAMPLED_BIT, 
         m_frameToolsList[0].transferCommandBuffer, m_transferQueue.handle, header.dwMipMapCount))
         {
-            BLIT_ERROR("Failed to load Vulkan texture image")
+            BLIT_ERROR("Failed to load Vulkan texture image");
             return 0;
         }
         

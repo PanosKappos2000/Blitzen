@@ -167,6 +167,9 @@ namespace BlitzenDX12
 
         uint32_t m_currentFrame = 0;
 
+        DX12WRAPPER<ID3D12Resource> m_textureResources[BlitzenEngine::ce_maxTextureCount];
+        uint32_t m_textureCount{ 0 };
+
     private:
 
 		static Dx12Renderer* s_pThis;

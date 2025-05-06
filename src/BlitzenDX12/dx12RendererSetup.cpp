@@ -49,7 +49,7 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle, 
-		DXGI_FORMAT& format, void* pData)
+		DXGI_FORMAT& format, void* pData, uint32_t& blockSize)
 	{
 		format = GetDDSFormat(header, header10);
 		if (format == DXGI_FORMAT_UNKNOWN)
@@ -58,16 +58,17 @@ namespace BlitzenDX12
 		}
 
 		auto file = reinterpret_cast<FILE*>(handle.pHandle);
-		uint32_t blockSize = (format == DXGI_FORMAT_BC1_UNORM || format == DXGI_FORMAT_BC1_UNORM_SRGB || format == DXGI_FORMAT_BC4_SNORM || format == DXGI_FORMAT_BC4_UNORM) ?
-			8 : 16;
+		blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
 		auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
 		auto readSize = fread(pData, 1, imageSize, file);
 		if (!pData)
 		{
+			BLIT_ERROR("Failed to read texture data");
 			return 0;
 		}
 		if (readSize != imageSize)
 		{
+			BLIT_ERROR("Failed to read the correct amount of texture data. Expected: %u, Read: %u", imageSize, readSize);
 			return 0;
 		}
 
@@ -75,10 +76,85 @@ namespace BlitzenDX12
 		return 1;
 	}
 
+	static uint8_t Create2DTexture(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>& resource, UINT width, UINT height, UINT mipLevels,
+		DXGI_FORMAT format, UINT blockSize, Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* commandQueue, DX12WRAPPER<ID3D12Resource>& staging)
+	{
+		if (!CreateImageResource(device, resource.ReleaseAndGetAddressOf(), width, height, mipLevels, format, D3D12_RESOURCE_FLAG_NONE,
+			D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON, nullptr, D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE))
+		{
+			BLIT_ERROR("Failed to create texture image resource");
+			return 0;
+		}
+
+		UINT bufferOffset{ 0 };
+		UINT mipWidth{ width };
+		UINT mipHeight{ height };
+
+		tools.transferCommandAllocator->Reset();
+		tools.transferCommandList->Reset(tools.transferCommandAllocator.Get(), nullptr);
+
+		// Transition texture to COPY_DEST state
+		D3D12_RESOURCE_BARRIER preCopyBarriers[2]{};
+		CreateResourcesTransitionBarrier(preCopyBarriers[0], resource.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(preCopyBarriers[1], staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		tools.transferCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(preCopyBarriers), preCopyBarriers);
+
+		// Create copy regions for each mip level
+		for (UINT i = 0; i < mipLevels; ++i)
+		{
+			D3D12_TEXTURE_COPY_LOCATION dst{};
+			dst.pResource = resource.Get();
+			dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			dst.SubresourceIndex = i;
+
+			D3D12_TEXTURE_COPY_LOCATION src = {};
+			src.pResource = staging.Get();
+			src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			src.PlacedFootprint.Offset = bufferOffset;
+			src.PlacedFootprint.Footprint.Format = format;
+			src.PlacedFootprint.Footprint.Width = mipWidth;
+			src.PlacedFootprint.Footprint.Height = mipHeight;
+			src.PlacedFootprint.Footprint.Depth = 1;
+			src.PlacedFootprint.Footprint.RowPitch = ((mipWidth + 3) / 4) * 16; // 16 bytes per block
+
+			// Define the copy region (size of the mip level)
+			D3D12_BOX box{};
+			box.left = 0;
+			box.top = 0;
+			box.front = 0;
+			box.right = (mipWidth + 3) / 4 * 4;  // Round up to 4-byte alignment
+			box.bottom = (mipHeight + 3) / 4 * 4;  // Same for height
+			box.back = 1;
+
+			tools.transferCommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, &box);
+
+			bufferOffset += ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * 16;  // Adjust the offset for next mip
+			mipWidth = mipWidth > 1 ? mipWidth / 2 : 1;
+			mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
+		}
+
+		tools.transferCommandList->Close();
+		ID3D12CommandList* commandLists[] = { tools.transferCommandList.Get() };
+		commandQueue->ExecuteCommandLists(1, commandLists);
+
+		PlaceFence(tools.copyFenceValue, commandQueue, tools.copyFence.Get(), tools.copyFenceEvent);
+
+		return 1;
+	}
+
 	uint8_t Dx12Renderer::UploadTexture(void* pData, const char* filepath)
 	{
-		// Creates a big buffer to hold the texture data temporarily. It will pass it later
-		// This buffer has a random big size, as it needs to be allocated so that pData is not null in the next function
+		// DDS data Loading
+		BlitzenEngine::DDS_HEADER header{};
+		BlitzenEngine::DDS_HEADER_DXT10 header10{};
+		BlitzenPlatform::FileHandle handle{};
+		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle))
+		{
+			BLIT_ERROR("Failed to open texture file");
+			return 0;
+		}
+
+		// Staging buffer to hold the data
 		DX12WRAPPER<ID3D12Resource> stagingBuffer;
 		if (!CreateBuffer(m_device.Get(), stagingBuffer.ReleaseAndGetAddressOf(), Ce_TextureDataStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
 		{
@@ -91,23 +167,25 @@ namespace BlitzenDX12
 			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
 		}
 
-		// Initializes necessary data for DDS texture
-		BlitzenEngine::DDS_HEADER header{};
-		BlitzenEngine::DDS_HEADER_DXT10 header10{};
-		BlitzenPlatform::FileHandle handle{};
+		// Loads the data
 		DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle))
-		{
-			BLIT_ERROR("Failed to open texture file");
-			return 0;
-		}
-		if (!LoadDDSImageData(header, header10, handle, format, pData))
+		uint32_t blockSize{ 0 };
+		if (!LoadDDSImageData(header, header10, handle, format, pData, blockSize))
 		{
 			BLIT_ERROR("Failed to load texture data");
 			return 0;
 		}
 
-		//TODO: Load the actual thing
+		if (!Create2DTexture(m_device.Get(), m_textureResources[m_textureCount], header.dwWidth, header.dwHeight, header.dwMipMapCount, format, 
+			blockSize, m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), stagingBuffer))
+		{
+			BLIT_ERROR("Failed to load texture to dx12");
+			return 0;
+		}
+
+		m_textureCount++;
+
+		stagingBuffer->Unmap(0, nullptr);
 
 		return 1;
 	}
@@ -726,6 +804,13 @@ namespace BlitzenDX12
 		}
 
 		frameTools.mainGraphicsCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(varBuffersFinalState), varBuffersFinalState);
+
+		for (uint32_t i = 0; i < m_textureCount; ++i)
+		{
+			D3D12_RESOURCE_BARRIER textureFinalBarrier{};
+			CreateResourcesTransitionBarrier(textureFinalBarrier, m_textureResources[i].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			frameTools.mainGraphicsCommandList->ResourceBarrier(1, &textureFinalBarrier);
+		}
 
 		frameTools.mainGraphicsCommandList->Close();
 		ID3D12CommandList* commandLists[] = { frameTools.mainGraphicsCommandList.Get() };
