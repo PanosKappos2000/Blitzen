@@ -26,9 +26,20 @@ StructuredBuffer<Material> materialBuffer : register(t1);
 Texture2D textures[1000] : register(t8);
 SamplerState texSampler : register(s0);
 
-PSOutput main() : SV_TARGET
+struct VSOutput
+{
+    float4 position : SV_POSITION;
+    float2 uvMapping : TEXCOORD0;
+    uint materialId : TEXCOORD1;
+};
+
+
+PSOutput main(VSOutput input) : SV_TARGET
 {
     PSOutput output;
-    output.color = float4(1.0f, 0.0f, 0.0f, 1.0f); 
+
+    //output.color = textures[materialBuffer[input.materialId].albedoTag].Sample(texSampler, input.uvMapping);
+    output.color = float4(0.6, 0.1, 0, 1.f);
+
     return output;
 }

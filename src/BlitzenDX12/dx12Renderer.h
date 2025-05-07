@@ -100,6 +100,11 @@ namespace BlitzenDX12
             SIZE_T texturesSrvOffset;
             SIZE_T materialSrvOffset;
 
+            D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
+            SIZE_T samplerIncrementSize;
+            SIZE_T samplerHeapOffset{ 0 };
+            SIZE_T defaultTextureSamplerOffset;
+
             SIZE_T rtvHeapOffset{ 0 };
             SIZE_T swapchainRtvOffset;
 

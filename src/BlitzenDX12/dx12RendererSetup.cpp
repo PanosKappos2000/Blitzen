@@ -317,14 +317,18 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE textureRange{};
 		CreateDescriptorRange(textureRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, BlitzenEngine::ce_maxTextureCount, Ce_TextureDescriptorArrayRegister);
 
-		D3D12_ROOT_PARAMETER rootParameters[5]{};
+		D3D12_DESCRIPTOR_RANGE textureSamplerRange{};
+		CreateDescriptorRange(textureSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, Ce_DefaultTextureSamplerDescriptorCount, Ce_DefaultTextureSamplerRegister);
+
+		D3D12_ROOT_PARAMETER rootParameters[6]{};
 		CreateRootParameterDescriptorTable(rootParameters[0], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[1], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterPushConstants(rootParameters[2], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[3], &textureRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateRootParameterDescriptorTable(rootParameters[4], &materialRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterDescriptorTable(rootParameters[5], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
-		if (!CreateRootSignature(device, ppOpaqueRootSignature, 5, rootParameters))
+		if (!CreateRootSignature(device, ppOpaqueRootSignature, 6, rootParameters))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
@@ -746,7 +750,6 @@ namespace BlitzenDX12
 		descriptorContext.materialSrvOffset = descriptorContext.srvHeapOffset;
 		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 			descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
-		
 	}
 
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 

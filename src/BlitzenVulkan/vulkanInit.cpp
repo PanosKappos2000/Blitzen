@@ -95,15 +95,14 @@ namespace BlitzenVulkan
 
         // Call the function to search for a suitable physical device, it it can't find one return 0
         if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, 
-        m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
+            m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device");
             return 0;
         }
 
         // Create the device
-        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, 
-            m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
+        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device");
             return 0;
@@ -111,8 +110,8 @@ namespace BlitzenVulkan
 
         // Creates the swapchain
         if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, 
-        windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
-        m_pCustomAllocator, m_swapchainValues))
+            windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
+            m_pCustomAllocator, m_swapchainValues))
         {
             BLIT_ERROR("Failed to create Vulkan swapchain");
             return 0;

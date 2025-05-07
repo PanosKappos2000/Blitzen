@@ -84,6 +84,10 @@ namespace BlitzenDX12
     constexpr UINT Ce_MaterialBufferDescriptorCount = 1;
     constexpr UINT Ce_MaterialBufferRangeElement = 1;
 
+    constexpr UINT Ce_SamplerCount = 1;
+    constexpr UINT Ce_DefaultTextureSamplerRegister = 1;
+    constexpr UINT Ce_DefaultTextureSamplerDescriptorCount = 1;
+
     constexpr UINT Ce_TextureDescriptorArrayRegister = 8;
 
     constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount + Ce_MaterialSrvRangeCount) * ce_framesInFlight;// Double or triple buffering

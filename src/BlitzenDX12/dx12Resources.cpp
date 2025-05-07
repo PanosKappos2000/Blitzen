@@ -307,6 +307,35 @@ namespace BlitzenDX12
         return sizeof(uint32_t) * elementCount;
     }
 
+    void CreateSampler(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& samplerHeapOffset,
+        D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW, 
+        FLOAT* pBorderColors, D3D12_FILTER filter, D3D12_COMPARISON_FUNC compFunc/*D3D12_COMPARISON_FUNC_NEVER*/)
+    {
+        D3D12_SAMPLER_DESC desc{};
+        desc.AddressU = addressU;
+        desc.AddressV = addressV;
+        desc.AddressW = addressW;
+
+        if (pBorderColors)
+        {
+            desc.BorderColor[0] = pBorderColors[0];
+            desc.BorderColor[1] = pBorderColors[1];
+            desc.BorderColor[2] = pBorderColors[2];
+            desc.BorderColor[3] = pBorderColors[3];
+        }
+
+        desc.ComparisonFunc = compFunc;
+        desc.Filter = filter;
+        desc.MaxAnisotropy = filter & D3D12_FILTER_ANISOTROPIC ? 4 : 1;
+        desc.MinLOD = 0.f;
+        desc.MaxLOD = D3D12_FLOAT32_MAX;
+        desc.MipLODBias = 0.f;
+
+        handle.ptr += samplerHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        device->CreateSampler(&desc, handle);
+        samplerHeapOffset++;
+    }
+
     void PlaceFence(UINT64& fenceValue, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE& event)
     {
         const UINT64 fenceV = fenceValue++;

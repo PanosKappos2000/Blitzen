@@ -36,15 +36,21 @@ void main()
 
     vec4 albedoMap = vec4(0.5f, 0.5f, 0.5f, 1);
     if(material.albedoTag != 0)
+    {
         albedoMap = texture(textures[nonuniformEXT(material.albedoTag)], uv);
+    }
     
     vec3 normalMap = vec3(0, 0, 1);
     if(material.normalTag != 0)
+    {
         normalMap = texture(textures[nonuniformEXT(material.normalTag)], uv).rgb * 2 - 1;
+    }
 
     vec3 emissiveMap = vec3(0.0);
     if(material.emissiveTag != 0)
+    {
         emissiveMap = texture(textures[nonuniformEXT(material.emissiveTag)], uv).rgb;
+    }
 
     vec3 bitangent = cross(normal, tangent.xyz) * tangent.w;
     vec3 finalTangent = tangent.xyz - dot(tangent.xyz, normal) * normal;
@@ -67,7 +73,9 @@ void main()
     outColor = vec4(albedoMap.rgb * sqrt(ndotl + 0.05) + emissiveMap, albedoMap.a);
 
     if(POST_PASS != 0 && albedoMap.a < 0.5)
+    {
         discard;
+    }
 }
 #else
 void main()

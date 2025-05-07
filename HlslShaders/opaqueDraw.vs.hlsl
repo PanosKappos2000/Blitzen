@@ -23,6 +23,8 @@ cbuffer ObjId : register(b1)
 struct VSOutput
 {
     float4 position : SV_POSITION;
+    float2 uvMapping : TEXCOORD0;
+    uint materialId : TEXCOORD1;
 };
 
 // The main vertex shader function
@@ -35,7 +37,8 @@ VSOutput main(uint vertexIndex : SV_VERTEXID)
     float3 modelPos = RotateQuat(vtx.position, transformBuffer[obj.transformId].orientation) * transformBuffer[obj.transformId].scale + transformBuffer[obj.transformId].position;
     output.position = mul(projectionView, (float4(modelPos, 1.0f))); 
 
-    uint materialId = surfaceBuffer[obj.surfaceId].materialId;
+    output.materialId = surfaceBuffer[obj.surfaceId].materialId;
+    output.uvMapping = float2(vtx.mappingU, vtx.mappingV);
 
     return output;
 }

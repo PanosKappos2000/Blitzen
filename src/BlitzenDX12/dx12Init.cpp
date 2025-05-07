@@ -152,6 +152,8 @@ namespace BlitzenDX12
         }
         m_descriptorContext.srvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
         m_descriptorContext.srvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        m_descriptorContext.samplerHandle = m_samplerHeap->GetGPUDescriptorHandleForHeapStart();
+        m_descriptorContext.samplerIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
 
 		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), m_swapchainBackBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -167,6 +169,11 @@ namespace BlitzenDX12
             BLIT_ERROR("Failed to create swapchain back buffers");
             return 0;
         }
+
+        m_descriptorContext.defaultTextureSamplerOffset = m_descriptorContext.samplerHeapOffset;
+        CreateSampler(m_device.Get(), m_samplerHeap->GetCPUDescriptorHandleForHeapStart(), m_descriptorContext.samplerHeapOffset,
+            D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+            nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 
 		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_triangleRootSignature, m_trianglePso.ReleaseAndGetAddressOf()))
 		{

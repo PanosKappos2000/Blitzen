@@ -47,8 +47,8 @@ namespace BlitzenDX12
 		Dx12Renderer::VarBuffers& varBuffers, uint32_t objCount)
 	{
 		// Binds heap for compute
-		ID3D12DescriptorHeap* opaqueSrvHeaps[] = { srvHeap };
-		commandList->SetDescriptorHeaps(1, opaqueSrvHeaps);
+		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		commandList->SetDescriptorHeaps(1, srvHeaps);
 		commandList->SetComputeRootSignature(resetRoot);
 
 		// Reource barrier before count is reset and commands are rewritten
@@ -151,6 +151,8 @@ namespace BlitzenDX12
 			m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(), m_drawCullSignature.Get(), m_drawCull1Pso.Get(), varBuffers,
 			context.pResources->renderObjectCount);
 
+		ID3D12DescriptorHeap* graphicsHeaps[] = { m_srvHeap.Get(), m_samplerHeap.Get()};
+		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(2, graphicsHeaps);
 		frameTools.mainGraphicsCommandList->SetGraphicsRootSignature(m_opaqueRootSignature.Get());
 		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
@@ -184,6 +186,9 @@ namespace BlitzenDX12
 		auto materialSrvHandle = m_descriptorContext.srvHandle;
 		materialSrvHandle.ptr += m_descriptorContext.materialSrvOffset * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(4, materialSrvHandle);
+		auto samplerSrvHandle = m_descriptorContext.samplerHandle;
+		samplerSrvHandle.ptr += m_descriptorContext.defaultTextureSamplerOffset * m_descriptorContext.samplerIncrementSize;
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(5, samplerSrvHandle);
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());

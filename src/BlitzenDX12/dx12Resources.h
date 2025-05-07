@@ -38,6 +38,10 @@ namespace BlitzenDX12
         D3D12_RESOURCE_FLAGS flags, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES state, D3D12_CLEAR_VALUE* pClear, 
         D3D12_TEXTURE_LAYOUT layout = D3D12_TEXTURE_LAYOUT_UNKNOWN);
 
+    void CreateSampler(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& samplerHeapOffset,
+        D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW,
+        FLOAT* pBorderColors, D3D12_FILTER filter, D3D12_COMPARISON_FUNC compFunc = D3D12_COMPARISON_FUNC_NEVER);
+
     void PlaceFence(UINT64& fenceValue, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE& event);
 
 

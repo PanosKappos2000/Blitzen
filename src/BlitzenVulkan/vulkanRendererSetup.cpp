@@ -24,8 +24,7 @@ namespace BlitzenVulkan
 
         // This sampler will be used by all textures for now
         // Initialized here since textures can and will be given to Vulkan before the renderer is set up
-        textureSampler = CreateSampler(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR,
-            VK_SAMPLER_ADDRESS_MODE_REPEAT);
+        textureSampler = CreateSampler(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
         if (textureSampler == VK_NULL_HANDLE)
         {
             BLIT_ERROR("Failed to create texture sampler");

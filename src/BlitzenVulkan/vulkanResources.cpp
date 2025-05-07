@@ -312,8 +312,7 @@ namespace BlitzenVulkan
     }
 
     VkSampler CreateSampler(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
-        VkSamplerAddressMode addressMode, void* pNextChain /*=nullptr*/
-    )
+        VkSamplerAddressMode addressMode, void* pNextChain /*=nullptr*/)
     {
         VkSamplerCreateInfo createInfo {}; 
         createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -328,11 +327,11 @@ namespace BlitzenVulkan
 	    createInfo.addressModeW = addressMode;
 
         createInfo.mipLodBias = 0.f;
-	    createInfo.minLod = 0;
+	    createInfo.minLod = 0.f;
 	    createInfo.maxLod = 16.f;
 
-        createInfo.anisotropyEnable = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR);
-        createInfo.maxAnisotropy = (mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR) ? 4.f : 1.f;
+        createInfo.anisotropyEnable = (mipmapMode & VK_SAMPLER_MIPMAP_MODE_LINEAR);
+        createInfo.maxAnisotropy = (mipmapMode & VK_SAMPLER_MIPMAP_MODE_LINEAR) ? 4.f : 1.f;
 
         createInfo.pNext = pNextChain;
 
@@ -343,8 +342,10 @@ namespace BlitzenVulkan
         createInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
 	    VkSampler sampler = VK_NULL_HANDLE;
-	    if(vkCreateSampler(device, &createInfo, 0, &sampler) != VK_SUCCESS)
+        if (vkCreateSampler(device, &createInfo, 0, &sampler) != VK_SUCCESS)
+        {
             return VK_NULL_HANDLE;
+        }
 	    return sampler;
     }
 
