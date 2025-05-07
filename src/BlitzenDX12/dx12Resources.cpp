@@ -4,14 +4,15 @@
 namespace BlitzenDX12
 {
     uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, ID3D12DescriptorHeap** ppSrvHeap, 
-        ID3D12DescriptorHeap** ppDsvHeap)
+        ID3D12DescriptorHeap** ppDsvHeap, ID3D12DescriptorHeap** ppSamplerHeap)
     {
         if (!CheckForDeviceRemoval(device))
         {
             return 0;
         }
 
-        if (!CreateDescriptorHeap(device, ppSrvHeap, Ce_SrvDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        if (!CreateDescriptorHeap(device, ppSrvHeap, Ce_SrvDescriptorCount + BlitzenEngine::ce_maxTextureCount, 
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
         {
             BLIT_ERROR("Failed to create srv descriptor heap");
             return 0;
@@ -26,6 +27,12 @@ namespace BlitzenDX12
         if (!CreateDescriptorHeap(device, ppDsvHeap, ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
         {
             BLIT_ERROR("Failed to create dsv descriptor heap");
+            return 0;
+        }
+
+        if (!CreateDescriptorHeap(device, ppSamplerHeap, 1, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        {
+            BLIT_ERROR("Failed to create sampler descriptor heap");
             return 0;
         }
 
@@ -132,6 +139,22 @@ namespace BlitzenDX12
 		device->CreateShaderResourceView(resource, &srvDesc, handle);
 
         // Increase srv offset
+        srvOffset++;
+    }
+
+    void CreateTextureShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& srvOffset,
+        DXGI_FORMAT format, UINT mipLevels)
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MipLevels = mipLevels;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.PlaneSlice = 0;
+
+        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        device->CreateShaderResourceView(resource, &srvDesc, handle);
         srvOffset++;
     }
 

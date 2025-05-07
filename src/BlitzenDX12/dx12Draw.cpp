@@ -178,6 +178,12 @@ namespace BlitzenDX12
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, opaqueSrvHandle);
 		// Shared descriptors
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(1, sharedSrvHandle);
+		auto textureSrvHandle = m_descriptorContext.srvHandle;
+		textureSrvHandle.ptr += m_descriptorContext.texturesSrvOffset * m_descriptorContext.srvIncrementSize;
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(3, textureSrvHandle);
+		auto materialSrvHandle = m_descriptorContext.srvHandle;
+		materialSrvHandle.ptr += m_descriptorContext.materialSrvOffset * m_descriptorContext.srvIncrementSize;
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(4, materialSrvHandle);
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());

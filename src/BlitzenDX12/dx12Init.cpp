@@ -144,7 +144,8 @@ namespace BlitzenDX12
 		m_swapchainWidth = windowWidth;
 		m_swapchainHeight = windowHeight;
 
-        if (!CreateDescriptorHeaps(m_device.Get(), m_rtvHeap.ReleaseAndGetAddressOf(), m_srvHeap.ReleaseAndGetAddressOf(), m_dsvHeap.ReleaseAndGetAddressOf()))
+        if (!CreateDescriptorHeaps(m_device.Get(), m_rtvHeap.ReleaseAndGetAddressOf(), m_srvHeap.ReleaseAndGetAddressOf(), m_dsvHeap.ReleaseAndGetAddressOf(), 
+            m_samplerHeap.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create descriptor heaps");
             return 0;

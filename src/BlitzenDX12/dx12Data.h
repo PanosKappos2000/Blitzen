@@ -35,6 +35,8 @@ namespace BlitzenDX12
     constexpr DXGI_FORMAT Ce_DepthTargetFormat = DXGI_FORMAT_D32_FLOAT;
     constexpr FLOAT Ce_ClearDepth = 0.f;
 
+    constexpr D3D12_TEXTURE_LAYOUT Ce_DefaultTextureFormat = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
+
 
     /* Srv desriptors for both compute and graphics pipelines*/
     constexpr uint32_t Ce_SharedSrvRangeCount = 5;
@@ -77,16 +79,24 @@ namespace BlitzenDX12
 	constexpr UINT Ce_VertexBufferDescriptorCount = 1;
     constexpr UINT Ce_VertexBufferRangeElement = 0;
 
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
+    constexpr UINT Ce_MaterialSrvRangeCount = 1;
+    constexpr UINT Ce_MaterialBufferRegister = 1;
+    constexpr UINT Ce_MaterialBufferDescriptorCount = 1;
+    constexpr UINT Ce_MaterialBufferRangeElement = 1;
+
+    constexpr UINT Ce_TextureDescriptorArrayRegister = 8;
+
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount + Ce_MaterialSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
 
     
     /* SSBO data copy helpers */
-    constexpr UINT Ce_ConstDataSSBOCount = 5;
+    constexpr UINT Ce_ConstDataSSBOCount = 6;
     constexpr UINT Ce_VertexStagingBufferIndex = 0;
     constexpr UINT Ce_IndexStagingBufferIndex = 1;
     constexpr UINT Ce_SurfaceStagingBufferIndex = 2;
     constexpr UINT Ce_RenderStagingBufferIndex = 3;
     constexpr UINT Ce_LodStagingIndex = 4;
+    constexpr UINT Ce_MaterialStagingIndex = 5;
 
     constexpr UINT Ce_VarSSBODataCount = 1;
     constexpr UINT Ce_TransformStagingBufferIndex = 0;
@@ -129,6 +139,13 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12Resource> staging{ nullptr };
         void* pData{ nullptr };
         size_t dataCopySize{ 0 };
+    };
+
+    struct DX2DTEX
+    {
+        DX12WRAPPER<ID3D12Resource> resource;
+        UINT mipLevels{ 0 };
+        DXGI_FORMAT format{ DXGI_FORMAT_UNKNOWN };
     };
 
 

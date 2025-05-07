@@ -83,6 +83,7 @@ namespace BlitzenDX12
             SSBO surfaceBuffer;
             SSBO renderBuffer;
             SSBO lodBuffer;
+            SSBO materialBuffer;
 
             DX12WRAPPER<ID3D12Resource> indexBuffer;
             D3D12_INDEX_BUFFER_VIEW indexBufferView;
@@ -96,6 +97,8 @@ namespace BlitzenDX12
             SIZE_T sharedSrvOffset[ce_framesInFlight];// Offset of srvHeap for shared descriptor table
             SIZE_T opaqueSrvOffset[ce_framesInFlight];// Offset of srvHeap for opaque pipeline descriptor table
             SIZE_T cullSrvOffset[ce_framesInFlight];// Offset of srvHeap for cull pipeline descriptor table
+            SIZE_T texturesSrvOffset;
+            SIZE_T materialSrvOffset;
 
             SIZE_T rtvHeapOffset{ 0 };
             SIZE_T swapchainRtvOffset;
@@ -130,6 +133,7 @@ namespace BlitzenDX12
         DescriptorContext m_descriptorContext;
 
         DX12WRAPPER<ID3D12DescriptorHeap> m_srvHeap;
+        DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
         DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
         DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
 
@@ -167,7 +171,7 @@ namespace BlitzenDX12
 
         uint32_t m_currentFrame = 0;
 
-        DX12WRAPPER<ID3D12Resource> m_textureResources[BlitzenEngine::ce_maxTextureCount];
+        DX2DTEX m_tex2DList[BlitzenEngine::ce_maxTextureCount];
         uint32_t m_textureCount{ 0 };
 
     private:
