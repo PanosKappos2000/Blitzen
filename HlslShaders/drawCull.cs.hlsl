@@ -33,9 +33,21 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
+        // Command count
         uint cmdId;
         InterlockedAdd(drawCountBuffer[0], 1, cmdId);
+
+        // Render object id constant
         drawCmdBuffer[cmdId].objId = objId;
+
+        // Texture tag constants
+        drawCmdBuffer[cmdId].albedoId = materialBuffer[surface.materialId].albedoTag;
+        drawCmdBuffer[cmdId].normalId = materialBuffer[surface.materialId].normalTag;
+        drawCmdBuffer[cmdId].specularId = materialBuffer[surface.materialId].specularTag;
+        drawCmdBuffer[cmdId].emissiveId = materialBuffer[surface.materialId].emissiveTag;
+        drawCmdBuffer[cmdId].materialId = surface.materialId;
+
+        // Draw commands
         drawCmdBuffer[cmdId].indexCount = lodBuffer[lodId].indexCount;
         drawCmdBuffer[cmdId].instCount = 1;
         drawCmdBuffer[cmdId].indexOffset = lodBuffer[lodId].indexOffset;

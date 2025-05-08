@@ -177,25 +177,20 @@ namespace BlitzenDX12
 		// Opaque graphics pipeline exclusive descriptors
 		auto opaqueSrvHandle = m_descriptorContext.srvHandle;
 		opaqueSrvHandle.ptr += m_descriptorContext.opaqueSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(0, opaqueSrvHandle);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueExclusiveBuffersElement, opaqueSrvHandle);
 		// Shared descriptors
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(1, sharedSrvHandle);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSharedBuffersElement, sharedSrvHandle);
 		auto textureSrvHandle = m_descriptorContext.srvHandle;
 		textureSrvHandle.ptr += m_descriptorContext.texturesSrvOffset * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(3, textureSrvHandle);
-		auto materialSrvHandle = m_descriptorContext.srvHandle;
-		materialSrvHandle.ptr += m_descriptorContext.materialSrvOffset * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(4, materialSrvHandle);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueTextureDescriptorsElement, textureSrvHandle);
 		auto samplerSrvHandle = m_descriptorContext.samplerHandle;
 		samplerSrvHandle.ptr += m_descriptorContext.defaultTextureSamplerOffset * m_descriptorContext.samplerIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(5, samplerSrvHandle);
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSamplerElement, samplerSrvHandle);
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
-
-		frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(2, 0, 0);
 		frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), Ce_IndirectDrawCmdBufferSize,
 			varBuffers.indirectDrawBuffer.buffer.Get(), 0, varBuffers.indirectDrawCount.buffer.Get(), 0);
 

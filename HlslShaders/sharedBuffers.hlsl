@@ -31,9 +31,33 @@ struct Render
 };
 StructuredBuffer<Render> renderBuffer : register(t4);
 
+struct Material
+{
+    float4 diffuseColor;
+    float shininess;
+
+    uint albedoTag;
+
+    uint normalTag;
+
+    uint specularTag;
+
+    uint emissiveTag;
+
+    uint materialId;
+};
+StructuredBuffer<Material> materialBuffer : register(t5);
+
 struct DrawCmd
 {
     uint objId;// Index into render object buffer
+
+    // Texture view Ids from material buffer (root constant)
+    uint albedoId;
+    uint normalId;
+    uint specularId;
+    uint emissiveId;
+    uint materialId;
 
     // Draw command
     uint indexCount;
@@ -43,7 +67,6 @@ struct DrawCmd
     uint insOffset;
 
     uint padding0;
-    uint padding1;
 };
 RWStructuredBuffer<DrawCmd> drawCmdBuffer : register(u0);
 

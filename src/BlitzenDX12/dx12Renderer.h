@@ -98,7 +98,6 @@ namespace BlitzenDX12
             SIZE_T opaqueSrvOffset[ce_framesInFlight];// Offset of srvHeap for opaque pipeline descriptor table
             SIZE_T cullSrvOffset[ce_framesInFlight];// Offset of srvHeap for cull pipeline descriptor table
             SIZE_T texturesSrvOffset;
-            SIZE_T materialSrvOffset;
 
             D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
             SIZE_T samplerIncrementSize;
