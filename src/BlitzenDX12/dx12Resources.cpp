@@ -11,8 +11,8 @@ namespace BlitzenDX12
             return 0;
         }
 
-        if (!CreateDescriptorHeap(device, ppSrvHeap, Ce_SrvDescriptorCount + BlitzenEngine::ce_maxTextureCount, 
-            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        if (!CreateDescriptorHeap(device, ppSrvHeap, Ce_SrvDescriptorCount + Ce_TextureDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
+            D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
         {
             BLIT_ERROR("Failed to create srv descriptor heap");
             return 0;

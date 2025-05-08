@@ -308,23 +308,25 @@ namespace BlitzenDX12
 		CreateDescriptorRange(sharedSrvRanges[Ce_SurfaceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_SurfaceBufferDescriptorCount, Ce_SurfaceBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
-		CreateDescriptorRange(sharedSrvRanges[Ce_MaterialBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_MaterialBufferDescriptorCount, Ce_MaterialBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
 
-		D3D12_DESCRIPTOR_RANGE textureRange{};
-		CreateDescriptorRange(textureRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, BlitzenEngine::ce_maxTextureCount, Ce_TextureDescriptorArrayRegister);
-
 		D3D12_DESCRIPTOR_RANGE textureSamplerRange{};
 		CreateDescriptorRange(textureSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, Ce_DefaultTextureSamplerDescriptorCount, Ce_DefaultTextureSamplerRegister);
+
+		D3D12_DESCRIPTOR_RANGE materialSrvRange{};
+		CreateDescriptorRange(materialSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_MaterialBufferDescriptorCount, Ce_MaterialBufferRegister);
+
+		D3D12_DESCRIPTOR_RANGE textureDescriptorsRange{};
+		CreateDescriptorRange(textureDescriptorsRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TextureDescriptorCount, Ce_TextureDescriptorRegister);
 
 		D3D12_ROOT_PARAMETER rootParameters[Ce_OpaqueRootParameterCount]{};
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueExclusiveBuffersElement], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSharedBuffersElement], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueObjectIdElement], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueTextureDescriptorsElement], &textureRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSamplerElement], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueTextureTagsElement], 2, 0, 5, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterDescriptorTable(rootParameters[Ce_MaterialSrvElement], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterDescriptorTable(rootParameters[Ce_TextureDescriptorsElement], &textureDescriptorsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
 		if (!CreateRootSignature(device, ppOpaqueRootSignature, Ce_OpaqueRootParameterCount, rootParameters))
 		{
@@ -363,22 +365,19 @@ namespace BlitzenDX12
 
 	static uint8_t CreateCmdSignatures(ID3D12Device* device, ID3D12RootSignature* opaqueRootSignature, ID3D12CommandSignature** ppOpaqueCmdSignature)
 	{
-		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[3]{};
-		indirectDescs[2].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+		// Draw command
+		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[2]{};
+		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
+		// Object id root constant
 		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
 		indirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
 		indirectDescs[0].Constant.Num32BitValuesToSet = 1;
 		indirectDescs[0].Constant.RootParameterIndex = Ce_OpaqueObjectIdElement;
 
-		indirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-		indirectDescs[1].Constant.DestOffsetIn32BitValues = 0;
-		indirectDescs[1].Constant.Num32BitValuesToSet = 5;
-		indirectDescs[1].Constant.RootParameterIndex = Ce_OpaqueTextureTagsElement;
-
 		D3D12_COMMAND_SIGNATURE_DESC sigDesc{};
 		sigDesc.NodeMask = 0;
-		sigDesc.NumArgumentDescs = 3;
+		sigDesc.NumArgumentDescs = 2;
 		sigDesc.pArgumentDescs = indirectDescs;
 		sigDesc.ByteStride = sizeof(IndirectDrawCmd);
 		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, opaqueRootSignature, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
@@ -410,13 +409,13 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateComputeShaderProgram(device, context.drawCull1Root, context.ppDrawCull1Pso, L"HlslShaders/drawCull.cs.hlsl"))
+		if (!CreateComputeShaderProgram(device, context.drawCull1Root, context.ppDrawCull1Pso, "HlslShaders/CS/drawCull.cs.hlsl.bin"))
 		{
 			BLIT_ERROR("Failed to create drawCull.cs shader program");
 			return 0;
 		}
 
-		if (!CreateComputeShaderProgram(device, context.resetRoot, context.ppResetPso, L"HlslShaders/drawCountReset.cs.hlsl"))
+		if (!CreateComputeShaderProgram(device, context.resetRoot, context.ppResetPso, "HlslShaders/CS/drawCountReset.cs.hlsl.bin"))
 		{
 			BLIT_ERROR("Failed to create drawCountReset.cs shader program");
 			return 0;
@@ -549,7 +548,7 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_LodStagingIndex], buffers.lodBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_MaterialStagingIndex], buffers.materialBuffer.buffer.Get(),
+		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_MaterialStagingIndex], buffers.materialBuffer.buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		frameTools.transferCommandList->ResourceBarrier(Ce_ConstDataSSBOCount, copyDestBarriers);
 
@@ -645,9 +644,10 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		// No data for the material buffer yet
 		DX12WRAPPER<ID3D12Resource> materialStaging{ nullptr };
-		UINT64 materialBufferSize{ CreateSSBO(device, buffers.materialBuffer, materialStaging, (size_t)materialCount, const_cast<BlitzenEngine::Material*>(materials)) };
-		if (!materialBufferSize)
+		UINT64 materialBufferSize{ CreateSSBO(device, buffers.materialBuffer, materialStaging, materialCount, const_cast<BlitzenEngine::Material*>(materials)) }; 
+		if(!materialBufferSize)
 		{
 			BLIT_ERROR("Failed to create material buffer");
 			return 0;
@@ -677,6 +677,7 @@ namespace BlitzenDX12
 	}
 
 	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
+		Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue,
 		Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, 
 		UINT textureCount, DX2DTEX* pTextures)
 	{
@@ -686,6 +687,7 @@ namespace BlitzenDX12
 		BlitzenEngine::RenderObject* pRenders{ pResources->renders };
 		auto renderCount{ pResources->renderObjectCount };
 		const auto& lods{ pResources->GetLodData() };
+		auto pMaterials{ pResources->GetMaterialArrayPointer() };
 		auto materialCount{ pResources->GetMaterialCount() };
 
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
@@ -714,9 +716,6 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));
 
-			CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
-
 			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
 				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, 
 				Ce_IndirectDrawCmdBufferSize, sizeof(BlitzenDX12::IndirectDrawCmd), 0);
@@ -744,6 +743,10 @@ namespace BlitzenDX12
 				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
 		}
 		
+		// material buffer, single srv bound to pixel shader
+		descriptorContext.materialSrvOffset = descriptorContext.srvHeapOffset;
+		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+			descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
 
 		// TEXTURES SHOULD BE THE LAST THING LOADED FOR THE SRV HEAP
 		descriptorContext.texturesSrvOffset = descriptorContext.srvHeapOffset;
@@ -751,7 +754,7 @@ namespace BlitzenDX12
 		{
 			auto& tex2D{ pTextures[i] };
 
-			CreateTextureShaderResourceView(device, tex2D.resource.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(), 
+			CreateTextureShaderResourceView(device, tex2D.resource.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, tex2D.format, tex2D.mipLevels);
 		}
 	}
@@ -786,9 +789,11 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		CreateResourceViews(m_device.Get(), m_srvHeap.Get(), m_descriptorContext, m_constBuffers, m_varBuffers, pResources, m_textureCount, m_tex2DList);
+		CreateResourceViews(m_device.Get(), m_srvHeap.Get(), m_descriptorContext, m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), 
+			m_constBuffers, m_varBuffers, pResources, m_textureCount, m_tex2DList);
 		if (!CheckForDeviceRemoval(m_device.Get()))
 		{
+			BLIT_ERROR("Failed to create shader resource views");
 			return 0;
 		}
 
@@ -822,7 +827,7 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_LodStagingIndex], m_constBuffers.lodBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_MaterialStagingIndex], m_constBuffers.materialBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(Ce_ConstDataSSBOCount, staticBufferBarriers);
 
 		/*

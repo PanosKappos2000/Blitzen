@@ -223,52 +223,107 @@ ENDIF(WIN32)
 
 
 
-# Copy the assets folder to the binary directory
+# Copies the assets folder to the binary directory
 add_custom_target(copy_assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets)
 add_dependencies(BlitzenEngine copy_assets)
 
-# Copy the glsl shaders to the binary directory
+# Copies the opengl glsl shaders to the binary directory
 add_custom_target(copy_glsl_shaders
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders)
 add_dependencies(BlitzenEngine copy_glsl_shaders)
 
-# Copy the hlsl shaders to the binary directory
+# Copies the legacy hlsl shaders to the binary directory
 add_custom_target(copy_hlsl_shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/HlslShaders ${CMAKE_CURRENT_BINARY_DIR}/HlslShaders)
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/HlslShadersLegacy ${CMAKE_CURRENT_BINARY_DIR}/HlslShadersLegacy)
 add_dependencies(BlitzenEngine copy_hlsl_shaders)
 
 
-#---------------------------------------------------------------------------------------------------
-#Compiling glsl Shaders to Spir-v
-#
-
-# Find the GLSL VALIDATOR binary
+# Sets shader compilers
 IF(WIN32)
     find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
     set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/glslangValidator.exe")
+
+    find_program(DXC dxc HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
+    set(DXC "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/dxc.exe")
 ELSEIF(UNIX)
     find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixBin")
     set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixBin/glslangValidator")
 ENDIF(WIN32)
-  
-  # Find all glsl shaders files
-  file(GLOB_RECURSE GLSL_SOURCE_FILES
-      "VulkanShaders/*.glsl")
-  foreach(GLSL ${GLSL_SOURCE_FILES})
+
+
+
+# SPIRV (Vulkan)
+# Finds all glsl shaders files
+file(GLOB_RECURSE GLSL_SOURCE_FILES "VulkanShaders/*.glsl")
+foreach(GLSL ${GLSL_SOURCE_FILES})
     get_filename_component(FILE_NAME ${GLSL} NAME)
     set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/${FILE_NAME}.spv")
-    add_custom_command(
-      OUTPUT ${SPIRV}
-      COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/"
-      COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${GLSL} -o ${SPIRV}
-      DEPENDS ${GLSL})
-    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
-  endforeach(GLSL)
-  add_custom_target(VulkanShaders DEPENDS ${SPIRV_BINARY_FILES})
-  add_dependencies(BlitzenEngine VulkanShaders)
 
-#  # HLSL
+    add_custom_command(OUTPUT ${SPIRV}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/"
+        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${GLSL} -o ${SPIRV}
+        DEPENDS ${GLSL})
+
+    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+endforeach(GLSL)
+add_custom_target(VulkanShaders DEPENDS ${SPIRV_BINARY_FILES})
+add_dependencies(BlitzenEngine VulkanShaders)
+
+
+
+# HLSL
+# Finds pixel shader files and compiles them
+file(GLOB_RECURSE HLSL_PS_FILES "HlslShaders/PS/*.hlsl")
+foreach(PS ${HLSL_PS_FILES})
+    get_filename_component(FILE_NAME ${PS} NAME)
+    set(BIN "${PROJECT_BINARY_DIR}/HlslShaders/PS/${FILE_NAME}.bin")
+
+    add_custom_command(OUTPUT ${BIN}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/HlslShaders/PS/" 
+        COMMAND DXC -T ps_6_6 -E main -Fo ${BIN} ${PS} 
+        DEPENDS ${PS} 
+        COMMENT "Compiling HLSL ps: ${FILE_NAME}")
+
+    list(APPEND HLSL_BIN_FILES ${BIN})
+endforeach(PS)
+
+# Finds vertex shader files
+file(GLOB_RECURSE HLSL_VS_FILES "HlslShaders/VS/*.hlsl")
+foreach(VS ${HLSL_VS_FILES})
+    get_filename_component(FILE_NAME ${VS} NAME)
+    set(BIN "${PROJECT_BINARY_DIR}/HlslShaders/VS/${FILE_NAME}.bin")
+
+    add_custom_command(OUTPUT ${BIN}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/HlslShaders/VS/" 
+        COMMAND DXC -T vs_6_6 -E main -Fo ${BIN} ${VS} 
+        DEPENDS ${VS} 
+        COMMENT "Compiling HLSL vs: ${FILE_NAME}")
+
+    list(APPEND HLSL_BIN_FILES ${BIN})
+endforeach(VS)
+
+# Finds vertex shader files
+file(GLOB_RECURSE HLSL_CS_FILES "HlslShaders/CS/*.hlsl")
+foreach(CS ${HLSL_CS_FILES})
+    get_filename_component(FILE_NAME ${CS} NAME)
+    set(BIN "${PROJECT_BINARY_DIR}/HlslShaders/CS/${FILE_NAME}.bin")
+
+    add_custom_command(OUTPUT ${BIN}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/HlslShaders/CS/" 
+        COMMAND DXC -T cs_6_6 -E csMain -Fo ${BIN} ${CS} 
+        DEPENDS ${CS} 
+        COMMENT "Compiling HLSL cs: ${FILE_NAME}")
+
+    list(APPEND HLSL_BIN_FILES ${BIN})
+endforeach(CS)
+
+add_custom_target(HlslShaders DEPENDS ${HLSL_BIN_FILES})
+add_dependencies(BlitzenEngine HlslShaders)
+
+
+
+#  # HLSL(Vulkan)
 #  file(GLOB_RECURSE HLSL_SOURCE_FILES
 #      "HlslShaders/*.hlsl")
 #  foreach(HLSL ${HLSL_SOURCE_FILES})
@@ -280,29 +335,29 @@ ENDIF(WIN32)
 #    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 #add_custom_target(VkHLSL_shaders DEPENDS ${SPIRV_BINARY_FILES})
 #add_dependencies(BlitzenEngine VkHLSL_shaders)
+
   
-  # Copy the spir-v shaders to the target directory
-  add_custom_command(TARGET BlitzenEngine POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders/"
-      COMMAND ${CMAKE_COMMAND} -E copy_directory
-          "${PROJECT_BINARY_DIR}/VulkanShaders"
-          "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders")
+# Copy the spir-v shaders to the target directory
+add_custom_command(TARGET BlitzenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders/"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/VulkanShaders" "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders")
 
-    # Copy the assets to the target directory
-    add_custom_command(TARGET BlitzenEngine POST_BUILD
+# Copy the spir-v shaders to the target directory
+add_custom_command(TARGET BlitzenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders/"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/HlslShaders" "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders")
+
+# Copy the assets to the target directory
+add_custom_command(TARGET BlitzenEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/Assets/"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${PROJECT_BINARY_DIR}/Assets"
-        "$<TARGET_FILE_DIR:BlitzenEngine>/Assets")
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/Assets" "$<TARGET_FILE_DIR:BlitzenEngine>/Assets")
 
-    # Copy the glsl shaders to the target directory
-    add_custom_command(TARGET BlitzenEngine POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/GlslShaders"
-        "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders")
+# Copy the glsl shaders to the target directory
+add_custom_command(TARGET BlitzenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/GlslShaders" "$<TARGET_FILE_DIR:BlitzenEngine>/GlslShaders")
 
-    # Copy the hlsl shaders to the target directory
-    add_custom_command(TARGET BlitzenEngine POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/HlslShaders"
-        "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders")
+# Copy the hlsl shaders to the target directory
+add_custom_command(TARGET BlitzenEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShadersLegacy"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/HlslShadersLegacy" "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShadersLegacy")

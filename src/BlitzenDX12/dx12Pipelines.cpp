@@ -96,6 +96,17 @@ namespace BlitzenDX12
         rootParameter.ShaderVisibility = shaderVisibility;
     }
 
+    void CreateRootParameterSrv(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility)
+    {
+        rootParameter = {};
+
+        rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+        rootParameter.Descriptor.ShaderRegister = baseRegister;
+        rootParameter.Descriptor.RegisterSpace = registerSpace;
+
+        rootParameter.ShaderVisibility = shaderVisibility;
+    }
+
 
     uint8_t CreateRootSignature(ID3D12Device* device, ID3D12RootSignature** ppRootSignature, 
         UINT numParameters, D3D12_ROOT_PARAMETER* pParameters,
@@ -146,6 +157,24 @@ namespace BlitzenDX12
 
         // Success
         return 1;
+    }
+
+    size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes)
+    {
+        // Tries to open the file with the provided path
+        BlitzenPlatform::FileHandle handle;
+        if (!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        {
+            return 0;
+        }
+        // Reads the shader code in byte format
+        size_t filesize = 0;
+        if (!BlitzenPlatform::FilesystemReadAllBytes(handle, bytes, &filesize))
+        {
+            return 0;
+        }
+
+        return filesize;
     }
 
     void CreateDefaultPsoDescription(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
@@ -209,13 +238,13 @@ namespace BlitzenDX12
         }
 
         Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.vs.hlsl", "vs_5_0", "main", vertexShader.ReleaseAndGetAddressOf()))
+        if (!CreateShaderProgram(L"HlslShadersLegacy/loadingTriangle.vs.hlsl", "vs_5_0", "main", vertexShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading vertex shader");
             return 0;
         }
         Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-        if (!CreateShaderProgram(L"HlslShaders/loadingTriangle.ps.hlsl", "ps_5_0", "main", pixelShader.ReleaseAndGetAddressOf()))
+        if (!CreateShaderProgram(L"HlslShadersLegacy/loadingTriangle.ps.hlsl", "ps_5_0", "main", pixelShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading pixel shader");
             return 0;
@@ -241,24 +270,33 @@ namespace BlitzenDX12
 
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso)
     {
-        DX12WRAPPER<ID3DBlob> vertexShader;
-        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.vs.hlsl", "vs_5_0", "main", &vertexShader))
+        BlitCL::String vsBytes;
+        auto vsSize{ GetShaderBytes(device, "HlslShaders/VS/opaqueDraw.vs.hlsl.bin", vsBytes)};
+        if(!vsSize)
         {
 			BLIT_ERROR("Failed to create main opaque vertex shader");
 			return 0;
         }
-        Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
-        if (!CreateShaderProgram(L"HlslShaders/opaqueDraw.ps.hlsl", "ps_5_0", "main", &pixelShader))
+        D3D12_SHADER_BYTECODE vsCode{};
+        vsCode.BytecodeLength = vsSize;
+        vsCode.pShaderBytecode = vsBytes.Data();
+
+        BlitCL::String psBytes;
+        auto psSize{ GetShaderBytes(device, "HlslShaders/PS/opaqueDraw.ps.hlsl.bin", psBytes) };
+        if(!psSize)
         {
 			BLIT_ERROR("Failed to create main opaque pixel shader");
             return 0;
         }
+        D3D12_SHADER_BYTECODE psCode{};
+        psCode.BytecodeLength = psSize;
+        psCode.pShaderBytecode = psBytes.Data();
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 		CreateDefaultPsoDescription(psoDesc);
         psoDesc.pRootSignature = rootSignature;
-        psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
-        psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
+        psoDesc.VS = vsCode;
+        psoDesc.PS = psCode;
         psoDesc.DSVFormat = Ce_DepthTargetFormat;
 
         auto psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
@@ -270,16 +308,21 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const WCHAR* filename)
+    uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const char* filename)
     {
-        DX12WRAPPER<ID3DBlob> shader;
-        if (!CreateShaderProgram(filename, "cs_5_0", "csMain", &shader))
+        BlitCL::String csBytes;
+        auto csSize{ GetShaderBytes(device, filename, csBytes) };
+        if (!csSize)
         {
+            BLIT_ERROR("Failed to create main opaque vertex shader");
             return 0;
         }
+        D3D12_SHADER_BYTECODE csCode{};
+        csCode.BytecodeLength = csSize;
+        csCode.pShaderBytecode = csBytes.Data();
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
-        psoDesc.CS = { shader->GetBufferPointer(), shader->GetBufferSize() };
+        psoDesc.CS = csCode;
         psoDesc.pRootSignature = root;
 
         auto cullPsoResult = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso));

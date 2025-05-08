@@ -2,6 +2,7 @@
 #include "dx12Data.h"
 #include <d3dcompiler.h>
 #include <string>
+#include "BlitCL/blitString.h"
 
 namespace BlitzenDX12
 {
@@ -11,10 +12,11 @@ namespace BlitzenDX12
     void CreateRootParameterDescriptorTable(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges,
         D3D12_SHADER_VISIBILITY shaderVisibility);
 
-    void CreateRootParameterCBV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister,
-        UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility);
+    void CreateRootParameterCBV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility);
 
     void CreateRootParameterUAV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility);
+
+    void CreateRootParameterSrv(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility);
 
     // Descriptor parameter to be passed to root parameter of type descriptor table
 	void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
@@ -29,8 +31,11 @@ namespace BlitzenDX12
     // Compiles a specified shader inside the shader blob parameter
     uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, const char* entryPoint, ID3DBlob** shaderBlob);
 
+    // Compiles a shader with shader model 6.6
+    size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes);
+
     // Compiles a compute shader and creates its pipeline state object
-    uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const WCHAR* filename);
+    uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const char* filename);
 
     // Sets the most used values of a pso description 
     void CreateDefaultPsoDescription(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc);

@@ -1,5 +1,5 @@
-#include "HlslShaders/sharedBuffers.hlsl"
-#include "HlslShaders/hlslMath.hlsl"
+#include "../Headers/sharedBuffers.hlsl"
+#include "../Headers/hlslMath.hlsl"
 
 struct Vertex
 {
@@ -24,6 +24,7 @@ struct VSOutput
 {
     float4 position : SV_POSITION;
     float2 uvMapping : TEXCOORD0;
+    uint materialId : TEXCOORD1;
 };
 
 // The main vertex shader function
@@ -37,6 +38,7 @@ VSOutput main(uint vertexIndex : SV_VERTEXID)
     output.position = mul(projectionView, (float4(modelPos, 1.0f))); 
 
     output.uvMapping = float2(vtx.mappingU, vtx.mappingV);
+    output.materialId = surfaceBuffer[obj.surfaceId].materialId;
 
     return output;
 }

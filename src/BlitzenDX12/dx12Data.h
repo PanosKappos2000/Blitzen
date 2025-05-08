@@ -39,7 +39,7 @@ namespace BlitzenDX12
 
 
     /* Srv desriptors for both compute and graphics pipelines*/
-    constexpr uint32_t Ce_SharedSrvRangeCount = 6;
+    constexpr uint32_t Ce_SharedSrvRangeCount = 5;
 
     constexpr UINT Ce_SurfaceBufferRegister = 2;
     constexpr UINT Ce_SurfaceBufferDescriptorCount = 1;
@@ -53,17 +53,13 @@ namespace BlitzenDX12
     constexpr UINT Ce_RenderObjectBufferDescriptorCount = 1;
     constexpr UINT Ce_RenderObjectBufferRangeElement = 2;
 
-    constexpr UINT Ce_MaterialBufferRegister = 5;
-    constexpr UINT Ce_MaterialBufferDescriptorCount = 1;
-    constexpr UINT Ce_MaterialBufferRangeElement = 3;
-
     constexpr UINT Ce_IndirectDrawBufferRegister = 0;// First Uav
     constexpr UINT Ce_IndirectDrawBufferDescriptorCount = 1;
-    constexpr UINT Ce_IndirectDrawBufferRangeElement = 4;
+    constexpr UINT Ce_IndirectDrawBufferRangeElement = 3;
 
     constexpr UINT Ce_ViewDataBufferRegister = 0;// First Cbv
     constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
-    constexpr UINT Ce_ViewDataBufferRangeElement = 5;
+    constexpr UINT Ce_ViewDataBufferRangeElement = 4;
 
     /* Srv Descriptors for compute pipeline */
     constexpr uint32_t Ce_CullSrvRangeCount = 2;
@@ -87,7 +83,12 @@ namespace BlitzenDX12
     constexpr UINT Ce_DefaultTextureSamplerRegister = 0;
     constexpr UINT Ce_DefaultTextureSamplerDescriptorCount = 1;
 
-    constexpr UINT Ce_TextureDescriptorArrayRegister = 8;
+    constexpr UINT Ce_MaterialBufferRegister = 1;
+    constexpr UINT Ce_MaterialBufferDescriptorCount = 1;
+    constexpr UINT Ce_MaterialBufferRangeElement = 3;
+
+    constexpr UINT Ce_TextureDescriptorRegister = 8;
+    constexpr UINT Ce_TextureDescriptorCount = BlitzenEngine::ce_maxTextureCount;
 
     /* Main graphics signature root parameters */
     constexpr uint32_t Ce_OpaqueRootParameterCount = 6;
@@ -95,9 +96,9 @@ namespace BlitzenDX12
     constexpr UINT Ce_OpaqueExclusiveBuffersElement = 0;
     constexpr UINT Ce_OpaqueSharedBuffersElement = 1;
     constexpr UINT Ce_OpaqueObjectIdElement = 2;
-    constexpr UINT Ce_OpaqueTextureDescriptorsElement = 3;
-    constexpr UINT Ce_OpaqueSamplerElement = 4;
-    constexpr UINT Ce_OpaqueTextureTagsElement = 5;
+    constexpr UINT Ce_OpaqueSamplerElement = 3;
+    constexpr UINT Ce_MaterialSrvElement = 4;
+    constexpr UINT Ce_TextureDescriptorsElement = 5;
 
     constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
 
@@ -159,9 +160,8 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12Resource> resource;
         UINT mipLevels{ 0 };
         DXGI_FORMAT format{ DXGI_FORMAT_UNKNOWN };
+        D3D12_GPU_DESCRIPTOR_HANDLE view;
     };
-
-
 
     // Draw Indirect command struct (passed to the shaders)
     struct IndirectDrawCmd
@@ -169,17 +169,11 @@ namespace BlitzenDX12
         // Id into the render object buffer(root constant)
         uint32_t objId;
 
-        // Texture view Ids from material buffer (root constant)
-        uint32_t albedoId;
-        uint32_t normalId;
-        uint32_t specularId;
-        uint32_t emmisiveId;
-        uint32_t materialId;
-
         // Draw command
         D3D12_DRAW_INDEXED_ARGUMENTS command;// 5 32bit integers
 
         uint32_t padding0;
+        uint32_t padding1;
     };
     static_assert(sizeof(IndirectDrawCmd) % 16 == 0);
     constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 1'000'000;

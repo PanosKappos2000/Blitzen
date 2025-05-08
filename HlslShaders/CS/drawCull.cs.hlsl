@@ -1,6 +1,6 @@
-#include "HlslShaders/sharedBuffers.hlsl"
-#include "HlslShaders/cullBuffers.hlsl"
-#include "HlslShaders/hlslMath.hlsl"
+#include "../Headers/sharedBuffers.hlsl"
+#include "../Headers/cullBuffers.hlsl"
+#include "../Headers/hlslMath.hlsl"
 
 RWBuffer<uint> drawCountBuffer : register(u1);
 
@@ -39,13 +39,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
         // Render object id constant
         drawCmdBuffer[cmdId].objId = objId;
-
-        // Texture tag constants
-        drawCmdBuffer[cmdId].albedoId = materialBuffer[surface.materialId].albedoTag;
-        drawCmdBuffer[cmdId].normalId = materialBuffer[surface.materialId].normalTag;
-        drawCmdBuffer[cmdId].specularId = materialBuffer[surface.materialId].specularTag;
-        drawCmdBuffer[cmdId].emissiveId = materialBuffer[surface.materialId].emissiveTag;
-        drawCmdBuffer[cmdId].materialId = surface.materialId;
 
         // Draw commands
         drawCmdBuffer[cmdId].indexCount = lodBuffer[lodId].indexCount;

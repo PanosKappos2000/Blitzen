@@ -178,14 +178,16 @@ namespace BlitzenDX12
 		auto opaqueSrvHandle = m_descriptorContext.srvHandle;
 		opaqueSrvHandle.ptr += m_descriptorContext.opaqueSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueExclusiveBuffersElement, opaqueSrvHandle);
-		// Shared descriptors
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSharedBuffersElement, sharedSrvHandle);
-		auto textureSrvHandle = m_descriptorContext.srvHandle;
-		textureSrvHandle.ptr += m_descriptorContext.texturesSrvOffset * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueTextureDescriptorsElement, textureSrvHandle);
 		auto samplerSrvHandle = m_descriptorContext.samplerHandle;
 		samplerSrvHandle.ptr += m_descriptorContext.defaultTextureSamplerOffset * m_descriptorContext.samplerIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSamplerElement, samplerSrvHandle);
+		auto materialSrvHandle = m_descriptorContext.srvHandle;
+		materialSrvHandle.ptr += m_descriptorContext.materialSrvOffset * m_descriptorContext.srvIncrementSize;
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_MaterialSrvElement, materialSrvHandle);
+		auto texturesSrvHandle = m_descriptorContext.srvHandle;
+		texturesSrvHandle.ptr += m_descriptorContext.texturesSrvOffset * m_descriptorContext.srvIncrementSize;
+		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_TextureDescriptorsElement, texturesSrvHandle);
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
