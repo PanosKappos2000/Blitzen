@@ -59,15 +59,11 @@ void main()
 	float ndotl = max(dot(nrm, sunDirection), 0.0);
 
     #ifdef RAYTRACING
-
-	rayQueryEXT rayQuery;
-    uint rayflags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT;
-
-	rayQueryInitializeEXT(rayQuery, tlas, rayflags, 0xff, modelPos, 1e-2f, sunDirection, 100);
-	rayQueryProceedEXT(rayQuery);
-
-	ndotl *= (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) ? 1.0 : 0.1;
-
+	    rayQueryEXT rayQuery;
+        uint rayflags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullNoOpaqueEXT;
+	    rayQueryInitializeEXT(rayQuery, tlas, rayflags, 0xff, modelPos, 1e-2f, sunDirection, 100);
+	    rayQueryProceedEXT(rayQuery);
+	    ndotl *= (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) ? 1.0 : 0.1;
     #endif
 
     outColor = vec4(albedoMap.rgb * sqrt(ndotl + 0.05) + emissiveMap, albedoMap.a);

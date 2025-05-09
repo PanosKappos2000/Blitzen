@@ -86,18 +86,12 @@ namespace BlitzenEngine
         const size_t maxTriangles = 124;
         const float coneWeight = 0.25f;
 
-        BlitCL::DynamicArray<meshopt_Meshlet> akMeshlets{ 
-            meshopt_buildMeshletsBound(inIndices.GetSize(), maxVertices, maxTriangles) 
-        };
-        BlitCL::DynamicArray<unsigned int> meshletVertices{
-            akMeshlets.GetSize() * maxVertices 
-        };
+        BlitCL::DynamicArray<meshopt_Meshlet> akMeshlets{ meshopt_buildMeshletsBound(inIndices.GetSize(), maxVertices, maxTriangles) };
+        BlitCL::DynamicArray<unsigned int> meshletVertices{ akMeshlets.GetSize() * maxVertices };
         BlitCL::DynamicArray<unsigned char> meshletTriangles{ akMeshlets.GetSize() * maxTriangles * 3 };
 
-        akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), 
-            meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(), 
-            &inVertices[0].position.x, inVertices.GetSize(), 
-            sizeof(Vertex), maxVertices, maxTriangles, coneWeight));
+        akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(), 
+            &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex), maxVertices, maxTriangles, coneWeight));
 
 
         for(size_t i = 0; i < akMeshlets.GetSize(); ++i)
@@ -136,27 +130,21 @@ namespace BlitzenEngine
             }
 
             auto bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], 
-            &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, 
-                &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
+            &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
 
-            Cluster m = {};
-            m.dataOffset = static_cast<uint32_t>(dataOffset);
-            m.triangleCount = meshlet.triangle_count;
-            m.vertexCount = meshlet.vertex_count;
+            Cluster cluster {};
+            cluster.dataOffset = static_cast<uint32_t>(dataOffset);
+            cluster.triangleCount = meshlet.triangle_count;
+            cluster.vertexCount = meshlet.vertex_count;
 
-            if (meshlet.triangle_count == 0)
-            {
-                BLIT_ERROR("SHOULD NOT BE HAPPENING");
-            }
+            cluster.center = BlitML::vec3(bounds.center[0], bounds.center[1], bounds.center[2]);
+            cluster.radius = bounds.radius;
+            cluster.coneAxisX = bounds.cone_axis_s8[0];
+		    cluster.coneAxisY = bounds.cone_axis_s8[1];
+		    cluster.coneAxisZ = bounds.cone_axis_s8[2];
+		    cluster.coneCutoff = bounds.cone_cutoff_s8; 
 
-            m.center = BlitML::vec3(bounds.center[0], bounds.center[1], bounds.center[2]);
-            m.radius = bounds.radius;
-            m.coneAxisX = bounds.cone_axis_s8[0];
-		    m.coneAxisY = bounds.cone_axis_s8[1];
-		    m.coneAxisZ = bounds.cone_axis_s8[2];
-		    m.coneCutoff = bounds.cone_cutoff_s8; 
-
-            m_clusters.PushBack(m);
+            m_clusters.PushBack(cluster);
         }
 
         return akMeshlets.GetSize();
@@ -167,13 +155,11 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
         // Optimize vertices and indices using meshoptimizer
-        meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(),
-            surfaceIndices.GetSize(), surfaceVertices.GetSize());
-        meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(),
-            surfaceIndices.GetSize(), surfaceVertices.Data(), surfaceVertices.GetSize(),
-            sizeof(Vertex));
+        meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(), surfaceIndices.GetSize(), surfaceVertices.GetSize());
+        meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(), surfaceIndices.GetSize(), surfaceVertices.Data(), 
+            surfaceVertices.GetSize(), sizeof(Vertex));
 
-        PrimitiveSurface newSurface;
+        PrimitiveSurface newSurface{};
         newSurface.vertexOffset = static_cast<uint32_t>(m_vertices.GetSize());
         m_vertices.AppendArray(surfaceVertices);
 
@@ -220,7 +206,7 @@ namespace BlitzenEngine
             surface.lodCount++;
             BLIT_INFO("Generating LOD %d", surface.lodCount);
 
-            LodData lod;
+            LodData lod{};
             lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize() + allLodIndices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
             // TODO: Might want to make lod include one or the other, indices and clusters are not used together
@@ -296,17 +282,16 @@ namespace BlitzenEngine
         BlitML::vec3 center{ 0.f };
         for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
         {
-            center = center + surfaceVertices[i].position;// I have not overloaded the += operator
+            center = center + surfaceVertices[i].position;
         }
         center = center / static_cast<float>(surfaceVertices.GetSize());
+
         // Bounding sphere radius
         float radius = 0;
         for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
         {
-            auto pos = surfaceVertices[i].position;
-            radius = BlitML::Max(radius,
-                BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)
-                ));
+            const auto& pos = surfaceVertices[i].position;
+            radius = BlitML::Max(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
         }
         surface.center = center;
         surface.radius = radius;
@@ -428,7 +413,7 @@ namespace BlitzenEngine
 
         for(size_t i = 0; i < indexCount; ++i)
         {
-            Vertex& vtx = triangleVertices[i];
+            auto& vtx = triangleVertices[i];
 
             int32_t vertexIndex = file.f[i * 3 + 0];
 		    int32_t vertexTextureIndex = file.f[i * 3 + 1];

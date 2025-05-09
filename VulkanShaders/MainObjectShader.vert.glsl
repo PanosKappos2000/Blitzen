@@ -37,11 +37,11 @@ void main()
     outMaterialTag = surfaceBuffer.surfaces[object.surfaceId].materialId;
     
     // Unpacks surface normals for frag
-    vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ) / 127.0 - 1.0;
+    vec3 normal = vec3(vertex.normalX, vertex.normalY, vertex.normalZ) / 127.5 - 1.0;
     outNormal =  RotateQuat(normal, transform.orientation);
 
     // Unpacks tangents for frag
-    vec4 tangent = vec4(vertex.tangentX, vertex.tangentY, vertex.tangentZ, vertex.tangentW) / 127.0 - 1.0;
+    vec4 tangent = vec4(vertex.tangentX, vertex.tangentY, vertex.tangentZ, vertex.tangentW) / 127.5 - 1.0;
     tangent.xyz = RotateQuat(tangent.xyz, transform.orientation);
     outTangent = tangent;
 }

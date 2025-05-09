@@ -4,9 +4,7 @@ float3 RotateQuat(float3 v, float4 quat)
 }
 
 // Frustum culling function
-bool FrustumCheck(float3 center, float radius, // Original bounding sphere and promoted bounding sphere values
-	float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, // View matrix and frustum planes
-	float znear, float zfar)
+bool FrustumCheck(float3 center, float radius, float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, float znear, float zfar)
 {
 	bool visible = true;
 
@@ -19,4 +17,21 @@ bool FrustumCheck(float3 center, float radius, // Original bounding sphere and p
 	visible = visible && center.z + radius > znear && center.z - radius < zfar;
 
 	return visible;
+}
+
+float3 UnpackNormals(uint packed)
+{
+	float x = ((packed >> 24) & 0xFF) / 127.5f - 1.0f; 
+    float y = ((packed >> 16) & 0xFF) / 127.5f - 1.0f;
+    float z = ((packed >> 8) & 0xFF) / 127.5f - 1.0f;
+    return float3(x, y, z); 
+}
+
+float4 UnpackTangents(uint packed)
+{
+	float x = ((packed >> 24) & 0xFF) / 127.5f - 1.0f; 
+    float y = ((packed >> 16) & 0xFF) / 127.5f - 1.0f;
+    float z = ((packed >> 8) & 0xFF) / 127.5f - 1.0f;
+	float w = (packed & 0xFF) / 127.5f - 1.0f;
+	return float4(x, y, z, w);
 }

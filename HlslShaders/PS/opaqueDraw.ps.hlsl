@@ -17,43 +17,57 @@ struct Material
 };
 StructuredBuffer<Material> materialBuffer : register(t5);
 
-//Texture2D<float4> tex : register(t8);
 SamplerState texSampler : register(s0);
+//Texture2D<float4> textures[5000] : register(t8);
+
+cbuffer texDescriptorOffset : register(b2)
+{
+    uint texOffset;
+}
 
 struct VSOutput
 {
     float4 position : SV_POSITION;
     float2 uvMapping : TEXCOORD0;
     uint materialId : TEXCOORD1;
+    float3 normal : NORMAL;
+    float4 tangent : TANGENT;
 };
 
 PSOutput main(VSOutput input)
 {
     PSOutput output;
     Material mat = materialBuffer[input.materialId];
+    //Texture2D<float4> test = textures[NonUniformResourceIndex(mat.albedoTag)];
 
     float4 albedoMap = float4(0.5, 0.5, 0.5, 1);
-    if(mat.albedoTag != 17)
+    if(mat.albedoTag != texOffset)
     {
-        Texture2D<float4> albedo = ResourceDescriptorHeap[mat.albedoTag];
+        Texture2D<float4> albedo = ResourceDescriptorHeap[NonUniformResourceIndex(mat.albedoTag)];
         albedoMap = albedo.Sample(texSampler, input.uvMapping);
     }
     
     float3 normalMap = float3(0, 0, 1);
-    if(mat.normalTag != 17)
+    if(mat.normalTag != texOffset)
     {
-        Texture2D<float4> normal = ResourceDescriptorHeap[mat.normalTag];
+        Texture2D<float4> normal = ResourceDescriptorHeap[NonUniformResourceIndex(mat.normalTag)];
         normalMap = normal.Sample(texSampler, input.uvMapping).rgb * 2 - 1;
     }
 
     float3 emissiveMap = float3(0.0, 0.0, 0.0);
-    if(mat.emissiveTag != 17)
+    if(mat.emissiveTag != texOffset)
     {
-        Texture2D<float4> emissive = ResourceDescriptorHeap[mat.emissiveTag];
+        Texture2D<float4> emissive = ResourceDescriptorHeap[NonUniformResourceIndex(mat.emissiveTag)];
         emissiveMap = emissive.Sample(texSampler, input.uvMapping).rgb;
     }
 
-    output.color = float4(albedoMap.rgb /** sqrt(ndotl + 0.05)*/ + emissiveMap, albedoMap.a);
+    float3 bitangent = cross(input.normal, input.tangent.xyz) * input.tangent.w;
+    float3 finalTangent = input.tangent.xyz - dot(input.tangent.xyz, input.normal) * input.normal;
+	float3 nrm = normalize(normalMap.r * finalTangent + normalMap.g * bitangent + normalMap.b * input.normal);
+    float3 sunDirection = normalize(float3(-1, 1, -1));
+	float ndotl = max(dot(nrm, sunDirection), 0.0);
+
+    output.color = float4(albedoMap.rgb * sqrt(ndotl + 0.05) + emissiveMap, albedoMap.a);
 
     return output;
 }

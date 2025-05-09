@@ -371,8 +371,10 @@ namespace BlitzenVulkan
 
         
         VkResult res = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
             return 0;
+        }
         return 1;
     }
 

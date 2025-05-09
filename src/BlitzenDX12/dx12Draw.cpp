@@ -186,7 +186,8 @@ namespace BlitzenDX12
 		materialSrvHandle.ptr += m_descriptorContext.materialSrvOffset * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_MaterialSrvElement, materialSrvHandle);
 
-		// Draws
+		// Draw
+		frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstant(Ce_TextureDescriptorsOffsetElement, (UINT)m_descriptorContext.texturesSrvOffset, 0);
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);

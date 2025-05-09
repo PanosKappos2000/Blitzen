@@ -115,7 +115,7 @@ namespace BlitzenDX12
 			src.PlacedFootprint.Footprint.Width = mipWidth;
 			src.PlacedFootprint.Footprint.Height = mipHeight;
 			src.PlacedFootprint.Footprint.Depth = 1;
-			src.PlacedFootprint.Footprint.RowPitch = ((mipWidth + 3) / 4) * 16; // 16 bytes per block
+			src.PlacedFootprint.Footprint.RowPitch = ((mipWidth + 3) / 4) * blockSize;
 
 			// Define the copy region (size of the mip level)
 			D3D12_BOX box{};
@@ -128,7 +128,7 @@ namespace BlitzenDX12
 
 			tools.transferCommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, &box);
 
-			bufferOffset += ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * 16;  // Adjust the offset for next mip
+			bufferOffset += ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * blockSize;
 			mipWidth = mipWidth > 1 ? mipWidth / 2 : 1;
 			mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
 		}
@@ -167,9 +167,8 @@ namespace BlitzenDX12
 			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
 		}
 
+		// Loads the texture data
 		auto& tex2D{ m_tex2DList[m_textureCount] };
-
-		// Loads the data
 		uint32_t blockSize{ 0 };
 		if (!LoadDDSImageData(header, header10, handle, tex2D.format, pData, blockSize))
 		{
@@ -186,9 +185,7 @@ namespace BlitzenDX12
 		}
 
 		m_textureCount++;
-
 		stagingBuffer->Unmap(0, nullptr);
-
 		return 1;
 	}
 
@@ -317,16 +314,13 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE materialSrvRange{};
 		CreateDescriptorRange(materialSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_MaterialBufferDescriptorCount, Ce_MaterialBufferRegister);
 
-		D3D12_DESCRIPTOR_RANGE textureDescriptorsRange{};
-		CreateDescriptorRange(textureDescriptorsRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TextureDescriptorCount, Ce_TextureDescriptorRegister);
-
 		D3D12_ROOT_PARAMETER rootParameters[Ce_OpaqueRootParameterCount]{};
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueExclusiveBuffersElement], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSharedBuffersElement], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueObjectIdElement], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueObjectIdElement], Ce_ObjectIdRegister, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSamplerElement], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_MaterialSrvElement], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-		//CreateRootParameterDescriptorTable(rootParameters[Ce_TextureDescriptorsElement], &textureDescriptorsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterPushConstants(rootParameters[Ce_TextureDescriptorsOffsetElement], Ce_TextureDescriptorOffsetRegister, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
 		if (!CreateRootSignature(device, ppOpaqueRootSignature, Ce_OpaqueRootParameterCount, rootParameters, D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
 		{
