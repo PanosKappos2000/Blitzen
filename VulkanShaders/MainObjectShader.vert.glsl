@@ -32,7 +32,7 @@ void main()
     outModel = modelPosition;
 
     // Uv map for frag
-    outUv = vec2(float(vertex.uvX), float(vertex.uvY));
+    outUv = vec2(vertex.uvX, vertex.uvY);
     // Material tag for frag
     outMaterialTag = surfaceBuffer.surfaces[object.surfaceId].materialId;
     

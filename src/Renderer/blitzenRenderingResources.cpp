@@ -50,8 +50,8 @@ namespace BlitzenEngine
 
             hlsl.position = classic.position;
 
-            hlsl.mappingU = static_cast<float>(classic.uvX) / 65535.0f; 
-            hlsl.mappingV = static_cast<float>(classic.uvY) / 65535.0f;
+            hlsl.mappingU = classic.uvX; 
+            hlsl.mappingV = classic.uvY;
 
             hlsl.normals = classic.normalX << 24 | classic.normalY << 16 | classic.normalZ << 8 | classic.normalW;
             hlsl.tangents = classic.tangentX << 24 | classic.tangentY << 16 | classic.tangentZ << 8 | classic.tangentW;
@@ -373,7 +373,7 @@ namespace BlitzenEngine
         }
         else
         {
-            RenderObject current;
+            RenderObject current{};
             current.surfaceId = surfaceId;
             current.transformId = transformId;
             m_transparentRenders.PushBack(current);
@@ -434,8 +434,8 @@ namespace BlitzenEngine
             vtx.tangentX = vtx.tangentY = vtx.tangentZ = 127;
             vtx.tangentW = 254;
 
-		    vtx.uvX = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0]);
-		    vtx.uvY = meshopt_quantizeHalf(vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1]);
+		    vtx.uvX = vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 0];
+		    vtx.uvY = vertexTextureIndex < 0 ? 0.f : file.vt[vertexTextureIndex * 3 + 1];
         }
 
         // Creates indices for the obj's vertices using meshopt
@@ -552,8 +552,8 @@ namespace BlitzenEngine
                 cgltf_accessor_unpack_floats(tex, scratch.Data(), vertexCount * 2);
                 for (size_t j = 0; j < vertexCount; ++j)
                 {
-                    vertices[j].uvX = meshopt_quantizeHalf(scratch[j * 2 + 0]);
-                    vertices[j].uvY = meshopt_quantizeHalf(scratch[j * 2 + 1]);
+                    vertices[j].uvX = scratch[j * 2 + 0];
+                    vertices[j].uvY = scratch[j * 2 + 1];
                 }
             }
 

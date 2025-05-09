@@ -5,9 +5,10 @@
 struct Vertex
 {
     vec3 position;
-    float16_t uvX, uvY;
+    float uvX, uvY;
     uint8_t normalX, normalY, normalZ, normalW;
     uint8_t tangentX, tangentY, tangentZ, tangentW;
+    uint padding0;
 };
 
 // This is the single vertex buffer for the main graphics pipeline, accessed by draw indirect through index offset, index count and vertex offset

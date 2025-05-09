@@ -15,21 +15,18 @@ namespace BlitzenEngine
     struct alignas(16) Vertex
     {
         BlitML::vec3 position;
-        uint16_t uvX, uvY;
+        float uvX, uvY;
         uint8_t normalX, normalY, normalZ, normalW;
         uint8_t tangentX, tangentY, tangentZ, tangentW;
+        uint32_t padding0;
     };
+    static_assert(sizeof(Vertex) % 16 == 0);
 
     struct alignas(16) HlslVtx
     {
         BlitML::vec3 position;
-
-        float mappingU;
-        float mappingV;
-
-        uint32_t normals;
-        uint32_t tangents;
-
+        float mappingU, mappingV;
+        uint32_t normals, tangents;
         uint32_t padding0;
     };
     static_assert(sizeof(HlslVtx) % 16 == 0);

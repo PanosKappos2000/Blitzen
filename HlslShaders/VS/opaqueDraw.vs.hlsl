@@ -4,11 +4,8 @@
 struct Vertex
 {
     float3 position;
-    float mappingU;
-    float mappingV;
-    uint normals;
-    uint tangents;
-
+    float mappingU, mappingV;
+    uint normals, tangents;
     uint padding0;
 };
 StructuredBuffer<Vertex> vertexBuffer : register(t0);
@@ -38,17 +35,21 @@ VSOutput main(uint vertexIndex : SV_VERTEXID)
     // Position
     float3 modelPos = RotateQuat(vtx.position, orientation) * transformBuffer[obj.transformId].scale + transformBuffer[obj.transformId].position;
     output.position = mul(projectionView, (float4(modelPos, 1.0f))); 
-    // Tex coords
-    output.uvMapping = float2(vtx.mappingU, vtx.mappingV);
+    
     // Material index
     output.materialId = surfaceBuffer[obj.surfaceId].materialId;
+
     // Normals(unpacking required)
     float3 unpackedNormal = UnpackNormals(vtx.normals);
     output.normal = RotateQuat(unpackedNormal, orientation);
+
     // Tangents(unpacking required)
     float4 unpackedTangent = UnpackTangents(vtx.tangents);
     output.tangent.xyz = RotateQuat(unpackedTangent.xyz, orientation);
     output.tangent.w = unpackedTangent.w;
+
+    // Texture coordinates
+    output.uvMapping = float2(vtx.mappingU, vtx.mappingV);
 
     return output;
 }
