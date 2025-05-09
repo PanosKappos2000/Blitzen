@@ -46,11 +46,13 @@ namespace BlitzenEngine
         for (size_t i = 0; i < m_vertices.GetSize(); ++i)
         {
             const auto& classic = m_vertices[i];
-            HlslVtx hlsl;
+            HlslVtx hlsl{};
 
             hlsl.position = classic.position;
-            hlsl.mappingU = classic.uvX;
-            hlsl.mappingV = classic.uvY;
+
+            hlsl.mappingU = static_cast<float>(classic.uvX) / 65535.0f; 
+            hlsl.mappingV = static_cast<float>(classic.uvY) / 65535.0f;
+
             hlsl.normals = classic.normalX << 24 | classic.normalY << 16 | classic.normalZ << 8 | classic.normalW;
             hlsl.tangents = classic.tangentX << 24 | classic.tangentY << 16 | classic.tangentZ << 8 | classic.tangentW;
 
@@ -58,24 +60,19 @@ namespace BlitzenEngine
         }
     }
 
-    void RenderingResources::DefineMaterial(const BlitML::vec4& diffuseColor, 
-        float shininess, const char* diffuseMapName, 
-        const char* specularMapName, const char* materialName
-    )
+    void RenderingResources::DefineMaterial(const BlitML::vec4& diffuseColor, float shininess, 
+        const char* diffuseMapName, const char* specularMapName, const char* materialName)
     {
-        Material& current = m_materials[m_materialCount];
+        auto& mat = m_materials[m_materialCount];
 
-        current.diffuseColor = diffuseColor;
-        current.shininess = shininess;
+        mat.albedoTag = 0; //pResources->textureTable[diffuseMapName].textureTag;
+        mat.normalTag = 0; //pResources->textureTable[specularMapName].textureTag;
+        mat.specularTag = 0;
+        mat.emissiveTag = 0;
 
-        current.albedoTag = 0; //pResources->textureTable[diffuseMapName].textureTag;
-        current.normalTag = 0; //pResources->textureTable[specularMapName].textureTag;
-        current.specularTag = 0;
-        current.emissiveTag = 0;
+        mat.materialId = m_materialCount;
 
-        current.materialId = m_materialCount;
-
-        m_materialTable.Insert(materialName, current);
+        m_materialTable.Insert(materialName, mat);
         m_materialCount++;
     }
 

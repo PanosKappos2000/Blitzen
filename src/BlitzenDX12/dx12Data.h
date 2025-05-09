@@ -83,7 +83,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_DefaultTextureSamplerRegister = 0;
     constexpr UINT Ce_DefaultTextureSamplerDescriptorCount = 1;
 
-    constexpr UINT Ce_MaterialBufferRegister = 1;
+    constexpr UINT Ce_MaterialBufferRegister = 5;
     constexpr UINT Ce_MaterialBufferDescriptorCount = 1;
     constexpr UINT Ce_MaterialBufferRangeElement = 3;
 
@@ -91,7 +91,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_TextureDescriptorCount = BlitzenEngine::ce_maxTextureCount;
 
     /* Main graphics signature root parameters */
-    constexpr uint32_t Ce_OpaqueRootParameterCount = 6;
+    constexpr uint32_t Ce_OpaqueRootParameterCount = 5;
 
     constexpr UINT Ce_OpaqueExclusiveBuffersElement = 0;
     constexpr UINT Ce_OpaqueSharedBuffersElement = 1;

@@ -180,10 +180,6 @@ layout(set = 0, binding = 5, std430) readonly buffer TransformBuffer
 // Holds data that defines the material of a surface
 struct Material
 {
-    // Material constants used to render the as desired
-    vec4 diffuseColor;
-    float shininess;
-
     // Used to access each texture map
     uint albedoTag;
     uint normalTag;
@@ -191,6 +187,9 @@ struct Material
     uint emissiveTag;
 
     uint materialId;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 layout (set = 0, binding = 6, std430) readonly buffer MaterialBuffer

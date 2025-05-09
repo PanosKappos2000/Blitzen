@@ -185,9 +185,6 @@ namespace BlitzenDX12
 		auto materialSrvHandle = m_descriptorContext.srvHandle;
 		materialSrvHandle.ptr += m_descriptorContext.materialSrvOffset * m_descriptorContext.srvIncrementSize;
 		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_MaterialSrvElement, materialSrvHandle);
-		auto texturesSrvHandle = m_descriptorContext.srvHandle;
-		texturesSrvHandle.ptr += m_descriptorContext.texturesSrvOffset * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_TextureDescriptorsElement, texturesSrvHandle);
 
 		// Draws
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());

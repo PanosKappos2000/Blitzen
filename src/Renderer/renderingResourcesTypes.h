@@ -24,8 +24,8 @@ namespace BlitzenEngine
     {
         BlitML::vec3 position;
 
-        uint32_t mappingU;
-        uint32_t mappingV;
+        float mappingU;
+        float mappingV;
 
         uint32_t normals;
         uint32_t tangents;
@@ -58,21 +58,15 @@ namespace BlitzenEngine
 
     struct alignas(16) Material
     {
-        // Not using these 2 right now, might remove them when I'm not bored, 
-        // but they (or something similar) will be used in the future
-        BlitML::vec4 diffuseColor;
-        float shininess;
+        uint32_t albedoTag;
+        uint32_t normalTag;
+        uint32_t specularTag;
+        uint32_t emissiveTag;
 
-        uint32_t albedoTag;// Index into the texture array, for the albedo map of the material
-
-        uint32_t normalTag;// Index into the texture array, for the normal map of the material
-
-        uint32_t specularTag;// Index into the texture array, for the specular map of the material
-
-        uint32_t emissiveTag;// Index into the texture array for the emissive map of the material
-
-        // TODO: I need to try removing this, it's a waste of space
         uint32_t materialId;
+        uint32_t padding0;
+        uint32_t padding1;
+        uint32_t padding2;
     };
 
     struct alignas(16) LodData

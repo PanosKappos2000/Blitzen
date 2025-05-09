@@ -326,9 +326,9 @@ namespace BlitzenDX12
 		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueObjectIdElement], 1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSamplerElement], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_MaterialSrvElement], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-		CreateRootParameterDescriptorTable(rootParameters[Ce_TextureDescriptorsElement], &textureDescriptorsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		//CreateRootParameterDescriptorTable(rootParameters[Ce_TextureDescriptorsElement], &textureDescriptorsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
-		if (!CreateRootSignature(device, ppOpaqueRootSignature, Ce_OpaqueRootParameterCount, rootParameters))
+		if (!CreateRootSignature(device, ppOpaqueRootSignature, Ce_OpaqueRootParameterCount, rootParameters, D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
@@ -676,6 +676,52 @@ namespace BlitzenDX12
 		return 1;
 	}
 
+	static uint8_t ModifyTextureIndices(ID3D12Device* device, Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue, uint32_t textureOffset,
+		ID3D12Resource* matBuffer, DX12WRAPPER<ID3D12Resource>& staging, BlitzenEngine::Material* pMaterials, uint32_t materialCount)
+	{
+		for (uint32_t i = 0; i < materialCount; ++i)
+		{
+			auto& mat{ pMaterials[i] };
+
+			mat.albedoTag += textureOffset;
+			mat.normalTag += textureOffset;
+			mat.specularTag += textureOffset;
+			mat.emissiveTag += textureOffset;
+		}
+
+		size_t dataSize{ materialCount * sizeof(BlitzenEngine::Material) };
+		if (!CreateBuffer(device, staging.ReleaseAndGetAddressOf(), dataSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+		{
+			BLIT_ERROR("Failed to create material staging buffer for texture indices update");
+			return 0;
+		}
+		void* pData{ nullptr };
+		auto mapRes{ staging->Map(0, nullptr, &pData) };
+		if (FAILED(mapRes))
+		{
+			return LOG_ERROR_MESSAGE_AND_RETURN(mapRes);
+		}
+		BlitzenCore::BlitMemCopy(pData, pMaterials, dataSize);
+		staging->Unmap(0, nullptr);
+
+		tools.transferCommandAllocator->Reset();
+		tools.transferCommandList->Reset(tools.transferCommandAllocator.Get(), nullptr);
+
+		D3D12_RESOURCE_BARRIER copyBarrier{};
+		CreateResourcesTransitionBarrier(copyBarrier, staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		tools.transferCommandList->ResourceBarrier(1, &copyBarrier);
+
+		tools.transferCommandList->CopyResource(matBuffer, staging.Get());
+
+		tools.transferCommandList->Close();
+		ID3D12CommandList* lists[]{ tools.transferCommandList.Get() };
+		queue->ExecuteCommandLists(1, lists);
+
+		PlaceFence(tools.copyFenceValue, queue, tools.copyFence.Get(), tools.copyFenceEvent);
+
+		return 1;
+	}
+
 	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
 		Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue,
 		Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, 
@@ -748,8 +794,13 @@ namespace BlitzenDX12
 		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 			descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
 
-		// TEXTURES SHOULD BE THE LAST THING LOADED FOR THE SRV HEAP
+		// The material will need to point at the texture indices + the offset of the heap for textures
 		descriptorContext.texturesSrvOffset = descriptorContext.srvHeapOffset;
+		DX12WRAPPER<ID3D12Resource> materialStaging{ nullptr };
+		ModifyTextureIndices(device, tools, queue, (uint32_t)descriptorContext.texturesSrvOffset, staticBuffers.materialBuffer.buffer.Get(),
+			materialStaging, const_cast<BlitzenEngine::Material*>(pMaterials), materialCount);
+
+		// TEXTURES SHOULD BE THE LAST THING LOADED FOR THE SRV HEAP
 		for (size_t i = 0; i < textureCount; ++i)
 		{
 			auto& tex2D{ pTextures[i] };

@@ -5,8 +5,8 @@ struct Vertex
 {
     float3 position;
 
-    uint mappingU;
-    uint mappingV;
+    float mappingU;
+    float mappingV;
 
     uint normals;
     uint tangents;
