@@ -271,7 +271,7 @@ add_custom_target(VulkanShaders DEPENDS ${SPIRV_BINARY_FILES})
 add_dependencies(BlitzenEngine VulkanShaders)
 
 
-
+IF(WIN32)# HLSL for Dx12 not needed in non windows builds
 # HLSL
 # Finds pixel shader files and compiles them
 file(GLOB_RECURSE HLSL_PS_FILES "HlslShaders/PS/*.hlsl")
@@ -321,8 +321,6 @@ endforeach(CS)
 add_custom_target(HlslShaders DEPENDS ${HLSL_BIN_FILES})
 add_dependencies(BlitzenEngine HlslShaders)
 
-
-
 #  # HLSL(Vulkan)
 #  file(GLOB_RECURSE HLSL_SOURCE_FILES
 #      "HlslShaders/*.hlsl")
@@ -335,7 +333,7 @@ add_dependencies(BlitzenEngine HlslShaders)
 #    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 #add_custom_target(VkHLSL_shaders DEPENDS ${SPIRV_BINARY_FILES})
 #add_dependencies(BlitzenEngine VkHLSL_shaders)
-
+endif(WIN32)
   
 # Copy the spir-v shaders to the target directory
 add_custom_command(TARGET BlitzenEngine POST_BUILD

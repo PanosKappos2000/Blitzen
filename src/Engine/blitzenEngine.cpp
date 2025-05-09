@@ -33,12 +33,10 @@ using InputSystem = BlitCL::SmartPointer<BlitzenCore::InputSystemState>;
 using PRenderingResources = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
 using Entities = BlitCL::SmartPointer<BlitzenEngine::GameObjectManager, BlitzenCore::AllocationType::Entity>;
 
-static void LoadRenderingResources(int argc, char** argv,
-    BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer,
+static void LoadRenderingResources(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer,
     BlitzenEngine::GameObjectManager* pManager, BlitzenEngine::Camera& camera)
 {
-    BlitzenEngine::CreateSceneFromArguments(argc, argv, pResources,
-        pRenderer, pManager);
+    BlitzenEngine::CreateSceneFromArguments(argc, argv, pResources, pRenderer, pManager);
     if (!pRenderer->SetupForRendering(pResources, camera.viewData.pyramidWidth, camera.viewData.pyramidHeight))
     {
         BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");
@@ -58,19 +56,17 @@ int main(int argc, char* argv[])
     BlitzenEngine::Engine engine;
     BlitzenCore::InitLogging();
     
-    // Memory manager, needs to be created before everything that uses heap allocations
+    // Memory manager
     BlitzenCore::MemoryManagerState blitzenMemory;
     
-    // Platform depends on input and event system, after they're both ready default events are registered
+    // Inputs, events, renderer and window
     EventSystem eventSystemState;
 	eventSystemState.Make();
     InputSystem inputSystemState;
     inputSystemState.Make();
-
     BlitzenEngine::Renderer renderer;
     renderer.Make();
-    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion,
-        eventSystemState.Data(), inputSystemState.Data(), renderer.Data()));
+    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion, eventSystemState.Data(), inputSystemState.Data(), renderer.Data()));
 
     BlitzenEngine::RegisterDefaultEvents();
 
@@ -89,7 +85,11 @@ int main(int argc, char* argv[])
         {
             LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(), entities.Data(), mainCamera);
         }};
+    #if(_WIN32)
     loadingThread.detach();
+    #else
+    loadingThread.join();
+    #endif
 
 
     // Placeholder loop, waiting to load

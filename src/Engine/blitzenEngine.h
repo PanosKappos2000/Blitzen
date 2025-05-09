@@ -78,7 +78,7 @@ namespace BlitzenEngine
         // Leaky singleton
         static Engine* s_pEngine;
 
-        bool m_bRunning = 0;
-        bool m_bSuspended = 0;
+        bool m_bRunning = false;
+        bool m_bSuspended = false;
     };
 }

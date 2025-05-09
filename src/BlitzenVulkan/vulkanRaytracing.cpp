@@ -1,6 +1,6 @@
 #pragma once
-#include "vulkanRenderer.h"
 #include "vulkanResourceFunctions.h"
+#include "vulkanRenderer.h"
 
 namespace BlitzenVulkan
 {

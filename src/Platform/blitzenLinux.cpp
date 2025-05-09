@@ -19,6 +19,7 @@
 #include "BlitzenVulkan/vulkanData.h"
 #include <vulkan/vulkan_xcb.h>
 #include "Engine/blitzenEngine.h"
+#include "Renderer/blitRenderer.h"
 
 
 namespace BlitzenPlatform
@@ -41,8 +42,7 @@ namespace BlitzenPlatform
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);
 
-        bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEventSystem,
-            BlitzenCore::InputSystemState* pInputSystem)
+        bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEventSystem, BlitzenCore::InputSystemState* pInputSystem, void* pRenderer)
         {
             s_state.pDisplay = XOpenDisplay(nullptr);
 
@@ -125,7 +125,19 @@ namespace BlitzenPlatform
                 return false;
             }
 
+            auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
+            if (!pBackendRenderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, nullptr))
+            {
+                BLIT_FATAL("Failed to initialize rendering API");
+                return false;
+            }
+
             return true;
+        }
+
+        void PlatfrormSetupClock()
+        {
+            
         }
 
         void PlatformShutdown() 
@@ -292,7 +304,7 @@ namespace BlitzenPlatform
             return now.tv_sec + now.tv_nsec * 0.000000001;
         }
 
-        void platform_sleep(uint64_t ms) 
+        void PlatformSleep(uint64_t ms) 
         {
             #if _POSIX_C_SOURCE >= 199309L
                 struct timespec ts;
