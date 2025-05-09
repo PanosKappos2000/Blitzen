@@ -18,12 +18,8 @@ struct Material
 StructuredBuffer<Material> materialBuffer : register(t5);
 
 SamplerState texSampler : register(s0);
-//Texture2D<float4> textures[5000] : register(t8);
+Texture2D<float4> textures[5000] : register(t8);
 
-cbuffer texDescriptorOffset : register(b2)
-{
-    uint texOffset;
-}
 
 struct VSOutput
 {
@@ -38,26 +34,25 @@ PSOutput main(VSOutput input)
 {
     PSOutput output;
     Material mat = materialBuffer[input.materialId];
-    //Texture2D<float4> test = textures[NonUniformResourceIndex(mat.albedoTag)];
 
     float4 albedoMap = float4(0.5, 0.5, 0.5, 1);
-    if(mat.albedoTag != texOffset)
+    if(mat.albedoTag != 0)
     {
-        Texture2D<float4> albedo = ResourceDescriptorHeap[NonUniformResourceIndex(mat.albedoTag)];
+        Texture2D<float4> albedo = textures[NonUniformResourceIndex(mat.albedoTag)];
         albedoMap = albedo.Sample(texSampler, input.uvMapping);
     }
     
     float3 normalMap = float3(0, 0, 1);
-    if(mat.normalTag != texOffset)
+    if(mat.normalTag != 0)
     {
-        Texture2D<float4> normal = ResourceDescriptorHeap[NonUniformResourceIndex(mat.normalTag)];
+        Texture2D<float4> normal = textures[NonUniformResourceIndex(mat.normalTag)];
         normalMap = normal.Sample(texSampler, input.uvMapping).rgb * 2 - 1;
     }
 
     float3 emissiveMap = float3(0.0, 0.0, 0.0);
-    if(mat.emissiveTag != texOffset)
+    if(mat.emissiveTag != 0)
     {
-        Texture2D<float4> emissive = ResourceDescriptorHeap[NonUniformResourceIndex(mat.emissiveTag)];
+        Texture2D<float4> emissive = textures[NonUniformResourceIndex(mat.emissiveTag)];
         emissiveMap = emissive.Sample(texSampler, input.uvMapping).rgb;
     }
 

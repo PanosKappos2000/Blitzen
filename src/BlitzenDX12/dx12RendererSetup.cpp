@@ -314,13 +314,16 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE materialSrvRange{};
 		CreateDescriptorRange(materialSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_MaterialBufferDescriptorCount, Ce_MaterialBufferRegister);
 
+		D3D12_DESCRIPTOR_RANGE textureSrvsRange{};
+		CreateDescriptorRange(textureSrvsRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TextureDescriptorCount, Ce_TextureDescriptorsRegister);
+
 		D3D12_ROOT_PARAMETER rootParameters[Ce_OpaqueRootParameterCount]{};
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueExclusiveBuffersElement], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSharedBuffersElement], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueObjectIdElement], Ce_ObjectIdRegister, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSamplerElement], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_MaterialSrvElement], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-		CreateRootParameterPushConstants(rootParameters[Ce_TextureDescriptorsOffsetElement], Ce_TextureDescriptorOffsetRegister, 0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterDescriptorTable(rootParameters[Ce_TextureDescriptorsElement], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
 		if (!CreateRootSignature(device, ppOpaqueRootSignature, Ce_OpaqueRootParameterCount, rootParameters, D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
 		{
@@ -788,12 +791,8 @@ namespace BlitzenDX12
 		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 			descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
 
-		// The material will need to point at the texture indices + the offset of the heap for textures
+		
 		descriptorContext.texturesSrvOffset = descriptorContext.srvHeapOffset;
-		DX12WRAPPER<ID3D12Resource> materialStaging{ nullptr };
-		ModifyTextureIndices(device, tools, queue, (uint32_t)descriptorContext.texturesSrvOffset, staticBuffers.materialBuffer.buffer.Get(),
-			materialStaging, const_cast<BlitzenEngine::Material*>(pMaterials), materialCount);
-
 		// TEXTURES SHOULD BE THE LAST THING LOADED FOR THE SRV HEAP
 		for (size_t i = 0; i < textureCount; ++i)
 		{

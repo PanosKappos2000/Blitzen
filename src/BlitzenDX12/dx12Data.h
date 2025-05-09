@@ -89,7 +89,7 @@ namespace BlitzenDX12
 
     constexpr UINT Ce_ObjectIdRegister = 1;
 
-    constexpr UINT Ce_TextureDescriptorOffsetRegister = 2;
+    constexpr UINT Ce_TextureDescriptorsRegister = 8;
     constexpr UINT Ce_TextureDescriptorCount = BlitzenEngine::ce_maxTextureCount;
 
     /* Main graphics signature root parameters */
@@ -100,7 +100,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_OpaqueObjectIdElement = 2;
     constexpr UINT Ce_OpaqueSamplerElement = 3;
     constexpr UINT Ce_MaterialSrvElement = 4;
-    constexpr UINT Ce_TextureDescriptorsOffsetElement = 5;
+    constexpr UINT Ce_TextureDescriptorsElement = 5;
 
     constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
 
