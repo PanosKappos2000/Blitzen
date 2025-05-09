@@ -135,6 +135,8 @@ namespace BlitzenVulkan
         VmaAllocator m_allocator;
         VkDevice m_device;
 
+        BlitzenVulkan::MemoryCrucialHandles m_memoryCrucials;
+
         /*
             API initialization handles section
         */

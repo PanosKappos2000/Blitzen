@@ -178,7 +178,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_ASSERTIONS_ENABLED
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
-                            BLITZEN_VULKAN_OVERRIDE # Overrides Vulkan as the main graphics API
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             BLITZEN_RENDERING_STRESS_TEST #I don't think this is used anymore

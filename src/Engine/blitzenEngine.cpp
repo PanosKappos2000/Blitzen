@@ -60,9 +60,6 @@ int main(int argc, char* argv[])
     
     // Memory manager, needs to be created before everything that uses heap allocations
     BlitzenCore::MemoryManagerState blitzenMemory;
-#if !defined(BLITZEN_VULKAN_OVERRIDE)
-    BlitzenVulkan::MemoryCrucialHandles memoryCrucials;
-#endif
     
     // Platform depends on input and event system, after they're both ready default events are registered
     EventSystem eventSystemState;

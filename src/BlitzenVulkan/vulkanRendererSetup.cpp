@@ -7,7 +7,7 @@
 namespace BlitzenVulkan
 {
     static uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma,
-        VulkanRenderer::FrameTools* frameToolList, VkSampler& textureSampler)
+        VulkanRenderer::FrameTools* frameToolList, VkSampler& textureSampler, MemoryCrucialHandles& memoryCrucials)
     {
         // Initializes VMA allocator which will be used to allocate all Vulkan resources
         // Initialized here since textures can and will be given to Vulkan before the renderer is set up, and they need to be allocated
@@ -17,10 +17,9 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        auto pMemCrucials = MemoryCrucialHandles::GetInstance();
-        pMemCrucials->allocator = vma;
-        pMemCrucials->device = device;
-        pMemCrucials->instance = instance;
+        memoryCrucials.allocator = vma;
+        memoryCrucials.device = device;
+        memoryCrucials.instance = instance;
 
         // This sampler will be used by all textures for now
         // Initialized here since textures can and will be given to Vulkan before the renderer is set up
@@ -68,7 +67,8 @@ namespace BlitzenVulkan
         if(!m_stats.bResourceManagementReady)
         {
             // Calls the function and checks if it succeeded. If it did not, it fails
-            m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_frameToolsList, m_textureSampler.handle);
+            m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_frameToolsList, 
+                m_textureSampler.handle, m_memoryCrucials);
             if(!m_stats.bResourceManagementReady)
             {
                 BLIT_ERROR("Failed to setup resource management for Vulkan");
@@ -1008,9 +1008,8 @@ namespace BlitzenVulkan
         if (!m_stats.bResourceManagementReady)
         {
             // Calls the function and checks if it succeeded. If it did not, it fails
-            m_stats.bResourceManagementReady =
-                SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator,
-                    m_frameToolsList, m_textureSampler.handle);
+            m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator,
+                    m_frameToolsList, m_textureSampler.handle, m_memoryCrucials);
             if (!m_stats.bResourceManagementReady)
             {
                 BLIT_ERROR("Failed to setup resource management for Vulkan");
