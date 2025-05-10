@@ -11,7 +11,8 @@ namespace BlitzenDX12
 		frameTools.transferCommandAllocator->Reset();
 		frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
 		
-		frameTools.transferCommandList->CopyBufferRegion(varBuffers.transformBuffer.buffer.Get(), 0, varBuffers.transformBuffer.staging.Get(), 0, varBuffers.transformBuffer.dataCopySize);
+		frameTools.transferCommandList->CopyBufferRegion(varBuffers.transformBuffer.buffer.Get(), 0, varBuffers.transformBuffer.staging.Get(), 
+			0, varBuffers.transformBuffer.dataCopySize);
 		
 		frameTools.transferCommandList->Close();
 		ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
@@ -25,6 +26,31 @@ namespace BlitzenDX12
 			frameTools.copyFence->SetEventOnCompletion(fence, frameTools.copyFenceEvent);
 			WaitForSingleObject(frameTools.copyFenceEvent, INFINITE);
 		}
+	}
+
+	static void RecreateSwapchain(IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
+		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets, 
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle, Dx12Renderer::FrameTools* pTools)
+	{
+		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			auto& tools{ pTools[i] };
+			PlaceFence(tools.inFlightFenceValue, queue, tools.inFlightFence.Get(), tools.inFlightFenceEvent);
+
+			pSwapchainBuffers[i]->Release();
+			pDepthTargets[i]->Release();
+		}
+
+		pSwapchain->ReleaseAndGetAddressOf();
+		auto hwnd = reinterpret_cast<HWND>(BlitzenPlatform::GetWindowHandle());
+		BLIT_ASSERT(CreateSwapchain(factory, queue, newWidth, newHeight, hwnd, pSwapchain));
+		
+		// Automatically releases when trying to create. Creates 
+		SIZE_T rtvSwapchainOffset{ 0 };
+		BLIT_ASSERT(CreateSwapchainResources(pSwapchain->Get(), device, pSwapchainBuffers, rtvHeapHandle, rtvSwapchainOffset));
+		
+		SIZE_T dsvDepthTargetOffset{ 0 };
+		BLIT_ASSERT(CreateDepthTargets(device, pDepthTargets, dsvHeapHandle, dsvDepthTargetOffset, newWidth, newHeight));
 	}
 
 	static void DefineViewportAndScissor(ID3D12GraphicsCommandList* commandList, float width, float height)
@@ -127,6 +153,15 @@ namespace BlitzenDX12
 		{
 			frameTools.inFlightFence->SetEventOnCompletion(fence, frameTools.inFlightFenceEvent);
 			WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
+		}
+
+		if (context.pCamera->transformData.bWindowResize)
+		{
+			m_swapchainWidth = (UINT)context.pCamera->transformData.windowWidth;
+			m_swapchainHeight = (UINT)context.pCamera->transformData.windowHeight;
+			RecreateSwapchain(m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain, 
+				m_swapchainBackBuffers, m_depthBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), 
+				m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameTools.Data());
 		}
 
 		// Dynamic buffers

@@ -533,10 +533,8 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
 
-    static void PresentToSwapchain(VkDevice device, VkQueue queue, 
-        VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
-        uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores,
-        uint32_t* pImageIndices, VkResult* pResults = nullptr,
+    static void PresentToSwapchain(VkDevice device, VkQueue queue, VkSwapchainKHR* pSwapchains, uint32_t swapchainCount,
+        uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores, uint32_t* pImageIndices, VkResult* pResults = nullptr,
         void* pNextChain = nullptr)
     {
         VkPresentInfoKHR info{};

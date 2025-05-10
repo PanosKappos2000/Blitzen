@@ -106,10 +106,10 @@ namespace BlitzenDX12
             SIZE_T defaultTextureSamplerOffset;
 
             SIZE_T rtvHeapOffset{ 0 };
-            SIZE_T swapchainRtvOffset;
+            const SIZE_T swapchainRtvOffset{ 0 };
 
             SIZE_T dsvHeapOffset{ 0 };
-            SIZE_T depthTargetOffset;
+            const SIZE_T depthTargetOffset{ 0 };
         };
 
         DX12WRAPPER<IDXGIFactory6> m_factory;
@@ -189,8 +189,8 @@ namespace BlitzenDX12
 
     // Creates backbuffers and render target view needed to present on the swapchain
     uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers,
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, Dx12Renderer::DescriptorContext& descriptorContext);
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, SIZE_T& rtvHeapOffset);
 
     uint8_t CreateDepthTargets(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* depthBuffers, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle,
-        Dx12Renderer::DescriptorContext& descriptorContext, uint32_t swapchainWidth, uint32_t swapchainHeight);
+        SIZE_T& dsvHeapOffset, uint32_t swapchainWidth, uint32_t swapchainHeight);
 }

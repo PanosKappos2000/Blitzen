@@ -157,14 +157,14 @@ namespace BlitzenDX12
 
 
 		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), m_swapchainBackBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
-            m_descriptorContext))
+            m_descriptorContext.rtvHeapOffset))
 		{
 			BLIT_ERROR("Failed to create swapchain back buffers");
 			return 0;
 		}
 
         if (!CreateDepthTargets(m_device.Get(), m_depthBuffers, m_dsvHeap->GetCPUDescriptorHandleForHeapStart(),
-            m_descriptorContext, m_swapchainWidth, m_swapchainHeight))
+            m_descriptorContext.dsvHeapOffset, m_swapchainWidth, m_swapchainHeight))
         {
             BLIT_ERROR("Failed to create swapchain back buffers");
             return 0;
