@@ -38,8 +38,12 @@ namespace BlitzenDX12
     constexpr D3D12_TEXTURE_LAYOUT Ce_DefaultTextureFormat = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 
 
-    /* Srv desriptors for both compute and graphics pipelines*/
+    /* SHARED DESCRIPTORS FOR COMPUTE AND GRAPHICS SHADERS */
+#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
     constexpr uint32_t Ce_SharedSrvRangeCount = 5;
+#else
+    constexpr uint32_t Ce_SharedSrvRangeCount = 4;
+#endif
 
     constexpr UINT Ce_SurfaceBufferRegister = 2;
     constexpr UINT Ce_SurfaceBufferDescriptorCount = 1;
@@ -53,26 +57,41 @@ namespace BlitzenDX12
     constexpr UINT Ce_RenderObjectBufferDescriptorCount = 1;
     constexpr UINT Ce_RenderObjectBufferRangeElement = 2;
 
-    constexpr UINT Ce_IndirectDrawBufferRegister = 0;// First Uav
-    constexpr UINT Ce_IndirectDrawBufferDescriptorCount = 1;
-    constexpr UINT Ce_IndirectDrawBufferRangeElement = 3;
-
     constexpr UINT Ce_ViewDataBufferRegister = 0;// First Cbv
     constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
-    constexpr UINT Ce_ViewDataBufferRangeElement = 4;
+    constexpr UINT Ce_ViewDataBufferRangeElement = 3;
 
-    /* Srv Descriptors for compute pipeline */
-    constexpr uint32_t Ce_CullSrvRangeCount = 2;
+    constexpr UINT Ce_InstanceBufferRegister = 5;
+    constexpr UINT Ce_InstanceBufferDescriptorCount = 1;
+    constexpr UINT Ce_InstanceBufferRangeElement = 4;
+
+
+
+    /* DESCRIPTORS FOR culling shaders */
+    constexpr uint32_t Ce_CullSrvRangeCount = 3;
+
+    constexpr UINT Ce_IndirectDrawBufferRegister = 0;// First Uav
+    constexpr UINT Ce_IndirectDrawBufferDescriptorCount = 1;
+    constexpr UINT Ce_IndirectDrawBufferRangeElement = 0;
     
     constexpr UINT Ce_IndirectCountBufferRegister = 1;
     constexpr UINT Ce_IndirectCountBufferDescriptorCount = 1;
-    constexpr UINT Ce_IndirectCountBufferRangeElement = 0;
+    constexpr UINT Ce_IndirectCountBufferRangeElement = 1;
 
     constexpr UINT Ce_LODBufferRegister = 7;
     constexpr UINT Ce_LODBufferDescriptorCount = 1;
-    constexpr UINT Ce_LODBufferRangeElement = 1;
+    constexpr UINT Ce_LODBufferRangeElement = 2;
 
-    /* SSBO descriptors for main graphics pipeline */
+    // ROOT PARAMETERS
+    constexpr uint32_t Ce_CullRootParameterCount = 3;
+
+    constexpr UINT Ce_CullExclusiveSRVsParameterId = 0;
+    constexpr UINT Ce_CullSharedSRVsParameterId = 1;
+    constexpr UINT Ce_CullDrawCountParameterId = 2;
+
+
+
+    /* DESCRIPTORS FOR opaqueDraw pipeline */
     constexpr uint32_t Ce_OpaqueSrvRangeCount = 1;
 
     constexpr UINT Ce_VertexBufferRegister = 0;
@@ -92,7 +111,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_TextureDescriptorsRegister = 8;
     constexpr UINT Ce_TextureDescriptorCount = BlitzenEngine::ce_maxTextureCount;
 
-    /* Main graphics signature root parameters */
+    // ROOT PARAMETERS
     constexpr uint32_t Ce_OpaqueRootParameterCount = 6;
 
     constexpr UINT Ce_OpaqueExclusiveBuffersElement = 0;

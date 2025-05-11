@@ -1,5 +1,4 @@
 #define DRAW_INSTANCING
-#include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 
 cbuffer LodCount : register(b1)
@@ -24,7 +23,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     InterlockedAdd(drawCountBuffer[0], 1, cmdId);
 
     // Render object id constant
-    drawCmdBuffer[cmdId].objId = lodBuffer[lodId].instanceId;
+    drawCmdBuffer[cmdId].objId = lodBuffer[lodId].instanceOffset;
 
     // Vertices
     drawCmdBuffer[cmdId].indexCount = lodBuffer[lodId].indexCount;

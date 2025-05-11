@@ -98,10 +98,10 @@ namespace BlitzenDX12
 
 		// Culling
 		commandList->SetComputeRootSignature(cullRoot);
-		commandList->SetComputeRootDescriptorTable(1, sharedSrvHandle);
-		commandList->SetComputeRootDescriptorTable(0, cullSrvHandle);
+		commandList->SetComputeRootDescriptorTable(Ce_CullSharedSRVsParameterId, sharedSrvHandle);
+		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, cullSrvHandle);
 		commandList->SetPipelineState(cullPso);
-		commandList->SetComputeRoot32BitConstant(2, objCount, 0);
+		commandList->SetComputeRoot32BitConstant(Ce_CullDrawCountParameterId, objCount, 0);
 		commandList->Dispatch(BlitML::GetCompueShaderGroupSize(objCount, 64), 1, 1);
 
 		// Transitions and blocks graphics
@@ -113,6 +113,33 @@ namespace BlitzenDX12
 		CreateResourceUAVBarrier(postCullingBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
 		CreateResourceUAVBarrier(postCullingBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
 		commandList->ResourceBarrier(4, postCullingBarriers);
+	}
+
+	static void DrawInstanceCullPass()
+	{
+
+	}
+
+	static void DrawIndirect(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, ID3D12DescriptorHeap* samplerHeap,
+		ID3D12RootSignature* rootSig, ID3D12PipelineState* pipeline, ID3D12CommandSignature* cmdSig, Dx12Renderer::DescriptorContext& context, 
+		Dx12Renderer::ConstBuffers& constBuffers, Dx12Renderer::VarBuffers& varBuffers, UINT currentFrame)
+	{
+		ID3D12DescriptorHeap* graphicsHeaps[] = { srvHeap, samplerHeap};
+		commandList->SetDescriptorHeaps(2, graphicsHeaps);
+		commandList->SetGraphicsRootSignature(rootSig);
+
+		// Opaque graphics pipeline exclusive descriptors
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueExclusiveBuffersElement, context.opaqueSrvHandle[currentFrame]);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSharedBuffersElement, context.sharedSrvHandle[currentFrame]);
+		commandList->SetGraphicsRootDescriptorTable(Ce_MaterialSrvElement, context.materialSrvHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_TextureDescriptorsElement, context.textureSrvHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSamplerElement, context.samplerHandle);
+
+		// Draw
+		commandList->SetPipelineState(pipeline);
+		commandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		commandList->IASetIndexBuffer(&constBuffers.indexBufferView);
+		commandList->ExecuteIndirect(cmdSig, Ce_IndirectDrawCmdBufferSize, varBuffers.indirectDrawBuffer.buffer.Get(), 0, varBuffers.indirectDrawCount.buffer.Get(), 0);
 	}
 
 	static void Present(Dx12Renderer::FrameTools& tools, IDXGISwapChain3* swapchain, ID3D12CommandQueue* commandQueue, ID3D12Resource* swapchainBackBuffer)
@@ -176,60 +203,30 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformAfterCopyBarrier);
 
-		auto sharedSrvHandle = m_descriptorContext.srvHandle;
-		sharedSrvHandle.ptr += m_descriptorContext.sharedSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
-		auto cullSrvHandle = m_descriptorContext.srvHandle;
-		cullSrvHandle.ptr += m_descriptorContext.cullSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
-
 		// Frustum culling and lod selection, per object
-		DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), sharedSrvHandle, cullSrvHandle, m_descriptorContext,
-			m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(), m_drawCullSignature.Get(), m_drawCull1Pso.Get(), varBuffers,
-			context.pResources->renderObjectCount);
+		DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
+			m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext,m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(), 
+			m_drawCullSignature.Get(), m_drawCull1Pso.Get(), varBuffers, context.pResources->renderObjectCount);
 
-		ID3D12DescriptorHeap* graphicsHeaps[] = { m_srvHeap.Get(), m_samplerHeap.Get()};
-		frameTools.mainGraphicsCommandList->SetDescriptorHeaps(2, graphicsHeaps);
-		frameTools.mainGraphicsCommandList->SetGraphicsRootSignature(m_opaqueRootSignature.Get());
 		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
-
 		// Render target barrier
 		D3D12_RESOURCE_BARRIER attachmentBarriers[2]{};
 		CreateResourcesTransitionBarrier(attachmentBarriers[0], m_swapchainBackBuffers[swapchainIndex].Get(),
 			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, attachmentBarriers);
-
 		// Render target bind
 		auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-		rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_descriptorContext.rtvIncrementSize;
 		auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-		dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_descriptorContext.dsvIncrementSize;
 		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
 		// Render target clear
 		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
 		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 		frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 
-		// Opaque graphics pipeline exclusive descriptors
-		auto opaqueSrvHandle = m_descriptorContext.srvHandle;
-		opaqueSrvHandle.ptr += m_descriptorContext.opaqueSrvOffset[m_currentFrame] * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueExclusiveBuffersElement, opaqueSrvHandle);
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSharedBuffersElement, sharedSrvHandle);
-		auto samplerSrvHandle = m_descriptorContext.samplerHandle;
-		samplerSrvHandle.ptr += m_descriptorContext.defaultTextureSamplerOffset * m_descriptorContext.samplerIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_OpaqueSamplerElement, samplerSrvHandle);
-		auto materialSrvHandle = m_descriptorContext.srvHandle;
-		materialSrvHandle.ptr += m_descriptorContext.materialSrvOffset * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_MaterialSrvElement, materialSrvHandle);
-		auto textureDescriptorsSrvHandle = m_descriptorContext.srvHandle;
-		textureDescriptorsSrvHandle.ptr += m_descriptorContext.texturesSrvOffset * m_descriptorContext.srvIncrementSize;
-		frameTools.mainGraphicsCommandList->SetGraphicsRootDescriptorTable(Ce_TextureDescriptorsElement, textureDescriptorsSrvHandle);
-
-		// Draw
-		frameTools.mainGraphicsCommandList->SetPipelineState(m_opaqueGraphicsPso.Get());
-		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		frameTools.mainGraphicsCommandList->IASetIndexBuffer(&m_constBuffers.indexBufferView);
-		frameTools.mainGraphicsCommandList->ExecuteIndirect(m_opaqueCmdSingature.Get(), Ce_IndirectDrawCmdBufferSize,
-			varBuffers.indirectDrawBuffer.buffer.Get(), 0, varBuffers.indirectDrawCount.buffer.Get(), 0);
+		DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(),m_opaqueRootSignature.Get(), 
+			m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 
 		D3D12_RESOURCE_BARRIER transformCopyBarrier{};
 		CreateResourcesTransitionBarrier(transformCopyBarrier, varBuffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 

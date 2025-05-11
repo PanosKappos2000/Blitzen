@@ -52,9 +52,9 @@ namespace BlitzenEngine
     #endif
 
     #ifdef BLITZEN_DRAW_INSTANCED_CULLING
-        constexpr uint8_t Ce_InstCull = 1;
+        constexpr uint8_t Ce_InstanceCulling = 1;
     #else
-        constexpr uint8_t Ce_InstCull = 0;
+        constexpr uint8_t Ce_InstanceCulling = 0;
     #endif
 
     #if defined(_WIN32) && !defined(BLIT_VK_FORCE) && !defined(BLIT_GL_LEGACY_OVERRIDE)

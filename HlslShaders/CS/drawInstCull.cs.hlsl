@@ -34,6 +34,9 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
-        InterlockedAdd(lodBuffer[lodId].instanceCount, 1);
+        uint instanceId;
+        InterlockedAdd(lodBuffer[lodId].instanceCount, 1, instanceId);
+
+        instBuffer[lodBuffer[lodId].instanceOffset + instanceId];
     }
 }

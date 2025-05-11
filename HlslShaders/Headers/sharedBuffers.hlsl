@@ -1,5 +1,3 @@
-//#define INSTANCING
-
 struct Surface
 {
     // Bounding sphere
@@ -33,21 +31,9 @@ struct Render
 };
 StructuredBuffer<Render> renderBuffer : register(t4);
 
-struct DrawCmd
-{
-    uint objId;// Index into render object buffer
-
-    // Draw command
-    uint indexCount;
-    uint instCount;
-    uint indexOffset;
-    int vertOffset;
-    uint insOffset;
-
-    uint padding0;
-    uint padding1;
-};
-RWStructuredBuffer<DrawCmd> drawCmdBuffer : register(u0);
+#ifdef DRAW_INSTANCING
+    RWBuffer<uint> instBuffer : register(u3);
+#endif
 
 cbuffer ViewData : register(b0)  
 {

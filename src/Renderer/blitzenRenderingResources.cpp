@@ -215,7 +215,7 @@ namespace BlitzenEngine
             lod.clusterCount = Ce_BuildClusters ? static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset)) : 0;
 
             lod.error = lodError * lodScale;
-            lod.instanceOffset = m_lods.GetSize() * Ce_MaxInstanceCountPerLOD;
+            lod.instanceOffset = uint32_t(m_lods.GetSize() * Ce_MaxInstanceCountPerLOD);
             m_lods.PushBack(lod);
 
             // Adds current lod indices

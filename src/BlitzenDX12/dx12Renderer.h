@@ -91,25 +91,52 @@ namespace BlitzenDX12
 
         struct DescriptorContext
         {
+            /* SRV HEAP */
             D3D12_GPU_DESCRIPTOR_HANDLE srvHandle;
             SIZE_T srvIncrementSize;
-            SIZE_T srvHeapOffset{ 0 };// Current offset into the srv heap for adding views
-            SIZE_T sharedSrvOffset[ce_framesInFlight];// Offset of srvHeap for shared descriptor table
-            SIZE_T opaqueSrvOffset[ce_framesInFlight];// Offset of srvHeap for opaque pipeline descriptor table
-            SIZE_T cullSrvOffset[ce_framesInFlight];// Offset of srvHeap for cull pipeline descriptor table
-            SIZE_T texturesSrvOffset;
-            SIZE_T materialSrvOffset;
+            SIZE_T srvHeapOffset{ 0 };
 
+            SIZE_T sharedSrvOffset[ce_framesInFlight];
+            D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle[ce_framesInFlight];
+
+            SIZE_T opaqueSrvOffset[ce_framesInFlight];
+            D3D12_GPU_DESCRIPTOR_HANDLE opaqueSrvHandle[ce_framesInFlight];
+
+            SIZE_T cullSrvOffset[ce_framesInFlight];
+            D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle[ce_framesInFlight];
+
+            SIZE_T texturesSrvOffset;
+            D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandle;
+
+            SIZE_T materialSrvOffset;
+            D3D12_GPU_DESCRIPTOR_HANDLE materialSrvHandle;
+
+
+            /* SAMPLER HEAP */
             D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
             SIZE_T samplerIncrementSize;
             SIZE_T samplerHeapOffset{ 0 };
+
             SIZE_T defaultTextureSamplerOffset;
+            D3D12_GPU_DESCRIPTOR_HANDLE defaultTextureSamplerHandle;
 
+
+            /* RTV HEAP */
+            D3D12_GPU_DESCRIPTOR_HANDLE rtvHandle;
+            SIZE_T rtvIncrementSize;
             SIZE_T rtvHeapOffset{ 0 };
-            const SIZE_T swapchainRtvOffset{ 0 };
 
+            const SIZE_T swapchainRtvOffset{ 0 };
+            D3D12_GPU_DESCRIPTOR_HANDLE swapchainRtvHandle;
+
+
+            /* DSV HEAP */
+            D3D12_GPU_DESCRIPTOR_HANDLE dsvHandle;
+            SIZE_T dsvIncrementSize;
             SIZE_T dsvHeapOffset{ 0 };
+
             const SIZE_T depthTargetOffset{ 0 };
+            D3D12_GPU_DESCRIPTOR_HANDLE depthTargetDsvHandle;
         };
 
         DX12WRAPPER<IDXGIFactory6> m_factory;

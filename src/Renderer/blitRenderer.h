@@ -15,15 +15,14 @@
 
 namespace BlitzenEngine
 {
-    #if defined(BLIT_GL_LEGACY_OVERRIDE) && !defined(BLIT_VK_FORCE) && defined(_WIN32)
+    #if defined(linux)
+        using Renderer = BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>;
 
-        using Renderer = BlitCL::SmartPointer<BlitzenGL::OpenglRenderer, BlitzenCore::AllocationType::Renderer>;
+        using RendererPtrType = BlitzenVulkan::VulkanRenderer*;
 
-        using RendererPtrType = BlitzenGL::OpenglRenderer*;
+        using RendererType = BlitzenVulkan::VulkanRenderer;
 
-		using RendererType = BlitzenGL::OpenglRenderer;
-
-    #elif defined(BLIT_VK_FORCE) || defined(linux)
+    #elif defined(_WIN32) && defined(BLIT_VK_FORCE)
 
         using Renderer = BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>;
 
@@ -31,13 +30,25 @@ namespace BlitzenEngine
 
         using RendererType = BlitzenVulkan::VulkanRenderer;
 
-    #else
+    #elif defined(_WIN32) && defined(BLIT_GL_LEGACY_OVERRIDE) 
+
+        using Renderer = BlitCL::SmartPointer<BlitzenGL::OpenglRenderer, BlitzenCore::AllocationType::Renderer>;
+
+        using RendererPtrType = BlitzenGL::OpenglRenderer*;
+
+		using RendererType = BlitzenGL::OpenglRenderer;
+
+    #elif defined(_WIN32)
 
         using Renderer = BlitCL::SmartPointer<BlitzenDX12::Dx12Renderer, BlitzenCore::AllocationType::Renderer>;
 
         using RendererPtrType = BlitzenDX12::Dx12Renderer*;
 
         using RendererType = BlitzenDX12::Dx12Renderer;
+
+    #else
+
+        static_assert(true);
 
     #endif
 
