@@ -53,17 +53,28 @@ namespace BlitzenEngine
         uint8_t padding1;
     };
 
-    struct alignas(16) Material
+    struct HCluster
     {
-        uint32_t albedoTag;
-        uint32_t normalTag;
-        uint32_t specularTag;
-        uint32_t emissiveTag;
+        // Bounding sphere
+        BlitML::vec3 center;
+        float radius;
 
-        uint32_t materialId;
-        uint32_t padding0;
-        uint32_t padding1;
-        uint32_t padding2;
+        // Packs data for backface culling
+        int32_t coneAxisDataPack;
+
+        // Used to setup draw commands
+        uint32_t clusterOffset;
+        uint32_t vertexCount;
+
+        // Id for ClusterIntanceCounter
+        uint32_t instanceCounterId;
+    };
+    static_assert(sizeof(HCluster) % 16 == 0);
+
+    struct ClusterInstanceCounter
+    {
+        uint32_t commandId;
+        uint32_t instanceCount{ 0 };
     };
 
     struct alignas(16) LodData
@@ -79,10 +90,11 @@ namespace BlitzenEngine
         // Used for more accurate LOD selection
         float error;
 
-        // Pad to 32 bytes total 
-        uint32_t padding0;  
-        uint32_t padding1; 
-        uint32_t padding2;
+        // Used for instancing
+        uint32_t instanceOffset;  
+        uint32_t instanceCount{ 0 };
+
+        uint32_t padding0;
     };
 
     struct alignas(16) PrimitiveSurface
@@ -93,13 +105,18 @@ namespace BlitzenEngine
 
         uint32_t materialId;
 
-        // Index to lod buffer
-        // Each primitive can be drawn in multiple ways, depending on its LODs
-        // The LOD is selected in compute shaders
         uint32_t lodOffset;
-        uint32_t lodCount = 0;
+        uint32_t lodCount{ 0 };
 
         uint32_t vertexOffset; // Not used in the shaders but can hold the offset when loading
+    };
+
+    // Each mesh has a different transform. Passed to the GPU. Accessed through render object
+    struct alignas(16) MeshTransform
+    {
+        BlitML::vec3 pos;
+        float scale;
+        BlitML::quat orientation;
     };
 
     // A mesh is a collection of one or more primitives.
@@ -111,13 +128,19 @@ namespace BlitzenEngine
         uint32_t meshId;
     };
 
-    // Each mesh has a different transform. Passed to the GPU. Accessed through render object
-    struct alignas(16) MeshTransform
+    struct alignas(16) Material
     {
-        BlitML::vec3 pos;
-        float scale;
-        BlitML::quat orientation;
+        uint32_t albedoTag;
+        uint32_t normalTag;
+        uint32_t specularTag;
+        uint32_t emissiveTag;
+
+        uint32_t materialId;
+        uint32_t padding0;
+        uint32_t padding1;
+        uint32_t padding2;
     };
+    static_assert(sizeof(Material) % 16 == 0);
 
     // Per render object Data. Passed to the GPU
     struct RenderObject

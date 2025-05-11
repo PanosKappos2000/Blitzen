@@ -1,3 +1,5 @@
+#define DRAW_INSTANCING
+
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
@@ -32,20 +34,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
-        // Command count
-        uint cmdId;
-        InterlockedAdd(drawCountBuffer[0], 1, cmdId);
-
-        // Render object id constant
-        drawCmdBuffer[cmdId].objId = objId;
-
-        // Vertices
-        drawCmdBuffer[cmdId].indexCount = lodBuffer[lodId].indexCount;
-        drawCmdBuffer[cmdId].indexOffset = lodBuffer[lodId].indexOffset;
-        drawCmdBuffer[cmdId].vertOffset = 0; // Already added to the index buffer
-
-        // Instances
-        drawCmdBuffer[cmdId].instCount = 1;
-        drawCmdBuffer[cmdId].insOffset = 0;
+        InterlockedAdd(lodBuffer[lodId].instanceCount, 1);
     }
 }

@@ -1,3 +1,5 @@
+//#define INSTANCING
+
 struct Surface
 {
     // Bounding sphere

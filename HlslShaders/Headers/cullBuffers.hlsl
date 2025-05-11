@@ -1,3 +1,12 @@
+struct ComputeCmd
+{
+    uint groupX;
+    uint groupY;
+    uint groupZ;
+};
+
+RWBuffer<uint> drawCountBuffer : register(u1);
+
 struct Lod 
 {
     // Non cluster path, used to create draw commands
@@ -12,11 +21,22 @@ struct Lod
     float error;
 
     // Pad to 32 bytes total 
-    uint padding0;  
-    uint padding1; 
-    uint padding2;
+    uint instanceId;  
+    uint instanceCount;
+
+    uint padding0;
 };
-StructuredBuffer<Lod> lodBuffer : register (t7);
+#ifdef DRAW_INSTANCING
+    RWStructuredBuffer<Lod> lodBuffer : register (u2);
+#else
+    StructuredBuffer<Lod> lodBuffer : register (t7);
+#endif
+
+#ifdef DRAW_INSTANCING
+
+RWStructuredBuffer<uint> instBuffer : register(u3);// TODO: This should be in shared (needs to be accessed by vertex)
+
+#endif
 
 // The LOD index is calculated using a formula, 
 // where the distance to the bounding sphere's surface is taken

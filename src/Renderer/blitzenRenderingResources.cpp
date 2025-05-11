@@ -201,7 +201,7 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> allLodIndices;
 
         surface.lodOffset = static_cast<uint32_t>(m_lods.GetSize());
-        while (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
+        while (surface.lodCount < Ce_MaxLodCountPerSurface)
         {
             surface.lodCount++;
             BLIT_INFO("Generating LOD %d", surface.lodCount);
@@ -209,12 +209,13 @@ namespace BlitzenEngine
             LodData lod{};
             lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize() + allLodIndices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
-            // TODO: Might want to make lod include one or the other, indices and clusters are not used together
+
+            // TODO: Might want to make LODs include one or the other, indices and clusters are not used together
             lod.clusterOffset = static_cast<uint32_t>(m_clusters.GetSize());
-            lod.clusterCount = Ce_BuildClusters ?
-                static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset))
-                : 0;
+            lod.clusterCount = Ce_BuildClusters ? static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset)) : 0;
+
             lod.error = lodError * lodScale;
+            lod.instanceOffset = m_lods.GetSize() * Ce_MaxInstanceCountPerLOD;
             m_lods.PushBack(lod);
 
             // Adds current lod indices
@@ -222,7 +223,7 @@ namespace BlitzenEngine
             
 
             // Starts generating the next level of detail
-            if (surface.lodCount < ce_primitiveSurfaceMaxLODCount)
+            if (surface.lodCount < Ce_MaxLodCountPerSurface)
             {
                 auto nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
                 const float maxError = 1e-1f;
@@ -261,9 +262,9 @@ namespace BlitzenEngine
             }
         }
 
-        if (surface.lodCount > ce_primitiveSurfaceMaxLODCount)
+        if (surface.lodCount > Ce_MaxLodCountPerSurface)
         {
-            BLIT_ERROR("Should not be happening");
+            BLIT_ERROR("A surface has loaded too many LODs");
         }
 
         // Adds vertex offset before appending all lods to the global indices array
