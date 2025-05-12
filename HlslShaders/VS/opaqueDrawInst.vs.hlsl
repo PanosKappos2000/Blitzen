@@ -3,10 +3,10 @@
 #include "../Headers/hlslMath.hlsl"
 
 // The main vertex shader function
-VSOutput main(uint vertexIndex : SV_VERTEXID)
+VSOutput main(uint vertexIndex : SV_VERTEXID, uint instId : SV_INSTANCEID)
 {
     Vertex vtx = vertexBuffer[vertexIndex];
-    Render obj = renderBuffer[objId];
+    Render obj = renderBuffer[objId + instId];
     float4 orientation = transformBuffer[obj.transformId].orientation;
     VSOutput output;
 

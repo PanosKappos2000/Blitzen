@@ -218,8 +218,7 @@ namespace BlitzenDX12
 			dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_descriptorContext.dsvIncrementSize;
 			frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 			// Render target clear
-			FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
-			frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+			frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, BlitzenEngine::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 			frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 		}
 		else
@@ -235,15 +234,16 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(attachmentBarriers[0], m_swapchainBackBuffers[swapchainIndex].Get(),
 				D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			frameTools.mainGraphicsCommandList->ResourceBarrier(1, attachmentBarriers);
+
 			// Render target bind
 			auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
 			rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_descriptorContext.rtvIncrementSize;
 			auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 			dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_descriptorContext.dsvIncrementSize;
 			frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+
 			// Render target clear
-			FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
-			frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+			frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, BlitzenEngine::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 			frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
@@ -281,10 +281,9 @@ namespace BlitzenDX12
 		rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + m_currentFrame) * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-		FLOAT clearColor[4] = { 0.f, 0.2f, 0.4f, 1.0f };
-		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, BlitzenEngine::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 
-		BlitML::vec3 triangleColor{ 0, 0.8f, 0.4f };
+		//BlitML::vec3 triangleColor{ 0, 0.8f, 0.4f };
 		//frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstants(0, 3, &triangleColor, 0);
 		frameTools.mainGraphicsCommandList->SetPipelineState(m_trianglePso.Get());
 		frameTools.mainGraphicsCommandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

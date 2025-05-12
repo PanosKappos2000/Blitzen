@@ -173,29 +173,29 @@ target_include_directories(
 )
 
 target_compile_definitions(BlitzenEngine PUBLIC
+
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
                             BLIT_GDEV_EDT # Defines that the Engine is in Game Dev mode
                             BLIT_ASSERTIONS_ENABLED
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
                             #BLITZEN_DRAW_INSTANCED_CULLING
                             #BLIT_VSYNC #Enables vsync logic for all APIs
-                            BLITZEN_RENDERING_STRESS_TEST #I don't think this is used anymore
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
-                            #BLIT_DOUBLE_BUFFERING #Enables double buffering (some APIs ignore this, and activate it anyway)
+                            #BLIT_DOUBLE_BUFFERING #Enables double buffering (DX12 ignores this, and activates it anyway)
 
                             # Vulkan specific preprocessor macros
-                            BLITZEN_VULKAN # Never undef this, it's broken because of VulkanMemoryCrucials
                             BLIT_VK_VALIDATION_LAYERS
                             #BLIT_VK_RAYTRACING
                             BLIT_VK_SYNCHRONIZATION_VALIDATION
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
+
                             )
 
 # Linker file directories and libraries to link for linux and Windows

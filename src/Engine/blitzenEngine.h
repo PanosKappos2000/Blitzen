@@ -10,6 +10,7 @@ namespace BlitzenEngine
     constexpr uint32_t ce_windowStartingY = 100;
     constexpr uint32_t ce_initialWindowWidth = 1280;
     constexpr uint32_t ce_initialWindowHeight = 720;
+    constexpr float Ce_DefaultWindowBackgroundColor[4] = { 0.f, 0.2f, 0.4f, 1.f };
 
 
     // Camera initial settings
