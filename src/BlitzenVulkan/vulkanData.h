@@ -53,20 +53,6 @@ namespace BlitzenVulkan
     constexpr const char* Ce_SyncValidationLayerName = "VK_LAYER_KHRONOS_synchronization2";
 
 
-    // Double buffering 
-#if defined(BLIT_DOUBLE_BUFFERING)
-    constexpr uint8_t ce_framesInFlight = 2;
-#else
-    constexpr uint8_t ce_framesInFlight = 1;
-#endif
-
-#ifdef BLIT_VSYNC
-    constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-#else
-    constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-#endif
-
-
 	// Total extensions count
     constexpr uint32_t Ce_MaxRequestedDeviceExtensions = 8;
 
@@ -100,6 +86,21 @@ namespace BlitzenVulkan
     constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequired = 0;
 
 
+    // Double buffering 
+#if defined(BLIT_DOUBLE_BUFFERING)
+    constexpr uint8_t ce_framesInFlight = 2;
+#else
+    constexpr uint8_t ce_framesInFlight = 1;
+#endif
+
+#ifdef BLIT_VSYNC
+    constexpr VkPresentModeKHR Ce_DesiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+#else
+    constexpr VkPresentModeKHR Ce_DesiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+#endif
+
+    constexpr VkImageUsageFlags Ce_SwapchainImageUsageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
     // The format and usage flags that will be set for the color and depth attachments
     constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     constexpr VkImageLayout ce_ColorAttachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -114,9 +115,7 @@ namespace BlitzenVulkan
 
     constexpr VkFormat ce_depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
     constexpr VkImageLayout ce_DepthAttachmentLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | 
-        VK_IMAGE_USAGE_SAMPLED_BIT; // For generate debug pyramid compute shader
+    constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT; 
     constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
     
     // Indices into the push descriptor writes array

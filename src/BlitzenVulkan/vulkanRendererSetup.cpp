@@ -1,5 +1,6 @@
 #define VMA_IMPLEMENTATION// Implements vma funcions. Header file included in vulkanData.h
 #include "vulkanResourceFunctions.h"
+#include "vulkanCommands.h"
 #include "vulkanRenderer.h"
 #include "vulkanPipelines.h"
 #include "Platform/filesystem.h"

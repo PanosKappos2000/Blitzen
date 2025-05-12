@@ -1,4 +1,5 @@
 #include "vulkanRenderer.h"
+#include "vulkanCommands.h"
 #include "Platform/platform.h"
 #include "vulkanApiInitFunctions.h"
 #include "vulkanResourceFunctions.h"
@@ -952,14 +953,12 @@ namespace BlitzenVulkan
         swapchainInfo.pNext = nullptr;
         swapchainInfo.flags = 0;
         swapchainInfo.imageArrayLayers = 1;
-        // Don't present things that are out of bounds
         swapchainInfo.clipped = VK_TRUE;
-        // Might not be supported in some cases, so I might want to guard against this
         swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapchainInfo.surface = surface;
-        // The color attachment will transfer its contents to the swapchain image when rendering is done
-        swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        // Used when the swapchain is recreated
+        
+        swapchainInfo.imageUsage = Ce_SwapchainImageUsageFlags;
+        
         swapchainInfo.oldSwapchain = oldSwapchain;
 
         // Finds the surface format, updates the swapchain info and swapchain struct if it succeeds
@@ -1102,34 +1101,40 @@ namespace BlitzenVulkan
 
     uint8_t FindSwapchainPresentMode(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info)
     {
-        // Retrieves the amount of presentation modes supported
+        // Enumerate
         uint32_t presentModeCount = 0;
-        if(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, 
-        &presentModeCount, nullptr) != VK_SUCCESS)
+        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to enumerate swapchain present modes (?)");
             return 0;
+        }
 
-        // Saves the supported present modes to a dynamic array
+        // Retrieve
         BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
-        if(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, 
-        &presentModeCount, presentModes.Data()) != VK_SUCCESS)
+        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.Data()) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to retrieve swapchain present modes");
             return 0;
+        }
 
-        // Looks for the desired presentation mode in the array
         uint8_t found = 0;
         for(const auto& present : presentModes)
         {
-            // If the desired presentation mode is found, set the swapchain info to that
-            if(present == ce_desiredPresentMode)
+            if(present == Ce_DesiredPresentMode)
             {
-                info.presentMode = ce_desiredPresentMode;
+                info.presentMode = Ce_DesiredPresentMode;
                 found = 1;
+                BLIT_INFO("Found desired present mode");
                 break;
             }
         }
                 
         // If it was not found, sets it to this random smuck (this is supposed to be supported by everything and it's VSynced)
-        if(!found)
+        if (!found)
+        {
+            BLIT_WARN("Desired presentation mode not found, using fallback");
             info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        }
 
         return 1;
     }
@@ -1206,25 +1211,19 @@ namespace BlitzenVulkan
         }
 
         VkCommandPoolCreateInfo idleCommandPoolInfo{};
-        idleCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        idleCommandPoolInfo.pNext = nullptr;
-        idleCommandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        idleCommandPoolInfo.queueFamilyIndex = queueIndex;
+        CreateCommandPoolInfo(idleCommandPoolInfo, queueIndex, nullptr);
         if (vkCreateCommandPool(device, &idleCommandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create idle draw command buffer pool");
             return 0;
         }
+
         VkCommandBufferAllocateInfo idleCommandBufferInfo{};
-        idleCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        idleCommandBufferInfo.pNext = nullptr;
-        idleCommandBufferInfo.commandBufferCount = 1;
-        idleCommandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        idleCommandBufferInfo.commandPool = commandPool;
+        CreateCmdbInfo(idleCommandBufferInfo, commandPool);
         if (vkAllocateCommandBuffers(device, &idleCommandBufferInfo, &commandBuffer) != VK_SUCCESS)
         {
-            BLIT_ERROR("Failed to allocate idle draw command buffer")
-                return 0;
+            BLIT_ERROR("Failed to allocate idle draw command buffer");
+            return 0;
         }
 
         return 1;

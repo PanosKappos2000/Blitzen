@@ -1,4 +1,6 @@
 #include "vulkanRenderer.h"
+#include "vulkanCommands.h"
+#include "vulkanPipelines.h"
 #include "vulkanResourceFunctions.h"
 #include "Core/blitTimeManager.h"
 

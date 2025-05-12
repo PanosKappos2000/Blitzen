@@ -1,4 +1,5 @@
 #include "vulkanRenderer.h"
+#include "vulkanCommands.h"
 #include "vulkanResourceFunctions.h"
 
 namespace BlitzenVulkan

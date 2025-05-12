@@ -332,22 +332,6 @@ namespace BlitzenVulkan
 
 
 
-    // Puts command buffer in the ready state. vkCmd type function can be called after this and until vkEndCommandBuffer is called
-    void BeginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags);
-
-    // Creates semaphore submit info which can be passed to VkSubmitInfo2 before queue submit
-    void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo, VkSemaphore semaphore, VkPipelineStageFlags2 stage);
-
-    // Ends command buffer and submits it. Synchronization structures can also be specified
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount = 0,
-        VkSemaphoreSubmitInfo* pWaitInfo = nullptr, uint32_t signalSemaphoreCount = 0,
-        VkSemaphoreSubmitInfo* signalSemaphore = nullptr, VkFence fence = VK_NULL_HANDLE);
-
-    // Creates rendering attachment info needed for dynamic render pass to begin
-    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
-        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
-        VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
-
     uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
         BlitzenEngine::RenderingResources* pResources, VulkanRenderer::StaticBuffers& staticBuffers);
 
@@ -362,8 +346,7 @@ namespace BlitzenVulkan
     // Allocates a buffer, creates a staging buffer for its data and creates a VkWriteDescriptorSet for its descriptor
     // Return the buffer's size or 0 if it fails
     template <typename DataType, typename T = void>
-    VkDeviceSize SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator,
-        PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer,
+    VkDeviceSize SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer,
         size_t elementCount, VkBufferUsageFlags usage, DataType* pData)
     {
         VkDeviceSize bufferSize = elementCount * sizeof(DataType);
@@ -377,8 +360,7 @@ namespace BlitzenVulkan
             return 0;
         }
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo,
-            pushBuffer.descriptorType, pushBuffer.descriptorBinding,
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, pushBuffer.descriptorType, pushBuffer.descriptorBinding,
             pushBuffer.buffer.bufferHandle);
         return bufferSize;
     }
@@ -386,10 +368,8 @@ namespace BlitzenVulkan
     // This overload of the above function calls the base CreateBuffer function only
     // It does the same thing as the above with the VkWriteDescriptorSet
     template <typename DataType, typename T = void>
-    VkDeviceSize SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage,
-        PushDescriptorBuffer<T>& pushBuffer, size_t elementCount,
-        VkBufferUsageFlags usage, void* pNextChain = nullptr
-    )
+    VkDeviceSize SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage, PushDescriptorBuffer<T>& pushBuffer, size_t elementCount,
+        VkBufferUsageFlags usage, void* pNextChain = nullptr)
     {
         VkDeviceSize bufferSize = sizeof(DataType) * elementCount;
         if (!CreateBuffer(allocator, pushBuffer.buffer, usage,
@@ -399,13 +379,11 @@ namespace BlitzenVulkan
         }
         // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
         WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo,
-            pushBuffer.descriptorType, pushBuffer.descriptorBinding,
-            pushBuffer.buffer.bufferHandle, pNextChain);
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.bufferHandle, pNextChain);
         return bufferSize;
     }
 
     // Calls CreateImage, but also create a VkWriteDescriptorSets struct for the PushDescriptorImage
     uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image,
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels,
-        VmaMemoryUsage memoryUsage);
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, VmaMemoryUsage memoryUsage);
 }

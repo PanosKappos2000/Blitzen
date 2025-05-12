@@ -33,6 +33,11 @@ namespace BlitzenVulkan
         uint32_t constantId, uint32_t offset, size_t size,
         VkSpecializationInfo& specializationInfo, void* pData);
 
+    // Creates rendering attachment info needed for dynamic render pass to begin
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView,
+        VkImageLayout imageLayout, VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
+        VkClearColorValue clearValueColor = { 0, 0, 0, 0 }, VkClearDepthStencilValue clearValueDepth = { 0, 0 });
+
     VkPipelineInputAssemblyStateCreateInfo SetTriangleListInputAssembly();
 
     void SetDynamicStateViewport(VkDynamicState* pStates, 

@@ -15,8 +15,7 @@ namespace BlitzenVulkan
         VkPipelineColorBlendAttachmentState& colorBlendAttachment,
         VkPipelineColorBlendStateCreateInfo& colorBlendState, 
         VkPipelineVertexInputStateCreateInfo& vertexInput, 
-        VkDynamicState* pDynamicStates
-    )
+        VkDynamicState* pDynamicStates)
     {
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.flags = 0;
@@ -70,6 +69,21 @@ namespace BlitzenVulkan
         //Setting up the vertex input state (this will not be used but it needs to be passed)
         vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         pipelineInfo.pVertexInputState = &vertexInput;
+    }
+
+    void CreateRenderingAttachmentInfo(VkRenderingAttachmentInfo& attachmentInfo, VkImageView imageView, VkImageLayout imageLayout,
+        VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp, VkClearColorValue clearValueColor, VkClearDepthStencilValue clearValueDepth)
+    {
+        attachmentInfo = {};
+
+        attachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachmentInfo.pNext = nullptr;
+        attachmentInfo.imageView = imageView;
+        attachmentInfo.imageLayout = imageLayout;
+        attachmentInfo.loadOp = loadOp;
+        attachmentInfo.storeOp = storeOp;
+        attachmentInfo.clearValue.color = clearValueColor;
+        attachmentInfo.clearValue.depthStencil = clearValueDepth;
     }
 
     uint8_t CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
