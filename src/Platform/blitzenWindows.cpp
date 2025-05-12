@@ -70,8 +70,7 @@ namespace BlitzenPlatform
         LONG winHeight = rect.bottom - rect.top;
 
         // TODO: Maybe add styles?
-        HWND hwnd = CreateWindowExA(0,className, appName, WS_OVERLAPPEDWINDOW,   
-            CW_USEDEFAULT, CW_USEDEFAULT, winWidth, winHeight,
+        HWND hwnd = CreateWindowExA(0,className, appName, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, winWidth, winHeight,
             nullptr, nullptr, hInstance, nullptr);
 
         if (!hwnd)
@@ -306,8 +305,7 @@ namespace BlitzenPlatform
             case WM_CLOSE:
             {
                 BlitzenCore::EventContext context{};
-                inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown, 
-                    nullptr, context);
+                inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
                 return 1;
             }
 

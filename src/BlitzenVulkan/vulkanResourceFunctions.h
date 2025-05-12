@@ -11,24 +11,21 @@ namespace BlitzenVulkan
 
     // Allocates a buffer using VMA
     uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 
-    VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, VmaAllocationCreateFlags allocationFlags);
+        VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, VmaAllocationCreateFlags allocationFlags);
 
     // Creates a staging buffer with transfer src bit and a storage buffer
     // The pData is copied to the staging buffer
-    uint8_t CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
-    void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
-    VkBufferUsageFlags usage, VkDeviceSize size);
+    uint8_t CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, void* pData, AllocatedBuffer& storageBuffer, 
+        AllocatedBuffer& stagingBuffer, VkBufferUsageFlags usage, VkDeviceSize size);
 
     // Returns the GPU address of a buffer
     VkDeviceAddress GetBufferAddress(VkDevice device, VkBuffer buffer);
 
     // Creates and image with VMA and also create an image view for it
-    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
+    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, 
         uint8_t mipLevels = 1, VmaMemoryUsage memoryUsage =VMA_MEMORY_USAGE_GPU_ONLY);
 
-    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, 
-        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
+    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
 
     // Allocate an image resource to be used specifically as texture. 
     // The 1st parameter should be the loaded image data that should be passed to the image resource
@@ -41,8 +38,7 @@ namespace BlitzenVulkan
     uint8_t CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
         VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels);
 
-    VkSampler CreateSampler(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
-        VkSamplerAddressMode addressMode, void* pNextChain = nullptr);
+    VkSampler CreateSampler(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode addressMode, void* pNextChain = nullptr);
 
     // Returns VkFormat based on DDS input to correctly load a texture image
     VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10);
@@ -115,4 +111,51 @@ namespace BlitzenVulkan
         // Copies parts of one buffer to parts of another, depending on the offsets that are passed
     void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer,
         VkDeviceSize copySize, VkDeviceSize srcOffset, VkDeviceSize dstOffset);
+
+    
+
+    // Allocates a buffer, creates a staging buffer for its data and creates a VkWriteDescriptorSet for its descriptor
+    // Return the buffer's size or 0 if it fails
+    template <typename DataType, typename T = void>
+    VkDeviceSize SetupPushDescriptorBuffer(VkDevice device, VmaAllocator allocator, PushDescriptorBuffer<T>& pushBuffer, AllocatedBuffer& stagingBuffer,
+        size_t elementCount, VkBufferUsageFlags usage, DataType* pData)
+    {
+        VkDeviceSize bufferSize = elementCount * sizeof(DataType);
+        if (bufferSize == 0)
+        {
+            return 0;
+        }
+        if (!CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer,
+            stagingBuffer, usage, bufferSize))
+        {
+            return 0;
+        }
+        // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, pushBuffer.descriptorType, pushBuffer.descriptorBinding,
+            pushBuffer.buffer.bufferHandle);
+        return bufferSize;
+    }
+
+    // This overload of the above function calls the base CreateBuffer function only
+    // It does the same thing as the above with the VkWriteDescriptorSet
+    template <typename DataType, typename T = void>
+    VkDeviceSize SetupPushDescriptorBuffer(VmaAllocator allocator, VmaMemoryUsage memUsage, PushDescriptorBuffer<T>& pushBuffer, size_t elementCount,
+        VkBufferUsageFlags usage, void* pNextChain = nullptr)
+    {
+        VkDeviceSize bufferSize = sizeof(DataType) * elementCount;
+        if (!CreateBuffer(allocator, pushBuffer.buffer, usage,
+            memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        {
+            return 0;
+        }
+        // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
+        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo,
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.bufferHandle, pNextChain);
+        return bufferSize;
+    }
+
+    // Calls CreateImage, but also create a VkWriteDescriptorSets struct for the PushDescriptorImage
+    uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image,
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, VmaMemoryUsage memoryUsage);
+
 }

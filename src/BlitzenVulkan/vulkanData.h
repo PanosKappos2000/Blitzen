@@ -49,6 +49,16 @@ namespace BlitzenVulkan
         constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
     #endif
 
+    // Platform specific expressions
+    #if defined(_WIN32)
+        constexpr const char* ce_surfaceExtensionName = "VK_KHR_win32_surface";
+        constexpr const char* ce_baseValidationLayerName = "VK_LAYER_KHRONOS_validation";
+    #elif linux
+        constexpr const char* ce_surfaceExtensionName = "VK_KHR_xcb_surface";
+        constexpr const char* ce_baseValidationLayerName = "VK_LAYER_NV_optimus";
+        #define VK_USE_PLATFORM_XCB_KHR
+    #endif
+
     constexpr uint32_t Ce_MaxValidationLayerCount = 2;
     constexpr const char* Ce_SyncValidationLayerName = "VK_LAYER_KHRONOS_synchronization2";
 
@@ -450,8 +460,4 @@ namespace BlitzenPlatform
 {
     // Creates the surface used by the vulkan renderer. Implemented on Platform.cpp
     uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator);
-
-    // Gets the memory crucial handles form the memory manager (defined in blitzenMemory.cpp)
-    BlitzenVulkan::MemoryCrucialHandles* GetVulkanMemoryCrucials();
-
 }

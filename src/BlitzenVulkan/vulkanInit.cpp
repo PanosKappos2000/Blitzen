@@ -1,23 +1,12 @@
 #include "vulkanRenderer.h"
 #include "vulkanCommands.h"
 #include "Platform/platform.h"
-#include "vulkanApiInitFunctions.h"
 #include "vulkanResourceFunctions.h"
 #include "vulkanPipelines.h"
 #include <cstring> // For strcmp
 
 namespace BlitzenVulkan
 {
-    // Platform specific expressions
-    #if defined(_WIN32)
-        constexpr const char* ce_surfaceExtensionName  = "VK_KHR_win32_surface";
-        constexpr const char* ce_baseValidationLayerName =  "VK_LAYER_KHRONOS_validation";                 
-    #elif linux
-        constexpr const char* ce_surfaceExtensionName = "VK_KHR_xcb_surface";      
-        constexpr const char* ce_baseValidationLayerName = "VK_LAYER_NV_optimus";                  
-        #define VK_USE_PLATFORM_XCB_KHR
-    #endif
-
     VulkanRenderer* VulkanRenderer::m_pThisRenderer = nullptr;
 
     VulkanRenderer::VulkanRenderer() :
@@ -26,6 +15,21 @@ namespace BlitzenVulkan
         m_depthPyramidMipLevels{ 0 }, textureCount{ 0 }
     {
         m_pThisRenderer = this;
+    }
+
+    static void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
+        const char* engineName, uint32_t engineVersion, uint32_t apiVersion = VK_API_VERSION_1_3)
+    {
+        appInfo = {};
+
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pNext = nullptr;
+        appInfo.apiVersion = VK_API_VERSION_1_3;
+
+        appInfo.pApplicationName = appName;
+        appInfo.applicationVersion = appVersion;
+        appInfo.pEngineName = engineName;
+        appInfo.engineVersion = engineVersion;
     }
 
     struct InstanceExtensionContext
@@ -663,6 +667,142 @@ namespace BlitzenVulkan
         return 0;
     }
 
+    struct DeviceFeaturesContext
+    {
+        VkPhysicalDeviceFeatures deviceFeatures{};
+        VkPhysicalDeviceVulkan11Features vulkan11Features{};
+        VkPhysicalDeviceVulkan12Features vulkan12Features{};
+        VkPhysicalDeviceVulkan13Features vulkan13Features{};
+        VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
+        VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
+
+        VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
+    };
+    static void AddDeviceFeatures(VkDeviceCreateInfo& info, DeviceFeaturesContext& ctx, VulkanStats& stats)
+    {
+        // Allows the renderer to use one vkCmdDrawIndrect type call for multiple objects
+        ctx.deviceFeatures.multiDrawIndirect = true;
+
+        // Allows sampler anisotropy to be VK_TRUE when creating a VkSampler
+        ctx.deviceFeatures.samplerAnisotropy = true;
+        
+        ctx.vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        ctx.vulkan11Features.shaderDrawParameters = true;
+        ctx.vulkan11Features.storageBuffer16BitAccess = true;
+
+        ctx.vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+        // Allow the application to get the address of a buffer and pass it to the shaders
+        ctx.vulkan12Features.bufferDeviceAddress = true;
+
+        // Allows the shaders to index into array held by descriptors, needed for textures
+        ctx.vulkan12Features.descriptorIndexing = true;
+
+        // Allows shaders to use array with undefined size for descriptors, needed for textures
+        ctx.vulkan12Features.runtimeDescriptorArray = true;
+
+        // Allows the use of float16_t type in the shaders
+        ctx.vulkan12Features.shaderFloat16 = true;
+
+        // Allows the use of 8 bit integers in shaders
+        ctx.vulkan12Features.shaderInt8 = true;
+
+        // Allows storage buffers to have 8bit data
+        ctx.vulkan12Features.storageBuffer8BitAccess = true;
+
+        // Allows push constants to have 8bit data
+        ctx.vulkan12Features.storagePushConstant8 = true;
+
+        // Allows the use of draw indirect count, which has the power to completely removes unneeded draw calls
+        ctx.vulkan12Features.drawIndirectCount = true;
+
+        // This is needed to create a sampler for the depth pyramid that will be used for occlusion culling
+        ctx.vulkan12Features.samplerFilterMinmax = true;
+
+        // Allows indexing into non uniform sampler arrays
+        ctx.vulkan12Features.shaderSampledImageArrayNonUniformIndexing = true;
+
+        // Allows uniform buffers to have 8bit members
+        ctx.vulkan12Features.uniformAndStorageBuffer8BitAccess = true;
+
+        ctx.vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+        // Dynamic rendering removes the need for VkRenderPass and allows the creation of rendering attachmets at draw time
+        ctx.vulkan13Features.dynamicRendering = true;
+
+        // Used for PipelineBarrier2, better sync structure API
+        ctx.vulkan13Features.synchronization2 = true;
+
+        // This is needed for local size id in shaders
+        ctx.vulkan13Features.maintenance4 = true;
+
+        VkPhysicalDeviceSynchronization2Features sync2Features{};
+        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+        sync2Features.synchronization2 = VK_FALSE;
+        if (stats.bSynchronizationValidationSupported)
+        {
+            sync2Features.synchronization2 = VK_TRUE;
+        }
+        ctx.vulkan13Features.pNext = &sync2Features;
+
+        ctx.vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+        if (stats.meshShaderSupport)
+        {
+            ctx.vulkanFeaturesMesh.meshShader = true;
+            ctx.vulkanFeaturesMesh.taskShader = true;
+        }
+        else
+        {
+            ctx.vulkanFeaturesMesh.meshShader = false;
+            ctx.vulkanFeaturesMesh.taskShader = false;
+        }
+
+        ctx.rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+        if (stats.bRayTracingSupported)
+        {
+            ctx.rayQueryFeatures.rayQuery = true; 
+        }
+        else
+        {
+            ctx.rayQueryFeatures.rayQuery = false;
+        }
+
+        ctx.accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        if (stats.bRayTracingSupported)
+        {
+            ctx.accelerationStructureFeatures.accelerationStructure = true;
+        }
+        else
+        {
+            ctx.accelerationStructureFeatures.accelerationStructure = false;
+        }
+
+        ctx.vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        ctx.vulkanExtendedFeatures.features = ctx.deviceFeatures;
+
+        // Adds all features structs to the pNext chain
+        info.pNext = &ctx.vulkanExtendedFeatures;
+        ctx.vulkanExtendedFeatures.pNext = &ctx.vulkan11Features;
+        ctx.vulkan11Features.pNext = &ctx.vulkan12Features;
+        ctx.vulkan12Features.pNext = &ctx.vulkan13Features;
+        ctx.vulkan13Features.pNext = &ctx.vulkanFeaturesMesh;
+        ctx.vulkanFeaturesMesh.pNext = &ctx.rayQueryFeatures;
+        ctx.rayQueryFeatures.pNext = &ctx.accelerationStructureFeatures;
+    }
+
+    static void GetVulkanQueue(VkDevice device, Queue& queue, void* pNext, VkDeviceQueueCreateFlags flags, uint32_t queueIndex = 0)
+    {
+        VkDeviceQueueInfo2 transferQueueInfo{};
+        transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
+        transferQueueInfo.flags = flags;
+        transferQueueInfo.pNext = pNext;
+        transferQueueInfo.queueFamilyIndex = queue.index;
+        transferQueueInfo.queueIndex = queueIndex;
+
+        vkGetDeviceQueue2(device, &transferQueueInfo, &queue.handle);
+    }
+
     static uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, Queue& presentQueue, Queue& computeQueue, Queue& transferQueue, VulkanStats& stats)
     {
         VkDeviceCreateInfo deviceInfo{};
@@ -673,114 +813,9 @@ namespace BlitzenVulkan
         deviceInfo.enabledExtensionCount = stats.deviceExtensionCount;
         deviceInfo.ppEnabledExtensionNames = stats.deviceExtensionNames;
 
-        // Standard device features
-        VkPhysicalDeviceFeatures deviceFeatures{};
-
-        // Allows the renderer to use one vkCmdDrawIndrect type call for multiple objects
-        deviceFeatures.multiDrawIndirect = true;
-
-        // Allows sampler anisotropy to be VK_TRUE when creating a VkSampler
-        deviceFeatures.samplerAnisotropy = true;
-
-        // Extended device features
-        VkPhysicalDeviceVulkan11Features vulkan11Features{};
-        vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-
-        vulkan11Features.shaderDrawParameters = true;
-
-        // Allows use of 16 bit types inside storage buffers in the shaders
-        vulkan11Features.storageBuffer16BitAccess = true;
-
-        VkPhysicalDeviceVulkan12Features vulkan12Features{};
-        vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-
-        // Allow the application to get the address of a buffer and pass it to the shaders
-        vulkan12Features.bufferDeviceAddress = true;
-
-        // Allows the shaders to index into array held by descriptors, needed for textures
-        vulkan12Features.descriptorIndexing = true;
-
-        // Allows shaders to use array with undefined size for descriptors, needed for textures
-        vulkan12Features.runtimeDescriptorArray = true;
-
-        // Allows the use of float16_t type in the shaders
-        vulkan12Features.shaderFloat16 = true;
-
-        // Allows the use of 8 bit integers in shaders
-        vulkan12Features.shaderInt8 = true;
-
-        // Allows storage buffers to have 8bit data
-        vulkan12Features.storageBuffer8BitAccess = true;
-
-        // Allows push constants to have 8bit data
-        vulkan12Features.storagePushConstant8 = true;
-
-        // Allows the use of draw indirect count, which has the power to completely removes unneeded draw calls
-        vulkan12Features.drawIndirectCount = true;
-
-        // This is needed to create a sampler for the depth pyramid that will be used for occlusion culling
-        vulkan12Features.samplerFilterMinmax = true;
-
-        // Allows indexing into non uniform sampler arrays
-        vulkan12Features.shaderSampledImageArrayNonUniformIndexing = true;
-
-        // Allows uniform buffers to have 8bit members
-        vulkan12Features.uniformAndStorageBuffer8BitAccess = true;
-
-        VkPhysicalDeviceVulkan13Features vulkan13Features{};
-        vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-
-        VkPhysicalDeviceSynchronization2Features sync2Features{};
-        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
-        sync2Features.synchronization2 = VK_FALSE;
-        if (stats.bSynchronizationValidationSupported)
-        {
-            sync2Features.synchronization2 = VK_TRUE;
-        }
-        vulkan13Features.pNext = &sync2Features;
-
-        // Dynamic rendering removes the need for VkRenderPass and allows the creation of rendering attachmets at draw time
-        vulkan13Features.dynamicRendering = true;
-
-        // Used for PipelineBarrier2, better sync structure API
-        vulkan13Features.synchronization2 = true;
-
-        // This is needed for local size id in shaders
-        vulkan13Features.maintenance4 = true;
-
-        VkPhysicalDeviceMeshShaderFeaturesEXT vulkanFeaturesMesh{};
-        vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-        vulkanFeaturesMesh.meshShader = false;
-        vulkanFeaturesMesh.taskShader = false;
-#if defined(BLIT_VK_MESH_EXT)
-        vulkanFeaturesMesh.meshShader = true;
-        vulkanFeaturesMesh.taskShader = true;
-#endif
-
-        VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
-        rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
-        VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
-        accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-        rayQueryFeatures.rayQuery = false;
-        accelerationStructureFeatures.accelerationStructure = false;
-        if (stats.bRayTracingSupported)
-        {
-            rayQueryFeatures.rayQuery = true;
-            accelerationStructureFeatures.accelerationStructure = true;
-        }
-
-        VkPhysicalDeviceFeatures2 vulkanExtendedFeatures{};
-        vulkanExtendedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        vulkanExtendedFeatures.features = deviceFeatures;
-
-        // Adds all features structs to the pNext chain
-        deviceInfo.pNext = &vulkanExtendedFeatures;
-        vulkanExtendedFeatures.pNext = &vulkan11Features;
-        vulkan11Features.pNext = &vulkan12Features;
-        vulkan12Features.pNext = &vulkan13Features;
-        vulkan13Features.pNext = &vulkanFeaturesMesh;
-        vulkanFeaturesMesh.pNext = &rayQueryFeatures;
-        rayQueryFeatures.pNext = &accelerationStructureFeatures;
+        // Features
+        DeviceFeaturesContext featureContext;
+        AddDeviceFeatures(deviceInfo, featureContext, stats);
 
         BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
         queueInfos[0].queueFamilyIndex = graphicsQueue.index;
@@ -790,11 +825,11 @@ namespace BlitzenVulkan
         queueInfos.PushBack(deviceQueueInfo);
         queueInfos[2].queueFamilyIndex = computeQueue.index;
 
-        // If compute has a different index from present, add a new info for it
+        // If graphics has a different index from present, add a new info for it
         if (graphicsQueue.index != presentQueue.index)
         {
             queueInfos.PushBack(deviceQueueInfo);
-            queueInfos[2].queueFamilyIndex = presentQueue.index;
+            queueInfos[3].queueFamilyIndex = presentQueue.index;
         }
         // With the count of the queue infos found and the indices passed, the rest is standard
         float priority = 1.f;
@@ -819,39 +854,15 @@ namespace BlitzenVulkan
         }
 
         // Retrieve graphics queue handle
-        VkDeviceQueueInfo2 graphicsQueueInfo{};
-        graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        graphicsQueueInfo.pNext = nullptr;
-        graphicsQueueInfo.flags = 0;
-        graphicsQueueInfo.queueFamilyIndex = graphicsQueue.index;
-        graphicsQueueInfo.queueIndex = 0;
-        vkGetDeviceQueue2(device, &graphicsQueueInfo, &graphicsQueue.handle);
+        GetVulkanQueue(device, graphicsQueue, nullptr, 0);
 
         // Retrieve compute queue handle
-        VkDeviceQueueInfo2 computeQueueInfo{};
-        computeQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        computeQueueInfo.pNext = nullptr;
-        computeQueueInfo.flags = 0;
-        computeQueueInfo.queueFamilyIndex = computeQueue.index;
-        computeQueueInfo.queueIndex = 0;
-        vkGetDeviceQueue2(device, &computeQueueInfo, &computeQueue.handle);
+        GetVulkanQueue(device, computeQueue, nullptr, 0);
 
         // Retrieve present queue handle
-        VkDeviceQueueInfo2 presentQueueInfo{};
-        presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        presentQueueInfo.pNext = nullptr;
-        presentQueueInfo.flags = 0;
-        presentQueueInfo.queueFamilyIndex = presentQueue.index;
-        presentQueueInfo.queueIndex = 0;
-        vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
+        GetVulkanQueue(device, presentQueue, nullptr, 0);
 
-        VkDeviceQueueInfo2 transferQueueInfo{};
-        transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        transferQueueInfo.flags = 0;
-        transferQueueInfo.pNext = nullptr;
-        transferQueueInfo.queueFamilyIndex = transferQueue.index;
-        transferQueueInfo.queueIndex = 0;
-        vkGetDeviceQueue2(device, &transferQueueInfo, &transferQueue.handle);
+        GetVulkanQueue(device, transferQueue, nullptr, 0);
 
         return 1;
     }
@@ -929,19 +940,133 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
-        const char* engineName, uint32_t engineVersion, uint32_t apiVersion /*=VK_API_VERSION_1_3*/)
+    static uint8_t FindSwapchainSurfaceFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, VkFormat& swapchainFormat)
     {
-        appInfo = {};
+        // Get the amount of available surface formats
+        uint32_t surfaceFormatsCount = 0;
+        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, nullptr) != VK_SUCCESS)
+        {
+            BLIT_ERROR("No surface formats (??)");
+            return 0;
+        }
 
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pNext = nullptr;
-        appInfo.apiVersion = VK_API_VERSION_1_3;
+        // Retrieves
+        BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
+        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, surfaceFormats.Data()) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to retrieve surface formats");
+            return 0;
+        }
 
-        appInfo.pApplicationName = appName;
-        appInfo.applicationVersion = appVersion;
-        appInfo.pEngineName = engineName;
-        appInfo.engineVersion = engineVersion;
+        // Look for the desired image format
+        uint8_t found = 0;
+        for (const auto& formats : surfaceFormats)
+        {
+            // If the desired image format is found, assigns it to the swapchain info and breaks out of the loop
+            if (formats.format == VK_FORMAT_B8G8R8A8_UNORM && formats.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            {
+                info.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                // Saves the format to init handles
+                swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                found = 1;
+                break;
+            }
+        }
+
+        // If the desired format is not found (unlikely), assigns the first one that is supported and hopes for the best
+        // I could have the function fail but this is not important enough and this function can be called at run time, so...
+        if (!found)
+        {
+            info.imageFormat = surfaceFormats[0].format;
+            info.imageColorSpace = surfaceFormats[0].colorSpace;
+            // Save the image format
+            swapchainFormat = info.imageFormat;
+        }
+
+        return 1;
+    }
+
+    static uint8_t FindSwapchainPresentMode(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info)
+    {
+        // Enumerate
+        uint32_t presentModeCount = 0;
+        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to enumerate swapchain present modes (?)");
+            return 0;
+        }
+
+        // Retrieve
+        BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
+        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.Data()) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to retrieve swapchain present modes");
+            return 0;
+        }
+
+        uint8_t found = 0;
+        for (const auto& present : presentModes)
+        {
+            if (present == Ce_DesiredPresentMode)
+            {
+                info.presentMode = Ce_DesiredPresentMode;
+                found = 1;
+                BLIT_INFO("Found desired present mode");
+                break;
+            }
+        }
+
+        // If it was not found, sets it to this random smuck (this is supposed to be supported by everything and it's VSynced)
+        if (!found)
+        {
+            BLIT_WARN("Desired presentation mode not found, using fallback");
+            info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+        }
+
+        return 1;
+    }
+
+    static uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info,
+        Swapchain& newSwapchain)
+    {
+        // Retrieves surface capabilities to properly configure some swapchain values
+        VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+        if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities) != VK_SUCCESS)
+            return 0;
+
+        // Updates the swapchain extent to the current extent from the surface, if it is not a special value
+        if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
+        {
+            newSwapchain.swapchainExtent = surfaceCapabilities.currentExtent;
+        }
+
+        // Gets the min extent and max extent allowed by the GPU,  to clamp the initial value
+        VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
+        VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
+
+        newSwapchain.swapchainExtent.width =
+            BlitML::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
+
+        newSwapchain.swapchainExtent.height =
+            BlitML::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
+
+        // Swapchain extent fully checked and ready to pass to the swapchain info struct
+        info.imageExtent = newSwapchain.swapchainExtent;
+
+        uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+        // Checks that image count does not supass max image count
+        if (surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.maxImageCount < imageCount)
+        {
+            imageCount = surfaceCapabilities.maxImageCount;
+        }
+
+        // Swapchain image count fully checked and ready to be pass to the swapchain info
+        info.minImageCount = imageCount;
+
+        info.preTransform = surfaceCapabilities.currentTransform;
+
+        return 1;
     }
 
     uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
@@ -1048,136 +1173,6 @@ namespace BlitzenVulkan
         }
         
         // If the swapchain has been created and the images have been acquired, swapchain creation is succesful
-        return 1;
-    }
-
-    uint8_t FindSwapchainSurfaceFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, 
-    VkFormat& swapchainFormat)
-    {
-        // Get the amount of available surface formats
-        uint32_t surfaceFormatsCount = 0; 
-        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, nullptr) != VK_SUCCESS)
-        {
-            BLIT_ERROR("No surface formats (??)");
-            return 0;
-        }
-
-        // Retrieves
-        BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
-        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, surfaceFormats.Data()) != VK_SUCCESS)
-        {
-            BLIT_ERROR("Failed to retrieve surface formats");
-            return 0;
-        }
-
-        // Look for the desired image format
-        uint8_t found = 0;
-        for(const auto& formats : surfaceFormats)
-        {
-            // If the desired image format is found, assigns it to the swapchain info and breaks out of the loop
-            if(formats.format == VK_FORMAT_B8G8R8A8_UNORM && formats.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-            {
-                info.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-                info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                // Saves the format to init handles
-                swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
-                found = 1;
-                break;
-            }
-        }
-
-        // If the desired format is not found (unlikely), assigns the first one that is supported and hopes for the best
-        // I could have the function fail but this is not important enough and this function can be called at run time, so...
-        if(!found)
-        {
-            info.imageFormat = surfaceFormats[0].format;
-            info.imageColorSpace = surfaceFormats[0].colorSpace;
-            // Save the image format
-            swapchainFormat = info.imageFormat;
-        }
-
-        return 1;
-    }
-
-    uint8_t FindSwapchainPresentMode(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info)
-    {
-        // Enumerate
-        uint32_t presentModeCount = 0;
-        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr) != VK_SUCCESS)
-        {
-            BLIT_ERROR("Failed to enumerate swapchain present modes (?)");
-            return 0;
-        }
-
-        // Retrieve
-        BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
-        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.Data()) != VK_SUCCESS)
-        {
-            BLIT_ERROR("Failed to retrieve swapchain present modes");
-            return 0;
-        }
-
-        uint8_t found = 0;
-        for(const auto& present : presentModes)
-        {
-            if(present == Ce_DesiredPresentMode)
-            {
-                info.presentMode = Ce_DesiredPresentMode;
-                found = 1;
-                BLIT_INFO("Found desired present mode");
-                break;
-            }
-        }
-                
-        // If it was not found, sets it to this random smuck (this is supposed to be supported by everything and it's VSynced)
-        if (!found)
-        {
-            BLIT_WARN("Desired presentation mode not found, using fallback");
-            info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
-        }
-
-        return 1;
-    }
-
-    uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, 
-    Swapchain& newSwapchain)
-    {
-        // Retrieves surface capabilities to properly configure some swapchain values
-        VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-        if(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities) != VK_SUCCESS)
-            return 0;
-
-        // Updates the swapchain extent to the current extent from the surface, if it is not a special value
-        if(surfaceCapabilities.currentExtent.width != UINT32_MAX)
-        {
-            newSwapchain.swapchainExtent = surfaceCapabilities.currentExtent;
-        }
-
-        // Gets the min extent and max extent allowed by the GPU,  to clamp the initial value
-        VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
-        VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
-
-        newSwapchain.swapchainExtent.width = 
-        BlitML::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
-
-        newSwapchain.swapchainExtent.height = 
-        BlitML::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
-
-        // Swapchain extent fully checked and ready to pass to the swapchain info struct
-        info.imageExtent = newSwapchain.swapchainExtent;
-
-        uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
-        // Checks that image count does not supass max image count
-        if(surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.maxImageCount < imageCount )
-        {
-            imageCount = surfaceCapabilities.maxImageCount;
-        }
-
-        // Swapchain image count fully checked and ready to be pass to the swapchain info
-        info.minImageCount = imageCount;
-
-        info.preTransform = surfaceCapabilities.currentTransform;
-
         return 1;
     }
 
