@@ -377,6 +377,6 @@ namespace BlitzenEngine
 
     // Test functions
     void LoadTestGeometry(RenderingResources* pResources);
-    void LoadGeometryStressTest(RenderingResources* pResources);
+    void LoadGeometryStressTest(RenderingResources* pResources, float transformMultiplier);
     void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources);
 }

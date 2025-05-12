@@ -120,7 +120,18 @@ namespace BlitzenEngine
             // Special argument. Loads heavy scene to stress test the culling algorithms
             if (strcmp(argv[1], "RenderingStressTest") == 0)
             {
-                LoadGeometryStressTest(pResources);
+                LoadGeometryStressTest(pResources, 3'000.f);
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    pResources->LoadGltfScene(argv[i], pRenderer);
+                }
+            }
+
+            else if (strcmp(argv[1], "InstancingStressTest") == 0)
+            {
+                LoadGeometryStressTest(pResources, 2'000.f);
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)

@@ -712,14 +712,12 @@ namespace BlitzenEngine
 
     // Creates the rendering stress test scene. 
     // TODO: This function is unsafe, calling it after another function that creates render object will cause issues
-    void LoadGeometryStressTest(RenderingResources* pResources)
+    void LoadGeometryStressTest(RenderingResources* pResources, float transformMultiplier)
     {
         // Don't load the stress test if ray tracing is on
         #if defined(BLIT_VK_RAYTRACING)// The name of this macro should change
             return;
         #endif
-
-        constexpr float ce_stressTestRandomTransformMultiplier = 3'000.f;
         
         constexpr uint32_t bunnyCount = 2'500'000;
         constexpr uint32_t kittenCount = 1'500'000;
@@ -734,25 +732,25 @@ namespace BlitzenEngine
         // Bunnies
         for(uint32_t i = start; i < start + bunnyCount; ++i)
         {
-			CreateRenderObjectWithRandomTransform(0, pResources, ce_stressTestRandomTransformMultiplier, 5.f);
+			CreateRenderObjectWithRandomTransform(0, pResources, transformMultiplier, 5.f);
         }
         start += bunnyCount;
         // Kittens
         for (uint32_t i = start; i < start + kittenCount; ++i)
         {
-            CreateRenderObjectWithRandomTransform(2, pResources, ce_stressTestRandomTransformMultiplier, 1.f);
+            CreateRenderObjectWithRandomTransform(2, pResources, transformMultiplier, 1.f);
         }
         // Standford dragons
         start += kittenCount;
         for (uint32_t i = start; i < start + dragonCount; ++i)
         {
-			CreateRenderObjectWithRandomTransform(1, pResources, ce_stressTestRandomTransformMultiplier, 0.5f);
+			CreateRenderObjectWithRandomTransform(1, pResources, transformMultiplier, 0.5f);
         }
         // Humans
         start += dragonCount;
         for (uint32_t i = start; i < start + maleCount; ++i)
         {
-			CreateRenderObjectWithRandomTransform(3, pResources, ce_stressTestRandomTransformMultiplier, 0.2f);
+			CreateRenderObjectWithRandomTransform(3, pResources, transformMultiplier, 0.2f);
         }
     }
 
