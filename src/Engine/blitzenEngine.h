@@ -67,6 +67,8 @@ namespace BlitzenEngine
 
     constexpr const char* ce_blitzenVersion = "Blitzen Engine";
     constexpr uint32_t ce_blitzenMajor = 0;
+    constexpr const char* Ce_HostedApp = "Blitzen Game";
+    constexpr uint32_t Ce_HostedAppVersion = 1;
 
     class Engine
     {

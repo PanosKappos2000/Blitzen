@@ -26,20 +26,16 @@
 
 namespace BlitzenVulkan
 {
-	// VkApplicationInfo
-    constexpr const char* ce_userApp = "Blitzen Game";
-    constexpr uint32_t ce_appVersion = VK_MAKE_VERSION (1, 0, 0);
-    constexpr const char* ce_hostEngine =  "Blitzen Engine";                             
-    constexpr uint32_t ce_userEngineVersion = VK_MAKE_VERSION (BlitzenEngine::ce_blitzenMajor, 0, 0);
+    constexpr uint32_t Ce_VkApiVersion = VK_API_VERSION_1_3;
 
-	// Swapchain
-    #ifdef BLIT_VSYNC
-        constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-    #else
-        constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-    #endif
 
-    // Validation layer definitions
+    constexpr uint32_t Ce_MaxRequestedInstanceExtensions = 3;
+
+    constexpr uint8_t Ce_SurfaceExtensionsRequired = 1;
+
+    constexpr uint8_t Ce_ValidationExtensionRequired = 0;
+    constexpr uint32_t Ce_ValidationExtensionElement = 2;
+
     #if defined(BLIT_VK_VALIDATION_LAYERS) && !defined(NDEBUG)
         constexpr uint8_t ce_bValidationLayersRequested = 1;
         #if defined(BLIT_VK_SYNCHRONIZATION_VALIDATION)
@@ -52,8 +48,17 @@ namespace BlitzenVulkan
         constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
     #endif
 
+    constexpr uint32_t Ce_MaxValidationLayerCount = 2;
+    constexpr const char* Ce_SyncValidationLayerName = "VK_LAYER_KHRONOS_synchronization2";
+
+
+#ifdef BLIT_VSYNC
+    constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+#else
+    constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+#endif
+
 	// Total extensions count
-    constexpr uint32_t ce_maxRequestedInstanceExtensions = 3;
     constexpr uint32_t ce_maxRequestedDeviceExtensions = 8;
 
 	// Is raytracing requested?

@@ -19,6 +19,14 @@ namespace BlitzenVulkan
 
     VulkanRenderer* VulkanRenderer::m_pThisRenderer = nullptr;
 
+    VulkanRenderer::VulkanRenderer() :
+        m_pCustomAllocator{ nullptr }, m_debugMessenger{ VK_NULL_HANDLE },
+        m_currentFrame{ 0 }, m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f },
+        m_depthPyramidMipLevels{ 0 }, textureCount{ 0 }
+    {
+        m_pThisRenderer = this;
+    }
+
     /*
         These function are used load the function pointer for creating the debug messenger
     */
@@ -69,12 +77,153 @@ namespace BlitzenVulkan
         }
     }
 
-    VulkanRenderer::VulkanRenderer() :
-        m_pCustomAllocator{ nullptr }, m_debugMessenger {VK_NULL_HANDLE}, 
-        m_currentFrame{ 0 }, m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f }, 
-        m_depthPyramidMipLevels{ 0 }, textureCount{ 0 }
+    struct InstanceExtensionContext
     {
-        m_pThisRenderer = this;
+        BlitCL::DynamicArray<VkExtensionProperties> availableExtensions;
+
+        const char* possibleRequestedExtensions[Ce_MaxRequestedInstanceExtensions]{ ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+        uint8_t extensionsSupportRequested[Ce_MaxRequestedInstanceExtensions]{ Ce_SurfaceExtensionsRequired, Ce_SurfaceExtensionsRequired, ce_bValidationLayersRequested || Ce_ValidationExtensionRequired };
+        uint8_t extensionSupportRequired[Ce_MaxRequestedInstanceExtensions]{ Ce_SurfaceExtensionsRequired, Ce_SurfaceExtensionsRequired, Ce_ValidationExtensionRequired };
+
+        const char* extensionNames[Ce_MaxRequestedInstanceExtensions]{};
+        uint8_t extensionSupportFound[Ce_MaxRequestedInstanceExtensions]{ 0, 0, 0 };
+    };
+    static uint8_t FindInstanceExtensions(VkInstanceCreateInfo& instanceInfo, InstanceExtensionContext& ctx)
+    {
+        uint32_t extensionCount = 0;
+        for (size_t i = 0; i < Ce_MaxRequestedInstanceExtensions; ++i)
+        {
+            if (!ctx.extensionsSupportRequested[i])
+            {
+                continue;
+            }
+
+            for (auto& extension : ctx.availableExtensions)
+            {
+                // Check for surafce extension support
+                if (!strcmp(extension.extensionName, ctx.possibleRequestedExtensions[i]))
+                {
+                    ctx.extensionNames[extensionCount++] = extension.extensionName;
+                    ctx.extensionSupportFound[i] = 1;
+                }
+            }
+
+            if (!ctx.extensionSupportFound[i] && ctx.extensionSupportRequired[i])
+            {
+                BLIT_ERROR("Vulkan instance exetension with name: %s was not found", ctx.possibleRequestedExtensions[i]);
+                return 0;
+            }
+
+            if (!ctx.extensionSupportFound[i] && !ctx.extensionSupportRequired[i])
+            {
+                BLIT_WARN("Vulkan instance exetension with name: %s was not found", ctx.possibleRequestedExtensions[i]);
+            }
+
+        }
+
+        instanceInfo.ppEnabledExtensionNames = ctx.extensionNames;
+        instanceInfo.enabledExtensionCount = extensionCount;
+
+        return 1;
+    }
+
+    static uint8_t EnableValidationLayers(VkInstanceCreateInfo& instanceInfo, VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo, VkValidationFeaturesEXT& validationFeatures,
+        VkValidationFeatureEnableEXT* pEnables, const char** ppEnabledLayerNames)
+    {
+        if (EnableInstanceValidation(debugMessengerInfo))
+        {
+            validationFeatures = {};
+            validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+            validationFeatures.enabledValidationFeatureCount = 1;
+            validationFeatures.pEnabledValidationFeatures = pEnables;
+            validationFeatures.disabledValidationFeatureCount = 0;
+            validationFeatures.pDisabledValidationFeatures = nullptr;
+            validationFeatures.pNext = &debugMessengerInfo;
+
+            instanceInfo.pNext = &validationFeatures;
+
+            // If the layer for synchronization 2 is found, it enables that as well
+            if (ce_bSynchronizationValidationRequested && EnabledInstanceSynchronizationValidation())
+            {
+                instanceInfo.enabledLayerCount = 2;
+            }
+            else
+            {
+                BLIT_WARN("Failed to enable Vulkan synchronization validation");
+                instanceInfo.enabledLayerCount = 1;
+            }
+
+            instanceInfo.ppEnabledLayerNames = ppEnabledLayerNames;
+
+            return 1;
+        }
+
+        BLIT_ERROR("Failed to enable validation layers");
+        return 0;
+    }
+
+    static uint8_t CreateInstance(VkInstance& instance, VkDebugUtilsMessengerEXT* pDM = nullptr)
+    {
+        uint32_t apiVersion = 0;
+        VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
+        if (apiVersion < Ce_VkApiVersion)
+        {
+            BLIT_ERROR("Required Vulkan API version not supported");
+            return 0;
+        }
+
+        const char* appName{ BlitzenEngine::Ce_HostedApp };
+        const char* engineName{ BlitzenEngine::ce_blitzenVersion };
+        VkApplicationInfo applicationInfo{};
+        CreateApplicationInfo(applicationInfo, nullptr, appName, VK_MAKE_VERSION(BlitzenEngine::Ce_HostedAppVersion, 0, 0), engineName, VK_MAKE_VERSION(BlitzenEngine::ce_blitzenMajor, 0, 0));
+
+        VkInstanceCreateInfo instanceInfo{};
+        instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        instanceInfo.pNext = nullptr;
+        instanceInfo.flags = 0;
+        instanceInfo.pApplicationInfo = &applicationInfo;
+
+        // Enumerates
+        uint32_t availableExtensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, nullptr);
+        // Initialize data
+        InstanceExtensionContext extensionContext;
+        extensionContext.availableExtensions.Resize(availableExtensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, extensionContext.availableExtensions.Data());
+        // Finds extensions
+        if (!FindInstanceExtensions(instanceInfo, extensionContext))
+        {
+            BLIT_ERROR("Failed to find all required instance extensions");
+            return 0;
+        }
+
+        instanceInfo.enabledLayerCount = 0;
+        uint8_t validationLayersEnabled = 0;
+        VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
+        // Shader printf
+        VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
+        VkValidationFeaturesEXT validationFeatures{};
+        const char* layerNames[2] = { ce_baseValidationLayerName, Ce_SyncValidationLayerName };
+        if (ce_bValidationLayersRequested && extensionContext.extensionSupportFound[Ce_ValidationExtensionElement])
+        {
+            validationLayersEnabled = EnableValidationLayers(instanceInfo, debugMessengerInfo, validationFeatures, enables, layerNames);
+        }
+
+        auto res = vkCreateInstance(&instanceInfo, nullptr, &instance);
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create instance");
+            return 0;
+        }
+
+        // If validation layers are request and they were succesfully found in the VkInstance earlier, the debug messenger is created
+        if (validationLayersEnabled)
+        {
+            BLIT_INFO("Setting up Vulkan Debug Messenger");
+            CreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, pDM);
+        }
+
+        return 1;
     }
 
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle)
@@ -150,132 +299,19 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateInstance(VkInstance& instance, VkDebugUtilsMessengerEXT* pDM /*=nullptr*/)
+    void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
+        const char* engineName, uint32_t engineVersion, uint32_t apiVersion /*=VK_API_VERSION_1_3*/)
     {
-        // Check if the driver supports vulkan 1.3. The engine requires for Vulkan to be in 1.3
-        uint32_t apiVersion = 0;
-        VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
-        if(apiVersion < VK_API_VERSION_1_3)
-        {
-            BLIT_ERROR("Blitzen needs to use Vulkan API_VERSION 1.3")
-            return 0;
-        }
+        appInfo = {};
 
-        //Will be passed to the VkInstanceCreateInfo that will create Vulkan's instance
-        VkApplicationInfo applicationInfo{};
-        applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        applicationInfo.pNext = nullptr; 
-        applicationInfo.apiVersion = VK_API_VERSION_1_3; 
-        applicationInfo.pApplicationName = ce_userApp;
-        applicationInfo.applicationVersion = ce_appVersion;
-        applicationInfo.pEngineName = ce_hostEngine;
-        applicationInfo.engineVersion = ce_userEngineVersion;
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pNext = nullptr;
+        appInfo.apiVersion = VK_API_VERSION_1_3;
 
-        VkInstanceCreateInfo instanceInfo {};
-        instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        instanceInfo.pNext = nullptr; // Will be used if validation layers are activated later in this function
-        instanceInfo.flags = 0; // Not using this 
-        instanceInfo.pApplicationInfo = &applicationInfo;
-
-        // Checking that all required instance extensions are supported
-        uint32_t availableExtensionCount = 0;
-        vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, nullptr);
-        BlitCL::DynamicArray<VkExtensionProperties> availableExtensions(static_cast<size_t>(availableExtensionCount));
-        vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, availableExtensions.Data());
-
-        // Store the names of all possible extensions to be used
-        const char* possibleRequestedExtensions[ce_maxRequestedInstanceExtensions] = 
-        {
-            ce_surfaceExtensionName, "VK_KHR_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME
-        };
-        // Stores a boolean for each extension, telling the application if they were requested, if they are required and if they were found
-        uint8_t extensionsSupportRequested[ce_maxRequestedInstanceExtensions] = 
-        {
-            1, 
-            1, 
-            ce_bValidationLayersRequested
-        };
-        uint8_t extensionSupportRequired[ce_maxRequestedInstanceExtensions] = {1, 1, 0};
-        uint8_t extensionSupportFound[ce_maxRequestedInstanceExtensions] = { 0, 0, 0 };
-
-        // Final extension count
-        const char* extensionNames[ce_maxRequestedInstanceExtensions];
-        uint32_t extensionCount = 0;
-
-        for(size_t i = 0; i < ce_maxRequestedInstanceExtensions; ++i)
-        {
-            if(!extensionsSupportRequested[i])
-                continue;
-                
-            for(auto& extension : availableExtensions)
-            {
-                // Check for surafce extension support
-                if(!strcmp(extension.extensionName, possibleRequestedExtensions[i]))
-                {
-                    extensionNames[extensionCount++] = extension.extensionName;
-                    extensionSupportFound[i] = 1;
-                }
-            }
-            if(!extensionSupportFound[i] && extensionSupportRequired[i])
-            {
-                BLIT_ERROR("Vulkan instance exetension with name: %s was not found", possibleRequestedExtensions[i])
-                return 0;
-            }
-            // TODO: I could throw a warning for non required extension that were not found
-
-        }
-
-        instanceInfo.ppEnabledExtensionNames = extensionNames;        
-        instanceInfo.enabledExtensionCount = extensionCount;
-        instanceInfo.enabledLayerCount = 0; // Validation layers inactive at first, but will be activated if it's a debug build
-
-        // Keeps the debug messenger info and the validation layers enabled boolean here, they will be needed later
-        uint8_t validationLayersEnabled = 0;
-        VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo{};
-        VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };// Shader printing
-        // If validation layers are requested, the debut utils extension is also needed
-        if (ce_bValidationLayersRequested)
-        {
-            if (extensionSupportFound[ce_maxRequestedInstanceExtensions - 1])
-            {
-                const char* layerNameRef[2] = { ce_baseValidationLayerName, "VK_LAYER_KHRONOS_synchronization2" };
-                if (EnableInstanceValidation(debugMessengerInfo))
-                {
-                    VkValidationFeaturesEXT validationFeatures{};
-                    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-                    validationFeatures.enabledValidationFeatureCount = 1;
-                    validationFeatures.pEnabledValidationFeatures = enables;
-                    validationFeatures.disabledValidationFeatureCount = 0;
-                    validationFeatures.pDisabledValidationFeatures = nullptr;
-                    validationFeatures.pNext = &debugMessengerInfo;
-
-                    // The debug messenger needs to be referenced by the instance
-                    instanceInfo.pNext = &validationFeatures;
-
-                    // If the layer for synchronization 2 is found, it enables that as well
-                    if (ce_bSynchronizationValidationRequested && EnabledInstanceSynchronizationValidation())
-                        instanceInfo.enabledLayerCount = 2;
-                    // If not just enables the other one
-                    else
-                        instanceInfo.enabledLayerCount = 1;
-
-                    instanceInfo.ppEnabledLayerNames = layerNameRef;
-                    validationLayersEnabled = 1;
-                }
-            }
-        }
-
-        
-
-        VkResult res = vkCreateInstance(&instanceInfo, nullptr, &instance);
-        if(res != VK_SUCCESS)
-            return 0;
-
-        // If validation layers are request and they were succesfully found in the VkInstance earlier, the debug messenger is created
-        if(validationLayersEnabled)
-            CreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, pDM);
-
-        return 1;
+        appInfo.pApplicationName = appName;
+        appInfo.applicationVersion = appVersion;
+        appInfo.pEngineName = engineName;
+        appInfo.engineVersion = engineVersion;
     }
 
     uint8_t EnableInstanceValidation(VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo)

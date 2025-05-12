@@ -99,6 +99,7 @@ namespace BlitCL
         inline char operator [] (size_t idx) const { return m_data[idx]; }
         inline const char* GetClassic() const { return m_data; }
         inline char* Data() { return m_data; }
+        inline char** GetDataPointer() { return &m_data; }
         inline size_t GetSize() const { return m_size; }
 		inline size_t GetCapacity() const { return m_capacity; }
 
