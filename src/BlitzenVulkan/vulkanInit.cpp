@@ -27,56 +27,6 @@ namespace BlitzenVulkan
         m_pThisRenderer = this;
     }
 
-    /*
-        These function are used load the function pointer for creating the debug messenger
-    */
-    VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
-    const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) 
-    {
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-        if (func != nullptr) 
-        {
-            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-        } else 
-        {
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-        }
-    }
-    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) 
-    {
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr) 
-        {
-            func(instance, debugMessenger, pAllocator);
-        }
-    }
-    // Debug messenger callback function
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
-    VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) 
-    {
-        switch (messageSeverity)
-        {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-        {
-            BLIT_INFO("Validation layer: %s", pCallbackData->pMessage);
-            return VK_FALSE;
-        }
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-        {
-            BLIT_WARN("Validation layer: %s", pCallbackData->pMessage);
-            return VK_FALSE;
-        }
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-        {
-            BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage);
-            return VK_FALSE;
-        }
-        default:
-            return VK_FALSE;
-        }
-    }
-
     struct InstanceExtensionContext
     {
         BlitCL::DynamicArray<VkExtensionProperties> availableExtensions;
@@ -125,6 +75,124 @@ namespace BlitzenVulkan
         instanceInfo.enabledExtensionCount = extensionCount;
 
         return 1;
+    }
+
+    static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+        const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
+    {
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func != nullptr)
+        {
+            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+        }
+
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+
+    static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+    {
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr)
+        {
+            func(instance, debugMessenger, pAllocator);
+        }
+    }
+
+    // Debug messenger callback function
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+    {
+        switch (messageSeverity)
+        {
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+        {
+            BLIT_INFO("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
+        }
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        {
+            BLIT_WARN("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
+        }
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        {
+            BLIT_ERROR("Validation layer: %s", pCallbackData->pMessage);
+            return VK_FALSE;
+        }
+        default:
+        {
+            return VK_FALSE;
+        }
+        }
+    }
+
+    static uint8_t EnableInstanceValidation(VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo)
+    {
+        // Getting all supported validation layers
+        uint32_t availableLayerCount = 0;
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
+        BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
+
+        // Checking if the requested validation layers are supported
+        uint8_t layersFound = 0;
+        for (size_t i = 0; i < availableLayers.GetSize(); i++)
+        {
+            if (!strcmp(availableLayers[i].layerName, ce_baseValidationLayerName))
+            {
+                layersFound = 1;
+                break;
+            }
+        }
+
+        if (!layersFound)
+        {
+            BLIT_ERROR("The vulkan renderer should not be used in debug mode without validation layers");
+            return 0;
+        }
+
+        // Create the debug messenger
+        debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
+        debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+
+        debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+        // Debug messenger callback function defined at the top of this file
+        debugMessengerInfo.pfnUserCallback = debugCallback;
+
+        debugMessengerInfo.pNext = nullptr;
+        debugMessengerInfo.pUserData = nullptr;
+
+        return 1;
+    }
+
+    static uint8_t EnabledInstanceSynchronizationValidation()
+    {
+        // Getting all supported validation layers
+        uint32_t availableLayerCount = 0;
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
+        BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
+        vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
+
+        // Checking if the requested validation layers are supported
+        uint8_t layersFound = 0;
+        for (size_t i = 0; i < availableLayers.GetSize(); i++)
+        {
+            if (!strcmp(availableLayers[i].layerName, "VK_LAYER_KHRONOS_synchronization2"))
+            {
+                layersFound = 1;
+                break;
+            }
+        }
+
+        return layersFound;
     }
 
     static uint8_t EnableValidationLayers(VkInstanceCreateInfo& instanceInfo, VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo, VkValidationFeaturesEXT& validationFeatures,
@@ -226,302 +294,181 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle)
+    static uint8_t ValidatePdvFeatures(VkPhysicalDevice pdv)
     {
-        // Creates the Vulkan instance
-        if(!CreateInstance(m_instance, &m_debugMessenger))
-        {
-            BLIT_ERROR("Failed to create vulkan instance");
-            return 0;
-        }
-
-        // Create the surface depending on the implementation on Platform.cpp
-        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator))
-        {
-            BLIT_ERROR("Failed to create Vulkan window surface");
-            return 0;
-        }
-
-        // Call the function to search for a suitable physical device, it it can't find one return 0
-        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, 
-            m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
-        {
-            BLIT_ERROR("Failed to pick suitable physical device");
-            return 0;
-        }
-
-        // Create the device
-        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
-        {
-            BLIT_ERROR("Failed to pick suitable physical device");
-            return 0;
-        }
-
-        // Creates the swapchain
-        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, 
-            windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
-            m_pCustomAllocator, m_swapchainValues))
-        {
-            BLIT_ERROR("Failed to create Vulkan swapchain");
-            return 0;
-        }
-
-        // This will be referred to by rendering attachments and will be updated when the window is resized
-        m_drawExtent = {m_swapchainValues.swapchainExtent.width, m_swapchainValues.swapchainExtent.height};
-
-        
-		if (!CreateIdleDrawHandles(m_device, m_basicBackgroundPipeline.handle, 
-            m_basicBackgroundLayout.handle, m_backgroundImageSetLayout.handle, 
-            m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
-		{
-            BLIT_ERROR("Failed to create idle draw handles");
-		    return 0;
-		}
-
-        if (!CreateLoadingTrianglePipeline(m_device, m_loadingTrianglePipeline.handle, m_loadingTriangleLayout.handle))
-        {
-            BLIT_ERROR("Failed to create loading triangle pipeline");
-            return 0;
-        }
-
-        // Creates command buffers and synchronization structures in the frame tools struct
-        // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
-        for (size_t i = 0; i < ce_framesInFlight; ++i)
-        {
-            if (!m_frameToolsList[i].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
-            {
-                BLIT_ERROR("Failed to create frame tools");
-                return 0;
-            }
-        }
-
-        // Success
-        return 1;
-    }
-
-    void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
-        const char* engineName, uint32_t engineVersion, uint32_t apiVersion /*=VK_API_VERSION_1_3*/)
-    {
-        appInfo = {};
-
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pNext = nullptr;
-        appInfo.apiVersion = VK_API_VERSION_1_3;
-
-        appInfo.pApplicationName = appName;
-        appInfo.applicationVersion = appVersion;
-        appInfo.pEngineName = engineName;
-        appInfo.engineVersion = engineVersion;
-    }
-
-    uint8_t EnableInstanceValidation(VkDebugUtilsMessengerCreateInfoEXT& debugMessengerInfo)
-    {
-        // Getting all supported validation layers
-        uint32_t availableLayerCount = 0;
-        vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
-        BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
-        vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
-
-        // Checking if the requested validation layers are supported
-        uint8_t layersFound = 0;
-        for(size_t i = 0; i < availableLayers.GetSize(); i++)
-        {
-           if(!strcmp(availableLayers[i].layerName,ce_baseValidationLayerName))
-           {
-               layersFound = 1;
-               break;
-           }
-        }
-
-        if(!layersFound)
-        {
-            BLIT_ERROR("The vulkan renderer should not be used in debug mode without validation layers")
-            return 0;
-        }
-        
-        // Create the debug messenger
-        debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-
-        debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | 
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-
-        debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
-            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | 
-            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
-        // Debug messenger callback function defined at the top of this file
-        debugMessengerInfo.pfnUserCallback = debugCallback;
-
-        debugMessengerInfo.pNext = nullptr;// Not using this right now
-        debugMessengerInfo.pUserData = nullptr; // Not using this right now
-
-        return 1;
-    }
-
-    uint8_t EnabledInstanceSynchronizationValidation()
-    {
-        // Getting all supported validation layers
-        uint32_t availableLayerCount = 0;
-        vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
-        BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
-        vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
-
-        // Checking if the requested validation layers are supported
-        uint8_t layersFound = 0;
-        for (size_t i = 0; i < availableLayers.GetSize(); i++)
-        {
-            if (!strcmp(availableLayers[i].layerName, "VK_LAYER_KHRONOS_synchronization2"))
-            {
-                layersFound = 1;
-                break;
-            }
-        }
-
-        return layersFound;
-    }
-
-    uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface,
-    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, 
-    VulkanStats& stats)
-    {
-        // Retrieves the physical device count
-        uint32_t physicalDeviceCount = 0;
-        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
-        if(!physicalDeviceCount)
-            return 0;
-
-        // Pass the available devices to an array to pick the best one
-        BlitCL::DynamicArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.Data());
-
-        uint32_t extensionCount = 0;
-
-        // Goes through the available devices, to eliminate the ones that are completely inadequate
-        for(auto& pdv : physicalDevices)
-        {
-            VkPhysicalDeviceProperties props{};
-            vkGetPhysicalDeviceProperties(pdv, &props);
-            // Only choose discrete GPUs at first
-            if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-                continue;
-            // Checks if the discrete gpu is suitable
-            if(ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, 
-                computeQueue, presentQueue, transferQueue, stats
-            ))
-            {
-                gpu = pdv;
-                stats.hasDiscreteGPU = 1;
-                BLIT_INFO("Discrete GPU found");
-                return 1;
-            }
-
-            // Reset the extension count, in case it was touched by the previous device before it was rejected
-            stats.deviceExtensionCount = 0;
-        }
-
-        BLIT_INFO("Discrete GPU not found, looking for fallback");
-        for(auto& pdv : physicalDevices)
-        {
-            // Checks for possible non discrete GPUs
-            if(!ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, 
-                computeQueue, presentQueue, transferQueue, stats))
-            {
-                gpu = pdv;
-                return 1;
-            }
-
-            // Reset the extension count, in case it was touched by the previous device before it was rejected
-            stats.deviceExtensionCount = 0;
-        }
-
-        // If the function has reached this point, it means that it has failed
-        return 0;
-    }
-
-    uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface, 
-    Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, 
-    VulkanStats& stats)
-    {
-        // Get core physical device features
         VkPhysicalDeviceFeatures features{};
         vkGetPhysicalDeviceFeatures(pdv, &features);
 
-        VkPhysicalDeviceProperties props{};
-        vkGetPhysicalDeviceProperties(pdv, &props);
-        if (props.apiVersion < VK_API_VERSION_1_3)
-            return 0;
-
-        // Get newer version physical Device Features
         VkPhysicalDeviceFeatures2 features2{};
+        features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
         VkPhysicalDeviceVulkan11Features features11{};
         features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-        features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        // Add Vulkan 1.1 features to the pNext chain
         features2.pNext = &features11;
+
         VkPhysicalDeviceVulkan12Features features12{};
         features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-        // Add Vulkan 1.2 features to the pNext chain
         features11.pNext = &features12;
+
         VkPhysicalDeviceVulkan13Features features13{};
         features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-        // Add Vulkan 1.3 features to the pNext chain
         features12.pNext = &features13;
-        VkPhysicalDeviceMeshShaderFeaturesNV featuresMesh{};
-        featuresMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-        // Add Nvidia mesh shader features to the pNext chain
+
+        VkPhysicalDeviceMeshShaderFeaturesEXT featuresMesh{};
+        featuresMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
         features13.pNext = &featuresMesh;
+
         vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
         // Check that all the required features are supported by the device
         if (!features.multiDrawIndirect || !features.samplerAnisotropy ||
-            // Vulkan 1.1 features
             !features11.storageBuffer16BitAccess || !features11.shaderDrawParameters ||
-            // Vulkan 1.2 features
-            !features12.bufferDeviceAddress ||
-            !features12.descriptorIndexing ||
-            !features12.runtimeDescriptorArray ||
-            !features12.storageBuffer8BitAccess ||
-            !features12.shaderFloat16 ||
-            !features12.drawIndirectCount ||
-            !features12.samplerFilterMinmax ||
-            !features12.shaderInt8 ||
-            !features12.shaderSampledImageArrayNonUniformIndexing ||
-            !features12.uniformAndStorageBuffer8BitAccess ||
-            !features12.storagePushConstant8 ||
-            // Vulkan 1.3 features
+            !features12.bufferDeviceAddress || !features12.descriptorIndexing || !features12.runtimeDescriptorArray || !features12.storageBuffer8BitAccess ||
+            !features12.shaderFloat16 || !features12.drawIndirectCount || !features12.samplerFilterMinmax || !features12.shaderInt8 || 
+            !features12.shaderSampledImageArrayNonUniformIndexing ||!features12.uniformAndStorageBuffer8BitAccess || !features12.storagePushConstant8 ||
             !features13.synchronization2 || !features13.dynamicRendering || !features13.maintenance4)
         {
-            BLIT_ERROR("Physical device does not support all features");
             return 0;
         }
-        
-        // Looks for the requested extensions. Fails if the required ones are not found
-        if (!LookForRequestedExtensions(pdv, stats))
+
+        return 1;
+    }
+
+    struct ExtensionQueryHelper
+    {
+        const char* extensionName;
+        uint8_t bSupportRequested;
+        uint8_t bSupportRequired;
+        uint8_t bSupportFound;
+
+        inline ExtensionQueryHelper(const char* name, uint8_t bRequested, uint8_t bRequired)
+            :extensionName{ name }, bSupportRequested{ bRequested },
+            bSupportRequired{ bRequired }, bSupportFound{ 0 }
+        {}
+
+    };
+    static uint8_t LookForRequestedExtensions(VkPhysicalDevice pdv, VulkanStats& stats)
+    {
+        // Checking if the device supports all extensions that will be requested from Vulkan
+        uint32_t dvExtensionCount = 0;
+        vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, nullptr);
+        BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
+        vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
+
+        ExtensionQueryHelper extensionsData[Ce_MaxRequestedDeviceExtensions]
         {
-            BLIT_ERROR("Physical device does not support all extensions");
-            return 0;
-        }
+            { VK_KHR_SWAPCHAIN_EXTENSION_NAME, Ce_SwapchainExtensionRequested, Ce_SwapchainExtensionRequired },
+            { VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, Ce_IsPushDescriptorExtensionsRequested, Ce_IsPushDescriptorExtensionsRequired },
+            { VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, Ce_RayTracingRequested, Ce_RayTracingRequired },
+            { VK_KHR_RAY_QUERY_EXTENSION_NAME, Ce_RayTracingRequested, Ce_RayTracingRequired },
+            { VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, Ce_RayTracingRequested, Ce_RayTracingRequired },
+            { VK_EXT_MESH_SHADER_EXTENSION_NAME, Ce_MeshShadersRequested, Ce_MeshShadersRequired },
+            { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, ce_bSynchronizationValidationRequested, Ce_SyncValidationDeviceExtensionRequired},
+            { VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, Ce_GPUPrintfDeviceExtensionRequested, Ce_GPUPrintfDeviceExtensionRequired}
+        };
 
-        //Retrieve queue families from device
-        uint32_t queueFamilyPropertyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, nullptr);
-        // Remove this device from the candidates, if no queue families were retrieved
-        if(!queueFamilyPropertyCount)
-            return 0;
-
-        // Store the queue family properties to query for their indices
-        BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(
-        static_cast<size_t>(queueFamilyPropertyCount), std::move(VkQueueFamilyProperties2({})));
-
-        for(auto& queueProps : queueFamilyProperties)
+        // Check for the required extension name with strcmp
+        for (auto& data : extensionsData)
         {
-            queueProps.sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
+            // If the extensions was never requested, it does not bother checking for it
+            if (!data.bSupportRequested)
+            {
+                continue;
+            }
+
+            for (auto& extension : dvExtensionsProps)
+            {
+                if (!strcmp(extension.extensionName, data.extensionName))
+                {
+                    data.bSupportFound = 1;
+                    stats.deviceExtensionNames[stats.deviceExtensionCount++] = data.extensionName;
+                }
+            }
+
+            if (!data.bSupportFound && data.bSupportRequired)
+            {
+                BLIT_ERROR("Device extension with name: %s, not supported", data.extensionName);
+                return 0;
+            }
         }
 
-        vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
+        uint8_t syncValidationSupportFound = extensionsData[Ce_SyncValidationDeviceExtensionElement].bSupportFound;
+        if (syncValidationSupportFound)
+        {
+            // Check for mesh shader feature in available features
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            VkPhysicalDeviceSynchronization2Features  syncFeatures{};
+            syncFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+            features2.pNext = &syncFeatures;
+            vkGetPhysicalDeviceFeatures2(pdv, &features2);
 
+            if (syncFeatures.synchronization2)
+            {
+                BLIT_INFO("Sync validation support confirmed");
+            }
+            else
+            {
+                BLIT_ERROR("No sync validation support");
+            }
+        }
+
+        // Check for mesh shaders features and extensions
+        uint8_t meshShaderSupportFound = extensionsData[Ce_MeshShaderExtensionElement].bSupportFound;
+        if (Ce_MeshShadersRequested)
+        {
+            // Check for mesh shader feature in available features
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
+            meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+            features2.pNext = &meshFeatures;
+            vkGetPhysicalDeviceFeatures2(pdv, &features2);
+
+            if (meshFeatures.meshShader && meshFeatures.taskShader)
+            {
+                BLIT_INFO("Mesh shader support confirmed");
+            }
+            else
+            {
+                BLIT_ERROR("No mesh shader support, using traditional pipeline");
+            }
+        }
+
+        // Checks for raytracing extensions and features
+        bool rayTracingSupportFound{ false };
+        rayTracingSupportFound = rayTracingSupportFound && extensionsData[2].bSupportFound;
+        rayTracingSupportFound = rayTracingSupportFound && extensionsData[3].bSupportFound; 
+        rayTracingSupportFound = rayTracingSupportFound && extensionsData[4].bSupportFound;
+        if (rayTracingSupportFound)
+        {
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            VkPhysicalDeviceRayQueryFeaturesKHR rayQuery{};
+            rayQuery.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+            features2.pNext = &rayQuery;
+            VkPhysicalDeviceAccelerationStructureFeaturesKHR ASfeats{};
+            ASfeats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+            rayQuery.pNext = &ASfeats;
+            vkGetPhysicalDeviceFeatures2(pdv, &features2);
+
+            if (rayQuery.rayQuery && ASfeats.accelerationStructure)
+            {
+                BLIT_INFO("Ray tracing support confirmed");
+            }
+            else
+            {
+                BLIT_ERROR("No ray tracing support found, using traditional raster");
+            }
+        }
+
+        return 1;
+    }
+
+    static uint8_t ValidatePdvQueueFamilies(VkPhysicalDevice pdv, VkSurfaceKHR surface, 
+        Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, VulkanStats& stats, 
+        BlitCL::DynamicArray< VkQueueFamilyProperties2>& queueFamilyProperties)
+    {
         uint32_t queueIndex = 0;
         // For the main graphics queue, find the first family with queue graphics bit set
         for (auto& queueProps : queueFamilyProperties)
@@ -533,11 +480,10 @@ namespace BlitzenVulkan
                 graphicsQueue.hasIndex = 1;
                 break;
             }
-
             ++queueIndex;
         }
 
-		queueIndex = 0;
+        queueIndex = 0;
         for (auto& queueProps : queueFamilyProperties)
         {
             bool isComputeCapable = queueProps.queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT;
@@ -551,6 +497,7 @@ namespace BlitzenVulkan
             {
                 transferQueue.index = queueIndex;
                 transferQueue.hasIndex = 1;
+                BLIT_INFO("Found dedicated transfer queue");
                 break;
             }
 
@@ -570,25 +517,25 @@ namespace BlitzenVulkan
             {
                 computeQueue.index = queueIndex;
                 computeQueue.hasIndex = 1;
+                BLIT_INFO("Found dedicated compute queue");
                 break;
             }
 
             ++queueIndex;
         }
 
-		queueIndex = 0;
-		for (auto& queueProps : queueFamilyProperties)
+        queueIndex = 0;
+        for (auto& queueProps : queueFamilyProperties)
         {
             // Checks for presentation queue, if one was not already found
             VkBool32 supportsPresent = VK_FALSE;
-            VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, queueIndex, surface, &supportsPresent))
-            if(supportsPresent == VK_TRUE && !presentQueue.hasIndex)
+            VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(pdv, queueIndex, surface, &supportsPresent));
+            if (supportsPresent == VK_TRUE && !presentQueue.hasIndex)
             {
                 presentQueue.index = queueIndex;
                 presentQueue.hasIndex = 1;
                 break;
             }
-
             ++queueIndex;
         }
 
@@ -599,152 +546,123 @@ namespace BlitzenVulkan
             return 0;
         }
 
+        if (BlitzenEngine::Ce_BuildClusters && !computeQueue.hasIndex)
+        {
+            BLIT_ERROR("Vulkan Cluster mode needs dedicated compute queue");
+            return 0;
+        }
+
         return 1;
-        
     }
 
-    uint8_t LookForRequestedExtensions(VkPhysicalDevice pdv, VulkanStats& stats)
+    static uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface,
+        Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, VulkanStats& stats)
     {
-        // Checking if the device supports all extensions that will be requested from Vulkan
-        uint32_t dvExtensionCount = 0;
-        vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, nullptr);
-        BlitCL::DynamicArray<VkExtensionProperties> dvExtensionsProps(static_cast<size_t>(dvExtensionCount));
-        vkEnumerateDeviceExtensionProperties(pdv, nullptr, &dvExtensionCount, dvExtensionsProps.Data());
-
-        struct ExtensionQueryHelper
+        // Features and properties
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(pdv, &props);
+        if (props.apiVersion < VK_API_VERSION_1_3)
         {
-            const char* extensionName;
-            uint8_t bSupportRequested;
-            uint8_t bSupportRequired;
-            uint8_t bSupportFound;
-
-            inline ExtensionQueryHelper(const char* name, uint8_t bRequested, uint8_t bRequired)
-                :extensionName{name}, bSupportRequested{bRequested}, 
-                bSupportRequired{bRequired}, bSupportFound{0}
-            {}
-
-        };
-        ExtensionQueryHelper extensionsData [ce_maxRequestedDeviceExtensions]
-        {
-            { VK_KHR_SWAPCHAIN_EXTENSION_NAME, /*requested*/1, /*required*/1 },
-            { VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, /*requested*/1, /*required*/1 },
-            { VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
-            { VK_KHR_RAY_QUERY_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
-            { VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, /*requested*/ce_bRaytracing, /*required*/0 }, 
-            { VK_EXT_MESH_SHADER_EXTENSION_NAME, /*requested*/ce_bMeshShaders, /*required*/0 }, 
-            { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, ce_bSynchronizationValidationRequested, 0}, 
-            { VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, ce_bValidationLayersRequested, 0}
-        };
-
-        // Check for the required extension name with strcmp
-        for(auto& data : extensionsData)
-        {
-            // If the extensions was never requested, it does not bother checking for it
-            if(!data.bSupportRequested)
-                continue;
-
-            for(auto& extension : dvExtensionsProps)
-            {
-                if(!strcmp(extension.extensionName, data.extensionName))
-                {
-                    data.bSupportFound = 1;
-                    stats.deviceExtensionNames[stats.deviceExtensionCount++] = data.extensionName;
-                }  
-            }
-
-            if(!data.bSupportFound && data.bSupportRequired)
-            {
-                BLIT_ERROR("Device extension with name: %s, not supported", data.extensionName)
-                return 0;
-            }
+            BLIT_ERROR("Physical device api version does not match the requested Vulkan API version");
+            return 0;
         }
 
-        if (ce_bSynchronizationValidationRequested)
+        // Features
+        if (!ValidatePdvFeatures(pdv))
         {
-            // Check for mesh shader feature in available features
-            VkPhysicalDeviceFeatures2 features2{};
-            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            VkPhysicalDeviceSynchronization2Features  syncFeatures{};
-            syncFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
-            features2.pNext = &syncFeatures;
-            vkGetPhysicalDeviceFeatures2(pdv, &features2);
-
-            // Mesh shaders are supported if both the feature and the extensions are found
-            stats.bSynchronizationValidationSupported = extensionsData[6].extensionName
-                && syncFeatures.synchronization2;
-
-            if (stats.bSynchronizationValidationSupported)
-            {
-                BLIT_INFO("Sync validation support confirmed");
-            }
-            else
-            {
-                BLIT_INFO("No sync validation support");
-            }
+            BLIT_ERROR("Physical device does not support all features");
+            return 0;
         }
 
-        // Check for mesh shaders features and extensions
-        if (ce_bMeshShaders)
+        // Extensions
+        if (!LookForRequestedExtensions(pdv, stats))
         {
-
-            // Check for mesh shader feature in available features
-            VkPhysicalDeviceFeatures2 features2{};
-            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{};
-            meshFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
-            features2.pNext = &meshFeatures;
-            vkGetPhysicalDeviceFeatures2(pdv, &features2);
-            
-            // Mesh shaders are supported if both the feature and the extensions are found
-            stats.meshShaderSupport = extensionsData[5].extensionName 
-            && meshFeatures.meshShader && meshFeatures.taskShader;
-
-            if (stats.meshShaderSupport)
-            {
-                BLIT_INFO("Mesh shader support confirmed");
-            }
-            else
-            {
-                BLIT_INFO("No mesh shader support, using traditional pipeline");
-                #undef BLIT_VK_MESH_EXT
-            }
+            BLIT_ERROR("Physical device does not support all extensions");
+            return 0;
         }
 
-        // Checks for raytracing extensions and features
-        if(ce_bRaytracing)
+        // Enumerates
+        uint32_t queueFamilyPropertyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, nullptr);
+        if (!queueFamilyPropertyCount)
         {
-            VkPhysicalDeviceFeatures2 features2{};
-            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            VkPhysicalDeviceRayQueryFeaturesKHR rayQuery{};
-            rayQuery.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
-            features2.pNext = &rayQuery;
-            VkPhysicalDeviceAccelerationStructureFeaturesKHR ASfeats{};
-            ASfeats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-            rayQuery.pNext = &ASfeats;
-            vkGetPhysicalDeviceFeatures2(pdv, &features2);
+            BLIT_ERROR("Physical Device has No Queue Families (???)");
+            return 0;
+        }
+        // Stores data
+        BlitCL::DynamicArray<VkQueueFamilyProperties2> queueFamilyProperties(size_t(queueFamilyPropertyCount), std::move(VkQueueFamilyProperties2({})));// WTF???
+        for (auto& queueProps : queueFamilyProperties)
+        {
+            queueProps.sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
+        }
+        vkGetPhysicalDeviceQueueFamilyProperties2(pdv, &queueFamilyPropertyCount, queueFamilyProperties.Data());
 
-            stats.bRayTracingSupported = 
-            extensionsData[2].extensionName && 
-            extensionsData[3].extensionName && 
-            extensionsData[4].extensionName &&
-            rayQuery.rayQuery && ASfeats.accelerationStructure;
-
-            if (stats.bRayTracingSupported)
-            {
-                BLIT_INFO("Ray tracing support confirmed");
-            }
-            else
-            {
-                BLIT_INFO("No ray tracing support found, using traditional raster");
-                #undef BLIT_VK_RAYTRACING
-            }
+        // Queue families
+        if(!ValidatePdvQueueFamilies(pdv, surface, graphicsQueue, computeQueue, presentQueue, transferQueue, stats, queueFamilyProperties))
+        {
+            return 0;
         }
 
         return 1;
+
     }
 
-    uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, 
-    Queue& presentQueue, Queue& computeQueue, Queue& transferQueue, VulkanStats& stats)
+    static uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface,
+        Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, VulkanStats& stats)
+    {
+        // Retrieves the physical device count
+        uint32_t physicalDeviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+        if (!physicalDeviceCount)
+            return 0;
+
+        // Pass the available devices to an array to pick the best one
+        BlitCL::DynamicArray<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+        vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.Data());
+
+        uint32_t extensionCount = 0;
+        for (auto& pdv : physicalDevices)
+        {
+            VkPhysicalDeviceProperties props{};
+            vkGetPhysicalDeviceProperties(pdv, &props);
+            // Only choose discrete GPUs at first
+            if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+            {
+                continue;
+            }
+            // Checks if the discrete gpu is suitable
+            if (ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue, computeQueue, presentQueue, transferQueue, stats))
+            {
+                gpu = pdv;
+                stats.hasDiscreteGPU = 1;
+                BLIT_INFO("Discrete GPU found");
+                return 1;
+            }
+
+            // Reset the extension count, in case it was touched by the previous device before it was rejected
+            stats.deviceExtensionCount = 0;
+        }
+
+        BLIT_INFO("Discrete GPU not found, looking for fallback");
+        for (auto& pdv : physicalDevices)
+        {
+            // Checks for possible non discrete GPUs
+            if (!ValidatePhysicalDevice(pdv, instance, surface, graphicsQueue,
+                computeQueue, presentQueue, transferQueue, stats))
+            {
+                gpu = pdv;
+                return 1;
+            }
+
+            // Reset the extension count, in case it was touched by the previous device before it was rejected
+            stats.deviceExtensionCount = 0;
+        }
+
+        // If the function has reached this point, it means that it has failed
+        return 0;
+    }
+
+    static uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, Queue& presentQueue, Queue& computeQueue, Queue& transferQueue, VulkanStats& stats)
     {
         VkDeviceCreateInfo deviceInfo{};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -833,10 +751,10 @@ namespace BlitzenVulkan
         vulkanFeaturesMesh.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
         vulkanFeaturesMesh.meshShader = false;
         vulkanFeaturesMesh.taskShader = false;
-        #if defined(BLIT_VK_MESH_EXT)
-            vulkanFeaturesMesh.meshShader = true;
-            vulkanFeaturesMesh.taskShader = true;
-        #endif
+#if defined(BLIT_VK_MESH_EXT)
+        vulkanFeaturesMesh.meshShader = true;
+        vulkanFeaturesMesh.taskShader = true;
+#endif
 
         VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{};
         rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
@@ -844,7 +762,7 @@ namespace BlitzenVulkan
         accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
         rayQueryFeatures.rayQuery = false;
         accelerationStructureFeatures.accelerationStructure = false;
-        if(stats.bRayTracingSupported)
+        if (stats.bRayTracingSupported)
         {
             rayQueryFeatures.rayQuery = true;
             accelerationStructureFeatures.accelerationStructure = true;
@@ -870,16 +788,16 @@ namespace BlitzenVulkan
         queueInfos[1].queueFamilyIndex = transferQueue.index;
         queueInfos.PushBack(deviceQueueInfo);
         queueInfos[2].queueFamilyIndex = computeQueue.index;
-        
+
         // If compute has a different index from present, add a new info for it
-        if(graphicsQueue.index != presentQueue.index)
+        if (graphicsQueue.index != presentQueue.index)
         {
             queueInfos.PushBack(deviceQueueInfo);
             queueInfos[2].queueFamilyIndex = presentQueue.index;
         }
         // With the count of the queue infos found and the indices passed, the rest is standard
         float priority = 1.f;
-        for(size_t i = 0; i < queueInfos.GetSize(); ++i)
+        for (size_t i = 0; i < queueInfos.GetSize(); ++i)
         {
             queueInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queueInfos[i].pNext = nullptr; // Not using this
@@ -911,8 +829,8 @@ namespace BlitzenVulkan
         // Retrieve compute queue handle
         VkDeviceQueueInfo2 computeQueueInfo{};
         computeQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        computeQueueInfo.pNext = nullptr; 
-        computeQueueInfo.flags = 0; 
+        computeQueueInfo.pNext = nullptr;
+        computeQueueInfo.flags = 0;
         computeQueueInfo.queueFamilyIndex = computeQueue.index;
         computeQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &computeQueueInfo, &computeQueue.handle);
@@ -920,21 +838,109 @@ namespace BlitzenVulkan
         // Retrieve present queue handle
         VkDeviceQueueInfo2 presentQueueInfo{};
         presentQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-        presentQueueInfo.pNext = nullptr; 
-        presentQueueInfo.flags = 0; 
+        presentQueueInfo.pNext = nullptr;
+        presentQueueInfo.flags = 0;
         presentQueueInfo.queueFamilyIndex = presentQueue.index;
         presentQueueInfo.queueIndex = 0;
         vkGetDeviceQueue2(device, &presentQueueInfo, &presentQueue.handle);
 
         VkDeviceQueueInfo2 transferQueueInfo{};
-		transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-		transferQueueInfo.flags = 0; 
-		transferQueueInfo.pNext = nullptr; 
+        transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
+        transferQueueInfo.flags = 0;
+        transferQueueInfo.pNext = nullptr;
         transferQueueInfo.queueFamilyIndex = transferQueue.index;
         transferQueueInfo.queueIndex = 0;
-		vkGetDeviceQueue2(device, &transferQueueInfo, &transferQueue.handle);
+        vkGetDeviceQueue2(device, &transferQueueInfo, &transferQueue.handle);
 
         return 1;
+    }
+
+    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle)
+    {
+        // Creates the Vulkan instance
+        if(!CreateInstance(m_instance, &m_debugMessenger))
+        {
+            BLIT_ERROR("Failed to create vulkan instance");
+            return 0;
+        }
+
+        // Create the surface depending on the implementation on Platform.cpp
+        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator))
+        {
+            BLIT_ERROR("Failed to create Vulkan window surface");
+            return 0;
+        }
+
+        // Call the function to search for a suitable physical device, it it can't find one return 0
+        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, 
+            m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
+        {
+            BLIT_ERROR("Failed to pick suitable physical device");
+            return 0;
+        }
+
+        // Create the device
+        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
+        {
+            BLIT_ERROR("Failed to pick suitable physical device");
+            return 0;
+        }
+
+        // Creates the swapchain
+        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, 
+            windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
+            m_pCustomAllocator, m_swapchainValues))
+        {
+            BLIT_ERROR("Failed to create Vulkan swapchain");
+            return 0;
+        }
+
+        // This will be referred to by rendering attachments and will be updated when the window is resized
+        m_drawExtent = {m_swapchainValues.swapchainExtent.width, m_swapchainValues.swapchainExtent.height};
+
+        
+		if (!CreateIdleDrawHandles(m_device, m_basicBackgroundPipeline.handle, 
+            m_basicBackgroundLayout.handle, m_backgroundImageSetLayout.handle, 
+            m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
+		{
+            BLIT_ERROR("Failed to create idle draw handles");
+		    return 0;
+		}
+
+        if (!CreateLoadingTrianglePipeline(m_device, m_loadingTrianglePipeline.handle, m_loadingTriangleLayout.handle))
+        {
+            BLIT_ERROR("Failed to create loading triangle pipeline");
+            return 0;
+        }
+
+        // Creates command buffers and synchronization structures in the frame tools struct
+        // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
+        for (size_t i = 0; i < ce_framesInFlight; ++i)
+        {
+            if (!m_frameToolsList[i].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
+            {
+                BLIT_ERROR("Failed to create frame tools");
+                return 0;
+            }
+        }
+
+        // Success
+        return 1;
+    }
+
+    void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
+        const char* engineName, uint32_t engineVersion, uint32_t apiVersion /*=VK_API_VERSION_1_3*/)
+    {
+        appInfo = {};
+
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pNext = nullptr;
+        appInfo.apiVersion = VK_API_VERSION_1_3;
+
+        appInfo.pApplicationName = appName;
+        appInfo.applicationVersion = appVersion;
+        appInfo.pEngineName = engineName;
+        appInfo.engineVersion = engineVersion;
     }
 
     uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
@@ -952,26 +958,33 @@ namespace BlitzenVulkan
         swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapchainInfo.surface = surface;
         // The color attachment will transfer its contents to the swapchain image when rendering is done
-        swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT 
-            | VK_IMAGE_USAGE_STORAGE_BIT 
-            | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        swapchainInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         // Used when the swapchain is recreated
         swapchainInfo.oldSwapchain = oldSwapchain;
 
         // Finds the surface format, updates the swapchain info and swapchain struct if it succeeds
-        if(!FindSwapchainSurfaceFormat(physicalDevice, surface, swapchainInfo, newSwapchain.swapchainFormat))
+        if (!FindSwapchainSurfaceFormat(physicalDevice, surface, swapchainInfo, newSwapchain.swapchainFormat))
+        {
+            BLIT_ERROR("Failed to find swapchain surface format");
             return 0;
+        }
 
         // Finds the present mode, updates the swapchain info if it succeeds
-        if(!FindSwapchainPresentMode(physicalDevice, surface, swapchainInfo))
+        if (!FindSwapchainPresentMode(physicalDevice, surface, swapchainInfo))
+        {
+            BLIT_ERROR("Failed to find swapchain presentation mode");
             return 0;
+        }
 
         // Sets the swapchain extent to the window's width and height
         newSwapchain.swapchainExtent = {windowWidth, windowHeight};
 
         // Compare the current swapchain stats to the surface capabilities
-        if(!FindSwapchainSurfaceCapabilities(physicalDevice, surface, swapchainInfo, newSwapchain))
+        if (!FindSwapchainSurfaceCapabilities(physicalDevice, surface, swapchainInfo, newSwapchain))
+        {
+            BLIT_ERROR("Failed to find swapchain surface surface capabilities");
             return 0;
+        }
 
         uint32_t queueFamilyIndices[] = { graphicsQueue.index, presentQueue.index };
         // Configure queue settings based on if the graphics queue also supports presentation
@@ -990,24 +1003,30 @@ namespace BlitzenVulkan
         }
 
         // Create the swapchain
-        VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, nullptr, 
-        &(newSwapchain.swapchainHandle));
-        if(swapchainResult != VK_SUCCESS)
+        VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, nullptr, &newSwapchain.swapchainHandle);
+        if (swapchainResult != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed at swapchain creation");
             return 0;
+        }
 
         // Retrieve the swapchain image count
         uint32_t swapchainImageCount = 0;
-        VkResult imageResult = vkGetSwapchainImagesKHR(device, 
-        newSwapchain.swapchainHandle, &swapchainImageCount, nullptr);
-        if(imageResult != VK_SUCCESS)
+        VkResult imageResult = vkGetSwapchainImagesKHR(device, newSwapchain.swapchainHandle, &swapchainImageCount, nullptr);
+        if (imageResult != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to enumerate swapchain images");
             return 0;
+        }
 
         // Resize the swapchain images array and pass the swapchain images
         newSwapchain.swapchainImages.Resize(swapchainImageCount);
-        imageResult = vkGetSwapchainImagesKHR(device, 
-        newSwapchain.swapchainHandle, &swapchainImageCount, newSwapchain.swapchainImages.Data());
-        if(imageResult != VK_SUCCESS)
+        imageResult = vkGetSwapchainImagesKHR(device, newSwapchain.swapchainHandle, &swapchainImageCount, newSwapchain.swapchainImages.Data());
+        if (imageResult != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to retrieve swapchain images");
             return 0;
+        }
 
         // Creates image views for the swapchain
         if(newSwapchain.swapchainImageViews.GetSize() == 0)
@@ -1022,10 +1041,11 @@ namespace BlitzenVulkan
             {
                 vkDestroyImageView(device, view, nullptr);
             }
-            if(!CreateImageView(device, view, newSwapchain.swapchainImages[i], 
-                newSwapchain.swapchainFormat, 0, 1
-            ))
+            if (!CreateImageView(device, view, newSwapchain.swapchainImages[i], newSwapchain.swapchainFormat, 0, 1))
+            {
+                BLIT_ERROR("Failed to create swapchain image views");
                 return 0;
+            }
         }
         
         // If the swapchain has been created and the images have been acquired, swapchain creation is succesful
@@ -1037,14 +1057,20 @@ namespace BlitzenVulkan
     {
         // Get the amount of available surface formats
         uint32_t surfaceFormatsCount = 0; 
-        if(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, 
-        &surfaceFormatsCount, nullptr) != VK_SUCCESS)
-            return 0;       
-        // Pass the formats to a dynamic array
-        BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
-        if(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, 
-        &surfaceFormatsCount, surfaceFormats.Data()) != VK_SUCCESS)
+        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, nullptr) != VK_SUCCESS)
+        {
+            BLIT_ERROR("No surface formats (??)");
             return 0;
+        }
+
+        // Retrieves
+        BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
+        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, surfaceFormats.Data()) != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to retrieve surface formats");
+            return 0;
+        }
+
         // Look for the desired image format
         uint8_t found = 0;
         for(const auto& formats : surfaceFormats)
@@ -1150,16 +1176,13 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline,
-        VkPipelineLayout& layout, VkDescriptorSetLayout& setLayout, 
+    uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline, VkPipelineLayout& layout, VkDescriptorSetLayout& setLayout, 
         uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer)
     {
         VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0,
-            1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        setLayout = CreateDescriptorSetLayout(device, 1, &backgroundImageLayoutBinding,
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        setLayout = CreateDescriptorSetLayout(device, 1, &backgroundImageLayoutBinding, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
         if (setLayout == VK_NULL_HANDLE)
         {
             return 0;
@@ -1167,12 +1190,10 @@ namespace BlitzenVulkan
 
         // Creates the layout for the background compute shader
         VkPushConstantRange backgroundImageShaderPushConstant{};
-        CreatePushConstantRange(
-            backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
-            sizeof(BackgroundShaderPushConstant));
-        if (!CreatePipelineLayout(device, &layout, Ce_SinglePointer, &setLayout,
-            Ce_SinglePointer, &backgroundImageShaderPushConstant))
+        CreatePushConstantRange(backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BackgroundShaderPushConstant));
+        if (!CreatePipelineLayout(device, &layout, Ce_SinglePointer, &setLayout, Ce_SinglePointer, &backgroundImageShaderPushConstant))
         {
+            BLIT_ERROR("Failed to create background image pipeline layout");
             return 0;
         }
 
@@ -1180,8 +1201,8 @@ namespace BlitzenVulkan
         if (!CreateComputeShaderProgram(device, "VulkanShaders/BasicBackground.comp.glsl.spv",
             VK_SHADER_STAGE_COMPUTE_BIT, "main", layout, &pipeline))
         {
-            BLIT_ERROR("Failed to create BasicBackground.comp shader program")
-                return 0;
+            BLIT_ERROR("Failed to create BasicBackground.comp shader program");
+            return 0;
         }
 
         VkCommandPoolCreateInfo idleCommandPoolInfo{};

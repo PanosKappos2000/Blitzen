@@ -38,6 +38,7 @@ namespace BlitzenVulkan
 
     #if defined(BLIT_VK_VALIDATION_LAYERS) && !defined(NDEBUG)
         constexpr uint8_t ce_bValidationLayersRequested = 1;
+        constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequested = 1;
         #if defined(BLIT_VK_SYNCHRONIZATION_VALIDATION)
             constexpr uint8_t ce_bSynchronizationValidationRequested = 1;
         #else
@@ -52,43 +53,57 @@ namespace BlitzenVulkan
     constexpr const char* Ce_SyncValidationLayerName = "VK_LAYER_KHRONOS_synchronization2";
 
 
+    // Double buffering 
+#if defined(BLIT_DOUBLE_BUFFERING)
+    constexpr uint8_t ce_framesInFlight = 2;
+#else
+    constexpr uint8_t ce_framesInFlight = 1;
+#endif
+
 #ifdef BLIT_VSYNC
     constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 #else
     constexpr VkPresentModeKHR ce_desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 #endif
 
+
 	// Total extensions count
-    constexpr uint32_t ce_maxRequestedDeviceExtensions = 8;
+    constexpr uint32_t Ce_MaxRequestedDeviceExtensions = 8;
 
-	// Is raytracing requested?
-    #if defined(BLIT_VK_RAYTRACING)
-        constexpr uint8_t ce_bRaytracing = 1;
-    #else
-        constexpr uint8_t ce_bRaytracing = 0;
-    #endif
-    
-    // Double buffering 
-    #if defined(BLIT_DOUBLE_BUFFERING)
-        constexpr uint8_t ce_framesInFlight = 2;
-    #else
-        constexpr uint8_t ce_framesInFlight = 1;
-    #endif
+    constexpr uint32_t Ce_SwapchainExtnsionElement = 0;
+    constexpr uint8_t Ce_SwapchainExtensionRequested = 1;
+    constexpr uint8_t Ce_SwapchainExtensionRequired = 1;
 
-    // Are mesh shaders requested?
-    #if defined(BLIT_VK_MESH_EXT)
-        constexpr uint8_t ce_bMeshShaders = 1;
+    constexpr uint32_t Ce_PushDescriptorExtensionElement = 1;
+    constexpr uint8_t Ce_IsPushDescriptorExtensionsRequested = 1;
+    constexpr uint8_t Ce_IsPushDescriptorExtensionsRequired = 1;
+
+    #if defined(BLIT_RAYTRACING)
+        constexpr uint8_t Ce_RayTracingRequested = 1;
     #else
-        constexpr uint8_t ce_bMeshShaders = 0; 
+        constexpr uint8_t Ce_RayTracingRequested = 0;
     #endif
+    constexpr uint8_t Ce_RayTracingRequired = 0;
+
+    constexpr uint32_t Ce_MeshShaderExtensionElement = 5;
+    #if defined(BLIT_MESH_SHADERS)
+        constexpr uint8_t Ce_MeshShadersRequested = 1;
+    #else
+        constexpr uint8_t Ce_MeshShadersRequested = 0;
+    #endif
+        constexpr uint8_t Ce_MeshShadersRequired = 0;
+
+    constexpr uint32_t Ce_SyncValidationDeviceExtensionElement = 6;
+    constexpr uint8_t Ce_SyncValidationDeviceExtensionRequired = 0;
+
+    constexpr uint32_t Ce_GPUPrintfDeviceExtensionElement = 7;
+    constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequired = 0;
+
 
     // The format and usage flags that will be set for the color and depth attachments
     constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     constexpr VkImageLayout ce_ColorAttachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    constexpr VkImageUsageFlags ce_colorAttachmentImageUsage = 
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | 
-        VK_IMAGE_USAGE_SAMPLED_BIT | // For generate present compute shader
-        VK_IMAGE_USAGE_STORAGE_BIT; // For basic background compute shader
+    constexpr VkImageUsageFlags ce_colorAttachmentImageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
     constexpr VkClearColorValue ce_WindowClearColor =
     {
         BlitzenEngine::Ce_DefaultWindowBackgroundColor[0],
@@ -139,7 +154,7 @@ namespace BlitzenVulkan
         uint8_t bRayTracingSupported = 0;
 
         uint32_t deviceExtensionCount = 0;
-        const char* deviceExtensionNames[ce_maxRequestedDeviceExtensions];
+        const char* deviceExtensionNames[Ce_MaxRequestedDeviceExtensions];
 
         uint8_t bResourceManagementReady = 0;
 

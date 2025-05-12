@@ -187,10 +187,11 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
                             #BLIT_DOUBLE_BUFFERING #Enables double buffering (DX12 ignores this, and activates it anyway)
+                            #BLIT_RAYTRACING
+                            #BLIT_MESH_SHADERS
 
                             # Vulkan specific preprocessor macros
                             BLIT_VK_VALIDATION_LAYERS
-                            #BLIT_VK_RAYTRACING
                             BLIT_VK_SYNCHRONIZATION_VALIDATION
 
                             # Dx12 specific preprocessor macros
