@@ -32,7 +32,9 @@ struct Render
 StructuredBuffer<Render> renderBuffer : register(t4);
 
 #ifdef DRAW_INSTANCING
-    RWBuffer<uint> instBuffer : register(u3);
+
+RWStructuredBuffer<uint> instBuffer : register(u3);
+
 #endif
 
 cbuffer ViewData : register(b0)  

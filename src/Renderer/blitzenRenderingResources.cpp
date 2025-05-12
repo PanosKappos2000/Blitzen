@@ -215,13 +215,16 @@ namespace BlitzenEngine
             lod.clusterCount = Ce_BuildClusters ? static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset)) : 0;
 
             lod.error = lodError * lodScale;
-            lod.instanceOffset = uint32_t(m_lods.GetSize() * Ce_MaxInstanceCountPerLOD);
             m_lods.PushBack(lod);
+
+            // Instancing
+            LodInstanceCounter lodInstanceCounter{};
+            lodInstanceCounter.instanceOffset = uint32_t(m_lods.GetSize() * Ce_MaxInstanceCountPerLOD);
+            m_lodInstanceList.PushBack(lodInstanceCounter);
 
             // Adds current lod indices
             allLodIndices.AppendArray(lodIndices);
             
-
             // Starts generating the next level of detail
             if (surface.lodCount < Ce_MaxLodCountPerSurface)
             {
@@ -230,10 +233,9 @@ namespace BlitzenEngine
                 float nextError = 0.f;
 
                 // Gets the size of the next level of detail
-                auto nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(),
-                    lodIndices.GetSize(), &surfaceVertices[0].position.x, surfaceVertices.GetSize(),
-                    sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3),
-                    normalWeights, 3, nullptr, nextIndicesTarget, maxError, 0, &nextError);
+                auto nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &surfaceVertices[0].position.x, 
+                    surfaceVertices.GetSize(), sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3), normalWeights, 3, nullptr, nextIndicesTarget, maxError, 
+                    0, &nextError);
 
                 if (nextIndicesSize > lodIndices.GetSize())
                 {
@@ -254,8 +256,7 @@ namespace BlitzenEngine
 
                 // Resize and optimize
                 lodIndices.Resize(nextIndicesSize);
-                meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(),
-                    surfaceVertices.GetSize());
+                meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), surfaceVertices.GetSize());
 
                 // since it starts from next lod accumulate the error
                 lodError = BlitML::Max(lodError, nextError);

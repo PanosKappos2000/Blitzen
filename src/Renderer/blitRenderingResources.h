@@ -64,6 +64,10 @@ namespace BlitzenEngine
 		{
 			return m_lods;
 		}
+        inline const BlitCL::DynamicArray<LodInstanceCounter>& GetLODInstanceList() const
+        {
+            return m_lodInstanceList;
+        }
      
     /*
         Per instance data
@@ -234,38 +238,30 @@ namespace BlitzenEngine
     private:
 
         // Loads a single primitive and adds it to the global array
-        void LoadPrimitiveSurface(BlitCL::DynamicArray<Vertex>& vertices,
-            BlitCL::DynamicArray<uint32_t>& indices);
+        void LoadPrimitiveSurface(BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
 
         // Generates clusters for a given array of vertices and indices
-        size_t GenerateClusters(BlitCL::DynamicArray<Vertex>& vertices,
-            BlitCL::DynamicArray<uint32_t>& indices, uint32_t vertexOffset);
+        size_t GenerateClusters(BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, uint32_t vertexOffset);
 
-        void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices,
-            BlitCL::DynamicArray<uint32_t>& indices);
+        void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
 
         // Generates LODs for the vertices of a given surface
-        void AutomaticLevelOfDetailGenration(PrimitiveSurface& surface, 
-            BlitCL::DynamicArray<Vertex>& surfaceVertices, 
-            BlitCL::DynamicArray<uint32_t>& surfaceIndices);
+        void AutomaticLevelOfDetailGenration(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
         // Generates bounding sphere for primitive based on given vertices and indices
-        void GenerateBoundingSphere(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices,
-            BlitCL::DynamicArray<uint32_t>& surfaceIndices);
+        void GenerateBoundingSphere(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
         // Generates render objects for a gltf scene
-        void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData,
-            const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
+        void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData, const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
-        void AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& pGltfMesh, 
-            uint32_t previousMaterialCount);
+        void AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& pGltfMesh, uint32_t previousMaterialCount);
 
-        void LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount,
-            uint32_t previousTextureCount);
+        void LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount, uint32_t previousTextureCount);
 
+
+        // Called from gltf loader to handle gltf textures. Templated because it needs the renderer
         template<class RENDERER>
-        void LoadGltfTextures(const cgltf_data* pGltfData, uint32_t previousTextureCount,
-            const char* gltfFilepath, RENDERER pRenderer)
+        void LoadGltfTextures(const cgltf_data* pGltfData, uint32_t previousTextureCount, const char* gltfFilepath, RENDERER pRenderer)
         {
             for (size_t i = 0; i < pGltfData->textures_count; ++i)
             {
@@ -329,6 +325,7 @@ namespace BlitzenEngine
 
         BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;
         BlitCL::DynamicArray<LodData> m_lods;
+        BlitCL::DynamicArray<LodInstanceCounter> m_lodInstanceList;
 
         // Holds the vertex count of each primitive. 
         // This does not need to be passed to shader for now. 

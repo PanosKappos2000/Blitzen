@@ -61,14 +61,18 @@ namespace BlitzenDX12
     constexpr UINT Ce_ViewDataBufferDescriptorCount = 1;
     constexpr UINT Ce_ViewDataBufferRangeElement = 3;
 
-    constexpr UINT Ce_InstanceBufferRegister = 5;
+    constexpr UINT Ce_InstanceBufferRegister = 3;
     constexpr UINT Ce_InstanceBufferDescriptorCount = 1;
     constexpr UINT Ce_InstanceBufferRangeElement = 4;
 
 
 
     /* DESCRIPTORS FOR culling shaders */
+#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
+    constexpr uint32_t Ce_CullSrvRangeCount = 4;
+#else
     constexpr uint32_t Ce_CullSrvRangeCount = 3;
+#endif
 
     constexpr UINT Ce_IndirectDrawBufferRegister = 0;// First Uav
     constexpr UINT Ce_IndirectDrawBufferDescriptorCount = 1;
@@ -81,6 +85,12 @@ namespace BlitzenDX12
     constexpr UINT Ce_LODBufferRegister = 7;
     constexpr UINT Ce_LODBufferDescriptorCount = 1;
     constexpr UINT Ce_LODBufferRangeElement = 2;
+
+    constexpr UINT Ce_LODInstanceBufferRegister = 2;
+    constexpr UINT Ce_LODInstanceBufferDescriptorCount = 1;
+    constexpr UINT Ce_LODInstanceBufferRangeElement = 3;
+
+    constexpr UINT Ce_CullShaderRootConstantRegister = 2;
 
     // ROOT PARAMETERS
     constexpr uint32_t Ce_CullRootParameterCount = 3;
@@ -133,7 +143,19 @@ namespace BlitzenDX12
     constexpr UINT Ce_LodStagingIndex = 4;
     constexpr UINT Ce_MaterialStagingIndex = 5;
 
+
+#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
+    constexpr UINT Ce_VarBuffersCount = 5 * ce_framesInFlight;
+#else
+    constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
+#endif
+
+#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
+    constexpr UINT Ce_VarSSBODataCount = 2;
+#else
     constexpr UINT Ce_VarSSBODataCount = 1;
+#endif
+
     constexpr UINT Ce_TransformStagingBufferIndex = 0;
 
 

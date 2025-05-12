@@ -42,10 +42,17 @@ struct Lod
 
     uint padding0;
 };
+StructuredBuffer<Lod> lodBuffer : register (t7);
+
 #ifdef DRAW_INSTANCING
-    RWStructuredBuffer<Lod> lodBuffer : register (u7);
-#else
-    StructuredBuffer<Lod> lodBuffer : register (t7);
+
+struct InstanceCounter
+{
+    uint instanceOffset;
+    uint instanceCount;
+};
+RWStructuredBuffer<InstanceCounter> instanceCounterBuffer : register (u2);
+
 #endif
 
 // The LOD index is calculated using a formula, 

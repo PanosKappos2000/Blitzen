@@ -46,11 +46,12 @@ namespace BlitzenDX12
 
 
     template<typename DATA>
-    UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& stagingBuffer, size_t elementCount, DATA* data)
+    UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& stagingBuffer, size_t elementCount, DATA* data, 
+        D3D12_RESOURCE_FLAGS ssboFlags = D3D12_RESOURCE_FLAG_NONE)
     {
         // SSBO (GPU side buffer)
 		if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), sizeof(DATA) * elementCount, D3D12_RESOURCE_STATE_COMMON,
-            D3D12_HEAP_TYPE_DEFAULT))
+            D3D12_HEAP_TYPE_DEFAULT, ssboFlags))
 		{
             return 0;
 		}

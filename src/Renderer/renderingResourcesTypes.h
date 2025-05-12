@@ -90,11 +90,22 @@ namespace BlitzenEngine
         // Used for more accurate LOD selection
         float error;
 
-        // Used for instancing
-        uint32_t instanceOffset;  
-        uint32_t instanceCount{ 0 };
+        // Padding
+        uint32_t padding0;  
+        uint32_t padding1;
+        uint32_t padding2;
 
-        uint32_t padding0;
+        // TODO(maybe): Potential packed struct
+        // uint32_t dataOffset; CLUSTER OR INDEX
+        // uint32_t dataCount; CLUSTER OR INDEX
+        // float error;
+        // uint32_t padding0;
+    };
+
+    struct LodInstanceCounter
+    {
+        uint32_t instanceOffset;
+        uint32_t instanceCount{ 0 };
     };
 
     struct alignas(16) PrimitiveSurface

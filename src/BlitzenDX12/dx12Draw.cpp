@@ -203,30 +203,52 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformAfterCopyBarrier);
 
-		// Frustum culling and lod selection, per object
-		DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
-			m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext,m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(), 
-			m_drawCullSignature.Get(), m_drawCull1Pso.Get(), varBuffers, context.pResources->renderObjectCount);
+		if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		{
+			DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
+			// Render target barrier
+			D3D12_RESOURCE_BARRIER attachmentBarriers[2]{};
+			CreateResourcesTransitionBarrier(attachmentBarriers[0], m_swapchainBackBuffers[swapchainIndex].Get(),
+				D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			frameTools.mainGraphicsCommandList->ResourceBarrier(1, attachmentBarriers);
+			// Render target bind
+			auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+			rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_descriptorContext.rtvIncrementSize;
+			auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+			dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_descriptorContext.dsvIncrementSize;
+			frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+			// Render target clear
+			FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
+			frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+			frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
+		}
+		else
+		{
+			// Frustum culling and lod selection, per object
+			DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame],
+				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(),
+				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.pResources->renderObjectCount);
 
-		DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
-		// Render target barrier
-		D3D12_RESOURCE_BARRIER attachmentBarriers[2]{};
-		CreateResourcesTransitionBarrier(attachmentBarriers[0], m_swapchainBackBuffers[swapchainIndex].Get(),
-			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		frameTools.mainGraphicsCommandList->ResourceBarrier(1, attachmentBarriers);
-		// Render target bind
-		auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-		rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_descriptorContext.rtvIncrementSize;
-		auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-		dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_descriptorContext.dsvIncrementSize;
-		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-		// Render target clear
-		FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
-		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-		frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
+			DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
+			// Render target barrier
+			D3D12_RESOURCE_BARRIER attachmentBarriers[2]{};
+			CreateResourcesTransitionBarrier(attachmentBarriers[0], m_swapchainBackBuffers[swapchainIndex].Get(),
+				D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			frameTools.mainGraphicsCommandList->ResourceBarrier(1, attachmentBarriers);
+			// Render target bind
+			auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+			rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_descriptorContext.rtvIncrementSize;
+			auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+			dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_descriptorContext.dsvIncrementSize;
+			frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+			// Render target clear
+			FLOAT clearColor[4] = { 0.f, 0.1f, 0.1f, 1.0f };
+			frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+			frameTools.mainGraphicsCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 
-		DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(),m_opaqueRootSignature.Get(), 
-			m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
+				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+		}
 
 		D3D12_RESOURCE_BARRIER transformCopyBarrier{};
 		CreateResourcesTransitionBarrier(transformCopyBarrier, varBuffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 

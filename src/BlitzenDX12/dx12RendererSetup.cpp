@@ -306,6 +306,10 @@ namespace BlitzenDX12
 		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
+		if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		{
+			CreateDescriptorRange(sharedSrvRanges[Ce_InstanceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_InstanceBufferDescriptorCount, Ce_InstanceBufferRegister);
+		}
 
 		D3D12_DESCRIPTOR_RANGE textureSamplerRange{};
 		CreateDescriptorRange(textureSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, Ce_DefaultTextureSamplerDescriptorCount, Ce_DefaultTextureSamplerRegister);
@@ -334,11 +338,15 @@ namespace BlitzenDX12
 		CreateDescriptorRange(cullSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 		CreateDescriptorRange(cullSrvRanges[Ce_IndirectCountBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectCountBufferDescriptorCount, Ce_IndirectCountBufferRegister);
 		CreateDescriptorRange(cullSrvRanges[Ce_LODBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_LODBufferDescriptorCount, Ce_LODBufferRegister);
+		if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		{
+			CreateDescriptorRange(cullSrvRanges[Ce_LODInstanceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_LODInstanceBufferDescriptorCount, Ce_LODInstanceBufferRegister);
+		}
 
 		D3D12_ROOT_PARAMETER drawCullRootParameters[Ce_CullRootParameterCount]{};
 		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges, Ce_CullSrvRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-		CreateRootParameterPushConstants(drawCullRootParameters[Ce_CullDrawCountParameterId], 2, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterPushConstants(drawCullRootParameters[Ce_CullDrawCountParameterId], Ce_CullShaderRootConstantRegister, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
 
 		if (!CreateRootSignature(device, ppCullRootSignature, Ce_CullRootParameterCount, drawCullRootParameters))
 		{
@@ -390,8 +398,10 @@ namespace BlitzenDX12
 		ID3D12RootSignature* opaqueRoot; 
 		ID3D12PipelineState** ppOpaquePso;
 
-		ID3D12RootSignature* drawCull1Root;
-		ID3D12PipelineState** ppDrawCull1Pso;
+		ID3D12RootSignature* drawCullRoot;
+		ID3D12PipelineState** ppDrawCullPso;
+		ID3D12PipelineState** ppDrawInstCmdPso;
+		ID3D12PipelineState** ppDrawInstCountResetPso;
 
 		ID3D12RootSignature* resetRoot;
 		ID3D12PipelineState** ppResetPso;
@@ -404,10 +414,33 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateComputeShaderProgram(device, context.drawCull1Root, context.ppDrawCull1Pso, "HlslShaders/CS/drawCull.cs.hlsl.bin"))
+		if (BlitzenEngine::Ce_InstanceCulling)
 		{
-			BLIT_ERROR("Failed to create drawCull.cs shader program");
-			return 0;
+			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawInstCull.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawInstCull.cs shader program");
+				return 0;
+			}
+
+			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawInstCmdPso, "HlslShaders/CS/drawInstCmd.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawInstCull.cs shader program");
+				return 0;
+			}
+
+			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawInstCountResetPso, "HlslShaders/CS/drawInstCountReset.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawInstCountReset.cs shader program");
+				return 0;
+			}
+		}
+		else
+		{
+			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawCull.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawCull.cs shader program");
+				return 0;
+			}
 		}
 
 		if (!CreateComputeShaderProgram(device, context.resetRoot, context.ppResetPso, "HlslShaders/CS/drawCountReset.cs.hlsl.bin"))
@@ -459,6 +492,9 @@ namespace BlitzenDX12
 		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources)
 	{
 		const auto& transforms{ pResources->transforms };
+		const auto& lodData{ pResources->GetLodData() };
+		const auto& lodInstanceList{ pResources->GetLODInstanceList() };
+
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			auto& buffers = varBuffers[i];
@@ -492,16 +528,55 @@ namespace BlitzenDX12
 				return 0;
 			}
 
+			DX12WRAPPER<ID3D12Resource> lodInstStaging{ nullptr };
+			UINT64 lodInstanceBufferSize{ 0 };
+			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			{
+				UINT64 instanceBufferSize{ lodData.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD * sizeof(uint32_t)};
+				if (!CreateBuffer(device, buffers.drawInstBuffer.buffer.ReleaseAndGetAddressOf(), instanceBufferSize,
+					D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+				{
+					BLIT_ERROR("Failed to create instance buffer");
+					return 0;
+				}
+
+				lodInstanceBufferSize = CreateSSBO(device, buffers.lodInstBuffer, lodInstStaging, lodInstanceList.GetSize(), lodInstanceList.Data(), 
+					D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+				if (!lodInstanceBufferSize)
+				{
+					BLIT_ERROR("Failed to create lod instance counter buffer");
+					return 0;
+				}
+			}
+
 			frameTools.transferCommandAllocator->Reset();
 			frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
 
-			D3D12_RESOURCE_BARRIER copyBarriers[3]{};
-			CreateResourcesTransitionBarrier(copyBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-			CreateResourcesTransitionBarrier(copyBarriers[1], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			CreateResourcesTransitionBarrier(copyBarriers[2], buffers.transformBuffer.staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			frameTools.transferCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(copyBarriers), copyBarriers);
+			D3D12_RESOURCE_BARRIER copyDestBarriers[Ce_VarSSBODataCount]{};
+			CreateResourcesTransitionBarrier(copyDestBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			{
+				CreateResourcesTransitionBarrier(copyDestBarriers[1], buffers.lodInstBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			}
+			frameTools.transferCommandList->ResourceBarrier(Ce_VarSSBODataCount, copyDestBarriers);
+
+			D3D12_RESOURCE_BARRIER copySourceBarriers[Ce_VarSSBODataCount]{};
+			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			{
+				CreateResourcesTransitionBarrier(copySourceBarriers[1], lodInstStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			}
+			frameTools.transferCommandList->ResourceBarrier(Ce_VarSSBODataCount, copySourceBarriers);
 
 			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), transformStaging.Get());
+			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			{
+				frameTools.transferCommandList->CopyResource(buffers.lodInstBuffer.buffer.Get(), lodInstStaging.Get());
+			}
+
+			D3D12_RESOURCE_BARRIER dynamicTransformBarrier{};
+			CreateResourcesTransitionBarrier(dynamicTransformBarrier, buffers.transformBuffer.staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			frameTools.transferCommandList->ResourceBarrier(1, &dynamicTransformBarrier);
 
 			frameTools.transferCommandList->Close();
 			ID3D12CommandList* commandLists[] = { frameTools.transferCommandList.Get() };
@@ -576,7 +651,6 @@ namespace BlitzenDX12
 
 		const UINT64 fence = frameTools.copyFenceValue++;
 		commandQueue->Signal(frameTools.copyFence.Get(), fence);
-		// Waits for the previous frame
 		if (frameTools.copyFence->GetCompletedValue() < fence)
 		{
 			frameTools.copyFence->SetEventOnCompletion(fence, frameTools.copyFenceEvent);
@@ -763,6 +837,12 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));
 
+			if (BlitzenEngine::Ce_InstanceCulling)
+			{
+				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
+					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
+			}
+
 			vars.viewDataBuffer.cbvDesc = {};
 			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();
 			vars.viewDataBuffer.cbvDesc.SizeInBytes = sizeof(BlitzenEngine::CameraViewData);
@@ -789,16 +869,15 @@ namespace BlitzenDX12
 			CreateUnorderedAccessView(device, vars.indirectDrawCount.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
 				descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0);
 
+			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
+
 			if (BlitzenEngine::Ce_InstanceCulling)
 			{
-				CreateUnorderedAccessView(device, staticBuffers.lodBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
-					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData), 0);
+				CreateUnorderedAccessView(device, vars.lodInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
+					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
 			}
-			else
-			{
-				CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
-			}
+			
 		}
 		
 		// material buffer, single srv bound to pixel shader
@@ -861,7 +940,8 @@ namespace BlitzenDX12
 		}
 
 		PipelineCreationContext pipelineContext{ m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf(), 
-			m_drawCullSignature.Get(), m_drawCull1Pso.ReleaseAndGetAddressOf(), m_drawCountResetRoot.Get(), m_drawCountResetPso.ReleaseAndGetAddressOf()};
+			m_drawCullSignature.Get(), m_drawCullPso.ReleaseAndGetAddressOf(), m_drawInstCmdPso.ReleaseAndGetAddressOf(), 
+			m_drawInstCountResetPso.ReleaseAndGetAddressOf(), m_drawCountResetRoot.Get(), m_drawCountResetPso.ReleaseAndGetAddressOf()};
 		if (!CreatePipelines(m_device.Get(), pipelineContext))
 		{
 			BLIT_ERROR("Failed to create graphics pipelines");
@@ -893,12 +973,9 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(Ce_ConstDataSSBOCount, staticBufferBarriers);
 
-		/*
-			Creates a barrier for each copy of a var buffer. Uses varBufferId to keep track of the array element
-		*/
+		/* Creates a barrier for each copy of a var buffer. Uses varBufferId to keep track of the array element */
 		uint32_t varBufferId = 0;
-		D3D12_RESOURCE_BARRIER varBuffersFinalState[3 * ce_framesInFlight];
-		// TODO: Consider making the viewDataBuffer gpu only, there alot of reads to it in the shaders, I am not feeling it.
+		D3D12_RESOURCE_BARRIER varBuffersFinalState[Ce_VarBuffersCount]{};
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].viewDataBuffer.buffer.Get(),
@@ -908,7 +985,7 @@ namespace BlitzenDX12
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			// TODO: temporary before compute shaders, this should be unordered access first
+			// Starts off as indirect argument, because the first transition barrier will be expecting that
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawBuffer.buffer.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			varBufferId++;
@@ -916,10 +993,27 @@ namespace BlitzenDX12
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			// TODO: temporary before compute shaders, this should be unordered access first
+			// Starts off as indirect argument, because the first transition barrier will be expecting that
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].indirectDrawCount.buffer.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			varBufferId++;
+		}
+
+		if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		{
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			{
+				CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].drawInstBuffer.buffer.Get(),
+					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				varBufferId++;
+			}
+
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			{
+				CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].lodInstBuffer.buffer.Get(),
+					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				varBufferId++;
+			}
 		}
 
 		frameTools.mainGraphicsCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(varBuffersFinalState), varBuffersFinalState);
@@ -938,7 +1032,6 @@ namespace BlitzenDX12
 		const UINT64 fence = frameTools.inFlightFenceValue;
 		m_commandQueue->Signal(frameTools.inFlightFence.Get(), fence);
 		frameTools.inFlightFenceValue++;
-		// Waits for the previous frame
 		if (frameTools.inFlightFence->GetCompletedValue() < fence)
 		{
 			frameTools.inFlightFence->SetEventOnCompletion(fence, frameTools.inFlightFenceEvent);

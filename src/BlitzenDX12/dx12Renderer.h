@@ -71,8 +71,12 @@ namespace BlitzenDX12
         struct VarBuffers
         {
             VarSSBO transformBuffer;
+
             SSBO indirectDrawBuffer;
             VarSSBO indirectDrawCount;
+
+            SSBO drawInstBuffer;
+            SSBO lodInstBuffer;
 
             CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
         };
@@ -169,8 +173,6 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
         DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
 
-        D3D12_DESCRIPTOR_RANGE m_opaqueDescriptorRanges[Ce_OpaqueSrvRangeCount]{};
-
     /*
         Pipelines and Root Signatures
     */
@@ -179,15 +181,22 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
 
-        DX12WRAPPER<ID3D12PipelineState> m_drawCountResetPso;
         DX12WRAPPER<ID3D12RootSignature> m_drawCountResetRoot;
+        DX12WRAPPER<ID3D12PipelineState> m_drawCountResetPso;
 
-        DX12WRAPPER<ID3D12PipelineState> m_drawCull1Pso;
         DX12WRAPPER<ID3D12RootSignature> m_drawCullSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_drawCullPso;
+        // Draw Instance cull mode only
+        DX12WRAPPER<ID3D12PipelineState> m_drawInstCountResetPso;
+        DX12WRAPPER<ID3D12PipelineState> m_drawInstCmdPso;
+
 
         DX12WRAPPER<ID3D12CommandSignature> m_opaqueCmdSingature;
         DX12WRAPPER<ID3D12RootSignature> m_opaqueRootSignature;
+        // General objects
         DX12WRAPPER<ID3D12PipelineState> m_opaqueGraphicsPso;
+        // Transparent
+        DX12WRAPPER<ID3D12PipelineState> m_transparentGraphicsPso;
 
     private:
 
