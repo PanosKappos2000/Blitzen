@@ -206,6 +206,11 @@ namespace BlitzenEngine
             surface.lodCount++;
             BLIT_INFO("Generating LOD %d", surface.lodCount);
 
+            // Instancing
+            LodInstanceCounter lodInstanceCounter{};
+            lodInstanceCounter.instanceOffset = uint32_t(m_lods.GetSize() * Ce_MaxInstanceCountPerLOD);
+            m_lodInstanceList.PushBack(lodInstanceCounter);
+
             LodData lod{};
             lod.firstIndex = static_cast<uint32_t>(m_indices.GetSize() + allLodIndices.GetSize());
             lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
@@ -216,11 +221,6 @@ namespace BlitzenEngine
 
             lod.error = lodError * lodScale;
             m_lods.PushBack(lod);
-
-            // Instancing
-            LodInstanceCounter lodInstanceCounter{};
-            lodInstanceCounter.instanceOffset = uint32_t(m_lods.GetSize() * Ce_MaxInstanceCountPerLOD);
-            m_lodInstanceList.PushBack(lodInstanceCounter);
 
             // Adds current lod indices
             allLodIndices.AppendArray(lodIndices);

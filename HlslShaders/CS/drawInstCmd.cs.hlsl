@@ -14,7 +14,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         return;
     }
-    if(lodBuffer[lodId].instanceCount == 0)
+    if(instanceCounterBuffer[lodId].instanceCount == 0)
     {
         return;
     }

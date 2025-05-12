@@ -60,7 +60,7 @@ namespace BlitML
         return result;
     }
 
-    inline uint32_t GetCompueShaderGroupSize(uint32_t totalWorkCount, uint32_t threadsPerGroup) 
+    inline uint32_t GetComputeShaderGroupSize(uint32_t totalWorkCount, uint32_t threadsPerGroup) 
     {
         return (totalWorkCount / threadsPerGroup) + 1;
     }

@@ -37,10 +37,9 @@ struct Lod
     float error;
 
     // Pad to 32 bytes total 
-    uint instanceOffset;  
-    uint instanceCount;
-
-    uint padding0;
+    uint padding0;  
+    uint padding1;
+    uint padding3;
 };
 StructuredBuffer<Lod> lodBuffer : register (t7);
 

@@ -29,7 +29,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
 
-
     if(visible)
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
@@ -37,6 +36,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         uint instanceId;
         InterlockedAdd(instanceCounterBuffer[lodId].instanceCount, 1, instanceId);
 
-        instBuffer[instanceCounterBuffer[lodId].instanceOffset + instanceId];
+        instBuffer[instanceCounterBuffer[lodId].instanceOffset + instanceId] = objId;
     }
 }

@@ -271,7 +271,16 @@ namespace BlitzenDX12
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso)
     {
         BlitCL::String vsBytes;
-        auto vsSize{ GetShaderBytes(device, "HlslShaders/VS/opaqueDraw.vs.hlsl.bin", vsBytes)};
+        size_t vsSize{ 0 };
+        if constexpr (BlitzenEngine::Ce_InstanceCulling)
+        {
+            vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDrawInst.vs.hlsl.bin", vsBytes);
+        }
+        else
+        {
+            vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDraw.vs.hlsl.bin", vsBytes);
+        }
+        
         if(!vsSize)
         {
 			BLIT_ERROR("Failed to create main opaque vertex shader");

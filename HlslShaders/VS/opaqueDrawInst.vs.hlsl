@@ -1,3 +1,5 @@
+#define DRAW_INSTANCING
+
 #include "../Headers/vsBuffers.hlsl"
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
@@ -6,7 +8,8 @@
 VSOutput main(uint vertexIndex : SV_VERTEXID, uint instId : SV_INSTANCEID)
 {
     Vertex vtx = vertexBuffer[vertexIndex];
-    Render obj = renderBuffer[objId + instId];
+    uint renderId = instBuffer[objId  + instId];
+    Render obj = renderBuffer[renderId];
     float4 orientation = transformBuffer[obj.transformId].orientation;
     VSOutput output;
 

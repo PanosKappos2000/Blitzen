@@ -10,7 +10,7 @@ StructuredBuffer<Vertex> vertexBuffer : register(t0);
 cbuffer ObjId : register(b1)
 {
     uint objId;
-}
+};
 
 struct VSOutput
 {

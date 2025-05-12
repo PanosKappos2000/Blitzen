@@ -837,12 +837,7 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));
 
-			if (BlitzenEngine::Ce_InstanceCulling)
-			{
-				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
-			}
-
+			// This shit need to be cleaned up at some point
 			vars.viewDataBuffer.cbvDesc = {};
 			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();
 			vars.viewDataBuffer.cbvDesc.SizeInBytes = sizeof(BlitzenEngine::CameraViewData);
@@ -850,6 +845,12 @@ namespace BlitzenDX12
 			descriptorHandle.ptr += descriptorContext.srvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
 			descriptorContext.srvHeapOffset++;
+
+			if (BlitzenEngine::Ce_InstanceCulling)
+			{
+				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
+					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
+			}
 		}
 
 		// Teams of descriptors used for draw culling shaders

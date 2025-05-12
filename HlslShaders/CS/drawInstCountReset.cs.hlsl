@@ -14,5 +14,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         return;
     }
+    
     instanceCounterBuffer[lodId].instanceCount = 0;
 }
