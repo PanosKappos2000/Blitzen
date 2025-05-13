@@ -38,6 +38,13 @@ namespace BlitzenDX12
     constexpr D3D12_TEXTURE_LAYOUT Ce_DefaultTextureFormat = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 
 
+#if defined(DX12_OCCLUSION_DRAW_CULL)
+    constexpr uint8_t Ce_DrawOcclusion = 1;
+#elif
+    constexpr uint8_t Ce_DrawOcclusion = 0;
+#endif
+
+
     /* SHARED DESCRIPTORS FOR COMPUTE AND GRAPHICS SHADERS */
 #if defined(BLITZEN_DRAW_INSTANCED_CULLING)
     constexpr uint32_t Ce_SharedSrvRangeCount = 5;
@@ -86,18 +93,28 @@ namespace BlitzenDX12
     constexpr UINT Ce_LODBufferDescriptorCount = 1;
     constexpr UINT Ce_LODBufferRangeElement = 2;
 
+    constexpr UINT Ce_CullShaderRootConstantRegister = 2;
+
+    // ADDITIONAL DESCRIPTORS FOR INSTANCED MODE
     constexpr UINT Ce_LODInstanceBufferRegister = 2;
     constexpr UINT Ce_LODInstanceBufferDescriptorCount = 1;
     constexpr UINT Ce_LODInstanceBufferRangeElement = 3;
 
-    constexpr UINT Ce_CullShaderRootConstantRegister = 2;
+    // ADDITIONAL DESCRIPTORS FOR OCCLUSION MODE
+    constexpr UINT Ce_DrawVisibilityBufferRegister = 3;
+    constexpr UINT Ce_DrawVisibilityBufferDescriptorCount = 1;
+    constexpr UINT Ce_DrawVisiblityBufferRangeId = 0;
 
     // ROOT PARAMETERS
     constexpr uint32_t Ce_CullRootParameterCount = 3;
+    constexpr uint32_t Ce_CullInstRootParameterCount = 4;// Draw Instance culling mode
+    constexpr uint32_t Ce_DrawOcclusionRootParameterCount = 4;// Draw occlusion mode
 
     constexpr UINT Ce_CullExclusiveSRVsParameterId = 0;
     constexpr UINT Ce_CullSharedSRVsParameterId = 1;
     constexpr UINT Ce_CullDrawCountParameterId = 2;
+    constexpr UINT Ce_LODInstanceBufferRootParameterId = 3;// Draw Instance culling mode
+    constexpr UINT Ce_DrawVisiblityBufferRootParameterId = 3;// Draw occlusion mode
 
 
 
@@ -161,6 +178,11 @@ namespace BlitzenDX12
 
     constexpr SIZE_T Ce_TextureDataStagingSize = 128 * 1024 * 1024;
 
+#if defined(DX12_OCCLUSION_DRAW_CULL)
+    constexpr uint8_t CE_DX12OCCLUSION = 1;
+#else
+    constexpr uint8_t CE_DX12OCCLUSION = 0;
+#endif
 
 
     struct Dx12Stats

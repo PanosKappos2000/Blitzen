@@ -707,9 +707,6 @@ namespace BlitzenVulkan
             pushDescriptorWritesGraphics[Ce_DrawCmdBufferGraphicsDescriptorId] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[Ce_SurfaceBufferGraphicsDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
 
-            // Separate
-            // pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
-
             pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
             pushDescriptorWritesCompute[Ce_LodBufferDescriptorId] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
             pushDescriptorWritesCompute[Ce_TransformBufferDrawCullDescriptorId] = varBuffers.transformBuffer.descriptorWrite;
@@ -718,9 +715,6 @@ namespace BlitzenVulkan
             pushDescriptorWritesCompute[Ce_VisibilityBufferDrawCullDescriptorId] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
             pushDescriptorWritesCompute[Ce_SurfaceBufferDrawCullDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
 			pushDescriptorWritesCompute[Ce_ClusterBufferDrawCullDescriptorId] = m_currentStaticBuffers.clusterBuffer.descriptorWrite;
-
-            // Separate
-            pushDescriptorWritesCompute[8] = {};
         }
         else
         {
@@ -731,9 +725,6 @@ namespace BlitzenVulkan
             pushDescriptorWritesGraphics[Ce_DrawCmdBufferGraphicsDescriptorId] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[Ce_SurfaceBufferGraphicsDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
 
-            // Separate
-            // pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
-
             pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
             pushDescriptorWritesCompute[Ce_LodBufferDescriptorId] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
             pushDescriptorWritesCompute[Ce_TransformBufferDrawCullDescriptorId] = varBuffers.transformBuffer.descriptorWrite;
@@ -741,9 +732,6 @@ namespace BlitzenVulkan
             pushDescriptorWritesCompute[Ce_DrawCountBufferDrawCullDescriptorId] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
             pushDescriptorWritesCompute[Ce_VisibilityBufferDrawCullDescriptorId] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
             pushDescriptorWritesCompute[Ce_SurfaceBufferDrawCullDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-
-            // Separate
-            pushDescriptorWritesCompute[7] = {};
         }
     }
 

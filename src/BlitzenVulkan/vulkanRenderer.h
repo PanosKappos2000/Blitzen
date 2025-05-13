@@ -165,29 +165,23 @@ namespace BlitzenVulkan
         // Color attachment. Its sampler will be used to copy it into the swapchain
         PushDescriptorImage m_colorAttachment
         {
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            1, // binding ID
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkRenderingAttachmentInfo m_colorAttachmentInfo{};
 
         // Depth attachment. Its sampler will be passed to the depth pyramid generation shader, binding 1
         PushDescriptorImage m_depthAttachment
         {
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            1, // bidning ID
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkRenderingAttachmentInfo m_depthAttachmentInfo{};
 
         // The depth pyramid will copy data from the depth attachment to create a pyramid for occlusion culling
         PushDescriptorImage m_depthPyramid
         {
-            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            0, // binding ID
-            VK_IMAGE_LAYOUT_GENERAL
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, VK_IMAGE_LAYOUT_GENERAL
         };
-        VkImageView m_depthPyramidMips[ce_maxDepthPyramidMipLevels];
+        VkImageView m_depthPyramidMips[ce_maxDepthPyramidMipLevels]{};
         uint8_t m_depthPyramidMipLevels;
         VkExtent2D m_depthPyramidExtent;
 

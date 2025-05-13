@@ -141,9 +141,9 @@ namespace BlitzenVulkan
 
     // The size of the stack arrays that hold push descriptor writes
     #if defined(BLITZEN_CLUSTER_CULLING)
-        constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 9;
-    #else
         constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 8;
+    #else
+        constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 7;
     #endif
 
     constexpr uint32_t ce_viewDataWriteElement = 0;
