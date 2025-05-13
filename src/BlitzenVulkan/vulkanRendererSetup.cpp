@@ -7,34 +7,6 @@
 
 namespace BlitzenVulkan
 {
-    static uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma,
-        VulkanRenderer::FrameTools* frameToolList, VkSampler& textureSampler, MemoryCrucialHandles& memoryCrucials)
-    {
-        // Initializes VMA allocator which will be used to allocate all Vulkan resources
-        // Initialized here since textures can and will be given to Vulkan before the renderer is set up, and they need to be allocated
-        if (!CreateVmaAllocator(device, instance, pdv, vma, VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT))
-        {
-            BLIT_ERROR("Failed to create the vma allocator");
-            return 0;
-        }
-
-        memoryCrucials.allocator = vma;
-        memoryCrucials.device = device;
-        memoryCrucials.instance = instance;
-
-        // This sampler will be used by all textures for now
-        // Initialized here since textures can and will be given to Vulkan before the renderer is set up
-        textureSampler = CreateSampler(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-        if (textureSampler == VK_NULL_HANDLE)
-        {
-            BLIT_ERROR("Failed to create texture sampler");
-            return 0;
-        }
-
-        // Success
-        return 1;
-    }
-
     static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
         VkFormat& vulkanImageFormat, void* pData)
     {
@@ -64,21 +36,13 @@ namespace BlitzenVulkan
 
     uint8_t VulkanRenderer::UploadTexture(void* pData, const char* filepath) 
     {
-        // Checks if resource management has been setup
-        if(!m_stats.bResourceManagementReady)
+        if (!m_stats.bResourceManagementReady)
         {
-            // Calls the function and checks if it succeeded. If it did not, it fails
-            m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_frameToolsList, 
-                m_textureSampler.handle, m_memoryCrucials);
-            if(!m_stats.bResourceManagementReady)
-            {
-                BLIT_ERROR("Failed to setup resource management for Vulkan");
-                return 0;
-            }
+            BLIT_ERROR("Resource management is not initialized, cannot upload texture");
+            return 0;
         }
 
-        // Creates a big buffer to hold the texture data temporarily. It will pass it later
-        // This buffer has a random big size, as it needs to be allocated so that pData is not null in the next function
+        // Staging buffer
         AllocatedBuffer stagingBuffer;
         if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
             ce_textureStagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
@@ -116,74 +80,6 @@ namespace BlitzenVulkan
         // Add the global sampler at the element in the array that was just porcessed
         loadedTextures[textureCount].sampler = m_textureSampler.handle;
         textureCount++;
-        return 1;
-    }
-
-    static uint8_t RenderingAttachmentsInit(VkDevice device, VmaAllocator vma,
-        PushDescriptorImage& colorAttachment, VkRenderingAttachmentInfo& colorAttachmentInfo,
-        PushDescriptorImage& depthAttachment, VkRenderingAttachmentInfo& depthAttachmentInfo,
-        PushDescriptorImage& depthPyramid, uint8_t& depthPyramidMipCount, VkImageView* depthPyramidMips,
-        VkExtent2D drawExtent, VkExtent2D& depthPyramidExtent)
-    {
-        /*
-            Color attachment handle and value configuration
-        */
-        // Color attachment sammpler will be used to copy to the swapchain image
-        if (!colorAttachment.SamplerInit(device, VK_FILTER_NEAREST,
-            VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr))
-        {
-            BLIT_ERROR("Failed to create color attachment sampler");
-            return 0;
-        }
-        // Create depth attachment image and image view
-        if (!CreatePushDescriptorImage(device, vma, colorAttachment,
-            { drawExtent.width, drawExtent.height, 1 }, // extent
-            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage,
-            1, VMA_MEMORY_USAGE_GPU_ONLY))
-        {
-            BLIT_ERROR("Failed to create color attachment image resource");
-            return 0;
-        }
-        // Rendering attachment info, most values stay constant
-        CreateRenderingAttachmentInfo(colorAttachmentInfo, colorAttachment.image.imageView,
-            ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
-            ce_WindowClearColor);
-        /*
-            Depth attachement value and handle configuration
-        */
-        // Creates a sampler for the depth attachment, used for the depth pyramid
-        VkSamplerReductionModeCreateInfo reductionInfo{};
-        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
-        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
-        if (!depthAttachment.SamplerInit(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST,
-            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo))
-        {
-            BLIT_ERROR("Failed to create depth attachment sampler");
-            return 0;
-        }
-        // Creates rendering attachment image resource for depth attachment
-        if (!CreatePushDescriptorImage(device, vma, depthAttachment,
-            { drawExtent.width, drawExtent.height, 1 },
-            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage,
-            1, VMA_MEMORY_USAGE_GPU_ONLY))
-        {
-            BLIT_ERROR("Failed to create depth attachment image resource");
-            return 0;
-        }
-        // Rendering attachment info info, most values stay constant
-        CreateRenderingAttachmentInfo(depthAttachmentInfo, depthAttachment.image.imageView,
-            ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
-            { 0, 0, 0, 0 }, { 0, 0 });
-        // Create the depth pyramid image and its mips that will be used for occlusion culling
-        if (!CreateDepthPyramid(depthPyramid, depthPyramidExtent,
-            depthPyramidMips, depthPyramidMipCount,
-            drawExtent, device, vma))
-        {
-            BLIT_ERROR("Failed to create the depth pyramid");
-            return 0;
-        }
-
-        // Success
         return 1;
     }
 
@@ -999,24 +895,10 @@ namespace BlitzenVulkan
     }
 
 
-
-
-
     uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
         float& pyramidWidth, float& pyramidHeight)
     {
-        // Checks if resource management has been setup
-        if (!m_stats.bResourceManagementReady)
-        {
-            // Calls the function and checks if it succeeded. If it did not, it fails
-            m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator,
-                    m_frameToolsList, m_textureSampler.handle, m_memoryCrucials);
-            if (!m_stats.bResourceManagementReady)
-            {
-                BLIT_ERROR("Failed to setup resource management for Vulkan");
-                return 0;
-            }
-        }
+        BLIT_ASSERT(m_stats.bResourceManagementReady);
 
         if (!RenderingAttachmentsInit(m_device, m_allocator, m_colorAttachment, m_colorAttachmentInfo, 
             m_depthAttachment, m_depthAttachmentInfo, m_depthPyramid, m_depthPyramidMipLevels, m_depthPyramidMips, 
@@ -1077,10 +959,8 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (BlitzenEngine::Ce_BuildClusters && 
-            !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, 
-                &m_intialClusterCullPipeline.handle, &m_transparentClusterCullPipeline.handle, 
-                m_clusterCullLayout.handle))
+        if (BlitzenEngine::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, 
+            &m_intialClusterCullPipeline.handle, &m_transparentClusterCullPipeline.handle, m_clusterCullLayout.handle))
         {
             BLIT_ERROR("Failed to create cluster shaders");
             return 0;
@@ -1105,40 +985,5 @@ namespace BlitzenVulkan
     void VulkanRenderer::FinalSetup()
     {
 
-    }
-
-    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, 
-        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels, 
-        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator)
-    {
-		const VkFormat depthPyramidFormat = VK_FORMAT_R32_SFLOAT;
-        const VkImageUsageFlags depthPyramidUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT; 
-
-        // Conservative starting extent
-        depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
-        depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
-		depthPyramidMipLevels = 
-            BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
-    
-        // Creates the primary depth pyramid image
-        if (!CreatePushDescriptorImage(device, allocator, depthPyramidImage,
-            { depthPyramidExtent.width, depthPyramidExtent.height, 1 },
-            depthPyramidFormat, depthPyramidUsage, depthPyramidMipLevels,
-            VMA_MEMORY_USAGE_GPU_ONLY))
-        {
-            return 0;
-        }
-    
-        // Create the mip levels of the depth pyramid
-        for(uint8_t i = 0; i < depthPyramidMipLevels; ++i)
-        {
-            if (!CreateImageView(device, depthPyramidMips[size_t(i)],
-                depthPyramidImage.image.image, depthPyramidFormat, i, 1))
-            {
-                return 0;
-            }
-        }
-    
-        return 1;
     }
 }

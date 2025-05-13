@@ -308,19 +308,10 @@ namespace BlitzenVulkan
     };
 
 
-
-
     // Creates the swapchain
     uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
-        uint32_t windowWidth, uint32_t windowHeight,
-        Queue graphicsQueue, Queue presentQueue, Queue computeQueue,
-        VkAllocationCallbacks* pCustomAllocator,
-        Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
-
-    // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
-    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent,
-        VkImageView* depthPyramidMips, uint8_t& depthPyramidMipLevels,
-        VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator);
+        uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue,
+        VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 
     // Initalizes structure needed to call the DrawWhileWaiting function
     uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline,

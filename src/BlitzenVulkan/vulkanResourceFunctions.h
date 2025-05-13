@@ -5,9 +5,16 @@
 namespace BlitzenVulkan
 {
     // Create a allocator from the VMA library
-    uint8_t CreateVmaAllocator(VkDevice device, VkInstance instance, 
-        VkPhysicalDevice physicalDevice, VmaAllocator& allocator, 
-        VmaAllocatorCreateFlags flags);
+    uint8_t CreateVmaAllocator(VkDevice device, VkInstance instance, VkPhysicalDevice physicalDevice, VmaAllocator& allocator, VmaAllocatorCreateFlags flags);
+
+    // Creates color attachment, depth attachment and depth pyramid for occlusion culling
+    uint8_t RenderingAttachmentsInit(VkDevice device, VmaAllocator vma, PushDescriptorImage& colorAttachment, VkRenderingAttachmentInfo& colorAttachmentInfo,
+        PushDescriptorImage& depthAttachment, VkRenderingAttachmentInfo& depthAttachmentInfo, PushDescriptorImage& depthPyramid,
+        uint8_t& depthPyramidMipCount, VkImageView* depthPyramidMips, VkExtent2D drawExtent, VkExtent2D& depthPyramidExtent);
+
+    // Creates the depth pyramid image and mip levels and their data. Needed for occlusion culling
+    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, VkImageView* depthPyramidMips,
+        uint8_t& depthPyramidMipLevels, VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator);
 
     // Allocates a buffer using VMA
     uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, 

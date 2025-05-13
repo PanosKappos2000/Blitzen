@@ -817,33 +817,50 @@ namespace BlitzenVulkan
         DeviceFeaturesContext featureContext;
         AddDeviceFeatures(deviceInfo, featureContext, stats);
 
-        BlitCL::DynamicArray<VkDeviceQueueCreateInfo> queueInfos(1);
-        queueInfos[0].queueFamilyIndex = graphicsQueue.index;
-        VkDeviceQueueCreateInfo deviceQueueInfo{}; // temp
-        queueInfos.PushBack(deviceQueueInfo);
-        queueInfos[1].queueFamilyIndex = transferQueue.index;
-        queueInfos.PushBack(deviceQueueInfo);
-        queueInfos[2].queueFamilyIndex = computeQueue.index;
+        // Queue Infos to retrieve queues after device creation
+        VkDeviceQueueCreateInfo queueInfos [Ce_MaxUniqueueDeviceQueueIndices] {};
+        uint32_t queueCount{ 0 };
+
+        // Graphics
+        queueInfos[Ce_GraphicsQueueInfoIndex] = {};
+        queueInfos[Ce_GraphicsQueueInfoIndex].queueFamilyIndex = graphicsQueue.index;
+        queueCount++;
+
+        // Dedicated transfer
+        queueInfos[Ce_TransferQueueInfoIndex] = {};
+        queueInfos[Ce_TransferQueueInfoIndex].queueFamilyIndex = transferQueue.index;
+        queueCount++;
+
+        // Dedicated compute (TODO: Might want to be careful here, and add it only if I am on cluster mode)
+        queueInfos[Ce_ComputeQueueInfoIndex] = {};
+        queueInfos[Ce_ComputeQueueInfoIndex].queueFamilyIndex = computeQueue.index;
+        queueCount++;
 
         // If graphics has a different index from present, add a new info for it
         if (graphicsQueue.index != presentQueue.index)
         {
-            queueInfos.PushBack(deviceQueueInfo);
-            queueInfos[3].queueFamilyIndex = presentQueue.index;
+            queueInfos[queueCount] = {};
+            queueInfos[queueCount].queueFamilyIndex = presentQueue.index;
+            queueCount++;
         }
-        // With the count of the queue infos found and the indices passed, the rest is standard
-        float priority = 1.f;
-        for (size_t i = 0; i < queueInfos.GetSize(); ++i)
+
+        if (queueCount > Ce_MaxUniqueueDeviceQueueIndices)
         {
-            queueInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueInfos[i].pNext = nullptr; // Not using this
-            queueInfos[i].flags = 0; // Not using this
-            queueInfos[i].queueCount = 1;
-            queueInfos[i].pQueuePriorities = &priority;
+            BLIT_ERROR("Something is wrong with vulkan device queue info logic");
+            return 0;
         }
-        // Pass the queue infos
-        deviceInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.GetSize());
-        deviceInfo.pQueueCreateInfos = queueInfos.Data();
+        
+        float priority = 1.f;
+        for (auto& queueInfo : queueInfos)
+        {
+            queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueInfo.pNext = nullptr; 
+            queueInfo.flags = 0; 
+            queueInfo.queueCount = 1;
+            queueInfo.pQueuePriorities = &priority;
+        }
+        deviceInfo.queueCreateInfoCount = queueCount;
+        deviceInfo.pQueueCreateInfos = queueInfos;
 
         // Create the device
         auto res = vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
@@ -853,66 +870,100 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        // Retrieve graphics queue handle
+        // Retrieves graphics queue handle
         GetVulkanQueue(device, graphicsQueue, nullptr, 0);
 
-        // Retrieve compute queue handle
+        // Retrieves compute queue handle
         GetVulkanQueue(device, computeQueue, nullptr, 0);
 
-        // Retrieve present queue handle
+        // Retrieves present queue handle
         GetVulkanQueue(device, presentQueue, nullptr, 0);
 
+        // Retrieves transfer queue handle
         GetVulkanQueue(device, transferQueue, nullptr, 0);
 
         return 1;
     }
 
+    static uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma, MemoryCrucialHandles& memoryCrucials)
+    {
+        if (!CreateVmaAllocator(device, instance, pdv, vma, VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT))
+        {
+            BLIT_ERROR("Failed to create the vma allocator");
+            return 0;
+        }
+
+        memoryCrucials.allocator = vma;
+        memoryCrucials.device = device;
+        memoryCrucials.instance = instance;
+
+        // Success
+        return 1;
+    }
+
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle)
     {
-        // Creates the Vulkan instance
         if(!CreateInstance(m_instance, &m_debugMessenger))
         {
             BLIT_ERROR("Failed to create vulkan instance");
             return 0;
         }
 
-        // Create the surface depending on the implementation on Platform.cpp
         if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator))
         {
             BLIT_ERROR("Failed to create Vulkan window surface");
             return 0;
         }
 
-        // Call the function to search for a suitable physical device, it it can't find one return 0
-        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, 
-            m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
+        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device");
             return 0;
         }
 
-        // Create the device
         if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
         {
             BLIT_ERROR("Failed to pick suitable physical device");
             return 0;
         }
 
-        // Creates the swapchain
-        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, 
-            windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
+        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
             m_pCustomAllocator, m_swapchainValues))
         {
             BLIT_ERROR("Failed to create Vulkan swapchain");
             return 0;
         }
 
+        // Commands
+        for (size_t i = 0; i < ce_framesInFlight; ++i)
+        {
+            if (!m_frameToolsList[i].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
+            {
+                BLIT_ERROR("Failed to create frame tools");
+                return 0;
+            }
+        }
+
         // This will be referred to by rendering attachments and will be updated when the window is resized
         m_drawExtent = {m_swapchainValues.swapchainExtent.width, m_swapchainValues.swapchainExtent.height};
 
+        // Texture sampler. Global for all textures for now
+        m_textureSampler.handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+        if (m_textureSampler.handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create texture sampler");
+            return 0;
+        }
+
+        m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_memoryCrucials);
+        if (!m_stats.bResourceManagementReady)
+        {
+            BLIT_ERROR("Failed to initialize Vulkan resource management");
+            return 0;
+        }
+
         
-		if (!CreateIdleDrawHandles(m_device, m_basicBackgroundPipeline.handle, 
-            m_basicBackgroundLayout.handle, m_backgroundImageSetLayout.handle, 
+		if (!CreateIdleDrawHandles(m_device, m_basicBackgroundPipeline.handle, m_basicBackgroundLayout.handle, m_backgroundImageSetLayout.handle, 
             m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
 		{
             BLIT_ERROR("Failed to create idle draw handles");
@@ -923,17 +974,6 @@ namespace BlitzenVulkan
         {
             BLIT_ERROR("Failed to create loading triangle pipeline");
             return 0;
-        }
-
-        // Creates command buffers and synchronization structures in the frame tools struct
-        // Created on first Vulkan Initialization stage, because can and will be uploaded to Vulkan early
-        for (size_t i = 0; i < ce_framesInFlight; ++i)
-        {
-            if (!m_frameToolsList[i].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
-            {
-                BLIT_ERROR("Failed to create frame tools");
-                return 0;
-            }
         }
 
         // Success

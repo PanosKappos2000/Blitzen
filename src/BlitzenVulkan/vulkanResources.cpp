@@ -1,5 +1,6 @@
 #include "vulkanRenderer.h"
 #include "vulkanCommands.h"
+#include "vulkanPipelines.h"
 #include "vulkanResourceFunctions.h"
 
 namespace BlitzenVulkan
@@ -16,8 +17,97 @@ namespace BlitzenVulkan
         VkResult res = vmaCreateAllocator(&allocatorInfo, &allocator);
         if (res != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create vma allocator");
             return 0;
         }
+        return 1;
+    }
+
+    uint8_t RenderingAttachmentsInit(VkDevice device, VmaAllocator vma, PushDescriptorImage& colorAttachment, VkRenderingAttachmentInfo& colorAttachmentInfo,
+        PushDescriptorImage& depthAttachment, VkRenderingAttachmentInfo& depthAttachmentInfo, PushDescriptorImage& depthPyramid,
+        uint8_t& depthPyramidMipCount, VkImageView* depthPyramidMips, VkExtent2D drawExtent, VkExtent2D& depthPyramidExtent)
+    {
+        // Color attachment
+        if (!colorAttachment.SamplerInit(device, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr))
+        {
+            BLIT_ERROR("Failed to create color attachment sampler");
+            return 0;
+        }
+        
+        // Color attachment image resource and descriptor
+        if (!CreatePushDescriptorImage(device, vma, colorAttachment, { drawExtent.width, drawExtent.height, 1 }, 
+            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY))
+        {
+            BLIT_ERROR("Failed to create color attachment image resource");
+            return 0;
+        }
+        
+        // Color attachment rendering info
+        CreateRenderingAttachmentInfo(colorAttachmentInfo, colorAttachment.image.imageView, ce_ColorAttachmentLayout, 
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, ce_WindowClearColor);
+
+
+        // Depth attachment
+        VkSamplerReductionModeCreateInfo reductionInfo{};
+        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
+        if (!depthAttachment.SamplerInit(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST,
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo))
+        {
+            BLIT_ERROR("Failed to create depth attachment sampler");
+            return 0;
+        }
+
+        // Depth attachment image resource and descriptor
+        if (!CreatePushDescriptorImage(device, vma, depthAttachment, { drawExtent.width, drawExtent.height, 1 },
+            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY))
+        {
+            BLIT_ERROR("Failed to create depth attachment image resource");
+            return 0;
+        }
+        
+        // Depth attachment rendering info
+        CreateRenderingAttachmentInfo(depthAttachmentInfo, depthAttachment.image.imageView, ce_DepthAttachmentLayout, 
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, { 0, 0, 0, 0 }, { 0, 0 });
+        
+
+        // Depth pyramid
+        if (!CreateDepthPyramid(depthPyramid, depthPyramidExtent, depthPyramidMips, depthPyramidMipCount, drawExtent, device, vma))
+        {
+            BLIT_ERROR("Failed to create the depth pyramid");
+            return 0;
+        }
+
+        // Success
+        return 1;
+    }
+
+    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, VkImageView* depthPyramidMips,
+        uint8_t& depthPyramidMipLevels, VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator)
+    {
+        // Conservative starting extent
+        depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
+        depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
+        depthPyramidMipLevels = BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
+
+        // Image resource
+        if (!CreatePushDescriptorImage(device, allocator, depthPyramidImage, { depthPyramidExtent.width, depthPyramidExtent.height, 1 },
+            Ce_DepthPyramidFormat, Ce_DepthPyramidImageUsage, depthPyramidMipLevels, VMA_MEMORY_USAGE_GPU_ONLY))
+        {
+            BLIT_ERROR("Failed to create depth pyramid resource");
+            return 0;
+        }
+
+        // Levels
+        for (uint8_t i = 0; i < depthPyramidMipLevels; ++i)
+        {
+            if (!CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image.image, Ce_DepthPyramidFormat, i, 1))
+            {
+                BLIT_ERROR("Failed to create depth pyramid mips");
+                return 0;
+            }
+        }
+
         return 1;
     }
 
@@ -35,12 +125,13 @@ namespace BlitzenVulkan
         bufferAllocationInfo.usage = memoryUsage;
         bufferAllocationInfo.flags = allocationFlags;
 
-        VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, 
-        &(buffer.bufferHandle), &(buffer.allocation), &(buffer.allocationInfo));
+        VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, &buffer.bufferHandle, &buffer.allocation, &buffer.allocationInfo);
         if (res != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create buffer resource");
             return 0;
         }
+
         return 1;
     }
 
@@ -75,48 +166,45 @@ namespace BlitzenVulkan
         indirectBufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         indirectBufferAddressInfo.pNext = nullptr;
         indirectBufferAddressInfo.buffer = buffer;
+
         return vkGetBufferDeviceAddress(device, &indirectBufferAddressInfo);
     }
 
-    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
+    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
         uint8_t mipLevels /*= 1*/, VmaMemoryUsage memoryUsage /*=VMA_MEMORY_USAGE_GPU_ONLY*/)
     {
-        // Save the extent and format of the image in the AllocatedImage structure
         image.extent = extent;
         image.format = format;
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.flags = 0;// Hardcoded, no use case for this for now
+        imageInfo.flags = 0;
         imageInfo.pNext = nullptr;
 
         imageInfo.extent = extent;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;// No MSAA
-        // Pass the mip levels (important for textures and depth pyramid and probably other resources in the future)
         imageInfo.mipLevels  = mipLevels;
-        // Array layers are not used with the current API structure
-        imageInfo.arrayLayers = 1;
         imageInfo.format = format;
-        // I will probably need to create a parameter for this if I start using cube maps
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;// I can't see why I would ever use anything other than optimal
         imageInfo.usage = imageUsage;
+        
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;// No MSAA
+        imageInfo.arrayLayers = 1;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         
         VmaAllocationCreateInfo imageAllocationInfo{};
         imageAllocationInfo.usage = memoryUsage;
         imageAllocationInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, 
-            &image.image, &image.allocation, nullptr);
+        VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &image.image, &image.allocation, nullptr);
         if (res != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create image resource");
             return 0;
         }
 
-        // Creates an image view for the image by default
         if (!CreateImageView(device, image.imageView, image.image, format, 0, mipLevels))
         {
+            BLIT_ERROR("Failed to create image view");
             return 0;
         }
 
@@ -124,11 +212,9 @@ namespace BlitzenVulkan
     }
 
     uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image, 
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, 
-        VmaMemoryUsage memoryUsage)
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, VmaMemoryUsage memoryUsage)
     {
-        if (!CreateImage(device, allocator, image.image, extent, format,
-            usage, mipLevels, memoryUsage))
+        if (!CreateImage(device, allocator, image.image, extent, format, usage, mipLevels, memoryUsage))
         {
             return 0;
         }
@@ -139,8 +225,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, 
-        VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
+    uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels)
     {
         VkImageViewCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -151,8 +236,7 @@ namespace BlitzenVulkan
         info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
         // The aspect mask of the subresource is derived from the fromat of the image
-        info.subresourceRange.aspectMask = (format == VK_FORMAT_D32_SFLOAT) ? 
-        VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+        info.subresourceRange.aspectMask = (format == VK_FORMAT_D32_SFLOAT) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
         info.subresourceRange.baseMipLevel = baseMipLevel;
         info.subresourceRange.levelCount = mipLevels;
         info.subresourceRange.baseArrayLayer = 0;
@@ -168,8 +252,8 @@ namespace BlitzenVulkan
     }
 
     void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
-    VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, 
-    VkQueue queue, uint8_t mipLevels /*=1*/)
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, 
+        VkQueue queue, uint8_t mipLevels /*=1*/)
     {
         // Create a buffer that will hold the data of the texture
         VkDeviceSize imageSize = extent.width * extent.height * extent.depth * 4;
@@ -209,7 +293,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
-    VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels)
+        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels)
     {
         // Create an image for the texture data to be copied into. 
         // Adds the VK_IMAGE_USAGE_TRANSFER_DST_BIT, so that it can accept the data transfer from the buffer

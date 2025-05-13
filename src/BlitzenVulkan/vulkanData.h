@@ -96,6 +96,13 @@ namespace BlitzenVulkan
     constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequired = 0;
 
 
+    constexpr uint32_t Ce_MaxUniqueueDeviceQueueIndices = 4;
+
+    constexpr uint32_t Ce_GraphicsQueueInfoIndex = 0;
+    constexpr uint32_t Ce_TransferQueueInfoIndex = 1;
+    constexpr uint32_t Ce_ComputeQueueInfoIndex = 2;
+
+
     // Double buffering 
 #if defined(BLIT_DOUBLE_BUFFERING)
     constexpr uint8_t ce_framesInFlight = 2;
@@ -103,7 +110,7 @@ namespace BlitzenVulkan
     constexpr uint8_t ce_framesInFlight = 1;
 #endif
 
-#ifdef BLIT_VSYNC
+#if defined(BLIT_VSYNC)
     constexpr VkPresentModeKHR Ce_DesiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 #else
     constexpr VkPresentModeKHR Ce_DesiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
@@ -125,7 +132,10 @@ namespace BlitzenVulkan
 
     constexpr VkFormat ce_depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
     constexpr VkImageLayout ce_DepthAttachmentLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT; 
+    constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    constexpr VkFormat Ce_DepthPyramidFormat = VK_FORMAT_R32_SFLOAT;
+    constexpr VkImageUsageFlags Ce_DepthPyramidImageUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
     constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
     
     // Indices into the push descriptor writes array
@@ -152,6 +162,7 @@ namespace BlitzenVulkan
     constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
 
 
+
     struct VulkanStats
     {
         uint8_t hasDiscreteGPU = 0;
@@ -175,9 +186,7 @@ namespace BlitzenVulkan
 
 
 
-    /*
-        RAII wappers for Vulkan handles
-    */
+    /* RAII wappers for Vulkan handles */
     struct SurfaceKHR
     {
         VkSurfaceKHR handle = VK_NULL_HANDLE;
@@ -281,7 +290,7 @@ namespace BlitzenVulkan
 
 
 
-    // TODO: There are better way to offset the functionality of this struct
+    /* Vulkan resources structs (image, buffers) */
     struct MemoryCrucialHandles
     {
         VmaAllocator allocator;
@@ -312,10 +321,6 @@ namespace BlitzenVulkan
 
 
 
-    
-    /*
-        Vulkan resources structs (image, buffers)
-    */
     struct AllocatedImage
     {
         VkImage image = VK_NULL_HANDLE;
@@ -392,8 +397,6 @@ namespace BlitzenVulkan
         inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type)
             : descriptorBinding{binding}, descriptorType{type} {}
     };
-
-
 
 
 
