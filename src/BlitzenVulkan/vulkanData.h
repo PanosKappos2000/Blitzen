@@ -46,6 +46,7 @@ namespace BlitzenVulkan
         #endif
     #else
         constexpr uint8_t ce_bValidationLayersRequested = 0;
+        constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequested = 0;
         constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
     #endif
 
@@ -137,19 +138,32 @@ namespace BlitzenVulkan
     constexpr VkFormat Ce_DepthPyramidFormat = VK_FORMAT_R32_SFLOAT;
     constexpr VkImageUsageFlags Ce_DepthPyramidImageUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
     constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
-    
-    // Indices into the push descriptor writes array
-    constexpr uint32_t ce_viewDataWriteElement = 0;
-    constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
 
     // The size of the stack arrays that hold push descriptor writes
     #if defined(BLITZEN_CLUSTER_CULLING)
         constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 9;
-        constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
     #else
         constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 8;
-        constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
     #endif
+
+    constexpr uint32_t ce_viewDataWriteElement = 0;
+    constexpr uint32_t Ce_LodBufferDescriptorId = 1;
+    constexpr uint32_t Ce_TransformBufferDrawCullDescriptorId = 2;
+    constexpr uint32_t Ce_DrawCmdBufferDrawCullDescriptorId = 3;
+    constexpr uint32_t Ce_DrawCountBufferDrawCullDescriptorId = 4;
+    constexpr uint32_t Ce_VisibilityBufferDrawCullDescriptorId = 5;
+    constexpr uint32_t Ce_SurfaceBufferDrawCullDescriptorId = 6;
+    constexpr uint32_t Ce_ClusterBufferDrawCullDescriptorId = 7;
+
+    constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
+
+    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 6;
+
+    constexpr uint32_t Ce_VertexBufferPushDescriptorId = 1;
+    constexpr uint32_t Ce_MaterialBufferPushDescriptorId = 2;
+    constexpr uint32_t Ce_TransformBufferGraphicsDescriptorId = 3;
+    constexpr uint32_t Ce_DrawCmdBufferGraphicsDescriptorId = 4;
+    constexpr uint32_t Ce_SurfaceBufferGraphicsDescriptorId = 5;
 
     constexpr uint32_t Ce_StaticSSBODataCount = 10;
 
@@ -164,12 +178,11 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_ClusterBufferDataCopyIndex = 8;
     constexpr uint32_t Ce_ClusterIndexBufferDataCopyIndex = 9;
 
-    // The allocation size of the indirect draw buffer and all buffers that depend on it
+    
     constexpr uint32_t IndirectDrawElementCount = 10'000'000;
-    constexpr uint32_t Ce_TrasparentDispatchElementCount = 500'000;// I'm not expecting too many transparent objects
+    constexpr uint32_t Ce_TrasparentDispatchElementCount = 500'000;
 
-	// When passing a pointer to a vulkan API function, with only one element(common occurence),
-    // prefer passing this instead of one for clarity
+	// TODO: REMOVE THIS 
     constexpr uint32_t Ce_SinglePointer = 1;
 
     constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;

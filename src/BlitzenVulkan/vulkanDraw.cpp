@@ -347,13 +347,12 @@ namespace BlitzenVulkan
         uint8_t bRaytracing, uint32_t tlasCount, VkAccelerationStructureKHR* pTlas, 
         uint8_t onpcPass = 0, BlitML::mat4* pOnpcMatrix = nullptr)
     {
-        // Setup render pass
+        // Render pass begin
         colorAttachmentInfo.loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachmentInfo.loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
-        BeginRendering(commandBuffer, drawExtent, {0, 0}, 1, &colorAttachmentInfo,
-            &depthAttachmentInfo, nullptr);
+        BeginRendering(commandBuffer, drawExtent, {0, 0}, 1, &colorAttachmentInfo, &depthAttachmentInfo, nullptr);
 
-        // The acceleration structure write needs this struct on its pNext chain
+        // Raytracing
         VkWriteDescriptorSetAccelerationStructureKHR layoutAccelerationStructurePNext{};
         if(bRaytracing)
         {
@@ -361,31 +360,32 @@ namespace BlitzenVulkan
                 VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
             layoutAccelerationStructurePNext.accelerationStructureCount = tlasCount;
             layoutAccelerationStructurePNext.pAccelerationStructures = pTlas;
-            pDescriptorWrites[7].pNext = &layoutAccelerationStructurePNext;
+            //tlasBuffer.descriptorWrite.pNext = &layoutAccelerationStructurePNext;
+            //PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, PushDescriptorSetID, 1, pDescriptorWrites);
         }
 
-        // Push descriptor and texture descriptors
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            layout, PushDescriptorSetID,  
-            bRaytracing ? descriptorWriteCount : descriptorWriteCount - 1, 
-            pDescriptorWrites);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            layout, TextureDescriptorSetID, 1, textureSet, 0, nullptr);
+        // Descriptors
+        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, PushDescriptorSetID, descriptorWriteCount, pDescriptorWrites);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, TextureDescriptorSetID, 1, textureSet, 0, nullptr);
+
+        // Push constants
         GlobalShaderDataPushConstant pcData{ renderObjectBufferAddress };
         if (onpcPass)
         {
-            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT,
-                0, sizeof(BlitML::mat4), pOnpcMatrix);
+            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(BlitML::mat4), pOnpcMatrix);
         }
         else
         {
-            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
-                sizeof(GlobalShaderDataPushConstant), &pcData);
+            vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GlobalShaderDataPushConstant), &pcData);
         }
+
+        // Draw
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexedIndirectCount(commandBuffer, indirectDrawBuffer, offsetof(IndirectDrawData, drawIndirect),
-                indirectCountBuffer, 0, IndirectDrawElementCount, sizeof(IndirectDrawData));
+        vkCmdDrawIndexedIndirectCount(commandBuffer, indirectDrawBuffer, offsetof(IndirectDrawData, drawIndirect), 
+            indirectCountBuffer, 0, IndirectDrawElementCount, sizeof(IndirectDrawData));
+
+        // End pass
         vkCmdEndRendering(commandBuffer);
     }
 
@@ -542,8 +542,8 @@ namespace BlitzenVulkan
         // Layout transition barrier
         VkImageMemoryBarrier2 presentImageBarrier{};
         ImageMemoryBarrier(swapchainImage, presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
-            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 
+            0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
 
@@ -614,9 +614,6 @@ namespace BlitzenVulkan
     }
 
 
-
-
-
     void VulkanRenderer::Update(const BlitzenEngine::DrawContext& context)
     {
         auto pCamera = context.pCamera;
@@ -637,10 +634,10 @@ namespace BlitzenVulkan
         auto& vBuffers = m_varBuffers[m_currentFrame];
 
         // The buffer info for vbuffers is updated 
-        pushDescriptorWritesGraphics[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
-        pushDescriptorWritesCompute[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
-        pushDescriptorWritesGraphics[3].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
-        pushDescriptorWritesCompute[2].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
+        m_graphicsDescriptors[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
+        m_drawCullDescriptors[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
+        m_graphicsDescriptors[Ce_TransformBufferGraphicsDescriptorId].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
+        m_drawCullDescriptors[Ce_TransformBufferDrawCullDescriptorId].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
     }
 
     void VulkanRenderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)
@@ -672,8 +669,7 @@ namespace BlitzenVulkan
 
         // Swapchain image, needed to present the color attachment results
         uint32_t swapchainIdx;
-        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle,
-            ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
+        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
 
         // Color attachment working layout depends on if there are any render objects
         auto colorAttachmentWorkingLayout = context.pResources->renderObjectCount ?
@@ -686,14 +682,14 @@ namespace BlitzenVulkan
 
 			// Generates cluster dispatch data and count for the opaque render objects
             DispatchPreClusterCullingShader(fTools.computeCommandBuffer, m_preClusterCullPipeline.handle, m_clusterCullLayout.handle,
-                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, m_currentStaticBuffers.clusterCountBuffer.bufferHandle,
+                BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_currentStaticBuffers.clusterCountBuffer.bufferHandle,
                 m_currentStaticBuffers.clusterCountBufferAddress, m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle,
                 m_currentStaticBuffers.clusterDispatchBufferAddress, m_currentStaticBuffers.clusterCountCopyBuffer.bufferHandle,
                 context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress, Ce_InitialCulling, m_instance);
 
 			// Generates cluster dispatch data and count for the transparent render objects
             DispatchPreClusterCullingShader(fTools.computeCommandBuffer, m_preClusterCullPipeline.handle, m_clusterCullLayout.handle, 
-				BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle, 
+				BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle,
 				m_currentStaticBuffers.transparentClusterCountBufferAddress, m_currentStaticBuffers.transparentClusterDispatchBuffer.bufferHandle, 
 				m_currentStaticBuffers.transparentClusterDispatchBufferAddress, m_currentStaticBuffers.transparentClusterCountCopyBuffer.bufferHandle, 
 				static_cast<uint32_t>(context.pResources->GetTranparentRenders().GetSize()), m_currentStaticBuffers.transparentRenderObjectBufferAddress,
@@ -701,21 +697,19 @@ namespace BlitzenVulkan
 
             // Submits command buffer to generate cluster dispatch count
             VkSemaphoreSubmitInfo bufferUpdateWaitSemaphore{};
-            CreateSemahoreSubmitInfo(bufferUpdateWaitSemaphore, fTools.buffersReadySemaphore.handle, 
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+            CreateSemahoreSubmitInfo(bufferUpdateWaitSemaphore, fTools.buffersReadySemaphore.handle, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
             VkSemaphoreSubmitInfo waitForClusterData{};
-            CreateSemahoreSubmitInfo(waitForClusterData, fTools.preClusterCullingDoneSemaphore.handle,
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+            CreateSemahoreSubmitInfo(waitForClusterData, fTools.preClusterCullingDoneSemaphore.handle,VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
             SubmitCommandBuffer(m_computeQueue.handle, fTools.computeCommandBuffer, Ce_SinglePointer, 
                 &bufferUpdateWaitSemaphore, Ce_SinglePointer, &waitForClusterData, fTools.preCulsterCullingFence.handle);
             vkWaitForFences(m_device, Ce_SinglePointer, &fTools.preCulsterCullingFence.handle, VK_TRUE, ce_fenceTimeout);
             vkResetFences(m_device, Ce_SinglePointer, &fTools.preCulsterCullingFence.handle);
 
-
             // Command recording begins again
             BeginCommandBuffer(fTools.commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
             
             DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.swapchainExtent);
+
             // Attachment barriers for layout transitions before rendering
             VkImageMemoryBarrier2 renderingAttachmentDefinitionBarriers[2] = {};
             ImageMemoryBarrier(m_colorAttachment.image.image, renderingAttachmentDefinitionBarriers[0],
@@ -741,12 +735,12 @@ namespace BlitzenVulkan
 
             // Culls opaque render object clusters
             DispatchClusterCullingComputeShader(fTools.commandBuffer, m_intialClusterCullPipeline.handle, m_clusterCullLayout.handle,
-                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute, m_currentStaticBuffers.clusterCountBuffer.bufferHandle,
+                BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_currentStaticBuffers.clusterCountBuffer.bufferHandle,
                 m_currentStaticBuffers.clusterCountCopyBuffer, m_currentStaticBuffers.clusterDispatchBuffer.bufferHandle, 
 				m_currentStaticBuffers.clusterDispatchBufferAddress, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
                 m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, dispatchCount, m_currentStaticBuffers.renderObjectBufferAddress, m_instance);
 
-            DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(), BLIT_ARRAY_SIZE(pushDescriptorWritesGraphics),
+            DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors),
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo,
                 m_depthAttachmentInfo, m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
                 m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle, 
@@ -757,8 +751,7 @@ namespace BlitzenVulkan
             if (m_stats.bTranspartentObjectsExist)
             {
                 DispatchClusterCullingComputeShader(fTools.commandBuffer, m_transparentClusterCullPipeline.handle, m_clusterCullLayout.handle,
-                    BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                    m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle,
+                    BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors,m_currentStaticBuffers.transparentClusterCountBuffer.bufferHandle,
                     m_currentStaticBuffers.transparentClusterCountCopyBuffer,
                     m_currentStaticBuffers.transparentClusterDispatchBuffer.bufferHandle,
                     m_currentStaticBuffers.transparentClusterDispatchBufferAddress,
@@ -766,8 +759,7 @@ namespace BlitzenVulkan
                     m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, transparentDispatchCount,
                     m_currentStaticBuffers.transparentRenderObjectBufferAddress, m_instance);
 
-                DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
-                    uint32_t(pushDescriptorWritesGraphics.Size()),
+                DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors),
                     m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
                     &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
                     m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
@@ -778,8 +770,6 @@ namespace BlitzenVulkan
                     Ce_LateCulling, m_instance,
                     m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
             }
-
-
 
 
             // Image barriers to transition the layout of the color attachment and the swapchain image
@@ -798,22 +788,16 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
 
             // Copies the color attachment to the swapchain image
-            CopyColorAttachmentToSwapchainImage(fTools.commandBuffer,
-                m_swapchainValues.swapchainImageViews[swapchainIdx],
-                m_swapchainValues.swapchainImages[swapchainIdx], m_colorAttachment,
-                m_drawExtent, m_generatePresentationPipeline.handle, m_generatePresentationLayout.handle,
-                m_instance);
+            CopyColorAttachmentToSwapchainImage(fTools.commandBuffer, m_swapchainValues.swapchainImageViews[swapchainIdx],
+                m_swapchainValues.swapchainImages[swapchainIdx], m_colorAttachment,m_drawExtent, m_generatePresentationPipeline.handle, 
+                m_generatePresentationLayout.handle, m_instance);
 
             VkSemaphoreSubmitInfo waitSemaphores[2]{ {}, {} };
-            CreateSemahoreSubmitInfo(waitSemaphores[0], fTools.imageAcquiredSemaphore.handle,
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
-            CreateSemahoreSubmitInfo(waitSemaphores[1], fTools.preClusterCullingDoneSemaphore.handle,
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+            CreateSemahoreSubmitInfo(waitSemaphores[0], fTools.imageAcquiredSemaphore.handle, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
+            CreateSemahoreSubmitInfo(waitSemaphores[1], fTools.preClusterCullingDoneSemaphore.handle, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
             VkSemaphoreSubmitInfo signalSemaphore{};
-            CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle,
-                VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
-            SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer,
-                2, waitSemaphores, 1, &signalSemaphore, fTools.inFlightFence.handle);
+            CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
+            SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 2, waitSemaphores, 1, &signalSemaphore, fTools.inFlightFence.handle);
 
             PresentToSwapchain(m_device, m_graphicsQueue.handle, &m_swapchainValues.swapchainHandle,
                 1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
@@ -876,28 +860,20 @@ namespace BlitzenVulkan
                   It takes the commands from the 3rd culling shader.
                   Its fragment shader also has a modified specialization constant for alpha discard
             */
+
             // First culling pass
-            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer,
-                m_initialDrawCullPipeline.handle, m_drawCullLayout.handle,
-                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
-                m_depthAttachment, m_depthPyramid,
-                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_initialDrawCullPipeline.handle, m_drawCullLayout.handle,
+                BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
+                m_depthAttachment, m_depthPyramid, context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
                 Ce_InitialCulling, m_instance);
 
             // First draw pass
-            DrawGeometry(fTools.commandBuffer,
-                pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()),
-                m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
-                &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indexBuffer.bufferHandle,
-                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
-                Ce_InitialCulling, m_instance,
-                m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
+            DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_opaqueGeometryPipeline.handle, 
+                m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
+                m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                m_currentStaticBuffers.indexBuffer.bufferHandle, context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
+                Ce_InitialCulling, m_instance, m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
 
             // Depth pyramid generation
             GenerateDepthPyramid(fTools.commandBuffer, m_depthAttachment, m_depthPyramid, m_depthPyramidExtent,
@@ -905,84 +881,53 @@ namespace BlitzenVulkan
                 m_depthPyramidGenerationLayout.handle, m_instance);
 
             // Second culling pass 
-            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer,
-                m_lateDrawCullPipeline.handle, m_drawCullLayout.handle,
-                BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
-                m_depthAttachment, m_depthPyramid,
-                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
+            DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_lateDrawCullPipeline.handle, m_drawCullLayout.handle,
+                BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
+                m_depthAttachment, m_depthPyramid, context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
                 Ce_LateCulling, m_instance);
 
             // Second draw pass
-            DrawGeometry(fTools.commandBuffer,
-                pushDescriptorWritesGraphics.Data(), uint32_t(pushDescriptorWritesGraphics.Size()),
-                m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
-                &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                m_currentStaticBuffers.indexBuffer.bufferHandle,
-                context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
-                Ce_LateCulling, m_instance,
-                m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
+            DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors),
+                m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
+                m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                m_currentStaticBuffers.indexBuffer.bufferHandle, context.pResources->renderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress,
+                Ce_LateCulling, m_instance, m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
 
             if (m_stats.bObliqueNearPlaneClippingObjectsExist)
             {
                 // Replace the regular render object write with the onpc one
-                pushDescriptorWritesGraphics[2] =
-                    m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
-                pushDescriptorWritesCompute[1] =
-                    m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
+                m_graphicsDescriptors[2] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
+                m_drawCullDescriptors[1] = m_currentStaticBuffers.onpcReflectiveRenderObjectBuffer.descriptorWrite;
 
-                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer,
-                    m_onpcDrawCullPipeline.handle, m_drawCullLayout.handle,
-                    BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                    m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
-                    m_depthAttachment, m_depthPyramid,
-                    context.pResources->onpcReflectiveRenderObjectCount,
-                    m_currentStaticBuffers.renderObjectBufferAddress, Ce_LateCulling, m_instance);
+                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, m_drawCullLayout.handle,
+                    BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                    m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
+                    m_depthAttachment, m_depthPyramid, context.pResources->onpcReflectiveRenderObjectCount, m_currentStaticBuffers.renderObjectBufferAddress, 
+                    Ce_LateCulling, m_instance);
 
-                DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
-                    uint32_t(pushDescriptorWritesGraphics.Size()),
-                    m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle,
-                    &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                    m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.indexBuffer.bufferHandle,
-                    context.pResources->onpcReflectiveRenderObjectCount,
-                    m_currentStaticBuffers.onpcRenderObjectBufferAddress,
-                    Ce_LateCulling, m_instance,
-                    m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle,
+                DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_onpcReflectiveGeometryPipeline.handle, 
+                    m_onpcReflectiveGeometryLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
+                    m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                    m_currentStaticBuffers.indexBuffer.bufferHandle, context.pResources->onpcReflectiveRenderObjectCount, m_currentStaticBuffers.onpcRenderObjectBufferAddress,
+                    Ce_LateCulling, m_instance, m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle,
                     1, &pCamera->onbcProjectionMatrix);
             }
 
             if (m_stats.bTranspartentObjectsExist)
             {
 
-                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer,
-                    m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle,
-                    BLIT_ARRAY_SIZE(pushDescriptorWritesCompute), pushDescriptorWritesCompute,
-                    m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
-                    m_depthAttachment, m_depthPyramid,
-                    uint32_t(context.pResources->GetTranparentRenders().GetSize()),
-                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, 0,
-                    m_instance);
+                DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle,
+                    BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                    m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.visibilityBuffer.buffer.bufferHandle,
+                    m_depthAttachment, m_depthPyramid, uint32_t(context.pResources->GetTranparentRenders().GetSize()),
+                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, 0, m_instance);
 
-                DrawGeometry(fTools.commandBuffer, pushDescriptorWritesGraphics.Data(),
-                    uint32_t(pushDescriptorWritesGraphics.Size()),
-                    m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle,
-                    &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                    m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
-                    m_currentStaticBuffers.indexBuffer.bufferHandle,
-                    uint32_t(context.pResources->GetTranparentRenders().GetSize()),
-                    m_currentStaticBuffers.transparentRenderObjectBufferAddress,
-                    Ce_LateCulling, m_instance,
+                DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors),
+                    m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
+                    m_drawExtent, m_currentStaticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_currentStaticBuffers.indirectCountBuffer.buffer.bufferHandle,
+                    m_currentStaticBuffers.indexBuffer.bufferHandle, uint32_t(context.pResources->GetTranparentRenders().GetSize()),
+                    m_currentStaticBuffers.transparentRenderObjectBufferAddress, Ce_LateCulling, m_instance,
                     m_stats.bRayTracingSupported, Ce_SinglePointer, &m_currentStaticBuffers.tlasData.handle);
             }
 
@@ -1069,12 +1014,9 @@ namespace BlitzenVulkan
             nullptr, 1, &colorAttachmentDefinitionBarrier);
 
         VkRenderingAttachmentInfo colorAttachmentInfo{};
-        CreateRenderingAttachmentInfo(colorAttachmentInfo, swapchainImageView,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
-            VK_ATTACHMENT_STORE_OP_STORE, { 0.1f, 0.2f, 0.3f, 0 } // Window color
-        );
-        BeginRendering(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent,
-            { 0, 0 }, 1, &colorAttachmentInfo, nullptr, nullptr);
+        CreateRenderingAttachmentInfo(colorAttachmentInfo, swapchainImageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
+            VK_ATTACHMENT_STORE_OP_STORE, { 0.1f, 0.2f, 0.3f, 0 });
+        BeginRendering(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent, { 0, 0 }, 1, &colorAttachmentInfo, nullptr, nullptr);
 
         vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             m_loadingTrianglePipeline.handle);

@@ -122,32 +122,19 @@ namespace BlitzenVulkan
         // Every binding in the pushDescriptorSetLayout will have one descriptor
         constexpr uint32_t descriptorCountOfEachPushDescriptorLayoutBinding = 1;
 
-        auto viewDataShaderStageFlags = bMeshShaders ?
-            VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT :
+        auto viewDataShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT : 
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-        CreateDescriptorSetLayoutBinding(pBindings[viewDataBindingID],
-            varBuffers.viewDataBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            varBuffers.viewDataBuffer.descriptorType,
-            viewDataShaderStageFlags);
+        CreateDescriptorSetLayoutBinding(pBindings[viewDataBindingID], varBuffers.viewDataBuffer.descriptorBinding, descriptorCountOfEachPushDescriptorLayoutBinding,
+            varBuffers.viewDataBuffer.descriptorType, viewDataShaderStageFlags);
 
-        auto vertexBufferShaderStageFlags = bMeshShaders ?
-            VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
-            VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(pBindings[vertexBindingID],
-            staticBuffers.vertexBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.vertexBuffer.descriptorType,
-            vertexBufferShaderStageFlags);
+        auto vertexBufferShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT : VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(pBindings[vertexBindingID], staticBuffers.vertexBuffer.descriptorBinding, descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.vertexBuffer.descriptorType, vertexBufferShaderStageFlags);
 
-        auto surfaceBufferShaderStageFlags = bMeshShaders ?
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+        auto surfaceBufferShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(pBindings[primitivesBindingID],
-            staticBuffers.surfaceBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.surfaceBuffer.descriptorType,
-            surfaceBufferShaderStageFlags);
+        CreateDescriptorSetLayoutBinding(pBindings[primitivesBindingID], staticBuffers.surfaceBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.surfaceBuffer.descriptorType, surfaceBufferShaderStageFlags);
 
         auto clusterBufferShaderStageFlags = bMeshShaders ?
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
@@ -215,11 +202,8 @@ namespace BlitzenVulkan
 
         if (bRaytracing)
         {
-            CreateDescriptorSetLayoutBinding(pBindings[tlasBindingID],
-                staticBuffers.tlasBuffer.descriptorBinding,
-                descriptorCountOfEachPushDescriptorLayoutBinding,
-                staticBuffers.tlasBuffer.descriptorType,
-                VK_SHADER_STAGE_FRAGMENT_BIT);
+            CreateDescriptorSetLayoutBinding(pBindings[tlasBindingID], staticBuffers.tlasBuffer.descriptorBinding, descriptorCountOfEachPushDescriptorLayoutBinding,
+                staticBuffers.tlasBuffer.descriptorType, VK_SHADER_STAGE_FRAGMENT_BIT);
         }
 
         return CreateDescriptorSetLayout(device, bindingCount, pBindings,
@@ -241,8 +225,7 @@ namespace BlitzenVulkan
         {
             gpuPushDescriptorBindings.PushBack({});
         }
-        ssboPushDescriptorLayout = CreateGPUBufferPushDescriptorBindings(device,
-            gpuPushDescriptorBindings.Data(), (uint32_t)gpuPushDescriptorBindings.GetSize(),
+        ssboPushDescriptorLayout = CreateGPUBufferPushDescriptorBindings(device, gpuPushDescriptorBindings.Data(), (uint32_t)gpuPushDescriptorBindings.GetSize(),
             varBuffers, staticBuffers, bRaytracing, bMeshShaders);
         if (ssboPushDescriptorLayout == VK_NULL_HANDLE)
         {
@@ -413,8 +396,6 @@ namespace BlitzenVulkan
     static uint8_t StaticBuffersInit(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue transferQueue,
         VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::RenderingResources* pResources, VulkanStats& stats)
     {
-        constexpr uint32_t SingleElementBuffer = 1;
-
         const auto& vertices = pResources->GetVerticesArray();
         const auto& indices = pResources->GetIndicesArray();
         auto pRenderObjects = pResources->renders;
@@ -720,42 +701,48 @@ namespace BlitzenVulkan
         if constexpr (BlitzenEngine::Ce_BuildClusters)
         {
             pushDescriptorWritesGraphics[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[3] = varBuffers.transformBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_VertexBufferPushDescriptorId] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_MaterialBufferPushDescriptorId] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_TransformBufferGraphicsDescriptorId] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_DrawCmdBufferGraphicsDescriptorId] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_SurfaceBufferGraphicsDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+
+            // Separate
+            // pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
             pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[2] = varBuffers.transformBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-			pushDescriptorWritesCompute[7] = m_currentStaticBuffers.clusterBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_LodBufferDescriptorId] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_TransformBufferDrawCullDescriptorId] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_DrawCmdBufferDrawCullDescriptorId] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_DrawCountBufferDrawCullDescriptorId] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_VisibilityBufferDrawCullDescriptorId] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_SurfaceBufferDrawCullDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+			pushDescriptorWritesCompute[Ce_ClusterBufferDrawCullDescriptorId] = m_currentStaticBuffers.clusterBuffer.descriptorWrite;
+
+            // Separate
             pushDescriptorWritesCompute[8] = {};
         }
         else
         {
             pushDescriptorWritesGraphics[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[1] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[2] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[3] = varBuffers.transformBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[4] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[5] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
-            pushDescriptorWritesGraphics[7] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_VertexBufferPushDescriptorId] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_MaterialBufferPushDescriptorId] = m_currentStaticBuffers.materialBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_TransformBufferGraphicsDescriptorId] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_DrawCmdBufferGraphicsDescriptorId] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesGraphics[Ce_SurfaceBufferGraphicsDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+
+            // Separate
+            // pushDescriptorWritesGraphics[6] = m_currentStaticBuffers.tlasBuffer.descriptorWrite;
 
             pushDescriptorWritesCompute[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[1] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[2] = varBuffers.transformBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[3] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[4] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[5] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
-            pushDescriptorWritesCompute[6] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_LodBufferDescriptorId] = m_currentStaticBuffers.lodBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_TransformBufferDrawCullDescriptorId] = varBuffers.transformBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_DrawCmdBufferDrawCullDescriptorId] = m_currentStaticBuffers.indirectDrawBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_DrawCountBufferDrawCullDescriptorId] = m_currentStaticBuffers.indirectCountBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_VisibilityBufferDrawCullDescriptorId] = m_currentStaticBuffers.visibilityBuffer.descriptorWrite;
+            pushDescriptorWritesCompute[Ce_SurfaceBufferDrawCullDescriptorId] = m_currentStaticBuffers.surfaceBuffer.descriptorWrite;
+
+            // Separate
             pushDescriptorWritesCompute[7] = {};
         }
     }
@@ -794,8 +781,7 @@ namespace BlitzenVulkan
         }
 
         VkPushConstantRange clusterCullPushConstant{};
-        CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
-            sizeof(ClusterCullShaderPushConstant));
+        CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ClusterCullShaderPushConstant));
         if (!CreatePipelineLayout(device, clusterCullLayout, Ce_SinglePointer, &bufferPushDescriptorLayout,
             Ce_SinglePointer, &clusterCullPushConstant))
         {
@@ -805,8 +791,7 @@ namespace BlitzenVulkan
 
         // Layout for depth pyramid generation pipeline
         VkPushConstantRange depthPyramidMipExtentPushConstant{};
-        CreatePushConstantRange(depthPyramidMipExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
-            sizeof(BlitML::vec2));
+        CreatePushConstantRange(depthPyramidMipExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
         if (!CreatePipelineLayout(device, depthPyramidGenerationLayout, Ce_SinglePointer, &depthPyramidSetLayout,
             Ce_SinglePointer, &depthPyramidMipExtentPushConstant))
         {
@@ -827,8 +812,7 @@ namespace BlitzenVulkan
         // Generate present image compute shader layout
         VkPushConstantRange colorAttachmentExtentPushConstant{};
         CreatePushConstantRange(colorAttachmentExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
-        if (!CreatePipelineLayout(device, generatePresentationLayout, Ce_SinglePointer, &presentationSetLayout,
-            Ce_SinglePointer, &colorAttachmentExtentPushConstant))
+        if (!CreatePipelineLayout(device, generatePresentationLayout, Ce_SinglePointer, &presentationSetLayout, Ce_SinglePointer, &colorAttachmentExtentPushConstant))
         {
             BLIT_ERROR("Failed to create presentation generation pipeline layout");
             return 0;
@@ -843,24 +827,28 @@ namespace BlitzenVulkan
     {
         if (textureCount == 0)
         {
+            BLIT_ERROR("There are not textures loaded")
             return 0;
         }
-        // Creates descriptor pool to allocate combined image samplers
+        
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSize.descriptorCount = textureCount;
+
         descriptorPool = CreateDescriptorPool(device, 1, &poolSize, 1);
         if (descriptorPool == VK_NULL_HANDLE)
         {
+            BLIT_ERROR("Failed to create descriptor pool for textures");
             return 0;
         }
-        // Allocates the descriptor sets
+        
         if (!AllocateDescriptorSets(device, descriptorPool, pLayout, 1, &descriptorSet))
         {
+            BLIT_ERROR("Failed to allocate descriptor set for textures");
             return 0;
         }
 
-        // Creates image infos for every texture to be passed to the VkWriteDescriptorSet
+        // Array of descriptor infos
         BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos(textureCount);
         for (size_t i = 0; i < imageInfos.GetSize(); ++i)
         {
@@ -868,9 +856,9 @@ namespace BlitzenVulkan
             imageInfos[i].imageView = pTextures[i].image.imageView;
             imageInfos[i].sampler = pTextures[i].sampler;
         }
+
         VkWriteDescriptorSet write{};
-        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            descriptorSet, static_cast<uint32_t>(imageInfos.GetSize()), 0);
+        WriteImageDescriptorSets(write, imageInfos.Data(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, descriptorSet, uint32_t(imageInfos.GetSize()), 0);
         vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 
         return 1;
@@ -921,16 +909,14 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (!AllocateTextureDescriptorSet(m_device, (uint32_t)textureCount, loadedTextures,
-            m_textureDescriptorPool.handle, &m_textureDescriptorSetlayout.handle,
+        if (!AllocateTextureDescriptorSet(m_device, (uint32_t)textureCount, loadedTextures, m_textureDescriptorPool.handle, &m_textureDescriptorSetlayout.handle,
             m_textureDescriptorSet))
         {
             BLIT_ERROR("Failed to allocate texture descriptor sets");
             return 0;
         }
 
-        SetupGpuBufferDescriptorWriteArrays(m_currentStaticBuffers, m_varBuffers[0], 
-            pushDescriptorWritesGraphics.Data(), pushDescriptorWritesCompute);
+        SetupGpuBufferDescriptorWriteArrays(m_currentStaticBuffers, m_varBuffers[0], m_graphicsDescriptors, m_drawCullDescriptors);
 
         if (!CreateComputeShaders(m_device, &m_initialDrawCullPipeline.handle, &m_lateDrawCullPipeline.handle, 
             &m_onpcDrawCullPipeline.handle, &m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle, 

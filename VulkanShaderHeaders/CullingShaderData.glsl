@@ -64,6 +64,49 @@ bool OcclusionCullingPassed(vec4 aabb, sampler2D depthPyramid, float pyramidWidt
 	return depthSphere > depth;
 }
 
+struct Lod
+{
+    // Non cluster path, used to create draw commands
+    uint indexCount;
+    uint firstIndex;
+
+	// Cluster path, used to create draw commands
+    uint clusterOffset;
+    uint clusterCount;
+
+    // Used for more accurate LOD selection
+    float error;
+
+    // Pad to 32 bytes total
+    uint padding0;
+    uint padding1;
+    uint padding2;
+};
+
+layout(set = 0, binding = 4, std430) readonly buffer LodBuffer
+{
+    Lod levels[];
+}lodBuffer;
+
+// The LOD index is calculated using a formula, 
+// where the distance to the bounding sphere's surface is taken
+// and the minimum error that would result in acceptable screen-space deviation
+// is computed based on camera parameters
+uint LODSelection(vec3 center, float radius, float scale, float lodTarget, uint lodOffset, uint lodCount)
+{
+    float distance = max(length(center) - radius, 0);
+	float threshold = distance * lodTarget / scale;
+    uint lodIndex = 0;
+	for (uint i = 1; i < lodCount; ++i)
+    {
+		if (lodBuffer.levels[lodOffset + i].error < threshold)
+        {
+			lodIndex = i;
+        }
+    }
+    return lodIndex;
+}
+
 struct ClusterDispatchData
 {
     uint objectId;

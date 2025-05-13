@@ -213,9 +213,9 @@ namespace BlitzenVulkan
         // Layout for descriptors that will be using PushDescriptor extension. Has 10+ bindings
         DescriptorSetLayout m_pushDescriptorBufferLayout;
 
-        BlitCL::StaticArray<VkWriteDescriptorSet, Ce_GraphicsDescriptorWriteArraySize> 
-            pushDescriptorWritesGraphics;
-        VkWriteDescriptorSet pushDescriptorWritesCompute[Ce_ComputeDescriptorWriteArraySize];
+        VkWriteDescriptorSet m_graphicsDescriptors[Ce_GraphicsDescriptorWriteArraySize]{};
+        VkWriteDescriptorSet m_drawCullDescriptors[Ce_ComputeDescriptorWriteArraySize]{};
+        //VkWriteDescriptorSet m_clusterCullDescriptors[Ce_Num]{};
 
         // Layout for descriptor set that passes the source image and dst image for each depth pyramid mip
         DescriptorSetLayout m_depthPyramidDescriptorLayout;
@@ -317,9 +317,6 @@ namespace BlitzenVulkan
     uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline,
         VkPipelineLayout& layout, VkDescriptorSetLayout& setLayout,
         uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
-
-    // Creates loading triangle pipeline
-    uint8_t CreateLoadingTrianglePipeline(VkDevice device, VkPipeline& pipeline, VkPipelineLayout& layout);
 
 
 
