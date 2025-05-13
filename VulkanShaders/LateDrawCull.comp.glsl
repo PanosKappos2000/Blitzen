@@ -16,7 +16,9 @@ void main()
 
     // This a guard so that the compute shader does not go over the draw count
     if(pushConstant.drawCount <= objectIndex)
+    {
         return;
+    }
 
     // Access the object's data
     RenderObject obj = pushConstant.renderObjectBuffer.objects[objectIndex];

@@ -8,7 +8,7 @@
 #define CULL  true
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
-layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
+//layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
 
 void main()
 {
@@ -34,14 +34,14 @@ void main()
 
     // TODO: Remember to enable this for testing
     // If an object passes frustum culling, it goes through occlusion culling
-    if (false)
+    /*if (false)
 	{
 		vec4 aabb;
 		if (projectSphere(center, radius, viewData.zNear, viewData.proj0, viewData.proj5, aabb))
 		{
 			visible = visible && OcclusionCullingPassed(aabb, depthPyramid, viewData.pyramidWidth, viewData.pyramidHeight, center, radius, viewData.zNear);
 		}
-	}
+	}*/
 
     // Draw commands assigned if the object is visible
     if(visible)
