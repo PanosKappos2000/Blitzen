@@ -878,7 +878,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!CreateDescriptorLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_varBuffers[0], m_currentStaticBuffers, 
+        if(!CreateDescriptorLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_varBuffers[0], m_staticBuffers, 
             m_stats.bRayTracingSupported, m_stats.meshShaderSupport, (uint32_t)textureCount, m_textureDescriptorSetlayout.handle, 
             m_depthAttachment, m_depthPyramid, m_depthPyramidDescriptorLayout.handle, m_colorAttachment, 
             m_generatePresentationImageSetLayout.handle))
@@ -902,8 +902,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!StaticBuffersInit(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_currentStaticBuffers, 
-            pResources, m_stats))
+        if(!StaticBuffersInit(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_staticBuffers, pResources, m_stats))
         {
             BLIT_ERROR("Failed to upload data to the GPU");
             return 0;
@@ -916,7 +915,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        SetupGpuBufferDescriptorWriteArrays(m_currentStaticBuffers, m_varBuffers[0], m_graphicsDescriptors, m_drawCullDescriptors);
+        SetupGpuBufferDescriptorWriteArrays(m_staticBuffers, m_varBuffers[0], m_graphicsDescriptors, m_drawCullDescriptors);
 
         if (!CreateComputeShaders(m_device, &m_initialDrawCullPipeline.handle, &m_lateDrawCullPipeline.handle, 
             &m_onpcDrawCullPipeline.handle, &m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle, 

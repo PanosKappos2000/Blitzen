@@ -201,7 +201,7 @@ namespace BlitzenVulkan
         */
     private:
 
-        StaticBuffers m_currentStaticBuffers;
+        StaticBuffers m_staticBuffers;
 
         VarBuffers m_varBuffers[ce_framesInFlight];
 
