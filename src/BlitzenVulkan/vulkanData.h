@@ -151,6 +151,19 @@ namespace BlitzenVulkan
         constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 8;
     #endif
 
+    constexpr uint32_t Ce_StaticSSBODataCount = 10;
+
+    constexpr uint32_t Ce_VertexBufferDataCopyIndex = 0;
+    constexpr uint32_t Ce_IndexBufferDataCopyIndex = 1;
+    constexpr uint32_t Ce_OpaqueRenderBufferCopyIndex = 2;
+    constexpr uint32_t Ce_TransparentRenderBufferCopyIndex = 3;
+    constexpr uint32_t Ce_ONPCRenderBufferCopyIndex = 4;
+    constexpr uint32_t Ce_SurfaceBufferDataCopyIndex = 5;
+    constexpr uint32_t Ce_LodBufferDataCopyIndex = 6;
+    constexpr uint32_t Ce_MaterialBufferDataCopyIndex = 7;
+    constexpr uint32_t Ce_ClusterBufferDataCopyIndex = 8;
+    constexpr uint32_t Ce_ClusterIndexBufferDataCopyIndex = 9;
+
     // The allocation size of the indirect draw buffer and all buffers that depend on it
     constexpr uint32_t IndirectDrawElementCount = 10'000'000;
     constexpr uint32_t Ce_TrasparentDispatchElementCount = 500'000;// I'm not expecting too many transparent objects

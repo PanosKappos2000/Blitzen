@@ -118,6 +118,7 @@ namespace BlitzenVulkan
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.flags = 0;
         bufferInfo.pNext = nullptr;
+
         bufferInfo.usage = bufferUsage;
         bufferInfo.size = bufferSize;
 
@@ -135,19 +136,22 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, 
-        void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, 
-        VkBufferUsageFlags usage, VkDeviceSize size)
+    uint8_t CreateSSBO(VmaAllocator allocator, VkDevice device, void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, VkBufferUsageFlags usage, VkDeviceSize size)
     {
-        // Base buffer creation function for the storage buffer (GPU only)
-        if(!CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, 
-            size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        if (size == 0)
+        {
+            BLIT_ERROR("Cannot create buffer with size 0");
+            return 0;
+        }
+
+        // SSBO
+        if(!CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             return 0;
         }
-        // Staging buffer creation
-        if(!CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU, size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+
+        // Staging buffer
+        if(!CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             return 0;
         }
@@ -251,47 +255,6 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, 
-        VkQueue queue, uint8_t mipLevels /*=1*/)
-    {
-        // Create a buffer that will hold the data of the texture
-        VkDeviceSize imageSize = extent.width * extent.height * extent.depth * 4;
-        AllocatedBuffer stagingBuffer;
-        CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-        imageSize, VMA_ALLOCATION_CREATE_MAPPED_BIT);
-        // Copy the data to the buffer
-        BlitzenCore::BlitMemCopy(stagingBuffer.allocationInfo.pMappedData, data, imageSize);
-
-        // Create a Vulkan image, that will have VK_IMAGE_USAGE_TRANSFER_BIT as well as the usage provided
-        CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels);
-
-        // Start recording commands
-        BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-        // Transition the layout of the image to optimal for data transfer
-        VkImageMemoryBarrier2 imageMemoryBarrier{};
-        ImageMemoryBarrier(image.image, imageMemoryBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
-        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-
-        // Copy the buffer to the image
-        CopyBufferToImage(commandBuffer, stagingBuffer.bufferHandle, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, extent);
-
-        // Trasition the layout of the image to be used as a texture
-        VkImageMemoryBarrier2 secondTransitionBarrier{};
-        ImageMemoryBarrier(image.image, secondTransitionBarrier, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
-        VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE, 
-        VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-        VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &secondTransitionBarrier);
-
-        // Submit the command and wait for the queue to finish
-        SubmitCommandBuffer(queue, commandBuffer);
-        vkQueueWaitIdle(queue);
-    }
-
     uint8_t CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
         VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels)
     {
@@ -346,58 +309,85 @@ namespace BlitzenVulkan
 
     VkFormat GetDDSVulkanFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10)
     {
+        // Legacy textures
         if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
-	        return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-	    if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
-	        return VK_FORMAT_BC2_UNORM_BLOCK;
-	    if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
-	        return VK_FORMAT_BC3_UNORM_BLOCK;
+        {
+            return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        }
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
+        {
+            return VK_FORMAT_BC2_UNORM_BLOCK;
+        }
+        if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
+        {
+            return VK_FORMAT_BC3_UNORM_BLOCK;
+        }
 
         if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
 	    {
 	    	switch (header10.dxgiFormat)
 	    	{
 	    	    case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
-	    	    case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
-	    	    	return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
+                {
+                    return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+                }
 
 	    	    case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
-	    	    case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
-	    	    	return VK_FORMAT_BC2_UNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
+                {
+                    return VK_FORMAT_BC2_UNORM_BLOCK;
+                }
 
 	    	    case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
-	    	    case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
-	    	    	return VK_FORMAT_BC3_UNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
+                {
+                    return VK_FORMAT_BC3_UNORM_BLOCK;
+                }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
-	    	    	return VK_FORMAT_BC4_UNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
+                {
+                    return VK_FORMAT_BC4_UNORM_BLOCK;
+                }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
-	    	    	return VK_FORMAT_BC4_SNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
+                {
+                    return VK_FORMAT_BC4_SNORM_BLOCK;
+                }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
-	    	    	return VK_FORMAT_BC5_UNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
+                {
+                    return VK_FORMAT_BC5_UNORM_BLOCK;
+                }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
-	    	    	return VK_FORMAT_BC5_SNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
+                {
+                    return VK_FORMAT_BC5_SNORM_BLOCK;
+                }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
-	    	    	return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
+                {
+                    return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+                }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
-	    	        return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
+                {
+                    return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+                }
 
 	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
-	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
-	    	    	return VK_FORMAT_BC7_UNORM_BLOCK;
+                case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+                {
+                    return VK_FORMAT_BC7_UNORM_BLOCK;
+                }
 	    	}
 	    }
         
+        BLIT_ERROR("Unexpected DXGI format for DDS texture");
 	    return VK_FORMAT_UNDEFINED;
     }
 
-    VkSampler CreateSampler(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
-        VkSamplerAddressMode addressMode, void* pNextChain /*=nullptr*/)
+    VkSampler CreateSampler(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, VkSamplerAddressMode addressMode, void* pNextChain /*=nullptr*/)
     {
         VkSamplerCreateInfo createInfo {}; 
         createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -434,49 +424,18 @@ namespace BlitzenVulkan
 	    return sampler;
     }
 
-    uint8_t CreateTextureSampler(VkDevice device, VkSampler& sampler, VkSamplerMipmapMode mipmapMode)
-    {
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.flags = 0;
-        samplerInfo.pNext = nullptr;
-
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-        
-        samplerInfo.mipmapMode = mipmapMode;
-        samplerInfo.mipLodBias = 0.f;
-        samplerInfo.maxLod = 16.f;
-        samplerInfo.minLod = 0.f;
-
-        
-        VkResult res = vkCreateSampler(device, &samplerInfo, nullptr, &sampler);
-        if (res != VK_SUCCESS)
-        {
-            return 0;
-        }
-        return 1;
-    }
-
     void CopyImageToImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcLayout, VkImage dstImage, VkImageLayout dstLayout, 
     VkExtent2D srcImageSize, VkExtent2D dstImageSize, VkImageSubresourceLayers srcImageSL, VkImageSubresourceLayers dstImageSL, VkFilter filter)
     {
-        /*
-            This function is pretty hardcoded for now and for a specific use. I don't think I will be needing that many image copies, but we'll see
-        */
-
         VkImageBlit2 imageRegion{};
         imageRegion.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
         imageRegion.pNext = nullptr;
+
         imageRegion.srcOffsets[1].x = static_cast<int32_t>(srcImageSize.width);
         imageRegion.srcOffsets[1].y = static_cast<int32_t>(srcImageSize.height);
         imageRegion.srcOffsets[1].z = 1;
         imageRegion.srcSubresource = srcImageSL;
+
         imageRegion.dstOffsets[1].x = dstImageSize.width;
         imageRegion.dstOffsets[1].y = dstImageSize.height;
         imageRegion.dstOffsets[1].z = 1;
@@ -485,19 +444,22 @@ namespace BlitzenVulkan
         VkBlitImageInfo2 blitImage{};
         blitImage.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
         blitImage.pNext = nullptr;
+
         blitImage.srcImage = srcImage; 
         blitImage.srcImageLayout = srcLayout;
+
         blitImage.dstImage = dstImage;
         blitImage.dstImageLayout = dstLayout;
+
         blitImage.regionCount = 1;
         blitImage.pRegions = &imageRegion;
+
         blitImage.filter = filter;
 
         vkCmdBlitImage2(commandBuffer, &blitImage);
     }
 
-    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, 
-    VkDeviceSize dstOffset)
+    void CopyBufferToBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize copySize, VkDeviceSize srcOffset, VkDeviceSize dstOffset)
     {
         VkBufferCopy2 copyRegion{};
         copyRegion.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2;
@@ -508,9 +470,11 @@ namespace BlitzenVulkan
         VkCopyBufferInfo2 copyInfo{};
         copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2;
         copyInfo.pNext = nullptr;
+
         copyInfo.srcBuffer = srcBuffer;
         copyInfo.dstBuffer = dstBuffer;
-        copyInfo.regionCount = 1; // Hardcoded, I don't see why I would ever need 2 copy regions
+
+        copyInfo.regionCount = 1;
         copyInfo.pRegions = &copyRegion;
 
         vkCmdCopyBuffer2(commandBuffer, &copyInfo);
@@ -521,13 +485,14 @@ namespace BlitzenVulkan
         VkBufferImageCopy2 copyRegion{};
         copyRegion.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
         copyRegion.pNext = nullptr;
+
         copyRegion.imageExtent = extent;
-        
         copyRegion.imageOffset = { 0, 0, 0 };
         copyRegion.imageSubresource.mipLevel = 0;
         copyRegion.imageSubresource.baseArrayLayer = 0;
         copyRegion.imageSubresource.layerCount = 1;
         copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
         copyRegion.bufferOffset = 0;
         copyRegion.bufferImageHeight = 0;
         copyRegion.bufferRowLength = 0;
@@ -535,23 +500,28 @@ namespace BlitzenVulkan
         VkCopyBufferToImageInfo2 copyInfo{};
         copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2;
         copyInfo.pNext = nullptr;
+
         copyInfo.srcBuffer = srcBuffer;
         copyInfo.dstImage = image;
         copyInfo.dstImageLayout = imageLayout;
+
         copyInfo.regionCount = 1;
         copyInfo.pRegions = &copyRegion;
+
         vkCmdCopyBufferToImage2(commandBuffer, &copyInfo);
     }
 
     void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout imageLayout, 
-    uint32_t bufferImageCopyRegionCount, VkBufferImageCopy2* bufferImageCopyRegions)
+        uint32_t bufferImageCopyRegionCount, VkBufferImageCopy2* bufferImageCopyRegions)
     {
         VkCopyBufferToImageInfo2 copyInfo{};
         copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2;
         copyInfo.pNext = nullptr;
-        copyInfo.srcBuffer = srcBuffer;
+
         copyInfo.dstImage = dstImage;
         copyInfo.dstImageLayout = imageLayout;
+
+        copyInfo.srcBuffer = srcBuffer;
         copyInfo.regionCount = bufferImageCopyRegionCount;
         copyInfo.pRegions = bufferImageCopyRegions;
 
@@ -559,17 +529,20 @@ namespace BlitzenVulkan
     }
 
     void CreateCopyBufferToImageRegion(VkBufferImageCopy2& result, VkExtent3D imageExtent, VkOffset3D imageOffset, 
-    VkImageAspectFlags aspectMask, uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkDeviceSize bufferOffset, 
-    uint32_t bufferImageHeight, uint32_t bufferRowLength)
+        VkImageAspectFlags aspectMask, uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkDeviceSize bufferOffset, 
+        uint32_t bufferImageHeight, uint32_t bufferRowLength)
     {
         result.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
         result.pNext = nullptr;
+
         result.imageExtent = imageExtent;
         result.imageOffset = imageOffset;
+
         result.imageSubresource.aspectMask = aspectMask;
         result.imageSubresource.mipLevel = mipLevel;
         result.imageSubresource.baseArrayLayer = baseArrayLayer;
         result.imageSubresource.layerCount = layerCount;
+
         result.bufferOffset = bufferOffset;
         result.bufferImageHeight = bufferImageHeight;
         result.bufferRowLength = bufferRowLength;
@@ -579,54 +552,86 @@ namespace BlitzenVulkan
     {
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.flags = 0;// Hardcoded, there is no use case for descriptor pool flags for now
+        poolInfo.flags = 0;
         poolInfo.pNext = nullptr;
+
         poolInfo.maxSets = maxSets;
         poolInfo.poolSizeCount = poolSizeCount;
         poolInfo.pPoolSizes = pPoolSizes;
 
-        // Creates the descriptor pool
-        VkDescriptorPool pool;
+        VkDescriptorPool pool{};
         VkResult res = vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create descriptor pool, RETURNING NULL");
             return VK_NULL_HANDLE;
+        }
+
         return pool;
     }
 
-    uint8_t AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
-    uint32_t descriptorSetCount, VkDescriptorSet* pSets)
+    uint8_t AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, uint32_t descriptorSetCount, VkDescriptorSet* pSets)
     {
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.pNext = nullptr;
+
         allocInfo.descriptorPool = pool;
         allocInfo.pSetLayouts = pLayouts;
         allocInfo.descriptorSetCount = descriptorSetCount;
 
         // Allocate the descriptor sets
         VkResult res = vkAllocateDescriptorSets(device, &allocInfo, pSets);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ERROR("Descriptor set allocation failure");
             return 0;
+        }
+
         return 1;
     }
 
-    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, 
-        VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain, /*=nullptr*/
-        VkDescriptorSet dstSet /*=VK_NULL_HANDLE*/,  VkDeviceSize offset /*=0*/, uint32_t descriptorCount /*=1*/,
-        VkDeviceSize range /*=VK_WHOLE_SIZE*/, uint32_t dstArrayElement /*=0*/)
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain,
+        VkDescriptorSet dstSet,  VkDeviceSize offset, uint32_t descriptorCount, VkDeviceSize range /*=VK_WHOLE_SIZE*/, uint32_t dstArrayElement /*=0*/)
     {
+        bufferInfo = {};
         bufferInfo.buffer = buffer;
         bufferInfo.offset = offset;
         bufferInfo.range = range;
 
+        write = {};
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.pNext = pNextChain;
+
+        write.pBufferInfo = &bufferInfo;
+
         write.descriptorType = descriptorType;
+        write.descriptorCount = descriptorCount;
+
+        write.dstArrayElement = dstArrayElement;
         write.dstSet = dstSet;
         write.dstBinding = dstBinding;
-        write.descriptorCount = descriptorCount;
+    }
+
+    void CreatePushDescriptorWrite(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkBuffer buffer, VkDescriptorType type, uint32_t binding)
+    {
+        bufferInfo = {};
+        bufferInfo.buffer = buffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = VK_WHOLE_SIZE;
+
+        write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = nullptr;
+
         write.pBufferInfo = &bufferInfo;
-        write.dstArrayElement = dstArrayElement;
+
+        write.descriptorType = type;
+        write.dstBinding = binding;
+
+        write.descriptorCount = 1;
+        write.dstArrayElement = 0;
+        write.dstSet = VK_NULL_HANDLE;
     }
 
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, VkDescriptorType descriptorType, VkDescriptorSet dstSet, 

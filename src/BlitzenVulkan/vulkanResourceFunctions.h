@@ -22,7 +22,7 @@ namespace BlitzenVulkan
 
     // Creates a staging buffer with transfer src bit and a storage buffer
     // The pData is copied to the staging buffer
-    uint8_t CreateStorageBufferWithStagingBuffer(VmaAllocator allocator, VkDevice device, void* pData, AllocatedBuffer& storageBuffer, 
+    uint8_t CreateSSBO(VmaAllocator allocator, VkDevice device, void* pData, AllocatedBuffer& storageBuffer, 
         AllocatedBuffer& stagingBuffer, VkBufferUsageFlags usage, VkDeviceSize size);
 
     // Returns the GPU address of a buffer
@@ -33,12 +33,6 @@ namespace BlitzenVulkan
         uint8_t mipLevels = 1, VmaMemoryUsage memoryUsage =VMA_MEMORY_USAGE_GPU_ONLY);
 
     uint8_t CreateImageView(VkDevice device, VkImageView& imageView, VkImage image, VkFormat format, uint8_t baseMipLevel, uint8_t mipLevels);
-
-    // Allocate an image resource to be used specifically as texture. 
-    // The 1st parameter should be the loaded image data that should be passed to the image resource
-    // This function should not be used if possible, the one below is overall better
-    void CreateTextureImage(void* data, VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, 
-        VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels = 1);
 
     // This function is similar to the above but it gives its own buffer and mip levels are required. 
     // The buffer should already hold the texture data in pMappedData
@@ -75,10 +69,10 @@ namespace BlitzenVulkan
         uint32_t descriptorSetCount, VkDescriptorSet* pSets);
 
     // Creates VkWriteDescriptorSet for a buffer type descriptor set
-    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo,
-        VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain = nullptr,
-        VkDescriptorSet dstSet = VK_NULL_HANDLE, VkDeviceSize offset = 0, uint32_t descriptorCount = 1,
-        VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain,
+        VkDescriptorSet dstSet, VkDeviceSize offset, uint32_t descriptorCount, VkDeviceSize range = VK_WHOLE_SIZE, uint32_t dstArrayElement = 0);
+
+    void CreatePushDescriptorWrite(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkBuffer buffer, VkDescriptorType type, uint32_t binding);
 
     // Creates VkWriteDescirptorSet for an image type descirptor set. The image info struct(s) need to be initialized outside
     void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfos, 
@@ -130,16 +124,19 @@ namespace BlitzenVulkan
         VkDeviceSize bufferSize = elementCount * sizeof(DataType);
         if (bufferSize == 0)
         {
+            BLIT_ERROR("Buffer size result is 0");
             return 0;
         }
-        if (!CreateStorageBufferWithStagingBuffer(allocator, device, pData, pushBuffer.buffer,
-            stagingBuffer, usage, bufferSize))
+        if (!CreateSSBO(allocator, device, pData, pushBuffer.buffer, stagingBuffer, usage, bufferSize))
         {
+            BLIT_ERROR("Failed to create buffer resource");
             return 0;
         }
-        // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, pushBuffer.descriptorType, pushBuffer.descriptorBinding,
-            pushBuffer.buffer.bufferHandle);
+        
+        CreatePushDescriptorWrite(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, pushBuffer.buffer.bufferHandle, 
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding);
+
+        // Success...probably
         return bufferSize;
     }
 
@@ -150,14 +147,15 @@ namespace BlitzenVulkan
         VkBufferUsageFlags usage, void* pNextChain = nullptr)
     {
         VkDeviceSize bufferSize = sizeof(DataType) * elementCount;
-        if (!CreateBuffer(allocator, pushBuffer.buffer, usage,
-            memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        if (!CreateBuffer(allocator, pushBuffer.buffer, usage, memUsage, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
+            BLIT_ERROR("Failed to create push descriptor buffer resource");
             return 0;
         }
-        // The push descriptor buffer struct holds its own VkWriteDescriptorSet struct
-        WriteBufferDescriptorSets(pushBuffer.descriptorWrite, pushBuffer.bufferInfo,
-            pushBuffer.descriptorType, pushBuffer.descriptorBinding, pushBuffer.buffer.bufferHandle, pNextChain);
+        
+        CreatePushDescriptorWrite(pushBuffer.descriptorWrite, pushBuffer.bufferInfo, pushBuffer.buffer.bufferHandle, 
+            pushBuffer.descriptorType, pushBuffer.descriptorBinding);
+
         return bufferSize;
     }
 
