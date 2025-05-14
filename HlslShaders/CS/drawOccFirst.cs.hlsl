@@ -1,3 +1,5 @@
+#define DRAW_CULL_OCCLUSION
+
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
@@ -16,7 +18,12 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         return;
     }
-    
+
+    if(drawVisibilityBuffer[objId] == 0)
+    {
+        return;
+    }
+
     Render obj = renderBuffer[objId];
     Surface surface = surfaceBuffer[obj.surfaceId];
     Transform transform = transformBuffer[obj.transformId];

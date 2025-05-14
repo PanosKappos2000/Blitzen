@@ -1,3 +1,6 @@
+#define DRAW_CULL_OCCLUSION
+#define DRAW_CULL_OCCLUSION_LATE
+
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
@@ -16,7 +19,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         return;
     }
-    
+
     Render obj = renderBuffer[objId];
     Surface surface = surfaceBuffer[obj.surfaceId];
     Transform transform = transformBuffer[obj.transformId];
@@ -24,12 +27,12 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
     float3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.position;
     center = mul(viewMatrix, float4(center, 1)).xyz;
-	float radius = surface.radius * transform.scale;
+    float radius = surface.radius * transform.scale;
 
     // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
 
-    if(visible)
+    if(visible && drawVisibilityBuffer[objId] == 0)
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
@@ -49,4 +52,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         drawCmdBuffer[cmdId].instCount = 1;
         drawCmdBuffer[cmdId].insOffset = 0;
     }
+
+    // Sets next frame visibility
+    drawVisibilityBuffer[objId] = visible ? 1 : 0;
 }

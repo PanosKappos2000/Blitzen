@@ -14,10 +14,13 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         return;
     }
+
+    // Account for culling
     if(instanceCounterBuffer[lodId].instanceCount == 0)
     {
         return;
     }
+
     // Command count
     uint cmdId;
     InterlockedAdd(drawCountBuffer[0], 1, cmdId);

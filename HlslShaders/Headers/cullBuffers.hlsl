@@ -7,7 +7,8 @@ struct ComputeCmd
 
 struct DrawCmd
 {
-    uint objId;// Index into render object buffer
+    // Index into render object buffer
+    uint objId;
 
     // Draw command
     uint indexCount;
@@ -42,18 +43,6 @@ struct Lod
     uint padding3;
 };
 StructuredBuffer<Lod> lodBuffer : register (t7);
-
-#ifdef DRAW_INSTANCING
-
-struct InstanceCounter
-{
-    uint instanceOffset;
-    uint instanceCount;
-};
-RWStructuredBuffer<InstanceCounter> instanceCounterBuffer : register (u2);
-
-#endif
-
 // The LOD index is calculated using a formula, 
 // where the distance to the bounding sphere's surface is taken
 // and the minimum error that would result in acceptable screen-space deviation
@@ -72,3 +61,28 @@ uint LODSelection(float3 center, float radius, float scale, float lodTarget, uin
     }
     return lodOffset + lodIndex;
 }
+
+
+
+#ifdef DRAW_INSTANCING
+
+struct InstanceCounter
+{
+    uint instanceOffset;
+    uint instanceCount;
+};
+RWStructuredBuffer<InstanceCounter> instanceCounterBuffer : register (u2);
+
+#endif
+
+#ifdef DRAW_CULL_OCCLUSION
+
+RWStructuredBuffer<uint> drawVisibilityBuffer : register (u5);
+
+#endif
+
+#ifdef DRAW_CULL_OCCLUSION_LATE
+
+Texture2D<float4> depthPyramid : register (t10);
+
+#endif

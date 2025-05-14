@@ -75,6 +75,8 @@ namespace BlitzenDX12
             SSBO indirectDrawBuffer;
             VarSSBO indirectDrawCount;
 
+            SSBO drawVisibilityBuffer;
+
             SSBO drawInstBuffer;
             SSBO lodInstBuffer;
 
@@ -84,13 +86,14 @@ namespace BlitzenDX12
         struct ConstBuffers
         {
             SSBO vertexBuffer;
+            DX12WRAPPER<ID3D12Resource> indexBuffer;
+            D3D12_INDEX_BUFFER_VIEW indexBufferView;
+
             SSBO surfaceBuffer;
             SSBO renderBuffer;
             SSBO lodBuffer;
-            SSBO materialBuffer;
 
-            DX12WRAPPER<ID3D12Resource> indexBuffer;
-            D3D12_INDEX_BUFFER_VIEW indexBufferView;
+            SSBO materialBuffer;
         };
 
         struct DescriptorContext
@@ -114,6 +117,12 @@ namespace BlitzenDX12
 
             SIZE_T materialSrvOffset;
             D3D12_GPU_DESCRIPTOR_HANDLE materialSrvHandle;
+
+            SIZE_T depthTargetSrvOffset;
+            D3D12_GPU_DESCRIPTOR_HANDLE depthTargetSrvHandle;
+
+            SIZE_T depthPyramidSrvOffset;
+            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSrvHandle;
 
 
             /* SAMPLER HEAP */
@@ -181,11 +190,17 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
 
+        /* CULLING COMPUTE */
+        // All modes
         DX12WRAPPER<ID3D12RootSignature> m_drawCountResetRoot;
         DX12WRAPPER<ID3D12PipelineState> m_drawCountResetPso;
-
         DX12WRAPPER<ID3D12RootSignature> m_drawCullSignature;
         DX12WRAPPER<ID3D12PipelineState> m_drawCullPso;
+        // Draw occlusion mode only
+        DX12WRAPPER<ID3D12RootSignature> m_drawOccLateSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_drawOccLatePso;
+        DX12WRAPPER<ID3D12RootSignature> m_depthPyramidSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_depthPyramidPso;
         // Draw Instance cull mode only
         DX12WRAPPER<ID3D12PipelineState> m_drawInstCountResetPso;
         DX12WRAPPER<ID3D12PipelineState> m_drawInstCmdPso;

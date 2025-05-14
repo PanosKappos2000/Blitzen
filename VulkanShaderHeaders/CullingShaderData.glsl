@@ -55,12 +55,12 @@ bool IsObjectInsideViewFrustum(out vec3 center, out float radius, // Modified bo
 
 bool OcclusionCullingPassed(vec4 aabb, sampler2D depthPyramid, float pyramidWidth, float pyramidHeight, vec3 center, float radius, float zNear)
 {
-	float width = (aabb.z - aabb.x) * viewData.pyramidWidth;
-	float height = (aabb.w - aabb.y) * viewData.pyramidHeight;
+	float width = (aabb.z - aabb.x) * pyramidWidth;
+	float height = (aabb.w - aabb.y) * pyramidHeight;
     // Find the mip map level that will match the screen size of the sphere
 	float level = floor(log2(max(width, height)));
 	float depth = textureLod(depthPyramid, (aabb.xy + aabb.zw) * 0.5, level).x;
-	float depthSphere = viewData.zNear / (center.z - radius);
+	float depthSphere = zNear / (center.z - radius);
 	return depthSphere > depth;
 }
 

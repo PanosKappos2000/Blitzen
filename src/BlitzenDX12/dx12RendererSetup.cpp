@@ -301,14 +301,16 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueSrvRangeCount]{};
 		CreateDescriptorRange(opaqueSrvRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
 
-		D3D12_DESCRIPTOR_RANGE sharedSrvRanges[Ce_SharedSrvRangeCount]{};
+		BlitCL::DynamicArray<D3D12_DESCRIPTOR_RANGE> sharedSrvRanges{ Ce_SharedSrvRangeCount };
 		CreateDescriptorRange(sharedSrvRanges[Ce_SurfaceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_SurfaceBufferDescriptorCount, Ce_SurfaceBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
-		if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// draw occlusion mode does not have instancing
 		{
-			CreateDescriptorRange(sharedSrvRanges[Ce_InstanceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_InstanceBufferDescriptorCount, Ce_InstanceBufferRegister);
+			D3D12_DESCRIPTOR_RANGE instanceBufferRange{};
+			CreateDescriptorRange(instanceBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_InstanceBufferDescriptorCount, Ce_InstanceBufferRegister);
+			sharedSrvRanges.PushBack(instanceBufferRange);
 		}
 
 		D3D12_DESCRIPTOR_RANGE textureSamplerRange{};
@@ -322,7 +324,7 @@ namespace BlitzenDX12
 
 		D3D12_ROOT_PARAMETER rootParameters[Ce_OpaqueRootParameterCount]{};
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueExclusiveBuffersElement], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSharedBuffersElement], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSharedBuffersElement], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueObjectIdElement], Ce_ObjectIdRegister, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSamplerElement], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateRootParameterDescriptorTable(rootParameters[Ce_MaterialSrvElement], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -334,18 +336,26 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		D3D12_DESCRIPTOR_RANGE cullSrvRanges[Ce_CullSrvRangeCount]{};
+		BlitCL::DynamicArray<D3D12_DESCRIPTOR_RANGE> cullSrvRanges{ Ce_CullSrvRangeCount };
 		CreateDescriptorRange(cullSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 		CreateDescriptorRange(cullSrvRanges[Ce_IndirectCountBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectCountBufferDescriptorCount, Ce_IndirectCountBufferRegister);
 		CreateDescriptorRange(cullSrvRanges[Ce_LODBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_LODBufferDescriptorCount, Ce_LODBufferRegister);
-		if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		if constexpr (CE_DX12OCCLUSION)
 		{
-			CreateDescriptorRange(cullSrvRanges[Ce_LODInstanceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_LODInstanceBufferDescriptorCount, Ce_LODInstanceBufferRegister);
+			D3D12_DESCRIPTOR_RANGE drawVisibilityBufferRange{};
+			CreateDescriptorRange(drawVisibilityBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DrawVisibilityBufferDescriptorCount, Ce_DrawVisibilityBufferRegister);
+			cullSrvRanges.PushBack(drawVisibilityBufferRange);
+		}
+		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		{
+			D3D12_DESCRIPTOR_RANGE lodInstanceBufferRange{};
+			CreateDescriptorRange(lodInstanceBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_LODInstanceBufferDescriptorCount, Ce_LODInstanceBufferRegister);
+			cullSrvRanges.PushBack(lodInstanceBufferRange);
 		}
 
 		D3D12_ROOT_PARAMETER drawCullRootParameters[Ce_CullRootParameterCount]{};
-		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges, Ce_CullSrvRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges, Ce_SharedSrvRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
 		CreateRootParameterPushConstants(drawCullRootParameters[Ce_CullDrawCountParameterId], Ce_CullShaderRootConstantRegister, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
 
 		if (!CreateRootSignature(device, ppCullRootSignature, Ce_CullRootParameterCount, drawCullRootParameters))
@@ -355,7 +365,7 @@ namespace BlitzenDX12
 		}
 
 		D3D12_ROOT_PARAMETER resetShaderRootParameter{};
-		CreateRootParameterDescriptorTable(resetShaderRootParameter, cullSrvRanges, Ce_CullSrvRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterDescriptorTable(resetShaderRootParameter, cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
 		if (!CreateRootSignature(device, ppResetSignature, 1, &resetShaderRootParameter))
 		{
 			BLIT_ERROR("Failed to create draw count reset shader push constant");
@@ -414,7 +424,11 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (BlitzenEngine::Ce_InstanceCulling)
+		if constexpr (CE_DX12OCCLUSION)
+		{
+
+		}
+		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 		{
 			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawInstCull.cs.hlsl.bin"))
 			{

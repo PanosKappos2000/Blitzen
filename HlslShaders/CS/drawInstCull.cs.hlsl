@@ -18,6 +18,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         return;
     }
+    
     Render obj = renderBuffer[objId];
     Surface surface = surfaceBuffer[obj.surfaceId];
     Transform transform = transformBuffer[obj.transformId];
@@ -26,6 +27,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     float3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.position;
     center = mul(viewMatrix, float4(center, 1)).xyz;
 	float radius = surface.radius * transform.scale;
+
     // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
 

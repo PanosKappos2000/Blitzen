@@ -40,16 +40,18 @@ namespace BlitzenDX12
 
 #if defined(DX12_OCCLUSION_DRAW_CULL)
     constexpr uint8_t Ce_DrawOcclusion = 1;
-#elif
+#else
     constexpr uint8_t Ce_DrawOcclusion = 0;
 #endif
 
 
     /* SHARED DESCRIPTORS FOR COMPUTE AND GRAPHICS SHADERS */
-#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
-    constexpr uint32_t Ce_SharedSrvRangeCount = 5;
-#else
     constexpr uint32_t Ce_SharedSrvRangeCount = 4;
+
+#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
+    constexpr uint32_t Ce_AdditionalSharedSRVs = 1;
+#else
+    constexpr uint32_t Ce_AdditionalSharedSRVs = 0;
 #endif
 
     constexpr UINT Ce_SurfaceBufferRegister = 2;
@@ -75,10 +77,14 @@ namespace BlitzenDX12
 
 
     /* DESCRIPTORS FOR culling shaders */
-#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
-    constexpr uint32_t Ce_CullSrvRangeCount = 4;
-#else
     constexpr uint32_t Ce_CullSrvRangeCount = 3;
+
+#if defined(DX12_OCCLUSION_DRAW_CULL)
+    constexpr uint32_t Ce_AdditionalCullSRVs = 1;
+#elif defined(BLITZEN_DRAW_INSTANCED_CULLING)
+    constexpr uint32_t Ce_AdditionalCullSRVs = 1;
+#else
+    constexpr uint32_t Ce_AdditionalCullSRVs = 0;
 #endif
 
     constexpr UINT Ce_IndirectDrawBufferRegister = 0;// First Uav
@@ -101,20 +107,16 @@ namespace BlitzenDX12
     constexpr UINT Ce_LODInstanceBufferRangeElement = 3;
 
     // ADDITIONAL DESCRIPTORS FOR OCCLUSION MODE
-    constexpr UINT Ce_DrawVisibilityBufferRegister = 3;
+    constexpr UINT Ce_DrawVisibilityBufferRegister = 5;
     constexpr UINT Ce_DrawVisibilityBufferDescriptorCount = 1;
     constexpr UINT Ce_DrawVisiblityBufferRangeId = 0;
 
     // ROOT PARAMETERS
     constexpr uint32_t Ce_CullRootParameterCount = 3;
-    constexpr uint32_t Ce_CullInstRootParameterCount = 4;// Draw Instance culling mode
-    constexpr uint32_t Ce_DrawOcclusionRootParameterCount = 4;// Draw occlusion mode
 
     constexpr UINT Ce_CullExclusiveSRVsParameterId = 0;
     constexpr UINT Ce_CullSharedSRVsParameterId = 1;
     constexpr UINT Ce_CullDrawCountParameterId = 2;
-    constexpr UINT Ce_LODInstanceBufferRootParameterId = 3;// Draw Instance culling mode
-    constexpr UINT Ce_DrawVisiblityBufferRootParameterId = 3;// Draw occlusion mode
 
 
 
@@ -148,7 +150,8 @@ namespace BlitzenDX12
     constexpr UINT Ce_MaterialSrvElement = 4;
     constexpr UINT Ce_TextureDescriptorsElement = 5;
 
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount) * ce_framesInFlight;// Double or triple buffering
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount 
+        + Ce_AdditionalSharedSRVs + Ce_AdditionalCullSRVs) * ce_framesInFlight;// Double or triple buffering
 
     
     /* SSBO data copy helpers */
