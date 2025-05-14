@@ -46,6 +46,8 @@ namespace BlitzenDX12
     // Main drawing pipeline creation
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso);
 
+    void DispatchDrawVisibilityBufferCleaner();
+
     // Creates the all shaders used for draw culling
     uint8_t CreateCullingShaders(ID3D12Device* device, ID3D12RootSignature* cullingRootSignature, ID3D12PipelineState** ppCullPso);
 

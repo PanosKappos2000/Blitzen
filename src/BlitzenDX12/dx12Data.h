@@ -11,6 +11,8 @@
 
 namespace BlitzenDX12
 {
+    static_assert(sizeof(UINT) == sizeof(uint32_t));
+
     #if !defined(NDEBUG)
         constexpr uint8_t ce_bDebugController = 1;
         #if defined(DX12_ENABLE_GPU_BASED_VALIDATION)
@@ -80,7 +82,7 @@ namespace BlitzenDX12
     constexpr uint32_t Ce_CullSrvRangeCount = 3;
 
 #if defined(DX12_OCCLUSION_DRAW_CULL)
-    constexpr uint32_t Ce_AdditionalCullSRVs = 1;
+    constexpr uint32_t Ce_AdditionalCullSRVs = 2;
 #elif defined(BLITZEN_DRAW_INSTANCED_CULLING)
     constexpr uint32_t Ce_AdditionalCullSRVs = 1;
 #else
@@ -104,12 +106,13 @@ namespace BlitzenDX12
     // ADDITIONAL DESCRIPTORS FOR INSTANCED MODE
     constexpr UINT Ce_LODInstanceBufferRegister = 2;
     constexpr UINT Ce_LODInstanceBufferDescriptorCount = 1;
-    constexpr UINT Ce_LODInstanceBufferRangeElement = 3;
 
     // ADDITIONAL DESCRIPTORS FOR OCCLUSION MODE
     constexpr UINT Ce_DrawVisibilityBufferRegister = 5;
     constexpr UINT Ce_DrawVisibilityBufferDescriptorCount = 1;
-    constexpr UINT Ce_DrawVisiblityBufferRangeId = 0;
+
+    constexpr UINT Ce_DepthPyramidCullRegister = 6;
+    constexpr UINT Ce_DepthPyramidCullDescriptorCount = 1;
 
     // ROOT PARAMETERS
     constexpr uint32_t Ce_CullRootParameterCount = 3;
@@ -153,6 +156,26 @@ namespace BlitzenDX12
     constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount 
         + Ce_AdditionalSharedSRVs + Ce_AdditionalCullSRVs) * ce_framesInFlight;// Double or triple buffering
 
+
+
+    /* DESCRIPTORS FOR DEPTH PYRAMID GENERATION SHADER */
+    constexpr UINT Ce_DepthPyramidRangeCount = 2;
+
+    constexpr UINT Ce_DepthPyramidGenUAVRegister = 0;
+    constexpr UINT Ce_DepthPyramidGenUAVDescriptorCount = 1;
+    constexpr UINT Ce_DepthPyramidGenUAVRootId = 0;
+
+    constexpr UINT Ce_DepthTargetReadRegister = 0;
+    constexpr UINT Ce_DepthTargetReadDescriptorCount = 1;
+    constexpr UINT Ce_DepthTargetReadRootId = 1;
+
+    // ROOT PARAMETERS
+    constexpr UINT Ce_DepthPyramidParameterCount = 2;
+
+    constexpr UINT Ce_DepthPyramidDescriptorTableParameterId = 0;
+    constexpr UINT Ce_DepthPyramidRootConstantParameterId = 1;
+
+
     
     /* SSBO data copy helpers */
     constexpr UINT Ce_ConstDataSSBOCount = 6;
@@ -164,17 +187,10 @@ namespace BlitzenDX12
     constexpr UINT Ce_MaterialStagingIndex = 5;
 
 
-#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
-    constexpr UINT Ce_VarBuffersCount = 5 * ce_framesInFlight;
-#else
-    constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
-#endif
 
-#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
-    constexpr UINT Ce_VarSSBODataCount = 2;
-#else
+    constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
+
     constexpr UINT Ce_VarSSBODataCount = 1;
-#endif
 
     constexpr UINT Ce_TransformStagingBufferIndex = 0;
 

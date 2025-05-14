@@ -342,4 +342,9 @@ namespace BlitzenDX12
 
         return 1;
     }
+
+    void DispatchDrawVisibilityBufferCleaner()
+    {
+
+    }
 }

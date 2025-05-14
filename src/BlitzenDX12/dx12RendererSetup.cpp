@@ -296,7 +296,8 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature, 
-		ID3D12RootSignature** ppCullRootSignature, ID3D12RootSignature** ppResetSignature)
+		ID3D12RootSignature** ppCullRootSignature, ID3D12RootSignature** ppResetSignature, ID3D12RootSignature** ppDrawOccSignature, 
+		ID3D12RootSignature** ppDepthPyramidSignature)
 	{
 		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueSrvRangeCount]{};
 		CreateDescriptorRange(opaqueSrvRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
@@ -372,6 +373,37 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if (CE_DX12OCCLUSION)
+		{
+			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
+			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DepthPyramidCullDescriptorCount, Ce_DepthPyramidCullRegister);
+			cullSrvRanges.PushBack(depthPyramidCullRange);
+
+			// Resets parameter and add depth pyramid for the late root signature
+			CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
+
+			if (!CreateRootSignature(device, ppDrawOccSignature, Ce_CullRootParameterCount, drawCullRootParameters))
+			{
+				BLIT_ERROR("Failed to create late cull (occlusion culling) root parameter");
+				return 0;
+			}
+
+			D3D12_DESCRIPTOR_RANGE depthPyramidGenerationRanges[Ce_DepthPyramidRangeCount]{};
+			CreateDescriptorRange(depthPyramidGenerationRanges[Ce_DepthPyramidGenUAVRootId], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DepthPyramidGenUAVDescriptorCount, Ce_DepthPyramidGenUAVRegister);
+			CreateDescriptorRange(depthPyramidGenerationRanges[Ce_DepthTargetReadRootId], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthTargetReadDescriptorCount, Ce_DepthTargetReadRegister);
+
+			D3D12_ROOT_PARAMETER depthPyramidGenParameters[Ce_DepthPyramidParameterCount]{};
+			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidDescriptorTableParameterId], depthPyramidGenerationRanges, Ce_DepthPyramidRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_DepthPyramidRootConstantParameterId], 0, 0, 3, D3D12_SHADER_VISIBILITY_ALL);
+
+			if (!CreateRootSignature(device, ppDepthPyramidSignature, Ce_DepthPyramidParameterCount, depthPyramidGenParameters))
+			{
+				BLIT_ERROR("Failed to create depth pyramid root parameter");
+				return 0;
+			}
+		}
+
+
 		// success
 		return 1;
 	}
@@ -415,6 +447,12 @@ namespace BlitzenDX12
 
 		ID3D12RootSignature* resetRoot;
 		ID3D12PipelineState** ppResetPso;
+
+		ID3D12RootSignature* drawOccRoot;
+		ID3D12PipelineState** ppDrawOccPso;
+
+		ID3D12RootSignature* depthPyramidRoot;
+		ID3D12PipelineState** ppDepthPyramidPso;
 	};
 	static uint8_t CreatePipelines(ID3D12Device* device, PipelineCreationContext& context)
 	{
@@ -508,6 +546,7 @@ namespace BlitzenDX12
 		const auto& transforms{ pResources->transforms };
 		const auto& lodData{ pResources->GetLodData() };
 		const auto& lodInstanceList{ pResources->GetLODInstanceList() };
+		auto renderCount{ pResources->renderObjectCount };
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -520,7 +559,7 @@ namespace BlitzenDX12
 			}
 
 			DX12WRAPPER<ID3D12Resource> transformStaging;
-			if (!CreateVarSSBO(device, buffers.transformBuffer, transformStaging, transforms.GetSize(), transforms.Data(), 
+			if (!CreateVarSSBO(device, buffers.transformBuffer, transformStaging, transforms.GetSize(), transforms.Data(),
 				pResources->dynamicTransformCount))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
@@ -542,11 +581,24 @@ namespace BlitzenDX12
 				return 0;
 			}
 
+
+			// Draw Instance mode buffer data( kept in scope)
 			DX12WRAPPER<ID3D12Resource> lodInstStaging{ nullptr };
 			UINT64 lodInstanceBufferSize{ 0 };
-			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+
+			if constexpr (CE_DX12OCCLUSION)
 			{
-				UINT64 instanceBufferSize{ lodData.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD * sizeof(uint32_t)};
+				UINT64 drawVisibilityBufferSize{ sizeof(uint32_t) * renderCount };
+				if (!CreateBuffer(device, buffers.drawVisibilityBuffer.buffer.ReleaseAndGetAddressOf(), drawVisibilityBufferSize, 
+					D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+				{
+					BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
+					return 0;
+				}
+			}
+			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			{
+				UINT64 instanceBufferSize{ lodData.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD * sizeof(uint32_t) };
 				if (!CreateBuffer(device, buffers.drawInstBuffer.buffer.ReleaseAndGetAddressOf(), instanceBufferSize,
 					D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 				{
@@ -554,7 +606,7 @@ namespace BlitzenDX12
 					return 0;
 				}
 
-				lodInstanceBufferSize = CreateSSBO(device, buffers.lodInstBuffer, lodInstStaging, lodInstanceList.GetSize(), lodInstanceList.Data(), 
+				lodInstanceBufferSize = CreateSSBO(device, buffers.lodInstBuffer, lodInstStaging, lodInstanceList.GetSize(), lodInstanceList.Data(),
 					D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 				if (!lodInstanceBufferSize)
 				{
@@ -566,24 +618,28 @@ namespace BlitzenDX12
 			frameTools.transferCommandAllocator->Reset();
 			frameTools.transferCommandList->Reset(frameTools.transferCommandAllocator.Get(), nullptr);
 
-			D3D12_RESOURCE_BARRIER copyDestBarriers[Ce_VarSSBODataCount]{};
+			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copyDestBarriers{ Ce_VarSSBODataCount };
 			CreateResourcesTransitionBarrier(copyDestBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not available for draw occlusion mode
 			{
-				CreateResourcesTransitionBarrier(copyDestBarriers[1], buffers.lodInstBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+				D3D12_RESOURCE_BARRIER lodInstBufferDestBarrier{};
+				CreateResourcesTransitionBarrier(lodInstBufferDestBarrier, buffers.lodInstBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+				copyDestBarriers.PushBack(lodInstBufferDestBarrier);
 			}
-			frameTools.transferCommandList->ResourceBarrier(Ce_VarSSBODataCount, copyDestBarriers);
+			frameTools.transferCommandList->ResourceBarrier((UINT)copyDestBarriers.GetSize(), copyDestBarriers.Data());
 
-			D3D12_RESOURCE_BARRIER copySourceBarriers[Ce_VarSSBODataCount]{};
+			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copySourceBarriers{ Ce_VarSSBODataCount };
 			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not available for draw occlusion mode
 			{
-				CreateResourcesTransitionBarrier(copySourceBarriers[1], lodInstStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+				D3D12_RESOURCE_BARRIER lodInstBufferSourceBarrier{};
+				CreateResourcesTransitionBarrier(lodInstBufferSourceBarrier, lodInstStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+				copySourceBarriers.PushBack(lodInstBufferSourceBarrier);
 			}
-			frameTools.transferCommandList->ResourceBarrier(Ce_VarSSBODataCount, copySourceBarriers);
+			frameTools.transferCommandList->ResourceBarrier(UINT(copySourceBarriers.GetSize()), copySourceBarriers.Data());
 
 			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), transformStaging.Get());
-			if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not available for draw occlusion mode
 			{
 				frameTools.transferCommandList->CopyResource(buffers.lodInstBuffer.buffer.Get(), lodInstStaging.Get());
 			}
@@ -860,7 +916,7 @@ namespace BlitzenDX12
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
 			descriptorContext.srvHeapOffset++;
 
-			if (BlitzenEngine::Ce_InstanceCulling)
+			if (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not supported for draw occlusion mode
 			{
 				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
@@ -887,7 +943,12 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
 
-			if (BlitzenEngine::Ce_InstanceCulling)
+			if constexpr (CE_DX12OCCLUSION)
+			{
+				//CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
+					//descriptorContext.srvHeapOffset, renderObjectCount, sizeof(uint32_t), 0);
+			}
+			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 			{
 				CreateUnorderedAccessView(device, vars.lodInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
@@ -922,7 +983,7 @@ namespace BlitzenDX12
 		pResources->GenerateHlslVertices();
 
 		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf(), m_drawCullSignature.ReleaseAndGetAddressOf(), 
-			m_drawCountResetRoot.ReleaseAndGetAddressOf()))
+			m_drawCountResetRoot.ReleaseAndGetAddressOf(), m_drawOccLateSignature.ReleaseAndGetAddressOf(), m_depthPyramidSignature.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create root signatures");
 			return 0;
@@ -990,7 +1051,7 @@ namespace BlitzenDX12
 
 		/* Creates a barrier for each copy of a var buffer. Uses varBufferId to keep track of the array element */
 		uint32_t varBufferId = 0;
-		D3D12_RESOURCE_BARRIER varBuffersFinalState[Ce_VarBuffersCount]{};
+		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> varBuffersFinalState{ Ce_VarBuffersCount };
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].viewDataBuffer.buffer.Get(),
@@ -1014,24 +1075,30 @@ namespace BlitzenDX12
 			varBufferId++;
 		}
 
-		if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		if constexpr (CE_DX12OCCLUSION)
+		{
+
+		}
+		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
-				CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].drawInstBuffer.buffer.Get(),
+				D3D12_RESOURCE_BARRIER drawInstBufferBarrier{};
+				CreateResourcesTransitionBarrier(drawInstBufferBarrier, m_varBuffers[i].drawInstBuffer.buffer.Get(),
 					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-				varBufferId++;
+				varBuffersFinalState.PushBack(drawInstBufferBarrier);
 			}
 
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
-				CreateResourcesTransitionBarrier(varBuffersFinalState[varBufferId], m_varBuffers[i].lodInstBuffer.buffer.Get(),
+				D3D12_RESOURCE_BARRIER lodInstBufferBarrier{};
+				CreateResourcesTransitionBarrier(lodInstBufferBarrier, m_varBuffers[i].lodInstBuffer.buffer.Get(),
 					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-				varBufferId++;
+				varBuffersFinalState.PushBack(lodInstBufferBarrier);
 			}
 		}
 
-		frameTools.mainGraphicsCommandList->ResourceBarrier(BLIT_ARRAY_SIZE(varBuffersFinalState), varBuffersFinalState);
+		frameTools.mainGraphicsCommandList->ResourceBarrier((UINT)varBuffersFinalState.GetSize(), varBuffersFinalState.Data());
 
 		for (uint32_t i = 0; i < m_textureCount; ++i)
 		{
@@ -1051,6 +1118,11 @@ namespace BlitzenDX12
 		{
 			frameTools.inFlightFence->SetEventOnCompletion(fence, frameTools.inFlightFenceEvent);
 			WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
+		}
+
+		if constexpr (CE_DX12OCCLUSION)
+		{
+			DispatchDrawVisibilityBufferCleaner();
 		}
 	}
 }
