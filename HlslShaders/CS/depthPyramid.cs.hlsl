@@ -3,8 +3,7 @@ RWTexture2D<float4> depthPyramid : register(u0);
 
 cbuffer PyramidMip : register(b0)
 {
-    uint width;
-    uint height;
+    float2 imageSize;
     uint level;
 };
 
@@ -12,29 +11,29 @@ cbuffer PyramidMip : register(b0)
 [numthreads(32, 32, 1)] 
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    uint2 texSize = uint2(width, height); 
-    
     float depth = 0;
+    int2 texCoords = round((float2(dispatchThreadID.xy) + float2(0.5f, 0.5f)) / imageSize);
     // Starts with depth target
     if(level == 0)
     {
-        depth = depthTarget.Load(uint3(dispatchThreadID.xy + uint2(0.5, 0.5), level)).r;
+        depth = depthTarget.Load(int3(texCoords, level)).r;
     }
     // Loads previous mip
     else
     {
-        depth = depthPyramid.Load(uint3(dispatchThreadID.xy + uint2(0.5, 0.5), level - 1)).r;
+        
+        depth = depthPyramid.Load(int3(texCoords, level - 1)).r;
     }
 
     // Use some form of reduction, such as averaging or min/max, depending on your needs.
     // This example does a simple min reduction, comparing with the surrounding pixels:
-    if (dispatchThreadID.x < texSize.x - 1 && dispatchThreadID.y < texSize.y - 1)
+    if (dispatchThreadID.x < imageSize.x - 1 && dispatchThreadID.y < imageSize.y - 1)
     {
-        float depthRight = depthPyramid.Load(uint3(dispatchThreadID.xy + uint2(1, 0), level)).r;
-        float depthDown = depthPyramid.Load(uint3(dispatchThreadID.xy + uint2(0, 1), level)).r;
+        float depthRight = depthPyramid.Load(int3(texCoords + int2(1, 0), level)).r;
+        float depthDown = depthPyramid.Load(int3(texCoords + int2(0, 1), level)).r;
         
         depth = min(depth, min(depthRight, depthDown));
     }
 
-    depthPyramid[dispatchThreadID.xy] = depth;
+    depthPyramid[texCoords] = depth;
 }

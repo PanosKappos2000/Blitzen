@@ -26,39 +26,46 @@ bool FrustumCheck(float3 center, float radius, float frustumRight, float frustum
 }
 
 // 2D Polyhedral Bounds of a Clipped, Perspective-Projected 3D Sphere. Michael Mara, Morgan McGuire. 2013
-// Basically, this will be used to turn each object's bounding spere into an AABB to be used for occlusion culling
-bool projectSphere(float3 c, float r, float znear, float P00, float P11, out float4 aabb)
+bool ProjectSphere(float3 center, float radius, float znear, float P00, float P11, out float4 aabb)
 {
-	if (c.z < r + znear)
+    // Too close to the camera
+	if (center.z < radius + znear)
     {
 		return false;
     }
 
-	float3 cr = c * r;
-	float czr2 = c.z * c.z - r * r;
+	float3 scaledCenter = mul(center, radius);
+	float zProjector = center.z * center.z - radius * radius;
 
-	float vx = sqrt(c.x * c.x + czr2);
-	float minx = (vx * c.x - cr.z) / (vx * c.z + cr.x);
-	float maxx = (vx * c.x + cr.z) / (vx * c.z - cr.x);
+    // Projected sphere width
+	float xProjRadius = sqrt(center.x * center.x + zProjector);
+	float xMin = (xProjRadius * center.x - scaledCenter.z) / (xProjRadius * center.z + scaledCenter.x);
+	float xMax = (xProjRadius * center.x + scaledCenter.z) / (xProjRadius * center.z - scaledCenter.x);
 
-	float vy = sqrt(c.y * c.y + czr2);
-	float miny = (vy * c.y - cr.z) / (vy * c.z + cr.y);
-	float maxy = (vy * c.y + cr.z) / (vy * c.z - cr.y);
+    // Projected sphere height
+	float yProjRadius = sqrt(center.y * center.y + zProjector);
+	float yMin = (yProjRadius * center.y - scaledCenter.z) / (yProjRadius * center.z + scaledCenter.y);
+	float yMax = (yProjRadius * center.y + scaledCenter.z) / (yProjRadius * center.z - scaledCenter.y);
 
-	aabb = float4(minx * P00, miny * P11, maxx * P00, maxy * P11);
-	aabb = aabb.xwzy * float4(0.5f, -0.5f, 0.5f, -0.5f) + float4(0.5f, 0.5f, 0.5f, 0.5f); // clip space -> uv space
+    // Conversion to aabb
+	aabb = float4(xMin * P00, yMin * P11, xMax * P00, yMax * P11);
+	aabb = mul(aabb.xwzy, float4(0.5f, -0.5f, 0.5f, -0.5f)) + float4(0.5f, 0.5f, 0.5f, 0.5f); // clip space -> uv space
 
 	return true;
 }
 
-bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, float pyramidWidth, float pyramidHeight, float3 center, float radius, float zNear)
+bool OcclusionCheck(float4 aabb, RWTexture2D<float4> depthPyramid, float pyramidWidth, float pyramidHeight, float3 center, float radius, float zNear)
 {
+    // Width and height of aabb adjusted to pyramid scale
 	float width = (aabb.z - aabb.x) * pyramidWidth;
 	float height = (aabb.w - aabb.y) * pyramidHeight;
 
     // Finds the mip map level that will match the screen size of the sphere
 	float level = floor(log2(max(width, height)));
+
+    //float2 texCoords = float2(aabb.xy + aabb.zw) * 
 	float depth = depthPyramid.Load(int3((aabb.xy + aabb.zw) * 0.5, level)).x;
+
 	float depthSphere = zNear / (center.z - radius);
 
 	return depthSphere > depth;

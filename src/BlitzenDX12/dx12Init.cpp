@@ -154,9 +154,7 @@ namespace BlitzenDX12
         m_descriptorContext.srvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         m_descriptorContext.samplerHandle = m_samplerHeap->GetGPUDescriptorHandleForHeapStart();
         m_descriptorContext.samplerIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-        m_descriptorContext.rtvHandle = m_rtvHeap->GetGPUDescriptorHandleForHeapStart();
         m_descriptorContext.rtvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        m_descriptorContext.dsvHandle = m_dsvHeap->GetGPUDescriptorHandleForHeapStart();
         m_descriptorContext.dsvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 

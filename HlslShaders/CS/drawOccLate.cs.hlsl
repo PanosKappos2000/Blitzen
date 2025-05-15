@@ -32,6 +32,16 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
 
+    // Occlusion culling
+    if (visible)
+	{
+		float4 aabb;
+		if (ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
+		{
+			visible = visible && OcclusionCheck(aabb, depthPyramid, pyramidWidth, pyramidHeight, center, radius, zNear);
+		}
+	}
+
     if(visible && drawVisibilityBuffer[objId] == 0)
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);

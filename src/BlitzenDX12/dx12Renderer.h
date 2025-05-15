@@ -135,7 +135,6 @@ namespace BlitzenDX12
 
 
             /* RTV HEAP */
-            D3D12_GPU_DESCRIPTOR_HANDLE rtvHandle;
             SIZE_T rtvIncrementSize;
             SIZE_T rtvHeapOffset{ 0 };
 
@@ -144,7 +143,6 @@ namespace BlitzenDX12
 
 
             /* DSV HEAP */
-            D3D12_GPU_DESCRIPTOR_HANDLE dsvHandle;
             SIZE_T dsvIncrementSize;
             SIZE_T dsvHeapOffset{ 0 };
 

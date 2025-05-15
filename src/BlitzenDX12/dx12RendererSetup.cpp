@@ -464,7 +464,23 @@ namespace BlitzenDX12
 
 		if constexpr (CE_DX12OCCLUSION)
 		{
+			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawOccFirst.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawCull.cs shader program");
+				return 0;
+			}
 
+			if (!CreateComputeShaderProgram(device, context.drawOccRoot, context.ppDrawOccPso, "HlslShaders/CS/drawOccLate.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawOccLate.cs shader program");
+				return 0;
+			}
+
+			if (!CreateComputeShaderProgram(device, context.depthPyramidRoot, context.ppDepthPyramidPso, "HlslShaders/CS/depthPyramid.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create depthPyramid.cs shader program");
+				return 0;
+			}
 		}
 		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 		{
@@ -945,8 +961,8 @@ namespace BlitzenDX12
 
 			if constexpr (CE_DX12OCCLUSION)
 			{
-				//CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					//descriptorContext.srvHeapOffset, renderObjectCount, sizeof(uint32_t), 0);
+				CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
+					descriptorContext.srvHeapOffset, renderCount, sizeof(uint32_t), 0);
 			}
 			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 			{
@@ -1017,7 +1033,8 @@ namespace BlitzenDX12
 
 		PipelineCreationContext pipelineContext{ m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf(), 
 			m_drawCullSignature.Get(), m_drawCullPso.ReleaseAndGetAddressOf(), m_drawInstCmdPso.ReleaseAndGetAddressOf(), 
-			m_drawInstCountResetPso.ReleaseAndGetAddressOf(), m_drawCountResetRoot.Get(), m_drawCountResetPso.ReleaseAndGetAddressOf()};
+			m_drawInstCountResetPso.ReleaseAndGetAddressOf(), m_drawCountResetRoot.Get(), m_drawCountResetPso.ReleaseAndGetAddressOf(), 
+			m_drawOccLateSignature.Get(), m_drawOccLatePso.ReleaseAndGetAddressOf(), m_depthPyramidSignature.Get(), m_depthPyramidPso.ReleaseAndGetAddressOf()};
 		if (!CreatePipelines(m_device.Get(), pipelineContext))
 		{
 			BLIT_ERROR("Failed to create graphics pipelines");
