@@ -67,6 +67,42 @@ namespace BlitzenDX12
 		commandList->RSSetScissorRects(1, &scissorRect);
 	}
 
+	static void DrawCountReset(ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* resetRoot, 
+		ID3D12PipelineState* resetPso, D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle, Dx12Renderer::VarBuffers& varBuffers)
+	{
+		// Reource barrier before count is reset and commands are rewritten
+		D3D12_RESOURCE_BARRIER resetBarriers[2]{};
+		CreateResourcesTransitionBarrier(resetBarriers[0], varBuffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		CreateResourceUAVBarrier(resetBarriers[1], varBuffers.indirectDrawCount.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(resetBarriers), resetBarriers);
+
+		// Descriptors
+		commandList->SetComputeRootSignature(resetRoot);
+		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, cullSrvHandle);
+
+		// Pipeline + constants
+		commandList->SetPipelineState(resetPso);
+
+		commandList->Dispatch(1, 1, 1);
+	}
+
+	static void CullObjects(ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* cullRoot, ID3D12PipelineState* cullPso, uint32_t objCount, 
+		Dx12Renderer::DescriptorContext& descriptorContext, UINT frame)
+	{
+		// Descriptors
+		commandList->SetComputeRootSignature(cullRoot);
+		commandList->SetComputeRootDescriptorTable(Ce_CullSharedSRVsParameterId, descriptorContext.sharedSrvHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, descriptorContext.cullSrvHandle[frame]);
+
+		// Pipeline + constants
+		commandList->SetPipelineState(cullPso);
+		commandList->SetComputeRoot32BitConstant(Ce_CullDrawCountParameterId, objCount, 0);
+
+		// CULL
+		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(objCount, 64), 1, 1);
+	}
+
 	static void DrawCullPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle, 
 		D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
 		ID3D12RootSignature* resetRoot, ID3D12PipelineState* resetPso, ID3D12RootSignature* cullRoot, ID3D12PipelineState* cullPso,
@@ -75,44 +111,113 @@ namespace BlitzenDX12
 		// Binds heap for compute
 		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
 		commandList->SetDescriptorHeaps(1, srvHeaps);
-		commandList->SetComputeRootSignature(resetRoot);
 
-		// Reource barrier before count is reset and commands are rewritten
-		D3D12_RESOURCE_BARRIER preCullingDispatchBarriers[4]{};
-		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+		// Resets Count
+		DrawCountReset(commandList, resetRoot, resetPso, cullSrvHandle, varBuffers);
+
+		// Culling barrier, waits for draw count reset and draw command read
+		D3D12_RESOURCE_BARRIER cullingBarriers[3]{};
+		// Count reset barrier 
+		CreateResourceUAVBarrier(cullingBarriers[0], varBuffers.indirectDrawCount.buffer.Get());
+		// Command read barrier
+		CreateResourcesTransitionBarrier(cullingBarriers[1], varBuffers.indirectDrawBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+		CreateResourceUAVBarrier(cullingBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
+
+		// Cull
+		CullObjects(commandList, cullRoot, cullPso, objCount, descriptorContext, frame);
+
+		// Block graphics, should wait for command and count write
+		D3D12_RESOURCE_BARRIER graphicsBarriers[4]{};
+		CreateResourcesTransitionBarrier(graphicsBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		CreateResourcesTransitionBarrier(graphicsBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		CreateResourceUAVBarrier(graphicsBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		CreateResourceUAVBarrier(graphicsBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
+	}
+
+	static void DrawOccFirstPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle,
+		D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
+		ID3D12RootSignature* resetRoot, ID3D12PipelineState* resetPso, ID3D12RootSignature* cullRoot, ID3D12PipelineState* cullPso,
+		Dx12Renderer::VarBuffers& varBuffers, uint32_t objCount)
+	{
+		// Binds heap for compute
+		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		commandList->SetDescriptorHeaps(1, srvHeaps);
+
+		// Resets Count
+		DrawCountReset(commandList, resetRoot, resetPso, cullSrvHandle, varBuffers);
+
+		// Culling barrier, waits for draw count reset and draw command read, and draw visibility write as well
+		D3D12_RESOURCE_BARRIER cullingBarriers[4]{};
+		// Count reset barrier 
+		CreateResourceUAVBarrier(cullingBarriers[0], varBuffers.indirectDrawCount.buffer.Get());
+		// Command read barrier
+		CreateResourcesTransitionBarrier(cullingBarriers[1], varBuffers.indirectDrawBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		CreateResourceUAVBarrier(preCullingDispatchBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
-		CreateResourceUAVBarrier(preCullingDispatchBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
-		commandList->ResourceBarrier(4, preCullingDispatchBarriers);
+		CreateResourceUAVBarrier(cullingBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		// Draw visibility barrier
+		CreateResourceUAVBarrier(cullingBarriers[3], varBuffers.drawVisibilityBuffer.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
 
-		// Resets count
-		commandList->SetPipelineState(resetPso);
-		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, cullSrvHandle);
-		commandList->Dispatch(1, 1, 1);
+		// CULL PREVIOUS FRAME VISIBLE
+		CullObjects(commandList, cullRoot, cullPso, objCount, descriptorContext, frame);
 
-		D3D12_RESOURCE_BARRIER drawCountResetBarrier{};
-		CreateResourceUAVBarrier(drawCountResetBarrier, varBuffers.indirectDrawCount.buffer.Get());
-		commandList->ResourceBarrier(1, &drawCountResetBarrier);
-
-		// Culling
-		commandList->SetComputeRootSignature(cullRoot);
-		commandList->SetComputeRootDescriptorTable(Ce_CullSharedSRVsParameterId, sharedSrvHandle);
-		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, cullSrvHandle);
-		commandList->SetPipelineState(cullPso);
-		commandList->SetComputeRoot32BitConstant(Ce_CullDrawCountParameterId, objCount, 0);
-		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(objCount, 64), 1, 1);
-
-		// Transitions and blocks graphics
-		D3D12_RESOURCE_BARRIER postCullingBarriers[4]{};
-		CreateResourcesTransitionBarrier(postCullingBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+		// Block graphics, should wait for command and count write
+		D3D12_RESOURCE_BARRIER graphicsBarriers[4]{};
+		CreateResourcesTransitionBarrier(graphicsBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		CreateResourcesTransitionBarrier(postCullingBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+		CreateResourcesTransitionBarrier(graphicsBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		CreateResourceUAVBarrier(postCullingBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
-		CreateResourceUAVBarrier(postCullingBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
-		commandList->ResourceBarrier(4, postCullingBarriers);
+		CreateResourceUAVBarrier(graphicsBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		CreateResourceUAVBarrier(graphicsBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
+	}
+
+	static void DrawOccLatePass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle,
+		D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
+		ID3D12RootSignature* resetRoot, ID3D12PipelineState* resetPso, ID3D12RootSignature* cullRoot, ID3D12PipelineState* cullPso,
+		Dx12Renderer::VarBuffers& varBuffers, uint32_t objCount)
+	{
+		// Binds heap for compute
+		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		commandList->SetDescriptorHeaps(1, srvHeaps);
+
+		// Resets Count
+		DrawCountReset(commandList, resetRoot, resetPso, cullSrvHandle, varBuffers);
+
+		// Culling barrier, waits for draw count reset and draw command read, and draw visibility read as well
+		// Finally, it needs to wait for the depth pyramid (occlusion culling)
+		D3D12_RESOURCE_BARRIER cullingBarriers[6]{};
+		// Count reset barrier 
+		CreateResourceUAVBarrier(cullingBarriers[0], varBuffers.indirectDrawCount.buffer.Get());
+		// Command read barrier
+		CreateResourcesTransitionBarrier(cullingBarriers[1], varBuffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		CreateResourceUAVBarrier(cullingBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		// Draw visibility barrier
+		CreateResourceUAVBarrier(cullingBarriers[3], varBuffers.drawVisibilityBuffer.buffer.Get());
+		// Depth pyramid barrier
+		CreateResourcesTransitionBarrier(cullingBarriers[4], varBuffers.depthPyramid.pyramid.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		CreateResourceUAVBarrier(cullingBarriers[5], varBuffers.depthPyramid.pyramid.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
+
+		// OCCLUSION CULLING(+ everything else)
+		CullObjects(commandList, cullRoot, cullPso, objCount, descriptorContext, frame);
+
+		// Block graphics, should wait for command and count write
+		D3D12_RESOURCE_BARRIER graphicsBarriers[4]{};
+		CreateResourcesTransitionBarrier(graphicsBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		CreateResourcesTransitionBarrier(graphicsBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		CreateResourceUAVBarrier(graphicsBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		CreateResourceUAVBarrier(graphicsBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
 	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle,
@@ -126,70 +231,68 @@ namespace BlitzenDX12
 		// Binds heap for compute
 		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
 		commandList->SetDescriptorHeaps(1, srvHeaps);
-		commandList->SetComputeRootSignature(resetRoot);
 
-		// Reource barrier before count is reset and commands are rewritten
-		D3D12_RESOURCE_BARRIER preCullingDispatchBarriers[4]{};
-		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		CreateResourcesTransitionBarrier(preCullingDispatchBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
-			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		CreateResourceUAVBarrier(preCullingDispatchBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
-		CreateResourceUAVBarrier(preCullingDispatchBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
-		commandList->ResourceBarrier(4, preCullingDispatchBarriers);
+		// Resets Count
+		DrawCountReset(commandList, resetRoot, resetPso, cullSrvHandle, varBuffers);
 
-		// Resets count
-		commandList->SetPipelineState(resetPso);
-		commandList->SetComputeRootDescriptorTable(0, cullSrvHandle);
-		commandList->Dispatch(1, 1, 1);
+		// Blocks instance counter reset
+		D3D12_RESOURCE_BARRIER instCounterResetBarrier{};
+		CreateResourceUAVBarrier(instCounterResetBarrier, varBuffers.lodInstBuffer.buffer.Get());
+		commandList->ResourceBarrier(1, &instCounterResetBarrier);
 
-		// Barrier for inst count reset
-		D3D12_RESOURCE_BARRIER resetInstBarrier{};
-		CreateResourceUAVBarrier(resetInstBarrier, varBuffers.lodInstBuffer.buffer.Get());
-		commandList->ResourceBarrier(1, &resetInstBarrier);
-
+		// Descriptors
 		commandList->SetComputeRootSignature(cullRoot);
-
-		commandList->SetPipelineState(instResetPso);
 		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, cullSrvHandle);
+
+		// Pipeline + Constants
+		commandList->SetPipelineState(instResetPso);
 		commandList->SetComputeRoot32BitConstant(Ce_CullDrawCountParameterId, (UINT)lodDataCount, 0);
+
+		// Resets instance counters
 		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(uint32_t(lodDataCount), 64), 1, 1);
 
-		// Wait for reset before culling
-		D3D12_RESOURCE_BARRIER countResetBarriers[3]{};
-		CreateResourceUAVBarrier(countResetBarriers[0], varBuffers.indirectDrawCount.buffer.Get());
-		CreateResourceUAVBarrier(countResetBarriers[1], varBuffers.lodInstBuffer.buffer.Get());
-		CreateResourceUAVBarrier(countResetBarriers[2], varBuffers.drawInstBuffer.buffer.Get());
-		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(countResetBarriers), countResetBarriers);
+		// Culling barriers. Waits for draw and instance count reset, instance buffer and draw buffer read
+		D3D12_RESOURCE_BARRIER cullingBarriers[5]{};
+		// Draw commands barrier
+		CreateResourcesTransitionBarrier(cullingBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		CreateResourceUAVBarrier(cullingBarriers[1], varBuffers.indirectDrawBuffer.buffer.Get());
+		// Draw count barrier
+		CreateResourceUAVBarrier(cullingBarriers[2], varBuffers.indirectDrawCount.buffer.Get());
+		// Instance Counter barrier
+		CreateResourceUAVBarrier(cullingBarriers[3], varBuffers.lodInstBuffer.buffer.Get());
+		// Instance barrier
+		CreateResourceUAVBarrier(cullingBarriers[4], varBuffers.drawInstBuffer.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
 
-		// Culling
-		commandList->SetComputeRootDescriptorTable(Ce_CullSharedSRVsParameterId, sharedSrvHandle);
-		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, cullSrvHandle);
-		commandList->SetPipelineState(cullPso);
-		commandList->SetComputeRoot32BitConstant(Ce_CullDrawCountParameterId, objCount, 0);
-		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(objCount, 64), 1, 1);
+		// Cull
+		CullObjects(commandList, cullRoot, cullPso, objCount, descriptorContext, frame);
 
-		// Waits for culling and instance count
+		// Blocks instancing until the instance counters are set
 		D3D12_RESOURCE_BARRIER instancingBarrier{};
 		CreateResourceUAVBarrier(instancingBarrier, varBuffers.lodInstBuffer.buffer.Get());
 		commandList->ResourceBarrier(1, &instancingBarrier);
 
-		// Creates commands with instancing
+		// Descriptors
 		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, cullSrvHandle);
+
+		// Pipeline + Constants
 		commandList->SetPipelineState(drawInstCmdPso);
 		commandList->SetComputeRoot32BitConstant(Ce_CullDrawCountParameterId, (UINT)lodDataCount, 0);
+
+		// Sets commands with instancing
 		commandList->Dispatch(BlitML::GetComputeShaderGroupSize((uint32_t)lodDataCount, 64), 1, 1);
 
-		// Transitions and blocks graphics
-		D3D12_RESOURCE_BARRIER postCullingBarriers[5]{};
-		CreateResourcesTransitionBarrier(postCullingBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+		// Blocks graphics, wait for count and command write and also instance buffer write
+		D3D12_RESOURCE_BARRIER graphicsBarriers[5]{};
+		CreateResourcesTransitionBarrier(graphicsBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		CreateResourcesTransitionBarrier(postCullingBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+		CreateResourcesTransitionBarrier(graphicsBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		CreateResourceUAVBarrier(postCullingBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
-		CreateResourceUAVBarrier(postCullingBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
-		CreateResourceUAVBarrier(postCullingBarriers[4], varBuffers.drawInstBuffer.buffer.Get());
-		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(postCullingBarriers), postCullingBarriers);
+		CreateResourceUAVBarrier(graphicsBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
+		CreateResourceUAVBarrier(graphicsBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
+		CreateResourceUAVBarrier(graphicsBarriers[4], varBuffers.drawInstBuffer.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
 	static void ClearWindow(ID3D12GraphicsCommandList* cmdList, float swapchainWidth, float swapchainHeight, 

@@ -307,6 +307,8 @@ namespace BlitzenDX12
 		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
+
+		// ADDITIONAL
 		if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// draw occlusion mode does not have instancing
 		{
 			D3D12_DESCRIPTOR_RANGE instanceBufferRange{};
