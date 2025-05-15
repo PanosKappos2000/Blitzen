@@ -63,7 +63,7 @@ namespace BlitzenDX12
         for (UINT i = 0; i < ce_framesInFlight; i++)
         {
             D3D12_CLEAR_VALUE clear{};
-            clear.Format = Ce_DepthTargetFormat;
+            clear.Format = Ce_DepthTargetDsvFormat;
             clear.DepthStencil.Depth = Ce_ClearDepth;
             auto resourceRes{ CreateImageResource(device, depthBuffers[i].GetAddressOf(), swapchainWidth, swapchainHeight, 1,
                 Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear) };
@@ -73,7 +73,7 @@ namespace BlitzenDX12
             }
 
             D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc{};
-            viewDesc.Format = Ce_DepthTargetFormat;
+            viewDesc.Format = Ce_DepthTargetDsvFormat;
             viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
             // Creates the view with the right offset
             dsvHeapHandle.ptr += dsvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -170,6 +170,21 @@ namespace BlitzenDX12
 
         handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         device->CreateUnorderedAccessView(resource, counterResource, &uavDesc, handle);
+
+        srvOffset++;
+    }
+
+    void Create2DTextureUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, DXGI_FORMAT format, 
+        UINT mipSlice, SIZE_T& srvOffset, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+    {
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = format;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        uavDesc.Texture2D.MipSlice = mipSlice;
+        uavDesc.Texture2D.PlaneSlice = 0;
+
+        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        device->CreateUnorderedAccessView(resource, nullptr, &uavDesc, handle);
 
         srvOffset++;
     }
@@ -332,6 +347,25 @@ namespace BlitzenDX12
         handle.ptr += samplerHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
         device->CreateSampler(&desc, handle);
         samplerHeapOffset++;
+    }
+
+    uint8_t CreateDepthPyramidResource(ID3D12Device* device, DepthPyramid& depthPyramid, uint32_t width, uint32_t height)
+    {
+        // Conservative starting extent
+        depthPyramid.width = BlitML::PreviousPow2(width);
+        depthPyramid.height = BlitML::PreviousPow2(height);
+        depthPyramid.mipCount = BlitML::GetDepthPyramidMipLevels(depthPyramid.width, depthPyramid.height);
+
+        // Image resource
+        if (!CreateImageResource(device, depthPyramid.pyramid.ReleaseAndGetAddressOf(), depthPyramid.width, depthPyramid.height, 
+            depthPyramid.mipCount, Ce_DepthPyramidFormat, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_HEAP_TYPE_DEFAULT, 
+            D3D12_RESOURCE_STATE_COMMON, nullptr))
+        {
+            BLIT_ERROR("Failed to create depth pyramid resource");
+            return 0;
+        }
+
+        return 1;
     }
 
     void PlaceFence(UINT64& fenceValue, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE& event)

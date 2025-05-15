@@ -34,8 +34,17 @@ namespace BlitzenDX12
     constexpr DXGI_USAGE Ce_SwapchainBufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	constexpr DXGI_SWAP_EFFECT Ce_SwapchainSwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
+#if defined(DX12_OCCLUSION_DRAW_CULL)
+    constexpr DXGI_FORMAT Ce_DepthTargetFormat = DXGI_FORMAT_R32_TYPELESS;
+#else
     constexpr DXGI_FORMAT Ce_DepthTargetFormat = DXGI_FORMAT_D32_FLOAT;
+#endif
+    constexpr DXGI_FORMAT Ce_DepthTargetDsvFormat = DXGI_FORMAT_D32_FLOAT;
+    constexpr DXGI_FORMAT Ce_DepthTargetSrvFormat = DXGI_FORMAT_R32_FLOAT;
     constexpr FLOAT Ce_ClearDepth = 0.f;
+
+    constexpr uint32_t Ce_DepthPyramidMaxMips = 16;
+    constexpr DXGI_FORMAT Ce_DepthPyramidFormat = DXGI_FORMAT_R32_FLOAT;
 
     constexpr D3D12_TEXTURE_LAYOUT Ce_DefaultTextureFormat = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 
@@ -111,7 +120,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_DrawVisibilityBufferRegister = 5;
     constexpr UINT Ce_DrawVisibilityBufferDescriptorCount = 1;
 
-    constexpr UINT Ce_DepthPyramidCullRegister = 6;
+    constexpr UINT Ce_DepthPyramidCullRegister = 10;
     constexpr UINT Ce_DepthPyramidCullDescriptorCount = 1;
 
     // ROOT PARAMETERS
@@ -245,6 +254,16 @@ namespace BlitzenDX12
         UINT mipLevels{ 0 };
         DXGI_FORMAT format{ DXGI_FORMAT_UNKNOWN };
         D3D12_GPU_DESCRIPTOR_HANDLE view;
+    };
+
+    struct DepthPyramid
+    {
+        DX12WRAPPER<ID3D12Resource> pyramid;
+        uint32_t width;
+        uint32_t height;
+
+        UINT mipCount{ 0 };
+        D3D12_GPU_DESCRIPTOR_HANDLE mips[Ce_DepthPyramidMaxMips];
     };
 
     // Draw Indirect command struct (passed to the shaders)

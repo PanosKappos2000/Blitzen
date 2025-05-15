@@ -18,6 +18,9 @@ namespace BlitzenDX12
     void CreateUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, ID3D12Resource* counterResource, D3D12_CPU_DESCRIPTOR_HANDLE handle,
         SIZE_T& srvOffset, UINT numElements, UINT stride, UINT64 counterOffsetInBytes, D3D12_BUFFER_UAV_FLAGS flags = D3D12_BUFFER_UAV_FLAG_NONE);
 
+    void Create2DTextureUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, DXGI_FORMAT format,
+        UINT mipSlice, SIZE_T& srvOffset, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+
     void CreateRenderTargetView(ID3D12Device* device, DXGI_FORMAT format, D3D12_RTV_DIMENSION dimension, ID3D12Resource* resource,
         D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& rtvOffset);
 
@@ -41,6 +44,8 @@ namespace BlitzenDX12
     void CreateSampler(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& samplerHeapOffset,
         D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW,
         FLOAT* pBorderColors, D3D12_FILTER filter, D3D12_COMPARISON_FUNC compFunc = D3D12_COMPARISON_FUNC_NEVER);
+
+    uint8_t CreateDepthPyramidResource(ID3D12Device* device, DepthPyramid& depthPyramid, uint32_t width, uint32_t height);
 
     void PlaceFence(UINT64& fenceValue, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE& event);
 
@@ -92,6 +97,7 @@ namespace BlitzenDX12
         {
             return 0;
         }
+
         // Staging buffer holds the data for the SSBO
         void* pMappedData{ nullptr };
         auto mappingRes{ tempStaging->Map(0, nullptr, &pMappedData) };
@@ -106,6 +112,7 @@ namespace BlitzenDX12
         {
             return 0;
         }
+
         mappingRes = ssbo.staging->Map(0, nullptr, &ssbo.pData);
         if (FAILED(mappingRes))
         {

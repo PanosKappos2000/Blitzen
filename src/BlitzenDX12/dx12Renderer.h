@@ -81,6 +81,8 @@ namespace BlitzenDX12
             SSBO lodInstBuffer;
 
             CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
+
+            DepthPyramid depthPyramid;
         };
 
         struct ConstBuffers
@@ -118,11 +120,14 @@ namespace BlitzenDX12
             SIZE_T materialSrvOffset;
             D3D12_GPU_DESCRIPTOR_HANDLE materialSrvHandle;
 
-            SIZE_T depthTargetSrvOffset;
-            D3D12_GPU_DESCRIPTOR_HANDLE depthTargetSrvHandle;
+            SIZE_T depthTargetSrvOffset[ce_framesInFlight];
+            D3D12_GPU_DESCRIPTOR_HANDLE depthTargetSrvHandle[ce_framesInFlight];
 
-            SIZE_T depthPyramidSrvOffset;
-            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSrvHandle;
+            SIZE_T depthPyramidSrvOffset[ce_framesInFlight];
+            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSrvHandle[ce_framesInFlight];
+
+            SIZE_T depthPyramidMipsSrvOffset[ce_framesInFlight];
+            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidMipsSrvHandle[ce_framesInFlight];
 
 
             /* SAMPLER HEAP */

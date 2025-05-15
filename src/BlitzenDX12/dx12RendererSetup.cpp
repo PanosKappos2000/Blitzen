@@ -376,7 +376,7 @@ namespace BlitzenDX12
 		if (CE_DX12OCCLUSION)
 		{
 			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
-			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DepthPyramidCullDescriptorCount, Ce_DepthPyramidCullRegister);
+			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidCullDescriptorCount, Ce_DepthPyramidCullRegister);
 			cullSrvRanges.PushBack(depthPyramidCullRange);
 
 			// Resets parameter and add depth pyramid for the late root signature
@@ -557,7 +557,7 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t CreateVarBuffers(ID3D12Device* device, ID3D12CommandQueue* commandQueue, Dx12Renderer::FrameTools& frameTools, 
-		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources)
+		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
 		const auto& transforms{ pResources->transforms };
 		const auto& lodData{ pResources->GetLodData() };
@@ -602,13 +602,24 @@ namespace BlitzenDX12
 			DX12WRAPPER<ID3D12Resource> lodInstStaging{ nullptr };
 			UINT64 lodInstanceBufferSize{ 0 };
 
+			DX12WRAPPER<ID3D12Resource> drawVisibilityStaging{ nullptr };
+			UINT64 visibilityBufferSize{ 0 };
+
 			if constexpr (CE_DX12OCCLUSION)
 			{
-				UINT64 drawVisibilityBufferSize{ sizeof(uint32_t) * renderCount };
-				if (!CreateBuffer(device, buffers.drawVisibilityBuffer.buffer.ReleaseAndGetAddressOf(), drawVisibilityBufferSize, 
-					D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+				BlitCL::DynamicArray<uint32_t> zeroData{ renderCount, 0 };
+				
+				visibilityBufferSize = CreateSSBO(device, buffers.drawVisibilityBuffer, drawVisibilityStaging, (size_t)renderCount,
+					zeroData.Data(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+				if(!visibilityBufferSize)
 				{
 					BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
+					return 0;
+				}
+
+				if (!CreateDepthPyramidResource(device, buffers.depthPyramid, swapchainWidth, swapchainHeight))
+				{
+					BLIT_ERROR("Failed to create depth pyramid for occlusion culling");
 					return 0;
 				}
 			}
@@ -636,26 +647,54 @@ namespace BlitzenDX12
 
 			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copyDestBarriers{ Ce_VarSSBODataCount };
 			CreateResourcesTransitionBarrier(copyDestBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-			if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not available for draw occlusion mode
+
+			// Conditional barriers
+			if constexpr (CE_DX12OCCLUSION)
+			{
+				D3D12_RESOURCE_BARRIER visibilityBufferDestBarrier{};
+				CreateResourcesTransitionBarrier(visibilityBufferDestBarrier, buffers.drawVisibilityBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+				copyDestBarriers.PushBack(visibilityBufferDestBarrier);
+			}
+			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 			{
 				D3D12_RESOURCE_BARRIER lodInstBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(lodInstBufferDestBarrier, buffers.lodInstBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 				copyDestBarriers.PushBack(lodInstBufferDestBarrier);
 			}
+
+			// Execute
 			frameTools.transferCommandList->ResourceBarrier((UINT)copyDestBarriers.GetSize(), copyDestBarriers.Data());
 
+			// Staging barriers
 			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copySourceBarriers{ Ce_VarSSBODataCount };
 			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not available for draw occlusion mode
+
+			// Conditional staging barriers
+			if constexpr (CE_DX12OCCLUSION)
+			{
+				D3D12_RESOURCE_BARRIER visibilityBufferSourceBarrier{};
+				CreateResourcesTransitionBarrier(visibilityBufferSourceBarrier, drawVisibilityStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+				copySourceBarriers.PushBack(visibilityBufferSourceBarrier);
+			}
+			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 			{
 				D3D12_RESOURCE_BARRIER lodInstBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(lodInstBufferSourceBarrier, lodInstStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 				copySourceBarriers.PushBack(lodInstBufferSourceBarrier);
 			}
+
+			// Execute
 			frameTools.transferCommandList->ResourceBarrier(UINT(copySourceBarriers.GetSize()), copySourceBarriers.Data());
 
+			// Copy
 			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), transformStaging.Get());
-			if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not available for draw occlusion mode
+
+			// Conditional copy
+			if constexpr (CE_DX12OCCLUSION)
+			{
+				frameTools.transferCommandList->CopyResource(buffers.drawVisibilityBuffer.buffer.Get(), drawVisibilityStaging.Get());
+			}
+			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 			{
 				frameTools.transferCommandList->CopyResource(buffers.lodInstBuffer.buffer.Get(), lodInstStaging.Get());
 			}
@@ -877,10 +916,55 @@ namespace BlitzenDX12
 		return 1;
 	}
 
+	static void CreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, Dx12Renderer::DescriptorContext& context, 
+		ID3D12DescriptorHeap* srvHeap, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
+	{
+		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			auto& var = pBuffers[i];
+
+			context.depthPyramidSrvOffset[i] = context.srvHeapOffset;
+			context.depthPyramidSrvHandle[i] = context.srvHandle;
+			context.depthPyramidSrvHandle[i].ptr += context.depthPyramidSrvOffset[i] * context.srvIncrementSize;
+
+			CreateTextureShaderResourceView(device, var.depthPyramid.pyramid.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				context.srvHeapOffset, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
+		}
+
+		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
+		{
+			auto& var = pBuffers[f];
+
+			context.depthPyramidMipsSrvOffset[f] = context.srvHeapOffset;
+			context.depthPyramidMipsSrvHandle[f] = context.srvHandle;
+			context.depthPyramidMipsSrvHandle[f].ptr += context.depthPyramidMipsSrvOffset[f] * context.srvIncrementSize;
+
+			auto mipHandleStart = context.depthPyramidMipsSrvHandle[f];
+			for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
+			{
+				Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, context.srvHeapOffset, 
+					srvHeap->GetCPUDescriptorHandleForHeapStart());
+
+				var.depthPyramid.mips[i] = mipHandleStart;
+				var.depthPyramid.mips[i].ptr += i * context.srvIncrementSize;
+			}
+		}
+
+		for (size_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			context.depthTargetSrvOffset[i] = context.srvHeapOffset;
+			context.depthTargetSrvHandle[i] = context.srvHandle;
+			context.depthTargetSrvHandle[i].ptr += context.depthTargetSrvOffset[i] * context.srvIncrementSize;
+
+			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				context.srvHeapOffset, Ce_DepthTargetSrvFormat, 1);
+		}
+	}
+
 	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
-		Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue,
-		Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, 
-		UINT textureCount, DX2DTEX* pTextures)
+		Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue, Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, 
+		BlitzenEngine::RenderingResources* pResources, UINT textureCount, DX2DTEX* pTextures, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, 
+		UINT drawHeight)
 	{
 		const auto& vertices{ pResources->GetHlslVertices() };
 		const auto& transforms{ pResources->transforms };
@@ -979,6 +1063,12 @@ namespace BlitzenDX12
 		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 			descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
 
+		if constexpr (CE_DX12OCCLUSION)
+		{
+			CreateDepthPyramidDescriptors(device, varBuffers, descriptorContext, srvHeap, pDepthTargets, drawWidth, drawHeight);	
+		}
+
+
 		
 		descriptorContext.texturesSrvOffset = descriptorContext.srvHeapOffset;
 		descriptorContext.textureSrvHandle = descriptorContext.srvHandle;
@@ -1017,14 +1107,15 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources))
+		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources, 
+			m_swapchainWidth, m_swapchainHeight))
 		{
 			BLIT_ERROR("Failed to create var buffers");
 			return 0;
 		}
 
 		CreateResourceViews(m_device.Get(), m_srvHeap.Get(), m_descriptorContext, m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), 
-			m_constBuffers, m_varBuffers, pResources, m_textureCount, m_tex2DList);
+			m_constBuffers, m_varBuffers, pResources, m_textureCount, m_tex2DList, m_depthBuffers, m_swapchainWidth, m_swapchainHeight);
 		if (!CheckForDeviceRemoval(m_device.Get()))
 		{
 			BLIT_ERROR("Failed to create shader resource views");
@@ -1094,7 +1185,21 @@ namespace BlitzenDX12
 
 		if constexpr (CE_DX12OCCLUSION)
 		{
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			{
+				D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
+				CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_varBuffers[i].drawVisibilityBuffer.buffer.Get(),
+					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				varBuffersFinalState.PushBack(drawVisibilityBarrier);
+			}
 
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			{
+				D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
+				CreateResourcesTransitionBarrier(depthPyramidBarrier, m_varBuffers[i].depthPyramid.pyramid.Get(),
+					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				varBuffersFinalState.PushBack(depthPyramidBarrier);
+			}
 		}
 		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 		{
@@ -1110,7 +1215,7 @@ namespace BlitzenDX12
 			{
 				D3D12_RESOURCE_BARRIER lodInstBufferBarrier{};
 				CreateResourcesTransitionBarrier(lodInstBufferBarrier, m_varBuffers[i].lodInstBuffer.buffer.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 				varBuffersFinalState.PushBack(lodInstBufferBarrier);
 			}
 		}
@@ -1135,11 +1240,6 @@ namespace BlitzenDX12
 		{
 			frameTools.inFlightFence->SetEventOnCompletion(fence, frameTools.inFlightFenceEvent);
 			WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
-		}
-
-		if constexpr (CE_DX12OCCLUSION)
-		{
-			DispatchDrawVisibilityBufferCleaner();
 		}
 	}
 }

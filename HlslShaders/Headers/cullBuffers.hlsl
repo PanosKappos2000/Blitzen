@@ -83,6 +83,6 @@ RWStructuredBuffer<uint> drawVisibilityBuffer : register (u5);
 
 #ifdef DRAW_CULL_OCCLUSION_LATE
 
-RWTexture2D<float4> depthPyramid : register (u6);
+Texture2D<float4> depthPyramid : register (t10);
 
 #endif
