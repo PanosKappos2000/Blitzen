@@ -63,8 +63,8 @@ bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, float pyramidWi
     // Finds the mip map level that will match the screen size of the sphere
 	float level = floor(log2(max(width, height)));
 
-    //float2 texCoords = float2(aabb.xy + aabb.zw) * 
-	float depth = depthPyramid.Load(int3((aabb.xy + aabb.zw) * 0.5, level)).x;
+    int2 texCoords = int2(round(float2(aabb.xy + aabb.zw) * 0.5));
+	float depth = depthPyramid.Load(int3(texCoords, level)).x;
 
 	float depthSphere = zNear / (center.z - radius);
 

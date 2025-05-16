@@ -23,6 +23,8 @@ add_executable(BlitzenEngine
                 src/BlitzenDX12/dx12Resources.cpp
                 src/BlitzenDX12/dx12Pipelines.h
                 src/BlitzenDX12/dx12Pipelines.cpp
+                src/BlitzenDX12/dx12RNDResources.h
+                src/BlitzenDX12/dx12RNDResources.cpp
                 src/BlitzenDX12/dx12Init.cpp
                 src/BlitzenDX12/dx12RendererSetup.cpp
                 src/BlitzenDX12/dx12Draw.cpp
@@ -181,7 +183,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
-                            #BLITZEN_DRAW_INSTANCED_CULLING
+                            BLITZEN_DRAW_INSTANCED_CULLING
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens

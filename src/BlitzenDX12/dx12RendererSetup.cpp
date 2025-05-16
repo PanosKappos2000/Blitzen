@@ -1,6 +1,7 @@
 #include "dx12Renderer.h"
 #include "dx12Pipelines.h"
 #include "dx12Resources.h"
+#include "dx12RNDResources.h"
 
 namespace BlitzenDX12
 {
@@ -379,24 +380,30 @@ namespace BlitzenDX12
 		{
 			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
 			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidCullDescriptorCount, Ce_DepthPyramidCullRegister);
-			cullSrvRanges.PushBack(depthPyramidCullRange);
 
-			// Resets parameter and add depth pyramid for the late root signature
-			CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
+			D3D12_ROOT_PARAMETER drawOccLateRootParameters[Ce_DrawOccLateRootParameterCount]{};
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(drawOccLateRootParameters[Ce_CullDrawCountParameterId], Ce_CullShaderRootConstantRegister, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateDepthPyramidParameterId], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
-			if (!CreateRootSignature(device, ppDrawOccSignature, Ce_CullRootParameterCount, drawCullRootParameters))
+			if (!CreateRootSignature(device, ppDrawOccSignature, Ce_DrawOccLateRootParameterCount, drawOccLateRootParameters))
 			{
 				BLIT_ERROR("Failed to create late cull (occlusion culling) root parameter");
 				return 0;
 			}
 
-			D3D12_DESCRIPTOR_RANGE depthPyramidGenerationRanges[Ce_DepthPyramidRangeCount]{};
-			CreateDescriptorRange(depthPyramidGenerationRanges[Ce_DepthPyramidGenUAVRootId], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DepthPyramidGenUAVDescriptorCount, Ce_DepthPyramidGenUAVRegister);
-			CreateDescriptorRange(depthPyramidGenerationRanges[Ce_DepthTargetReadRootId], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthTargetReadDescriptorCount, Ce_DepthTargetReadRegister);
+			D3D12_DESCRIPTOR_RANGE depthPyramidUAVRange{};
+			CreateDescriptorRange(depthPyramidUAVRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DepthPyramidGenUAVDescriptorCount, Ce_DepthPyramidGenUAVRegister);
+
+			D3D12_DESCRIPTOR_RANGE depthPyramidSRVRange{};
+			CreateDescriptorRange(depthPyramidSRVRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidSRVDescriptorCount, Ce_DepthPyramidSRVRegister);
 
 			D3D12_ROOT_PARAMETER depthPyramidGenParameters[Ce_DepthPyramidParameterCount]{};
-			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidDescriptorTableParameterId], depthPyramidGenerationRanges, Ce_DepthPyramidRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_DepthPyramidRootConstantParameterId], 0, 0, 3, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidUAVRootParameterId], &depthPyramidUAVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidSRVRootParameterId], &depthPyramidSRVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_DepthPyramidRootConstantParameterId], Ce_DepthPyramidRootConstantsRegister, 
+				0, Ce_DepthPyramidRootConstantsCount, D3D12_SHADER_VISIBILITY_ALL);
 
 			if (!CreateRootSignature(device, ppDepthPyramidSignature, Ce_DepthPyramidParameterCount, depthPyramidGenParameters))
 			{
@@ -918,51 +925,6 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static void CreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, Dx12Renderer::DescriptorContext& context, 
-		ID3D12DescriptorHeap* srvHeap, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
-	{
-		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			auto& var = pBuffers[i];
-
-			context.depthPyramidSrvOffset[i] = context.srvHeapOffset;
-			context.depthPyramidSrvHandle[i] = context.srvHandle;
-			context.depthPyramidSrvHandle[i].ptr += context.depthPyramidSrvOffset[i] * context.srvIncrementSize;
-
-			CreateTextureShaderResourceView(device, var.depthPyramid.pyramid.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				context.srvHeapOffset, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
-		}
-
-		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
-		{
-			auto& var = pBuffers[f];
-
-			context.depthPyramidMipsSrvOffset[f] = context.srvHeapOffset;
-			context.depthPyramidMipsSrvHandle[f] = context.srvHandle;
-			context.depthPyramidMipsSrvHandle[f].ptr += context.depthPyramidMipsSrvOffset[f] * context.srvIncrementSize;
-
-			auto mipHandleStart = context.depthPyramidMipsSrvHandle[f];
-			for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
-			{
-				Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, context.srvHeapOffset, 
-					srvHeap->GetCPUDescriptorHandleForHeapStart());
-
-				var.depthPyramid.mips[i] = mipHandleStart;
-				var.depthPyramid.mips[i].ptr += i * context.srvIncrementSize;
-			}
-		}
-
-		for (size_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			context.depthTargetSrvOffset[i] = context.srvHeapOffset;
-			context.depthTargetSrvHandle[i] = context.srvHandle;
-			context.depthTargetSrvHandle[i].ptr += context.depthTargetSrvOffset[i] * context.srvIncrementSize;
-
-			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				context.srvHeapOffset, Ce_DepthTargetSrvFormat, 1);
-		}
-	}
-
 	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
 		Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue, Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, 
 		BlitzenEngine::RenderingResources* pResources, UINT textureCount, DX2DTEX* pTextures, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, 
@@ -1054,8 +1016,12 @@ namespace BlitzenDX12
 			{
 				CreateUnorderedAccessView(device, vars.lodInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
-			}
-			
+			}	
+		}
+
+		if constexpr (CE_DX12OCCLUSION)
+		{
+			CreateDepthPyramidDescriptors(device, varBuffers, descriptorContext, srvHeap, pDepthTargets, drawWidth, drawHeight);
 		}
 		
 		// material buffer, single srv bound to pixel shader
@@ -1065,13 +1031,6 @@ namespace BlitzenDX12
 		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 			descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
 
-		if constexpr (CE_DX12OCCLUSION)
-		{
-			CreateDepthPyramidDescriptors(device, varBuffers, descriptorContext, srvHeap, pDepthTargets, drawWidth, drawHeight);	
-		}
-
-
-		
 		descriptorContext.texturesSrvOffset = descriptorContext.srvHeapOffset;
 		descriptorContext.textureSrvHandle = descriptorContext.srvHandle;
 		descriptorContext.textureSrvHandle.ptr += descriptorContext.texturesSrvOffset * descriptorContext.srvIncrementSize;
@@ -1086,7 +1045,7 @@ namespace BlitzenDX12
 	}
 
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
-	float& pyramidWidth, float& pyramidHeight)
+		float& pyramidWidth, float& pyramidHeight)
 	{
 		pResources->GenerateHlslVertices();
 
@@ -1133,6 +1092,10 @@ namespace BlitzenDX12
 			BLIT_ERROR("Failed to create graphics pipelines");
 			return 0;
 		}
+
+		// Gives the pyramid size to th camera. There is not much reason for the camera to have it, but it is what it is.
+		pyramidWidth = float(m_varBuffers[0].depthPyramid.width);
+		pyramidHeight = float(m_varBuffers[0].depthPyramid.height);
 
 		return 1;
 	}
@@ -1199,7 +1162,7 @@ namespace BlitzenDX12
 			{
 				D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
 				CreateResourcesTransitionBarrier(depthPyramidBarrier, m_varBuffers[i].depthPyramid.pyramid.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 				varBuffersFinalState.PushBack(depthPyramidBarrier);
 			}
 		}

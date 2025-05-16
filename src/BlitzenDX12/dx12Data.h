@@ -91,7 +91,7 @@ namespace BlitzenDX12
     constexpr uint32_t Ce_CullSrvRangeCount = 3;
 
 #if defined(DX12_OCCLUSION_DRAW_CULL)
-    constexpr uint32_t Ce_AdditionalCullSRVs = 2;
+    constexpr uint32_t Ce_AdditionalCullSRVs = 3 + Ce_DepthPyramidMaxMips;
 #elif defined(BLITZEN_DRAW_INSTANCED_CULLING)
     constexpr uint32_t Ce_AdditionalCullSRVs = 1;
 #else
@@ -129,6 +129,10 @@ namespace BlitzenDX12
     constexpr UINT Ce_CullExclusiveSRVsParameterId = 0;
     constexpr UINT Ce_CullSharedSRVsParameterId = 1;
     constexpr UINT Ce_CullDrawCountParameterId = 2;
+
+    // ROOT PARAMETER OCCLUSION LATE PASS
+    constexpr UINT Ce_DrawOccLateRootParameterCount = 4;
+    constexpr uint32_t Ce_DrawOccLateDepthPyramidParameterId = 3;
 
 
 
@@ -168,21 +172,22 @@ namespace BlitzenDX12
 
 
     /* DESCRIPTORS FOR DEPTH PYRAMID GENERATION SHADER */
-    constexpr UINT Ce_DepthPyramidRangeCount = 2;
 
     constexpr UINT Ce_DepthPyramidGenUAVRegister = 0;
     constexpr UINT Ce_DepthPyramidGenUAVDescriptorCount = 1;
-    constexpr UINT Ce_DepthPyramidGenUAVRootId = 0;
 
-    constexpr UINT Ce_DepthTargetReadRegister = 0;
-    constexpr UINT Ce_DepthTargetReadDescriptorCount = 1;
-    constexpr UINT Ce_DepthTargetReadRootId = 1;
+    constexpr UINT Ce_DepthPyramidSRVRegister = 0;
+    constexpr UINT Ce_DepthPyramidSRVDescriptorCount = 1;
+
+    constexpr UINT Ce_DepthPyramidRootConstantsRegister = 0;
+    constexpr UINT Ce_DepthPyramidRootConstantsCount = 3;
 
     // ROOT PARAMETERS
-    constexpr UINT Ce_DepthPyramidParameterCount = 2;
+    constexpr UINT Ce_DepthPyramidParameterCount = 3;
 
-    constexpr UINT Ce_DepthPyramidDescriptorTableParameterId = 0;
-    constexpr UINT Ce_DepthPyramidRootConstantParameterId = 1;
+    constexpr UINT Ce_DepthPyramidSRVRootParameterId = 0;
+    constexpr UINT Ce_DepthPyramidUAVRootParameterId = 1;
+    constexpr UINT Ce_DepthPyramidRootConstantParameterId = 2;
 
 
     
@@ -259,11 +264,19 @@ namespace BlitzenDX12
     struct DepthPyramid
     {
         DX12WRAPPER<ID3D12Resource> pyramid;
-        uint32_t width;
-        uint32_t height;
+        uint32_t width{ 0 };
+        uint32_t height{ 0 };
 
         UINT mipCount{ 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE mips[Ce_DepthPyramidMaxMips];
+    };
+
+
+
+    struct DepthPyramidRootConstant
+    {
+        BlitML::vec2 pyramidSize;
+        uint32_t level;
     };
 
     // Draw Indirect command struct (passed to the shaders)

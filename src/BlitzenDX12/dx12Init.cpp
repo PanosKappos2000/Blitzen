@@ -3,6 +3,7 @@
 #include "Platform/platform.h"
 #include "dx12Resources.h"
 #include "dx12Pipelines.h"
+#include "dx12RNDResources.h"
 
 
 namespace BlitzenDX12
@@ -184,51 +185,6 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-        return 1;
-    }
-
-    uint8_t CreateSwapchain(IDXGIFactory6* factory, ID3D12CommandQueue* queue, uint32_t windowWidth, uint32_t windowHeight, 
-        HWND hWnd, Microsoft::WRL::ComPtr <IDXGISwapChain3>* pSwapchain)
-    {
-        DXGI_SWAP_CHAIN_DESC1 scDesc = {};
-        scDesc.BufferCount = ce_framesInFlight;
-        scDesc.Width = windowWidth;
-        scDesc.Height = windowHeight;
-        scDesc.Format = Ce_SwapchainFormat;
-        scDesc.BufferUsage = Ce_SwapchainBufferUsage;
-        scDesc.SwapEffect = Ce_SwapchainSwapEffect;
-        scDesc.SampleDesc.Count = 1;// No mutlisampling for now, so this is hardcoded
-        scDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;// No reason to ever change this for a 3D renderer
-        scDesc.Scaling = DXGI_SCALING_STRETCH;
-        scDesc.Stereo = FALSE;// Only relevant for stereoscopic 3D rendering... so no
-
-        // Extra protection settings
-        BOOL allowTearing = FALSE;
-        factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
-        if (allowTearing)
-        {
-            scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-        }
-        else
-        {
-            scDesc.Flags = 0;
-        }
-
-        Microsoft::WRL::ComPtr<IDXGISwapChain1> tempSwapchain;
-        // Creates the swapchain
-        auto swapchainRes{ factory->CreateSwapChainForHwnd(queue, hWnd, &scDesc, nullptr, nullptr, &tempSwapchain) };
-		if (FAILED(swapchainRes))
-		{
-			return LOG_ERROR_MESSAGE_AND_RETURN(swapchainRes);
-		}
-        // Casted to IDXGISwapChain3
-        auto swapchainCastRest = tempSwapchain.As(pSwapchain);
-        if (FAILED(swapchainCastRest))
-        {
-			return LOG_ERROR_MESSAGE_AND_RETURN(swapchainCastRest);
-        }
-
-        // success
         return 1;
     }
 

@@ -306,7 +306,7 @@ namespace BlitzenDX12
         psoDesc.pRootSignature = rootSignature;
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;
-        psoDesc.DSVFormat = Ce_DepthTargetFormat;
+        psoDesc.DSVFormat = Ce_DepthTargetDsvFormat;
 
         auto psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
         if (FAILED(psoResult))
