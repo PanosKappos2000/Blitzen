@@ -1158,12 +1158,15 @@ namespace BlitzenDX12
 				varBuffersFinalState.PushBack(drawVisibilityBarrier);
 			}
 
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			for (uint32_t f = 0; f < ce_framesInFlight; ++f)
 			{
-				D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
-				CreateResourcesTransitionBarrier(depthPyramidBarrier, m_varBuffers[i].depthPyramid.pyramid.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-				varBuffersFinalState.PushBack(depthPyramidBarrier);
+				for (uint32_t p = 0; p < m_varBuffers[f].depthPyramid.mipCount; ++p)
+				{
+					D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
+					CreateResourcesTransitionBarrier(depthPyramidBarrier, m_varBuffers[f].depthPyramid.pyramid.Get(),
+						D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, p);
+					varBuffersFinalState.PushBack(depthPyramidBarrier);
+				}
 			}
 		}
 		else if constexpr (BlitzenEngine::Ce_InstanceCulling)

@@ -20,7 +20,7 @@ namespace BlitzenDX12
 		// Extra protection settings
 		BOOL allowTearing = FALSE;
 		factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
-		if (allowTearing)
+		if (allowTearing && Ce_SwapchainSwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
 		{
 			scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 		}
@@ -44,6 +44,71 @@ namespace BlitzenDX12
 		}
 
 		// success
+		return 1;
+	}
+
+	uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers,
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, SIZE_T& rtvHeapOffset)
+	{
+		for (UINT i = 0; i < ce_framesInFlight; i++)
+		{
+			auto getBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].GetAddressOf()));
+			if (FAILED(getBackBufferResult))
+			{
+				return LOG_ERROR_MESSAGE_AND_RETURN(getBackBufferResult);
+			}
+			CreateRenderTargetView(device, Ce_SwapchainFormat, D3D12_RTV_DIMENSION_TEXTURE2D, backBuffers[i].Get(), rtvHeapHandle, rtvHeapOffset);
+		}
+
+		// Success
+		return 1;
+	}
+
+	uint8_t CreateDepthTargets(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* depthBuffers, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle,
+		SIZE_T& dsvHeapOffset, uint32_t swapchainWidth, uint32_t swapchainHeight)
+	{
+		for (UINT i = 0; i < ce_framesInFlight; i++)
+		{
+			D3D12_CLEAR_VALUE clear{};
+			clear.Format = Ce_DepthTargetFormat;
+			clear.DepthStencil.Depth = Ce_ClearDepth;
+			auto resourceRes{ CreateImageResource(device, depthBuffers[i].GetAddressOf(), swapchainWidth, swapchainHeight, 1,
+				Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear) };
+			if (FAILED(resourceRes))
+			{
+				return LOG_ERROR_MESSAGE_AND_RETURN(resourceRes);
+			}
+
+			D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc{};
+			viewDesc.Format = Ce_DepthTargetFormat;
+			viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			// Creates the view with the right offset
+			dsvHeapHandle.ptr += dsvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+			device->CreateDepthStencilView(depthBuffers[i].Get(), &viewDesc, dsvHeapHandle);
+			// Increments the offset
+			dsvHeapOffset++;
+		}
+
+		// success
+		return 1;
+	}
+
+	uint8_t CreateDepthPyramidResource(ID3D12Device* device, DepthPyramid& depthPyramid, uint32_t width, uint32_t height)
+	{
+		// Conservative starting extent
+		depthPyramid.width = BlitML::PreviousPow2(width);
+		depthPyramid.height = BlitML::PreviousPow2(height);
+		depthPyramid.mipCount = BlitML::GetDepthPyramidMipLevels(depthPyramid.width, depthPyramid.height);
+
+		// Image resource
+		if (!CreateImageResource(device, depthPyramid.pyramid.ReleaseAndGetAddressOf(), depthPyramid.width, depthPyramid.height,
+			depthPyramid.mipCount, Ce_DepthPyramidFormat, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_HEAP_TYPE_DEFAULT,
+			D3D12_RESOURCE_STATE_COMMON, nullptr))
+		{
+			BLIT_ERROR("Failed to create depth pyramid resource");
+			return 0;
+		}
+
 		return 1;
 	}
 
@@ -88,36 +153,47 @@ namespace BlitzenDX12
 			context.depthTargetSrvHandle[i].ptr += context.depthTargetSrvOffset[i] * context.srvIncrementSize;
 
 			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				context.srvHeapOffset, Ce_DepthTargetSrvFormat, 1);
+				context.srvHeapOffset, Ce_DepthTargetSRVFormat, 1);
 		}
 	}
 
-	void RecreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, Dx12Renderer::DescriptorContext& context,
-		ID3D12DescriptorHeap* srvHeap, SIZE_T srvOffsetForPyramidDescriptors, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
+	void CopyDepthPyramidToSwapchain(ID3D12GraphicsCommandList4* commandList, ID3D12Resource* swapchainBackBuffer, ID3D12Resource* depthPyramid,
+		UINT depthPyramidWidth, UINT depthPyramidHeight, ID3D12DescriptorHeap* descriptorHeap, ID3D12CommandQueue* queue, IDXGISwapChain3* swapchain)
 	{
-		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			auto& var = pBuffers[i];
+		D3D12_RESOURCE_BARRIER barrier[2] {};
+		CreateResourcesTransitionBarrier(barrier[0], depthPyramid, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(barrier[1], swapchainBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_COPY_DEST);
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(barrier), barrier);
 
-			CreateTextureShaderResourceView(device, var.depthPyramid.pyramid.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				srvOffsetForPyramidDescriptors, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
-		}
+		D3D12_TEXTURE_COPY_LOCATION srcLocation {};
+		srcLocation.pResource = depthPyramid;
+		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		srcLocation.SubresourceIndex = 0;
 
-		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
-		{
-			auto& var = pBuffers[f];
+		D3D12_TEXTURE_COPY_LOCATION destLocation {};
+		destLocation.pResource = swapchainBackBuffer;
+		destLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		destLocation.SubresourceIndex = 0;
 
-			for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
-			{
-				Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, srvOffsetForPyramidDescriptors,
-					srvHeap->GetCPUDescriptorHandleForHeapStart());
-			}
-		}
+		commandList->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, nullptr);
 
-		for (size_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				srvOffsetForPyramidDescriptors, Ce_DepthTargetSrvFormat, 1);
-		}
+		// Transition the swapchain back buffer back to present state
+		D3D12_RESOURCE_BARRIER presentBarrier {};
+		CreateResourcesTransitionBarrier(presentBarrier, swapchainBackBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+
+		commandList->ResourceBarrier(1, &presentBarrier);
+
+		D3D12_RESOURCE_BARRIER pyramidBarrier{};
+		CreateResourcesTransitionBarrier(pyramidBarrier, depthPyramid, D3D12_RESOURCE_STATE_COPY_SOURCE,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		commandList->ResourceBarrier(1, &pyramidBarrier);
+
+		commandList->Close();
+		ID3D12CommandList* commandLists[] = { commandList };
+		queue->ExecuteCommandLists(1, commandLists);
+
+		swapchain->Present(1, 0);
 	}
 }

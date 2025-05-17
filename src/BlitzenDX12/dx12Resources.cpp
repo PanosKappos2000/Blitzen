@@ -40,52 +40,6 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers,
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, SIZE_T& rtvHeapOffset)
-    {
-        for (UINT i = 0; i < ce_framesInFlight; i++)
-        {
-            auto getBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].GetAddressOf()));
-            if (FAILED(getBackBufferResult))
-            {
-                return LOG_ERROR_MESSAGE_AND_RETURN(getBackBufferResult);
-            }
-            CreateRenderTargetView(device, Ce_SwapchainFormat, D3D12_RTV_DIMENSION_TEXTURE2D, backBuffers[i].Get(), rtvHeapHandle, rtvHeapOffset);
-        }
-
-        // Success
-        return 1;
-    }
-
-    uint8_t CreateDepthTargets(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* depthBuffers, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle,
-        SIZE_T& dsvHeapOffset, uint32_t swapchainWidth, uint32_t swapchainHeight)
-    {
-        for (UINT i = 0; i < ce_framesInFlight; i++)
-        {
-            D3D12_CLEAR_VALUE clear{};
-            clear.Format = Ce_DepthTargetDsvFormat;
-            clear.DepthStencil.Depth = Ce_ClearDepth;
-            auto resourceRes{ CreateImageResource(device, depthBuffers[i].GetAddressOf(), swapchainWidth, swapchainHeight, 1,
-                Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear) };
-            if (FAILED(resourceRes))
-            {
-                return LOG_ERROR_MESSAGE_AND_RETURN(resourceRes);
-            }
-
-            D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc{};
-            viewDesc.Format = Ce_DepthTargetDsvFormat;
-            viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-            // Creates the view with the right offset
-            dsvHeapHandle.ptr += dsvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-            device->CreateDepthStencilView(depthBuffers[i].Get(), &viewDesc, dsvHeapHandle);
-            // Increments the offset
-            dsvHeapOffset++;
-        }
-
-        // success
-        return 1;
-    }
-
     uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, UINT descriptorCount,
         D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags)
     {
@@ -347,25 +301,6 @@ namespace BlitzenDX12
         handle.ptr += samplerHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
         device->CreateSampler(&desc, handle);
         samplerHeapOffset++;
-    }
-
-    uint8_t CreateDepthPyramidResource(ID3D12Device* device, DepthPyramid& depthPyramid, uint32_t width, uint32_t height)
-    {
-        // Conservative starting extent
-        depthPyramid.width = BlitML::PreviousPow2(width);
-        depthPyramid.height = BlitML::PreviousPow2(height);
-        depthPyramid.mipCount = BlitML::GetDepthPyramidMipLevels(depthPyramid.width, depthPyramid.height);
-
-        // Image resource
-        if (!CreateImageResource(device, depthPyramid.pyramid.ReleaseAndGetAddressOf(), depthPyramid.width, depthPyramid.height, 
-            depthPyramid.mipCount, Ce_DepthPyramidFormat, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_HEAP_TYPE_DEFAULT, 
-            D3D12_RESOURCE_STATE_COMMON, nullptr))
-        {
-            BLIT_ERROR("Failed to create depth pyramid resource");
-            return 0;
-        }
-
-        return 1;
     }
 
     void PlaceFence(UINT64& fenceValue, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE& event)

@@ -28,23 +28,31 @@ namespace BlitzenDX12
     // Dx12 ignores the double buffering compile flag for now
     constexpr uint8_t ce_framesInFlight = 2;
 
-    constexpr D3D_FEATURE_LEVEL Ce_DeviceFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+    constexpr D3D_FEATURE_LEVEL Ce_DeviceFeatureLevel = D3D_FEATURE_LEVEL_12_1;
 
 	constexpr DXGI_FORMAT Ce_SwapchainFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     constexpr DXGI_USAGE Ce_SwapchainBufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	constexpr DXGI_SWAP_EFFECT Ce_SwapchainSwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-#if defined(DX12_OCCLUSION_DRAW_CULL)
-    constexpr DXGI_FORMAT Ce_DepthTargetFormat = DXGI_FORMAT_R32_TYPELESS;
-#else
     constexpr DXGI_FORMAT Ce_DepthTargetFormat = DXGI_FORMAT_D32_FLOAT;
-#endif
-    constexpr DXGI_FORMAT Ce_DepthTargetDsvFormat = DXGI_FORMAT_D32_FLOAT;
-    constexpr DXGI_FORMAT Ce_DepthTargetSrvFormat = DXGI_FORMAT_R32_FLOAT;
+
     constexpr FLOAT Ce_ClearDepth = 0.f;
 
     constexpr uint32_t Ce_DepthPyramidMaxMips = 16;
-    constexpr DXGI_FORMAT Ce_DepthPyramidFormat = DXGI_FORMAT_R32_FLOAT;
+    constexpr DXGI_FORMAT Ce_DepthPyramidFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    constexpr DXGI_FORMAT Ce_DepthTargetSRVFormat = DXGI_FORMAT_R32_FLOAT;
+
+
+#if defined(DX12_DEPTH_PYRAMID_TEST)
+    static_assert(Ce_SwapchainFormat == Ce_DepthPyramidFormat);
+#else
+    static_assert(Ce_DepthTargetSRVFormat == DXGI_FORMAT_R32_FLOAT);
+    static_assert(Ce_DepthPyramidFormat == DXGI_FORMAT_R32_FLOAT);
+#endif
+
+    static_assert(Ce_SwapchainFormat == DXGI_FORMAT_R8G8B8A8_UNORM);
+    static_assert(Ce_SwapchainSwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD);
+
 
     constexpr D3D12_TEXTURE_LAYOUT Ce_DefaultTextureFormat = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 

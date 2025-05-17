@@ -47,7 +47,7 @@ namespace BlitzenDX12
         {
             // Used for graphics and most other operations
             DX12WRAPPER<ID3D12CommandAllocator> mainGraphicsCommandAllocator;
-            DX12WRAPPER<ID3D12GraphicsCommandList> mainGraphicsCommandList;
+            DX12WRAPPER<ID3D12GraphicsCommandList4> mainGraphicsCommandList;
 
             // Used for transfer commands in the loading phase, to get better access to all commands
             DX12WRAPPER<ID3D12CommandAllocator> transferCommandAllocator;
@@ -189,6 +189,9 @@ namespace BlitzenDX12
         Pipelines and Root Signatures
     */
     private:
+
+        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC m_depthTargetDesc{};
+        D3D12_RENDER_PASS_RENDER_TARGET_DESC m_renderTargetDesc{};
 
         DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;

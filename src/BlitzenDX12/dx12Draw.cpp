@@ -87,7 +87,7 @@ namespace BlitzenDX12
 			for (size_t i = 0; i < ce_framesInFlight; ++i)
 			{
 				CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					context.depthPyramidSrvOffset[i], Ce_DepthTargetSrvFormat, 1);
+					context.depthPyramidSrvOffset[i], Ce_DepthTargetFormat, 1);
 			}
 		}
 	}
@@ -217,22 +217,24 @@ namespace BlitzenDX12
 	}
 
 	static void GenerateDepthPyramid(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
-		UINT frame, UINT swapchainId, ID3D12RootSignature* pyramidSig, ID3D12PipelineState* pyramidPso, 
-		Dx12Renderer::VarBuffers& varBuffers, ID3D12Resource* depthTarget)
+		UINT frame, UINT swapchainId, ID3D12RootSignature* pyramidSig, ID3D12PipelineState* pyramidPso, Dx12Renderer::VarBuffers& varBuffers, ID3D12Resource* depthTarget)
 	{
 		// Binds heap for compute
 		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
 		commandList->SetDescriptorHeaps(1, srvHeaps);
 
 		// Barrier for depth pyramid generation, waits for depth target write and depth pyramid read
-		D3D12_RESOURCE_BARRIER depthPyramidBarriers[3]{};
+		D3D12_RESOURCE_BARRIER depthPyramidBarriers[1 + Ce_DepthPyramidMaxMips]{};
 		CreateResourcesTransitionBarrier(depthPyramidBarriers[0], depthTarget,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		// Depth pyramid barrier
-		CreateResourcesTransitionBarrier(depthPyramidBarriers[1], varBuffers.depthPyramid.pyramid.Get(),
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		CreateResourceUAVBarrier(depthPyramidBarriers[2], varBuffers.depthPyramid.pyramid.Get());
-		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(depthPyramidBarriers), depthPyramidBarriers);
+		// Depth pyramid mips
+		for (uint32_t i = 0; i < varBuffers.depthPyramid.mipCount; ++i)
+		{
+			CreateResourcesTransitionBarrier(depthPyramidBarriers[i + 1], varBuffers.depthPyramid.pyramid.Get(),
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
+		}
+		// Execute
+		commandList->ResourceBarrier(1 + varBuffers.depthPyramid.mipCount, depthPyramidBarriers);
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pyramidSig);
@@ -265,7 +267,8 @@ namespace BlitzenDX12
 
 			// Barrier for the next loop, since it will use the current mip as the read descriptor
 			D3D12_RESOURCE_BARRIER dispatchWriteBarrier{};
-			CreateResourceUAVBarrier(dispatchWriteBarrier, varBuffers.depthPyramid.pyramid.Get());
+			CreateResourcesTransitionBarrier(dispatchWriteBarrier, varBuffers.depthPyramid.pyramid.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, i);
 			commandList->ResourceBarrier(1, &dispatchWriteBarrier);
 		}
 
@@ -289,7 +292,7 @@ namespace BlitzenDX12
 
 		// Culling barrier, waits for draw count reset and draw command read, and draw visibility read as well
 		// Finally, it needs to wait for the depth pyramid (occlusion culling)
-		D3D12_RESOURCE_BARRIER cullingBarriers[6]{};
+		D3D12_RESOURCE_BARRIER cullingBarriers[4]{};
 		// Count reset barrier 
 		CreateResourceUAVBarrier(cullingBarriers[0], varBuffers.indirectDrawCount.buffer.Get());
 		// Command read barrier
@@ -299,9 +302,6 @@ namespace BlitzenDX12
 		// Draw visibility barrier
 		CreateResourceUAVBarrier(cullingBarriers[3], varBuffers.drawVisibilityBuffer.buffer.Get());
 		// Depth pyramid barrier
-		CreateResourcesTransitionBarrier(cullingBarriers[4], varBuffers.depthPyramid.pyramid.Get(),
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		CreateResourceUAVBarrier(cullingBarriers[5], varBuffers.depthPyramid.pyramid.Get());
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
 
 		// Descriptors
@@ -410,9 +410,9 @@ namespace BlitzenDX12
 		DefineViewportAndScissor(cmdList, swapchainWidth, swapchainHeight);
 
 		// Render target barrier
-		D3D12_RESOURCE_BARRIER attachmentBarriers[2]{};
-		CreateResourcesTransitionBarrier(attachmentBarriers[0], swapchainBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		cmdList->ResourceBarrier(1, attachmentBarriers);
+		D3D12_RESOURCE_BARRIER renderTargetBarrier{};
+		CreateResourcesTransitionBarrier(renderTargetBarrier, swapchainBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		cmdList->ResourceBarrier(1, &renderTargetBarrier);
 
 		// Render target bind
 		auto rtvHandle = rvtHeap->GetCPUDescriptorHandleForHeapStart();
@@ -423,6 +423,49 @@ namespace BlitzenDX12
 
 		cmdList->ClearRenderTargetView(rtvHandle, BlitzenEngine::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 		cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
+	}
+
+	static void BeginRenderPass(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, 
+		ID3D12DescriptorHeap* rvtHeap, ID3D12DescriptorHeap* dsvHeap,Dx12Renderer::DescriptorContext& descriptorContext, 
+		UINT swapchainIndex, uint8_t isFirstPass)
+	{
+		// Render target bind
+		auto rtvHandle = rvtHeap->GetCPUDescriptorHandleForHeapStart();
+		rtvHandle.ptr += (descriptorContext.swapchainRtvOffset + swapchainIndex) * descriptorContext.rtvIncrementSize;
+		auto dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+		dsvHandle.ptr += (descriptorContext.depthTargetOffset + swapchainIndex) * descriptorContext.dsvIncrementSize;
+		cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+
+		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthTargetDesc{};
+		D3D12_RENDER_PASS_RENDER_TARGET_DESC renderTargetDesc{};
+		depthTargetDesc.cpuDescriptor = dsvHandle;
+		renderTargetDesc.cpuDescriptor = rtvHandle;
+		if (isFirstPass)
+		{
+			depthTargetDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+			depthTargetDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = Ce_ClearDepth;
+			depthTargetDesc.DepthBeginningAccess.Clear.ClearValue.Format = Ce_DepthTargetFormat;
+			depthTargetDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+			renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[0] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[0];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[1] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[1];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[2] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[2];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[3] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[3];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Format = Ce_SwapchainFormat;
+			renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+		}
+		else
+		{
+			depthTargetDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			depthTargetDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+			renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+		}
+
+		// Begin render pass
+		cmdList->BeginRenderPass(1, &renderTargetDesc, &depthTargetDesc, D3D12_RENDER_PASS_FLAG_NONE);
 	}
 
 	static void DrawIndirect(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, ID3D12DescriptorHeap* samplerHeap,
@@ -530,11 +573,19 @@ namespace BlitzenDX12
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(),
 				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.pResources->renderObjectCount);
 
-			ClearWindow(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight,
-				m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), m_dsvHeap.Get(), m_descriptorContext, swapchainIndex);
+			// Render target barrier
+			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
+			CreateResourcesTransitionBarrier(renderTargetBarrier, m_swapchainBackBuffers[swapchainIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			frameTools.mainGraphicsCommandList->ResourceBarrier(1, &renderTargetBarrier);
+			uint8_t firstPass = 1;
+			DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
+			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), 
+				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, firstPass);
 
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			frameTools.mainGraphicsCommandList->EndRenderPass();
+			firstPass = 0;
 
 			GenerateDepthPyramid(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
 				m_depthPyramidSignature.Get(), m_depthPyramidPso.Get(), varBuffers, m_depthBuffers[swapchainIndex].Get());
@@ -542,27 +593,16 @@ namespace BlitzenDX12
 			DrawOccLatePass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), 
 				m_drawCountResetPso.Get(), m_drawOccLateSignature.Get(), m_drawOccLatePso.Get(), varBuffers, context.pResources->renderObjectCount);
-
-			// TEMP BECAUSE I HAVE MADE AN ERROR IN DESIGN
-			auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-			rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + swapchainIndex) * m_descriptorContext.rtvIncrementSize;
-			auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-			dsvHandle.ptr += (m_descriptorContext.depthTargetOffset + swapchainIndex) * m_descriptorContext.dsvIncrementSize;
-			frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
-			D3D12_RENDER_PASS_BEGINNING_ACCESS colorAccess = {};
-			D3D12_RENDER_PASS_BEGINNING_ACCESS depthAccess = {};
-
-			colorAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
 			
-			depthAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
-
-			// Begin render pass
-			//frameTools.mainGraphicsCommandList->BeginRenderPass(1, &colorAttachment, &depthAttachment, &colorAccess, &depthAccess);
-
+			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(),
+				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, firstPass);
+			
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			frameTools.mainGraphicsCommandList->EndRenderPass();
 		}
+
+
 		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
 		{
 			DrawInstanceCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
@@ -576,6 +616,8 @@ namespace BlitzenDX12
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 		}
+
+
 		else
 		{
 			// Frustum culling and lod selection, per object
@@ -595,7 +637,16 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COPY_DEST);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformCopyBarrier);
 
-		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
+#if defined(DX12_DEPTH_PYRAMID_TEST) && defined(DX12_OCCLUSION_DRAW_CULL)
+		{
+			CopyDepthPyramidToSwapchain(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), varBuffers.depthPyramid.pyramid.Get(), 
+				varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get());
+		}
+#else
+		{
+			Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
+		}
+#endif
 
 		m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
