@@ -39,11 +39,11 @@ namespace BlitzenDX12
     constexpr FLOAT Ce_ClearDepth = 0.f;
 
     constexpr uint32_t Ce_DepthPyramidMaxMips = 16;
-    constexpr DXGI_FORMAT Ce_DepthPyramidFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    constexpr DXGI_FORMAT Ce_DepthPyramidFormat = DXGI_FORMAT_R32_FLOAT;
     constexpr DXGI_FORMAT Ce_DepthTargetSRVFormat = DXGI_FORMAT_R32_FLOAT;
 
 
-#if defined(DX12_DEPTH_PYRAMID_TEST)
+#if defined(DX12_DEPTH_PYRAMID_TEST) && defined(DX12_OCCLUSION_DRAW_CULL)
     static_assert(Ce_SwapchainFormat == Ce_DepthPyramidFormat);
 #else
     static_assert(Ce_DepthTargetSRVFormat == DXGI_FORMAT_R32_FLOAT);
@@ -139,8 +139,9 @@ namespace BlitzenDX12
     constexpr UINT Ce_CullDrawCountParameterId = 2;
 
     // ROOT PARAMETER OCCLUSION LATE PASS
-    constexpr UINT Ce_DrawOccLateRootParameterCount = 4;
+    constexpr UINT Ce_DrawOccLateRootParameterCount = 5;
     constexpr uint32_t Ce_DrawOccLateDepthPyramidParameterId = 3;
+    constexpr uint32_t Ce_DrawOccLateDepthPyramidSamplerParameterId = 4;
 
 
 
@@ -174,13 +175,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_MaterialSrvElement = 4;
     constexpr UINT Ce_TextureDescriptorsElement = 5;
 
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount 
-        + Ce_AdditionalSharedSRVs + Ce_AdditionalCullSRVs) * ce_framesInFlight;// Double or triple buffering
-
-
-
     /* DESCRIPTORS FOR DEPTH PYRAMID GENERATION SHADER */
-
     constexpr UINT Ce_DepthPyramidGenUAVRegister = 0;
     constexpr UINT Ce_DepthPyramidGenUAVDescriptorCount = 1;
 
@@ -190,12 +185,22 @@ namespace BlitzenDX12
     constexpr UINT Ce_DepthPyramidRootConstantsRegister = 0;
     constexpr UINT Ce_DepthPyramidRootConstantsCount = 3;
 
+    constexpr UINT Ce_DepthPyramidSamplerRegister = 0;
+    constexpr UINT Ce_DepthPyramidSamplerDescriptorCount = 1;
+
     // ROOT PARAMETERS
-    constexpr UINT Ce_DepthPyramidParameterCount = 3;
+    constexpr UINT Ce_DepthPyramidParameterCount = 4;
 
     constexpr UINT Ce_DepthPyramidSRVRootParameterId = 0;
     constexpr UINT Ce_DepthPyramidUAVRootParameterId = 1;
     constexpr UINT Ce_DepthPyramidRootConstantParameterId = 2;
+    constexpr UINT Ce_DepthPyramidSamplerParameterId = 3;
+
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount
+        + Ce_AdditionalSharedSRVs + Ce_AdditionalCullSRVs) * ce_framesInFlight;// Double or triple buffering
+
+    constexpr UINT Ce_SamplerDescriptorCount = 2; // Depth pyramid and texture samplers
+
 
 
     

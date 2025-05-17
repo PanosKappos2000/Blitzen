@@ -30,7 +30,7 @@ namespace BlitzenDX12
             return 0;
         }
 
-        if (!CreateDescriptorHeap(device, ppSamplerHeap, 1, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        if (!CreateDescriptorHeap(device, ppSamplerHeap, Ce_SamplerDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
         {
             BLIT_ERROR("Failed to create sampler descriptor heap");
             return 0;

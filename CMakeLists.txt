@@ -179,7 +179,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_GDEV_EDT # Defines that the Engine is in Game Dev mode
                             BLIT_ASSERTIONS_ENABLED
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
@@ -198,7 +198,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
                             DX12_OCCLUSION_DRAW_CULL
-                            DX12_DEPTH_PYRAMID_TEST
+                            #DX12_DEPTH_PYRAMID_TEST
                             )
 
 # Linker file directories and libraries to link for linux and Windows

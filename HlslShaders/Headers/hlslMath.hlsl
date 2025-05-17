@@ -54,7 +54,7 @@ bool ProjectSphere(float3 center, float radius, float znear, float P00, float P1
 	return true;
 }
 
-bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, float pyramidWidth, float pyramidHeight, float3 center, float radius, float zNear)
+bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, SamplerState dpSampler, float pyramidWidth, float pyramidHeight, float3 center, float radius, float zNear)
 {
     // Width and height of aabb adjusted to pyramid scale
 	float width = (aabb.z - aabb.x) * pyramidWidth;
@@ -63,8 +63,7 @@ bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, float pyramidWi
     // Finds the mip map level that will match the screen size of the sphere
 	float level = floor(log2(max(width, height)));
 
-    int2 texCoords = int2(round(float2(aabb.xy + aabb.zw) * 0.5));
-	float depth = depthPyramid.Load(int3(texCoords, level)).x;
+	float depth = depthPyramid.SampleLevel(dpSampler, float2(aabb.xy + aabb.zw) * 0.5, level).x;
 
 	float depthSphere = zNear / (center.z - radius);
 

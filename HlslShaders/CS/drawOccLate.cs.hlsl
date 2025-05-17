@@ -38,7 +38,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 		float4 aabb;
 		if (ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
 		{
-			visible = visible && OcclusionCheck(aabb, depthPyramid, pyramidWidth, pyramidHeight, center, radius, zNear);
+			visible = visible && OcclusionCheck(aabb, depthPyramid, dpSampler, pyramidWidth, pyramidHeight, center, radius, zNear);
 		}
 	}
 

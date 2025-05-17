@@ -113,7 +113,7 @@ namespace BlitzenDX12
 	}
 
 	void CreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, Dx12Renderer::DescriptorContext& context,
-		ID3D12DescriptorHeap* srvHeap, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
+		ID3D12DescriptorHeap* srvHeap, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight, ID3D12DescriptorHeap* samplerHeap)
 	{
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -155,6 +155,12 @@ namespace BlitzenDX12
 			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				context.srvHeapOffset, Ce_DepthTargetSRVFormat, 1);
 		}
+
+		context.depthPyramidSamplerOffset = context.samplerHeapOffset;
+		context.depthPyramidSamplerHandle = context.samplerHandle;
+		context.depthPyramidSamplerHandle.ptr += context.depthPyramidSamplerOffset * context.samplerIncrementSize;
+		CreateSampler(device, samplerHeap->GetCPUDescriptorHandleForHeapStart(), context.samplerHeapOffset, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 	}
 
 	void CopyDepthPyramidToSwapchain(ID3D12GraphicsCommandList4* commandList, ID3D12Resource* swapchainBackBuffer, ID3D12Resource* depthPyramid,

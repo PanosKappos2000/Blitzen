@@ -138,6 +138,9 @@ namespace BlitzenDX12
             SIZE_T defaultTextureSamplerOffset;
             D3D12_GPU_DESCRIPTOR_HANDLE defaultTextureSamplerHandle;
 
+            SIZE_T depthPyramidSamplerOffset;
+            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSamplerHandle;
+
 
             /* RTV HEAP */
             SIZE_T rtvIncrementSize;

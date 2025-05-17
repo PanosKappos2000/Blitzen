@@ -84,5 +84,6 @@ RWStructuredBuffer<uint> drawVisibilityBuffer : register (u5);
 #ifdef DRAW_CULL_OCCLUSION_LATE
 
 Texture2D<float4> depthPyramid : register (t10);
+SamplerState dpSampler : register(s0);
 
 #endif
