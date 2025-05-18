@@ -29,7 +29,7 @@ namespace BlitzenDX12
         uint8_t UploadTexture(void* pData, const char* filepath);
     
         // Draws a simple loading screen using a shader that should be valid after Init.
-        void DrawWhileWaiting();
+        void DrawWhileWaiting(float deltaTime);
         
         // CPU work while the GPU is busy. Call the fence at the end
         void Update(const BlitzenEngine::DrawContext& context);
@@ -39,8 +39,6 @@ namespace BlitzenDX12
     
         // Updates transform data on the cpu side side buffer
         void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
-
-        inline static Dx12Renderer* GetRendererInstance() { return s_pThis; }
 
     public:
         struct FrameTools
@@ -241,6 +239,5 @@ namespace BlitzenDX12
 
     private:
 
-		static Dx12Renderer* s_pThis;
     };
 }

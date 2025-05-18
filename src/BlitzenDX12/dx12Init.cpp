@@ -8,11 +8,10 @@
 
 namespace BlitzenDX12
 {
-	Dx12Renderer* Dx12Renderer::s_pThis = nullptr;
 
     Dx12Renderer::Dx12Renderer()
     {
-        s_pThis = this;
+        
     }
 
     static uint8_t CreateFactory(IDXGIFactory6** ppFactory, Microsoft::WRL::ComPtr<ID3D12Debug>& debugController)

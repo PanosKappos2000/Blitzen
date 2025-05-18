@@ -23,8 +23,8 @@ namespace BlitzenEngine
 
 
     // Other camera constants
-    constexpr uint8_t MaxCameraCount = 1;
-    constexpr uint8_t MainCameraId = 0;
+    constexpr uint8_t Ce_MaxCameraCount = 1;
+    constexpr uint8_t Ce_MainCameraId = 0;
 
 
     // Renderer settings
@@ -75,8 +75,6 @@ namespace BlitzenEngine
     public:
 
         Engine();
-        
-        inline static void BeginShutdown() { s_pEngine = nullptr; }
 
         ~Engine();
 
@@ -91,14 +89,14 @@ namespace BlitzenEngine
         inline void Shutdown() { m_bRunning = false; }
         inline bool IsRunning() const { return m_bRunning; }
 
-        inline static Engine* GetEngineInstancePointer() { return s_pEngine; }
-
     private:
-
-        // Leaky singleton
-        static Engine* s_pEngine;
 
         bool m_bRunning = false;
         bool m_bSuspended = false;
     };
+
+    inline Engine* BlitzenWorld_GetEngine(void** ppContext, uint32_t id)
+    {
+        return reinterpret_cast<Engine*>(ppContext[id]);
+    }
 }

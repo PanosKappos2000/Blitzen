@@ -29,7 +29,7 @@ namespace BlitzenVulkan
         uint8_t UploadTexture(void* pData, const char* filepath);
 
         // Shows a loading screen while waiting for resources to be loaded
-        void DrawWhileWaiting();
+        void DrawWhileWaiting(float deltaTime);
 
         void Update(const BlitzenEngine::DrawContext& context);
 

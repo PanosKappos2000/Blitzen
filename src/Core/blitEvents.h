@@ -37,45 +37,33 @@ namespace BlitzenCore
         MaxTypes = 8
     };
 
-    using EventCallbackType = BlitCL::Pfn<uint8_t, BlitEventType, void*, void*, const EventContext&>;
-    struct RegisteredEvent 
-    {
-        void* pListener;
-        EventCallbackType callback{ [](BlitEventType, void*, void*, const EventContext&)->uint8_t {
-            BLIT_INFO("No callback assigned");
-            return false;
-        }};
-    };
+    using EventCallback = BlitCL::Pfn<uint8_t, void**, BlitEventType>;
 
     class EventSystemState 
     {
     public:
 
-        RegisteredEvent eventTypes[uint8_t(BlitEventType::MaxTypes)];
+        EventSystemState(void** PP);
 
-        inline EventSystemState(){ s_pEventSystemState = this; }
-
-        inline ~EventSystemState() {s_pEventSystemState = nullptr; }
+        inline ~EventSystemState() { }
 
         inline bool operator () (BlitEventType type, void* pSender, const EventContext& context) const
         {
-            auto event = eventTypes[size_t(type)];
-            return event.callback(type, pSender, event.pListener, context);
+            auto event = m_eventCallbacks[size_t(type)];
+            return event(ppContext, type);
         }
 
-        inline bool FireEvent(BlitEventType type, void* pSender, const EventContext& context) const
+        inline bool FireEvent(BlitEventType type) const
         {
-            auto event = eventTypes[size_t(type)];
-            return event.callback(type, pSender, event.pListener, context);
+            auto event = m_eventCallbacks[size_t(type)];
+            return event(ppContext, type);
         }
 
-        inline static EventSystemState* GetState() { return s_pEventSystemState; }
-
-
-    private:
-        inline static EventSystemState* s_pEventSystemState;
+        EventCallback m_eventCallbacks[uint8_t(BlitEventType::MaxTypes)];
+        
+        void** ppContext;
     };
 
     // Adds a new RegisteredEvent to the eventState event types array
-    void RegisterEvent(BlitEventType type, void* pListener, EventCallbackType eventCallback);
+    void RegisterEvent(EventSystemState* pContext, BlitEventType type, EventCallback eventCallback);
 }

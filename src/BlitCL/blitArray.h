@@ -20,7 +20,9 @@ namespace BlitCL
             static_assert(S > 0);
 
             for (size_t i = 0; i < S; ++i)
+            {
                 BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
+            }
         }
 
         StaticArray(T&& data)
@@ -28,7 +30,9 @@ namespace BlitCL
             static_assert(S > 0);
 
             for (size_t i = 0; i < S; ++i)
+            {
                 BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
+            }
         }
 
         using Iterator = DynamicArrayIterator<T>;

@@ -22,12 +22,8 @@
 
 namespace BlitzenEngine
 {
-	RenderingResources* RenderingResources::s_pResources = nullptr;
-
     RenderingResources::RenderingResources(void* rendererData)
     {
-		s_pResources = this;
-
         auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
 
         // Defaults

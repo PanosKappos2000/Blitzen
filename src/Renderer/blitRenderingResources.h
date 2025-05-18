@@ -16,7 +16,6 @@ namespace BlitzenEngine
     {
     public:
 
-        inline static RenderingResources* GetRenderingResources() { return s_pResources; }
         RenderingResources(void* rendererData);
 
         RenderingResources operator = (const RenderingResources& rr) = delete;
@@ -346,15 +345,7 @@ namespace BlitzenEngine
     private:
 
         BlitCL::DynamicArray<RenderObject> m_transparentRenders;
-
-    private:
-
-        static RenderingResources* s_pResources;
     };
-
-
-
-
 
     // Draw context needs to be given to draw frame function, so that it can update uniform values
     struct DrawContext
@@ -370,7 +361,10 @@ namespace BlitzenEngine
         {}
     };
 
-
+    inline RenderingResources* BlitzenWorld_GetRenderingResources(void** ppContext)
+    {
+        return reinterpret_cast<RenderingResources*>(ppContext[BlitzenCore::Ce_WorlContextRndResourcesId]);
+    }
 
     // Sets random transform
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);

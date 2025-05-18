@@ -10,7 +10,7 @@ namespace BlitzenEngine
     class GameObject
     {
     public:
-        GameObject(bool bDynamic = false, const char* meshName = ce_defaultMeshName);
+        GameObject(RenderingResources* pResources, bool bDynamic = false, const char* meshName = ce_defaultMeshName);
 
         inline bool IsDynamic() const { return m_bDynamic; }
 
@@ -18,7 +18,7 @@ namespace BlitzenEngine
 
         uint32_t m_transformId;
 
-        virtual void Update();
+        virtual void Update(void** ppContext);
 
         virtual ~GameObject() = default;
 
@@ -44,8 +44,7 @@ namespace BlitzenEngine
 
         // Handles the addition of game objects to the scene
         template<class T, typename... Args>
-        inline bool AddObject(BlitzenEngine::RenderingResources* pResources,
-            const BlitzenEngine::MeshTransform& initialTransform, Args... args)
+        inline bool AddObject(BlitzenEngine::RenderingResources* pResources, const BlitzenEngine::MeshTransform& initialTransform, Args... args)
         {
             if (m_objectCount >= Ce_MaxDynamicObjectCount)
             {
@@ -55,7 +54,7 @@ namespace BlitzenEngine
 
             // Adds a derived game object
             auto& entity = m_gameObjects[m_objectCount++];
-            entity.MakeAs<T>(args...);
+            entity.MakeAs<T>(pResources, args...);
             entity->m_transformId = pResources->AddRenderObjectsFromMesh(entity->m_meshId, initialTransform, entity->IsDynamic());
 
             if (entity->IsDynamic())
@@ -66,11 +65,11 @@ namespace BlitzenEngine
             return true;
         }
 
-        inline void UpdateDynamicObjects()
+        inline void UpdateDynamicObjects(void** ppContext)
         {
             for (auto pObject : m_pDynamicObjects)
             {
-                pObject->Update();
+                pObject->Update(ppContext);
             }
         }
     };
@@ -80,9 +79,9 @@ namespace BlitzenEngine
     {
     public:
 
-        void Update() override;
+        void Update(void** ppContext) override;
 
-        ClientTest(bool bDynamic = false, const char* meshName = ce_defaultMeshName);
+        ClientTest(RenderingResources* pResources, bool bDynamic = false, const char* meshName = ce_defaultMeshName);
 
     private:
         float m_pitch = 0.f;
@@ -170,6 +169,6 @@ namespace BlitzenEngine
     */
 
     // Changes orientation values of an object and updates the renderer
-    void RotateObject(float& yaw, float& pitch, uint32_t transformId, float speed);
+    void RotateObject(float& yaw, float& pitch, uint32_t transformId, float speed, float deltaTime, RenderingResources* pResources, void* pRenderer);
 
 }

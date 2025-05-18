@@ -11,6 +11,7 @@
 #include "platform.h"
 #include "Core/blitInput.h"
 #include "Engine/blitzenEngine.h"
+#include "Game/blitCamera.h"
 
 namespace BlitzenPlatform
 {
@@ -85,8 +86,7 @@ namespace BlitzenPlatform
         return hwnd;
     }
 
-    bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEvents, 
-        BlitzenCore::InputSystemState* pInputs, void* pRenderer)
+    bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEvents, BlitzenCore::InputSystemState* pInputs, void* pRenderer)
     {
         inl_pPlatformState.pEvents = pEvents;
         inl_pPlatformState.pInputs = pInputs;
@@ -305,7 +305,7 @@ namespace BlitzenPlatform
             case WM_CLOSE:
             {
                 BlitzenCore::EventContext context{};
-                inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown, nullptr, context);
+                inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown);
                 return 1;
             }
 
@@ -319,32 +319,42 @@ namespace BlitzenPlatform
                 // Get the updated size.
                 RECT rect;
                 GetClientRect(winWindow, &rect);
+
                 uint32_t width = rect.right - rect.left;
                 uint32_t height = rect.bottom - rect.top;
-                BlitzenCore::EventContext context;
-                context.data.ui32[0] = width;
-                context.data.ui32[1] = height;
-			    inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowResize, nullptr, context);
+
+                auto& camera{ BlitzenEngine::BlitzenWorld_GetMainCamera(inl_pPlatformState.pEvents->ppContext) };
+                camera.transformData.windowWidth = float(width);
+                camera.transformData.windowHeight = float(height);
+
+			    inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowResize);
                 break;
             }
 
-            // Key event (input system)
+            
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             case WM_KEYUP:
             case WM_SYSKEYUP: 
             {
-                uint8_t pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
-                BlitzenCore::BlitKey key = static_cast<BlitzenCore::BlitKey>(w_param);
-                inl_pPlatformState.pInputs->InputProcessKey(key, pressed);
+                // press or release
+                bool bPressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+
+                auto key = BlitzenCore::BlitKey(w_param);
+
+                inl_pPlatformState.pInputs->InputProcessKey(key, bPressed);
+
                 break;
             } 
+
             case WM_MOUSEMOVE: 
             {
-                // Mouse move
+                
                 int32_t mouseX = GET_X_LPARAM(l_param);
                 int32_t mouseY = GET_Y_LPARAM(l_param);
+
                 inl_pPlatformState.pInputs->InputProcessMouseMove(mouseX, mouseY);
+
                 break;
             } 
             case WM_MOUSEWHEEL: 
@@ -354,6 +364,7 @@ namespace BlitzenPlatform
                 {
                     // Flatten the input to an OS-independent (-1, 1)
                     zDelta = (zDelta < 0) ? -1 : 1;
+
                     inl_pPlatformState.pInputs->InputProcessMouseWheel(zDelta);
                 }
                 break;
@@ -365,9 +376,10 @@ namespace BlitzenPlatform
             case WM_MBUTTONUP:
             case WM_RBUTTONUP: 
             {
-                uint8_t bPressed = msg == WM_LBUTTONDOWN || 
-                    msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
-                BlitzenCore::MouseButton button = BlitzenCore::MouseButton::MaxButtons;
+                uint8_t bPressed = msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN;
+
+                auto button = BlitzenCore::MouseButton::MaxButtons;
+
                 switch(msg)
                 {
                     case WM_LBUTTONDOWN:

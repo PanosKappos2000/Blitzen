@@ -1075,7 +1075,7 @@ namespace BlitzenVulkan
         m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
 
-    void VulkanRenderer::DrawWhileWaiting()
+    void VulkanRenderer::DrawWhileWaiting(float deltaTime)
     {
         auto& fTools = m_frameToolsList[0];
         auto colorAttachmentWorkingLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -1111,7 +1111,6 @@ namespace BlitzenVulkan
         vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             m_loadingTrianglePipeline.handle);
 
-        auto deltaTime = static_cast<float>(BlitzenCore::WorldTimerManager::GetInstance()->GetDeltaTime());
         m_loadingTriangleVertexColor *= cos(deltaTime);
         vkCmdPushConstants(m_idleDrawCommandBuffer, m_loadingTriangleLayout.handle, VK_SHADER_STAGE_VERTEX_BIT, 0,
             sizeof(BlitML::vec3), &m_loadingTriangleVertexColor);

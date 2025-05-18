@@ -655,7 +655,7 @@ namespace BlitzenDX12
 		m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
 
-	void Dx12Renderer::DrawWhileWaiting()
+	void Dx12Renderer::DrawWhileWaiting(float deltaTime)
 	{
 		auto& frameTools = m_frameTools[m_currentFrame];
 

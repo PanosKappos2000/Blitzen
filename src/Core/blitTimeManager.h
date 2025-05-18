@@ -39,11 +39,10 @@ namespace BlitzenCore
         double m_previousTime;
 
         double m_deltaTime;
-
-    public:
-		inline static WorldTimerManager* GetInstance(){return s_pThis;}
-
-    private:
-		static WorldTimerManager* s_pThis;
     };
+
+    inline WorldTimerManager* BlitzenWorld_GetWorldTimeManager(void** ppContext)
+    {
+        return reinterpret_cast<WorldTimerManager*>(ppContext[BlitzenCore::Ce_WorldContextWorldTimerManagerId]);
+    }
 }

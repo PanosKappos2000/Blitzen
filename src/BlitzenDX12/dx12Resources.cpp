@@ -167,8 +167,7 @@ namespace BlitzenDX12
         ssboBufferDesc.SampleDesc.Count = 1;
         ssboBufferDesc.SampleDesc.Quality = 0;
         ssboBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        auto resourceRes = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &ssboBufferDesc,
-            initialState, nullptr, IID_PPV_ARGS(ppBuffer));
+        auto resourceRes = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &ssboBufferDesc, initialState, nullptr, IID_PPV_ARGS(ppBuffer));
         if (FAILED(resourceRes))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(resourceRes);

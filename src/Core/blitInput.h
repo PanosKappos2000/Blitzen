@@ -5,24 +5,14 @@
 
 namespace BlitzenCore
 {
-    using MouseMoveCallbackType = BlitCL::Pfn<void, int16_t, int16_t, int16_t, int16_t>;
-    using MouseWheelCallbackType = BlitCL::Pfn<void, int8_t>;
+    using KeyPressCallback = BlitCL::Pfn<void, void**>;
+    using KeyReleaseCallback = BlitCL::Pfn<void, void**>;
 
-    // Passes the logic to be called when a speicific key is pressed
-    void RegisterKeyPressCallback(BlitKey key, BlitCL::Pfn<void> callback); 
-    // Passes the logic to be called when a specific key is released
-    void RegisterKeyReleaseCallback(BlitKey key, BlitCL::Pfn<void> callback);
-    // Passes logic for both key press and release
-    void RegisterKeyPressAndReleaseCallback(BlitKey key, BlitCL::Pfn<void> press, BlitCL::Pfn<void> release);
-    // Passed logic to be called when one of the mouse buttons is pressed
-    void RegisterMouseButtonPressCallback(MouseButton button, BlitCL::Pfn<void, int16_t, int16_t> callback);
-    // Initializes the release function pointer for the given key
-    void RegisterMouseButtonReleaseCallback(MouseButton button, BlitCL::Pfn<void, int16_t, int16_t> callback);
-    // Initializes both the release and press function pointers for the given key
-    void RegisterMouseButtonPressAndReleaseCallback(MouseButton button,
-        BlitCL::Pfn<void, int16_t, int16_t> press, BlitCL::Pfn<void, int16_t, int16_t> release);
-    void RegisterMouseCallback(MouseMoveCallbackType callback);
-    void RegisterMouseWheelCallback(MouseWheelCallbackType callback);
+    using MouseButtonPressCallback = BlitCL::Pfn<void, void**, int16_t, int16_t>;
+    using MouseButtonReleaseCallback = BlitCL::Pfn<void, void**, int16_t, int16_t>;
+
+    using MouseMoveCallbackType = BlitCL::Pfn<void, void**, int16_t, int16_t, int16_t, int16_t>;
+    using MouseWheelCallbackType = BlitCL::Pfn<void, void**, int8_t>;
 
     // Mouse buttons and mouse position
     struct MouseState
@@ -32,36 +22,28 @@ namespace BlitzenCore
         bool buttons[uint8_t(MouseButton::MaxButtons)];
     };
 
-
     class InputSystemState 
     {
     public:
-        // Each key has a pair of callbacks for press and release
-        BlitCL::Pfn<void> keyPressCallbacks[KeyCallbackCount];
-
-        BlitCL::Pfn<void> keyReleaseCallbacks[KeyCallbackCount];
-
-        bool currentKeyboard[KeyCallbackCount];
-        bool previousKeyboard[KeyCallbackCount];
-
-        MouseState currentMouse;
-        MouseState previousMouse;
+        
+        KeyPressCallback keyPressCallbacks[Ce_KeyCallbackCount];
+        KeyReleaseCallback keyReleaseCallbacks[Ce_KeyCallbackCount];
 
         MouseMoveCallbackType mouseMoveCallback;
         MouseWheelCallbackType mouseWheelCallback;
 
-        BlitCL::Pfn<void, int16_t, int16_t> mouseReleaseCallbacks[3];
-        BlitCL::Pfn<void, int16_t, int16_t> mousePressCallbacks[3];
+        MouseButtonReleaseCallback mouseReleaseCallbacks[3];
+        MouseButtonPressCallback mousePressCallbacks[3];
 
     public:
 
-        InputSystemState(); 
+        InputSystemState(void** pp); 
 
-        ~InputSystemState() { s_pInputSystemState = nullptr; }
+        inline ~InputSystemState() {}
 
         inline void UpdateInput(double deltaTime) 
         {
-            BlitzenCore::BlitMemCopy(previousKeyboard, currentKeyboard, sizeof(currentKeyboard));
+            BlitzenCore::BlitMemCopy(m_previousKeyboard, m_currentKeyboard, sizeof(m_currentKeyboard));
         }
 
         void InputProcessKey(BlitKey key, bool bPressed);
@@ -72,9 +54,34 @@ namespace BlitzenCore
 
         void InputProcessMouseWheel(int8_t zDelta);
 
-        inline static InputSystemState* GetState() { return s_pInputSystemState; }
-    private:
-        
-        inline static InputSystemState* s_pInputSystemState;
+        void** ppContext{ nullptr };
+
+        bool m_currentKeyboard[Ce_KeyCallbackCount];
+        bool m_previousKeyboard[Ce_KeyCallbackCount];
+
+        MouseState m_currentMouse;
+        MouseState m_previousMouse;
     };
+
+    // Passes the logic to be called when a speicific key is pressed
+    void RegisterKeyPressCallback(InputSystemState* pContext, BlitKey key, KeyPressCallback callback);
+
+    // Passes the logic to be called when a specific key is released
+    void RegisterKeyReleaseCallback(InputSystemState* pContext, BlitKey key, KeyReleaseCallback callback);
+
+    // Passes logic for both key press and release
+    void RegisterKeyPressAndReleaseCallback(InputSystemState* pContext, BlitKey key, KeyPressCallback press, KeyReleaseCallback release);
+
+    // Passed logic to be called when one of the mouse buttons is pressed
+    void RegisterMouseButtonPressCallback(InputSystemState* pContext, MouseButton button, MouseButtonPressCallback callback);
+
+    // Initializes the release function pointer for the given key
+    void RegisterMouseButtonReleaseCallback(InputSystemState* pContext, MouseButton button, MouseButtonReleaseCallback callback);
+
+    // Initializes both the release and press function pointers for the given key
+    void RegisterMouseButtonPressAndReleaseCallback(InputSystemState* pContext, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release);
+
+    void RegisterMouseWheelCallback(InputSystemState* pContext, MouseWheelCallbackType callback);
+
+    void RegisterMouseMoveCallback(InputSystemState* pContext, MouseMoveCallbackType callback);
 }

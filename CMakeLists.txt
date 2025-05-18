@@ -183,7 +183,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
-                            BLITZEN_DRAW_INSTANCED_CULLING
+                            #BLITZEN_DRAW_INSTANCED_CULLING
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
@@ -197,7 +197,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
-                            DX12_OCCLUSION_DRAW_CULL
+                            #DX12_OCCLUSION_DRAW_CULL
                             #DX12_DEPTH_PYRAMID_TEST
                             )
 

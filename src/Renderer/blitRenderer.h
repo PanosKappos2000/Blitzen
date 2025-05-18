@@ -52,6 +52,11 @@ namespace BlitzenEngine
 
     #endif
 
+    inline RendererPtrType BlitzenWorld_GetRenderer(void** ppContext)
+    {
+        return reinterpret_cast<RendererPtrType>(ppContext[BlitzenCore::Ce_WorldContextRendererId]);
+    }
+
 
     /*
         Renderer testing functions

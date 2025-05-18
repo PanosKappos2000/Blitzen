@@ -21,7 +21,15 @@ namespace BlitzenCore
         MaxTypes = 12
     };
 
-    constexpr uint16_t KeyCallbackCount = 256;
+    constexpr uint16_t Ce_KeyCallbackCount = 256;
+
+    constexpr uint32_t Ce_WorldContextSystemsCount = 5;
+
+    constexpr uint32_t Ce_WorldContextEngineId = 0;
+    constexpr uint32_t Ce_WorldContextCameraId = 1;
+    constexpr uint32_t Ce_WorldContextWorldTimerManagerId = 2;
+    constexpr uint32_t Ce_WorldContextRendererId = 3;
+    constexpr uint32_t Ce_WorlContextRndResourcesId = 4;
 }
 
 namespace BlitCL
