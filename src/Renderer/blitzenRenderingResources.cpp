@@ -1,9 +1,5 @@
 #include "blitRenderingResources.h"
 #include "blitRenderer.h"
-// Single file .png and .jpeg image loader, to be used for textures
-// https://github.com/nothings/stb
-#define STB_IMAGE_IMPLEMENTATION
-#include "VendorCode/stb_image.h"
 // Used for loading .obj meshes
 // https://github.com/thisistherk/fast_obj
 #define FAST_OBJ_IMPLEMENTATION
