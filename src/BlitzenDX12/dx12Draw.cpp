@@ -218,32 +218,41 @@ namespace BlitzenDX12
 
 	static void GenerateDepthPyramid(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
 		UINT frame, UINT swapchainId, ID3D12RootSignature* pyramidSig, ID3D12PipelineState* pyramidPso, Dx12Renderer::VarBuffers& varBuffers, ID3D12Resource* depthTarget, 
-		ID3D12DescriptorHeap* samplerHeap)
+		ID3D12DescriptorHeap* samplerHeap, uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
 		// Binds heap for compute
 		ID3D12DescriptorHeap* heaps[] = { srvHeap, samplerHeap };
 		commandList->SetDescriptorHeaps(2, heaps);
 
 		// Barrier for depth pyramid generation, waits for depth target write and depth pyramid read
-		D3D12_RESOURCE_BARRIER depthPyramidBarriers[1 + Ce_DepthPyramidMaxMips]{};
+		D3D12_RESOURCE_BARRIER depthPyramidBarriers[2]{};
 		CreateResourcesTransitionBarrier(depthPyramidBarriers[0], depthTarget,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		// Depth pyramid mips
-		for (uint32_t i = 0; i < varBuffers.depthPyramid.mipCount; ++i)
-		{
-			CreateResourcesTransitionBarrier(depthPyramidBarriers[i + 1], varBuffers.depthPyramid.pyramid.Get(),
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, i);
-		}
+		CreateResourcesTransitionBarrier(depthPyramidBarriers[1], varBuffers.depthPyramid.pyramid.Get(),
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		// Execute
-		commandList->ResourceBarrier(1 + varBuffers.depthPyramid.mipCount, depthPyramidBarriers);
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(depthPyramidBarriers), depthPyramidBarriers);
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pyramidSig);
 		commandList->SetPipelineState(pyramidPso);
 		commandList->SetComputeRootDescriptorTable(Ce_DepthPyramidSamplerParameterId, descriptorContext.depthPyramidSamplerHandle);
 
+		DepthPyramidRootConstant depthPyramidConstants{ BlitML::vec2{float(swapchainWidth), float(swapchainHeight)}, 0 };
+
 		for (uint32_t i = 0; i < varBuffers.depthPyramid.mipCount; ++i)
 		{
+			// Mip size calculcations
+			uint32_t levelWidth = BlitML::Max(1u, (varBuffers.depthPyramid.width) >> i);
+			uint32_t levelHeight = BlitML::Max(1u, (varBuffers.depthPyramid.height) >> i);
+
+			depthPyramidConstants.pyramidSize = BlitML::vec2{ float(levelWidth), float(levelHeight) };
+			commandList->SetComputeRoot32BitConstants(Ce_DepthPyramidRootConstantParameterId, Ce_DepthPyramidRootConstantsCount, &depthPyramidConstants, 0);
+
+			// Binds write texture (the depth pyramid has a copy for double buffering and each one has the correct offsets for the descriptor heap)
+			commandList->SetComputeRootDescriptorTable(Ce_DepthPyramidUAVRootParameterId, varBuffers.depthPyramid.mips[i]);
+
 			// Binds read texture (For first level, it's the depth target. For every other level, it's the depth pyramid itself)
 			if (i == 0)
 			{
@@ -252,27 +261,22 @@ namespace BlitzenDX12
 			else
 			{
 				commandList->SetComputeRootDescriptorTable(Ce_DepthPyramidSRVRootParameterId, descriptorContext.depthPyramidSrvHandle[frame]);
+				depthPyramidConstants.level++;
 			}
-
-			// Binds write texture (the depth pyramid has a copy for double buffering and each one has the correct offsets for the descriptor heap)
-			commandList->SetComputeRootDescriptorTable(Ce_DepthPyramidUAVRootParameterId, varBuffers.depthPyramid.mips[i]);
-
-			// Mip size calculcations
-			uint32_t levelWidth = BlitML::Max(1u, (varBuffers.depthPyramid.width) >> i);
-			uint32_t levelHeight = BlitML::Max(1u, (varBuffers.depthPyramid.height) >> i);
-
-			DepthPyramidRootConstant depthPyramidConstants{ BlitML::vec2{float(levelWidth), float(levelHeight)}, i };
-			commandList->SetComputeRoot32BitConstants(Ce_DepthPyramidRootConstantParameterId, Ce_DepthPyramidRootConstantsCount, &depthPyramidConstants, 0);
 
 			// Generate level
 			commandList->Dispatch(BlitML::GetComputeShaderGroupSize(levelWidth, 32), BlitML::GetComputeShaderGroupSize(levelHeight, 32), 1);
 
 			// Barrier for the next loop, since it will use the current mip as the read descriptor
-			D3D12_RESOURCE_BARRIER dispatchWriteBarrier{};
-			CreateResourcesTransitionBarrier(dispatchWriteBarrier, varBuffers.depthPyramid.pyramid.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, i);
-			commandList->ResourceBarrier(1, &dispatchWriteBarrier);
+			D3D12_RESOURCE_BARRIER nextLoopBarrier{};
+			CreateResourceUAVBarrier(nextLoopBarrier, varBuffers.depthPyramid.pyramid.Get());
+			commandList->ResourceBarrier(1, &nextLoopBarrier);
 		}
+
+		D3D12_RESOURCE_BARRIER cullingBarrier{};
+		CreateResourcesTransitionBarrier(cullingBarrier, varBuffers.depthPyramid.pyramid.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		commandList->ResourceBarrier(1, &cullingBarrier);
 
 		D3D12_RESOURCE_BARRIER graphicsBarrier{};
 		CreateResourcesTransitionBarrier(graphicsBarrier, depthTarget,
@@ -591,7 +595,8 @@ namespace BlitzenDX12
 			firstPass = 0;
 
 			GenerateDepthPyramid(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
-				m_depthPyramidSignature.Get(), m_depthPyramidPso.Get(), varBuffers, m_depthBuffers[swapchainIndex].Get(), m_samplerHeap.Get());
+				m_depthPyramidSignature.Get(), m_depthPyramidPso.Get(), varBuffers, m_depthBuffers[swapchainIndex].Get(), m_samplerHeap.Get(), 
+				m_swapchainWidth, m_swapchainHeight);
 
 			DrawOccLatePass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), 
@@ -644,7 +649,8 @@ namespace BlitzenDX12
 #if defined(DX12_DEPTH_PYRAMID_TEST) && defined(DX12_OCCLUSION_DRAW_CULL)
 		{
 			CopyDepthPyramidToSwapchain(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), varBuffers.depthPyramid.pyramid.Get(), 
-				varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get());
+				varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get(), 
+				context.pCamera->transformData.debugPyramidLevel, m_swapchainWidth, m_swapchainHeight);
 		}
 #else
 		{

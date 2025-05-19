@@ -3,9 +3,6 @@
 
 namespace BlitzenEngine
 {
-    /*
-        Helpers
-    */
     static void CreateRotationMatrixFromPitchAndYawQuaternion(const BlitML::quat& pitchOrientation, const BlitML::quat& yawOrientation,
         BlitML::mat4& rotationMatrix)
     {
@@ -129,8 +126,7 @@ namespace BlitzenEngine
         camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / float(camera.transformData.windowHeight));
     }
 
-    void ObliqueNearPlaneClippingMatrixModification(BlitML::mat4& proj, BlitML::mat4& res, 
-    const BlitML::vec4& clipPlane)
+    void ObliqueNearPlaneClippingMatrixModification(BlitML::mat4& proj, BlitML::mat4& res, const BlitML::vec4& clipPlane)
     {
         // Sets the oblique near-plane clipping matrix to the original projection matrix initially
         res = proj;

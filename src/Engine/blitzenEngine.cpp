@@ -124,16 +124,12 @@ int main(int argc, char* argv[])
 
         if(engine.IsActive())
         {
-            // Update delta time
             coreClock.Update();
 
-            // Updates camera
             UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
-            // Updates dynamic entities
 			entities->UpdateDynamicObjects(eventSystemState->ppContext);
             
-            // Render
             renderer->Update(drawContext);
             renderer->DrawFrame(drawContext);
         }

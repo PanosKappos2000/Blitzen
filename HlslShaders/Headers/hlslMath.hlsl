@@ -19,7 +19,7 @@ bool FrustumCheck(float3 center, float radius, float frustumRight, float frustum
     // It is also referenced in VKguide's GPU driven rendering articles https://vkguide.dev/docs/gpudriven/compute_culling/
     visible = visible && center.z * frustumLeft - abs(center.x) * frustumRight > -radius;
 	visible = visible && center.z * frustumBottom - abs(center.y) * frustumTop > -radius;
-	
+
 	// the near/far plane culling uses camera space Z directly
 	visible = visible && center.z + radius > znear && center.z - radius < zfar;
 
@@ -35,7 +35,7 @@ bool ProjectSphere(float3 center, float radius, float znear, float P00, float P1
 		return false;
     }
 
-	float3 scaledCenter = mul(center, radius);
+	float3 scaledCenter = center * radius;
 	float zProjector = center.z * center.z - radius * radius;
 
     // Projected sphere width
@@ -50,7 +50,7 @@ bool ProjectSphere(float3 center, float radius, float znear, float P00, float P1
 
     // Conversion to aabb
 	aabb = float4(xMin * P00, yMin * P11, xMax * P00, yMax * P11);
-	aabb = mul(aabb.xwzy, float4(0.5f, -0.5f, 0.5f, -0.5f)) + float4(0.5f, 0.5f, 0.5f, 0.5f); // clip space -> uv space
+	aabb = aabb.xwzy * float4(0.5f, -0.5f, 0.5f, -0.5f) + float4(0.5f, 0.5f, 0.5f, 0.5f); // clip space -> uv space
 
 	return true;
 }
@@ -64,7 +64,7 @@ bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, SamplerState dp
     // Finds the mip map level that will match the screen size of the sphere
 	float level = floor(log2(max(width, height)));
 
-	float depth = depthPyramid.SampleLevel(dpSampler, float2(aabb.xy + aabb.zw) * 0.5, level).x;
+	float depth = depthPyramid.SampleLevel(dpSampler, float2(aabb.xy + aabb.zw) * float2(0.5f, 0.5f), level).r;
 
 	float depthSphere = zNear / (center.z - radius);
 

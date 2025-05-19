@@ -164,7 +164,8 @@ namespace BlitzenDX12
 	}
 
 	void CopyDepthPyramidToSwapchain(ID3D12GraphicsCommandList4* commandList, ID3D12Resource* swapchainBackBuffer, ID3D12Resource* depthPyramid,
-		UINT depthPyramidWidth, UINT depthPyramidHeight, ID3D12DescriptorHeap* descriptorHeap, ID3D12CommandQueue* queue, IDXGISwapChain3* swapchain)
+		UINT depthPyramidWidth, UINT depthPyramidHeight, ID3D12DescriptorHeap* descriptorHeap, ID3D12CommandQueue* queue, IDXGISwapChain3* swapchain, 
+		uint32_t pyramidMip, uint32_t swapchainWidht, uint32_t swapchainHeight)
 	{
 		D3D12_RESOURCE_BARRIER barrier[2] {};
 		CreateResourcesTransitionBarrier(barrier[0], depthPyramid, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
@@ -176,14 +177,27 @@ namespace BlitzenDX12
 		D3D12_TEXTURE_COPY_LOCATION srcLocation {};
 		srcLocation.pResource = depthPyramid;
 		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		srcLocation.SubresourceIndex = 0;
+		srcLocation.SubresourceIndex = pyramidMip;
 
 		D3D12_TEXTURE_COPY_LOCATION destLocation {};
 		destLocation.pResource = swapchainBackBuffer;
 		destLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		destLocation.SubresourceIndex = 0;
 
-		commandList->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, nullptr);
+		// Get the width and height for the current mip level
+		uint32_t mipWidth = max(1u, (depthPyramidWidth >> pyramidMip));
+		uint32_t mipHeight = max(1u, (depthPyramidHeight >> pyramidMip));
+
+		// Copy region parameters
+		D3D12_BOX copyRegion = {};
+		copyRegion.left = 0;
+		copyRegion.top = 0;
+		copyRegion.front = 0;
+		copyRegion.right = mipWidth;  // Width of the mip
+		copyRegion.bottom = mipHeight;  // Height of the mip
+		copyRegion.back = 1;
+
+		commandList->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, &copyRegion);
 
 		// Transition the swapchain back buffer back to present state
 		D3D12_RESOURCE_BARRIER presentBarrier {};

@@ -197,8 +197,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
-                            #DX12_OCCLUSION_DRAW_CULL
-                            #DX12_DEPTH_PYRAMID_TEST
+                            DX12_OCCLUSION_DRAW_CULL
+                            DX12_DEPTH_PYRAMID_TEST
                             )
 
 # Linker file directories and libraries to link for linux and Windows

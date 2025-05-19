@@ -35,7 +35,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     // Occlusion culling
     if (visible)
 	{
-		float4 aabb;
+		float4 aabb = float4(0, 0, 0, 0);
 		if (ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
 		{
 			visible = visible && OcclusionCheck(aabb, depthPyramid, dpSampler, pyramidWidth, pyramidHeight, center, radius, zNear);

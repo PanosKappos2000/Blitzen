@@ -31,6 +31,7 @@ namespace BlitzenEngine
 
 		// Debug functionality, to freeze frustum culling
         bool bFreezeFrustum{ false };
+        uint32_t debugPyramidLevel{ 0 };
     };
 
     // Shader struct. Shaders are expected to have a struct that is aligned with this

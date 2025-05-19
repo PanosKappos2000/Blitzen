@@ -48,7 +48,7 @@ namespace BlitzenCore
 {
     struct LinearAllocator
     {
-        size_t totalAllocated = 0;
+        size_t totalAllocated{ 0 };
         void* pBlock;
         size_t blockSize;
     };
@@ -57,7 +57,7 @@ namespace BlitzenCore
     class MemoryManagerState
     {
     public:
-        size_t totalAllocated = 0;
+        size_t totalAllocated{ 0 };
         size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)];
 
         #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
@@ -77,8 +77,7 @@ namespace BlitzenCore
             #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
                 s_pMemoryManager->linearAlloc.blockSize = LinearAllocatorBlockSize;
                 s_pMemoryManager->linearAlloc.totalAllocated = 0;
-                s_pMemoryManager->linearAlloc.pBlock = 
-                BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, LinearAllocatorBlockSize);
+                s_pMemoryManager->linearAlloc.pBlock = BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, LinearAllocatorBlockSize);
             #endif
         }
 
@@ -94,8 +93,7 @@ namespace BlitzenCore
             {
                 #if defined(BLIT_REIN_SANT_ENG)
                 BLIT_WARN("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
-                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]
-                )
+                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
                 #else
                 printf("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
                     totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);

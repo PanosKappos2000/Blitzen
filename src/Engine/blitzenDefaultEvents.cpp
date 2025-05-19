@@ -105,6 +105,30 @@ namespace BlitzenEngine
         camera.transformData.bFreezeFrustum = !camera.transformData.bFreezeFrustum;
     }
 
+    static void ChangePyramidLevelOnF3ReleaseCallback(void** ppContext)
+    {
+        auto& camera{ BlitzenWorld_GetMainCamera(ppContext) };
+
+        if (camera.transformData.debugPyramidLevel >= 16)
+        {
+            camera.transformData.debugPyramidLevel = 0;
+        }
+        else
+        {
+            camera.transformData.debugPyramidLevel++;
+        }
+    }
+
+    static void DecreasePyramidLevelOnF4ReleaseCallback(void** ppContext)
+    {
+        auto& camera{ BlitzenWorld_GetMainCamera(ppContext) };
+
+        if (camera.transformData.debugPyramidLevel != 0)
+        {
+            camera.transformData.debugPyramidLevel--;
+        }
+    }
+
     static void UpdateWindowSize(Camera& camera, Engine* pEngine)
     {
         camera.transformData.bWindowResize = 1;
@@ -173,6 +197,10 @@ namespace BlitzenEngine
         BlitzenCore::RegisterKeyPressAndReleaseCallback(pInputs, BlitzenCore::BlitKey::__D, MoveDefaultCameraRightOnDKeyPressCallback, StopMovingCameraRightOnDReleaseCallback);
 
         BlitzenCore::RegisterKeyReleaseCallback(pInputs, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback);
+
+        BlitzenCore::RegisterKeyReleaseCallback(pInputs, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback);
+
+        BlitzenCore::RegisterKeyReleaseCallback(pInputs, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback);
 
         BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(pInputs, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest);
     }

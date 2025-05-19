@@ -18,8 +18,8 @@ namespace BlitzenPlatform
 
     struct PlatformState
     {
-        HINSTANCE winInstance;
-        HWND winWindow;
+        HINSTANCE hinstance;
+        HWND hwnd;
 
         // gl render context
         HGLRC hglrc;
@@ -30,14 +30,13 @@ namespace BlitzenPlatform
 
     inline PlatformState inl_pPlatformState;
 
-    void* GetWindowHandle() { return inl_pPlatformState.winWindow; }
+    void* GetWindowHandle() { return inl_pPlatformState.hwnd; }
 
     inline double inl_clockFrequency;
     inline LARGE_INTEGER inl_startTime;
 
-    // This is the callback function, for things like window events and key presses
-    // Exists only to be passed to lpfnWndProc during startup
-    LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param);
+    // WINDOW CALLBACK
+    LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM w_param, LPARAM l_param);
 
     size_t GetPlatformMemoryRequirements()
     {
@@ -71,8 +70,7 @@ namespace BlitzenPlatform
         LONG winHeight = rect.bottom - rect.top;
 
         // TODO: Maybe add styles?
-        HWND hwnd = CreateWindowExA(0,className, appName, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, winWidth, winHeight,
-            nullptr, nullptr, hInstance, nullptr);
+        HWND hwnd = CreateWindowExA(0,className, appName, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, winWidth, winHeight, nullptr, nullptr, hInstance, nullptr);
 
         if (!hwnd)
         {
@@ -100,8 +98,8 @@ namespace BlitzenPlatform
         }
 
         // These two need to be set before the renderer for some APIs
-        inl_pPlatformState.winInstance = hInstance;
-        inl_pPlatformState.winWindow = hwnd;
+        inl_pPlatformState.hinstance = hInstance;
+        inl_pPlatformState.hwnd = hwnd;
         
 		auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
         if (!pBackendRenderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, hwnd))
@@ -136,9 +134,9 @@ namespace BlitzenPlatform
             wglDeleteContext(inl_pPlatformState.hglrc);
         }
 
-        if (inl_pPlatformState.winWindow)
+        if (inl_pPlatformState.hwnd)
         {
-            DestroyWindow(inl_pPlatformState.winWindow);
+            DestroyWindow(inl_pPlatformState.hwnd);
         }
     }
 
@@ -154,7 +152,7 @@ namespace BlitzenPlatform
         return true;
     }
 
-    static void SBlitWinLogSetup(const char* message, uint8_t color, HANDLE consoleHandle)
+    static void BlitWinLogSetup(const char* message, uint8_t color, HANDLE consoleHandle)
     {
         static uint8_t levels[6] = { 64, 4, 6, 2, 1, 8 };
         SetConsoleTextAttribute(consoleHandle, levels[color]);
@@ -167,13 +165,13 @@ namespace BlitzenPlatform
     void PlatformConsoleWrite(const char* message, uint8_t color)
     {
         auto consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-        SBlitWinLogSetup(message, color, consoleHandle);
+        BlitWinLogSetup(message, color, consoleHandle);
     }
 
     void PlatformConsoleError(const char* message, uint8_t color)
     {
         auto consoleHandle = GetStdHandle(STD_ERROR_HANDLE);
-        SBlitWinLogSetup(message, color, consoleHandle);
+        BlitWinLogSetup(message, color, consoleHandle);
     }
 
     void PlatformSleep(uint64_t ms)
@@ -184,8 +182,8 @@ namespace BlitzenPlatform
     uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
     {
         VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-        info.hinstance = inl_pPlatformState.winInstance;
-        info.hwnd = inl_pPlatformState.winWindow;
+        info.hinstance = inl_pPlatformState.hinstance;
+        info.hwnd = inl_pPlatformState.hwnd;
 
         auto res = vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
         if (res != VK_SUCCESS)
@@ -198,7 +196,7 @@ namespace BlitzenPlatform
     uint8_t CreateOpenglDrawContext()
     {
         // Get the device context of the window
-        auto hdc = GetDC(inl_pPlatformState.winWindow);
+        auto hdc = GetDC(inl_pPlatformState.hwnd);
 
         // Pixel format
         PIXELFORMATDESCRIPTOR pfd;
@@ -248,10 +246,10 @@ namespace BlitzenPlatform
         // With glew now available, extension function pointers can be accessed and a better gl context can be retrieved
         // So the old render context is deleted and the device is released
         wglDeleteContext(inl_pPlatformState.hglrc);
-        ReleaseDC(inl_pPlatformState.winWindow, hdc);
+        ReleaseDC(inl_pPlatformState.hwnd, hdc);
 
         // Get a new device context
-        hdc = GetDC(inl_pPlatformState.winWindow);
+        hdc = GetDC(inl_pPlatformState.hwnd);
 
         // Choose a pixel format with attributes
         const int attribList[] =
@@ -290,7 +288,8 @@ namespace BlitzenPlatform
         #else
             wglSwapIntervalEXT(0);
         #endif
-        wglSwapLayerBuffers(GetDC(inl_pPlatformState.winWindow), WGL_SWAP_MAIN_PLANE);
+
+        wglSwapLayerBuffers(GetDC(inl_pPlatformState.hwnd), WGL_SWAP_MAIN_PLANE);
     }
 
     LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param)

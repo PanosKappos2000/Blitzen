@@ -9,6 +9,7 @@ namespace BlitzenVulkan
         if (handle != VK_NULL_HANDLE)
         {
             auto inst = VulkanRenderer::GetRendererInstance()->m_instance;
+
             vkDestroySurfaceKHR(inst, handle, nullptr);
         }
     }
@@ -20,7 +21,9 @@ namespace BlitzenVulkan
             auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
 
             for (auto view : swapchainImageViews)
+            {
                 vkDestroyImageView(vdv, view, nullptr);
+            }
 
             vkDestroySwapchainKHR(vdv, swapchainHandle, nullptr);
         }
@@ -139,11 +142,9 @@ namespace BlitzenVulkan
 
 
     // Acceleration structure is an extensions so it needs to load the destroy function as well
-    static void DestroyAccelerationStructureKHR(VkInstance instance, VkDevice device,
-        VkAccelerationStructureKHR as, const VkAllocationCallbacks* pAllocator)
+    static void DestroyAccelerationStructureKHR(VkInstance instance, VkDevice device, VkAccelerationStructureKHR as, const VkAllocationCallbacks* pAllocator)
     {
-        auto func = (PFN_vkDestroyAccelerationStructureKHR)vkGetInstanceProcAddr(
-            instance, "vkDestroyAccelerationStructureKHR");
+        auto func = (PFN_vkDestroyAccelerationStructureKHR)vkGetInstanceProcAddr(instance, "vkDestroyAccelerationStructureKHR");
         if (func != nullptr)
         {
             func(device, as, pAllocator);
