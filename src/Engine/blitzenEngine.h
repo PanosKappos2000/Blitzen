@@ -58,6 +58,12 @@ namespace BlitzenEngine
         constexpr uint8_t Ce_InstanceCulling = 0;
     #endif
 
+    #if defined(BLIT_DEPTH_PYRAMID_TEST)
+        constexpr uint32_t Ce_DepthPyramidDebug = 1;
+    #else
+        constexpr uint32_t Ce_DepthPyramidDebug = 0;
+    #endif
+
     #if defined(_WIN32) && !defined(BLIT_VK_FORCE) && !defined(BLIT_GL_LEGACY_OVERRIDE)
         constexpr bool Ce_HLSL = 1;// Row major?
     #else

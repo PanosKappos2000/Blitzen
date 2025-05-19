@@ -630,6 +630,53 @@ namespace BlitzenVulkan
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &depthAttachmentReadBarrier);
     }
 
+    static void CopyPyramidToSwapchain(VkInstance instance, VkCommandBuffer commandBuffer, PushDescriptorImage& depthPyramid, Swapchain& swapchain, VkExtent2D drawExtent,
+        VkExtent2D depthPyramidExtent, uint32_t depthPyramidMipCount, VkImageView* depthPyramidMips, VkPipeline pipeline, VkPipelineLayout layout, uint32_t swapchainIdx, 
+        uint32_t pyramidMip, VkSampler sampler)
+    {
+        // Swapchain image and attachment image descriptors
+        VkWriteDescriptorSet swapchainImageWrite{};
+        VkDescriptorImageInfo swapchainImageDescriptorInfo{};
+        WriteImageDescriptorSets(swapchainImageWrite, swapchainImageDescriptorInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE,
+            0, VK_IMAGE_LAYOUT_GENERAL, swapchain.swapchainImageViews[swapchainIdx]);
+
+        depthPyramid.descriptorInfo.imageView = depthPyramidMips[pyramidMip];
+        uint32_t levelWidth = BlitML::Max(1u, (depthPyramidExtent.width) >> pyramidMip);
+        uint32_t levelHeight = BlitML::Max(1u, (depthPyramidExtent.height) >> pyramidMip);
+
+        depthPyramid.descriptorWrite.pImageInfo = &depthPyramid.descriptorInfo;
+        depthPyramid.descriptorInfo.sampler = sampler;
+        depthPyramid.descriptorWrite.dstBinding = 1;
+        depthPyramid.descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+        VkWriteDescriptorSet colorAttachmentCopyWrite[2] =
+        {
+            depthPyramid.descriptorWrite, swapchainImageWrite
+        };
+        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 2, colorAttachmentCopyWrite);
+
+        // Extent push constant
+        BlitML::vec2 presentImageExtentPcVal
+        {
+            static_cast<float>(swapchain.swapchainExtent.width), static_cast<float>(swapchain.swapchainExtent.height)
+        };
+        vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &presentImageExtentPcVal);
+
+        // Dispatches copy shader
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+        vkCmdDispatch(commandBuffer, BlitML::GetComputeShaderGroupSize(levelWidth, 8), drawExtent.height / 8 + 1, 1);
+
+        // Layout transition barrier
+        VkImageMemoryBarrier2 presentImageBarrier{};
+        ImageMemoryBarrier(swapchain.swapchainImages[swapchainIdx], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS);
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
+
+        depthPyramid.descriptorWrite.dstBinding = 0;
+        depthPyramid.descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    }
+
     static void DrawBackgroundImage(VkCommandBuffer commandBuffer, VkPipeline pipeline, VkPipelineLayout layout, 
         VkInstance instance, VkImageView view, VkExtent2D extent)
     {
@@ -1056,9 +1103,20 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
 
             // Copies the color attachment to the swapchain image
-            CopyColorAttachmentToSwapchainImage(fTools.commandBuffer,m_swapchainValues.swapchainImageViews[swapchainIdx],
-                m_swapchainValues.swapchainImages[swapchainIdx], m_colorAttachment, m_drawExtent, m_generatePresentationPipeline.handle, 
-                m_generatePresentationLayout.handle, m_instance);
+            if constexpr (BlitzenEngine::Ce_DepthPyramidDebug)
+            {
+                CopyPyramidToSwapchain(m_instance, fTools.commandBuffer, m_depthPyramid, m_swapchainValues, m_drawExtent,
+                    m_depthPyramidExtent, m_depthPyramidMipLevels, m_depthPyramidMips, m_generatePresentationPipeline.handle, 
+                    m_generatePresentationLayout.handle, swapchainIdx, context.pCamera->transformData.debugPyramidLevel, 
+                    m_depthAttachment.sampler.handle);
+            }
+            else
+            {
+                CopyColorAttachmentToSwapchainImage(fTools.commandBuffer, m_swapchainValues.swapchainImageViews[swapchainIdx],
+                    m_swapchainValues.swapchainImages[swapchainIdx], m_colorAttachment, m_drawExtent, m_generatePresentationPipeline.handle,
+                    m_generatePresentationLayout.handle, m_instance);
+            }
+            
 
             // Adds semaphores and submits command buffer
             VkSemaphoreSubmitInfo waitSemaphores[2]{ {}, {} };

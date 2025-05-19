@@ -43,7 +43,7 @@ namespace BlitzenDX12
     constexpr DXGI_FORMAT Ce_DepthTargetSRVFormat = DXGI_FORMAT_R32_FLOAT;
 
 
-#if defined(DX12_DEPTH_PYRAMID_TEST) && defined(DX12_OCCLUSION_DRAW_CULL)
+#if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)
     static_assert(Ce_SwapchainFormat == Ce_DepthPyramidFormat);
 #else
     static_assert(Ce_DepthTargetSRVFormat == DXGI_FORMAT_R32_FLOAT);

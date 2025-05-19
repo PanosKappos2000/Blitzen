@@ -143,8 +143,7 @@ namespace BlitzenEngine
     }
 
     // Called  to create a Primitive Surface resource for the renderer
-    void RenderingResources::LoadPrimitiveSurface(BlitCL::DynamicArray<Vertex>& surfaceVertices, 
-        BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    void RenderingResources::LoadPrimitiveSurface(BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
         // Optimize vertices and indices using meshoptimizer
         meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(), surfaceIndices.GetSize(), surfaceVertices.GetSize());
@@ -167,6 +166,7 @@ namespace BlitzenEngine
 		// Adds the surface to the global surfaces array
         m_surfaces.PushBack(newSurface);
         m_primitiveVertexCounts.PushBack(static_cast<uint32_t>(m_vertices.GetSize()));
+
         // Default, if a caller wants transparency, they should handle it
 		bTransparencyList.PushBack({ false });
     }
@@ -178,13 +178,10 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<BlitML::vec3> normals{ surfaceVertices.GetSize() };
         for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
         {
-            Vertex& v = surfaceVertices[i];
-            normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f,
-                v.normalY / 127.f - 1.f,
-                v.normalZ / 127.f - 1.f);
+            auto& v = surfaceVertices[i];
+            normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f, v.normalY / 127.f - 1.f, v.normalZ / 127.f - 1.f);
         }
-        float lodScale = meshopt_simplifyScale(&surfaceVertices[0].position.x,
-            surfaceVertices.GetSize(), sizeof(Vertex));
+        float lodScale = meshopt_simplifyScale(&surfaceVertices[0].position.x, surfaceVertices.GetSize(), sizeof(Vertex));
         float lodError = 0.f;
         float normalWeights[3] = { 1.f, 1.f, 1.f };
 

@@ -646,7 +646,7 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_COPY_DEST);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformCopyBarrier);
 
-#if defined(DX12_DEPTH_PYRAMID_TEST) && defined(DX12_OCCLUSION_DRAW_CULL)
+#if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)
 		{
 			CopyDepthPyramidToSwapchain(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), varBuffers.depthPyramid.pyramid.Get(), 
 				varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get(), 
