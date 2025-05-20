@@ -19,9 +19,9 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         return;
     }
     
-    Render obj = renderBuffer[objId];
-    Surface surface = surfaceBuffer[obj.surfaceId];
-    Transform transform = transformBuffer[obj.transformId];
+    Render obj = ssbo_Renders[objId];
+    Surface surface = ssbo_Surfaces[obj.surfaceId];
+    Transform transform = ssbo_Transforms[obj.transformId];
 
     // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
     float3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.position;
@@ -36,8 +36,8 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
         uint instanceId;
-        InterlockedAdd(instanceCounterBuffer[lodId].instanceCount, 1, instanceId);
+        InterlockedAdd(rwssbo_InstCounter[lodId].instanceCount, 1, instanceId);
 
-        instBuffer[instanceCounterBuffer[lodId].instanceOffset + instanceId] = objId;
+        rwssbo_instIndices[rwssbo_InstCounter[lodId].instanceOffset + instanceId] = objId;
     }
 }

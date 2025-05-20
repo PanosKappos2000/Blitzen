@@ -15,10 +15,10 @@ struct Material
     uint padding1;
     uint padding2;
 };
-StructuredBuffer<Material> materialBuffer : register(t5);
+StructuredBuffer<Material> ssbo_MaterialBuffer : register(t5);
 
-SamplerState texSampler : register(s0);
-Texture2D<float4> textures[5000] : register(t8);
+SamplerState smp_textureSampler : register(s0);
+Texture2D<float4> tex_Textures[5000] : register(t8);
 
 
 struct VSOutput
@@ -33,28 +33,25 @@ struct VSOutput
 PSOutput main(VSOutput input)
 {
     PSOutput output;
-    Material mat = materialBuffer[input.materialId];
-    //Texture2D<float4> alb = textures[NonUniformResourceIndex(mat.albedoTag)];
-    //output.color = alb.Sample(texSampler, input.uvMapping);
-    //return output;
+    Material mat = ssbo_MaterialBuffer[input.materialId];
     
     float4 albedoMap = float4(0.5, 0.5, 0.5, 1);
     if(mat.albedoTag != 0)
     {
-        Texture2D<float4> albedo = textures[NonUniformResourceIndex(mat.albedoTag)];
-        albedoMap = albedo.Sample(texSampler, input.uvMapping);
+        Texture2D<float4> albedo = tex_Textures[NonUniformResourceIndex(mat.albedoTag)];
+        albedoMap = albedo.Sample(smp_textureSampler, input.uvMapping);
     }
     float3 normalMap = float3(0, 0, 1);
     if(mat.normalTag != 0)
     {
-        Texture2D<float4> normal = textures[NonUniformResourceIndex(mat.normalTag)];
-        normalMap = normal.Sample(texSampler, input.uvMapping).rgb * 2 - 1;
+        Texture2D<float4> normal = tex_Textures[NonUniformResourceIndex(mat.normalTag)];
+        normalMap = normal.Sample(smp_textureSampler, input.uvMapping).rgb * 2 - 1;
     }
     float3 emissiveMap = float3(0.0, 0.0, 0.0);
     if(mat.emissiveTag != 0)
     {
-        Texture2D<float4> emissive = textures[NonUniformResourceIndex(mat.emissiveTag)];
-        emissiveMap = emissive.Sample(texSampler, input.uvMapping).rgb;
+        Texture2D<float4> emissive = tex_Textures[NonUniformResourceIndex(mat.emissiveTag)];
+        emissiveMap = emissive.Sample(smp_textureSampler, input.uvMapping).rgb;
     }
 
     float3 bitangent = cross(input.normal, input.tangent.xyz) * input.tangent.w;

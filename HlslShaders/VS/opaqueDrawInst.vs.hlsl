@@ -7,18 +7,18 @@
 // The main vertex shader function
 VSOutput main(uint vertexIndex : SV_VERTEXID, uint instId : SV_INSTANCEID)
 {
-    Vertex vtx = vertexBuffer[vertexIndex];
-    uint renderId = instBuffer[objId  + instId];
-    Render obj = renderBuffer[renderId];
-    float4 orientation = transformBuffer[obj.transformId].orientation;
+    Vertex vtx = ssbo_Vertices[vertexIndex];
+    uint renderId = rwssbo_instIndices[objId  + instId];
+    Render obj = ssbo_Renders[renderId];
+    float4 orientation = ssbo_Transforms[obj.transformId].orientation;
     VSOutput output;
 
     // Position
-    float3 modelPos = RotateQuat(vtx.position, orientation) * transformBuffer[obj.transformId].scale + transformBuffer[obj.transformId].position;
+    float3 modelPos = RotateQuat(vtx.position, orientation) * ssbo_Transforms[obj.transformId].scale + ssbo_Transforms[obj.transformId].position;
     output.position = mul(projectionView, (float4(modelPos, 1.0f))); 
     
     // Material index
-    output.materialId = surfaceBuffer[obj.surfaceId].materialId;
+    output.materialId = ssbo_Surfaces[obj.surfaceId].materialId;
 
     // Normals(unpacking required)
     float3 unpackedNormal = UnpackNormals(vtx.normals);

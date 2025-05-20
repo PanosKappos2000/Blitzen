@@ -1,10 +1,3 @@
-struct ComputeCmd
-{
-    uint groupX;
-    uint groupY;
-    uint groupZ;
-};
-
 struct DrawCmd
 {
     // Index into render object buffer
@@ -20,9 +13,9 @@ struct DrawCmd
     uint padding0;
     uint padding1;
 };
-RWStructuredBuffer<DrawCmd> drawCmdBuffer : register(u0);
+RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u0);
 
-RWBuffer<uint> drawCountBuffer : register(u1);
+RWBuffer<uint> rwb_DrawCmdCounter : register(u1);
 
 struct Lod 
 {
@@ -42,7 +35,7 @@ struct Lod
     uint padding1;
     uint padding3;
 };
-StructuredBuffer<Lod> lodBuffer : register (t7);
+StructuredBuffer<Lod> ssbo_LODs : register (t7);
 
 // The LOD index is calculated using a formula, where the distance to the bounding sphere's surface is taken
 // and the minimum error that would result in acceptable screen-space deviation is computed based on camera parameters
@@ -53,7 +46,7 @@ uint LODSelection(float3 center, float radius, float scale, float lodTarget, uin
     uint lodIndex = 0;
 	for (uint i = 1; i < lodCount; ++i)
     {
-		if (lodBuffer[lodOffset + i].error < threshold)
+		if (ssbo_LODs[lodOffset + i].error < threshold)
         {
 			lodIndex = i;
         }
@@ -68,18 +61,18 @@ struct InstanceCounter
     uint instanceOffset;
     uint instanceCount;
 };
-RWStructuredBuffer<InstanceCounter> instanceCounterBuffer : register (u2);
+RWStructuredBuffer<InstanceCounter> rwssbo_InstCounter : register (u2);
 
 #endif
 
 #ifdef DRAW_CULL_OCCLUSION
 
-RWStructuredBuffer<uint> drawVisibilityBuffer : register (u5);
+RWStructuredBuffer<uint> rwssbo_DrawVisibilityBuffer : register (u5);
 
 #endif
 
 #ifdef HI_Z_MAP_DRAW_OCCLUSION
 
-Texture2D<float4> depthPyramid : register (t10);
+Texture2D<float4> tex_HiZMap : register (t10);
 
 #endif

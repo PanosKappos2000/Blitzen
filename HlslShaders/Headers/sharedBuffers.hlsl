@@ -14,7 +14,7 @@ struct Surface
 
     uint vertexOffset; // Not used in the shaders but can hold the offset when loading
 };
-StructuredBuffer<Surface> surfaceBuffer : register(t2);
+StructuredBuffer<Surface> ssbo_Surfaces : register(t2);
 
 struct Transform
 {
@@ -22,18 +22,18 @@ struct Transform
     float scale;
     float4 orientation;
 };
-StructuredBuffer<Transform> transformBuffer : register(t3);
+StructuredBuffer<Transform> ssbo_Transforms : register(t3);
 
 struct Render
 {
     uint transformId;
     uint surfaceId;
 };
-StructuredBuffer<Render> renderBuffer : register(t4);
+StructuredBuffer<Render> ssbo_Renders : register(t4);
 
 #ifdef DRAW_INSTANCING
 
-RWStructuredBuffer<uint> instBuffer : register(u3);
+RWStructuredBuffer<uint> rwssbo_instIndices : register(u3);
 
 #endif
 

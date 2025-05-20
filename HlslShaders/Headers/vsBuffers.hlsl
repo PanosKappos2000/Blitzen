@@ -5,7 +5,7 @@ struct Vertex
     uint normals, tangents;
     uint padding0;
 };
-StructuredBuffer<Vertex> vertexBuffer : register(t0);
+StructuredBuffer<Vertex> ssbo_Vertices : register(t0);
 
 cbuffer ObjId : register(b1)
 {

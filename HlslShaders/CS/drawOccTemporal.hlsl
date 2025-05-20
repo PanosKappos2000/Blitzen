@@ -20,9 +20,9 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         return;
     }
 
-    Render obj = renderBuffer[objId];
-    Surface surface = surfaceBuffer[obj.surfaceId];
-    Transform transform = transformBuffer[obj.transformId];
+    Render obj = ssbo_Renders[objId];
+    Surface surface = ssbo_Surfaces[obj.surfaceId];
+    Transform transform = ssbo_Transforms[obj.transformId];
 
     // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
     float3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.position;
@@ -38,7 +38,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 		float4 aabb = float4(0, 0, 0, 0);
 		if (ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
 		{
-			visible = visible && OcclusionCheck(aabb, depthPyramid, pyramidWidth, pyramidHeight, center, radius, zNear);
+			visible = visible && OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear);
 		}
 	}
 
@@ -48,18 +48,18 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
         // Command count
         uint cmdId;
-        InterlockedAdd(drawCountBuffer[0], 1, cmdId);
+        InterlockedAdd(rwb_DrawCmdCounter[0], 1, cmdId);
 
         // Render object id constant
-        drawCmdBuffer[cmdId].objId = objId;
+        ssbo_DrawCmd[cmdId].objId = objId;
 
         // Vertices
-        drawCmdBuffer[cmdId].indexCount = lodBuffer[lodId].indexCount;
-        drawCmdBuffer[cmdId].indexOffset = lodBuffer[lodId].indexOffset;
-        drawCmdBuffer[cmdId].vertOffset = 0; // Already added to the index buffer
+        ssbo_DrawCmd[cmdId].indexCount = ssbo_LODs[lodId].indexCount;
+        ssbo_DrawCmd[cmdId].indexOffset = ssbo_LODs[lodId].indexOffset;
+        ssbo_DrawCmd[cmdId].vertOffset = 0; // Already added to the index buffer
 
         // Instances
-        drawCmdBuffer[cmdId].instCount = 1;
-        drawCmdBuffer[cmdId].insOffset = 0;
+        ssbo_DrawCmd[cmdId].instCount = 1;
+        ssbo_DrawCmd[cmdId].insOffset = 0;
     }
 }

@@ -15,5 +15,5 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
         return;
     }
     
-    instanceCounterBuffer[lodId].instanceCount = 0;
+    rwssbo_InstCounter[lodId].instanceCount = 0;
 }

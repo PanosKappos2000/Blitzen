@@ -55,7 +55,7 @@ bool ProjectSphere(float3 center, float radius, float znear, float P00, float P1
 	return true;
 }
 
-bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, uint pyramidWidth, uint pyramidHeight, float3 center, float radius, float zNear)
+bool OcclusionCheck(float4 aabb, Texture2D<float4> tex_HiZMap, uint pyramidWidth, uint pyramidHeight, float3 center, float radius, float zNear)
 {
     // Scales aabb to pyramid width and height, to get the desired pyramid level
 	float width = (aabb.z - aabb.x) * pyramidWidth;
@@ -70,7 +70,7 @@ bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, uint pyramidWid
 	aabb.z *= mipWidth * 0.5f;
 	aabb.w *= mipHeight * 0.5f;
 
-	float depth = depthPyramid.Load(uint3(aabb.xy + aabb.zw, level)).r;
+	float depth = tex_HiZMap.Load(uint3(aabb.xy + aabb.zw, level)).r;
 
 	float depthSphere = zNear / (center.z - radius);
 
