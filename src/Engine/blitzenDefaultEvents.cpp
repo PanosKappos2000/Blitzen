@@ -9,8 +9,10 @@ namespace BlitzenEngine
     {
         if(eventType == BlitzenCore::BlitEventType::EngineShutdown)
         {
-            BLIT_WARN("Engine shutdown event encountered!")
-            BlitzenWorld_GetEngine(ppContext, BlitzenCore::Ce_WorldContextEngineId)->Shutdown();
+            BLIT_WARN("Engine shutdown event encountered!");
+            auto pBlitState{ reinterpret_cast<EngineState*>(ppContext[BlitzenCore::Ce_WorldContextEngineId]) };
+            *pBlitState = EngineState::SHUTDOWN;
+
             return 1; 
         }
 
@@ -129,29 +131,31 @@ namespace BlitzenEngine
         }
     }
 
-    static void UpdateWindowSize(Camera& camera, Engine* pEngine)
+    static uint8_t ResizeEventCallback(void** ppContext, BlitzenCore::BlitEventType eventType)
     {
+        auto& camera{ BlitzenWorld_GetMainCamera(ppContext) };
+        auto pBlitState{ reinterpret_cast<EngineState*>(ppContext[BlitzenCore::Ce_WorldContextEngineId]) };
+
+        if (*pBlitState == EngineState::LOADING)
+        {
+            return 0;
+        }
+
         camera.transformData.bWindowResize = 1;
 
         if (camera.transformData.windowWidth == 0 || camera.transformData.windowHeight == 0)
         {
-            pEngine->Suspend();
-            return;
+            *pBlitState = EngineState::SUSPENDED;
+            return 1;
         }
 
-        // THIS THING COULD BE WHAT WAS BREAKING LINUX THREADING!!!!
-        pEngine->ReActivate();
+        // Reactivate
+        if (*pBlitState == EngineState::SUSPENDED)
+        {
+            *pBlitState = EngineState::RUNNING;
+        }
 
         UpdateProjection(camera, camera.transformData.windowWidth, camera.transformData.windowHeight);
-    }
-
-    static uint8_t OnResize(void** ppContext, BlitzenCore::BlitEventType eventType)
-    {
-        auto& camera{ BlitzenWorld_GetMainCamera(ppContext) };
-
-        auto pEngine{ BlitzenWorld_GetEngine(ppContext, BlitzenCore::Ce_WorldContextEngineId) };
-        
-        UpdateWindowSize(camera, pEngine);
 
         return 1;
     }
@@ -182,7 +186,7 @@ namespace BlitzenEngine
     {
         BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::EngineShutdown, OnEvent);
 
-        BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::WindowResize, OnResize);
+        BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::WindowResize, ResizeEventCallback);
 
         BlitzenCore::RegisterMouseMoveCallback(pInputs, OnMouseMove);
 

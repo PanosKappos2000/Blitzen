@@ -16,7 +16,7 @@ namespace BlitzenEngine
     // Function that is defined in blitzenDefaultEvents.cpp and only called once in main
     void RegisterDefaultEvents(BlitzenCore::EventSystemState* pEvents, BlitzenCore::InputSystemState* pInputs);
 
-    Engine::Engine() : m_bRunning{ true }, m_bSuspended{ true }
+    Engine::Engine() : m_state{EngineState::SHUTDOWN}
     {
 
     }
@@ -25,6 +25,8 @@ namespace BlitzenEngine
     {
         // This does absolutely nothing right now
         BlitzenCore::ShutdownLogging();
+
+        BlitzenCore::LogAllocation(BlitzenCore::AllocationType::Engine, 0, BlitzenCore::AllocationAction::FREE_ALL);
     }
 }
 
@@ -41,13 +43,12 @@ int main(int argc, char* argv[])
 {
     /* ENGINE SYSTEMS INITIALIZATION*/
     BlitzenEngine::Engine engine;
+    engine.m_state = BlitzenEngine::EngineState::LOADING;
 
     BlitzenCore::InitLogging();
-    
-    BlitzenCore::MemoryManagerState blitzenMemory;
 
     BLITZEN_WORLD_CONTEXT ppWORLD_CONTEXT;
-    ppWORLD_CONTEXT[BlitzenCore::Ce_WorldContextEngineId] = &engine;
+    ppWORLD_CONTEXT[BlitzenCore::Ce_WorldContextEngineId] = &engine.m_state;
 
     BlitzenEngine::CameraContainer cameraSystem;
     auto& mainCamera = cameraSystem.GetMainCamera();
@@ -105,7 +106,7 @@ int main(int argc, char* argv[])
 
             loadingDone = true;
             loadingDoneConditional.notify_one();
-            engine.ReActivate();
+            engine.m_state = BlitzenEngine::EngineState::RUNNING;
         }
     };
 
@@ -116,7 +117,7 @@ int main(int argc, char* argv[])
     #endif
 
     // Placeholder loop, waiting to load
-    while (!engine.IsActive() && engine.IsRunning())
+    while (engine.m_state == BlitzenEngine::EngineState::LOADING)
     {
         coreClock.Update();
 
@@ -126,21 +127,21 @@ int main(int argc, char* argv[])
     }
 
     // Extra setup step needed by dx12
-    if (engine.IsActive())
+    if (engine.m_state == BlitzenEngine::EngineState::RUNNING)
     {
         renderer->FinalSetup();
     }
 
     // MAIN LOOP
     BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data()};
-    while(engine.IsRunning())
+    while(engine.m_state == BlitzenEngine::EngineState::RUNNING || engine.m_state == BlitzenEngine::EngineState::SUSPENDED)
     {
         if(!BlitzenPlatform::PlatformPumpMessages())
         {
-            engine.Shutdown();
+            engine.m_state = BlitzenEngine::EngineState::SHUTDOWN;
         }
 
-        if(engine.IsActive())
+        if(engine.m_state != BlitzenEngine::EngineState::SUSPENDED)
         {
             coreClock.Update();
 

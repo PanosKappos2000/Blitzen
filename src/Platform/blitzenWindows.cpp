@@ -323,14 +323,21 @@ namespace BlitzenPlatform
                 uint32_t height = rect.bottom - rect.top;
 
                 auto& camera{ BlitzenEngine::BlitzenWorld_GetMainCamera(inl_pPlatformState.pEvents->ppContext) };
+
+                auto oldWidth = camera.transformData.windowWidth;
+                auto oldHeight = camera.transformData.windowHeight;
+
                 camera.transformData.windowWidth = float(width);
                 camera.transformData.windowHeight = float(height);
 
-			    inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowResize);
+                if (!inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowResize))
+                {
+                    camera.transformData.windowWidth = oldWidth;
+                    camera.transformData.windowHeight = oldHeight;
+                }
                 break;
             }
 
-            
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             case WM_KEYUP:

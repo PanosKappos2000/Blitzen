@@ -76,33 +76,25 @@ namespace BlitzenEngine
     constexpr const char* Ce_HostedApp = "Blitzen Game";
     constexpr uint32_t Ce_HostedAppVersion = 1;
 
+
+
+    enum class EngineState : uint8_t
+    {
+        RUNNING = 0,
+        SUSPENDED = 1,
+        LOADING = 2,
+        SHUTDOWN = 3,
+
+        MAX_STATES
+    };
+
+
     class Engine
     {
     public:
-
         Engine();
-
         ~Engine();
 
-        // Suspending the engine, means that most systems (like rendering) are inactive. 
-        // But it is still running on the background
-        inline void Suspend() { m_bSuspended = true; }
-        inline void ReActivate() { m_bSuspended = false; }
-        inline bool IsActive() const { return !m_bSuspended; }
-
-        // If bRunning is false, the engine shuts down and the application quits.
-        inline void BootUp() { m_bRunning = true; }
-        inline void Shutdown() { m_bRunning = false; }
-        inline bool IsRunning() const { return m_bRunning; }
-
-    private:
-
-        bool m_bRunning = false;
-        bool m_bSuspended = false;
+        EngineState m_state;
     };
-
-    inline Engine* BlitzenWorld_GetEngine(void** ppContext, uint32_t id)
-    {
-        return reinterpret_cast<Engine*>(ppContext[id]);
-    }
 }

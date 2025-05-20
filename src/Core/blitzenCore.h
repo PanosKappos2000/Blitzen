@@ -21,6 +21,8 @@ namespace BlitzenCore
         MaxTypes = 12
     };
 
+    constexpr size_t Ce_LinearAllocatorBlockSize = UINT32_MAX;
+
     constexpr uint16_t Ce_KeyCallbackCount = 256;
 
     constexpr uint32_t Ce_WorldContextSystemsCount = 5;

@@ -48,88 +48,82 @@ namespace BlitzenCore
 {
     struct LinearAllocator
     {
-        size_t totalAllocated{ 0 };
-        void* pBlock;
-        size_t blockSize;
+        size_t m_totalAllocated{ 0 };
+        void* m_pBlock{ nullptr };
+        size_t m_blockSize{ Ce_LinearAllocatorBlockSize };
+
+        template<typename T>
+        T* Alloc(size_t size, AllocationType alloc)
+        {
+            auto allocSize = size * sizeof(T);
+            LogAllocation(alloc, size, AllocationAction::ALLOC);
+
+            if (m_totalAllocated + allocSize > m_blockSize)
+            {
+                BLIT_FATAL("Linear allocator depleted, memory not allocated");
+                return nullptr;
+            }
+            void* pBlock = reinterpret_cast<uint8_t*>(m_pBlock) + m_totalAllocated;
+            totalAllocated += allocSize;
+
+            return reinterpret_cast<T*>(pBlock);
+        }
+
     };
 
-    constexpr size_t LinearAllocatorBlockSize = UINT32_MAX;
-    class MemoryManagerState
+    enum class AllocationAction : uint8_t
     {
-    public:
-        size_t totalAllocated{ 0 };
-        size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)];
+        ALLOC = 0,
+        FREE = 1,
+        FREE_ALL = 2,
 
-        #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
-            LinearAllocator linearAlloc;
-        #endif
+        MAX_ACTIONS
+    };
 
-        inline static MemoryManagerState* s_pMemoryManager;
+    inline void LogAllocation(AllocationType alloc, size_t size, AllocationAction action)
+    {
+        static size_t totalAllocated{ 0 };
+        size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)]{ 0 };
 
-        // Defined in blitzenMemory.cpp
-        inline MemoryManagerState()
-        {
-            // Memory manager state allocated on the heap
-            s_pMemoryManager = this;
-            BlitzenPlatform::PlatformMemZero(s_pMemoryManager, sizeof(MemoryManagerState));
-
-            // Allocate a big block of memory for the linear allocator
-            #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
-                s_pMemoryManager->linearAlloc.blockSize = LinearAllocatorBlockSize;
-                s_pMemoryManager->linearAlloc.totalAllocated = 0;
-                s_pMemoryManager->linearAlloc.pBlock = BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, LinearAllocatorBlockSize);
-            #endif
-        }
-
-        inline ~MemoryManagerState()
-        {
-            #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
-                BlitFree<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, 
-                linearAlloc.pBlock, linearAlloc.blockSize);
-            #endif
-
-            // Warn the user of any memory leaks to look for
-            if (totalAllocated)
-            {
-                #if defined(BLIT_REIN_SANT_ENG)
-                BLIT_WARN("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
-                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
-                #else
-                printf("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
-                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
-                #endif
-            }
-        }
-
-        inline void LogAllocation(AllocationType alloc, size_t size)
+        if (action == AllocationAction::ALLOC)
         {
             totalAllocated += size;
             typeAllocations[static_cast<uint8_t>(alloc)] += size;
         }
-
-        inline void LogFree(AllocationType alloc, size_t size)
+        else if (action == AllocationAction::FREE)
         {
             totalAllocated -= size;
             typeAllocations[static_cast<uint8_t>(alloc)] -= size;
         }
-
-        inline static MemoryManagerState* GetManager() 
+        else if (action == AllocationAction::FREE_ALL)
         {
-            return s_pMemoryManager;
+            // Warn the user of any memory leaks to look for
+            if (totalAllocated)
+            {
+            #if defined(BLIT_REIN_SANT_ENG)
+                BLIT_WARN("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
+                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
+            #else
+                printf("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
+                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
+            #endif
+            }
         }
-    };
+    }
 
     template<typename T>
     T* BlitAlloc(AllocationType alloc, size_t size)
     {
-        MemoryManagerState::GetManager()->LogAllocation(alloc, size * sizeof(T));
+        LogAllocation(alloc, size * sizeof(T), AllocationAction::ALLOC);
+
         return reinterpret_cast<T*>(BlitzenPlatform::PlatformMalloc(size * sizeof(T), false));
     }
 
     template<typename T>
     void BlitFree(AllocationType alloc, void* pBlock, size_t size)
     {
-        MemoryManagerState::GetManager()->LogFree(alloc, size * sizeof(T));
+        LogAllocation(alloc, size * sizeof(T), AllocationAction::FREE);
+
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
 
@@ -137,21 +131,24 @@ namespace BlitzenCore
     template<typename T, typename... P> 
     T* BlitConstructAlloc(AllocationType alloc, const P&... params)
     {
-        MemoryManagerState::GetManager()->LogAllocation(alloc, sizeof(T));
+        LogAllocation(alloc, sizeof(T), AllocationAction::ALLOC);
+
         return new T(params...);
     }
 
     template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(const T& data)
     {
-        MemoryManagerState::GetManager()->LogAllocation(alloc, sizeof(T));
+        LogAllocation(alloc, sizeof(T), AllocationAction::ALLOC);
+
         return new T(data);
     }
 
     template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(T&& data)
     {
-        MemoryManagerState::GetManager()->LogAllocation(alloc, sizeof(T));
+        LogAllocation(alloc, sizeof(T), AllocationAction::ALLOC);
+
         return new T(std::move(data));
     }
 
@@ -159,7 +156,8 @@ namespace BlitzenCore
     template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(size_t size)
     {
-        MemoryManagerState::GetManager()->LogAllocation(alloc, size * sizeof(T));
+        LogAllocation(alloc, size * sizeof(T), AllocationAction::ALLOC);
+
         return new T[size];
     }
 
@@ -167,7 +165,8 @@ namespace BlitzenCore
     template<typename T, AllocationType alloc>
     T* BlitConstructAlloc(T* pData)
     {
-        MemoryManagerState::GetManager()->LogAllocation(alloc, sizeof(T));
+        LogAllocation(alloc, sizeof(T), AllocationAction::ALLOC);
+
         T* res = new T;
         BlitzenPlatform::PlatformMemCopy(res, pData, sizeof(T));
         return res;
@@ -177,14 +176,16 @@ namespace BlitzenCore
     template<typename T>
     void BlitDestroyAlloc(AllocationType alloc, T* pToDestroy)
     {
-        MemoryManagerState::GetManager()->LogFree(alloc, sizeof(T));
+        LogAllocation(alloc, sizeof(T), AllocationAction::FREE);
+
         delete pToDestroy;
     }
 
     template<typename T>
     void BlitDestroyAlloc(AllocationType alloc, T* pToDestroy, size_t size)
     {
-        MemoryManagerState::GetManager()->LogFree(alloc, size * sizeof(T));
+        LogAllocation(alloc, size * sizeof(T), AllocationAction::FREE);
+
         delete [] pToDestroy;
     }
 
@@ -207,29 +208,6 @@ namespace BlitzenCore
     void BlitZeroMemory(T* pBlock, size_t size = 1)
     {
         BlitzenPlatform::PlatformMemZero(pBlock, sizeof(T) * size);
-    }
-
-    // Allocates memory using the linear allocator
-    template<typename T>
-    void* BlitAllocLinear(AllocationType alloc, size_t size)
-    {
-        #if defined(BLIT_REQUEST_LINEAR_ALLOCATOR)
-            auto pState = BlitzenCore::MemoryManagerState::GetManager();
-            auto allocSize = size * sizeof(T);
-
-            if(pState->linearAlloc.totalAllocated + allocSize > pState->linearAlloc.blockSize)
-            {
-                BLIT_FATAL("Linear allocator depleted, memory not allocated")
-                return nullptr;
-            }
-            void* pBlock = reinterpret_cast<uint8_t*>(
-                            pState->linearAlloc.pBlock) 
-                            + pState->linearAlloc.totalAllocated;
-            pState->linearAlloc.totalAllocated += allocSize;
-            return pBlock;
-        #else
-            return nullptr;
-        #endif
     }
 
 }
