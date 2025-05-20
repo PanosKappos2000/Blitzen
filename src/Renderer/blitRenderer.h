@@ -110,8 +110,7 @@ namespace BlitzenEngine
 
     // Takes the command line arguments to form a scene (this is pretty ill formed honestly)
     template<class RT, class MT>
-    void CreateSceneFromArguments(int argc, char** argv,
-        RenderingResources* pResources, RT* pRenderer, MT* pManager)
+    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, RT* pRenderer, MT* pManager)
     {
         LoadTestGeometry(pResources);
         //pResources->CreateSingleObjectForTesting();
@@ -130,7 +129,11 @@ namespace BlitzenEngine
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    pResources->LoadGltfScene(argv[i], pRenderer);
+                    if (!pResources->LoadGltfScene(argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
                 }
             }
 
@@ -141,7 +144,11 @@ namespace BlitzenEngine
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    pResources->LoadGltfScene(argv[i], pRenderer);
+                    if (!pResources->LoadGltfScene(argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
                 }
             }
 
@@ -153,18 +160,26 @@ namespace BlitzenEngine
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    pResources->LoadGltfScene(argv[i], pRenderer);
+                    if(!pResources->LoadGltfScene(argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
                 }
             }
-
-            // If there are no special arguments everything is treated as a filepath for a gltf scene
             else
             {
                 for (int32_t i = 1; i < argc; ++i)
                 {
-                    pResources->LoadGltfScene(argv[i], pRenderer);
+                    if(!pResources->LoadGltfScene(argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
                 }
             }
         }
+
+        return true;
     }
 }

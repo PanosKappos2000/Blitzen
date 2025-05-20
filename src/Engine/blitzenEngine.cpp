@@ -1,11 +1,14 @@
 #include "Engine/blitzenEngine.h"
+#include "Platform/platform.h"
+#include "Core/blitTimeManager.h"
 // Single file gltf loading https://github.com/jkuhlmann/cgltf
 // Placed here because cgltf is called from a template function
 #define CGLTF_IMPLEMENTATION
-#include "Platform/platform.h"
 #include "Renderer/blitRenderer.h"
-#include "Core/blitTimeManager.h"
 #include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 #include <iostream>
 
 namespace BlitzenEngine
@@ -31,19 +34,6 @@ using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystemState>;
 using InputSystemMemory = BlitCL::SmartPointer<BlitzenCore::InputSystemState>;
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
 using EntitySystemMemory = BlitCL::SmartPointer<BlitzenEngine::GameObjectManager, BlitzenCore::AllocationType::Entity>;
-
-static void LoadRenderingResources(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer,
-    BlitzenEngine::GameObjectManager* pManager, BlitzenEngine::Camera& camera, BlitzenEngine::Engine& engine)
-{
-    BlitzenEngine::CreateSceneFromArguments(argc, argv, pResources, pRenderer, pManager);
-    if (!pRenderer->SetupForRendering(pResources, camera.viewData.pyramidWidth, camera.viewData.pyramidHeight))
-    {
-        BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");
-        return;
-    }
-
-    engine.ReActivate();
-}
 
 
 #if defined(BLIT_GDEV_EDT)
@@ -90,14 +80,40 @@ int main(int argc, char* argv[])
 
 
     // Loading resources
-    std::thread loadingThread{ [&]() {
-            LoadRenderingResources(argc, argv, renderingResources.Data(), renderer.Data(), entities.Data(), mainCamera, engine);
-        }};
-#if(_WIN32)
-    loadingThread.detach();
-#else
-    loadingThread.join();
-#endif
+    std::mutex mtx;
+    std::condition_variable loadingDoneConditional;
+    std::atomic<bool> loadingDone(false);
+    std::thread loadingThread
+    {   [&]() 
+        {
+             std::lock_guard<std::mutex> lock(mtx);
+
+            if (!BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entities.Data()))
+            {
+                BLIT_FATAL("Failed to allocate resource for requested scene");
+                loadingDone = true;
+                loadingDoneConditional.notify_one();
+                return;
+            }
+            if (!renderer->SetupForRendering(renderingResources.Data(), mainCamera.viewData.pyramidWidth, mainCamera.viewData.pyramidHeight))
+            {
+                BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");
+                loadingDone = true;
+                loadingDoneConditional.notify_one();
+                return;
+            }
+
+            loadingDone = true;
+            loadingDoneConditional.notify_one();
+            engine.ReActivate();
+        }
+    };
+
+    #if(_WIN32)
+        loadingThread.detach();
+    #else
+        loadingThread.join();
+    #endif
 
     // Placeholder loop, waiting to load
     while (!engine.IsActive() && engine.IsRunning())
@@ -110,13 +126,15 @@ int main(int argc, char* argv[])
     }
 
     // Extra setup step needed by dx12
-    renderer->FinalSetup();
+    if (engine.IsActive())
+    {
+        renderer->FinalSetup();
+    }
 
-    // Main loop
+    // MAIN LOOP
     BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data()};
     while(engine.IsRunning())
     {
-        // Captures events
         if(!BlitzenPlatform::PlatformPumpMessages())
         {
             engine.Shutdown();
@@ -140,12 +158,9 @@ int main(int argc, char* argv[])
         inputSystemState->UpdateInput(coreClock.GetDeltaTime());
     }
 
-	// Wait for the loading thread to finish (Got to fix this shit)
-    if (!engine.IsActive())
-    {
-        BLIT_ERROR("Wait for resource loading");
-        BlitzenPlatform::PlatformSleep(100'000);// Wait for 100 seconds because I am too lazy to create a mutex for this (idiot)
-    }
+
+    std::unique_lock<std::mutex> lock(mtx);
+    loadingDoneConditional.wait(lock, [&] { return loadingDone.load(); });
 
     // Actual shutdown
     BlitzenPlatform::PlatformShutdown();

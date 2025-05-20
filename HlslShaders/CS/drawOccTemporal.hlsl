@@ -1,4 +1,4 @@
-#define DRAW_CULL_OCCLUSION
+#define DRAW_OCCLUSION_TEMPORAL
 #define HI_Z_MAP_DRAW_OCCLUSION
 
 #include "../Headers/sharedBuffers.hlsl"
@@ -42,7 +42,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 		}
 	}
 
-    if(visible && drawVisibilityBuffer[objId] == 0)
+    if(visible)
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
@@ -62,7 +62,4 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         drawCmdBuffer[cmdId].instCount = 1;
         drawCmdBuffer[cmdId].insOffset = 0;
     }
-
-    // Sets next frame visibility
-    drawVisibilityBuffer[objId] = visible ? 1 : 0;
 }

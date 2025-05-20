@@ -139,9 +139,8 @@ namespace BlitzenDX12
     constexpr UINT Ce_CullDrawCountParameterId = 2;
 
     // ROOT PARAMETER OCCLUSION LATE PASS
-    constexpr UINT Ce_DrawOccLateRootParameterCount = 5;
+    constexpr UINT Ce_DrawOccLateRootParameterCount = 4;
     constexpr uint32_t Ce_DrawOccLateDepthPyramidParameterId = 3;
-    constexpr uint32_t Ce_DrawOccLateDepthPyramidSamplerParameterId = 4;
 
 
 
@@ -183,18 +182,14 @@ namespace BlitzenDX12
     constexpr UINT Ce_DepthPyramidSRVDescriptorCount = 1;
 
     constexpr UINT Ce_DepthPyramidRootConstantsRegister = 0;
-    constexpr UINT Ce_DepthPyramidRootConstantsCount = 3;
-
-    constexpr UINT Ce_DepthPyramidSamplerRegister = 0;
-    constexpr UINT Ce_DepthPyramidSamplerDescriptorCount = 1;
+    constexpr UINT Ce_DepthPyramidRootConstantsCount = 1;
 
     // ROOT PARAMETERS
-    constexpr UINT Ce_DepthPyramidParameterCount = 4;
+    constexpr UINT Ce_DepthPyramidParameterCount = 3;
 
     constexpr UINT Ce_DepthPyramidSRVRootParameterId = 0;
     constexpr UINT Ce_DepthPyramidUAVRootParameterId = 1;
     constexpr UINT Ce_DepthPyramidRootConstantParameterId = 2;
-    constexpr UINT Ce_DepthPyramidSamplerParameterId = 3;
 
     constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount
         + Ce_AdditionalSharedSRVs + Ce_AdditionalCullSRVs) * ce_framesInFlight;// Double or triple buffering
@@ -286,12 +281,7 @@ namespace BlitzenDX12
 
 
 
-    struct DepthPyramidRootConstant
-    {
-        BlitML::vec2 pyramidSize;
-        uint32_t level;
-    };
-
+   
     // Draw Indirect command struct (passed to the shaders)
     struct IndirectDrawCmd
     {

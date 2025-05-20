@@ -381,15 +381,11 @@ namespace BlitzenDX12
 			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
 			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidCullDescriptorCount, Ce_DepthPyramidCullRegister);
 
-			D3D12_DESCRIPTOR_RANGE dpSamplerCullRange{ };
-			CreateDescriptorRange(dpSamplerCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, Ce_DepthPyramidSamplerDescriptorCount, Ce_DepthPyramidSamplerRegister);
-
 			D3D12_ROOT_PARAMETER drawOccLateRootParameters[Ce_DrawOccLateRootParameterCount]{};
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterPushConstants(drawOccLateRootParameters[Ce_CullDrawCountParameterId], Ce_CullShaderRootConstantRegister, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateDepthPyramidParameterId], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateDepthPyramidSamplerParameterId], &dpSamplerCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
 			if (!CreateRootSignature(device, ppDrawOccSignature, Ce_DrawOccLateRootParameterCount, drawOccLateRootParameters))
 			{
@@ -403,15 +399,11 @@ namespace BlitzenDX12
 			D3D12_DESCRIPTOR_RANGE depthPyramidSRVRange{};
 			CreateDescriptorRange(depthPyramidSRVRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidSRVDescriptorCount, Ce_DepthPyramidSRVRegister);
 
-			D3D12_DESCRIPTOR_RANGE depthPyramidSamplerRange{};
-			CreateDescriptorRange(depthPyramidSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, Ce_DepthPyramidSamplerDescriptorCount, Ce_DepthPyramidSamplerRegister);
-
 			D3D12_ROOT_PARAMETER depthPyramidGenParameters[Ce_DepthPyramidParameterCount]{};
 			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidUAVRootParameterId], &depthPyramidUAVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidSRVRootParameterId], &depthPyramidSRVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_DepthPyramidRootConstantParameterId], Ce_DepthPyramidRootConstantsRegister, 
 				0, Ce_DepthPyramidRootConstantsCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidSamplerParameterId], &depthPyramidSamplerRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
 			if (!CreateRootSignature(device, ppDepthPyramidSignature, Ce_DepthPyramidParameterCount, depthPyramidGenParameters))
 			{

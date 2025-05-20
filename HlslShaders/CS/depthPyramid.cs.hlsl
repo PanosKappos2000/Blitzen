@@ -3,10 +3,9 @@
 
 Texture2D<float4> depthIn : register(t0);
 RWTexture2D<float4> depthOut : register(u0);
-SamplerState dpSampler : register(s0);
+
 cbuffer PyramidMip : register(b0)
 {
-    float2 imageSize;
     uint mipLevel;
 };
 

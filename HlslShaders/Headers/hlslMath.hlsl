@@ -55,7 +55,7 @@ bool ProjectSphere(float3 center, float radius, float znear, float P00, float P1
 	return true;
 }
 
-bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, SamplerState dpSampler, uint pyramidWidth, uint pyramidHeight, float3 center, float radius, float zNear)
+bool OcclusionCheck(float4 aabb, Texture2D<float4> depthPyramid, uint pyramidWidth, uint pyramidHeight, float3 center, float radius, float zNear)
 {
     // Scales aabb to pyramid width and height, to get the desired pyramid level
 	float width = (aabb.z - aabb.x) * pyramidWidth;
