@@ -39,7 +39,7 @@ namespace BlitzenDX12
     constexpr FLOAT Ce_ClearDepth = 0.f;
 
     constexpr uint32_t Ce_DepthPyramidMaxMips = 16;
-    constexpr DXGI_FORMAT Ce_DepthPyramidFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    constexpr DXGI_FORMAT Ce_DepthPyramidFormat = DXGI_FORMAT_R32_FLOAT;
     constexpr DXGI_FORMAT Ce_DepthTargetSRVFormat = DXGI_FORMAT_R32_FLOAT;
 
 

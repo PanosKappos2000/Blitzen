@@ -178,7 +178,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_GDEV_EDT # Defines that the Engine is in Game Dev mode
                             BLIT_ASSERTIONS_ENABLED
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
@@ -189,7 +189,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_DOUBLE_BUFFERING #Enables double buffering (DX12 ignores this, and activates it anyway)
                             #BLIT_RAYTRACING
                             #BLIT_MESH_SHADERS
-                            BLIT_DEPTH_PYRAMID_TEST
+                            #BLIT_DEPTH_PYRAMID_TEST
 
                             # Vulkan specific preprocessor macros
                             BLIT_VK_VALIDATION_LAYERS
