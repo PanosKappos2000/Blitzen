@@ -62,33 +62,38 @@ namespace BlitzenDX12
 	}
 
 	static void RecreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, Dx12Renderer::DescriptorContext& context,
-		ID3D12DescriptorHeap* srvHeap, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
+		ID3D12DescriptorHeap* srvHeap, UINT drawWidth, UINT drawHeight, SIZE_T offset)
 	{
-		{
+		
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
 				auto& var = pBuffers[i];
 
 				CreateTextureShaderResourceView(device, var.depthPyramid.pyramid.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					context.depthPyramidSrvOffset[i], Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
+					offset, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
 			}
 
 			for (uint32_t f = 0; f < ce_framesInFlight; ++f)
 			{
 				auto& var = pBuffers[f];
+				offset = context.depthPyramidMipsSrvOffset[f];
 
 				for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
 				{
-					Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, context.depthPyramidSrvOffset[f],
+					Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, offset,
 						srvHeap->GetCPUDescriptorHandleForHeapStart());
 				}
 			}
+		
+	}
 
-			for (size_t i = 0; i < ce_framesInFlight; ++i)
-			{
-				CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					context.depthPyramidSrvOffset[i], Ce_DepthTargetFormat, 1);
-			}
+	static void RecreateDepthTargetDescriptor(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* pDepthTargets, ID3D12DescriptorHeap* srvHeap, 
+		SIZE_T offset)
+	{
+		for (size_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
+				offset, Ce_DepthTargetSRVFormat, 1);
 		}
 	}
 
@@ -550,11 +555,13 @@ namespace BlitzenDX12
 			{
 				for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 				{
-					CreateDepthPyramidResource(m_device.Get(), varBuffers.depthPyramid, m_swapchainWidth, m_swapchainHeight);
+					CreateDepthPyramidResource(m_device.Get(), m_varBuffers[i].depthPyramid, m_swapchainWidth, m_swapchainHeight);
 				}
 
 				RecreateDepthPyramidDescriptors(m_device.Get(), m_varBuffers, m_descriptorContext, m_srvHeap.Get(),
-					m_depthBuffers, m_swapchainWidth, m_swapchainHeight);
+					m_swapchainWidth, m_swapchainHeight, m_descriptorContext.depthPyramidSrvOffset[0]);
+
+				RecreateDepthTargetDescriptor(m_device.Get(), m_depthBuffers, m_srvHeap.Get(), m_descriptorContext.depthTargetSrvOffset[0]);
 			}
 
 			context.pCamera->viewData.pyramidWidth = float(varBuffers.depthPyramid.width);

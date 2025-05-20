@@ -125,6 +125,7 @@ namespace BlitzenDX12
             D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSrvHandle[ce_framesInFlight];
 
             SIZE_T depthPyramidMipsSrvOffset[ce_framesInFlight];
+            SIZE_T depthPyramidMipsEnd;
             D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidMipsSrvHandle[ce_framesInFlight];
 
 

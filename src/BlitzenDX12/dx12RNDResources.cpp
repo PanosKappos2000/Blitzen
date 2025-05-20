@@ -132,24 +132,34 @@ namespace BlitzenDX12
 				context.srvHeapOffset, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
 		}
 
+		context.depthPyramidMipsEnd = context.srvHeapOffset;
 		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
 		{
 			auto& var = pBuffers[f];
 
-			context.depthPyramidMipsSrvOffset[f] = context.srvHeapOffset;
+			context.depthPyramidMipsSrvOffset[f] = context.depthPyramidMipsEnd;
 			context.depthPyramidMipsSrvHandle[f] = context.srvHandle;
 			context.depthPyramidMipsSrvHandle[f].ptr += context.depthPyramidMipsSrvOffset[f] * context.srvIncrementSize;
+			context.srvHeapOffset = context.depthPyramidMipsEnd;
 
+			// Allocates space for all possible mips (in case of screen resize)
 			auto mipHandleStart = context.depthPyramidMipsSrvHandle[f];
+			for (uint32_t i = 0; i < Ce_DepthPyramidMaxMips; ++i)
+			{
+				var.depthPyramid.mips[i] = mipHandleStart;
+				var.depthPyramid.mips[i].ptr += i * context.srvIncrementSize;
+				context.depthPyramidMipsEnd++;
+			}
+			
 			for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
 			{
 				Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, context.srvHeapOffset,
 					srvHeap->GetCPUDescriptorHandleForHeapStart());
-
-				var.depthPyramid.mips[i] = mipHandleStart;
-				var.depthPyramid.mips[i].ptr += i * context.srvIncrementSize;
 			}
 		}
+
+		// Next descriptor after depth pyramid
+		context.srvHeapOffset = context.depthPyramidMipsEnd;
 
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{

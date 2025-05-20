@@ -85,6 +85,10 @@ namespace BlitzenVulkan
     uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, VkImageView* depthPyramidMips,
         uint8_t& depthPyramidMipLevels, VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator)
     {
+        // Non Conservative for tests with dx12
+        //depthPyramidExtent.width = BlitML::Max(1u, (drawExtent.width) >> 1);
+        //depthPyramidExtent.height = BlitML::Max(1u, (drawExtent.height) >> 1);
+
         // Conservative starting extent
         depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
         depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
