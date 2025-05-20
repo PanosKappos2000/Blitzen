@@ -565,7 +565,7 @@ namespace BlitzenDX12
 			}
 
 			context.pCamera->viewData.pyramidWidth = float(varBuffers.depthPyramid.width);
-			context.pCamera->viewData.pyramidWidth = float(varBuffers.depthPyramid.height);
+			context.pCamera->viewData.pyramidHeight = float(varBuffers.depthPyramid.height);
 		}
 
 		// Dynamic buffers
