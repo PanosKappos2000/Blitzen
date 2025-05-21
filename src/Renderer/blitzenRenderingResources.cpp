@@ -25,7 +25,7 @@ namespace BlitzenEngine
         // Defaults
         LoadTextureFromFile("Assets/Textures/base_baseColor.dds","dds_texture_default", pRenderer);
         DefineMaterial(BlitML::vec4{ 0.1f }, 65.f, "dds_texture_default", "unknown", "loaded_material");
-        LoadMeshFromObj("Assets/Meshes/bunny.obj", ce_defaultMeshName);
+        LoadMeshFromObj("Assets/Meshes/bunny.obj", BlitzenCore::Ce_DefaultMeshName);
     }
 
     void RenderingResources::GenerateHlslVertices()
@@ -69,8 +69,7 @@ namespace BlitzenEngine
     }
 
     // Loads cluster using the meshoptimizer library
-    size_t RenderingResources::GenerateClusters(BlitCL::DynamicArray<Vertex>& inVertices, 
-        BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
+    size_t RenderingResources::GenerateClusters(BlitCL::DynamicArray<Vertex>& inVertices, BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
     {
         BLIT_INFO("Generating clusters");
 
@@ -190,14 +189,14 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> allLodIndices;
 
         surface.lodOffset = static_cast<uint32_t>(m_lods.GetSize());
-        while (surface.lodCount < Ce_MaxLodCountPerSurface)
+        while (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
         {
             surface.lodCount++;
             BLIT_INFO("Generating LOD %d", surface.lodCount);
 
             // Instancing
             LodInstanceCounter lodInstanceCounter{};
-            lodInstanceCounter.instanceOffset = uint32_t(m_lods.GetSize() * Ce_MaxInstanceCountPerLOD);
+            lodInstanceCounter.instanceOffset = uint32_t(m_lods.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD);
             m_lodInstanceList.PushBack(lodInstanceCounter);
 
             LodData lod{};
@@ -206,7 +205,7 @@ namespace BlitzenEngine
 
             // TODO: Might want to make LODs include one or the other, indices and clusters are not used together
             lod.clusterOffset = static_cast<uint32_t>(m_clusters.GetSize());
-            lod.clusterCount = Ce_BuildClusters ? static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset)) : 0;
+            lod.clusterCount = BlitzenCore::Ce_BuildClusters ? static_cast<uint32_t>(GenerateClusters(surfaceVertices, lodIndices, surface.vertexOffset)) : 0;
 
             lod.error = lodError * lodScale;
             m_lods.PushBack(lod);
@@ -215,7 +214,7 @@ namespace BlitzenEngine
             allLodIndices.AppendArray(lodIndices);
             
             // Starts generating the next level of detail
-            if (surface.lodCount < Ce_MaxLodCountPerSurface)
+            if (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
             {
                 auto nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
                 const float maxError = 1e-1f;
@@ -252,7 +251,7 @@ namespace BlitzenEngine
             }
         }
 
-        if (surface.lodCount > Ce_MaxLodCountPerSurface)
+        if (surface.lodCount > BlitzenCore::Ce_MaxLodCountPerSurface)
         {
             BLIT_ERROR("A surface has loaded too many LODs");
         }
@@ -348,7 +347,7 @@ namespace BlitzenEngine
 
     bool RenderingResources::CreateRenderObject(uint32_t transformId, uint32_t surfaceId)
     {
-        if (renderObjectCount >= ce_maxRenderObjects)
+        if (renderObjectCount >= BlitzenCore::Ce_MaxRenderObjects)
         {
             BLIT_ERROR("Max render object count reached");
             return false;
@@ -376,9 +375,9 @@ namespace BlitzenEngine
     uint8_t RenderingResources::LoadMeshFromObj(const char* filename, const char* meshName)
     {
         // The function should return if the engine will go over the max allowed mesh assets
-        if(meshCount > ce_maxMeshCount)
+        if(meshCount > BlitzenCore::Ce_MaxMeshCount)
         {
-            BLIT_ERROR("Max mesh count: ( %i ) reached!", ce_maxMeshCount)
+            BLIT_ERROR("Max mesh count: ( %i ) reached!", BlitzenCore::Ce_MaxMeshCount)
             return 0;
         }
 
@@ -452,7 +451,7 @@ namespace BlitzenEngine
         const BlitzenEngine::MeshTransform& transform, bool bDynamic)
     {
         auto& mesh = meshes[meshId];
-        if (renderObjectCount + mesh.surfaceCount >= ce_maxRenderObjects)
+        if (renderObjectCount + mesh.surfaceCount >= BlitzenCore::Ce_MaxRenderObjects)
         {
             BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count");
             // This is really strange behavior for this function, since the caller expects a transform id
@@ -657,7 +656,7 @@ namespace BlitzenEngine
     {
 		// Create a single object for testing
 		MeshTransform transform;
-		transform.pos = BlitML::vec3(BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ);
+		transform.pos = BlitML::vec3(BlitzenCore::Ce_InitialCameraX, BlitzenCore::Ce_initialCameraY, BlitzenCore::Ce_initialCameraZ);
 		transform.scale = 10.f;
 		transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
         AddRenderObjectsFromMesh(meshMap["kitten"].meshId, transform, false);
@@ -677,7 +676,7 @@ namespace BlitzenEngine
     static void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderingResources* pResources,
         float randomTransformMultiplier, float scale)
     {
-		if (pResources->renderObjectCount >= ce_maxRenderObjects)
+		if (pResources->renderObjectCount >= BlitzenCore::Ce_MaxRenderObjects)
 		{
             BLIT_WARN("Max render object count reached");
 			return;

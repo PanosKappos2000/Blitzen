@@ -2,7 +2,7 @@
 #include "openglData.h"
 #include "BlitCL/DynamicArray.h"
 #include "Renderer/blitDDSTextures.h"
-#include "Renderer/blitRenderingResources.h"
+#include "Renderer/Interface/blitRendererInterface.h"
 
 namespace BlitzenGL
 {
@@ -36,10 +36,9 @@ namespace BlitzenGL
 
         uint8_t UploadTexture(void* pData, const char* filepath);
 
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
-            float& pyramidWidth, float& pyramidHeight);
+        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
 
-        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
+        void UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context);
 
         void DrawWhileWaiting();
 
@@ -87,7 +86,7 @@ namespace BlitzenGL
         // Holds all the render objects that will be retrieved in the shaders to access the surface and transform data for each object
         GlBuffer m_renderObjectBuffer;
 
-        GlTexture m_textures[BlitzenEngine::ce_maxTextureCount];
+        GlTexture m_textures[BlitzenCore::Ce_MaxTextureCount];
 
         uint32_t m_textureCount = 0;
 

@@ -1,9 +1,8 @@
 #pragma once
-#include "Core/blitzenCore.h"
+#include "Core/blitzenEngine.h"
 #if defined(BLIT_REIN_SANT_ENG)
     #include "Core/blitLogger.h"
     #include "Core/blitAssert.h"
-    #include "Engine/blitzenEngine.h"
 #else
     #include <stdio.h>
 #endif
@@ -128,12 +127,12 @@ namespace BlitzenCore
     }
 
     // Allow call to new with parameter's for the objects constructors. Allocation type is used as a parameter for deduction safety
-    template<typename T, typename... P> 
-    T* BlitConstructAlloc(AllocationType alloc, const P&... params)
+    template<class T, typename... ARGS> 
+    T* BlitConstructAlloc(AllocationType alloc, ARGS&&... params)
     {
         LogAllocation(alloc, sizeof(T), AllocationAction::ALLOC);
 
-        return new T(params...);
+        return new T(std::forward<ARGS>(params)...);
     }
 
     template<typename T, AllocationType alloc>

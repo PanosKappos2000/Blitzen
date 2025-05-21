@@ -1,6 +1,6 @@
 #pragma once
 #include <stdio.h>
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 #include "Platform/filesystem.h"
 
 namespace BlitzenEngine

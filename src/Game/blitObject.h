@@ -1,7 +1,7 @@
 #pragma once
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 #include "BlitCL/blitzenContainerLibrary.h"
-#include "Renderer/blitRenderingResources.h"
+#include "Core/blitzenWorld.h"
 
 namespace BlitzenEngine
 {
@@ -10,78 +10,36 @@ namespace BlitzenEngine
     class GameObject
     {
     public:
-        GameObject(RenderingResources* pResources, bool bDynamic = false, const char* meshName = ce_defaultMeshName);
+        GameObject(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
 
         inline bool IsDynamic() const { return m_bDynamic; }
 
-        uint32_t m_meshId; // Index into the mesh array inside of the LoadedResources struct in BlitzenEngine
+		inline uint32_t GetMeshId() const { return m_meshId; } 
+
+		inline uint32_t GetTransformId() const { return m_transformId; }    
+
+        virtual void Update(BlitzenWorld::BlitzenWorldContext& context);
+
+        virtual ~GameObject() = default; 
+
+    private:
 
         uint32_t m_transformId;
 
-        virtual void Update(void** ppContext);
+        uint32_t m_meshId;
 
-        virtual ~GameObject() = default;
-
-    private:
-        bool m_bDynamic; // If the object is dynamic, it will be updated every frame
+        bool m_bDynamic; 
     };
 
-
-
-    class GameObjectManager
-    {
-    private:
-
-        template<class T>
-        using Entity = BlitCL::SmartPointer<T, BlitzenCore::AllocationType::Entity>;
-
-        BlitCL::StaticArray<Entity<GameObject>, Ce_MaxDynamicObjectCount> m_gameObjects;
-        uint32_t m_objectCount = 0;
-
-        BlitCL::DynamicArray<GameObject*> m_pDynamicObjects;// Objects that will call Update
-
-    public:
-
-        // Handles the addition of game objects to the scene
-        template<class T, typename... Args>
-        inline bool AddObject(BlitzenEngine::RenderingResources* pResources, const BlitzenEngine::MeshTransform& initialTransform, Args... args)
-        {
-            if (m_objectCount >= Ce_MaxDynamicObjectCount)
-            {
-                BLIT_ERROR("Maximum object count reached");
-                return false;
-            }
-
-            // Adds a derived game object
-            auto& entity = m_gameObjects[m_objectCount++];
-            entity.MakeAs<T>(pResources, args...);
-            entity->m_transformId = pResources->AddRenderObjectsFromMesh(entity->m_meshId, initialTransform, entity->IsDynamic());
-
-            if (entity->IsDynamic())
-            {
-                m_pDynamicObjects.PushBack(entity.Data());
-            }
-
-            return true;
-        }
-
-        inline void UpdateDynamicObjects(void** ppContext)
-        {
-            for (auto pObject : m_pDynamicObjects)
-            {
-                pObject->Update(ppContext);
-            }
-        }
-    };
 
     // Temporary functionality tester
     class ClientTest : public GameObject
     {
     public:
 
-        void Update(void** ppContext) override;
+        void Update(BlitzenWorld::BlitzenWorldContext& context) override;
 
-        ClientTest(RenderingResources* pResources, bool bDynamic = false, const char* meshName = ce_defaultMeshName);
+        ClientTest(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
 
     private:
         float m_pitch = 0.f;
@@ -90,6 +48,9 @@ namespace BlitzenEngine
 
         float m_speed = 0.1f;
     };
+
+    // Changes orientation values of an object and updates the renderer
+    void RotateObject(float& yaw, float& pitch, float speed, uint32_t transformId, BlitzenWorld::BlitzenWorldContext& context);
     
 #else
     
@@ -162,13 +123,6 @@ namespace BlitzenEngine
     using ClientTest = GameObject;
 #endif
 
-
-
-    /*
-        General game object functionality
-    */
-
-    // Changes orientation values of an object and updates the renderer
-    void RotateObject(float& yaw, float& pitch, uint32_t transformId, float speed, float deltaTime, RenderingResources* pResources, void* pRenderer);
+    
 
 }

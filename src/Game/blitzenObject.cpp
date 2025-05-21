@@ -1,39 +1,37 @@
 #include "blitObject.h"
-#include "Renderer/blitRenderer.h"
-#include "Core/blitTimeManager.h"
 
 namespace BlitzenEngine
 {
-	GameObject::GameObject(RenderingResources* pResources, bool bDynamic /*=0*/, const char* meshName /*=ce_defaultMeshName*/) :
-		m_bDynamic{ bDynamic }, m_transformId{ 0 }
+	GameObject::GameObject(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
+		m_bDynamic{ isDynamic }, m_transformId{ 0 }
 	{
 		m_meshId = pResources->meshMap[meshName].meshId;
+		m_transformId = pResources->AddRenderObjectsFromMesh(m_meshId, initialTransform, isDynamic);
 	}
 
 #if !defined(LAMBDA_GAME_OBJECT_TEST)
 
-	ClientTest::ClientTest(RenderingResources* pResources, bool bDynamic /*=0*/, const char* meshName /*=ce_defaultMeshName*/) :
-		GameObject{ pResources, bDynamic, meshName }
-	{}
-
-	void ClientTest::Update(void** ppContext)
+	ClientTest::ClientTest(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
+		GameObject{ pResources, isDynamic, initialTransform, meshName }
 	{
-		float deltaTime{ float(BlitzenCore::BlitzenWorld_GetWorldTimeManager(ppContext)->GetDeltaTime()) };
-		auto pRenderer{ BlitzenWorld_GetRenderer(ppContext) };
-		auto pResources{ BlitzenWorld_GetRenderingResources(ppContext) };
 
-		RotateObject(m_yaw, m_pitch, m_transformId, m_speed, deltaTime, pResources, pRenderer);
 	}
 
-	void GameObject::Update(void** ppContext)
+	void ClientTest::Update(BlitzenWorld::BlitzenWorldContext& context)
+	{
+		RotateObject(m_yaw, m_pitch, m_speed, GetTransformId(), context);
+	}
+
+	void GameObject::Update(BlitzenWorld::BlitzenWorldContext& context)
 	{
 		BLIT_WARN("Update function not implemented, if this is intended, change the bDynamic boolean to 0");
 	}
 #endif
 	
-	void RotateObject(float& yaw, float& pitch, uint32_t transformId, float speed, float deltaTime, 
-		RenderingResources* pResources, void* pRenderer)
+	void RotateObject(float& yaw, float& pitch, float speed, uint32_t transformId, BlitzenWorld::BlitzenWorldContext& context)
 	{
+		float deltaTime{ float(context.pCoreClock->GetDeltaTime()) };
+
 		yaw += speed * deltaTime;
 		pitch += speed * deltaTime;
 
@@ -43,11 +41,10 @@ namespace BlitzenEngine
 		BlitML::vec3 xAxis(1.f, 0.f, 0.f);
 		BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, pitch, 0);
 
-		// I may not need to do this
-		auto& transform = pResources->transforms[transformId];
-		transform.orientation = yawOrientation + pitchOrientation;
+		context.rendererTransformUpdate.pTransform = &context.pRenderingResources->GetTransform(transformId);
+		context.rendererTransformUpdate.pTransform->orientation = yawOrientation + pitchOrientation;
+		context.rendererTransformUpdate.transformId = transformId;
 
-		// Updates the renderer
-		reinterpret_cast<RendererPtrType>(pRenderer)->UpdateObjectTransform(transformId, transform);
+		context.rendererEvent = BlitzenEngine::RendererEvent::RENDERER_TRANSFORM_UPDATE;
 	}
 }

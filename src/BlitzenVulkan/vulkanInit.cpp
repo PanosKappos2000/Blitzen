@@ -245,10 +245,11 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        const char* appName{ BlitzenEngine::Ce_HostedApp };
-        const char* engineName{ BlitzenEngine::ce_blitzenVersion };
+        const char* appName{ BlitzenCore::Ce_HostedApp };
+        const char* engineName{ BlitzenCore::Ce_BlitzenVersion };
         VkApplicationInfo applicationInfo{};
-        CreateApplicationInfo(applicationInfo, nullptr, appName, VK_MAKE_VERSION(BlitzenEngine::Ce_HostedAppVersion, 0, 0), engineName, VK_MAKE_VERSION(BlitzenEngine::ce_blitzenMajor, 0, 0));
+        CreateApplicationInfo(applicationInfo, nullptr, appName, VK_MAKE_VERSION(BlitzenCore::Ce_HostedAppVersion, 0, 0), engineName, 
+            VK_MAKE_VERSION(BlitzenCore::Ce_BlitzenMajor, 0, 0));
 
         VkInstanceCreateInfo instanceInfo{};
         instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -551,7 +552,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (BlitzenEngine::Ce_BuildClusters && !computeQueue.hasIndex)
+        if (BlitzenCore::Ce_BuildClusters && !computeQueue.hasIndex)
         {
             BLIT_ERROR("Vulkan Cluster mode needs dedicated compute queue");
             return 0;

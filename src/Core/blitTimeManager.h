@@ -1,5 +1,5 @@
 #pragma once
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 #include "Platform/platform.h"
 
 namespace BlitzenPlatform
@@ -40,9 +40,4 @@ namespace BlitzenCore
 
         double m_deltaTime;
     };
-
-    inline WorldTimerManager* BlitzenWorld_GetWorldTimeManager(void** ppContext)
-    {
-        return reinterpret_cast<WorldTimerManager*>(ppContext[BlitzenCore::Ce_WorldContextWorldTimerManagerId]);
-    }
 }

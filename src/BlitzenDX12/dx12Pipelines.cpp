@@ -272,7 +272,7 @@ namespace BlitzenDX12
     {
         BlitCL::String vsBytes;
         size_t vsSize{ 0 };
-        if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Draw occlusion mode does not have instancing
+        if constexpr (BlitzenCore::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Draw occlusion mode does not have instancing
         {
             vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDrawInst.vs.hlsl.bin", vsBytes);
         }

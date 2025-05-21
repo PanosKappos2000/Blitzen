@@ -31,7 +31,7 @@ namespace BlitzenGL
 
     uint8_t OpenglRenderer::UploadTexture(void* pData, const char* filepath) 
     {
-        if(m_textureCount >= BlitzenEngine::ce_maxTextureCount)
+        if(m_textureCount >= BlitzenCore::Ce_MaxTextureCount)
             return 0;
         
         BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::SmartPointer> store(128 * 1024 * 1024);
@@ -87,7 +87,7 @@ namespace BlitzenGL
         return true;
     }
 
-    void OpenglRenderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)
+    void OpenglRenderer::UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context)
     {
         //auto& transforms = BlitzenEngine::RenderingResources::GetRenderingResources()->transforms;
         //BlitzenCore::BlitMemCopy(transforms.Data() + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));

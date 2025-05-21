@@ -1,5 +1,5 @@
 #include "blitCamera.h"
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 
 namespace BlitzenEngine
 {
@@ -11,9 +11,8 @@ namespace BlitzenEngine
         rotationMatrix = yawRot * pitchRot;
     }
 
-    void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, 
-    const BlitML::vec3& initialCameraPosition, float drawDistance, 
-    float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
+    void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, const BlitML::vec3& initialCameraPosition, 
+        float drawDistance, float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
     {
         camera.transformData.fov = fov;
         camera.viewData.zNear = zNear;
@@ -43,9 +42,9 @@ namespace BlitzenEngine
 
     void SetupCamera(Camera& camera)
     {
-        SetupCamera(camera, BlitML::Radians(BlitzenEngine::ce_initialFOV), static_cast<float>(BlitzenEngine::ce_initialWindowWidth), static_cast<float>(BlitzenEngine::ce_initialWindowHeight),
-            BlitzenEngine::ce_znear, BlitML::vec3{ BlitzenEngine::ce_initialCameraX, BlitzenEngine::ce_initialCameraY, BlitzenEngine::ce_initialCameraZ }, 
-            BlitzenEngine::ce_initialDrawDistance);
+        SetupCamera(camera, BlitML::Radians(BlitzenCore::Ce_InitialFOV), float(BlitzenCore::Ce_InitialWindowWidth), float(BlitzenCore::Ce_InitialWindowHeight),
+            BlitzenCore::Ce_Znear, BlitML::vec3{ BlitzenCore::Ce_InitialCameraX, BlitzenCore::Ce_initialCameraY, BlitzenCore::Ce_initialCameraZ },
+            BlitzenCore::Ce_InitialDrawDistance);
     }
 
     void UpdateCamera(Camera& camera, float deltaTime)

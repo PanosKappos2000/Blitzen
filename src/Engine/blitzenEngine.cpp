@@ -1,21 +1,17 @@
-#include "Engine/blitzenEngine.h"
-#include "Platform/platform.h"
+#include "Core/blitzenEngine.h"
 #include "Core/blitTimeManager.h"
 // Single file gltf loading https://github.com/jkuhlmann/cgltf
 // Placed here because cgltf is called from a template function
 #define CGLTF_IMPLEMENTATION
-#include "Renderer/blitRenderer.h"
+#include "Core/blitEntityManager.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 #include <iostream>
 
-namespace BlitzenEngine
+namespace BlitzenCore
 {
-    // Function that is defined in blitzenDefaultEvents.cpp and only called once in main
-    void RegisterDefaultEvents(BlitzenCore::EventSystemState* pEvents, BlitzenCore::InputSystemState* pInputs);
-
     Engine::Engine() : m_state{EngineState::SHUTDOWN}
     {
 
@@ -32,52 +28,52 @@ namespace BlitzenEngine
 
 using BLITZEN_WORLD_CONTEXT = BlitCL::StaticArray<void*, BlitzenCore::Ce_WorldContextSystemsCount>;
 
-using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystemState>;
-using InputSystemMemory = BlitCL::SmartPointer<BlitzenCore::InputSystemState>;
+using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
-using EntitySystemMemory = BlitCL::SmartPointer<BlitzenEngine::GameObjectManager, BlitzenCore::AllocationType::Entity>;
+using EntitySystemMemory = BlitCL::SmartPointer<BlitzenCore::GameObjectManager, BlitzenCore::AllocationType::Entity>;
 
 
 #if defined(BLIT_GDEV_EDT)
 int main(int argc, char* argv[])
 {
     /* ENGINE SYSTEMS INITIALIZATION*/
-    BlitzenEngine::Engine engine;
-    engine.m_state = BlitzenEngine::EngineState::LOADING;
+    BlitzenCore::Engine engine;
+    engine.m_state = BlitzenCore::EngineState::LOADING;
+
+    BlitzenWorld::BlitzenPrivateContext blitzenPrivateContext{};
+    BlitzenWorld::BlitzenWorldContext blitzenWorldContext{};
+	blitzenPrivateContext.pBlitzenContext = &blitzenWorldContext;
 
     BlitzenCore::InitLogging();
 
     BLITZEN_WORLD_CONTEXT ppWORLD_CONTEXT;
-    ppWORLD_CONTEXT[BlitzenCore::Ce_WorldContextEngineId] = &engine.m_state;
+    blitzenPrivateContext.pEngineState = &engine.m_state;
 
     BlitzenEngine::CameraContainer cameraSystem;
     auto& mainCamera = cameraSystem.GetMainCamera();
     BlitzenEngine::SetupCamera(mainCamera);
-    ppWORLD_CONTEXT[BlitzenCore::Ce_WorldContextCameraId] = &cameraSystem;
+    blitzenWorldContext.pCameraContainer = &cameraSystem;
 
     BlitzenCore::WorldTimerManager coreClock;
-    ppWORLD_CONTEXT[BlitzenCore::Ce_WorldContextWorldTimerManagerId] = &coreClock;
+    blitzenWorldContext.pCoreClock = &coreClock;
 
     BlitzenEngine::Renderer renderer;
     renderer.Make();
-    ppWORLD_CONTEXT[BlitzenCore::Ce_WorldContextRendererId] = renderer.Data();
+    blitzenPrivateContext.pRenderer = renderer.Data();
 
-    EntitySystemMemory entities;
-    entities.Make();
+    EntitySystemMemory entityManager;
+    entityManager.Make(); 
     
-    EventSystemMemory eventSystemState;
-	eventSystemState.Make(ppWORLD_CONTEXT.Data());
+    EventSystemMemory eventSystem;
+    eventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
 
-    InputSystemMemory inputSystemState;
-    inputSystemState.Make(ppWORLD_CONTEXT.Data());
+    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenCore::Ce_BlitzenVersion, eventSystem.Data(), renderer.Data()));
 
-    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenEngine::ce_blitzenVersion, eventSystemState.Data(), inputSystemState.Data(), renderer.Data()));
-
-    BlitzenEngine::RegisterDefaultEvents(eventSystemState.Data(), inputSystemState.Data());
+    BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
     RndResourcesMemory renderingResources;
     renderingResources.Make(renderer.Data());
-    ppWORLD_CONTEXT[BlitzenCore::Ce_WorlContextRndResourcesId] = renderingResources.Data();
+    blitzenWorldContext.pRenderingResources = renderingResources.Data();
 
 
     // Loading resources
@@ -89,7 +85,7 @@ int main(int argc, char* argv[])
         {
              std::lock_guard<std::mutex> lock(mtx);
 
-            if (!BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entities.Data()))
+            if (!BlitzenCore::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entityManager.Data()))
             {
                 BLIT_FATAL("Failed to allocate resource for requested scene");
                 loadingDone = true;
@@ -106,7 +102,7 @@ int main(int argc, char* argv[])
 
             loadingDone = true;
             loadingDoneConditional.notify_one();
-            engine.m_state = BlitzenEngine::EngineState::RUNNING;
+            engine.m_state = BlitzenCore::EngineState::RUNNING;
         }
     };
 
@@ -117,37 +113,37 @@ int main(int argc, char* argv[])
     #endif
 
     // Placeholder loop, waiting to load
-    while (engine.m_state == BlitzenEngine::EngineState::LOADING)
+    while (engine.m_state == BlitzenCore::EngineState::LOADING)
     {
         coreClock.Update();
 
         BlitzenPlatform::PlatformPumpMessages();
-        inputSystemState->UpdateInput(0.f);
+        eventSystem->UpdateInput(0.f);
         renderer->DrawWhileWaiting(float(coreClock.GetDeltaTime()));
     }
 
     // Extra setup step needed by dx12
-    if (engine.m_state == BlitzenEngine::EngineState::RUNNING)
+    if (engine.m_state == BlitzenCore::EngineState::RUNNING)
     {
         renderer->FinalSetup();
     }
 
     // MAIN LOOP
     BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data()};
-    while(engine.m_state == BlitzenEngine::EngineState::RUNNING || engine.m_state == BlitzenEngine::EngineState::SUSPENDED)
+    while(engine.m_state == BlitzenCore::EngineState::RUNNING || engine.m_state == BlitzenCore::EngineState::SUSPENDED)
     {
         if(!BlitzenPlatform::PlatformPumpMessages())
         {
-            engine.m_state = BlitzenEngine::EngineState::SHUTDOWN;
+            engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
         }
 
-        if(engine.m_state != BlitzenEngine::EngineState::SUSPENDED)
+        if(engine.m_state != BlitzenCore::EngineState::SUSPENDED)
         {
             coreClock.Update();
 
             UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
-			entities->UpdateDynamicObjects(eventSystemState->ppContext);
+			entityManager->UpdateDynamicObjects(blitzenWorldContext, blitzenPrivateContext);
             
             renderer->Update(drawContext);
             renderer->DrawFrame(drawContext);
@@ -156,7 +152,7 @@ int main(int argc, char* argv[])
         // Reset window resize, TODO: Why is this here??????
         mainCamera.transformData.bWindowResize = false;
 
-        inputSystemState->UpdateInput(coreClock.GetDeltaTime());
+        eventSystem->UpdateInput(coreClock.GetDeltaTime());
     }
 
 

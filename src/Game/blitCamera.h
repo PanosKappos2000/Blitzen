@@ -1,5 +1,5 @@
 #pragma once
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenEngine
@@ -76,7 +76,7 @@ namespace BlitzenEngine
     {
     public:
 
-        inline CameraContainer::CameraContainer() :m_mainCamera{ m_cameraList[Ce_MainCameraId] }
+        inline CameraContainer::CameraContainer() :m_mainCamera{ m_cameraList[BlitzenCore::Ce_MainCameraId] }
         {}
 
         // Returns the main camera
@@ -88,16 +88,11 @@ namespace BlitzenEngine
     private:
 
         // Holds all the camera created and an index to the active one
-        Camera m_cameraList[Ce_MaxCameraCount];
+        Camera m_cameraList[BlitzenCore::Ce_MaxCameraCount];
 
         // The main camera is the one whose values are used for culling and other operations
         Camera& m_mainCamera;
     };
-
-    inline Camera& BlitzenWorld_GetMainCamera(void** pContext)
-    {
-        return (reinterpret_cast<CameraContainer*>(pContext[BlitzenCore::Ce_WorldContextCameraId]))->GetMainCamera();
-    }
 
     void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, const BlitML::vec3& initialCameraPosition, 
         float drawDistance, float initialYawRotation = 0, float initialPitchRotation = 0);

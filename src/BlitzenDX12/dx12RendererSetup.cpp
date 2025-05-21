@@ -310,7 +310,7 @@ namespace BlitzenDX12
 		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
 
 		// ADDITIONAL
-		if constexpr (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// draw occlusion mode does not have instancing
+		if constexpr (BlitzenCore::Ce_InstanceCulling && !CE_DX12OCCLUSION)// draw occlusion mode does not have instancing
 		{
 			D3D12_DESCRIPTOR_RANGE instanceBufferRange{};
 			CreateDescriptorRange(instanceBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_InstanceBufferDescriptorCount, Ce_InstanceBufferRegister);
@@ -350,7 +350,7 @@ namespace BlitzenDX12
 			CreateDescriptorRange(drawVisibilityBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DrawVisibilityBufferDescriptorCount, Ce_DrawVisibilityBufferRegister);
 			cullSrvRanges.PushBack(drawVisibilityBufferRange);
 		}
-		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		else if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
 			D3D12_DESCRIPTOR_RANGE lodInstanceBufferRange{};
 			CreateDescriptorRange(lodInstanceBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_LODInstanceBufferDescriptorCount, Ce_LODInstanceBufferRegister);
@@ -491,7 +491,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 		}
-		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		else if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
 			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawInstCull.cs.hlsl.bin"))
 			{
@@ -632,9 +632,9 @@ namespace BlitzenDX12
 					return 0;
 				}
 			}
-			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			else if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
-				UINT64 instanceBufferSize{ lodData.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD * sizeof(uint32_t) };
+				UINT64 instanceBufferSize{ lodData.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD * sizeof(uint32_t) };
 				if (!CreateBuffer(device, buffers.drawInstBuffer.buffer.ReleaseAndGetAddressOf(), instanceBufferSize,
 					D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 				{
@@ -664,7 +664,7 @@ namespace BlitzenDX12
 				CreateResourcesTransitionBarrier(visibilityBufferDestBarrier, buffers.drawVisibilityBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 				copyDestBarriers.PushBack(visibilityBufferDestBarrier);
 			}
-			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			else if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				D3D12_RESOURCE_BARRIER lodInstBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(lodInstBufferDestBarrier, buffers.lodInstBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -685,7 +685,7 @@ namespace BlitzenDX12
 				CreateResourcesTransitionBarrier(visibilityBufferSourceBarrier, drawVisibilityStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 				copySourceBarriers.PushBack(visibilityBufferSourceBarrier);
 			}
-			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			else if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				D3D12_RESOURCE_BARRIER lodInstBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(lodInstBufferSourceBarrier, lodInstStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -703,7 +703,7 @@ namespace BlitzenDX12
 			{
 				frameTools.transferCommandList->CopyResource(buffers.drawVisibilityBuffer.buffer.Get(), drawVisibilityStaging.Get());
 			}
-			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			else if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				frameTools.transferCommandList->CopyResource(buffers.lodInstBuffer.buffer.Get(), lodInstStaging.Get());
 			}
@@ -980,10 +980,10 @@ namespace BlitzenDX12
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
 			descriptorContext.srvHeapOffset++;
 
-			if (BlitzenEngine::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not supported for draw occlusion mode
+			if (BlitzenCore::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not supported for draw occlusion mode
 			{
 				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenEngine::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
+					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
 			}
 		}
 
@@ -1012,7 +1012,7 @@ namespace BlitzenDX12
 				CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, renderCount, sizeof(uint32_t), 0);
 			}
-			else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+			else if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				CreateUnorderedAccessView(device, vars.lodInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
@@ -1170,7 +1170,7 @@ namespace BlitzenDX12
 				}
 			}
 		}
-		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		else if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{

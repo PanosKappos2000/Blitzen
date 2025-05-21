@@ -73,18 +73,18 @@ namespace BlitzenEngine
     */
     public:
  
-        BlitCL::DynamicArray<MeshTransform> transforms{ Ce_MaxDynamicObjectCount };
+        BlitCL::DynamicArray<MeshTransform> transforms{ BlitzenCore::Ce_MaxDynamicObjectCount };
         uint32_t dynamicTransformCount{ 0 };
 
         // Holds all the render objects / primitives. They index into one primitive and one transform each
-        RenderObject renders[ce_maxRenderObjects];
+        RenderObject renders[BlitzenCore::Ce_MaxRenderObjects];
         uint32_t renderObjectCount{ 0 };
 
-        RenderObject onpcReflectiveRenderObjects[ce_maxONPC_Objects];
+        RenderObject onpcReflectiveRenderObjects[BlitzenCore::Ce_MaxONPC_Objects];
         uint32_t onpcReflectiveRenderObjectCount{ 0 };
         
         // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives.
-        Mesh meshes[ce_maxMeshCount];
+        Mesh meshes[BlitzenCore::Ce_MaxMeshCount];
         BlitCL::HashMap<Mesh> meshMap;
         size_t meshCount = 0;
 
@@ -99,6 +99,11 @@ namespace BlitzenEngine
         {
             return bTransparencyList;
         }
+
+		inline MeshTransform& GetTransform(uint32_t id) const
+		{
+			return transforms[id];
+		}
 
 
     public:
@@ -123,13 +128,12 @@ namespace BlitzenEngine
 
         // Load a texture from a specified file. Assumes DDS format
 		template<class RENDERER>
-		bool LoadTextureFromFile(const char* filename, const char* texName,
-			RENDERER* pRenderer)
+		bool LoadTextureFromFile(const char* filename, const char* texName, RENDERER* pRenderer)
 		{
 			// Don't go over the texture limit, might want to throw a warning here
-			if (m_textureCount >= ce_maxTextureCount)
+			if (m_textureCount >= BlitzenCore::Ce_MaxTextureCount)
 			{
-                BLIT_WARN("Max texture count: %i, has been reached", ce_maxTextureCount);
+                BLIT_WARN("Max texture count: %i, has been reached", BlitzenCore::Ce_MaxTextureCount);
                 BLIT_ERROR("Texture from file: %s, failed to load", filename);
 				return 0;
 			}
@@ -152,16 +156,16 @@ namespace BlitzenEngine
 		template <class RENDERER>
         bool LoadGltfScene(const char* path, RENDERER* pRenderer)
         {
-            if (renderObjectCount >= ce_maxRenderObjects)
+            if (renderObjectCount >= BlitzenCore::Ce_MaxRenderObjects)
             {
                 BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. \
                     GLTF LOADING FAILED!");
                 return false;
             }
 
-            cgltf_options options = {};
+            cgltf_options options{};
 
-            cgltf_data* pData = nullptr;
+            cgltf_data* pData{ nullptr };
 
             auto res = cgltf_parse_file(&options, path, &pData);
             if (res != cgltf_result_success)
@@ -264,7 +268,7 @@ namespace BlitzenEngine
         {
             for (size_t i = 0; i < pGltfData->textures_count; ++i)
             {
-                auto pTexture = &(pGltfData->textures[i]);
+                auto pTexture = &pGltfData->textures[i];
                 if (!pTexture->image)
                 {
                     break;
@@ -308,12 +312,12 @@ namespace BlitzenEngine
     private:
 
         // Holds all textures. No dynamic allocation.
-        TextureStats m_textures[ce_maxTextureCount];
+        TextureStats m_textures[BlitzenCore::Ce_MaxTextureCount];
         BlitCL::HashMap<TextureStats> m_textureTable;
         uint32_t m_textureCount = 0;
 
         // Holds all materials. No dynamic allocation
-        Material m_materials[ce_maxMaterialCount];
+        Material m_materials[BlitzenCore::Ce_MaxMaterialCount];
         BlitCL::HashMap<Material> m_materialTable;
         uint32_t m_materialCount = 0;
 
@@ -346,25 +350,6 @@ namespace BlitzenEngine
 
         BlitCL::DynamicArray<RenderObject> m_transparentRenders;
     };
-
-    // Draw context needs to be given to draw frame function, so that it can update uniform values
-    struct DrawContext
-    {
-        // The camera holds crucial data for the shaders. 
-        // The structs in the shader try to be aligned with the structs in the camera
-        BlitzenEngine::Camera* pCamera;
-
-        RenderingResources* pResources;
-
-        inline DrawContext(BlitzenEngine::Camera* pCam, RenderingResources* pr): 
-            pCamera(pCam), pResources(pr) 
-        {}
-    };
-
-    inline RenderingResources* BlitzenWorld_GetRenderingResources(void** ppContext)
-    {
-        return reinterpret_cast<RenderingResources*>(ppContext[BlitzenCore::Ce_WorlContextRndResourcesId]);
-    }
 
     // Sets random transform
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);

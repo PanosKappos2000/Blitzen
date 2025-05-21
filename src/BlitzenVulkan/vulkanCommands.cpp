@@ -39,7 +39,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (BlitzenEngine::Ce_BuildClusters)
+        if (BlitzenCore::Ce_BuildClusters)
         {
             // Dedicated compute command buffer
             VkCommandPoolCreateInfo computeCommandPoolInfo{};
@@ -68,7 +68,7 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create fence");
             return 0;
         }
-        if (BlitzenEngine::Ce_BuildClusters)
+        if (BlitzenCore::Ce_BuildClusters)
         {
             VkFenceCreateInfo notSignaledFenceInfo{};
             notSignaledFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -98,7 +98,7 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create semaphore for var buffer data copy");
             return 0;
         }
-        if (BlitzenEngine::Ce_BuildClusters && 
+        if (BlitzenCore::Ce_BuildClusters && 
             vkCreateSemaphore(device, &semaphoresInfo, nullptr, &preClusterCullingDoneSemaphore.handle) != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create semaphore for pre cluster culling");

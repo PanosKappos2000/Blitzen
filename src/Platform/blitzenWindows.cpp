@@ -9,8 +9,8 @@
 #include "Renderer//blitRenderer.h"
 #include <GL/wglew.h>
 #include "platform.h"
-#include "Core/blitInput.h"
-#include "Engine/blitzenEngine.h"
+#include "Core/blitEvents.h"
+#include "Core/blitzenEngine.h"
 #include "Game/blitCamera.h"
 
 namespace BlitzenPlatform
@@ -24,8 +24,7 @@ namespace BlitzenPlatform
         // gl render context
         HGLRC hglrc;
 
-        BlitzenCore::EventSystemState* pEvents;
-        BlitzenCore::InputSystemState* pInputs;
+        BlitzenCore::EventSystem* pEvents;
     };
 
     inline PlatformState inl_pPlatformState;
@@ -84,13 +83,12 @@ namespace BlitzenPlatform
         return hwnd;
     }
 
-    bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEvents, BlitzenCore::InputSystemState* pInputs, void* pRenderer)
+    bool PlatformStartup(const char* appName, void* pEvents, void* pRenderer)
     {
-        inl_pPlatformState.pEvents = pEvents;
-        inl_pPlatformState.pInputs = pInputs;
+        inl_pPlatformState.pEvents = reinterpret_cast<BlitzenCore::EventSystem*>(pEvents);
 
         HINSTANCE hInstance = GetModuleHandleA(nullptr);
-        HWND hwnd = CreateStandardWindow(hInstance, BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, appName);
+        HWND hwnd = CreateStandardWindow(hInstance, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, appName);
         if (!hwnd)
         {
             BLIT_FATAL("Window creation failed");
@@ -102,7 +100,7 @@ namespace BlitzenPlatform
         inl_pPlatformState.hwnd = hwnd;
         
 		auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
-        if (!pBackendRenderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, hwnd))
+        if (!pBackendRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, hwnd))
         {
             BLIT_FATAL("Failed to initialize rendering API");
             return false;
@@ -303,9 +301,7 @@ namespace BlitzenPlatform
             }
             case WM_CLOSE:
             {
-                BlitzenCore::EventContext context{};
-                inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown);
-                return 1;
+                return inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown);
             }
 
             case WM_DESTROY:
@@ -322,7 +318,7 @@ namespace BlitzenPlatform
                 uint32_t width = rect.right - rect.left;
                 uint32_t height = rect.bottom - rect.top;
 
-                auto& camera{ BlitzenEngine::BlitzenWorld_GetMainCamera(inl_pPlatformState.pEvents->ppContext) };
+                auto& camera{ inl_pPlatformState.pEvents->m_blitzenContext.pCameraContainer->GetMainCamera()};
 
                 auto oldWidth = camera.transformData.windowWidth;
                 auto oldHeight = camera.transformData.windowHeight;
@@ -330,7 +326,7 @@ namespace BlitzenPlatform
                 camera.transformData.windowWidth = float(width);
                 camera.transformData.windowHeight = float(height);
 
-                if (!inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowResize))
+                if (!inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowUpdate))
                 {
                     camera.transformData.windowWidth = oldWidth;
                     camera.transformData.windowHeight = oldHeight;
@@ -348,7 +344,7 @@ namespace BlitzenPlatform
 
                 auto key = BlitzenCore::BlitKey(w_param);
 
-                inl_pPlatformState.pInputs->InputProcessKey(key, bPressed);
+                inl_pPlatformState.pEvents->InputProcessKey(key, bPressed);
 
                 break;
             } 
@@ -359,7 +355,7 @@ namespace BlitzenPlatform
                 int32_t mouseX = GET_X_LPARAM(l_param);
                 int32_t mouseY = GET_Y_LPARAM(l_param);
 
-                inl_pPlatformState.pInputs->InputProcessMouseMove(mouseX, mouseY);
+                inl_pPlatformState.pEvents->InputProcessMouseMove(mouseX, mouseY);
 
                 break;
             } 
@@ -371,7 +367,7 @@ namespace BlitzenPlatform
                     // Flatten the input to an OS-independent (-1, 1)
                     zDelta = (zDelta < 0) ? -1 : 1;
 
-                    inl_pPlatformState.pInputs->InputProcessMouseWheel(zDelta);
+                    inl_pPlatformState.pEvents->InputProcessMouseWheel(zDelta);
                 }
                 break;
             }
@@ -409,7 +405,7 @@ namespace BlitzenPlatform
                 }
                 if (button != BlitzenCore::MouseButton::MaxButtons)
                 {
-                    inl_pPlatformState.pInputs->InputProcessButton(button, bPressed);
+                    inl_pPlatformState.pEvents->InputProcessButton(button, bPressed);
                 }
                 break;
             } 

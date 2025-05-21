@@ -31,17 +31,17 @@ namespace BlitCL
         }
 
         // Allocates memory for an object
-        template<typename... P>
-        void Make(const P&... params)
+        template<typename... ARGS>
+        void Make(ARGS&&... args)
         {
-            m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, params...);
+            m_pData = BlitzenCore::BlitConstructAlloc<T>(alloc, std::forward<ARGS>(args)...);
         }
 
         // Allocates memory for a derived class and assigns it to the base class pointer
-        template<typename I, typename... P>
-        void MakeAs(const P&... params)
+        template<typename DERIVED, typename... ARGS>
+        void MakeAs(ARGS&&... args)
         {
-            m_pData = BlitzenCore::BlitConstructAlloc<I>(alloc, params...);
+            m_pData = BlitzenCore::BlitConstructAlloc<DERIVED>(alloc, std::forward<ARGS>(args)...);
         }
 
         SmartPointer<T, alloc> operator = (const SmartPointer<T>& s) = delete;

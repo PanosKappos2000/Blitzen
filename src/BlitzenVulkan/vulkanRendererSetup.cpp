@@ -136,69 +136,39 @@ namespace BlitzenVulkan
         CreateDescriptorSetLayoutBinding(pBindings[primitivesBindingID], staticBuffers.surfaceBuffer.descriptorBinding,
             descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.surfaceBuffer.descriptorType, surfaceBufferShaderStageFlags);
 
-        auto clusterBufferShaderStageFlags = bMeshShaders ?
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+        auto clusterBufferShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(pBindings[clustersBindingID],
-            staticBuffers.clusterBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.clusterBuffer.descriptorType,
-            clusterBufferShaderStageFlags);
+        CreateDescriptorSetLayoutBinding(pBindings[clustersBindingID], staticBuffers.clusterBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.clusterBuffer.descriptorType, clusterBufferShaderStageFlags);
 
-        auto clusterDataBufferShaderStageFlags = bMeshShaders ?
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+        auto clusterDataBufferShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
             VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
-        CreateDescriptorSetLayoutBinding(pBindings[clusterIndicesBindingID],
-            staticBuffers.meshletDataBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.meshletDataBuffer.descriptorType,
-            clusterDataBufferShaderStageFlags);
+        CreateDescriptorSetLayoutBinding(pBindings[clusterIndicesBindingID], staticBuffers.meshletDataBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.meshletDataBuffer.descriptorType, clusterDataBufferShaderStageFlags);
 
-        CreateDescriptorSetLayoutBinding(pBindings[depthImageBindingID],
-            Ce_DepthPyramidImageBindingID, descriptorCountOfEachPushDescriptorLayoutBinding,
+        CreateDescriptorSetLayoutBinding(pBindings[depthImageBindingID], Ce_DepthPyramidImageBindingID, descriptorCountOfEachPushDescriptorLayoutBinding,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[lodBufferBindingId],
-            staticBuffers.lodBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.lodBuffer.descriptorType,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(pBindings[lodBufferBindingId], staticBuffers.lodBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.lodBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[transformsBindingID],
-            varBuffers.transformBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            varBuffers.transformBuffer.descriptorType,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(pBindings[transformsBindingID], varBuffers.transformBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, varBuffers.transformBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[materialsBindingID],
-            staticBuffers.materialBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.materialBuffer.descriptorType,
-            VK_SHADER_STAGE_FRAGMENT_BIT);
+        CreateDescriptorSetLayoutBinding(pBindings[materialsBindingID], staticBuffers.materialBuffer.descriptorBinding, descriptorCountOfEachPushDescriptorLayoutBinding,
+            staticBuffers.materialBuffer.descriptorType, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[indirectCommandsBindingID],
-            staticBuffers.indirectDrawBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.indirectDrawBuffer.descriptorType,
-            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
+        CreateDescriptorSetLayoutBinding(pBindings[indirectCommandsBindingID], staticBuffers.indirectDrawBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.indirectDrawBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[indirectCountBindingID],
-            staticBuffers.indirectCountBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.indirectCountBuffer.descriptorType,
-            VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(pBindings[indirectCountBindingID], staticBuffers.indirectCountBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.indirectCountBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[objectVisibilitiesBindingID],
-            staticBuffers.visibilityBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.visibilityBuffer.descriptorType,
-            VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(pBindings[objectVisibilitiesBindingID], staticBuffers.visibilityBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.visibilityBuffer.descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
 
-        CreateDescriptorSetLayoutBinding(pBindings[onpcObjectsBindingID],
-            staticBuffers.onpcReflectiveRenderObjectBuffer.descriptorBinding,
-            descriptorCountOfEachPushDescriptorLayoutBinding,
-            staticBuffers.onpcReflectiveRenderObjectBuffer.descriptorType,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(pBindings[onpcObjectsBindingID], staticBuffers.onpcReflectiveRenderObjectBuffer.descriptorBinding,
+            descriptorCountOfEachPushDescriptorLayoutBinding, staticBuffers.onpcReflectiveRenderObjectBuffer.descriptorType, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
 
         if (bRaytracing)
         {
@@ -379,7 +349,7 @@ namespace BlitzenVulkan
         // Visibility buffer just gets filled with zeroes
         vkCmdFillBuffer(commandBuffer, buffers.visibilityBuffer.buffer.bufferHandle, 0, visibilityBufferSize, 0);
 
-        if (BlitzenEngine::Ce_BuildClusters)
+        if (BlitzenCore::Ce_BuildClusters)
         {
             CopyBufferToBuffer(commandBuffer, ctx.stagings[Ce_ClusterBufferDataCopyIndex], buffers.clusterBuffer.buffer.bufferHandle, 
                 ctx.sizes[Ce_ClusterBufferDataCopyIndex], 0, 0);
@@ -558,7 +528,7 @@ namespace BlitzenVulkan
         AllocatedBuffer clusterIndexStagingBuffer;
         VkDeviceSize clusterDispatchBufferSize = 0;
         VkDeviceSize transparentClusterDispatchBufferSize = 0;
-        if (BlitzenEngine::Ce_BuildClusters)
+        if (BlitzenCore::Ce_BuildClusters)
         {
             clusterBufferSize = SetupPushDescriptorBuffer(device, vma, staticBuffers.clusterBuffer, clusterStagingBuffer,
                 clusters.GetSize(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, clusters.Data());
@@ -698,7 +668,7 @@ namespace BlitzenVulkan
     static void SetupGpuBufferDescriptorWriteArrays(const VulkanRenderer::StaticBuffers& m_currentStaticBuffers, const VulkanRenderer::VarBuffers& varBuffers,
         VkWriteDescriptorSet* pushDescriptorWritesGraphics, VkWriteDescriptorSet* pushDescriptorWritesCompute)
     {
-        if constexpr (BlitzenEngine::Ce_BuildClusters)
+        if constexpr (BlitzenCore::Ce_BuildClusters)
         {
             pushDescriptorWritesGraphics[ce_viewDataWriteElement] = varBuffers.viewDataBuffer.descriptorWrite;
             pushDescriptorWritesGraphics[Ce_VertexBufferPushDescriptorId] = m_currentStaticBuffers.vertexBuffer.descriptorWrite;
@@ -914,7 +884,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (BlitzenEngine::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, 
+        if (BlitzenCore::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, 
             &m_intialClusterCullPipeline.handle, &m_transparentClusterCullPipeline.handle, m_clusterCullLayout.handle))
         {
             BLIT_ERROR("Failed to create cluster shaders");

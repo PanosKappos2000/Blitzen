@@ -11,9 +11,23 @@ set (CMAKE_CXX_STANDARD_REQUIRED True)
 # Blitzen Engine Windows
 IF(WIN32)
 add_executable(BlitzenEngine
+
+                src/Core/blitzenEngine.h
+                src/Core/blitMemory.h
+                src/Core/blitLogger.h
+                src/Core/blitzenLogger.cpp
+                src/Core/blitAssert.h
+                src/Core/blitKeys.h
+                src/Core/blitEvents.h
+                src/Core/blitzenEvents.cpp
+                src/Core/blitTimeManager.h
+                src/Core/blitzenTimeManager.cpp
+                src/Core/blitzenWorld.h 
+                src/Core/blitzenWorldPrivate.h
+                src/Core/blitEntityManager.h
+                src/Core/blitzenEntityManager.cpp
+
                 src/Engine/blitzenEngine.cpp
-                src/Engine/blitzenEngine.h
-                src/Engine/blitzenDefaultEvents.cpp
 
                 src/BlitzenDX12/dx12Data.h
                 src/BlitzenDX12/dx12Renderer.h
@@ -51,8 +65,9 @@ add_executable(BlitzenEngine
                 src/Renderer/renderingResourcesTypes.h
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
-                src/Renderer/blitRenderer.h
-                src/Renderer/blitzenRenderer.cpp
+                src/Renderer/Interface/blitRenderer.h
+                src/Renderer/Interface/blitzenRenderer.cpp
+                src/Renderer/Interface/blitRendererInterface.h
                 src/Renderer/blitDDSTextures.h
                 src/Renderer/blitzenDDSTextures.cpp
 
@@ -60,22 +75,12 @@ add_executable(BlitzenEngine
                 src/Game/blitzenObject.cpp
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
-                
-                src/Core/blitzenCore.h
-                src/Core/blitMemory.h
-                src/Core/blitLogger.h
-                src/Core/blitzenLogger.cpp
-                src/Core/blitAssert.h
-                src/Core/blitEvents.h
-                src/Core/blitKeys.h
-                src/Core/blitInput.h
-                src/Core/blitzenEvents.cpp
-                src/Core/blitTimeManager.h
-                src/Core/blitzenTimeManager.cpp
 
+                src/BlitCL/blitPfn.h
                 src/BlitCL/blitzenContainerLibrary.h
                 src/BlitCL/DynamicArray.h
                 src/BlitCL/blitString.h
+                src/BlitCL/blitSmartPointer.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
@@ -98,9 +103,23 @@ add_executable(BlitzenEngine
 )
 ELSEIF(UNIX)
 add_executable(BlitzenEngine
+
+                src/Core/blitzenEngine.h
+                src/Core/blitMemory.h
+                src/Core/blitLogger.h
+                src/Core/blitzenLogger.cpp
+                src/Core/blitAssert.h
+                src/Core/blitKeys.h
+                src/Core/blitEvents.h
+                src/Core/blitzenEvents.cpp
+                src/Core/blitTimeManager.h
+                src/Core/blitzenTimeManager.cpp
+                src/Core/blitzenWorld.h 
+                src/Core/blitzenWorldPrivate.h
+                src/Core/blitEntityManager.h
+                src/Core/blitzenEntityManager.cpp
+
                 src/Engine/blitzenEngine.cpp
-                src/Engine/blitzenEngine.h
-                src/Engine/blitzenDefaultEvents.cpp
 
                 src/BlitzenVulkan/vulkanData.h
                 src/BlitzenVulkan/vulkanRenderer.h
@@ -114,10 +133,12 @@ add_executable(BlitzenEngine
                 src/BlitzenVulkan/vulkanCommands.cpp
                 src/BlitzenVulkan/vulkanDraw.cpp
 
+                src/Renderer/renderingResourcesTypes.h
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
-                src/Renderer/blitRenderer.h
-                src/Renderer/blitzenRenderer.cpp
+                src/Renderer/Interface/blitRenderer.h
+                src/Renderer/Interface/blitzenRenderer.cpp
+                src/Renderer/Interface/blitRendererInterface.h
                 src/Renderer/blitDDSTextures.h
                 src/Renderer/blitzenDDSTextures.cpp
 
@@ -125,18 +146,12 @@ add_executable(BlitzenEngine
                 src/Game/blitzenObject.cpp
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
-                
-                src/Core/blitzenCore.h
-                src/Core/blitMemory.h
-                src/Core/blitLogger.h
-                src/Core/blitzenLogger.cpp
-                src/Core/blitAssert.h
-                src/Core/blitEvents.h
-                src/Core/blitzenEvents.cpp
-                src/Core/blitTimeManager.h
-                src/Core/blitzenTimeManager.cpp
 
+                src/BlitCL/blitPfn.h
                 src/BlitCL/blitzenContainerLibrary.h
+                src/BlitCL/DynamicArray.h
+                src/BlitCL/blitString.h
+                src/BlitCL/blitSmartPointer.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
@@ -147,7 +162,6 @@ add_executable(BlitzenEngine
                 src/Platform/filesystem.h
                 src/Platform/filesystem.cpp
                 
-                src/VendorCode/stb_image.h
                 src/VendorCode/fast_obj.h
                 src/VendorCode/objparser.cpp
                 src/VendorCode/Meshoptimizer/indexgenerator.cpp
@@ -157,7 +171,6 @@ add_executable(BlitzenEngine
                 src/VendorCode/Meshoptimizer/clusterizer.cpp
                 src/VendorCode/Meshoptimizer/simplifier.cpp
                 src/VendorCode/Cgltf/cgltf.h
-                #src/VendorCode/volk/volk.c
 )
 ENDIF(WIN32)
 
@@ -197,7 +210,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
-                            #DX12_OCCLUSION_DRAW_CULL
+                            DX12_OCCLUSION_DRAW_CULL
                             #DX12_TEMPORAL_DRAW_OCCLUSION
                             )
 

@@ -46,7 +46,9 @@ namespace BlitCL
         inline size_t Size() { return S; }
 
         ~StaticArray()
-        {}
+        {
+        
+        }
     private:
         T m_array[S];
     };

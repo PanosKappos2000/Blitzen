@@ -1,7 +1,7 @@
 #include "blitLogger.h"
 #include "blitAssert.h"
 #include "Platform/platform.h"
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 #include <stdarg.h>
 #include <cstring>
 
@@ -9,7 +9,7 @@ namespace BlitzenCore
 {
     bool InitLogging()
     {
-        BLIT_INFO("%s Booting", BlitzenEngine::ce_blitzenVersion);
+        BLIT_INFO("%s Booting", BlitzenCore::Ce_BlitzenVersion);
         return true;
     }
 

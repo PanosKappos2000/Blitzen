@@ -38,11 +38,11 @@ namespace BlitzenEngine
 		}
 
 		// These could be removed later, they seem to be ignoring certain types of textures
-		if (header.dwCaps2 & (DDSCAPS2_CUBEMAP | DDSCAPS2_VOLUME))
+		if (header.dwCaps2 & (BlitzenCore::DDSCAPS2_CUBEMAP | BlitzenCore::DDSCAPS2_VOLUME))
 		{
 			return 0;
 		}
-		if (header.ddspf.dwFourCC == FourCC("DX10") && header10.resourceDimension != DDS_DIMENSION_TEXTURE2D)
+		if (header.ddspf.dwFourCC == FourCC("DX10") && header10.resourceDimension != BlitzenCore::DDS_DIMENSION_TEXTURE2D)
 		{
 			return 0;
 		}

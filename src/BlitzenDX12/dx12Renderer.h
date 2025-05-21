@@ -1,5 +1,6 @@
 #pragma once
 #include "dx12Data.h"
+#include "Renderer/Interface/blitRendererInterface.h"
 #include "Renderer/blitRenderingResources.h"
 #include "Renderer/blitDDSTextures.h"
 #include "Core/blitLogger.h"
@@ -38,7 +39,7 @@ namespace BlitzenDX12
         void DrawFrame(BlitzenEngine::DrawContext& context);
     
         // Updates transform data on the cpu side side buffer
-        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
+        void UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context);
 
     public:
         struct FrameTools
@@ -235,7 +236,7 @@ namespace BlitzenDX12
 
         uint32_t m_currentFrame = 0;
 
-        DX2DTEX m_tex2DList[BlitzenEngine::ce_maxTextureCount];
+        DX2DTEX m_tex2DList[BlitzenCore::Ce_MaxTextureCount];
         uint32_t m_textureCount{ 0 };
 
     private:

@@ -5,7 +5,7 @@
 #include <wrl/client.h>
 #include <d3d12sdklayers.h>
 #include <comdef.h>
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 #include "BlitCL/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
 
@@ -57,17 +57,14 @@ namespace BlitzenDX12
     constexpr D3D12_TEXTURE_LAYOUT Ce_DefaultTextureFormat = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 
 
-#if defined(DX12_OCCLUSION_DRAW_CULL)
-    constexpr uint8_t Ce_DrawOcclusion = 1;
-#else
-    constexpr uint8_t Ce_DrawOcclusion = 0;
-#endif
-
-
     /* SHARED DESCRIPTORS FOR COMPUTE AND GRAPHICS SHADERS */
     constexpr uint32_t Ce_SharedSrvRangeCount = 4;
 
-#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
+#if defined(DX12_TEMPORAL_DRAW_OCCLUSION)
+    constexpr uint32_t Ce_AdditionalSharedSRVs = 0;
+#elif defined(DX12_OCCLUSION_DRAW_CULL)
+    constexpr uint32_t Ce_AdditionalSharedSRVs = 0;
+#elif defined(BLITZEN_DRAW_INSTANCED_CULLING)
     constexpr uint32_t Ce_AdditionalSharedSRVs = 1;
 #else
     constexpr uint32_t Ce_AdditionalSharedSRVs = 0;
@@ -98,8 +95,10 @@ namespace BlitzenDX12
     /* DESCRIPTORS FOR culling shaders */
     constexpr uint32_t Ce_CullSrvRangeCount = 3;
 
-#if defined(DX12_OCCLUSION_DRAW_CULL)
-    constexpr uint32_t Ce_AdditionalCullSRVs = 3 + Ce_DepthPyramidMaxMips;
+#if defined(DX12_TEMPORAL_DRAW_OCCLUSION)
+    constexpr uint32_t Ce_AdditionalCullSRVs = 2 + Ce_DepthPyramidMaxMips;// depth target srv + Hi-z Map + Hi-z Mip UAVs. No draw visibility buffer
+#elif defined(DX12_OCCLUSION_DRAW_CULL)
+    constexpr uint32_t Ce_AdditionalCullSRVs = 3 + Ce_DepthPyramidMaxMips;// Draw visibility + depth target srv + Hi-z Map + Hi-z Mip UAVs
 #elif defined(BLITZEN_DRAW_INSTANCED_CULLING)
     constexpr uint32_t Ce_AdditionalCullSRVs = 1;
 #else
@@ -162,7 +161,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_ObjectIdRegister = 1;
 
     constexpr UINT Ce_TextureDescriptorsRegister = 8;
-    constexpr UINT Ce_TextureDescriptorCount = BlitzenEngine::ce_maxTextureCount;
+    constexpr UINT Ce_TextureDescriptorCount = BlitzenCore::Ce_MaxTextureCount;
 
     // ROOT PARAMETERS
     constexpr uint32_t Ce_OpaqueRootParameterCount = 6;
@@ -191,14 +190,11 @@ namespace BlitzenDX12
     constexpr UINT Ce_DepthPyramidUAVRootParameterId = 1;
     constexpr UINT Ce_DepthPyramidRootConstantParameterId = 2;
 
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount
-        + Ce_AdditionalSharedSRVs + Ce_AdditionalCullSRVs) * ce_framesInFlight;// Double or triple buffering
+    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueSrvRangeCount + Ce_SharedSrvRangeCount + Ce_CullSrvRangeCount + Ce_AdditionalSharedSRVs + Ce_AdditionalCullSRVs) * ce_framesInFlight;// Double or triple buffering
 
     constexpr UINT Ce_SamplerDescriptorCount = 2; // Depth pyramid and texture samplers
 
 
-
-    
     /* SSBO data copy helpers */
     constexpr UINT Ce_ConstDataSSBOCount = 6;
     constexpr UINT Ce_VertexStagingBufferIndex = 0;
@@ -207,22 +203,25 @@ namespace BlitzenDX12
     constexpr UINT Ce_RenderStagingBufferIndex = 3;
     constexpr UINT Ce_LodStagingIndex = 4;
     constexpr UINT Ce_MaterialStagingIndex = 5;
-
-
-
+    
     constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
 
     constexpr UINT Ce_VarSSBODataCount = 1;
 
     constexpr UINT Ce_TransformStagingBufferIndex = 0;
 
-
+    // Buffer size used for texture staging buffer
     constexpr SIZE_T Ce_TextureDataStagingSize = 128 * 1024 * 1024;
 
-#if defined(DX12_OCCLUSION_DRAW_CULL)
+#if defined(DX12_TEMPORAL_DRAW_OCCLUSION)
+    constexpr uint8_t CE_DX12TEMPORAL_OCCLUSION = 1;
+    constexpr uint8_t CE_DX12OCCLUSION = 0;
+#elif defined(DX12_OCCLUSION_DRAW_CULL)
     constexpr uint8_t CE_DX12OCCLUSION = 1;
+    constexpr uint8_t CE_DX12TEMPORAL_OCCLUSION = 0;
 #else
     constexpr uint8_t CE_DX12OCCLUSION = 0;
+    constexpr uint8_t CE_DX12TEMPORAL_OCCLUSION = 0;
 #endif
 
 

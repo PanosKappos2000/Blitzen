@@ -430,7 +430,7 @@ namespace BlitzenDX12
 		dsvHandle.ptr += (descriptorContext.depthTargetOffset + swapchainIndex) * descriptorContext.dsvIncrementSize;
 		cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
-		cmdList->ClearRenderTargetView(rtvHandle, BlitzenEngine::Ce_DefaultWindowBackgroundColor, 0, nullptr);
+		cmdList->ClearRenderTargetView(rtvHandle, BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 		cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 	}
 
@@ -457,10 +457,10 @@ namespace BlitzenDX12
 			depthTargetDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 
 			renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[0] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[0];
-			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[1] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[1];
-			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[2] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[2];
-			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[3] = BlitzenEngine::Ce_DefaultWindowBackgroundColor[3];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[0] = BlitzenCore::Ce_DefaultWindowBackgroundColor[0];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[1] = BlitzenCore::Ce_DefaultWindowBackgroundColor[1];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[2] = BlitzenCore::Ce_DefaultWindowBackgroundColor[2];
+			renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[3] = BlitzenCore::Ce_DefaultWindowBackgroundColor[3];
 			renderTargetDesc.BeginningAccess.Clear.ClearValue.Format = Ce_SwapchainFormat;
 			renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 		}
@@ -517,10 +517,10 @@ namespace BlitzenDX12
 
 	}
 
-	void Dx12Renderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)
+	void Dx12Renderer::UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context)
 	{
 		auto pData = m_varBuffers[m_currentFrame].transformBuffer.pData;
-		BlitzenCore::BlitMemCopy(reinterpret_cast<BlitzenEngine::MeshTransform*>(pData) + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
+		BlitzenCore::BlitMemCopy(reinterpret_cast<BlitzenEngine::MeshTransform*>(pData) + context.transformId, context.pTransform, sizeof(BlitzenEngine::MeshTransform));
 	}
 
 	void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)
@@ -577,9 +577,22 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformAfterCopyBarrier);
 
-		if constexpr (Ce_DrawOcclusion)
+		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{
-			// Frustum culling and lod selection, per object
+
+		}
+
+		/*
+			-FRUSTUM CULLING AND LOD SELECTION AT RENDER OBJECT LEVEL BEFORE DRAW INDIRECT
+			-FIRST PASS CULLS PREVIOSLY VISIBLE OBJECTS TO CREATE OCCLUDERS
+			-OCCLUDER COPIED TO HI-Z MAP
+			-HI-Z MAP USED FOR SECOND CULLING PASS WHICH PERFORMS OCCLUSION CULLING
+		*/
+		else if constexpr (CE_DX12OCCLUSION)
+		{
+			// 1. FRUSTUM CULLING AND LOD SELECTION. COMMANDS CREATED FOR VISIBLE OBJECTS BASED ON THE SELECTED LOD
+			// ONLY OBJECTS THAT WERE TAGGED AS VISIBLE LAST FRAME ARE CHECKED
+			// Shaders used: drawCountReset.cs.hlsl + drawOccFirst.cs.hlsl
 			DrawOccFirstPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame],
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(),
 				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.pResources->renderObjectCount);
@@ -588,78 +601,106 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
 			CreateResourcesTransitionBarrier(renderTargetBarrier, m_swapchainBackBuffers[swapchainIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			frameTools.mainGraphicsCommandList->ResourceBarrier(1, &renderTargetBarrier);
+
+			// First pass
 			uint8_t firstPass = 1;
+
+			// Viewport and scissor
 			DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
+
+			// 2. BEGINS RENDERING. For the first pass the render target and depth target are cleared and stored for the second pass
 			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), 
 				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, firstPass);
 
+			// 3. TAKES THE COMMNANDS FROM THE DRAW CULL SHADER AND DRAWS THE SCENE. THIS ALSO CREATES THE OCCLUDERS
+			// Shaders used: opaqueDraw.vs.hlsl + opaqueDraw.ps.hlsl
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 			frameTools.mainGraphicsCommandList->EndRenderPass();
 			firstPass = 0;
 
+			// 4. DEPTH TARGET IS COPIED TO A HI-Z MAP
 			GenerateDepthPyramid(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
 				m_depthPyramidSignature.Get(), m_depthPyramidPso.Get(), varBuffers, m_depthBuffers[swapchainIndex].Get(), 
 				m_swapchainWidth, m_swapchainHeight);
 
+			// 5. SECOND PASS DOES THE SAME AS THE OTHER PASS + OCCLUSION CULLING, OBJECTS THAT ARE NOW VISIBLE BUT WERE TAGGED AS NOT VISIBLE BEFORE GET DRAW COMMANDS
+			// 6. ALL OBJECTS THAT ARE VISIBLE GET TAGGED AS VISIBLE FOR THE NEXT FRAME
+			// Shaders used: drawCountReset.cs.hlsl + drawOccLate.cs.hlsl
 			DrawOccLatePass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), 
 				m_drawCountResetPso.Get(), m_drawOccLateSignature.Get(), m_drawOccLatePso.Get(), varBuffers, context.pResources->renderObjectCount);
 			
+			// 7. BEGINS SECOND RENDER PASS. RENDER TARGET AND DEPTH TARGET ARE NOT CLEARED, BUT LOADED
 			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(),
 				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, firstPass);
 			
+			// 8. DRAWS FOR THE SECOND PASS. SAME THING AS STEP 3
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 			frameTools.mainGraphicsCommandList->EndRenderPass();
 		}
 
-
-		else if constexpr (BlitzenEngine::Ce_InstanceCulling)
+		/* 
+			-FRUSTUM CULLING AND LOD SELECTION AT RENDER OBJECT LEVEL BEFORE DRAW INDIRECT
+			-INSTANCE COUNTER USED TO CREATE FEWER DRAW COMMANDS
+		*/
+		else if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
+			// 1. FRUSTUM CULLING AND LOD SELECTION. INSTANCE COUNTER INCREMENTED EACH TIME AN LOD IS VISIBLE
+			// 2. PASS OVER INSTANCE COUNTER, TO CREATE DRAW COMMANDS WITH INSTANCE COUNT
+			// Shaders used: drawCountReset.cs.hlsl + drawInstCountReset.cs.hlsl + drawInstCull.cs.hlsl + drawInstCmd.cs.hlsl
 			DrawInstanceCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), 
 				m_drawCountResetPso.Get(), m_drawCullSignature.Get(), m_drawInstCountResetPso.Get(), m_drawCullPso.Get(), m_drawInstCmdPso.Get(), 
 				varBuffers, context.pResources);
 
+			// 3. BEGINS RENDERING
 			ClearWindow(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight, 
 				m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), m_dsvHeap.Get(), m_descriptorContext, swapchainIndex);
 
+			// 4. TAKES THE COMMNADS FROM THE DRAW CULL SHADER AND DRAWS THE SCENE
+			// Shaders used: opaqueDrawInst.vs.hlsl + opaqueDraw.ps.hlsl
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 		}
 
-
+		/* FRUSTUM CULLING AND LOD SELECTION AT RENDER OBJECT LEVEL BEFORE DRAW INDIRECT */
 		else
 		{
-			// Frustum culling and lod selection, per object
+			// 1. FRUSTUM CULLING AND LOD SELCTION. COMMANDS CREATED FOR VISIBLE OBJECTS BASED ON THE SELECTED LOD
+			// Shaders used: drawCountReset.cs.hlsl + drawCull.cs.hlsl
 			DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame],
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(),
 				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.pResources->renderObjectCount);
 
+			// 2. BEGINS RENDERING
 			ClearWindow(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight,
 				m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), m_dsvHeap.Get(), m_descriptorContext, swapchainIndex);
 
+			// 3. TAKES THE COMMNANDS FROM THE DRAW CULL SHADER AND DRAWS THE SCENE
+			// Shaders used: opaqueDraw.vs.hlsl + opaqueDraw.ps.hlsl
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 		}
 
+		// Transform buffer should be ready to receive new dynamic transforms at the end of next frame
 		D3D12_RESOURCE_BARRIER transformCopyBarrier{};
-		CreateResourcesTransitionBarrier(transformCopyBarrier, varBuffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 
-			D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(transformCopyBarrier, varBuffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &transformCopyBarrier);
 
-#if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)
+		// Depth pyramid debugging
+		#if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)
 		{
 			CopyDepthPyramidToSwapchain(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), varBuffers.depthPyramid.pyramid.Get(), 
 				varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get(), 
 				context.pCamera->transformData.debugPyramidLevel, m_swapchainWidth, m_swapchainHeight);
 		}
-#else
+		#else
 		{
 			Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
 		}
-#endif
+		#endif
 
 		m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
     }
@@ -685,7 +726,7 @@ namespace BlitzenDX12
 		rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + m_currentFrame) * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, BlitzenEngine::Ce_DefaultWindowBackgroundColor, 0, nullptr);
+		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 
 		//BlitML::vec3 triangleColor{ 0, 0.8f, 0.4f };
 		//frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstants(0, 3, &triangleColor, 0);

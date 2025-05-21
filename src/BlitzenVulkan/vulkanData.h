@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
-#include "Engine/blitzenEngine.h"
+#include "Core/blitzenEngine.h"
 #include "BlitCL/DynamicArray.h"
 #include "BlitCL/blitArray.h"
 #include "BlitzenMathLibrary/blitML.h"
@@ -125,10 +125,10 @@ namespace BlitzenVulkan
     constexpr VkImageUsageFlags ce_colorAttachmentImageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
     constexpr VkClearColorValue ce_WindowClearColor =
     {
-        BlitzenEngine::Ce_DefaultWindowBackgroundColor[0],
-        BlitzenEngine::Ce_DefaultWindowBackgroundColor[1],
-        BlitzenEngine::Ce_DefaultWindowBackgroundColor[2],
-        BlitzenEngine::Ce_DefaultWindowBackgroundColor[3]
+        BlitzenCore::Ce_DefaultWindowBackgroundColor[0],
+        BlitzenCore::Ce_DefaultWindowBackgroundColor[1],
+        BlitzenCore::Ce_DefaultWindowBackgroundColor[2],
+        BlitzenCore::Ce_DefaultWindowBackgroundColor[3]
     };
 
     constexpr VkFormat ce_depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
@@ -186,6 +186,15 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_SinglePointer = 1;
 
     constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
+
+    constexpr uint32_t PushDescriptorSetID = 0;// Used when calling PuhsDesriptors for the set parameter
+    constexpr uint32_t TextureDescriptorSetID = 1;
+
+    constexpr uint8_t Ce_LateCulling = 1;// Sets the late culling boolean to 1
+    constexpr uint8_t Ce_InitialCulling = 0;// Sets the late culling boolean to 0
+
+    constexpr uint64_t ce_fenceTimeout = 1000000000;
+    constexpr uint64_t ce_swapchainImageTimeout = ce_fenceTimeout;
 
 
 

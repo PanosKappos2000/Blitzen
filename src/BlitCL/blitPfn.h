@@ -3,12 +3,12 @@
 namespace BlitCL
 {
     // Lightweight Function pointer holder
-    template<typename RET, typename... Args>
+    template<typename RET, typename... ARGS>
     class Pfn
     {
     public:
 
-        using PfnType = RET(*)(Args...);
+        using PfnType = RET(*)(ARGS...);
 
         Pfn() : m_func{ 0 } {}
 
@@ -16,7 +16,7 @@ namespace BlitCL
 
         inline void operator = (PfnType pfn) { m_func = pfn; }
 
-        inline RET operator () (Args... args) { return m_func(args...); }
+        inline RET operator () (ARGS... args) { return m_func(std::forward<ARGS>(args)...); }
 
         inline bool IsFunctional() { return m_func != 0; }
 

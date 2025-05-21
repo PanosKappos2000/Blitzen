@@ -15,15 +15,6 @@
 
 namespace BlitzenVulkan
 {
-    constexpr uint32_t PushDescriptorSetID = 0;// Used when calling PuhsDesriptors for the set parameter
-    constexpr uint32_t TextureDescriptorSetID = 1;
-
-    constexpr uint8_t Ce_LateCulling = 1;// Sets the late culling boolean to 1
-    constexpr uint8_t Ce_InitialCulling = 0;// Sets the late culling boolean to 0
-
-    constexpr uint64_t ce_fenceTimeout = 1000000000;
-    constexpr uint64_t ce_swapchainImageTimeout = ce_fenceTimeout;
-
     static void DrawMeshTasks(VkInstance instance, VkCommandBuffer commandBuffer, VkBuffer drawBuffer,
         VkDeviceSize drawOffset, VkBuffer countBuffer, VkDeviceSize countOffset, uint32_t maxDrawCount, uint32_t stride)
     {
@@ -823,10 +814,10 @@ namespace BlitzenVulkan
         m_drawCullDescriptors[Ce_TransformBufferDrawCullDescriptorId].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
     }
 
-    void VulkanRenderer::UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr)
+    void VulkanRenderer::UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context)
     {
         auto pData = m_varBuffers[m_currentFrame].pTransformData;
-        BlitzenCore::BlitMemCopy(pData + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
+        BlitzenCore::BlitMemCopy(pData + context.transformId, context.pTransform, sizeof(BlitzenEngine::MeshTransform));
     }
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
@@ -858,7 +849,7 @@ namespace BlitzenVulkan
         auto colorAttachmentWorkingLayout = context.pResources->renderObjectCount ?
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
 
-        if constexpr (BlitzenEngine::Ce_BuildClusters)
+        if constexpr (BlitzenCore::Ce_BuildClusters)
         {
             // Fist culling pass with separate command buffer
             BeginCommandBuffer(fTools.computeCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -1103,7 +1094,7 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
 
             // Copies the color attachment to the swapchain image
-            if constexpr (BlitzenEngine::Ce_DepthPyramidDebug)
+            if constexpr (BlitzenCore::Ce_DepthPyramidDebug)
             {
                 CopyPyramidToSwapchain(m_instance, fTools.commandBuffer, m_depthPyramid, m_swapchainValues, m_drawExtent,
                     m_depthPyramidExtent, m_depthPyramidMipLevels, m_depthPyramidMips, m_generatePresentationPipeline.handle, 

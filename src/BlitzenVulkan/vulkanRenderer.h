@@ -37,7 +37,7 @@ namespace BlitzenVulkan
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
         // When a dynamic object moves, it should call this function to update the staging buffer
-        void UpdateObjectTransform(uint32_t trId, BlitzenEngine::MeshTransform& newTr);
+        void UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& updateContext);
 
         // Static function that allows access to vulkan renderer at any scope
         inline static VulkanRenderer* GetRendererInstance() { return m_pThisRenderer; }
@@ -186,7 +186,7 @@ namespace BlitzenVulkan
         VkExtent2D m_depthPyramidExtent;
 
         // Will hold all textures that will be loaded for the scene, to pass them to the global descriptor set later
-        TextureData loadedTextures[BlitzenEngine::ce_maxTextureCount];
+        TextureData loadedTextures[BlitzenCore::Ce_MaxTextureCount];
         size_t textureCount;
         ImageSampler m_textureSampler;
 
