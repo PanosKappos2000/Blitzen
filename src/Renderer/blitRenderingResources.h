@@ -16,7 +16,7 @@ namespace BlitzenEngine
     {
     public:
 
-        RenderingResources(void* rendererData);
+        RenderingResources();
 
         RenderingResources operator = (const RenderingResources& rr) = delete;
         RenderingResources operator = (RenderingResources& rr) = delete;
@@ -67,6 +67,11 @@ namespace BlitzenEngine
         {
             return m_lodInstanceList;
         }
+
+        inline void IncrementTextureCount()
+        {
+            ++m_textureCount;
+        }
      
     /*
         Per instance data
@@ -114,8 +119,7 @@ namespace BlitzenEngine
         // Takes a filepath and adds a mesh
         uint8_t LoadMeshFromObj(const char* filename, const char* meshName);
 
-        void DefineMaterial(const BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName,
-            const char* specularMapName, const char* materialName);
+        void DefineMaterial(const BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, const char* specularMapName, const char* materialName);
 
         bool CreateRenderObject(uint32_t transformId, uint32_t surfaceId);
 
@@ -124,118 +128,14 @@ namespace BlitzenEngine
 
         void GenerateHlslVertices();
 
-    public:
+        void LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount, uint32_t previousTextureCount);
 
-        // Load a texture from a specified file. Assumes DDS format
-		template<class RENDERER>
-		bool LoadTextureFromFile(const char* filename, const char* texName, RENDERER* pRenderer)
-		{
-			// Don't go over the texture limit, might want to throw a warning here
-			if (m_textureCount >= BlitzenCore::Ce_MaxTextureCount)
-			{
-                BLIT_WARN("Max texture count: %i, has been reached", BlitzenCore::Ce_MaxTextureCount);
-                BLIT_ERROR("Texture from file: %s, failed to load", filename);
-				return 0;
-			}
+		void AddMeshesFromGltf(const cgltf_data* pGltfData, const char* path, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
-			auto& texture = m_textures[m_textureCount];
-			// If texture upload to the renderer succeeds, the texture count is incremented and the function returns successfully
-			if (pRenderer->UploadTexture(texture.pTextureData, filename))
-			{
-				m_textureCount++;
-				return true;
-			}
-            else
-            {
-                BLIT_ERROR("Texture from file: %s, failed to load", filename);
-                return false;
-            }
-		}
+        void AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& pGltfMesh, uint32_t previousMaterialCount);
 
-        // Loads a scene from gltf file
-		template <class RENDERER>
-        bool LoadGltfScene(const char* path, RENDERER* pRenderer)
-        {
-            if (renderObjectCount >= BlitzenCore::Ce_MaxRenderObjects)
-            {
-                BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. \
-                    GLTF LOADING FAILED!");
-                return false;
-            }
-
-            cgltf_options options{};
-
-            cgltf_data* pData{ nullptr };
-
-            auto res = cgltf_parse_file(&options, path, &pData);
-            if (res != cgltf_result_success)
-            {
-                BLIT_WARN("Failed to load gltf file: %s", path)
-                return false;
-            }
-
-            // Automatic free struct
-            struct CgltfScope
-            {
-                cgltf_data* pData;
-                inline ~CgltfScope() { cgltf_free(pData); }
-            };
-            CgltfScope cgltfScope{ pData };
-
-            res = cgltf_load_buffers(&options, pData, path);
-            if (res != cgltf_result_success)
-            {
-                return false;
-            }
-            
-
-            res = cgltf_validate(pData);
-            if (res != cgltf_result_success)
-            {
-                return false;
-            }
-            
-
-            BLIT_INFO("Loading GLTF scene from file: %s", path);
-
-            // Textures
-            auto previousTextureCount = m_textureCount;
-            BLIT_INFO("Loading textures");
-            LoadGltfTextures(pData, previousTextureCount, path, pRenderer);
-
-            // Materials
-            BLIT_INFO("Loading materials");
-            auto previousMaterialCount = m_materialCount;
-            LoadGltfMaterials(pData, previousMaterialCount, previousTextureCount);
-
-            // Meshes and primitives
-            BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
-            BlitCL::DynamicArray<uint8_t> surfaceTransparencyArray;
-            BLIT_INFO("Loading meshes and primitives");
-            for (size_t i = 0; i < pData->meshes_count; ++i)
-            {
-                const cgltf_mesh& gltfMesh = pData->meshes[i];
-
-                auto firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
-
-                auto& blitzenMesh = meshes[meshCount];
-                blitzenMesh.firstSurface = firstSurface;
-                blitzenMesh.surfaceCount = static_cast<uint32_t>(gltfMesh.primitives_count);
-                blitzenMesh.meshId = static_cast<uint32_t>(meshCount);
-                meshCount++;
-
-                surfaceIndices[i] = firstSurface;
-
-                AddPrimitivesFromGltf(pData, gltfMesh, previousMaterialCount);
-            }
-
-
-            // Render objects
-            BLIT_INFO("Loading scene nodes");
-            CreateRenderObjectsFromGltffNodes(pData, surfaceIndices);
-
-            return true;
-        }
+        // Generates render objects for a gltf scene
+        void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData, const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 
 
     private:
@@ -253,58 +153,7 @@ namespace BlitzenEngine
 
         // Generates bounding sphere for primitive based on given vertices and indices
         void GenerateBoundingSphere(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
-
-        // Generates render objects for a gltf scene
-        void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData, const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
-
-        void AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& pGltfMesh, uint32_t previousMaterialCount);
-
-        void LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount, uint32_t previousTextureCount);
-
-
-        // Called from gltf loader to handle gltf textures. Templated because it needs the renderer
-        template<class RENDERER>
-        void LoadGltfTextures(const cgltf_data* pGltfData, uint32_t previousTextureCount, const char* gltfFilepath, RENDERER pRenderer)
-        {
-            for (size_t i = 0; i < pGltfData->textures_count; ++i)
-            {
-                auto pTexture = &pGltfData->textures[i];
-                if (!pTexture->image)
-                {
-                    break;
-                }
-
-                auto pImage = pTexture->image;
-                if (!pImage->uri)
-                {
-                    break;
-                }
-
-                std::string ipath = gltfFilepath;
-                auto pos = ipath.find_last_of('/');
-                if (pos == std::string::npos)
-                {
-                    ipath = "";
-                }
-                else
-                {
-                    ipath = ipath.substr(0, pos + 1);
-                }
-
-                std::string uri{ pImage->uri };
-                uri.resize(cgltf_decode_uri(&uri[0]));
-                auto dot = uri.find_last_of('.');
-
-                if (dot != std::string::npos)
-                {
-                    uri.replace(dot, uri.size() - dot, ".dds");
-                }
-
-                auto path = ipath + uri;
-
-                LoadTextureFromFile(path.c_str(), path.c_str(), pRenderer);
-            }
-        }
+        
     
     /*
         Textures and materials

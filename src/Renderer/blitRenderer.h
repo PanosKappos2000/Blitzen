@@ -53,5 +53,12 @@ namespace BlitzenEngine
         void UpdateRendererTransform(BlitzenDX12::Dx12Renderer* pDx12, RendererTransformUpdateContext& context);
         void UpdateRendererTransform(BlitzenGL::OpenglRenderer* pGL, RendererTransformUpdateContext& context);
     #endif
-		void UpdateRendererTransform(BlitzenVulkan::VulkanRenderer* pVK, RendererTransformUpdateContext& context);
+
+    void UpdateRendererTransform(BlitzenVulkan::VulkanRenderer* pVK, RendererTransformUpdateContext& context);
+
+    bool LoadTextureFromFile(BlitzenEngine::RenderingResources* pResources, const char* filename, const char* texName, RendererPtrType pRenderer);
+
+    void LoadGltfTextures(BlitzenEngine::RenderingResources* pResources, const cgltf_data* pGltfData, uint32_t previousTextureCount, const char* gltfFilepath, RendererPtrType pRenderer);
+
+    bool LoadGltfScene(BlitzenEngine::RenderingResources* pResources, const char* path, RendererPtrType pRenderer);
 }

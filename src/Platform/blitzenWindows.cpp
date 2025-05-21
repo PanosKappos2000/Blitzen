@@ -3,9 +3,9 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <WinUser.h>
-#include "BlitzenVulkan/vulkanData.h"
+#include "Renderer/BlitzenVulkan/vulkanData.h"
 #include <vulkan/vulkan_win32.h>
-#include "BlitzenGl/openglRenderer.h"
+#include "Renderer/BlitzenGl/openglRenderer.h"
 #include "Renderer//blitRenderer.h"
 #include <GL/wglew.h>
 #include "platform.h"

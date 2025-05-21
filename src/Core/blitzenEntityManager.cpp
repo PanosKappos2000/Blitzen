@@ -96,7 +96,7 @@ namespace BlitzenCore
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    if (!pResources->LoadGltfScene(argv[i], pRenderer))
+                    if (!BlitzenEngine::LoadGltfScene(pResources, argv[i], pRenderer))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;
@@ -111,7 +111,7 @@ namespace BlitzenCore
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    if (!pResources->LoadGltfScene(argv[i], pRenderer))
+                    if (!BlitzenEngine::LoadGltfScene(pResources, argv[i], pRenderer))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;
@@ -127,7 +127,7 @@ namespace BlitzenCore
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    if (!pResources->LoadGltfScene(argv[i], pRenderer))
+                    if (!BlitzenEngine::LoadGltfScene(pResources, argv[i], pRenderer))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;
@@ -138,7 +138,7 @@ namespace BlitzenCore
             {
                 for (int32_t i = 1; i < argc; ++i)
                 {
-                    if (!pResources->LoadGltfScene(argv[i], pRenderer))
+                    if (!BlitzenEngine::LoadGltfScene(pResources, argv[i], pRenderer))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;

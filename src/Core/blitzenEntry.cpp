@@ -2,29 +2,12 @@
 #include "Core/blitTimeManager.h"
 // Single file gltf loading https://github.com/jkuhlmann/cgltf
 // Placed here because cgltf is called from a template function
-#define CGLTF_IMPLEMENTATION
 #include "Core/blitEntityManager.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 #include <iostream>
-
-namespace BlitzenCore
-{
-    Engine::Engine() : m_state{EngineState::SHUTDOWN}
-    {
-
-    }
-
-    Engine::~Engine()
-    {
-        // This does absolutely nothing right now
-        BlitzenCore::ShutdownLogging();
-
-        BlitzenCore::LogAllocation(BlitzenCore::AllocationType::Engine, 0, BlitzenCore::AllocationAction::FREE_ALL);
-    }
-}
 
 using BLITZEN_WORLD_CONTEXT = BlitCL::StaticArray<void*, BlitzenCore::Ce_WorldContextSystemsCount>;
 
@@ -72,8 +55,9 @@ int main(int argc, char* argv[])
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
     RndResourcesMemory renderingResources;
-    renderingResources.Make(renderer.Data());
+    renderingResources.Make();
     blitzenWorldContext.pRenderingResources = renderingResources.Data();
+    BlitzenEngine::LoadTextureFromFile(renderingResources.Data(), "Assets/Textures/base_baseColor.dds", "dds_texture_default", renderer.Data());
 
 
     // Loading resources

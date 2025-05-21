@@ -31,7 +31,6 @@ namespace BlitzenCore
     };
 
     bool InitLogging();
-    void ShutdownLogging();
 
     constexpr const char* LogLevels[6] =
     {

@@ -82,8 +82,6 @@ namespace BlitzenCore
 
     constexpr uint32_t Ce_WorldContextSystemsCount = 5;
 
-
-
     enum class AllocationType : uint8_t
     {
         DynamicArray = 0,
@@ -102,6 +100,38 @@ namespace BlitzenCore
         MaxTypes = 12
     };
 
+    enum class AllocationAction : uint8_t
+    {
+        ALLOC = 0,
+        FREE = 1,
+        FREE_ALL = 2,
+
+        MAX_ACTIONS
+    };
+
+    void ShutdownLogging(size_t totalAllocated, size_t* typeAllocations);
+
+    inline void LogAllocation(AllocationType alloc, size_t size, AllocationAction action)
+    {
+        static size_t totalAllocated{ 0 };
+        size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)]{ 0 };
+
+        if (action == AllocationAction::ALLOC)
+        {
+            totalAllocated += size;
+            typeAllocations[static_cast<uint8_t>(alloc)] += size;
+        }
+        else if (action == AllocationAction::FREE)
+        {
+            totalAllocated -= size;
+            typeAllocations[static_cast<uint8_t>(alloc)] -= size;
+        }
+        else if (action == AllocationAction::FREE_ALL)
+        {
+            ShutdownLogging(totalAllocated, typeAllocations);
+        }
+    }
+
     enum class EngineState : uint8_t
     {
         RUNNING = 0,
@@ -116,10 +146,14 @@ namespace BlitzenCore
     class Engine
     {
     public:
-        Engine();
-        ~Engine();
+        Engine() = default;
+        EngineState m_state{ EngineState::SHUTDOWN };
 
-        EngineState m_state;
+        // Defined in blitMemory.h
+        inline ~Engine()
+        {
+            LogAllocation(AllocationType::Engine, 0, AllocationAction::FREE_ALL);
+        }
     };
 }
 

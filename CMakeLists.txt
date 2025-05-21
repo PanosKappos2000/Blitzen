@@ -11,7 +11,7 @@ set (CMAKE_CXX_STANDARD_REQUIRED True)
 # Blitzen Engine Windows
 IF(WIN32)
 add_executable(BlitzenEngine
-
+                # ENGINE CORE
                 src/Core/blitzenEngine.h
                 src/Core/blitMemory.h
                 src/Core/blitLogger.h
@@ -26,42 +26,9 @@ add_executable(BlitzenEngine
                 src/Core/blitzenWorldPrivate.h
                 src/Core/blitEntityManager.h
                 src/Core/blitzenEntityManager.cpp
+                src/Core/blitzenEntry.cpp
 
-                src/Engine/blitzenEngine.cpp
-
-                src/BlitzenDX12/dx12Data.h
-                src/BlitzenDX12/dx12Renderer.h
-                src/BlitzenDX12/dx12Commands.h 
-                src/BlitzenDX12/dx12Commands.cpp
-                src/BlitzenDX12/dx12Resources.h
-                src/BlitzenDX12/dx12Resources.cpp
-                src/BlitzenDX12/dx12Pipelines.h
-                src/BlitzenDX12/dx12Pipelines.cpp
-                src/BlitzenDX12/dx12RNDResources.h
-                src/BlitzenDX12/dx12RNDResources.cpp
-                src/BlitzenDX12/dx12Init.cpp
-                src/BlitzenDX12/dx12RendererSetup.cpp
-                src/BlitzenDX12/dx12Draw.cpp
-
-                src/BlitzenVulkan/vulkanData.h
-                src/BlitzenVulkan/vulkanRenderer.h
-                src/BlitzenVulkan/vulkanResourceFunctions.h
-                src/BlitzenVulkan/vulkanCommands.h
-                src/BlitzenVulkan/vulkanPipelines.h
-                src/BlitzenVulkan/vulkanHandles.cpp
-                src/BlitzenVulkan/vulkanInit.cpp
-                src/BlitzenVulkan/vulkanResources.cpp
-                src/BlitzenVulkan/vulkanPipelines.cpp
-                src/BlitzenVulkan/vulkanRaytracing.cpp
-                src/BlitzenVulkan/vulkanRendererSetup.cpp
-                src/BlitzenVulkan/vulkanCommands.cpp
-                src/BlitzenVulkan/vulkanDraw.cpp
-
-                src/BlitzenGL/openglData.h
-                src/BlitzenGL/openglRenderer.h
-                src/BlitzenGL/openglResources.cpp
-                src/BlitzenGl/openglRenderer.cpp
-
+                # ENGINE RENDERING 
                 src/Renderer/renderingResourcesTypes.h
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
@@ -70,6 +37,39 @@ add_executable(BlitzenEngine
                 src/Renderer/Interface/blitRendererInterface.h
                 src/Renderer/blitDDSTextures.h
                 src/Renderer/blitzenDDSTextures.cpp
+                # VULKAN
+                src/Renderer/BlitzenVulkan/vulkanData.h
+                src/Renderer/BlitzenVulkan/vulkanRenderer.h
+                src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h
+                src/Renderer/BlitzenVulkan/vulkanCommands.h
+                src/Renderer/BlitzenVulkan/vulkanPipelines.h
+                src/Renderer/BlitzenVulkan/vulkanHandles.cpp
+                src/Renderer/BlitzenVulkan/vulkanInit.cpp
+                src/Renderer/BlitzenVulkan/vulkanResources.cpp
+                src/Renderer/BlitzenVulkan/vulkanPipelines.cpp
+                src/Renderer/BlitzenVulkan/vulkanRaytracing.cpp
+                src/Renderer/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/Renderer/BlitzenVulkan/vulkanCommands.cpp
+                src/Renderer/BlitzenVulkan/vulkanDraw.cpp
+                # GL
+                src/Renderer/BlitzenGL/openglData.h
+                src/Renderer/BlitzenGL/openglRenderer.h
+                src/Renderer/BlitzenGL/openglResources.cpp
+                src/Renderer/BlitzenGl/openglRenderer.cpp
+                # DX12
+                src/Renderer/BlitzenDX12/dx12Data.h
+                src/Renderer/BlitzenDX12/dx12Renderer.h
+                src/Renderer/BlitzenDX12/dx12Commands.h 
+                src/Renderer/BlitzenDX12/dx12Commands.cpp
+                src/Renderer/BlitzenDX12/dx12Resources.h
+                src/Renderer/BlitzenDX12/dx12Resources.cpp
+                src/Renderer/BlitzenDX12/dx12Pipelines.h
+                src/Renderer/BlitzenDX12/dx12Pipelines.cpp
+                src/Renderer/BlitzenDX12/dx12RNDResources.h
+                src/Renderer/BlitzenDX12/dx12RNDResources.cpp
+                src/Renderer/BlitzenDX12/dx12Init.cpp
+                src/Renderer/BlitzenDX12/dx12RendererSetup.cpp
+                src/Renderer/BlitzenDX12/dx12Draw.cpp
 
                 src/Game/blitObject.h
                 src/Game/blitzenObject.cpp
@@ -118,21 +118,9 @@ add_executable(BlitzenEngine
                 src/Core/blitzenWorldPrivate.h
                 src/Core/blitEntityManager.h
                 src/Core/blitzenEntityManager.cpp
+                src/Core/blitzenEntry.cpp
 
-                src/Engine/blitzenEngine.cpp
-
-                src/BlitzenVulkan/vulkanData.h
-                src/BlitzenVulkan/vulkanRenderer.h
-                src/BlitzenVulkan/vulkanInit.cpp
-                src/BlitzenVulkan/vulkanHandles.cpp
-                src/BlitzenVulkan/vulkanResources.cpp
-                src/BlitzenVulkan/vulkanPipelines.cpp
-                src/BlitzenVulkan/vulkanGpuUpload.cpp
-                src/BlitzenVulkan/vulkanRaytracing.cpp
-                src/BlitzenVulkan/vulkanRendererSetup.cpp
-                src/BlitzenVulkan/vulkanCommands.cpp
-                src/BlitzenVulkan/vulkanDraw.cpp
-
+                # ENGINE RENDERING 
                 src/Renderer/renderingResourcesTypes.h
                 src/Renderer/blitRenderingResources.h
                 src/Renderer/blitzenRenderingResources.cpp
@@ -141,6 +129,20 @@ add_executable(BlitzenEngine
                 src/Renderer/Interface/blitRendererInterface.h
                 src/Renderer/blitDDSTextures.h
                 src/Renderer/blitzenDDSTextures.cpp
+                # VULKAN
+                src/Renderer/BlitzenVulkan/vulkanData.h
+                src/Renderer/BlitzenVulkan/vulkanRenderer.h
+                src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h
+                src/Renderer/BlitzenVulkan/vulkanCommands.h
+                src/Renderer/BlitzenVulkan/vulkanPipelines.h
+                src/Renderer/BlitzenVulkan/vulkanHandles.cpp
+                src/Renderer/BlitzenVulkan/vulkanInit.cpp
+                src/Renderer/BlitzenVulkan/vulkanResources.cpp
+                src/Renderer/BlitzenVulkan/vulkanPipelines.cpp
+                src/Renderer/BlitzenVulkan/vulkanRaytracing.cpp
+                src/Renderer/BlitzenVulkan/vulkanRendererSetup.cpp
+                src/Renderer/BlitzenVulkan/vulkanCommands.cpp
+                src/Renderer/BlitzenVulkan/vulkanDraw.cpp
 
                 src/Game/blitObject.h
                 src/Game/blitzenObject.cpp
@@ -191,7 +193,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_GDEV_EDT # Defines that the Engine is in Game Dev mode
                             BLIT_ASSERTIONS_ENABLED
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
                             #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode

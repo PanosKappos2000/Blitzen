@@ -18,12 +18,8 @@
 
 namespace BlitzenEngine
 {
-    RenderingResources::RenderingResources(void* rendererData)
+    RenderingResources::RenderingResources()
     {
-        auto pRenderer = reinterpret_cast<RendererPtrType>(rendererData);
-
-        // Defaults
-        LoadTextureFromFile("Assets/Textures/base_baseColor.dds","dds_texture_default", pRenderer);
         DefineMaterial(BlitML::vec4{ 0.1f }, 65.f, "dds_texture_default", "unknown", "loaded_material");
         LoadMeshFromObj("Assets/Meshes/bunny.obj", BlitzenCore::Ce_DefaultMeshName);
     }
@@ -478,6 +474,28 @@ namespace BlitzenEngine
         return transformId;
     }
 
+    void RenderingResources::AddMeshesFromGltf(const cgltf_data* pGltfData, const char* path, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    {
+        
+        BLIT_INFO("Loading meshes and primitives");
+        for (size_t i = 0; i < pGltfData->meshes_count; ++i)
+        {
+            const cgltf_mesh& gltfMesh = pGltfData->meshes[i];
+
+            auto firstSurface = static_cast<uint32_t>(m_surfaces.GetSize());
+
+            auto& blitzenMesh = meshes[meshCount];
+            blitzenMesh.firstSurface = firstSurface;
+            blitzenMesh.surfaceCount = static_cast<uint32_t>(gltfMesh.primitives_count);
+            blitzenMesh.meshId = static_cast<uint32_t>(meshCount);
+            meshCount++;
+
+            surfaceIndices[i] = firstSurface;
+
+            AddPrimitivesFromGltf(pGltfData, gltfMesh, previousMaterialCount);
+        }
+    }
+
     void RenderingResources::AddPrimitivesFromGltf(const cgltf_data* pGltfData, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount)
     {
         for (size_t j = 0; j < gltfMesh.primitives_count; ++j)
@@ -601,8 +619,7 @@ namespace BlitzenEngine
         }
     }
 
-    void RenderingResources::LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount, 
-        uint32_t previousTextureCount)
+    void RenderingResources::LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount, uint32_t previousTextureCount)
     {
         for (size_t i = 0; i < pGltfData->materials_count; ++i)
         {

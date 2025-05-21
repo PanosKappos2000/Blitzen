@@ -70,46 +70,6 @@ namespace BlitzenCore
 
     };
 
-    enum class AllocationAction : uint8_t
-    {
-        ALLOC = 0,
-        FREE = 1,
-        FREE_ALL = 2,
-
-        MAX_ACTIONS
-    };
-
-    inline void LogAllocation(AllocationType alloc, size_t size, AllocationAction action)
-    {
-        static size_t totalAllocated{ 0 };
-        size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)]{ 0 };
-
-        if (action == AllocationAction::ALLOC)
-        {
-            totalAllocated += size;
-            typeAllocations[static_cast<uint8_t>(alloc)] += size;
-        }
-        else if (action == AllocationAction::FREE)
-        {
-            totalAllocated -= size;
-            typeAllocations[static_cast<uint8_t>(alloc)] -= size;
-        }
-        else if (action == AllocationAction::FREE_ALL)
-        {
-            // Warn the user of any memory leaks to look for
-            if (totalAllocated)
-            {
-            #if defined(BLIT_REIN_SANT_ENG)
-                BLIT_WARN("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
-                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
-            #else
-                printf("There is still unfreed memory, Total: %i \n Unfreed Dynamic Array memory: %i \n Unfreed Hashmap memory: %i \n Unfreed Queue memory: %i \n Unfreed BST memory: %i \n Unfreed String memory: %i \n Unfreed Engine memory: %i \n Unfreed Renderer memory: %i",
-                    totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6]);
-            #endif
-            }
-        }
-    }
-
     template<typename T>
     T* BlitAlloc(AllocationType alloc, size_t size)
     {
