@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderer/blitRenderer.h"
+#include "Renderer/Interface/blitRenderer.h"
 
 namespace BlitzenWorld
 {

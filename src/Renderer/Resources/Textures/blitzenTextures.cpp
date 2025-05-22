@@ -1,4 +1,4 @@
-#include "blitDDSTextures.h"
+#include "blitTextures.h"
 
 namespace BlitzenEngine
 {

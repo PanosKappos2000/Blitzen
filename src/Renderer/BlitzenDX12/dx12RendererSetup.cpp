@@ -1044,10 +1044,9 @@ namespace BlitzenDX12
 		}
 	}
 
-	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
-		float& pyramidWidth, float& pyramidHeight)
+	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight)
 	{
-		pResources->GenerateHlslVertices();
+		GenerateHlslVertices(pResources->GetMeshContext());
 
 		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf(), m_drawCullSignature.ReleaseAndGetAddressOf(), 
 			m_drawCountResetRoot.ReleaseAndGetAddressOf(), m_drawOccLateSignature.ReleaseAndGetAddressOf(), m_depthPyramidSignature.ReleaseAndGetAddressOf()))

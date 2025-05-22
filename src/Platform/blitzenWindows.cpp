@@ -6,7 +6,7 @@
 #include "Renderer/BlitzenVulkan/vulkanData.h"
 #include <vulkan/vulkan_win32.h>
 #include "Renderer/BlitzenGl/openglRenderer.h"
-#include "Renderer//blitRenderer.h"
+#include "Renderer/Interface/blitRenderer.h"
 #include <GL/wglew.h>
 #include "platform.h"
 #include "Core/blitEvents.h"

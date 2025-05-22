@@ -1,8 +1,8 @@
 #pragma once
 #include "dx12Data.h"
 #include "Renderer/Interface/blitRendererInterface.h"
-#include "Renderer/blitRenderingResources.h"
-#include "Renderer/blitDDSTextures.h"
+#include "Renderer/Resources/blitRenderingResources.h"
+#include "Renderer/Resources/Textures/blitTextures.h"
 #include "Core/blitLogger.h"
 
 namespace BlitzenDX12

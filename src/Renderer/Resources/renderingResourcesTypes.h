@@ -122,6 +122,11 @@ namespace BlitzenEngine
         uint32_t vertexOffset; // Not used in the shaders but can hold the offset when loading
     };
 
+    struct IsPrimitiveTransparent
+    {
+        bool isTransparent;
+    };
+
     // Each mesh has a different transform. Passed to the GPU. Accessed through render object
     struct alignas(16) MeshTransform
     {

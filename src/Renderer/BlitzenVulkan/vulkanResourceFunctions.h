@@ -1,6 +1,6 @@
 #pragma once
 #include "vulkanData.h"
-#include "Renderer/blitDDSTextures.h"
+#include "Renderer/Resources/Textures/blitTextures.h"
 
 namespace BlitzenVulkan
 {

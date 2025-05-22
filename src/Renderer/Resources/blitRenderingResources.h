@@ -1,13 +1,11 @@
 #pragma once
-#include "renderingResourcesTypes.h"
+#include "Mesh/blitMeshes.h"
 #include "BlitCL/blitArray.h"
-#include "BlitCL/DynamicArray.h"
-#include "BlitCL/blitHashMap.h"
 #include "Game/blitCamera.h"
+
+// TO BE REMOVED
 #include "Cgltf/cgltf.h"
-// Algorithms for building meshlets, loading LODs, optimizing vertex caches etc.
-// https://github.com/zeux/meshoptimizer
-#include "Meshoptimizer/meshoptimizer.h"
+
 
 namespace BlitzenEngine
 {
@@ -27,45 +25,57 @@ namespace BlitzenEngine
         inline const Material* GetMaterialArrayPointer() const { return m_materials; }
         inline const Material& GetMaterialFromMap(const char* materialName) { return m_materialTable[materialName]; }
         inline uint32_t GetMaterialCount() const { return m_materialCount; }
+
+        // MESH RESOURCES
+        inline MeshResources& GetMeshContext() 
+        {
+            return m_meshContext; 
+        }
         inline const BlitCL::DynamicArray<PrimitiveSurface>& GetSurfaceArray() const
         {
-            return m_surfaces;
+            return m_meshContext.m_surfaces;
         }
         inline const BlitCL::DynamicArray<Vertex>& GetVerticesArray() const
         {
-            return m_vertices;
+            return m_meshContext.m_vertices;
         }
         inline const BlitCL::DynamicArray<HlslVtx>& GetHlslVertices() const
         {
-            return m_hlslVtxs;
+            return m_meshContext.m_hlslVtxs;
         }
         inline const BlitCL::DynamicArray<uint32_t>& GetIndicesArray() const
         {
-           return m_indices;
+           return m_meshContext.m_indices;
         }
         inline const BlitCL::DynamicArray<uint32_t>& GetPrimitiveVertexCounts() const
         {
-            return m_primitiveVertexCounts;
+            return m_meshContext.m_primitiveVertexCounts;
         }
         inline const BlitCL::DynamicArray<Cluster>& GetClusterArray() const
         {
-            return m_clusters;
+            return m_meshContext.m_clusters;
         }
         inline const BlitCL::DynamicArray<uint32_t>& GetClusterIndices() const
         {
-            return m_clusterIndices;
+            return m_meshContext.m_clusterIndices;
         }
-        inline const BlitCL::DynamicArray<RenderObject>& GetTranparentRenders() const
+        inline const BlitCL::DynamicArray<IsPrimitiveTransparent>& GetSurfaceTransparencies() const
         {
-            return m_transparentRenders;
+            return m_meshContext.m_bTransparencyList;
         }
 		inline const BlitCL::DynamicArray<LodData>& GetLodData() const
 		{
-			return m_lods;
+			return m_meshContext.m_LODs;
 		}
         inline const BlitCL::DynamicArray<LodInstanceCounter>& GetLODInstanceList() const
         {
-            return m_lodInstanceList;
+            return m_meshContext.m_lodInstanceList;
+        }
+
+
+        inline const BlitCL::DynamicArray<RenderObject>& GetTranparentRenders() const
+        {
+            return m_transparentRenders;
         }
 
         inline void IncrementTextureCount()
@@ -76,6 +86,9 @@ namespace BlitzenEngine
     /*
         Per instance data
     */
+
+    private:
+        MeshResources m_meshContext;
     public:
  
         BlitCL::DynamicArray<MeshTransform> transforms{ BlitzenCore::Ce_MaxDynamicObjectCount };
@@ -87,23 +100,6 @@ namespace BlitzenEngine
 
         RenderObject onpcReflectiveRenderObjects[BlitzenCore::Ce_MaxONPC_Objects];
         uint32_t onpcReflectiveRenderObjectCount{ 0 };
-        
-        // Holds the meshes that were loaded for the scene. Meshes are a collection of primitives.
-        Mesh meshes[BlitzenCore::Ce_MaxMeshCount];
-        BlitCL::HashMap<Mesh> meshMap;
-        size_t meshCount = 0;
-
-
-        struct IsPrimitiveTransparent
-        {
-            bool b = false;
-        };
-        BlitCL::DynamicArray<IsPrimitiveTransparent> bTransparencyList;
-
-        inline const BlitCL::DynamicArray<IsPrimitiveTransparent>& GetSurfaceTransparencies() const
-        {
-            return bTransparencyList;
-        }
 
 		inline MeshTransform& GetTransform(uint32_t id) const
 		{
@@ -116,17 +112,12 @@ namespace BlitzenEngine
         // Takes a mesh id and adds a render object based on that ID and a transform
         uint32_t AddRenderObjectsFromMesh(uint32_t meshId, const BlitzenEngine::MeshTransform& transform, bool isDynamic);
 
-        // Takes a filepath and adds a mesh
-        uint8_t LoadMeshFromObj(const char* filename, const char* meshName);
-
         void DefineMaterial(const BlitML::vec4& diffuseColor, float shininess, const char* diffuseMapName, const char* specularMapName, const char* materialName);
 
         bool CreateRenderObject(uint32_t transformId, uint32_t surfaceId);
 
         // Lovely piece of debug helper
         void CreateSingleObjectForTesting();
-
-        void GenerateHlslVertices();
 
         void LoadGltfMaterials(const cgltf_data* pGltfData, uint32_t previousMaterialCount, uint32_t previousTextureCount);
 
@@ -136,23 +127,6 @@ namespace BlitzenEngine
 
         // Generates render objects for a gltf scene
         void CreateRenderObjectsFromGltffNodes(cgltf_data* pGltfData, const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
-
-
-    private:
-
-        // Loads a single primitive and adds it to the global array
-        void LoadPrimitiveSurface(BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
-
-        // Generates clusters for a given array of vertices and indices
-        size_t GenerateClusters(BlitCL::DynamicArray<Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices, uint32_t vertexOffset);
-
-        void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
-
-        // Generates LODs for the vertices of a given surface
-        void AutomaticLevelOfDetailGenration(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
-
-        // Generates bounding sphere for primitive based on given vertices and indices
-        void GenerateBoundingSphere(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
         
     
     /*
@@ -169,28 +143,6 @@ namespace BlitzenEngine
         Material m_materials[BlitzenCore::Ce_MaxMaterialCount];
         BlitCL::HashMap<Material> m_materialTable;
         uint32_t m_materialCount = 0;
-
-    /*
-        Per primitive data
-    */
-    private:
-
-        BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;
-        BlitCL::DynamicArray<LodData> m_lods;
-        BlitCL::DynamicArray<LodInstanceCounter> m_lodInstanceList;
-
-        // Holds the vertex count of each primitive. 
-        // This does not need to be passed to shader for now. 
-        // But I do need it for ray tracing
-        BlitCL::DynamicArray<uint32_t> m_primitiveVertexCounts;
-
-        BlitCL::DynamicArray<Vertex> m_vertices;
-        BlitCL::DynamicArray<HlslVtx> m_hlslVtxs;
-        BlitCL::DynamicArray<uint32_t> m_indices;
-
-        BlitCL::DynamicArray<Cluster> m_clusters;
-        // Cluster index buffer
-        BlitCL::DynamicArray<uint32_t> m_clusterIndices;
     
     /*
         Per object data
@@ -200,11 +152,8 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<RenderObject> m_transparentRenders;
     };
 
-    // Sets random transform
+    // TODO: THESE THINGS WILL BE IN SCENE.H
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);
-
-    // Test functions
-    void LoadTestGeometry(RenderingResources* pResources);
     void LoadGeometryStressTest(RenderingResources* pResources, float transformMultiplier);
     void CreateObliqueNearPlaneClippingTestObject(RenderingResources* pResources);
 }

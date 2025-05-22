@@ -1,5 +1,5 @@
 #define CGLTF_IMPLEMENTATION
-#include "Renderer/blitRenderer.h"
+#include "blitRenderer.h"
 
 namespace BlitzenEngine
 {

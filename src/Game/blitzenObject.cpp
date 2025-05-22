@@ -5,7 +5,7 @@ namespace BlitzenEngine
 	GameObject::GameObject(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
 		m_bDynamic{ isDynamic }, m_transformId{ 0 }
 	{
-		m_meshId = pResources->meshMap[meshName].meshId;
+		m_meshId = pResources->GetMeshContext().m_meshMap[meshName].meshId;
 		m_transformId = pResources->AddRenderObjectsFromMesh(m_meshId, initialTransform, isDynamic);
 	}
 

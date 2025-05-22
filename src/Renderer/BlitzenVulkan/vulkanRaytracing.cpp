@@ -203,7 +203,7 @@ namespace BlitzenVulkan
         uint32_t drawCount{ pResources->renderObjectCount }; 
         BlitzenEngine::MeshTransform* pTransforms{ pResources->transforms.Data() };
         BlitzenEngine::PrimitiveSurface* pSurfaces{ pResources->GetSurfaceArray().Data() };
-        const auto& surfaceTransparencies{ pResources->bTransparencyList };
+        const auto& surfaceTransparencies{ pResources->GetMeshContext().m_bTransparencyList };
 
         // Retrieves the device address of each acceleration structure that was build earlier
         BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ staticBuffers.blasData.GetSize() };

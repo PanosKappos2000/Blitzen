@@ -1,11 +1,11 @@
 #pragma once
-#include "blitRendererInterface.h"
-#include "BlitzenVulkan/vulkanRenderer.h"
+#include "Renderer/Interface/blitRendererInterface.h"
+#include "Renderer/BlitzenVulkan/vulkanRenderer.h"
 #if defined(_WIN32)
-    #include "BlitzenGl/openglRenderer.h"
+    #include "Renderer/BlitzenGl/openglRenderer.h"
 #endif
 #if defined(_WIN32)
-    #include "BlitzenDX12/dx12Renderer.h"
+    #include "Renderer/BlitzenDX12/dx12Renderer.h"
 #endif
 #include <typeinfo>
 #include <cstring>

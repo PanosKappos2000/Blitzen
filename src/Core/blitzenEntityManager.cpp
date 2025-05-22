@@ -79,7 +79,7 @@ namespace BlitzenCore
 
     bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, GameObjectManager* pManager)
     {
-        LoadTestGeometry(pResources);
+        LoadTestGeometry(pResources->GetMeshContext());
         //pResources->CreateSingleObjectForTesting();
 
         #if defined(BLIT_DYNAMIC_OBJECT_TEST)

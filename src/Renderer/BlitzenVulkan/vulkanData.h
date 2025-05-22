@@ -5,7 +5,7 @@
 #include "BlitCL/DynamicArray.h"
 #include "BlitCL/blitArray.h"
 #include "BlitzenMathLibrary/blitML.h"
-#include "Renderer/blitRenderingResources.h"
+#include "Renderer/Resources/blitRenderingResources.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed
 /*#define GLM_FORCE_DEPTH_ZERO_TO_ONE

@@ -1,6 +1,6 @@
 #pragma once
 #include "Core/blitzenEngine.h"
-#include "Renderer/blitRenderingResources.h"
+#include "Renderer/Resources/blitRenderingResources.h"
 #include "Game/blitCamera.h" 
 
 namespace BlitzenEngine

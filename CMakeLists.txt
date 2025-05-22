@@ -29,14 +29,18 @@ add_executable(BlitzenEngine
                 src/Core/blitzenEntry.cpp
 
                 # ENGINE RENDERING 
-                src/Renderer/renderingResourcesTypes.h
-                src/Renderer/blitRenderingResources.h
-                src/Renderer/blitzenRenderingResources.cpp
                 src/Renderer/Interface/blitRenderer.h
                 src/Renderer/Interface/blitzenRenderer.cpp
                 src/Renderer/Interface/blitRendererInterface.h
-                src/Renderer/blitDDSTextures.h
-                src/Renderer/blitzenDDSTextures.cpp
+                src/Renderer/Resources/renderingResourcesTypes.h
+                src/Renderer/Resources/blitRenderingResources.h
+                src/Renderer/Resources/blitzenRenderingResources.cpp
+                src/Renderer/Resources/Textures/blitTextures.h
+                src/Renderer/Resources/Textures/blitzenTextures.cpp
+                src/Renderer/Resources/Mesh/blitMeshes.h
+                src/Renderer/Resources/Mesh/blitzenMeshes.cpp
+                src/Renderer/Resources/Scene/blitScene.h
+                src/Renderer/Resources/Scene/blitzenScene.cpp
                 # VULKAN
                 src/Renderer/BlitzenVulkan/vulkanData.h
                 src/Renderer/BlitzenVulkan/vulkanRenderer.h
@@ -121,14 +125,18 @@ add_executable(BlitzenEngine
                 src/Core/blitzenEntry.cpp
 
                 # ENGINE RENDERING 
-                src/Renderer/renderingResourcesTypes.h
-                src/Renderer/blitRenderingResources.h
-                src/Renderer/blitzenRenderingResources.cpp
                 src/Renderer/Interface/blitRenderer.h
                 src/Renderer/Interface/blitzenRenderer.cpp
                 src/Renderer/Interface/blitRendererInterface.h
-                src/Renderer/blitDDSTextures.h
-                src/Renderer/blitzenDDSTextures.cpp
+                src/Renderer/Resources/renderingResourcesTypes.h
+                src/Renderer/Resources/blitRenderingResources.h
+                src/Renderer/Resources/blitzenRenderingResources.cpp
+                src/Renderer/Resources/Textures/blitTextures.h
+                src/Renderer/Resources/Textures/blitzenTextures.cpp
+                src/Renderer/Resources/Mesh/blitMeshes.h
+                src/Renderer/Resources/Mesh/blitzenMeshes.cpp
+                src/Renderer/Resources/Scene/blitScene.h
+                src/Renderer/Resources/Scene/blitzenScene.cpp
                 # VULKAN
                 src/Renderer/BlitzenVulkan/vulkanData.h
                 src/Renderer/BlitzenVulkan/vulkanRenderer.h
@@ -196,7 +204,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
-                            #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
+                            BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
                             BLITZEN_DRAW_INSTANCED_CULLING
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
