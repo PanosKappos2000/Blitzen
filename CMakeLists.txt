@@ -204,7 +204,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
-                            BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
+                            #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
                             BLITZEN_DRAW_INSTANCED_CULLING
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
@@ -258,12 +258,12 @@ add_dependencies(BlitzenEngine copy_assets)
 
 # Copies the opengl glsl shaders to the binary directory
 add_custom_target(copy_glsl_shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders)
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/src/Renderer/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders)
 add_dependencies(BlitzenEngine copy_glsl_shaders)
 
 # Copies the legacy hlsl shaders to the binary directory
 add_custom_target(copy_hlsl_shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/HlslShadersLegacy ${CMAKE_CURRENT_BINARY_DIR}/HlslShadersLegacy)
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/src/Renderer/HlslShadersLegacy ${CMAKE_CURRENT_BINARY_DIR}/HlslShadersLegacy)
 add_dependencies(BlitzenEngine copy_hlsl_shaders)
 
 
@@ -283,7 +283,7 @@ ENDIF(WIN32)
 
 # SPIRV (Vulkan)
 # Finds all glsl shaders files
-file(GLOB_RECURSE GLSL_SOURCE_FILES "VulkanShaders/*.glsl")
+file(GLOB_RECURSE GLSL_SOURCE_FILES "src/Renderer/VulkanShaders/*.glsl")
 foreach(GLSL ${GLSL_SOURCE_FILES})
     get_filename_component(FILE_NAME ${GLSL} NAME)
     set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/${FILE_NAME}.spv")
@@ -299,10 +299,10 @@ add_custom_target(VulkanShaders DEPENDS ${SPIRV_BINARY_FILES})
 add_dependencies(BlitzenEngine VulkanShaders)
 
 
-IF(WIN32)# HLSL for Dx12 not needed in non windows builds
 # HLSL
+IF(WIN32)# HLSL for Dx12 not needed in non windows builds
 # Finds pixel shader files and compiles them
-file(GLOB_RECURSE HLSL_PS_FILES "HlslShaders/PS/*.hlsl")
+file(GLOB_RECURSE HLSL_PS_FILES "src/Renderer/HlslShaders/PS/*.hlsl")
 foreach(PS ${HLSL_PS_FILES})
     get_filename_component(FILE_NAME ${PS} NAME)
     set(BIN "${PROJECT_BINARY_DIR}/HlslShaders/PS/${FILE_NAME}.bin")
@@ -317,7 +317,7 @@ foreach(PS ${HLSL_PS_FILES})
 endforeach(PS)
 
 # Finds vertex shader files
-file(GLOB_RECURSE HLSL_VS_FILES "HlslShaders/VS/*.hlsl")
+file(GLOB_RECURSE HLSL_VS_FILES "src/Renderer/HlslShaders/VS/*.hlsl")
 foreach(VS ${HLSL_VS_FILES})
     get_filename_component(FILE_NAME ${VS} NAME)
     set(BIN "${PROJECT_BINARY_DIR}/HlslShaders/VS/${FILE_NAME}.bin")
@@ -332,7 +332,7 @@ foreach(VS ${HLSL_VS_FILES})
 endforeach(VS)
 
 # Finds vertex shader files
-file(GLOB_RECURSE HLSL_CS_FILES "HlslShaders/CS/*.hlsl")
+file(GLOB_RECURSE HLSL_CS_FILES "src/Renderer/HlslShaders/CS/*.hlsl")
 foreach(CS ${HLSL_CS_FILES})
     get_filename_component(FILE_NAME ${CS} NAME)
     set(BIN "${PROJECT_BINARY_DIR}/HlslShaders/CS/${FILE_NAME}.bin")
@@ -348,6 +348,8 @@ endforeach(CS)
 
 add_custom_target(HlslShaders DEPENDS ${HLSL_BIN_FILES})
 add_dependencies(BlitzenEngine HlslShaders)
+# HLSL END
+
 
 #  # HLSL(Vulkan)
 #  file(GLOB_RECURSE HLSL_SOURCE_FILES
