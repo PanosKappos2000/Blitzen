@@ -9,7 +9,8 @@ namespace BlitzenWorld
     {
         BlitzenEngine::CameraContainer* pCameraContainer;
         BlitzenCore::WorldTimerManager* pCoreClock;
-        BlitzenEngine::RenderingResources* pRenderingResources;
+        BlitzenEngine::RenderContainer* pRenders;
+        BlitzenEngine::MeshResources* pMeshes;
 
         BlitzenEngine::RendererEvent rendererEvent;
         BlitzenEngine::RendererTransformUpdateContext rendererTransformUpdate;

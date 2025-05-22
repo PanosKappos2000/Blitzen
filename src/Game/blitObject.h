@@ -1,7 +1,6 @@
 #pragma once
 #include "Core/blitzenEngine.h"
-#include "BlitCL/blitzenContainerLibrary.h"
-#include "Core/blitzenWorld.h"
+#include "Core/BlitzenWorld/blitzenWorld.h"
 
 namespace BlitzenEngine
 {
@@ -10,7 +9,7 @@ namespace BlitzenEngine
     class GameObject
     {
     public:
-        GameObject(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
+        GameObject(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
 
         inline bool IsDynamic() const { return m_bDynamic; }
 
@@ -39,7 +38,7 @@ namespace BlitzenEngine
 
         void Update(BlitzenWorld::BlitzenWorldContext& context) override;
 
-        ClientTest(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
+        ClientTest(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
 
     private:
         float m_pitch = 0.f;

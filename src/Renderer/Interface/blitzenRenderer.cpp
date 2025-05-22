@@ -3,20 +3,32 @@
 
 namespace BlitzenEngine
 {
-#if defined(_WIN32)
-    void UpdateRendererTransform(BlitzenDX12::Dx12Renderer* pDx12, RendererTransformUpdateContext& context)
+    void UpdateRendererTransform(RendererPtrType pRenderer, RendererTransformUpdateContext& context)
     {
-		pDx12->UpdateObjectTransform(context);
+        pRenderer->UpdateObjectTransform(context);
     }
 
-    void UpdateRendererTransform(BlitzenGL::OpenglRenderer* pGL, RendererTransformUpdateContext& context)
+    void UpdateDynamicObjects(RendererPtrType pRenderer, BlitzenCore::EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext)
     {
-		pGL->UpdateObjectTransform(context);
-    }
-#endif
-    void UpdateRendererTransform(BlitzenVulkan::VulkanRenderer* pVK, RendererTransformUpdateContext& context)
-    {
-		pVK->UpdateObjectTransform(context);
+		auto& pDynamics{ pEntityManager->m_pDynamicObjects };
+        for (auto pObject : pDynamics)
+        {
+            pObject->Update(blitzenContext);
+
+            switch (blitzenContext.rendererEvent)
+            {
+            case BlitzenEngine::RendererEvent::RENDERER_TRANSFORM_UPDATE:
+            {
+                UpdateRendererTransform(pRenderer, blitzenContext.rendererTransformUpdate);
+                break;
+            }
+            case BlitzenEngine::RendererEvent::MAX_RENDERER_EVENTS:
+            default:
+            {
+                break;
+            }
+            }
+        }
     }
 
     bool LoadTextureFromFile(BlitzenEngine::RenderingResources* pResources, const char* filename, const char* texName, RendererPtrType pRenderer)
@@ -88,9 +100,9 @@ namespace BlitzenEngine
         }
     }
 
-    bool LoadGltfScene(BlitzenEngine::RenderingResources* pResources, const char* path, RendererPtrType pRenderer)
+    bool LoadGltfScene(RenderingResources* pResources, RenderContainer& renders, const char* path, RendererPtrType pRenderer)
     {
-        if (pResources->renderObjectCount >= BlitzenCore::Ce_MaxRenderObjects)
+        if (renders.m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
         {
             BLIT_WARN("BLITZEN_MAX_DRAW_OBJECT already reached, no more geometry can be loaded. GLTF LOADING FAILED!");
             return false;
@@ -138,15 +150,142 @@ namespace BlitzenEngine
         // Materials
         BLIT_INFO("Loading materials");
         auto previousMaterialCount = pResources->GetMaterialCount();
-        pResources->LoadGltfMaterials(pData, previousMaterialCount, previousTextureCount);
+        LoadGltfMaterials(pResources, pData, previousMaterialCount, previousTextureCount);
 
         // Meshes and primitives
         BlitCL::DynamicArray<uint32_t> surfaceIndices(pData->meshes_count);
-		pResources->AddMeshesFromGltf(pData, path, previousMaterialCount, surfaceIndices);
+        auto& meshContext{ pResources->GetMeshContext() };
+        auto* pMaterials{ const_cast<Material*>(pResources->GetMaterialArrayPointer()) };
+        LoadGltfMeshes(meshContext, pMaterials, pData, path, previousMaterialCount, surfaceIndices);
 
         // Render objects
         BLIT_INFO("Loading scene nodes");
-        pResources->CreateRenderObjectsFromGltffNodes(pData, surfaceIndices);
+        LoadGltfNodes(renders, pResources->GetMeshContext(), pData, surfaceIndices);
+
+        return true;
+    }
+
+    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenCore::EntityManager* pManager)
+    {
+        const uint32_t ObjectCount = BlitzenCore::Ce_MaxDynamicObjectCount;
+        if (pManager->GetRenderCount() + ObjectCount > BlitzenCore::Ce_MaxRenderObjects)
+        {
+            BLIT_ERROR("Could not add dynamic object renderer test, object count exceeds limit");
+            return;
+        }
+
+        for (size_t i = 0; i < ObjectCount; ++i)
+        {
+            BlitzenEngine::MeshTransform transform;
+            RandomizeTransform(transform, 100.f, 1.f);
+
+            // The lambda method is a different way of having mutliple types of dynamic object with different update logic
+            // The normal version is more elegant(and has actual sanity), but this one is pretty cool still.
+#if defined(LAMBDA_GAME_OBJECT_TEST)
+            struct ClientTestDataStruct
+            {
+                float yaw;
+                float pitch;
+                float speed;
+            };
+            ClientTestDataStruct objectData{ 0.f, 0.f, 0.1f };
+
+            auto createResult{ !pManager->AddObject<BlitzenEngine::ClientTest>(pResources, transform,
+            {
+                [](GameObject* pObject)
+                {
+                    auto pData = pObject->m_pData.Get<ClientTestDataStruct>();
+                    RotateObject(pData->yaw, pData->pitch, pObject->m_transformId, pData->speed);
+                }
+            }, true, "kitten", &objectData, sizeof(ClientTestDataStruct)) };
+
+            if (!createResult)
+            {
+                BLIT_ERROR("Failed to create dynamic object");
+                return;
+            }
+#else
+// Normally I should call this outside the if statement and store the result to avoid the use of template keyword in the dependend scope
+// But this is very interesting and I have not used that keyword before so I am leaving it.
+            if (!pManager->template AddObject<BlitzenEngine::ClientTest>(renders, meshes, transform, true, "kitten"))
+            {
+                BLIT_ERROR("Failed to create dynamic object");
+                return;
+            }
+#endif
+        }
+    }
+
+    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, BlitzenCore::EntityManager* pManager)
+    {
+        LoadTestGeometry(pResources->GetMeshContext());
+        //pResources->CreateSingleObjectForTesting();
+
+        if constexpr (BlitzenCore::Ce_LoadDynamicObjectTest)
+        {
+            CreateDynamicObjectRendererTest(pManager->GetRenderContainer(), pResources->GetMeshContext(), pManager);
+        }
+
+        if (argc > 1)
+        {
+            // Special argument. Loads heavy scene to stress test the culling algorithms
+            if (strcmp(argv[1], "RenderingStressTest") == 0)
+            {
+                LoadGeometryStressTest(pManager->GetRenderContainer(), pResources->GetMeshContext(), 3'000.f);
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    if (!LoadGltfScene(pResources, pManager->GetRenderContainer(), argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
+                }
+            }
+
+            else if (strcmp(argv[1], "InstancingStressTest") == 0)
+            {
+                LoadGeometryStressTest(pManager->GetRenderContainer(), pResources->GetMeshContext(), 2'000.f);
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    if (!LoadGltfScene(pResources, pManager->GetRenderContainer(), argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
+                }
+            }
+
+            // Special argument. Test oblique near-plane clipping technique. Not working yet.
+            else if (strcmp(argv[1], "OnpcReflectionTest") == 0)
+            {
+                CreateObliqueNearPlaneClippingTestObject(pManager->GetRenderContainer(), pResources->GetMeshContext());
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    if (!LoadGltfScene(pResources, pManager->GetRenderContainer(), argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                for (int32_t i = 1; i < argc; ++i)
+                {
+                    if (!LoadGltfScene(pResources, pManager->GetRenderContainer(), argv[i], pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
+                }
+            }
+        }
 
         return true;
     }

@@ -1,8 +1,6 @@
 #include "Core/blitzenEngine.h"
-#include "Core/blitTimeManager.h"
-// Single file gltf loading https://github.com/jkuhlmann/cgltf
-// Placed here because cgltf is called from a template function
-#include "Core/blitEntityManager.h"
+#include "Renderer/Interface/blitRenderer.h"
+#include "Core/blitEvents.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -13,7 +11,7 @@ using BLITZEN_WORLD_CONTEXT = BlitCL::StaticArray<void*, BlitzenCore::Ce_WorldCo
 
 using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
-using EntitySystemMemory = BlitCL::SmartPointer<BlitzenCore::GameObjectManager, BlitzenCore::AllocationType::Entity>;
+using EntitySystemMemory = BlitCL::SmartPointer<BlitzenCore::EntityManager, BlitzenCore::AllocationType::Entity>;
 
 
 #if defined(BLIT_GDEV_EDT)
@@ -45,7 +43,8 @@ int main(int argc, char* argv[])
     blitzenPrivateContext.pRenderer = renderer.Data();
 
     EntitySystemMemory entityManager;
-    entityManager.Make(); 
+    entityManager.Make();
+	blitzenWorldContext.pRenders = &entityManager->GetRenderContainer();
     
     EventSystemMemory eventSystem;
     eventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
@@ -56,8 +55,10 @@ int main(int argc, char* argv[])
 
     RndResourcesMemory renderingResources;
     renderingResources.Make();
-    blitzenWorldContext.pRenderingResources = renderingResources.Data();
+    blitzenWorldContext.pMeshes = &renderingResources->GetMeshContext();
     BlitzenEngine::LoadTextureFromFile(renderingResources.Data(), "Assets/Textures/base_baseColor.dds", "dds_texture_default", renderer.Data());
+
+    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->GetMeshContext(), entityManager->GetRenderContainer() };
 
 
     // Loading resources
@@ -69,14 +70,17 @@ int main(int argc, char* argv[])
         {
              std::lock_guard<std::mutex> lock(mtx);
 
-            if (!BlitzenCore::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entityManager.Data()))
+            if (!BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entityManager.Data()))
             {
                 BLIT_FATAL("Failed to allocate resource for requested scene");
                 loadingDone = true;
                 loadingDoneConditional.notify_one();
                 return;
             }
-            if (!renderer->SetupForRendering(renderingResources.Data(), mainCamera.viewData.pyramidWidth, mainCamera.viewData.pyramidHeight))
+            // TODO: THIS WILL BE REMOVED WHEN TEXTURES AND MATERIALS GET THEIR OWN THING
+            drawContext.materialCount = renderingResources->GetMaterialCount();
+            drawContext.pMaterials = const_cast<BlitzenEngine::Material*>(renderingResources->GetMaterialArrayPointer());
+            if (!renderer->SetupForRendering(drawContext))
             {
                 BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");
                 loadingDone = true;
@@ -113,7 +117,6 @@ int main(int argc, char* argv[])
     }
 
     // MAIN LOOP
-    BlitzenEngine::DrawContext drawContext{ &mainCamera, renderingResources.Data()};
     while(engine.m_state == BlitzenCore::EngineState::RUNNING || engine.m_state == BlitzenCore::EngineState::SUSPENDED)
     {
         if(!BlitzenPlatform::PlatformPumpMessages())
@@ -127,7 +130,7 @@ int main(int argc, char* argv[])
 
             UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
-			entityManager->UpdateDynamicObjects(blitzenWorldContext, blitzenPrivateContext);
+			BlitzenEngine::UpdateDynamicObjects(renderer.Data(), entityManager.Data(), blitzenWorldContext);
             
             renderer->Update(drawContext);
             renderer->DrawFrame(drawContext);

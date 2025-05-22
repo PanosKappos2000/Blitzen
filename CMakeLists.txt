@@ -22,10 +22,10 @@ add_executable(BlitzenEngine
                 src/Core/blitzenEvents.cpp
                 src/Core/blitTimeManager.h
                 src/Core/blitzenTimeManager.cpp
-                src/Core/blitzenWorld.h 
-                src/Core/blitzenWorldPrivate.h
-                src/Core/blitEntityManager.h
-                src/Core/blitzenEntityManager.cpp
+                src/Core/BlitzenWorld/blitzenWorld.h 
+                src/Core/BlitzenWorld/blitzenWorldPrivate.h
+                src/Core/Entities/blitEntityManager.h
+                src/Core/Entities/blitzenEntityManager.cpp
                 src/Core/blitzenEntry.cpp
 
                 # ENGINE RENDERING 
@@ -39,6 +39,8 @@ add_executable(BlitzenEngine
                 src/Renderer/Resources/Textures/blitzenTextures.cpp
                 src/Renderer/Resources/Mesh/blitMeshes.h
                 src/Renderer/Resources/Mesh/blitzenMeshes.cpp
+                src/Renderer/Resources/RenderObject/blitRender.h
+                src/Renderer/Resources/RenderObject/blitzenRender.cpp
                 src/Renderer/Resources/Scene/blitScene.h
                 src/Renderer/Resources/Scene/blitzenScene.cpp
                 # VULKAN
@@ -85,6 +87,7 @@ add_executable(BlitzenEngine
                 src/BlitCL/DynamicArray.h
                 src/BlitCL/blitString.h
                 src/BlitCL/blitSmartPointer.h
+                src/BlitCL/blitArray.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
@@ -162,6 +165,7 @@ add_executable(BlitzenEngine
                 src/BlitCL/DynamicArray.h
                 src/BlitCL/blitString.h
                 src/BlitCL/blitSmartPointer.h
+                src/BlitCL/blitArray.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
@@ -204,7 +208,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
 
-                            #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
+                            BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
                             BLITZEN_DRAW_INSTANCED_CULLING
                             #BLIT_VSYNC #Enables vsync logic for all APIs
                             #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)

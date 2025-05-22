@@ -256,10 +256,10 @@ namespace BlitzenVulkan
     }
 
     static uint8_t VarBuffersInit(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue,
-        BlitzenEngine::RenderingResources* pResources, VulkanRenderer::VarBuffers* varBuffers)
+        BlitzenEngine::DrawContext& context, VulkanRenderer::VarBuffers* varBuffers)
     {
-        const auto& transforms{ pResources->transforms };
-        size_t transformDynamicDataSize{ pResources->dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform)};
+        const auto& transforms{ context.m_renders.m_transforms };
+        size_t transformDynamicDataSize{ context.m_renders.m_dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform)};
 
         for (size_t i = 0; i < ce_framesInFlight; ++i)
         {
@@ -364,22 +364,22 @@ namespace BlitzenVulkan
     }
 
     static uint8_t StaticBuffersInit(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue transferQueue,
-        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::RenderingResources* pResources, VulkanStats& stats)
+        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::DrawContext& context, VulkanStats& stats)
     {
-        const auto& vertices = pResources->GetVerticesArray();
-        const auto& indices = pResources->GetIndicesArray();
-        auto pRenderObjects = pResources->renders;
-        auto renderObjectCount = pResources->renderObjectCount;
-        const auto& surfaces = pResources->GetSurfaceArray();
-        auto pMaterials = pResources->GetMaterialArrayPointer();
-        auto materialCount = pResources->GetMaterialCount();
-        const auto& clusters = pResources->GetClusterArray();
-        const auto& clusterData = pResources->GetClusterIndices();
-        auto pOnpcRenderObjects = pResources->onpcReflectiveRenderObjects;
-        auto onpcRenderObjectCount = pResources->onpcReflectiveRenderObjectCount;
-        auto& transforms = pResources->transforms;
-        const auto& transparentRenderobjects = pResources->GetTranparentRenders();
-        const auto& lodData = pResources->GetLodData();
+        const auto& vertices{ context.m_meshes.m_vertices };
+        const auto& indices{ context.m_meshes.m_indices };
+        auto pRenderObjects { context.m_renders.m_renders};
+        auto renderObjectCount{ context.m_renders.m_renderCount };
+        const auto& surfaces{ context.m_meshes.m_surfaces };
+        auto pMaterials = context.pMaterials;
+        auto materialCount = context.materialCount;
+        const auto& clusters = context.m_meshes.m_clusters;
+        const auto& clusterData = context.m_meshes.m_clusterIndices;
+        auto pOnpcRenderObjects = context.m_renders.m_onpcRenders;
+        auto onpcRenderObjectCount = context.m_renders.m_onpcRenderCount;
+        auto& transforms = context.m_renders.m_transforms;
+        const auto& transparentRenderobjects = context.m_renders.m_transparentRenders;
+        const auto& lodData = context.m_meshes.m_LODs;
 
         // Additional RT flags for geometry
         auto bRT{ stats.bRayTracingSupported };
@@ -649,12 +649,12 @@ namespace BlitzenVulkan
         // Raytracing
         if (stats.bRayTracingSupported)
         {
-            if (!BuildBlas(instance, device, vma, frameTools, transferQueue, pResources, staticBuffers))
+            if (!BuildBlas(instance, device, vma, frameTools, transferQueue, context, staticBuffers))
             {
                 BLIT_ERROR("Failed to build blas for RT");
                 return 0;
             }
-            if (!BuildTlas(instance, device, vma, frameTools, transferQueue, staticBuffers, pResources))
+            if (!BuildTlas(instance, device, vma, frameTools, transferQueue, staticBuffers, context))
             {
                 BLIT_ERROR("Failed to build tlas for RT");
                 return 0;
@@ -823,8 +823,7 @@ namespace BlitzenVulkan
     }
 
 
-    uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, 
-        float& pyramidWidth, float& pyramidHeight)
+    uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::DrawContext& context)
     {
         BLIT_ASSERT(m_stats.bResourceManagementReady);
 
@@ -854,13 +853,13 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!VarBuffersInit(m_device, m_allocator, m_frameToolsList[0].transferCommandBuffer, m_transferQueue.handle, pResources, m_varBuffers))
+        if(!VarBuffersInit(m_device, m_allocator, m_frameToolsList[0].transferCommandBuffer, m_transferQueue.handle, context, m_varBuffers))
         {
             BLIT_ERROR("Failed to create uniform buffers");
             return 0;
         }
 
-        if(!StaticBuffersInit(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_staticBuffers, pResources, m_stats))
+        if(!StaticBuffersInit(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_staticBuffers, context, m_stats))
         {
             BLIT_ERROR("Failed to upload data to the GPU");
             return 0;
@@ -901,8 +900,8 @@ namespace BlitzenVulkan
         }
 
         // Updates the reference to the depth pyramid width held by the camera
-        pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
-        pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+        context.m_camera.viewData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+        context.m_camera.viewData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
 
         return 1;
     }

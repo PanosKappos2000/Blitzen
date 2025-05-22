@@ -340,10 +340,10 @@ namespace BlitzenDX12
 	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle,
 		D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
 		ID3D12RootSignature* resetRoot, ID3D12PipelineState* resetPso, ID3D12RootSignature* cullRoot, ID3D12PipelineState* instResetPso, 
-		ID3D12PipelineState* cullPso, ID3D12PipelineState* drawInstCmdPso, Dx12Renderer::VarBuffers& varBuffers, BlitzenEngine::RenderingResources* pResources)
+		ID3D12PipelineState* cullPso, ID3D12PipelineState* drawInstCmdPso, Dx12Renderer::VarBuffers& varBuffers, BlitzenEngine::DrawContext& context)
 	{
-		size_t lodDataCount{ pResources->GetLodData().GetSize() };
-		uint32_t objCount{ pResources->renderObjectCount };
+		size_t lodDataCount{ context.m_meshes.m_LODs.GetSize()};
+		uint32_t objCount{ context.m_renders.m_renderCount };
 
 		// Binds heap for compute
 		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
@@ -527,7 +527,6 @@ namespace BlitzenDX12
 	{
 		auto& frameTools = m_frameTools[m_currentFrame];
 		auto& varBuffers = m_varBuffers[m_currentFrame];
-		const auto pCamera = context.pCamera;
 
 		const UINT64 fence = frameTools.inFlightFenceValue;
 		m_commandQueue->Signal(frameTools.inFlightFence.Get(), fence);
@@ -539,10 +538,10 @@ namespace BlitzenDX12
 			WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
 		}
 
-		if (context.pCamera->transformData.bWindowResize)
+		if (context.m_camera.transformData.bWindowResize)
 		{
-			m_swapchainWidth = (UINT)context.pCamera->transformData.windowWidth;
-			m_swapchainHeight = (UINT)context.pCamera->transformData.windowHeight;
+			m_swapchainWidth = (UINT)context.m_camera.transformData.windowWidth;
+			m_swapchainHeight = (UINT)context.m_camera.transformData.windowHeight;
 
 			RecreateSwapchain(m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain, 
 				m_swapchainBackBuffers, m_depthBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), 
@@ -561,12 +560,12 @@ namespace BlitzenDX12
 				RecreateDepthTargetDescriptor(m_device.Get(), m_depthBuffers, m_srvHeap.Get(), m_descriptorContext.depthTargetSrvOffset[0]);
 			}
 
-			context.pCamera->viewData.pyramidWidth = float(varBuffers.depthPyramid.width);
-			context.pCamera->viewData.pyramidHeight = float(varBuffers.depthPyramid.height);
+			context.m_camera.viewData.pyramidWidth = float(varBuffers.depthPyramid.width);
+			context.m_camera.viewData.pyramidHeight = float(varBuffers.depthPyramid.height);
 		}
 
 		// Dynamic buffers
-		UpdateBuffers(frameTools, varBuffers, context.pCamera, m_transferCommandQueue.Get());
+		UpdateBuffers(frameTools, varBuffers, &context.m_camera, m_transferCommandQueue.Get());
 
 		UINT swapchainIndex = m_swapchain->GetCurrentBackBufferIndex();
 		frameTools.mainGraphicsCommandAllocator->Reset();
@@ -595,7 +594,7 @@ namespace BlitzenDX12
 			// Shaders used: drawCountReset.cs.hlsl + drawOccFirst.cs.hlsl
 			DrawOccFirstPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame],
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(),
-				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.pResources->renderObjectCount);
+				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.m_renders.m_renderCount);
 
 			// Render target barrier
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
@@ -629,7 +628,7 @@ namespace BlitzenDX12
 			// Shaders used: drawCountReset.cs.hlsl + drawOccLate.cs.hlsl
 			DrawOccLatePass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), 
-				m_drawCountResetPso.Get(), m_drawOccLateSignature.Get(), m_drawOccLatePso.Get(), varBuffers, context.pResources->renderObjectCount);
+				m_drawCountResetPso.Get(), m_drawOccLateSignature.Get(), m_drawOccLatePso.Get(), varBuffers, context.m_renders.m_renderCount);
 			
 			// 7. BEGINS SECOND RENDER PASS. RENDER TARGET AND DEPTH TARGET ARE NOT CLEARED, BUT LOADED
 			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(),
@@ -653,7 +652,7 @@ namespace BlitzenDX12
 			DrawInstanceCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), 
 				m_drawCountResetPso.Get(), m_drawCullSignature.Get(), m_drawInstCountResetPso.Get(), m_drawCullPso.Get(), m_drawInstCmdPso.Get(), 
-				varBuffers, context.pResources);
+				varBuffers, context);
 
 			// 3. BEGINS RENDERING
 			ClearWindow(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight, 
@@ -672,7 +671,7 @@ namespace BlitzenDX12
 			// Shaders used: drawCountReset.cs.hlsl + drawCull.cs.hlsl
 			DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame],
 				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(),
-				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.pResources->renderObjectCount);
+				m_drawCullSignature.Get(), m_drawCullPso.Get(), varBuffers, context.m_renders.m_renderCount);
 
 			// 2. BEGINS RENDERING
 			ClearWindow(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight,

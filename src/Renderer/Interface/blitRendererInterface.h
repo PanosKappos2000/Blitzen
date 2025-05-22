@@ -1,6 +1,6 @@
 #pragma once
 #include "Core/blitzenEngine.h"
-#include "Renderer/Resources/blitRenderingResources.h"
+#include "Renderer/Resources/RenderObject/blitRender.h"
 #include "Game/blitCamera.h" 
 
 namespace BlitzenEngine
@@ -20,13 +20,15 @@ namespace BlitzenEngine
 
     struct DrawContext
     {
-        BlitzenEngine::Camera* pCamera;
+        Camera& m_camera;
+        MeshResources& m_meshes;
+        RenderContainer& m_renders;
+        Material* pMaterials;
+        uint32_t materialCount;
 
-        RenderingResources* pResources;
+		DrawContext(Camera& camera, MeshResources& meshes, RenderContainer& renders) :m_camera(camera), m_meshes(meshes), m_renders(renders)
+		{
 
-        inline DrawContext(BlitzenEngine::Camera* pCam, RenderingResources* pr): pCamera(pCam), pResources(pr) 
-        {
-
-        }
+		}
     };
 }

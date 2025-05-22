@@ -2,8 +2,8 @@
 #include "blitMemory.h"
 #include "BlitCL/blitPfn.h"
 #include "blitKeys.h"
-#include "blitzenWorld.h"
-#include "blitzenWorldPrivate.h"
+#include "Core/BlitzenWorld/blitzenWorld.h"
+#include "Core/BlitzenWorld/blitzenWorldPrivate.h"
 
 namespace BlitzenCore
 {

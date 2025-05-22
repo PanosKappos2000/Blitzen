@@ -20,7 +20,7 @@ namespace BlitzenVulkan
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle);
 
         // Sets up the Vulkan renderer for drawing according to the resources loaded by the engine
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
+        uint8_t SetupForRendering(BlitzenEngine::DrawContext& drawContext);
 
         // Needed for dx12, not used here for now
         void FinalSetup();
@@ -315,8 +315,8 @@ namespace BlitzenVulkan
 
 
     uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
-        BlitzenEngine::RenderingResources* pResources, VulkanRenderer::StaticBuffers& staticBuffers);
+        BlitzenEngine::DrawContext& context, VulkanRenderer::StaticBuffers& staticBuffers);
 
     uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
-        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::RenderingResources* pResources);
+        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::DrawContext& context);
 }

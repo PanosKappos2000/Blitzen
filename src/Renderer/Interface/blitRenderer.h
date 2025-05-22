@@ -1,5 +1,6 @@
 #pragma once
-#include "Renderer/Interface/blitRendererInterface.h"
+#include "Renderer/Resources/Scene/blitScene.h"
+#include "Core/Entities/blitEntityManager.h"
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
 #if defined(_WIN32)
     #include "Renderer/BlitzenGl/openglRenderer.h"
@@ -49,17 +50,17 @@ namespace BlitzenEngine
 
     #endif
 
-    #if defined(_WIN32)
-        void UpdateRendererTransform(BlitzenDX12::Dx12Renderer* pDx12, RendererTransformUpdateContext& context);
-        void UpdateRendererTransform(BlitzenGL::OpenglRenderer* pGL, RendererTransformUpdateContext& context);
-    #endif
+    void UpdateRendererTransform(RendererPtrType pRenderer, RendererTransformUpdateContext& context);
 
-    void UpdateRendererTransform(BlitzenVulkan::VulkanRenderer* pVK, RendererTransformUpdateContext& context);
+    bool LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, RendererPtrType pRenderer);
 
-    bool LoadTextureFromFile(BlitzenEngine::RenderingResources* pResources, const char* filename, const char* texName, RendererPtrType pRenderer);
+    bool LoadGltfScene(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RenderContainer& renders,  const char* path, RendererPtrType pRenderer);
 
     void LoadGltfTextures(BlitzenEngine::RenderingResources* pResources, const cgltf_data* pGltfData, uint32_t previousTextureCount, const char* gltfFilepath, RendererPtrType pRenderer);
 
-    bool LoadGltfScene(BlitzenEngine::RenderingResources* pResources, const char* path, RendererPtrType pRenderer);
-    
+    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenCore::EntityManager* pManager);
+
+    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, BlitzenCore::EntityManager* pManager);
+
+    void UpdateDynamicObjects(RendererPtrType pRenderer, BlitzenCore::EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext);    
 }

@@ -191,19 +191,19 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t CreateTestIndirectCmds(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, ID3D12CommandQueue* commandQueue,
-		Dx12Renderer::VarBuffers& buffers, BlitzenEngine::RenderingResources* pResources)
+		Dx12Renderer::VarBuffers& buffers, BlitzenEngine::DrawContext& context)
 	{
 		const uint32_t maxCmdCount = 1000;
-		auto pRenders{ pResources->renders };
+		auto pRenders{ context.m_renders.m_renders };
 		uint32_t cmdCount = maxCmdCount;
-		auto renderCount{ pResources->renderObjectCount };
+		auto renderCount{ context.m_renders.m_renderCount };
 		if (cmdCount > renderCount)
 		{
 			cmdCount = renderCount;
 		}
 
-		const auto& surfaces{ pResources->GetSurfaceArray() };
-		const auto& lods{ pResources->GetLodData() };
+		const auto& surfaces{ context.m_meshes.m_surfaces };
+		const auto& lods{ context.m_meshes.m_LODs };
 		BlitCL::StaticArray<IndirectDrawCmd, maxCmdCount> cmds;
 
 		for (uint32_t i = 0; i < cmdCount; ++i)
@@ -566,12 +566,13 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t CreateVarBuffers(ID3D12Device* device, ID3D12CommandQueue* commandQueue, Dx12Renderer::FrameTools& frameTools, 
-		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::RenderingResources* pResources, uint32_t swapchainWidth, uint32_t swapchainHeight)
+		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::DrawContext& context, uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
-		const auto& transforms{ pResources->transforms };
-		const auto& lodData{ pResources->GetLodData() };
-		const auto& lodInstanceList{ pResources->GetLODInstanceList() };
-		auto renderCount{ pResources->renderObjectCount };
+		const auto& transforms{ context.m_renders.m_transforms };
+		const auto& lodData{ context.m_renders.m_transforms };
+		const auto& lodInstanceList{ context.m_meshes.m_LODs };
+		auto renderCount{ context.m_renders.m_renderCount };
+		auto dynamicTransformCount{ context.m_renders.m_dynamicTransformCount };
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -584,8 +585,7 @@ namespace BlitzenDX12
 			}
 
 			DX12WRAPPER<ID3D12Resource> transformStaging;
-			if (!CreateVarSSBO(device, buffers.transformBuffer, transformStaging, transforms.GetSize(), transforms.Data(),
-				pResources->dynamicTransformCount))
+			if (!CreateVarSSBO(device, buffers.transformBuffer, transformStaging, transforms.GetSize(), transforms.Data(), dynamicTransformCount))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
 				return 0;
@@ -795,16 +795,16 @@ namespace BlitzenDX12
 	}
 
 	static uint8_t CreateConstBuffers(ID3D12Device* device, Dx12Renderer::FrameTools& frameTools, ID3D12CommandQueue* commandQueue,
-		BlitzenEngine::RenderingResources* pResources, Dx12Renderer::ConstBuffers& buffers)
+		BlitzenEngine::DrawContext& context, Dx12Renderer::ConstBuffers& buffers)
 	{
-		const auto& vertices{ pResources->GetHlslVertices() };
-		const auto& indices{ pResources->GetIndicesArray() };
-		const auto& surfaces{ pResources->GetSurfaceArray() };
-		BlitzenEngine::RenderObject* renders{ pResources->renders };
-		auto renderObjectCount{ pResources->renderObjectCount };
-		const auto& lods{ pResources->GetLodData() };
-		auto materials{ pResources->GetMaterialArrayPointer() };
-		auto materialCount{ pResources->GetMaterialCount() };
+		const auto& vertices{ context.m_meshes.m_hlslVtxs };
+		const auto& indices{ context.m_meshes.m_indices };
+		const auto& surfaces{ context.m_meshes.m_surfaces };
+		auto renders{ context.m_renders.m_renders};
+		auto renderObjectCount{ context.m_renders.m_renderCount };
+		const auto& lods{ context.m_meshes.m_LODs};
+		auto materials{ context.pMaterials };
+		auto materialCount{ context.materialCount };
 
 		DX12WRAPPER<ID3D12Resource> vertexStagingBuffer{ nullptr };
 		UINT64 vertexBufferSize{ CreateSSBO(device, buffers.vertexBuffer, vertexStagingBuffer, vertices.GetSize(), vertices.Data())};
@@ -815,8 +815,7 @@ namespace BlitzenDX12
 		}
 
 		DX12WRAPPER<ID3D12Resource> indexStagingBuffer{ nullptr };
-		UINT64 indexBufferSize{ CreateIndexBuffer(device, buffers.indexBuffer, 
-			indexStagingBuffer, indices.GetSize(), indices.Data(), buffers.indexBufferView)};
+		UINT64 indexBufferSize{ CreateIndexBuffer(device, buffers.indexBuffer, indexStagingBuffer, indices.GetSize(), indices.Data(), buffers.indexBufferView)};
 		if (!indexBufferSize)
 		{
 			BLIT_ERROR("Failed to create index buffer");
@@ -927,17 +926,17 @@ namespace BlitzenDX12
 
 	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
 		Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue, Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, 
-		BlitzenEngine::RenderingResources* pResources, UINT textureCount, DX2DTEX* pTextures, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, 
+		BlitzenEngine::DrawContext& context, UINT textureCount, DX2DTEX* pTextures, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, 
 		UINT drawHeight, ID3D12DescriptorHeap* samplerHeap)
 	{
-		const auto& vertices{ pResources->GetHlslVertices() };
-		const auto& transforms{ pResources->transforms };
-		const auto& surfaces{ pResources->GetSurfaceArray() };
-		BlitzenEngine::RenderObject* pRenders{ pResources->renders };
-		auto renderCount{ pResources->renderObjectCount };
-		const auto& lods{ pResources->GetLodData() };
-		auto pMaterials{ pResources->GetMaterialArrayPointer() };
-		auto materialCount{ pResources->GetMaterialCount() };
+		const auto& vertices{ context.m_meshes.m_hlslVtxs };
+		const auto& transforms{ context.m_renders.m_transforms };
+		const auto& surfaces{ context.m_meshes.m_surfaces };
+		auto pRenders{ context.m_renders.m_renders };
+		auto renderCount{ context.m_renders.m_renderCount };
+		const auto& lods{ context.m_meshes.m_LODs };
+		auto pMaterials{ context.pMaterials };
+		auto materialCount{ context.materialCount };
 
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -1044,9 +1043,9 @@ namespace BlitzenDX12
 		}
 	}
 
-	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight)
+	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::DrawContext& context)
 	{
-		GenerateHlslVertices(pResources->GetMeshContext());
+		GenerateHlslVertices(context.m_meshes);
 
 		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf(), m_drawCullSignature.ReleaseAndGetAddressOf(), 
 			m_drawCountResetRoot.ReleaseAndGetAddressOf(), m_drawOccLateSignature.ReleaseAndGetAddressOf(), m_depthPyramidSignature.ReleaseAndGetAddressOf()))
@@ -1061,13 +1060,13 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateConstBuffers(m_device.Get(), m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), pResources, m_constBuffers))
+		if (!CreateConstBuffers(m_device.Get(), m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), context, m_constBuffers))
 		{
 			BLIT_ERROR("Failed to create constant buffers");
 			return 0;
 		}
 
-		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, pResources, 
+		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_frameTools[m_currentFrame], m_varBuffers, context, 
 			m_swapchainWidth, m_swapchainHeight))
 		{
 			BLIT_ERROR("Failed to create var buffers");
@@ -1075,7 +1074,7 @@ namespace BlitzenDX12
 		}
 
 		CreateResourceViews(m_device.Get(), m_srvHeap.Get(), m_descriptorContext, m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), 
-			m_constBuffers, m_varBuffers, pResources, m_textureCount, m_tex2DList, m_depthBuffers, m_swapchainWidth, m_swapchainHeight, 
+			m_constBuffers, m_varBuffers, context, m_textureCount, m_tex2DList, m_depthBuffers, m_swapchainWidth, m_swapchainHeight, 
 			m_samplerHeap.Get());
 		if (!CheckForDeviceRemoval(m_device.Get()))
 		{
@@ -1094,8 +1093,8 @@ namespace BlitzenDX12
 		}
 
 		// Gives the pyramid size to th camera. There is not much reason for the camera to have it, but it is what it is.
-		pyramidWidth = float(m_varBuffers[0].depthPyramid.width);
-		pyramidHeight = float(m_varBuffers[0].depthPyramid.height);
+		context.m_camera.viewData.pyramidWidth = float(m_varBuffers[0].depthPyramid.width);
+		context.m_camera.viewData.pyramidHeight = float(m_varBuffers[0].depthPyramid.height);
 
 		return 1;
 	}

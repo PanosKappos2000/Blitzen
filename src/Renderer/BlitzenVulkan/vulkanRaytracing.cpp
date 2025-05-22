@@ -56,11 +56,11 @@ namespace BlitzenVulkan
     }
 
     uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
-        BlitzenEngine::RenderingResources* pResources, VulkanRenderer::StaticBuffers& staticBuffers)
+        BlitzenEngine::DrawContext& context, VulkanRenderer::StaticBuffers& staticBuffers)
     {
-        auto& surfaces = pResources->GetSurfaceArray();
-		auto& primitiveVertexCounts = pResources->GetPrimitiveVertexCounts();
-		auto& lods = pResources->GetLodData();
+        auto& surfaces = context.m_meshes.m_surfaces;
+		auto& primitiveVertexCounts = context.m_meshes.m_primitiveVertexCounts;
+		auto& lods = context.m_meshes.m_LODs;
 
         if (!surfaces.GetSize())
         {
@@ -197,13 +197,13 @@ namespace BlitzenVulkan
     }
 
     uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue, 
-        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::RenderingResources* pResources)
+        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::DrawContext& context)
     {
-        BlitzenEngine::RenderObject* pDraws{ pResources->renders }; 
-        uint32_t drawCount{ pResources->renderObjectCount }; 
-        BlitzenEngine::MeshTransform* pTransforms{ pResources->transforms.Data() };
-        BlitzenEngine::PrimitiveSurface* pSurfaces{ pResources->GetSurfaceArray().Data() };
-        const auto& surfaceTransparencies{ pResources->GetMeshContext().m_bTransparencyList };
+        auto pDraws{ context.m_renders.m_renders }; 
+        uint32_t drawCount{ context.m_renders.m_renderCount }; 
+        auto pTransforms{ context.m_renders.m_transforms };
+        auto pSurfaces{ context.m_meshes.m_surfaces };
+        const auto& surfaceTransparencies{ context.m_meshes.m_bTransparencyList };
 
         // Retrieves the device address of each acceleration structure that was build earlier
         BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ staticBuffers.blasData.GetSize() };

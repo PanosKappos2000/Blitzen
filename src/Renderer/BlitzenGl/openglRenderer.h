@@ -36,7 +36,7 @@ namespace BlitzenGL
 
         uint8_t UploadTexture(void* pData, const char* filepath);
 
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
+        uint8_t SetupForRendering(BlitzenEngine::DrawContext& drawContext);
 
         void UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context);
 

@@ -46,6 +46,12 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxONPC_Objects = 100;
     constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;
 
+    #if defined(BLIT_DYNAMIC_OBJECT_TEST)
+        constexpr uint8_t Ce_LoadDynamicObjectTest = 1;
+    #else
+	    consterxpr uint8_t Ce_LoadDynamicObjectTest = 0;
+    #endif
+
     #ifdef BLITZEN_CLUSTER_CULLING
         constexpr uint8_t Ce_BuildClusters = 1;
     #else

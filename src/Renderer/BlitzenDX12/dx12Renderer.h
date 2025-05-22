@@ -21,7 +21,7 @@ namespace BlitzenDX12
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, HWND hwnd);
     
         // 2nd part of initialization. Initializes handles that require context from the CPU's loaded resources
-        uint8_t SetupForRendering(BlitzenEngine::RenderingResources* pResources, float& pyramidWidth, float& pyramidHeight);
+        uint8_t SetupForRendering(BlitzenEngine::DrawContext& context);
 
         // Layout transition throwaway function. Some command list incompatibility makes it necessary
         void FinalSetup();

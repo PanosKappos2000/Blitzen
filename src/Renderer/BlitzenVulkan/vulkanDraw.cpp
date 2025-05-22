@@ -43,7 +43,7 @@ namespace BlitzenVulkan
         return plane / glm::length(glm::vec3(plane));
     }
 
-    static void UpdateBuffers(BlitzenEngine::RenderingResources* pResources, VulkanRenderer::FrameTools& tools,
+    static void UpdateBuffers(BlitzenEngine::DrawContext& context, VulkanRenderer::FrameTools& tools,
         VulkanRenderer::VarBuffers& buffers, VkQueue queue)
     {
         BeginCommandBuffer(tools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -790,18 +790,17 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::Update(const BlitzenEngine::DrawContext& context)
     {
-        auto pCamera = context.pCamera;
-        if (pCamera->transformData.bWindowResize)
+        if (context.m_camera.transformData.bWindowResize)
         {
             RecreateSwapchain(m_device, m_physicalDevice, m_surface.handle, m_allocator,
                 m_swapchainValues, m_graphicsQueue, m_presentQueue, m_computeQueue,
                 m_colorAttachment, m_colorAttachmentInfo, m_depthAttachment, m_depthAttachmentInfo,
                 m_depthPyramid, m_depthPyramidMipLevels, m_depthPyramidMips, m_depthPyramidExtent,
-                uint32_t(pCamera->transformData.windowWidth), uint32_t(pCamera->transformData.windowHeight),
+                uint32_t(context.m_camera.transformData.windowWidth), uint32_t(context.m_camera.transformData.windowHeight),
                 m_drawExtent);
 
-            pCamera->viewData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
-            pCamera->viewData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
+            context.m_camera.viewData.pyramidWidth = static_cast<float>(m_depthPyramidExtent.width);
+            context.m_camera.viewData.pyramidHeight = static_cast<float>(m_depthPyramidExtent.height);
         }
 
         auto& fTools = m_frameToolsList[m_currentFrame];
@@ -822,23 +821,22 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-        auto pCamera = context.pCamera;
         auto& fTools = m_frameToolsList[m_currentFrame];
         auto& vBuffers = m_varBuffers[m_currentFrame];
 
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
         vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
         VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
-        UpdateBuffers(context.pResources, fTools, vBuffers, m_transferQueue.handle);
+        UpdateBuffers(context, fTools, vBuffers, m_transferQueue.handle);
 
-        if (pCamera->transformData.bFreezeFrustum)
+        if (context.m_camera.transformData.bFreezeFrustum)
         {
             // Only change the matrix that moves the camera if the freeze frustum debug functionality is active
-            vBuffers.viewDataBuffer.pData->projectionViewMatrix = pCamera->viewData.projectionViewMatrix;
+            vBuffers.viewDataBuffer.pData->projectionViewMatrix = context.m_camera.viewData.projectionViewMatrix;
         }
         else
         {
-            *(vBuffers.viewDataBuffer.pData) = pCamera->viewData;
+            *(vBuffers.viewDataBuffer.pData) = context.m_camera.viewData;
         }
 
         // Swapchain image, needed to present the color attachment results
@@ -846,8 +844,7 @@ namespace BlitzenVulkan
         vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
 
         // Color attachment working layout depends on if there are any render objects
-        auto colorAttachmentWorkingLayout = context.pResources->renderObjectCount ?
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+        auto colorAttachmentWorkingLayout = context.m_renders.m_renderCount ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
 
         if constexpr (BlitzenCore::Ce_BuildClusters)
         {
@@ -859,14 +856,14 @@ namespace BlitzenVulkan
                 BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.clusterCountBuffer.bufferHandle,
                 m_staticBuffers.clusterCountBufferAddress, m_staticBuffers.clusterDispatchBuffer.bufferHandle,
                 m_staticBuffers.clusterDispatchBufferAddress, m_staticBuffers.clusterCountCopyBuffer.bufferHandle,
-                context.pResources->renderObjectCount, m_staticBuffers.renderObjectBufferAddress, Ce_InitialCulling, m_instance);
+                context.m_renders.m_renderCount, m_staticBuffers.renderObjectBufferAddress, Ce_InitialCulling, m_instance);
 
 			// Generates cluster dispatch data and count for the transparent render objects
             PreClusterDrawCull(fTools.computeCommandBuffer, m_preClusterCullPipeline.handle, m_clusterCullLayout.handle,
 				BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.transparentClusterCountBuffer.bufferHandle,
                 m_staticBuffers.transparentClusterCountBufferAddress, m_staticBuffers.transparentClusterDispatchBuffer.bufferHandle,
                 m_staticBuffers.transparentClusterDispatchBufferAddress, m_staticBuffers.transparentClusterCountCopyBuffer.bufferHandle,
-				static_cast<uint32_t>(context.pResources->GetTranparentRenders().GetSize()), m_staticBuffers.transparentRenderObjectBufferAddress,
+				uint32_t(context.m_renders.m_transparentRenders.GetSize()), m_staticBuffers.transparentRenderObjectBufferAddress,
 				Ce_InitialCulling, m_instance);
 
             // Submits command buffer to generate cluster dispatch count
@@ -979,7 +976,7 @@ namespace BlitzenVulkan
                 0, VK_REMAINING_MIP_LEVELS);
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderingAttachmentDefinitionBarriers);
 
-            if (context.pResources->renderObjectCount == 0)
+            if (context.m_renders.m_renderCount == 0)
             {
                 // TODO: Change this so that it instantly goes to present and quits the function before going further
                 DrawBackgroundImage(fTools.commandBuffer, m_basicBackgroundPipeline.handle, m_basicBackgroundLayout.handle,
@@ -1016,13 +1013,13 @@ namespace BlitzenVulkan
 
             // First culling pass
             DrawCullFirstPass(fTools.commandBuffer, m_instance, m_initialDrawCullPipeline.handle, m_drawCullLayout.handle,
-                m_staticBuffers, vBuffers, context.pResources->renderObjectCount, BLIT_ARRAY_SIZE(m_drawCullDescriptors),
+                m_staticBuffers, vBuffers, context.m_renders.m_renderCount, BLIT_ARRAY_SIZE(m_drawCullDescriptors),
                 m_drawCullDescriptors, m_staticBuffers.renderObjectBufferAddress);
 
             // First draw pass
             DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_opaqueGeometryPipeline.handle, 
                 m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                m_drawExtent, m_staticBuffers, context.pResources->renderObjectCount, Ce_InitialCulling, m_instance, m_stats.bRayTracingSupported, 
+                m_drawExtent, m_staticBuffers, context.m_renders.m_renderCount, Ce_InitialCulling, m_instance, m_stats.bRayTracingSupported,
                 Ce_SinglePointer, &m_staticBuffers.tlasData.handle);
 
             // Depth pyramid generation
@@ -1032,13 +1029,13 @@ namespace BlitzenVulkan
 
             // Second culling pass 
             DrawCullOcclusionPass(fTools.commandBuffer, m_instance, m_lateDrawCullPipeline.handle, m_drawCullLayout.handle,
-                m_staticBuffers, vBuffers, m_depthPyramid, m_depthAttachment, context.pResources->renderObjectCount,
+                m_staticBuffers, vBuffers, m_depthPyramid, m_depthAttachment, context.m_renders.m_renderCount,
                 BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.renderObjectBufferAddress);
 
             // Second draw pass
             DrawGeometry(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors),
                 m_opaqueGeometryPipeline.handle, m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                m_drawExtent, m_staticBuffers, context.pResources->renderObjectCount, Ce_LateCulling, m_instance, m_stats.bRayTracingSupported, 
+                m_drawExtent, m_staticBuffers, context.m_renders.m_renderCount, Ce_LateCulling, m_instance, m_stats.bRayTracingSupported,
                 Ce_SinglePointer, &m_staticBuffers.tlasData.handle);
 
             if (m_stats.bObliqueNearPlaneClippingObjectsExist)
@@ -1050,24 +1047,24 @@ namespace BlitzenVulkan
                 DispatchRenderObjectCullingComputeShader(fTools.commandBuffer, m_onpcDrawCullPipeline.handle, m_drawCullLayout.handle,
                     BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.indirectCountBuffer.buffer.bufferHandle,
                     m_staticBuffers.indirectDrawBuffer.buffer.bufferHandle, m_staticBuffers.visibilityBuffer.buffer.bufferHandle,
-                    m_depthAttachment, m_depthPyramid, context.pResources->onpcReflectiveRenderObjectCount, m_staticBuffers.renderObjectBufferAddress,
+                    m_depthAttachment, m_depthPyramid, context.m_renders.m_onpcRenderCount, m_staticBuffers.renderObjectBufferAddress,
                     Ce_LateCulling, m_instance);
 
                 DrawGeometryONPC(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_onpcReflectiveGeometryPipeline.handle, 
                     m_onpcReflectiveGeometryLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                    m_drawExtent, m_staticBuffers, context.pResources->onpcReflectiveRenderObjectCount, m_instance, 
-                    m_stats.bRayTracingSupported, Ce_SinglePointer, &m_staticBuffers.tlasData.handle, &pCamera->onbcProjectionMatrix);
+                    m_drawExtent, m_staticBuffers, context.m_renders.m_onpcRenderCount, m_instance,
+                    m_stats.bRayTracingSupported, Ce_SinglePointer, &m_staticBuffers.tlasData.handle, &context.m_camera.onbcProjectionMatrix);
             }
 
             if (m_stats.bTranspartentObjectsExist)
             {
                 DrawCullFirstPass(fTools.commandBuffer, m_instance, m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle,
-                    m_staticBuffers, vBuffers, uint32_t(context.pResources->GetTranparentRenders().GetSize()), BLIT_ARRAY_SIZE(m_drawCullDescriptors),
+                    m_staticBuffers, vBuffers, uint32_t(context.m_renders.m_transparentRenders.GetSize()), BLIT_ARRAY_SIZE(m_drawCullDescriptors),
                     m_drawCullDescriptors, m_staticBuffers.transparentRenderObjectBufferAddress);
 
                 DrawTransparents(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors),
                     m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                    m_drawExtent, m_staticBuffers, uint32_t(context.pResources->GetTranparentRenders().GetSize()), m_instance,
+                    m_drawExtent, m_staticBuffers, uint32_t(context.m_renders.m_transparentRenders.GetSize()), m_instance,
                     m_stats.bRayTracingSupported, Ce_SinglePointer, &m_staticBuffers.tlasData.handle);
             }
 
@@ -1098,7 +1095,7 @@ namespace BlitzenVulkan
             {
                 CopyPyramidToSwapchain(m_instance, fTools.commandBuffer, m_depthPyramid, m_swapchainValues, m_drawExtent,
                     m_depthPyramidExtent, m_depthPyramidMipLevels, m_depthPyramidMips, m_generatePresentationPipeline.handle, 
-                    m_generatePresentationLayout.handle, swapchainIdx, context.pCamera->transformData.debugPyramidLevel, 
+                    m_generatePresentationLayout.handle, swapchainIdx, context.m_camera.transformData.debugPyramidLevel, 
                     m_depthAttachment.sampler.handle);
             }
             else

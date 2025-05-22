@@ -2,17 +2,17 @@
 
 namespace BlitzenEngine
 {
-	GameObject::GameObject(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
+	GameObject::GameObject(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
 		m_bDynamic{ isDynamic }, m_transformId{ 0 }
 	{
-		m_meshId = pResources->GetMeshContext().m_meshMap[meshName].meshId;
-		m_transformId = pResources->AddRenderObjectsFromMesh(m_meshId, initialTransform, isDynamic);
+		m_meshId = meshes.m_meshMap[meshName].meshId;
+		m_transformId = CreateRenderObjectFromMesh(renders, meshes, m_meshId, initialTransform, isDynamic);
 	}
 
 #if !defined(LAMBDA_GAME_OBJECT_TEST)
 
-	ClientTest::ClientTest(RenderingResources* pResources, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
-		GameObject{ pResources, isDynamic, initialTransform, meshName }
+	ClientTest::ClientTest(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
+		GameObject{ renders, meshes, isDynamic, initialTransform, meshName }
 	{
 
 	}
@@ -41,7 +41,7 @@ namespace BlitzenEngine
 		BlitML::vec3 xAxis(1.f, 0.f, 0.f);
 		BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, pitch, 0);
 
-		context.rendererTransformUpdate.pTransform = &context.pRenderingResources->GetTransform(transformId);
+		context.rendererTransformUpdate.pTransform = &context.pRenders->m_transforms[transformId];
 		context.rendererTransformUpdate.pTransform->orientation = yawOrientation + pitchOrientation;
 		context.rendererTransformUpdate.transformId = transformId;
 
