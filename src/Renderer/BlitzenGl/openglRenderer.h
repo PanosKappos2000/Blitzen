@@ -34,7 +34,7 @@ namespace BlitzenGL
 
         ~OpenglRenderer();
 
-        uint8_t UploadTexture(void* pData, const char* filepath);
+        uint8_t UploadTexture(const char* filepath);
 
         uint8_t SetupForRendering(BlitzenEngine::DrawContext& drawContext);
 
@@ -48,8 +48,7 @@ namespace BlitzenGL
 
     private:
 
-        bool LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header,
-            BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& fileHandle,
+        bool LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& fileHandle,
             void* pData);
 
     private:

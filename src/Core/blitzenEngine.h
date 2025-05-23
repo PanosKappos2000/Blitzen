@@ -33,7 +33,10 @@ namespace BlitzenCore
     constexpr uint32_t DDS_DIMENSION_TEXTURE2D = 3;
 
     constexpr uint32_t Ce_MaxTextureCount = 5'000;
+    constexpr const char* Ce_DefaultTextureName = "BlitzenReindeer";
+
     constexpr uint32_t Ce_MaxMaterialCount = 10'000;
+	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
     constexpr uint8_t Ce_MaxLodCountPerSurface = 8;
     constexpr uint32_t Ce_MaxInstanceCountPerLOD = 100'000;

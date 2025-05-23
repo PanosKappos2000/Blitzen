@@ -2,30 +2,108 @@
 
 namespace BlitzenEngine
 {
-    void LoadGltfMeshes(MeshResources& meshContext, Material* pMaterials, const cgltf_data* pGltfData, const char* path, uint32_t previousMaterialCount, 
-        BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    CgltfScope::~CgltfScope()
     {
-        BLIT_INFO("Loading meshes and primitives");
-
-        for (size_t i = 0; i < pGltfData->meshes_count; ++i)
+        if (pData)
         {
-            const cgltf_mesh& gltfMesh = pGltfData->meshes[i];
+            cgltf_free(pData);
+        }
+	}
 
-            auto firstSurface = static_cast<uint32_t>(meshContext.m_surfaces.GetSize());
+    bool LoadGltfFile(const char* path, CgltfScope& cgltf)
+    {
+        cgltf_options options{};
 
-            auto& blitzenMesh = meshContext.m_meshes[meshContext.m_meshCount];
-            blitzenMesh.firstSurface = firstSurface;
-            blitzenMesh.surfaceCount = uint32_t(gltfMesh.primitives_count);
-            blitzenMesh.meshId = uint32_t(meshContext.m_meshCount);
-            meshContext.m_meshCount++;
+        cgltf.pData = nullptr;
 
+        auto res = cgltf_parse_file(&options, path, &cgltf.pData);
+        if (res != cgltf_result_success)
+        {
+			BLIT_ERROR("Failed to parse gltf file: %s", path);
+            return false;
+        }
+
+        res = cgltf_load_buffers(&options, cgltf.pData, path);
+        if (res != cgltf_result_success)
+        {
+			BLIT_ERROR("Failed to load gltf buffers: %s", path);
+            return false;
+        }
+
+
+        res = cgltf_validate(cgltf.pData);
+        if (res != cgltf_result_success)
+        {
+			BLIT_ERROR("Failed to validate gltf file: %s", path);
+            return false;
+        }
+
+        BLIT_INFO("Loading GLTF scene from file: %s", path);
+        return true;
+    }
+
+	bool ModifyTextureFilepath(cgltf_texture* pTexture, const char* fullPath, std::string& texturePath)
+	{
+        
+        if (!pTexture->image)
+        {
+            BLIT_ERROR("No image resource found in gltf texture");
+            return false;
+        }
+        auto pImage = pTexture->image;
+
+        if (!pImage->uri)
+        {
+            BLIT_ERROR("gltf image has no uri");
+            return false;
+        }
+
+        std::string ipath{ fullPath };
+        auto pos = ipath.find_last_of('/');
+        if (pos == std::string::npos)
+        {
+            ipath = "";
+        }
+        else
+        {
+            ipath = ipath.substr(0, pos + 1);
+        }
+
+        std::string uri{ pImage->uri };
+        uri.resize(cgltf_decode_uri(&uri[0]));
+        auto dot = uri.find_last_of('.');
+
+        if (dot != std::string::npos)
+        {
+            uri.replace(dot, uri.size() - dot, ".dds");
+        }
+
+        texturePath = ipath + uri;
+        return true;
+	}
+
+    void LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    {
+        for (size_t i = 0; i < cgltfScope.pData->meshes_count; ++i)
+        {
+            const auto& gltfMesh = cgltfScope.pData->meshes[i];
+
+            auto firstSurface = uint32_t(meshContext.m_surfaces.GetSize());
+
+            if (!meshContext.AddMesh(firstSurface, uint32_t(gltfMesh.primitives_count)))
+            {
+                BLIT_ERROR("Failed to add gltf mesh number: (%u)", i);
+                break;
+            }
+
+            // Saves surface indices for nodes
             surfaceIndices[i] = firstSurface;
 
-            LoadGltfMeshPrimitives(meshContext, pMaterials, pGltfData, gltfMesh, previousMaterialCount);
+            LoadGltfMeshPrimitives(meshContext, textureContext, cgltfScope, gltfMesh, previousMaterialCount);
         }
     }
 
-    void LoadGltfMeshPrimitives(MeshResources& meshContext, Material* pMaterials, const cgltf_data* pGltfData, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount)
+    void LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount)
     {
         for (size_t j = 0; j < gltfMesh.primitives_count; ++j)
         {
@@ -102,7 +180,7 @@ namespace BlitzenEngine
             // Get the material index and pass it to the surface if there is material index
             if (prim.material)
             {
-                meshContext.m_surfaces.Back().materialId = pMaterials[previousMaterialCount + cgltf_material_index(pGltfData, prim.material)].materialId;
+                meshContext.m_surfaces.Back().materialId = textureContext.m_materials[previousMaterialCount + cgltf_material_index(cgltfScope.pData, prim.material)].materialId;
 
                 if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
                 {
@@ -112,18 +190,20 @@ namespace BlitzenEngine
         }
     }
 
-    void LoadGltfNodes(RenderContainer& renders, MeshResources& meshes, cgltf_data* pGltfData, const BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    void LoadGltfNodes(RenderContainer& renders, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
-        for (size_t i = 0; i < pGltfData->nodes_count; ++i)
+        for (size_t i = 0; i < cgltfScope.pData->nodes_count; ++i)
         {
-            const cgltf_node* node = &(pGltfData->nodes[i]);
+            auto node = &cgltfScope.pData->nodes[i];
+
+            // Create render objects for mesh nodes
             if (node->mesh)
             {
                 // Gets the model matrix
                 float matrix[16];
                 cgltf_node_transform_world(node, matrix);
 
-                // Have to decompose the transform, since blitzen does not use matrix for transform
+                // Switch gltf transform to Blitzen's transform
                 float translation[3];
                 float rotation[4];
                 float scale[3];
@@ -135,55 +215,59 @@ namespace BlitzenEngine
 
                 // TODO: better warnings for non-uniform or negative scale
 
-                // Hold the offset of the first surface of the mesh and the transform id to give to the render objects
-                auto surfaceOffset = surfaceIndices[cgltf_mesh_index(pGltfData, node->mesh)];
+                // Gets id from surface indices
+                auto surfaceOffset = surfaceIndices[cgltf_mesh_index(cgltfScope.pData, node->mesh)];
                 auto transformId = uint32_t(renders.m_transforms.GetSize());
-                for (size_t j = 0; j < node->mesh->primitives_count; ++j)
+
+                // Adds mesh primitives as render objects
+                bool bPrimitivesLoaded = true;
+                for (size_t primitiveId = 0; primitiveId < node->mesh->primitives_count; ++primitiveId)
                 {
-                    CreateRenderObject(renders, meshes, transformId, surfaceOffset + static_cast<uint32_t>(j));
+                    if(!CreateRenderObject(renders, meshContext, transformId, surfaceOffset + uint32_t(primitiveId)))
+					{
+						BLIT_ERROR("Failed to create render object for gltf node: %u", surfaceOffset + uint32_t(primitiveId));
+                        bPrimitivesLoaded = false;
+					}
                 }
+
+                // Checks if primitives were loaded successfully
+                if (!bPrimitivesLoaded)
+                {
+					BLIT_ERROR("Stopped adding gltf nodes at: %u", i);
+                    break;
+                }
+
+                // Adds transform
                 renders.m_transforms.PushBack(transform);
             }
         }
     }
 
-    // THIS IS GARBAGE THAT NEEDS TO BE CLEANSED (DefineMaterial function is a good place to start)
-    void LoadGltfMaterials(RenderingResources* pResources, const cgltf_data* pGltfData, uint32_t previousMaterialCount, uint32_t previousTextureCount)
+    void LoadGltfMaterials(TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousTextureCount)
     {
-        for (size_t i = 0; i < pGltfData->materials_count; ++i)
+        for (size_t i = 0; i < cgltfScope.pData->materials_count; ++i)
         {
-            auto& cgltf_mat = pGltfData->materials[i];
+            auto& cgltfMaterial = cgltfScope.pData->materials[i];
 
-            auto& mat = const_cast<Material&>(pResources->GetMaterialArrayPointer()[pResources->GetMaterialCount()]);
-            auto materialCount = pResources->IncrementMaterialCount();
-            mat.materialId = materialCount - 1;
-
-            mat.albedoTag = cgltf_mat.pbr_metallic_roughness.base_color_texture.texture ?
-                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.pbr_metallic_roughness.base_color_texture.texture))
-                : cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture ?
-                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.pbr_specular_glossiness.diffuse_texture.texture))
+            uint32_t albedoId = 
+                cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture))
+                : cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture))
                 : 0;
 
-            mat.normalTag =
-                cgltf_mat.normal_texture.texture ?
-                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.normal_texture.texture))
+            uint32_t normalId = cgltfMaterial.normal_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.normal_texture.texture)) : 0;
+
+            uint32_t specularId = 
+                cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture))
                 : 0;
 
-            mat.specularTag =
-                cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture ?
-                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.pbr_specular_glossiness.specular_glossiness_texture.texture))
+            uint32_t emissiveId = cgltfMaterial.emissive_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.emissive_texture.texture))
                 : 0;
 
-            mat.emissiveTag =
-                cgltf_mat.emissive_texture.texture ?
-                uint32_t(previousTextureCount + cgltf_texture_index(pGltfData,
-                    cgltf_mat.emissive_texture.texture))
-                : 0;
-
+            if(!textureContext.AddMaterial(albedoId, normalId, specularId, emissiveId))
+			{
+				BLIT_ERROR("Failed to add GLTF material number: (%u)", i);
+				break;
+			}
         }
     }
 }

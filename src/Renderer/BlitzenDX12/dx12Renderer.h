@@ -27,7 +27,7 @@ namespace BlitzenDX12
         void FinalSetup();
     
         // Function for DDS texture loading
-        uint8_t UploadTexture(void* pData, const char* filepath);
+        uint8_t UploadTexture(const char* filepath);
     
         // Draws a simple loading screen using a shader that should be valid after Init.
         void DrawWhileWaiting(float deltaTime);

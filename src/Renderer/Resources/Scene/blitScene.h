@@ -4,15 +4,25 @@
 
 namespace BlitzenEngine
 {
+    // Automatic free struct
+    struct CgltfScope
+    {
+        cgltf_data* pData;
+        ~CgltfScope();
+    };
+
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);
 
-    void LoadGltfMaterials(RenderingResources* pResources, const cgltf_data* pGltfData, uint32_t previousMaterialCount, uint32_t previousTextureCount);
+    bool LoadGltfFile(const char* path, CgltfScope& cgltf);
 
-    void LoadGltfMeshes(MeshResources& meshContext, Material* pMaterials, const cgltf_data* pGltfData, 
-        const char* path, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
+    bool ModifyTextureFilepath(cgltf_texture* pTexture, const char* fullPath, std::string& texturePath);
 
-    void LoadGltfMeshPrimitives(MeshResources& meshContext, Material* pMaterials,  const cgltf_data* pGltfData, const cgltf_mesh& pGltfMesh, uint32_t previousMaterialCount);
+    void LoadGltfMaterials(TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousTextureCount);
+
+    void LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
+
+    void LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount);
 
     // Generates render objects for a gltf scene
-    void LoadGltfNodes(RenderContainer& renders, MeshResources& meshContext, cgltf_data* pGltfData, const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
+    void LoadGltfNodes(RenderContainer& renders, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& surfaceIndices);
 }

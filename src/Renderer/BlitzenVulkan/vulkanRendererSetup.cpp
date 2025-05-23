@@ -44,7 +44,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::UploadTexture(void* pData, const char* filepath) 
+    uint8_t VulkanRenderer::UploadTexture(const char* filepath) 
     {
         if (!m_stats.bResourceManagementReady)
         {
@@ -60,7 +60,7 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create staging buffer for texture data copy");
             return 0;
         }
-        pData = stagingBuffer.allocationInfo.pMappedData;
+        void* pData{ stagingBuffer.allocationInfo.pMappedData };
 
         // Initializes necessary data for DDS texture
 		BlitzenEngine::DDS_HEADER header{};
@@ -371,8 +371,8 @@ namespace BlitzenVulkan
         auto pRenderObjects { context.m_renders.m_renders};
         auto renderObjectCount{ context.m_renders.m_renderCount };
         const auto& surfaces{ context.m_meshes.m_surfaces };
-        auto pMaterials = context.pMaterials;
-        auto materialCount = context.materialCount;
+        auto pMaterials = context.m_textures.m_materials;
+        auto materialCount = context.m_textures.m_materialCount;
         const auto& clusters = context.m_meshes.m_clusters;
         const auto& clusterData = context.m_meshes.m_clusterIndices;
         auto pOnpcRenderObjects = context.m_renders.m_onpcRenders;
@@ -481,7 +481,7 @@ namespace BlitzenVulkan
         auto materialBufferSize
         {
             SetupPushDescriptorBuffer(device, vma, staticBuffers.materialBuffer, materialStagingBuffer, materialCount,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, const_cast<BlitzenEngine::Material*>(pMaterials))
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, pMaterials)
         };
         if (materialBufferSize == 0)
         {

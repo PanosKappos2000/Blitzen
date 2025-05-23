@@ -143,7 +143,7 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	uint8_t Dx12Renderer::UploadTexture(void* pData, const char* filepath)
+	uint8_t Dx12Renderer::UploadTexture(const char* filepath)
 	{
 		// DDS data Loading
 		BlitzenEngine::DDS_HEADER header{};
@@ -162,6 +162,8 @@ namespace BlitzenDX12
 			BLIT_ERROR("Failed to create staging buffer for texture data copy");
 			return 0;
 		}
+
+		void* pData{ nullptr };
 		auto mappingRes = stagingBuffer->Map(0, nullptr, &pData);
 		if (FAILED(mappingRes))
 		{
@@ -185,8 +187,10 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		m_textureCount++;
 		stagingBuffer->Unmap(0, nullptr);
+
+		m_textureCount++;
+
 		return 1;
 	}
 
@@ -569,8 +573,8 @@ namespace BlitzenDX12
 		Dx12Renderer::VarBuffers* varBuffers, BlitzenEngine::DrawContext& context, uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
 		const auto& transforms{ context.m_renders.m_transforms };
-		const auto& lodData{ context.m_renders.m_transforms };
-		const auto& lodInstanceList{ context.m_meshes.m_LODs };
+		const auto& lodData{ context.m_meshes.m_LODs };
+		const auto& lodInstanceList{ context.m_meshes.m_lodInstanceList };
 		auto renderCount{ context.m_renders.m_renderCount };
 		auto dynamicTransformCount{ context.m_renders.m_dynamicTransformCount };
 
@@ -803,8 +807,8 @@ namespace BlitzenDX12
 		auto renders{ context.m_renders.m_renders};
 		auto renderObjectCount{ context.m_renders.m_renderCount };
 		const auto& lods{ context.m_meshes.m_LODs};
-		auto materials{ context.pMaterials };
-		auto materialCount{ context.materialCount };
+		auto materials{ context.m_textures.m_materials };
+		auto materialCount{ context.m_textures.m_materialCount };
 
 		DX12WRAPPER<ID3D12Resource> vertexStagingBuffer{ nullptr };
 		UINT64 vertexBufferSize{ CreateSSBO(device, buffers.vertexBuffer, vertexStagingBuffer, vertices.GetSize(), vertices.Data())};
@@ -935,8 +939,8 @@ namespace BlitzenDX12
 		auto pRenders{ context.m_renders.m_renders };
 		auto renderCount{ context.m_renders.m_renderCount };
 		const auto& lods{ context.m_meshes.m_LODs };
-		auto pMaterials{ context.pMaterials };
-		auto materialCount{ context.materialCount };
+		auto pMaterials{ context.m_textures.m_materials };
+		auto materialCount{ context.m_textures.m_materialCount };
 
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{

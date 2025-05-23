@@ -2,6 +2,45 @@
 
 namespace BlitzenEngine
 {
+	bool TextureManager::AddTexture(const char* textureName)
+	{
+		if (m_textureCount >= BlitzenCore::Ce_MaxTextureCount)
+		{
+			BLIT_ERROR("Max Texture count exceeded");
+			return false;
+		}
+
+		m_textureIDMap.Insert(textureName, m_textureCount);
+		m_textureCount++;
+		return true;
+	}
+
+	bool TextureManager::AddMaterial(uint32_t albedoId, uint32_t normalId, uint32_t specularId, uint32_t emissiveId, const char* name /*="BLIT_DO_NOT_ADD_TO_MATERIAL_MAP"*/)
+	{
+		if (m_materialCount >= BlitzenCore::Ce_MaxMaterialCount)
+		{
+			BLIT_ERROR("Max Material count exceeded");
+			return false;
+		}
+
+		auto pMaterial = &m_materials[m_materialCount];
+
+		pMaterial->albedoTag = albedoId;
+		pMaterial->normalTag = normalId;
+		pMaterial->specularTag = specularId;
+		pMaterial->emissiveTag = emissiveId;
+
+		pMaterial->materialId = m_materialCount;
+
+		if (name != "BLIT_DO_NOT_ADD_TO_MATERIAL_MAP")
+		{
+			m_pMaterialTable.Insert(name, pMaterial);
+		}
+
+		m_materialCount++;
+		return true;
+	}
+
 	uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle)
 	{
 		if (!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))

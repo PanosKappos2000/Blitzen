@@ -31,6 +31,8 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> m_indices;
 
         BlitCL::DynamicArray<uint32_t> m_primitiveVertexCounts;
+
+        bool AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName = "BLIT_DO_NOT_ADD_TO_MESH_TABLE");
     };
 
     bool LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName);

@@ -29,10 +29,13 @@ namespace BlitzenGL
         return true;
     }
 
-    uint8_t OpenglRenderer::UploadTexture(void* pData, const char* filepath) 
+    uint8_t OpenglRenderer::UploadTexture(const char* filepath) 
     {
-        if(m_textureCount >= BlitzenCore::Ce_MaxTextureCount)
+        if (m_textureCount >= BlitzenCore::Ce_MaxTextureCount)
+        {
+			BLIT_ERROR("Max texture count reached");
             return 0;
+        }
         
         BlitCL::StoragePointer<uint8_t, BlitzenCore::AllocationType::SmartPointer> store(128 * 1024 * 1024);
 
@@ -40,9 +43,7 @@ namespace BlitzenGL
 		BlitzenEngine::DDS_HEADER header;
 		BlitzenEngine::DDS_HEADER_DXT10 header10;
         BlitzenPlatform::FileHandle handle;
-        if(BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle) 
-            && LoadDDSTextureData(header, header10, handle, store.Data())
-        )
+        if(BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle) && LoadDDSTextureData(header, header10, handle, store.Data()))
         {
             // Create and bind the texture
             glGenTextures(1, &m_textures[m_textureCount].handle);
@@ -63,7 +64,10 @@ namespace BlitzenGL
             return 1;
         }
         else
+        {
+			BLIT_ERROR("Failed to load texture from file: %s", filepath);
             return 0;
+        }
     }
 
     bool OpenglRenderer::LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header, 
@@ -160,7 +164,7 @@ namespace BlitzenGL
         // Creates the material buffer as a storage buffer and passes it binding 4
         glGenBuffers(1, &m_materialBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Material) * context.materialCount, context.pMaterials, GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Material) * context.m_textures.m_materialCount, context.m_textures.m_materials, GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_materialBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 

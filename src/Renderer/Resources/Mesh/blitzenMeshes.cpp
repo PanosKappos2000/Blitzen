@@ -10,6 +10,30 @@
 
 namespace BlitzenEngine
 {
+    bool MeshResources::AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName /*="BLIT_DO_NOT_ADD_TO_MESH_TABLE"*/)
+    {
+        if (m_meshCount >= BlitzenCore::Ce_MaxMeshCount)
+        {
+			BLIT_ERROR("Max mesh count: ( %i ) reached!", BlitzenCore::Ce_MaxMeshCount);
+            return false;
+        }
+
+        auto& mesh = m_meshes[m_meshCount];
+
+        mesh.firstSurface = firstSurface;
+        mesh.surfaceCount = surfaceCount;
+        mesh.meshId = uint32_t(m_meshCount);
+
+        m_meshCount++;
+
+		if (meshName != "BLIT_DO_NOT_ADD_TO_MESH_TABLE")
+		{
+			m_meshMap.Insert(meshName, mesh);
+		}
+
+        return true;
+    }
+
     bool LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName)
     {
         // The function should return if the engine will go over the max allowed mesh assets
@@ -96,7 +120,7 @@ namespace BlitzenEngine
         newSurface.vertexOffset = uint32_t(context.m_vertices.GetSize());
         context.m_vertices.AppendArray(surfaceVertices);
 
-        BLIT_INFO("Generating Level Of Detail Indices");
+        BLIT_INFO("Generating LODs");
         GenerateLODs(context, newSurface, surfaceVertices, surfaceIndices);
 
         BLIT_INFO("Generating bounding sphere");
@@ -134,7 +158,6 @@ namespace BlitzenEngine
         while (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
         {
             surface.lodCount++;
-            BLIT_INFO("Generating LOD %d", surface.lodCount);
 
             // Instancing
             LodInstanceCounter lodInstanceCounter{};
@@ -210,8 +233,6 @@ namespace BlitzenEngine
     // Loads cluster using the meshoptimizer library
     size_t GenerateClusters(MeshResources& context, BlitCL::DynamicArray<Vertex>& inVertices, BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
     {
-        BLIT_INFO("Generating clusters");
-
         const size_t maxVertices = 64;
         const size_t maxTriangles = 124;
         const float coneWeight = 0.25f;

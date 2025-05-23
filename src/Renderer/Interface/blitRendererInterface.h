@@ -23,10 +23,9 @@ namespace BlitzenEngine
         Camera& m_camera;
         MeshResources& m_meshes;
         RenderContainer& m_renders;
-        Material* pMaterials;
-        uint32_t materialCount;
+        TextureManager& m_textures;
 
-		DrawContext(Camera& camera, MeshResources& meshes, RenderContainer& renders) :m_camera(camera), m_meshes(meshes), m_renders(renders)
+        DrawContext(Camera& camera, MeshResources& meshes, RenderContainer& renders, TextureManager& textureManager) :m_camera(camera), m_meshes(meshes), m_renders(renders), m_textures{ textureManager }
 		{
 
 		}

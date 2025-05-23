@@ -52,11 +52,9 @@ namespace BlitzenEngine
 
     void UpdateRendererTransform(RendererPtrType pRenderer, RendererTransformUpdateContext& context);
 
-    bool LoadTextureFromFile(RenderingResources* pResources, const char* filename, const char* texName, RendererPtrType pRenderer);
+    bool RenderingResourcesInit(RenderingResources* pResources, RendererPtrType pRenderer);
 
-    bool LoadGltfScene(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RenderContainer& renders,  const char* path, RendererPtrType pRenderer);
-
-    void LoadGltfTextures(BlitzenEngine::RenderingResources* pResources, const cgltf_data* pGltfData, uint32_t previousTextureCount, const char* gltfFilepath, RendererPtrType pRenderer);
+    bool ManageGltf(const char* filepath, RenderingResources* pResources, BlitzenCore::EntityManager* pManager, RendererPtrType pRenderer);
 
     void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenCore::EntityManager* pManager);
 

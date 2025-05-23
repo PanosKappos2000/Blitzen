@@ -5,13 +5,6 @@
 
 namespace BlitzenEngine
 {
-    struct TextureStats
-    {
-		std::string filepath;// Probably useless, but whatever
-        uint8_t* pTextureData;// Probably useless, but whatever
-        uint32_t textureTag;// Do I even use this piece of crap?
-    };
-
     struct alignas(16) Vertex
     {
         BlitML::vec3 position;

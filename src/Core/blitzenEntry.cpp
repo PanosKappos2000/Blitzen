@@ -55,10 +55,10 @@ int main(int argc, char* argv[])
 
     RndResourcesMemory renderingResources;
     renderingResources.Make();
-    blitzenWorldContext.pMeshes = &renderingResources->GetMeshContext();
-    BlitzenEngine::LoadTextureFromFile(renderingResources.Data(), "Assets/Textures/base_baseColor.dds", "dds_texture_default", renderer.Data());
+    blitzenWorldContext.pMeshes = &renderingResources->m_meshContext;
+    BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
 
-    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->GetMeshContext(), entityManager->GetRenderContainer() };
+    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->GetRenderContainer(), renderingResources->m_textureManager};
 
 
     // Loading resources
@@ -77,9 +77,7 @@ int main(int argc, char* argv[])
                 loadingDoneConditional.notify_one();
                 return;
             }
-            // TODO: THIS WILL BE REMOVED WHEN TEXTURES AND MATERIALS GET THEIR OWN THING
-            drawContext.materialCount = renderingResources->GetMaterialCount();
-            drawContext.pMaterials = const_cast<BlitzenEngine::Material*>(renderingResources->GetMaterialArrayPointer());
+            // Updates renderer
             if (!renderer->SetupForRendering(drawContext))
             {
                 BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");

@@ -26,7 +26,7 @@ namespace BlitzenVulkan
         void FinalSetup();
 
         // Function for DDS texture loading
-        uint8_t UploadTexture(void* pData, const char* filepath);
+        uint8_t UploadTexture(const char* filepath);
 
         // Shows a loading screen while waiting for resources to be loaded
         void DrawWhileWaiting(float deltaTime);
