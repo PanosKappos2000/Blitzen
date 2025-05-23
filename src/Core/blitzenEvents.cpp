@@ -49,7 +49,7 @@ namespace BlitzenCore
         }
         case BlitEventType::RendererTransformUpdate:
         {
-            BlitzenEngine::UpdateRendererTransform(m_privateContext.pRenderer, m_blitzenContext.rendererTransformUpdate);
+            //BlitzenEngine::UpdateRendererTransform(m_privateContext.pRenderer, m_blitzenContext.rendererTransformUpdate);
             return true;
         }
         default:

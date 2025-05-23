@@ -5,13 +5,17 @@ namespace BlitzenEngine
 {
 	struct RenderContainer
 	{
-		BlitCL::DynamicArray<BlitzenEngine::MeshTransform> m_transforms{ BlitzenCore::Ce_MaxDynamicObjectCount };
+		MeshTransform m_transforms[BlitzenCore::Ce_MaxRenderObjects ];
+		uint32_t m_transformCount{ 0 };
+		uint32_t m_staticTransformOffset{ BlitzenCore::Ce_MaxDynamicObjectCount };
+		uint32_t m_staticTransformCount{ 0 };
 		uint32_t m_dynamicTransformCount{ 0 };
 
 		BlitzenEngine::RenderObject m_renders[BlitzenCore::Ce_MaxRenderObjects];
 		uint32_t m_renderCount{ 0 };
 
-		BlitCL::DynamicArray<BlitzenEngine::RenderObject> m_transparentRenders;
+		BlitzenEngine::RenderObject m_transparentRenders[BlitzenCore::Ce_MaxTransparentRenderObjects];
+		uint32_t m_transparentRenderCount{ 0 };
 
 		BlitzenEngine::RenderObject m_onpcRenders[BlitzenCore::Ce_MaxONPC_Objects];
 		uint32_t m_onpcRenderCount{ 0 };

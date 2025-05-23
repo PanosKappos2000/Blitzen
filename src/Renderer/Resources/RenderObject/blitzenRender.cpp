@@ -4,18 +4,18 @@ namespace BlitzenEngine
 {
     bool CreateRenderObject(RenderContainer& context, MeshResources& meshes, uint32_t transformId, uint32_t surfaceId)
     {
-        if (context.m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
-        {
-            BLIT_ERROR("Max render object count reached");
-            return false;
-        }
-
         // Create opaque render object
         if (!meshes.m_bTransparencyList[surfaceId].isTransparent)
         {
-            auto& current = context.m_renders[context.m_renderCount];
-            current.surfaceId = surfaceId;
-            current.transformId = transformId;
+            if (context.m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
+            {
+                BLIT_ERROR("Max render object count reached");
+                return false;
+            }
+
+            auto& render = context.m_renders[context.m_renderCount];
+            render.surfaceId = surfaceId;
+            render.transformId = transformId;
 
             context.m_renderCount++;
         }
@@ -23,10 +23,17 @@ namespace BlitzenEngine
         // Create transparent render object
         else
         {
-            RenderObject current{};
-            current.surfaceId = surfaceId;
-            current.transformId = transformId;
-            context.m_transparentRenders.PushBack(current);
+            if (context.m_transparentRenderCount >= BlitzenCore::Ce_MaxTransparentRenderObjects)
+            {
+                BLIT_ERROR("Max transparent object count reached");
+                return false;
+            }
+
+            auto& render = context.m_transparentRenders[context.m_transparentRenderCount];
+            render.surfaceId = surfaceId;
+            render.transformId = transformId;
+
+            context.m_transparentRenderCount++;
         }
 
         return true;
@@ -38,30 +45,50 @@ namespace BlitzenEngine
         if (context.m_renderCount + mesh.surfaceCount >= BlitzenCore::Ce_MaxRenderObjects)
         {
             BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count");
-            // This is really strange behavior for this function, since the caller expects a transform id
-            // BE CAREFUL
-            return 0;
+            return BlitzenCore::Ce_MaxRenderObjects;
         }
 
-        uint32_t transformId{ 0 };
+        uint32_t transformId{ BlitzenCore::Ce_MaxRenderObjects };
 
         // Add to dynamic transforms
         if (isDynamic)
         {
+            if (context.m_dynamicTransformCount >= BlitzenCore::Ce_MaxDynamicObjectCount)
+            {
+                BLIT_ERROR("Max dynamic mesh instance count reached");
+                return BlitzenCore::Ce_MaxRenderObjects;
+            }
             transformId = context.m_dynamicTransformCount;
             context.m_transforms[context.m_dynamicTransformCount++] = transform;
+            context.m_transformCount++;
         }
         // Add to regular transforms
         else
         {
-            transformId = uint32_t(context.m_transforms.GetSize());
-            context.m_transforms.PushBack(transform);
+			if (context.m_staticTransformOffset >= BlitzenCore::Ce_MaxRenderObjects)
+			{
+				BLIT_ERROR("Max static mesh instance count reached");
+				return BlitzenCore::Ce_MaxRenderObjects;
+			}
+            transformId = context.m_staticTransformOffset;
+			context.m_transforms[context.m_staticTransformOffset++] = transform;
+            context.m_transformCount++;
+        }
+
+        if (transformId == BlitzenCore::Ce_MaxRenderObjects)
+        {
+            BLIT_ERROR("Something went wrong when creating the render object");
+            return transformId;
         }
 
         // Create render object for every surface in the mesh
         for (auto i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
         {
-            CreateRenderObject(context, meshes, transformId, i);
+            if (!CreateRenderObject(context, meshes, transformId, i))
+            {
+                BLIT_ERROR("Something went wrong when creating the render object");
+                return BlitzenCore::Ce_MaxRenderObjects;
+            }
         }
 
         return transformId;
@@ -90,26 +117,11 @@ namespace BlitzenEngine
 
     void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderContainer& renders, MeshResources& meshContext, float randomTransformMultiplier, float scale)
     {
-        if (renders.m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
-        {
-            BLIT_WARN("Max render object count reached");
-            return;
-        }
-
-        // Get the mesh used by the current game object
-        auto& currentMesh = meshContext.m_meshes[meshId];
-        if (currentMesh.surfaceCount > 1)
-        {
-            BLIT_WARN("Only meshes with one primitive are allowed");
-            return;
-        }
-
         // Creates a new transform, radomizes and creates render object based on it
         BlitzenEngine::MeshTransform transform;
         RandomizeTransform(transform, randomTransformMultiplier, scale);
-        auto transformId = uint32_t(renders.m_transforms.GetSize());
-        renders.m_transforms.PushBack(transform);
-        CreateRenderObject(renders, meshContext, transformId, meshContext.m_meshes[meshId].firstSurface);
+
+		CreateRenderObjectFromMesh(renders, meshContext, meshId, transform, false);
     }
 
     // Creates the rendering stress test scene. 
@@ -163,11 +175,8 @@ namespace BlitzenEngine
         transform.pos = BlitML::vec3(30.f, 50.f, 50.f);
         transform.scale = 2.f;
         transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
-        renders.m_transforms.PushBack(transform);
-
-        auto& currentObject = renders.m_onpcRenders[renders.m_onpcRenderCount++];
-        currentObject.surfaceId = meshContext.m_meshes[3].firstSurface;
-        currentObject.transformId = uint32_t(renders.m_transforms.GetSize() - 1);
+        
+		CreateRenderObjectFromMesh(renders, meshContext, meshContext.m_meshMap["kitten"].meshId, transform, false);
 
         const uint32_t nonReflectiveDrawCount = 1000;
         const uint32_t start = renders.m_renderCount;

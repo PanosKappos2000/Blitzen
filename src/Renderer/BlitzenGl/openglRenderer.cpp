@@ -91,7 +91,7 @@ namespace BlitzenGL
         return true;
     }
 
-    void OpenglRenderer::UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context)
+    void OpenglRenderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
     {
         //auto& transforms = BlitzenEngine::RenderingResources::GetRenderingResources()->transforms;
         //BlitzenCore::BlitMemCopy(transforms.Data() + trId, &newTr, sizeof(BlitzenEngine::MeshTransform));
@@ -107,10 +107,7 @@ namespace BlitzenGL
         glGenBuffers(1, &m_vertexBuffer.handle);
         const BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = context.m_meshes.m_vertices;
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_vertexBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 
-            sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), 
-            vertices.Data(), GL_STATIC_READ
-        );
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), vertices.Data(), GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_vertexBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
@@ -119,18 +116,12 @@ namespace BlitzenGL
         glGenBuffers(1, &m_indexBuffer.handle);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer.handle);
         const BlitCL::DynamicArray<uint32_t>& indices = context.m_meshes.m_indices;
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, 
-            sizeof(uint32_t) * indices.GetSize(), 
-            indices.Data(), GL_STATIC_DRAW
-        );
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.GetSize(), indices.Data(), GL_STATIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
         glGenBuffers(1, &m_indirectDrawBuffer.handle);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer.handle);
-        glBufferData(GL_DRAW_INDIRECT_BUFFER, 
-            sizeof(IndirectDrawCommand) * context.m_renders.m_renderCount, 
-            nullptr,  GL_STATIC_DRAW
-        );
+        glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(IndirectDrawCommand) * context.m_renders.m_renderCount, nullptr, GL_STATIC_DRAW);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
         // Binds the indirect draw buffer as an SSBO, so that it can be accessed by the culling shaders
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_indirectDrawBuffer.handle);
@@ -141,8 +132,7 @@ namespace BlitzenGL
         glGenBuffers(1, &m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_transformBuffer.handle);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 
-            sizeof(BlitzenEngine::MeshTransform) * transforms.GetSize(), 
-            transforms.Data(), GL_STATIC_READ);
+            sizeof(BlitzenEngine::MeshTransform) * context.m_renders.m_transformCount, context.m_renders.m_transforms, GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -174,12 +164,15 @@ namespace BlitzenGL
 
         // Create the compute shader program that will perform initial culling operations
         if (!CreateComputeProgram("GlslShaders/InitialDrawCullShader.comp.glsl", m_initialDrawCullCompProgram))
+        {
             return 0;
+        }
 
         // Create the graphics program that will have the vertex and fragment shader attached
-        if(!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", 
-        m_opaqueGeometryGraphicsProgram))
+        if (!CreateGraphicsProgram("GlslShaders/MainVertexOutput.vert.glsl", "GlslShaders/MainFragmentOutput.frag.glsl", m_opaqueGeometryGraphicsProgram))
+        {
             return 0;
+        }
         
         return 1;
     }

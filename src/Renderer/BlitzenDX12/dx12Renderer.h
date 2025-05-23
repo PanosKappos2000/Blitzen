@@ -39,7 +39,7 @@ namespace BlitzenDX12
         void DrawFrame(BlitzenEngine::DrawContext& context);
     
         // Updates transform data on the cpu side side buffer
-        void UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context);
+        void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
     public:
         struct FrameTools

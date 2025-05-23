@@ -46,6 +46,7 @@ namespace BlitzenCore
 	constexpr const char* Ce_DefaultMeshName = "bunny";
 
     constexpr uint32_t Ce_MaxRenderObjects = 5'000'000;
+    constexpr uint32_t Ce_MaxTransparentRenderObjects = 100'000;
     constexpr uint32_t Ce_MaxONPC_Objects = 100;
     constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;
 

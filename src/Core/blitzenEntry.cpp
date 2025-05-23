@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 
     EntitySystemMemory entityManager;
     entityManager.Make();
-	blitzenWorldContext.pRenders = &entityManager->GetRenderContainer();
+	blitzenPrivateContext.pEntityMangager = entityManager.Data();
     
     EventSystemMemory eventSystem;
     eventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
@@ -55,10 +55,10 @@ int main(int argc, char* argv[])
 
     RndResourcesMemory renderingResources;
     renderingResources.Make();
-    blitzenWorldContext.pMeshes = &renderingResources->m_meshContext;
+    blitzenPrivateContext.pRenderingResources = renderingResources.Data();
     BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
 
-    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->GetRenderContainer(), renderingResources->m_textureManager};
+    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager};
 
 
     // Loading resources
@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
         {
             coreClock.Update();
 
-            UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
+            BlitzenEngine::UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
 			BlitzenEngine::UpdateDynamicObjects(renderer.Data(), entityManager.Data(), blitzenWorldContext);
             

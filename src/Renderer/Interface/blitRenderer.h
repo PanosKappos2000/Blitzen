@@ -50,8 +50,6 @@ namespace BlitzenEngine
 
     #endif
 
-    void UpdateRendererTransform(RendererPtrType pRenderer, RendererTransformUpdateContext& context);
-
     bool RenderingResourcesInit(RenderingResources* pResources, RendererPtrType pRenderer);
 
     bool ManageGltf(const char* filepath, RenderingResources* pResources, BlitzenCore::EntityManager* pManager, RendererPtrType pRenderer);

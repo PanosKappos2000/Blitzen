@@ -9,13 +9,14 @@ namespace BlitzenEngine
     class GameObject
     {
     public:
-        GameObject(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
+        GameObject(BlitzenEngine::MeshTransform* pTransform, uint32_t transformId, BlitzenEngine::Mesh* pMesh, bool isDynamic);
 
         inline bool IsDynamic() const { return m_bDynamic; }
 
-		inline uint32_t GetMeshId() const { return m_meshId; } 
+		inline Mesh* GetMesh() const { return m_pMesh; }
 
-		inline uint32_t GetTransformId() const { return m_transformId; }    
+		inline MeshTransform* GetTransform() const { return m_pTransform; }
+		inline uint32_t GetTransformId() const { return m_transformId; }
 
         virtual void Update(BlitzenWorld::BlitzenWorldContext& context);
 
@@ -23,9 +24,10 @@ namespace BlitzenEngine
 
     private:
 
+        MeshTransform* m_pTransform;
         uint32_t m_transformId;
 
-        uint32_t m_meshId;
+        Mesh* m_pMesh;
 
         bool m_bDynamic; 
     };
@@ -38,7 +40,7 @@ namespace BlitzenEngine
 
         void Update(BlitzenWorld::BlitzenWorldContext& context) override;
 
-        ClientTest(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName);
+        ClientTest(MeshTransform* pTransform, uint32_t transformId, Mesh* pMesh, bool isDynamic);
 
     private:
         float m_pitch = 0.f;
@@ -49,7 +51,7 @@ namespace BlitzenEngine
     };
 
     // Changes orientation values of an object and updates the renderer
-    void RotateObject(float& yaw, float& pitch, float speed, uint32_t transformId, BlitzenWorld::BlitzenWorldContext& context);
+    void RotateObject(float& yaw, float& pitch, float speed, MeshTransform* pTransform, BlitzenWorld::BlitzenWorldContext& context);
     
 #else
     

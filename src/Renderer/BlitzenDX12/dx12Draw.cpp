@@ -517,10 +517,10 @@ namespace BlitzenDX12
 
 	}
 
-	void Dx12Renderer::UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context)
+	void Dx12Renderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
 	{
 		auto pData = m_varBuffers[m_currentFrame].transformBuffer.pData;
-		BlitzenCore::BlitMemCopy(reinterpret_cast<BlitzenEngine::MeshTransform*>(pData) + context.transformId, context.pTransform, sizeof(BlitzenEngine::MeshTransform));
+		BlitzenCore::BlitMemCopy(reinterpret_cast<BlitzenEngine::MeshTransform*>(pData) + transformId, pTransform, sizeof(BlitzenEngine::MeshTransform));
 	}
 
 	void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)

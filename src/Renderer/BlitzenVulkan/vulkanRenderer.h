@@ -37,7 +37,7 @@ namespace BlitzenVulkan
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
         // When a dynamic object moves, it should call this function to update the staging buffer
-        void UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& updateContext);
+        void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
         // Static function that allows access to vulkan renderer at any scope
         inline static VulkanRenderer* GetRendererInstance() { return m_pThisRenderer; }

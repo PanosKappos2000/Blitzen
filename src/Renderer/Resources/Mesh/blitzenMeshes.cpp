@@ -46,10 +46,7 @@ namespace BlitzenEngine
         BLIT_INFO("Loading obj model form file: %s", filename);
 
         // Get the current mesh and give it the size surface array as its first surface index
-        auto& currentMesh = context.m_meshes[context.m_meshCount];
-        currentMesh.firstSurface = static_cast<uint32_t>(context.m_surfaces.GetSize());
-        currentMesh.meshId = uint32_t(context.m_meshCount);
-        context.m_meshMap.Insert(meshName, currentMesh);
+        uint32_t previousSurfaceCount{ (uint32_t)context.m_surfaces.GetSize() };
 
         ObjFile file;
         if (!objParseFile(file, filename))
@@ -103,8 +100,7 @@ namespace BlitzenEngine
         BLIT_INFO("Creating surface");
         GenerateSurface(context, vertices, indices);
 
-        currentMesh.surfaceCount++;// Increment the surface count
-        ++context.m_meshCount;// Increment the mesh count
+        context.AddMesh(previousSurfaceCount, uint32_t(context.m_surfaces.GetSize() - previousSurfaceCount), meshName);
 
         return 1;
     }

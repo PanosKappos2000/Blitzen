@@ -12,12 +12,6 @@ namespace BlitzenEngine
         MAX_RENDERER_EVENTS
     };
 
-    struct RendererTransformUpdateContext
-    {
-        uint32_t transformId;
-        MeshTransform* pTransform{ nullptr };
-    };
-
     struct DrawContext
     {
         Camera& m_camera;

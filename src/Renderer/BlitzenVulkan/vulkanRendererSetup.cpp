@@ -282,8 +282,8 @@ namespace BlitzenVulkan
             AllocatedBuffer transformStagingBufferTemp;
             auto transformBufferSize
             {
-                SetupPushDescriptorBuffer(device, vma,buffers.transformBuffer, transformStagingBufferTemp, transforms.GetSize(),
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, transforms.Data())
+                SetupPushDescriptorBuffer(device, vma,buffers.transformBuffer, transformStagingBufferTemp, context.m_renders.m_transformCount,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, context.m_renders.m_transforms)
             };
             if (transformBufferSize == 0)
             {
@@ -377,8 +377,9 @@ namespace BlitzenVulkan
         const auto& clusterData = context.m_meshes.m_clusterIndices;
         auto pOnpcRenderObjects = context.m_renders.m_onpcRenders;
         auto onpcRenderObjectCount = context.m_renders.m_onpcRenderCount;
-        auto& transforms = context.m_renders.m_transforms;
-        const auto& transparentRenderobjects = context.m_renders.m_transparentRenders;
+        auto transforms = context.m_renders.m_transforms;
+        auto transparentRenderobjects = context.m_renders.m_transparentRenders;
+        uint32_t transparentRenderCount = context.m_renders.m_transparentRenderCount;
         const auto& lodData = context.m_meshes.m_LODs;
 
         // Additional RT flags for geometry
@@ -437,10 +438,10 @@ namespace BlitzenVulkan
 
         // Transparent render buffer
         AllocatedBuffer tranparentRenderObjectStagingBuffer;
-        auto transparentRenderObjectBufferSize{ transparentRenderobjects.GetSize() * sizeof(BlitzenEngine::RenderObject) };
+        auto transparentRenderObjectBufferSize{ transparentRenderCount * sizeof(BlitzenEngine::RenderObject) };
         if (transparentRenderObjectBufferSize != 0)
         {
-            if (!CreateSSBO(vma, device, transparentRenderobjects.Data(), staticBuffers.transparentRenderObjectBuffer, tranparentRenderObjectStagingBuffer,
+            if (!CreateSSBO(vma, device, transparentRenderobjects, staticBuffers.transparentRenderObjectBuffer, tranparentRenderObjectStagingBuffer,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, transparentRenderObjectBufferSize))
             {
                 BLIT_ERROR("Failed to create transparent render object buffer");

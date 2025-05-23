@@ -36,7 +36,7 @@ namespace BlitCL
             ++m_size;
         }
 
-        inline const T& operator [](const char* name) { return m_pBlock[HashFunction(name)]; }
+        inline T& operator [](const char* name) { return m_pBlock[HashFunction(name)]; }
         inline T& GetVar(const char* name) { return m_pBlock[HashFunction(name)]; }
 
     private:

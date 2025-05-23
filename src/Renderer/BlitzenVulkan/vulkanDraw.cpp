@@ -813,10 +813,10 @@ namespace BlitzenVulkan
         m_drawCullDescriptors[Ce_TransformBufferDrawCullDescriptorId].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
     }
 
-    void VulkanRenderer::UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context)
+    void VulkanRenderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
     {
         auto pData = m_varBuffers[m_currentFrame].pTransformData;
-        BlitzenCore::BlitMemCopy(pData + context.transformId, context.pTransform, sizeof(BlitzenEngine::MeshTransform));
+        BlitzenCore::BlitMemCopy(pData + transformId, pTransform, sizeof(BlitzenEngine::MeshTransform));
     }
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
@@ -863,7 +863,7 @@ namespace BlitzenVulkan
 				BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.transparentClusterCountBuffer.bufferHandle,
                 m_staticBuffers.transparentClusterCountBufferAddress, m_staticBuffers.transparentClusterDispatchBuffer.bufferHandle,
                 m_staticBuffers.transparentClusterDispatchBufferAddress, m_staticBuffers.transparentClusterCountCopyBuffer.bufferHandle,
-				uint32_t(context.m_renders.m_transparentRenders.GetSize()), m_staticBuffers.transparentRenderObjectBufferAddress,
+				uint32_t(context.m_renders.m_transparentRenderCount), m_staticBuffers.transparentRenderObjectBufferAddress,
 				Ce_InitialCulling, m_instance);
 
             // Submits command buffer to generate cluster dispatch count
@@ -1059,12 +1059,12 @@ namespace BlitzenVulkan
             if (m_stats.bTranspartentObjectsExist)
             {
                 DrawCullFirstPass(fTools.commandBuffer, m_instance, m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle,
-                    m_staticBuffers, vBuffers, uint32_t(context.m_renders.m_transparentRenders.GetSize()), BLIT_ARRAY_SIZE(m_drawCullDescriptors),
+                    m_staticBuffers, vBuffers, uint32_t(context.m_renders.m_transparentRenderCount), BLIT_ARRAY_SIZE(m_drawCullDescriptors),
                     m_drawCullDescriptors, m_staticBuffers.transparentRenderObjectBufferAddress);
 
                 DrawTransparents(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors),
                     m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                    m_drawExtent, m_staticBuffers, uint32_t(context.m_renders.m_transparentRenders.GetSize()), m_instance,
+                    m_drawExtent, m_staticBuffers, uint32_t(context.m_renders.m_transparentRenderCount), m_instance,
                     m_stats.bRayTracingSupported, Ce_SinglePointer, &m_staticBuffers.tlasData.handle);
             }
 

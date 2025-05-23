@@ -217,7 +217,9 @@ namespace BlitzenEngine
 
                 // Gets id from surface indices
                 auto surfaceOffset = surfaceIndices[cgltf_mesh_index(cgltfScope.pData, node->mesh)];
-                auto transformId = uint32_t(renders.m_transforms.GetSize());
+                auto transformId = renders.m_staticTransformOffset;
+                renders.m_transforms[renders.m_staticTransformOffset++] = transform;
+				renders.m_transformCount++;
 
                 // Adds mesh primitives as render objects
                 bool bPrimitivesLoaded = true;
@@ -236,9 +238,6 @@ namespace BlitzenEngine
 					BLIT_ERROR("Stopped adding gltf nodes at: %u", i);
                     break;
                 }
-
-                // Adds transform
-                renders.m_transforms.PushBack(transform);
             }
         }
     }

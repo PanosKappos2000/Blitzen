@@ -3,23 +3,18 @@
 
 namespace BlitzenEngine
 {
-    void UpdateRendererTransform(RendererPtrType pRenderer, RendererTransformUpdateContext& context)
-    {
-        pRenderer->UpdateObjectTransform(context);
-    }
-
+    
     void UpdateDynamicObjects(RendererPtrType pRenderer, BlitzenCore::EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext)
     {
-		auto& pDynamics{ pEntityManager->m_pDynamicObjects };
-        for (auto pObject : pDynamics)
+        for (auto pEntity : pEntityManager->m_pDynamicEntities)
         {
-            pObject->Update(blitzenContext);
+            pEntity->Update(blitzenContext);
 
             switch (blitzenContext.rendererEvent)
             {
             case BlitzenEngine::RendererEvent::RENDERER_TRANSFORM_UPDATE:
             {
-                UpdateRendererTransform(pRenderer, blitzenContext.rendererTransformUpdate);
+                pRenderer->UpdateObjectTransform(pEntity->GetTransformId(), pEntity->GetTransform());
                 break;
             }
             case BlitzenEngine::RendererEvent::MAX_RENDERER_EVENTS:
@@ -64,7 +59,7 @@ namespace BlitzenEngine
     {
         auto& textureContext{ pResources->m_textureManager };
         auto& meshContext{ pResources->m_meshContext };
-		auto& objectContext{ pManager->GetRenderContainer() };
+		auto& objectContext{ pManager->m_renderContainer };
 
         if (objectContext.m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
         {
@@ -132,7 +127,7 @@ namespace BlitzenEngine
     void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenCore::EntityManager* pManager)
     {
         const uint32_t ObjectCount = BlitzenCore::Ce_MaxDynamicObjectCount;
-        if (pManager->GetRenderCount() + ObjectCount > BlitzenCore::Ce_MaxRenderObjects)
+        if (pManager->m_renderContainer.m_renderCount + ObjectCount > BlitzenCore::Ce_MaxRenderObjects)
         {
             BLIT_ERROR("Could not add dynamic object renderer test, object count exceeds limit");
             return;
@@ -144,7 +139,7 @@ namespace BlitzenEngine
             RandomizeTransform(transform, 100.f, 1.f);
 
             // Type info thing kept here just because
-            if (!pManager->template AddObject<BlitzenEngine::ClientTest>(renders, meshes, transform, true, "kitten"))
+            if (!pManager->template AddObject<BlitzenEngine::ClientTest>(meshes, transform, true, "kitten"))
             {
                 BLIT_ERROR("Failed to create dynamic object");
                 return;
@@ -155,11 +150,11 @@ namespace BlitzenEngine
     bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, BlitzenCore::EntityManager* pManager)
     {
         LoadTestGeometry(pResources->m_meshContext);
-        //pResources->CreateSingleObjectForTesting();
+		CreateSingleRender(pManager->m_renderContainer, pResources->m_meshContext, BlitzenCore::Ce_DefaultMeshName, 5.f);
 
         if constexpr (BlitzenCore::Ce_LoadDynamicObjectTest)
         {
-            CreateDynamicObjectRendererTest(pManager->GetRenderContainer(), pResources->m_meshContext, pManager);
+            CreateDynamicObjectRendererTest(pManager->m_renderContainer, pResources->m_meshContext, pManager);
         }
 
         if (argc > 1)
@@ -167,7 +162,7 @@ namespace BlitzenEngine
             // Special argument. Loads heavy scene to stress test the culling algorithms
             if (strcmp(argv[1], "RenderingStressTest") == 0)
             {
-                LoadGeometryStressTest(pManager->GetRenderContainer(), pResources->m_meshContext, 3'000.f);
+                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 3'000.f);
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
@@ -182,7 +177,7 @@ namespace BlitzenEngine
 
             else if (strcmp(argv[1], "InstancingStressTest") == 0)
             {
-                LoadGeometryStressTest(pManager->GetRenderContainer(), pResources->m_meshContext, 2'000.f);
+                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 2'000.f);
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
@@ -198,7 +193,7 @@ namespace BlitzenEngine
             // Special argument. Test oblique near-plane clipping technique. Not working yet.
             else if (strcmp(argv[1], "OnpcReflectionTest") == 0)
             {
-                CreateObliqueNearPlaneClippingTestObject(pManager->GetRenderContainer(), pResources->m_meshContext);
+                CreateObliqueNearPlaneClippingTestObject(pManager->m_renderContainer, pResources->m_meshContext);
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)

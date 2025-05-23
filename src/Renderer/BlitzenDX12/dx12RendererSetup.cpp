@@ -589,7 +589,7 @@ namespace BlitzenDX12
 			}
 
 			DX12WRAPPER<ID3D12Resource> transformStaging;
-			if (!CreateVarSSBO(device, buffers.transformBuffer, transformStaging, transforms.GetSize(), transforms.Data(), dynamicTransformCount))
+			if (!CreateVarSSBO(device, buffers.transformBuffer, transformStaging, context.m_renders.m_transformCount, context.m_renders.m_transforms, dynamicTransformCount))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
 				return 0;
@@ -969,7 +969,7 @@ namespace BlitzenDX12
 				descriptorContext.srvHeapOffset, staticBuffers.surfaceBuffer.heapOffset[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
 
 			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, vars.transformBuffer.heapOffset, (UINT)transforms.GetSize(), sizeof(BlitzenEngine::MeshTransform));
+				descriptorContext.srvHeapOffset, vars.transformBuffer.heapOffset, context.m_renders.m_transformCount, sizeof(BlitzenEngine::MeshTransform));
 
 			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));

@@ -2,24 +2,23 @@
 
 namespace BlitzenEngine
 {
-	GameObject::GameObject(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
-		m_bDynamic{ isDynamic }, m_transformId{ 0 }
+	GameObject::GameObject(MeshTransform* pTransform, uint32_t transformId, Mesh* pMesh, bool isDynamic) :
+		m_pTransform{ pTransform }, m_transformId{transformId}, m_pMesh{pMesh}, m_bDynamic{isDynamic}
 	{
-		m_meshId = meshes.m_meshMap[meshName].meshId;
-		m_transformId = CreateRenderObjectFromMesh(renders, meshes, m_meshId, initialTransform, isDynamic);
+		
 	}
 
 #if !defined(LAMBDA_GAME_OBJECT_TEST)
 
-	ClientTest::ClientTest(RenderContainer& renders, MeshResources& meshes, bool isDynamic, BlitzenEngine::MeshTransform& initialTransform, const char* meshName) :
-		GameObject{ renders, meshes, isDynamic, initialTransform, meshName }
+	ClientTest::ClientTest(MeshTransform* pTransform, uint32_t transformId, Mesh* pMesh, bool isDynamic) :
+		GameObject{ pTransform, transformId, pMesh, isDynamic }
 	{
 
 	}
 
 	void ClientTest::Update(BlitzenWorld::BlitzenWorldContext& context)
 	{
-		RotateObject(m_yaw, m_pitch, m_speed, GetTransformId(), context);
+		RotateObject(m_yaw, m_pitch, m_speed, GetTransform(), context);
 	}
 
 	void GameObject::Update(BlitzenWorld::BlitzenWorldContext& context)
@@ -28,7 +27,7 @@ namespace BlitzenEngine
 	}
 #endif
 	
-	void RotateObject(float& yaw, float& pitch, float speed, uint32_t transformId, BlitzenWorld::BlitzenWorldContext& context)
+	void RotateObject(float& yaw, float& pitch, float speed, MeshTransform* pTransform, BlitzenWorld::BlitzenWorldContext& context)
 	{
 		float deltaTime{ float(context.pCoreClock->GetDeltaTime()) };
 
@@ -41,9 +40,7 @@ namespace BlitzenEngine
 		BlitML::vec3 xAxis(1.f, 0.f, 0.f);
 		BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, pitch, 0);
 
-		context.rendererTransformUpdate.pTransform = &context.pRenders->m_transforms[transformId];
-		context.rendererTransformUpdate.pTransform->orientation = yawOrientation + pitchOrientation;
-		context.rendererTransformUpdate.transformId = transformId;
+		pTransform->orientation = yawOrientation + pitchOrientation;
 
 		context.rendererEvent = BlitzenEngine::RendererEvent::RENDERER_TRANSFORM_UPDATE;
 	}

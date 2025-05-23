@@ -38,7 +38,7 @@ namespace BlitzenGL
 
         uint8_t SetupForRendering(BlitzenEngine::DrawContext& drawContext);
 
-        void UpdateObjectTransform(BlitzenEngine::RendererTransformUpdateContext& context);
+        void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
         void DrawWhileWaiting();
 
