@@ -9,9 +9,9 @@
 
 namespace BlitzenPlatform
 {
-    uint8_t FilepathExists(const char* path)
+    bool FilepathExists(const char* path)
     {
-        #if _MSC_VER
+        #if defined(_WIN32)
             struct _stat buffer;
             return _stat(path, &buffer) == 0;
         #else
@@ -20,14 +20,17 @@ namespace BlitzenPlatform
         #endif
     }
 
-    bool FileHandle::Open(const char* path, FileModes mode, uint8_t binary)
+    bool C_FILE_SCOPE::Open(const char* path, FileModes mode, uint8_t binary)
     {
-        // If the handle already has a valid handle, it asserts
-        BLIT_ASSERT(pHandle == nullptr)
+        if (m_pHandle != nullptr)
+        {
+            BLIT_ERROR("File handle already in use");
+            return false;
+        }
 
-            const char* modeStr;
+        const char* modeStr{""};
 
-        // Try to determine the file mode and turn it into a string
+        // FILE MODE
         if (((uint8_t)mode & (uint8_t)FileModes::Read) != 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) != 0)
         {
             modeStr = binary ? "w+b" : "w+";
@@ -46,9 +49,7 @@ namespace BlitzenPlatform
             return false;
         }
 
-        // If the previous check is done tries to read the file
         FILE* file = fopen(path, modeStr);
-        // If the file cannot be read, write an error message and exit
         if (!file)
         {
             BLIT_ERROR("Error opening file: '%s'", path);
@@ -56,11 +57,11 @@ namespace BlitzenPlatform
         }
 
         // If everything goes well update the file handle and exit successfully
-        pHandle = file;
+        m_pHandle = file;
         return true;
     }
 
-    bool FileHandle::Open(const char* path, const char* mode)
+    bool C_FILE_SCOPE::Open(const char* path, const char* mode)
     {
         // If the previous check is done tries to read the file
         FILE* file = fopen(path, mode);
@@ -72,32 +73,37 @@ namespace BlitzenPlatform
         }
 
         // If everything goes well update the file handle and exit successfully
-        pHandle = file;
+        m_pHandle = file;
         return true;
     }
 
-    FileHandle::~FileHandle()
+    C_FILE_SCOPE::~C_FILE_SCOPE()
     {
         Close();
     }
 
-    void FileHandle::Close()
+    void C_FILE_SCOPE::Close()
     {
-        if (pHandle) 
+        if (m_pHandle)
         {
-            fclose(reinterpret_cast<FILE*>(pHandle));
-            pHandle = nullptr;
+            fclose(m_pHandle);
+            m_pHandle = nullptr;
         }
     }
 
-    uint8_t FilesystemReadLine(FileHandle& handle, size_t maxLength, char** lineBuffer, size_t* pLength)
+    bool FilesystemReadLine(C_FILE_SCOPE& handle, size_t maxLength, char** lineBuffer, size_t* pLength)
     {
-        if (handle.pHandle && lineBuffer && pLength && maxLength > 0) 
+        if (handle.m_pHandle && lineBuffer && pLength && maxLength > 0) 
         {
             char* buffer = *lineBuffer;
+
             if (!buffer)
+            {
+                BLIT_ERROR("Line Buffer empty");
                 return 0;
-            if (fgets(buffer, static_cast<int32_t>(maxLength), (FILE*)handle.pHandle) != 0) 
+            }
+
+            if (fgets(buffer, int32_t(maxLength), handle.m_pHandle) != 0) 
             {
                 *pLength = strlen(*lineBuffer);
                 return 1;
@@ -106,70 +112,86 @@ namespace BlitzenPlatform
         return 0;
     }
 
-    uint8_t FilesystemWriteLine(FileHandle& handle, const char* text)
+    bool FilesystemWriteLine(C_FILE_SCOPE& handle, const char* text)
     {
-        if (handle.pHandle) 
+        if (handle.m_pHandle) 
         {
-            int32_t result = fputs(text, reinterpret_cast<FILE*>(handle.pHandle));
+            int32_t result = fputs(text, handle.m_pHandle);
             if (result != EOF) 
             {
-                result = fputc('\n', reinterpret_cast<FILE*>(handle.pHandle));
+                result = fputc('\n', handle.m_pHandle);
             }
+
             // Make sure to flush the stream so it is written to the file immediately.
             // This prevents data loss in the event of a crash.
-            fflush(reinterpret_cast<FILE*>(handle.pHandle));
+            fflush(handle.m_pHandle);
             return result != EOF;
         }
         return 0;
     }
 
-    uint8_t FilesystemRead(FileHandle& handle, size_t size, void* pDataRead, size_t* bytesRead)
+    bool FilesystemRead(C_FILE_SCOPE& handle, size_t size, void* pDataRead, size_t* bytesRead)
     {
-        if (handle.pHandle && pDataRead) 
+        if (handle.m_pHandle && pDataRead)
         {
-            *bytesRead = fread(pDataRead, 1, size, reinterpret_cast<FILE*>(handle.pHandle));
+            *bytesRead = fread(pDataRead, 1, size, handle.m_pHandle);
+
             if (*bytesRead != size) 
             {
-                return 0;
+                BLIT_ERROR("File read size error");
+                return false;
             }
-            return 1;
+
+            return true;
         }
-        return 0;
+
+        BLIT_ERROR("Null data for file read");
+        return false;
     }
 
-    uint8_t FilesystemWrite(FileHandle& handle, size_t size, const void* pData, size_t* bitesWritten)
+    bool FilesystemWrite(C_FILE_SCOPE& handle, size_t size, const void* pData, size_t* bitesWritten)
     {
-        if (handle.pHandle) 
+        if (handle.m_pHandle)
         {
-            *bitesWritten = fwrite(pData, 1, size, reinterpret_cast<FILE*>(handle.pHandle));
+            *bitesWritten = fwrite(pData, 1, size, handle.m_pHandle);
             if (*bitesWritten != size) 
             {
+				BLIT_ERROR("File write size error");
                 return 0;
             }
-            fflush(reinterpret_cast<FILE*>(handle.pHandle));
+
+            // ALWAYS FLUSH MATE - ANGE POSTECOGLOU
+            fflush(handle.m_pHandle);
             return 1;
         }
+
+		BLIT_ERROR("Null data for file write");
         return 0;
     }
 
-    uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::String& str, size_t* byteCount)
+    bool FilesystemReadAllBytes(C_FILE_SCOPE& handle, BlitCL::String& str, size_t* byteCount)
     {
-        if(handle.pHandle)
+        if(handle.m_pHandle)
         {
             // File size
-            fseek(reinterpret_cast<FILE*>(handle.pHandle), 0, SEEK_END);
-            uint64_t size = ftell(reinterpret_cast<FILE*>(handle.pHandle));
+            fseek(handle.m_pHandle, 0, SEEK_END);
+            uint64_t size = ftell(handle.m_pHandle);
 
-            rewind(reinterpret_cast<FILE*>(handle.pHandle));
-            //BlitCL::String str{size};
+            rewind(handle.m_pHandle);
+            
             str.Resize(size);
-            *byteCount = fread(str.Data(), 1, size, reinterpret_cast<FILE*>(handle.pHandle));
+
+            *byteCount = fread(str.Data(), 1, size, handle.m_pHandle);
             if(*byteCount != size)
             {
+                BLIT_ERROR("File read size error");
                 return 0;
             }
+
             return 1;
         }
+
+        BLIT_ERROR("Null data for file write");
         return 0;
     }
 }

@@ -217,21 +217,21 @@ target_include_directories(
 target_compile_definitions(BlitzenEngine PUBLIC
 
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
-                            BLIT_GDEV_EDT # Defines that the Engine is in Game Dev mode
+                            BLIT_GDEV_EDT # Activates standard main
                             BLIT_ASSERTIONS_ENABLED
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
-                            #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only if vulkan override is on)
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
-                            #BLITZEN_CLUSTER_CULLING # Makes Blitzen create clusters and tells APIs to go into cluster mode
-                            BLITZEN_DRAW_INSTANCED_CULLING
-                            #BLIT_VSYNC #Enables vsync logic for all APIs
-                            #LAMBDA_GAME_OBJECT_TEST # Switches the way game objects are updated (lambda vs inheritance)
+                            #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
+                            BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
+                            #BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
+                            #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
-                            #BLIT_DOUBLE_BUFFERING #Enables double buffering (DX12 ignores this, and activates it anyway)
+                            #BLIT_DOUBLE_BUFFERING # Enables double buffering (DX12 ignores this, and activates it anyway)
                             #BLIT_RAYTRACING
                             #BLIT_MESH_SHADERS
-                            #BLIT_DEPTH_PYRAMID_TEST
+                            #BLIT_DEPTH_PYRAMID_TEST # debug mode for HI-Z map
 
                             # Vulkan specific preprocessor macros
                             BLIT_VK_VALIDATION_LAYERS
@@ -239,8 +239,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
-                            #DX12_OCCLUSION_DRAW_CULL
-                            #DX12_TEMPORAL_DRAW_OCCLUSION
+                            #DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
+                            #DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
 
 # Linker file directories and libraries to link for linux and Windows
@@ -389,7 +389,7 @@ add_custom_command(TARGET BlitzenEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders/"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/VulkanShaders" "$<TARGET_FILE_DIR:BlitzenEngine>/VulkanShaders")
 
-# Copy the spir-v shaders to the target directory
+# Copy the HLSL shaders to the target directory
 add_custom_command(TARGET BlitzenEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders/"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_BINARY_DIR}/HlslShaders" "$<TARGET_FILE_DIR:BlitzenEngine>/HlslShaders")

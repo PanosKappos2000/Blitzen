@@ -28,11 +28,8 @@ namespace BlitzenCore
         }
     }
 
-    // Used by assertions to print to the window
     void ReportAssertionFailure(const char* expression, const char* message, const char* file, int32_t line)
     {
-        BlitLog(LogLevel::FATAL, 
-            "Assertion failure: %s, message: %s, in file: %s, line: %d", 
-            expression, message, file, line);
+        BlitLog(LogLevel::FATAL, "Assertion failure: %s, message: %s, in file: %s, line: %d", expression, message, file, line);
     }
 }

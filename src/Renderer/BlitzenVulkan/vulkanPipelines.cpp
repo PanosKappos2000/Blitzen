@@ -90,8 +90,8 @@ namespace BlitzenVulkan
     VkShaderModule& shaderModule, VkPipelineShaderStageCreateInfo& pipelineShaderStage, VkSpecializationInfo* pSpecializationInfo /*=nullptr*/)
     {
         // Tries to open the file with the provided path
-        BlitzenPlatform::FileHandle handle;
-        if (!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        BlitzenPlatform::C_FILE_SCOPE scopedFILE;
+        if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
         {
             return 0;
         }
@@ -99,7 +99,7 @@ namespace BlitzenVulkan
         // Reads the shader code in byte format
         size_t filesize = 0;
         BlitCL::String bytes;
-        if(!BlitzenPlatform::FilesystemReadAllBytes(handle, bytes, &filesize))
+        if(!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
         {
             return 0;
         }

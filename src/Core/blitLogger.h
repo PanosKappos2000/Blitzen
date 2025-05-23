@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cstdint>
 #include <cstddef>
+#include <utility>
 
 #define LOGGER_LEVEL_FATAL
 #define LOGGER_LEVEL_ERROR
@@ -44,22 +45,22 @@ namespace BlitzenCore
 
     constexpr uint32_t MessageBufferSize = 1500;
     
-    template<typename... Args>
-    void BlitLog(LogLevel level, const char* msg, Args... args)
+    template<typename... ARGS>
+    void BlitLog(LogLevel level, const char* msg, ARGS... args)
     {
-        char outMessage[MessageBufferSize];
-        snprintf(outMessage, MessageBufferSize, msg, args...);
+        char outMessage[MessageBufferSize]{""};
+        snprintf(outMessage, MessageBufferSize, msg, std::forward<ARGS>(args)...);
         char outMessage2[MessageBufferSize];
-        snprintf(outMessage2, MessageBufferSize,"%s%s\n", LogLevels[static_cast<uint8_t>(level)], outMessage);
+        snprintf(outMessage2, MessageBufferSize,"%s%s\n", LogLevels[uint8_t(level)], outMessage);
 
         bool isError = level < LogLevel::Info;
         if (isError) 
         {
-            BlitzenPlatform::PlatformConsoleError(outMessage2, static_cast<uint8_t>(level));
+            BlitzenPlatform::PlatformConsoleError(outMessage2, uint8_t(level));
         }
         else 
         {
-            BlitzenPlatform::PlatformConsoleWrite(outMessage2, static_cast<uint8_t>(level));
+            BlitzenPlatform::PlatformConsoleWrite(outMessage2, uint8_t(level));
         }
     }
 }
@@ -67,10 +68,10 @@ namespace BlitzenCore
 // Automatic constexpr functions for used in place of BlitLog
 // Preferable because most of them are deactivated on release configuration
 #if defined(LOGGER_LEVEL_FATAL)
-template<typename... Args>
-constexpr void BLIT_FATAL(const char* message, Args... args)
+template<typename... ARGS>
+constexpr void BLIT_FATAL(const char* message, ARGS... args)
 {
-    BlitzenCore::BlitLog(BlitzenCore::LogLevel::FATAL, message, args...);
+    BlitzenCore::BlitLog(BlitzenCore::LogLevel::FATAL, message, std::forward< ARGS>(args)...);
 }
 #else
 #define BLIT_FATAL(message, ...)    ;
@@ -83,10 +84,10 @@ constexpr void BLIT_FATAL(const char* message, Args... args)
 #endif
 
 #if defined(LOGGER_LEVEL_INFO)
-template<typename... Args>
-constexpr void BLIT_INFO(const char* message, Args... args)
+template<typename... ARGS>
+constexpr void BLIT_INFO(const char* message, ARGS... args)
 {
-    BlitzenCore::BlitLog(BlitzenCore::LogLevel::Info, message, args...);
+    BlitzenCore::BlitLog(BlitzenCore::LogLevel::Info, message, std::forward<ARGS>(args)...);
 }
 #else
 #define BLIT_INFO(message, ...)      ;
@@ -99,20 +100,20 @@ constexpr void BLIT_INFO(const char* message, Args... args)
 #endif
 
 #if defined(LOGGER_LEVEL_DEBUG)
-template<typename... Args>
-constexpr void BLIT_DBLOG(const char* message, Args... args)
+template<typename... ARGS>
+constexpr void BLIT_DBLOG(const char* message, ARGS... args)
 {
-    BlitzenCore::BlitLog(BlitzenCore::LogLevel::Debug, message, args...);
+    BlitzenCore::BlitLog(BlitzenCore::LogLevel::Debug, message, std::forward<ARGS>(args)...);
 }
 #else
 #define BLIT_DBLOG(message, ...)    ;
 #endif
 
 #if defined(LOGGER_LEVEL_TRACE)
-template<typename... Args>
-constexpr void BLIT_TRACE(const char* message, Args... args)
+template<typename... ARGS>
+constexpr void BLIT_TRACE(const char* message, ARGS... args)
 {
-    BlitzenCore::BlitLog(BlitzenCore::LogLevel::Trace, message, args...);
+    BlitzenCore::BlitLog(BlitzenCore::LogLevel::Trace, message, std::forward<ARGS>(args)...);
 }
 #else
 #define BLIT_TRACE(message, ...)    ;

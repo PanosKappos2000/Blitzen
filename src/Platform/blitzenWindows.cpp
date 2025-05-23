@@ -77,11 +77,12 @@ namespace BlitzenPlatform
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pEvents));
         ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
-
-        // These two need to be set before the renderer for some APIs
+        
+        // SAVE
         platform->m_hinstance = hInstance;
         platform->m_hwnd = hwnd;
         
+        // BACKEND RENDERING API INIT
 		auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
         if (!pBackendRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, platform))
         {

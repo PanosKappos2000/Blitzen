@@ -41,14 +41,14 @@ namespace BlitzenEngine
 		return true;
 	}
 
-	uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle)
+	uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE)
 	{
-		if (!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+		if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
 		{
 			return 0;
 		}
 
-		auto file = reinterpret_cast<FILE*>(handle.pHandle);
+		auto file = scopedFILE.m_pHandle;
 
 		unsigned int magic = 0;
 

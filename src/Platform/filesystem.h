@@ -9,7 +9,7 @@ namespace BlitzenPlatform
         Write = 0x2
     };
 
-    class FileHandle
+    class C_FILE_SCOPE
     {
     public:
         bool Open(const char* path, FileModes mode, uint8_t binary);
@@ -19,25 +19,23 @@ namespace BlitzenPlatform
         // Close the file manually
         void Close();
 
-        ~FileHandle();
+        ~C_FILE_SCOPE();
     public:
-        void* pHandle = nullptr;
+        FILE* m_pHandle{ nullptr };
     };
 
-    // Determines if filepath exists
-    uint8_t FilepathExists(const char* path);
+    bool FilepathExists(const char* path);
 
-    // Read a single line from a file and saves it into a line buffer, return 1/true if successful
-    uint8_t FilesystemReadLine(FileHandle& handle, size_t maxLength, char** lineBuffer, size_t* pLength);
-    uint8_t FilesystemWriteLine(FileHandle& handle, const char* text);
+    bool FilesystemReadLine(C_FILE_SCOPE& handle, size_t maxLength, char** lineBuffer, size_t* pLength);
 
-    // Takes a file handle and the size of the data to read and saves the data read to a buffer and the size to an integer pointer
-    uint8_t FilesystemRead(FileHandle& handle, size_t size, void* pDataRead, size_t* bytesRead);
-    uint8_t FilesystemWrite(FileHandle& handle, size_t size, const void* pData, size_t* bitesWritten);
+    bool FilesystemWriteLine(C_FILE_SCOPE& handle, const char* text);
 
-    // Takes a file handle and reads its content in byte form into a uint8_t buffer and its size into a byte count buffer
-    uint8_t FilesystemReadAllBytes(FileHandle& handle, uint8_t** pBytesRead, size_t* byteCount);
+    bool FilesystemRead(C_FILE_SCOPE& handle, size_t size, void* pDataRead, size_t* bytesRead);
+
+    bool FilesystemWrite(C_FILE_SCOPE& handle, size_t size, const void* pData, size_t* bitesWritten);
+
+    bool FilesystemReadAllBytes(C_FILE_SCOPE& handle, uint8_t** pBytesRead, size_t* byteCount);
 
     // This overload uses a (terrible) RAII wrapper instead of the linear allocator, so it should be prefered
-    uint8_t FilesystemReadAllBytes(FileHandle& handle, BlitCL::String& bytes, size_t* byteCount);
+    bool FilesystemReadAllBytes(C_FILE_SCOPE& handle, BlitCL::String& bytes, size_t* byteCount);
 }

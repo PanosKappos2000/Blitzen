@@ -49,7 +49,7 @@ namespace BlitzenDX12
 		return DXGI_FORMAT_UNKNOWN;
 	}
 
-	static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle, 
+	static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE,
 		DXGI_FORMAT& format, void* pData, uint32_t& blockSize)
 	{
 		format = GetDDSFormat(header, header10);
@@ -58,7 +58,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		auto file = reinterpret_cast<FILE*>(handle.pHandle);
+		auto file = scopedFILE.m_pHandle;
 		blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
 		auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
 		auto readSize = fread(pData, 1, imageSize, file);
@@ -148,8 +148,8 @@ namespace BlitzenDX12
 		// DDS data Loading
 		BlitzenEngine::DDS_HEADER header{};
 		BlitzenEngine::DDS_HEADER_DXT10 header10{};
-		BlitzenPlatform::FileHandle handle{};
-		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle))
+		BlitzenPlatform::C_FILE_SCOPE scopedFILE{};
+		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, scopedFILE))
 		{
 			BLIT_ERROR("Failed to open texture file");
 			return 0;
@@ -173,7 +173,7 @@ namespace BlitzenDX12
 		// Loads the texture data
 		auto& tex2D{ m_tex2DList[m_textureCount] };
 		uint32_t blockSize{ 0 };
-		if (!LoadDDSImageData(header, header10, handle, tex2D.format, pData, blockSize))
+		if (!LoadDDSImageData(header, header10, scopedFILE, tex2D.format, pData, blockSize))
 		{
 			BLIT_ERROR("Failed to load texture data");
 			return 0;

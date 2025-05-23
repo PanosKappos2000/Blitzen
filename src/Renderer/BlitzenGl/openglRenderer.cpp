@@ -42,8 +42,8 @@ namespace BlitzenGL
         // This is a consequence of having a shared Load image function with Vulkan
 		BlitzenEngine::DDS_HEADER header;
 		BlitzenEngine::DDS_HEADER_DXT10 header10;
-        BlitzenPlatform::FileHandle handle;
-        if(BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle) && LoadDDSTextureData(header, header10, handle, store.Data()))
+        BlitzenPlatform::C_FILE_SCOPE scopedFILE;
+        if(BlitzenEngine::OpenDDSImageFile(filepath, header, header10, scopedFILE) && LoadDDSTextureData(header, header10, scopedFILE, store.Data()))
         {
             // Create and bind the texture
             glGenTextures(1, &m_textures[m_textureCount].handle);
@@ -70,23 +70,24 @@ namespace BlitzenGL
         }
     }
 
-    bool OpenglRenderer::LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header, 
-        BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& fileHandle, 
-        void* pData)
+    bool OpenglRenderer::LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, void* pData)
     {
         size_t blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
-        size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, 
-            header.dwHeight, header.dwMipMapCount, static_cast<unsigned int>(blockSize));
+        size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, uint32_t(blockSize));
 
-		auto file = reinterpret_cast<FILE*>(fileHandle.pHandle);
+		auto file = scopedFILE.m_pHandle;
 
         size_t readSize = fread(pData, 1, imageSize, file);
 
         if (!pData)
+        {
             return false;
+        }
 
         if (readSize != imageSize)
+        {
             return false;
+        }
 
         return true;
     }
@@ -274,9 +275,12 @@ namespace BlitzenGL
     uint8_t CompileShader(GlShader& shader, GLenum shaderType, const char* filepath)
     {
         // Open the file using the handle wrapper, fClose should be called by the destructor
-        BlitzenPlatform::FileHandle handle;
-        if(!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        BlitzenPlatform::C_FILE_SCOPE scopedFILE;
+        if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        {
+            BLIT_ERROR("Could not open shader file");
             return 0;
+        }
         
         // This string will hold the final shader source code
         std::string shaderSource;
@@ -286,7 +290,7 @@ namespace BlitzenGL
         placeholder.resize(1000);
         char* data = (char*)placeholder.c_str();
         // Goes through every line, save the code and the size
-        while(BlitzenPlatform::FilesystemReadLine(handle, 1000, &data, &lineLen))
+        while(BlitzenPlatform::FilesystemReadLine(scopedFILE, 1000, &data, &lineLen))
         {
             // Appends to the final source code string only up to lineLen
             shaderSource.append(placeholder.c_str(), lineLen);

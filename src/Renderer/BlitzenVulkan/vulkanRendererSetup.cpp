@@ -7,7 +7,7 @@
 
 namespace BlitzenVulkan
 {
-    static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& handle,
+    static uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE,
         VkFormat& vulkanImageFormat, void* pData)
     {
         vulkanImageFormat = GetDDSVulkanFormat(header, header10);
@@ -25,7 +25,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        auto file = reinterpret_cast<FILE*>(handle.pHandle);
+        auto file = scopedFILE.m_pHandle;
         auto readSize = fread(pData, 1, imageSize, file);
 
         if (!pData)
@@ -65,14 +65,14 @@ namespace BlitzenVulkan
         // Initializes necessary data for DDS texture
 		BlitzenEngine::DDS_HEADER header{};
 		BlitzenEngine::DDS_HEADER_DXT10 header10{};
-        BlitzenPlatform::FileHandle handle{};
+        BlitzenPlatform::C_FILE_SCOPE scopedFILE{};
         VkFormat format = VK_FORMAT_UNDEFINED;
-        if(!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, handle))
+        if(!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, scopedFILE))
         {
             BLIT_ERROR("Failed to open texture file");
             return 0;
         }
-		if (!LoadDDSImageData(header, header10, handle, format, pData))
+		if (!LoadDDSImageData(header, header10, scopedFILE, format, pData))
 		{
             BLIT_ERROR("Failed to load texture data");
             return 0;

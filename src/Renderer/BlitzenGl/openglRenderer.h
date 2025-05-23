@@ -23,8 +23,7 @@ namespace BlitzenGL
     {
         uint32_t drawCount;
 
-        inline CullData(uint32_t dc) 
-            :drawCount{dc} 
+        inline CullData(uint32_t dc) :drawCount{dc} 
         {}
     };
 
@@ -49,8 +48,7 @@ namespace BlitzenGL
 
     private:
 
-        bool LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::FileHandle& fileHandle,
-            void* pData);
+        bool LoadDDSTextureData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& fileHandle, void* pData);
 
     private:
 

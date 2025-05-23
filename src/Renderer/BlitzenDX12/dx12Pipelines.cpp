@@ -162,14 +162,14 @@ namespace BlitzenDX12
     size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes)
     {
         // Tries to open the file with the provided path
-        BlitzenPlatform::FileHandle handle;
-        if (!handle.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        BlitzenPlatform::C_FILE_SCOPE scopedFILE;
+        if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
         {
             return 0;
         }
         // Reads the shader code in byte format
         size_t filesize = 0;
-        if (!BlitzenPlatform::FilesystemReadAllBytes(handle, bytes, &filesize))
+        if (!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
         {
             return 0;
         }
