@@ -1,5 +1,5 @@
 #pragma once
-#include "blitMemory.h"
+#include "Core/blitMemory.h"
 #include "BlitCL/blitPfn.h"
 #include "blitKeys.h"
 #include "Core/BlitzenWorld/blitzenWorld.h"

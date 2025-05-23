@@ -9,7 +9,7 @@
 #include "Renderer/Interface/blitRenderer.h"
 #include <GL/wglew.h>
 #include "platform.h"
-#include "Core/blitEvents.h"
+#include "Core/Events/blitEvents.h"
 #include "Core/blitzenEngine.h"
 #include "Game/blitCamera.h"
 

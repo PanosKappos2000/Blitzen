@@ -1,6 +1,6 @@
 #include "Core/blitzenEngine.h"
 #include "Renderer/Interface/blitRenderer.h"
-#include "Core/blitEvents.h"
+#include "Core/Events/blitEvents.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>

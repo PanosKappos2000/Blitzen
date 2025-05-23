@@ -6,30 +6,33 @@
 
 namespace BlitCL
 {
-    template<typename T, size_t S>
+    template<class T, size_t SIZE>
     class StaticArray
     {
     public:
         StaticArray()
         {
-            static_assert(S > 0);
+            static_assert(SIZE > 0);
         }
 
         StaticArray(const T& data)
         {
-            static_assert(S > 0);
+            static_assert(SIZE > 0);
 
-            for (size_t i = 0; i < S; ++i)
+            for (size_t i = 0; i < SIZE; ++i)
             {
                 BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
             }
         }
 
+        StaticArray(const StaticArray<T, SIZE>& array) = delete;
+		StaticArray operator = (const StaticArray<T, SIZE>& array) = delete;
+
         StaticArray(T&& data)
         {
-            static_assert(S > 0);
+            static_assert(SIZE > 0);
 
-            for (size_t i = 0; i < S; ++i)
+            for (size_t i = 0; i < SIZE; ++i)
             {
                 BlitzenCore::BlitMemCopy(&m_array[i], &data, sizeof(T));
             }
@@ -37,7 +40,7 @@ namespace BlitCL
 
         using Iterator = DynamicArrayIterator<T>;
         Iterator begin() { return Iterator(m_array); }
-        Iterator end() { return Iterator(m_array + S); }
+        Iterator end() { return Iterator(m_array + SIZE); }
 
         inline T& operator [] (size_t idx) { return m_array[idx]; }
 
@@ -50,6 +53,6 @@ namespace BlitCL
         
         }
     private:
-        T m_array[S];
+        T m_array[SIZE];
     };
 }

@@ -14,19 +14,23 @@ add_executable(BlitzenEngine
                 # ENGINE CORE
                 src/Core/blitzenEngine.h
                 src/Core/blitMemory.h
+                src/Core/blitzenEntry.cpp
+                # LOGGING / DEBUG
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
                 src/Core/blitAssert.h
-                src/Core/blitKeys.h
-                src/Core/blitEvents.h
-                src/Core/blitzenEvents.cpp
-                src/Core/blitTimeManager.h
-                src/Core/blitzenTimeManager.cpp
+                # EVENTS
+                src/Core/Events/blitKeys.h
+                src/Core/Events/blitEvents.h
+                src/Core/Events/blitzenEvents.cpp
+                src/Core/Events/blitTimeManager.h
+                src/Core/Events/blitzenTimeManager.cpp
+                # WORLD (ALL SYSTEMS)
                 src/Core/BlitzenWorld/blitzenWorld.h 
                 src/Core/BlitzenWorld/blitzenWorldPrivate.h
+                # ENTITIES
                 src/Core/Entities/blitEntityManager.h
                 src/Core/Entities/blitzenEntityManager.cpp
-                src/Core/blitzenEntry.cpp
 
                 # ENGINE RENDERING 
                 src/Renderer/Interface/blitRenderer.h
@@ -82,12 +86,15 @@ add_executable(BlitzenEngine
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
 
+                # BLITCL
                 src/BlitCL/blitPfn.h
                 src/BlitCL/blitzenContainerLibrary.h
                 src/BlitCL/DynamicArray.h
                 src/BlitCL/blitString.h
                 src/BlitCL/blitSmartPointer.h
                 src/BlitCL/blitArray.h
+                src/BlitCL/blitHashMap.h
+                src/BlitCL/blitArrayIterator.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h
@@ -110,22 +117,26 @@ add_executable(BlitzenEngine
 )
 ELSEIF(UNIX)
 add_executable(BlitzenEngine
-
+                # ENGINE CORE
                 src/Core/blitzenEngine.h
                 src/Core/blitMemory.h
+                src/Core/blitzenEntry.cpp
+                # LOGGING / DEBUG
                 src/Core/blitLogger.h
                 src/Core/blitzenLogger.cpp
                 src/Core/blitAssert.h
-                src/Core/blitKeys.h
-                src/Core/blitEvents.h
-                src/Core/blitzenEvents.cpp
-                src/Core/blitTimeManager.h
-                src/Core/blitzenTimeManager.cpp
-                src/Core/blitzenWorld.h 
-                src/Core/blitzenWorldPrivate.h
-                src/Core/blitEntityManager.h
-                src/Core/blitzenEntityManager.cpp
-                src/Core/blitzenEntry.cpp
+                # EVENTS
+                src/Core/Events/blitKeys.h
+                src/Core/Events/blitEvents.h
+                src/Core/Events/blitzenEvents.cpp
+                src/Core/Events/blitTimeManager.h
+                src/Core/Events/blitzenTimeManager.cpp
+                # WORLD (ALL SYSTEMS)
+                src/Core/BlitzenWorld/blitzenWorld.h 
+                src/Core/BlitzenWorld/blitzenWorldPrivate.h
+                # ENTITIES
+                src/Core/Entities/blitEntityManager.h
+                src/Core/Entities/blitzenEntityManager.cpp
 
                 # ENGINE RENDERING 
                 src/Renderer/Interface/blitRenderer.h
@@ -160,12 +171,15 @@ add_executable(BlitzenEngine
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
 
+                # BLITCL
                 src/BlitCL/blitPfn.h
                 src/BlitCL/blitzenContainerLibrary.h
                 src/BlitCL/DynamicArray.h
                 src/BlitCL/blitString.h
                 src/BlitCL/blitSmartPointer.h
                 src/BlitCL/blitArray.h
+                src/BlitCL/blitHashMap.h
+                src/BlitCL/blitArrayIterator.h
 
                 src/BlitzenMathLibrary/blitML.h
                 src/BlitzenMathLibrary/blitMLTypes.h

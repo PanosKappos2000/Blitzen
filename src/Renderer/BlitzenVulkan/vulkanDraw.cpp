@@ -2,7 +2,7 @@
 #include "vulkanCommands.h"
 #include "vulkanPipelines.h"
 #include "vulkanResourceFunctions.h"
-#include "Core/blitTimeManager.h"
+#include "Core/Events/blitTimeManager.h"
 
 // Not necessary since I have my own math library
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
