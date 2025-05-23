@@ -36,7 +36,7 @@ namespace BlitzenDX12
 		}
 	}
 
-	static void RecreateSwapchain(IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
+	static void RecreateSwapchain(BlitzenEngine::DrawContext& context, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
 		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets, 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle, Dx12Renderer::FrameTools* pTools)
 	{
@@ -50,7 +50,7 @@ namespace BlitzenDX12
 		}
 
 		pSwapchain->ReleaseAndGetAddressOf();
-		auto hwnd = reinterpret_cast<HWND>(BlitzenPlatform::GetWindowHandle());
+		auto hwnd = context.m_pPlatform->m_hwnd;
 		BLIT_ASSERT(CreateSwapchain(factory, queue, newWidth, newHeight, hwnd, pSwapchain));
 		
 		// Automatically releases when trying to create. Creates 
@@ -543,7 +543,7 @@ namespace BlitzenDX12
 			m_swapchainWidth = (UINT)context.m_camera.transformData.windowWidth;
 			m_swapchainHeight = (UINT)context.m_camera.transformData.windowHeight;
 
-			RecreateSwapchain(m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain, 
+			RecreateSwapchain(context, m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain, 
 				m_swapchainBackBuffers, m_depthBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), 
 				m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameTools.Data());
 

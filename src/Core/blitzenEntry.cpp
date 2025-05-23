@@ -1,13 +1,12 @@
 #include "Core/blitzenEngine.h"
 #include "Renderer/Interface/blitRenderer.h"
 #include "Core/Events/blitEvents.h"
+#include "Platform/blitPlatformContext.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 #include <iostream>
-
-using BLITZEN_WORLD_CONTEXT = BlitCL::StaticArray<void*, BlitzenCore::Ce_WorldContextSystemsCount>;
 
 using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
@@ -17,17 +16,17 @@ using EntitySystemMemory = BlitCL::SmartPointer<BlitzenCore::EntityManager, Blit
 #if defined(BLIT_GDEV_EDT)
 int main(int argc, char* argv[])
 {
-    /* ENGINE SYSTEMS INITIALIZATION*/
+    /* ENGINE SYSTEMS INITIALIZATION */
     BlitzenCore::Engine engine;
     engine.m_state = BlitzenCore::EngineState::LOADING;
 
     BlitzenWorld::BlitzenPrivateContext blitzenPrivateContext{};
     BlitzenWorld::BlitzenWorldContext blitzenWorldContext{};
+    // Private context points back to world context
 	blitzenPrivateContext.pBlitzenContext = &blitzenWorldContext;
 
     BlitzenCore::InitLogging();
 
-    BLITZEN_WORLD_CONTEXT ppWORLD_CONTEXT;
     blitzenPrivateContext.pEngineState = &engine.m_state;
 
     BlitzenEngine::CameraContainer cameraSystem;
@@ -49,7 +48,8 @@ int main(int argc, char* argv[])
     EventSystemMemory eventSystem;
     eventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
 
-    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenCore::Ce_BlitzenVersion, eventSystem.Data(), renderer.Data()));
+    BlitzenPlatform::PlatformContext platform{};
+    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenCore::Ce_BlitzenVersion, &platform, eventSystem.Data(), renderer.Data()));
 
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
@@ -58,10 +58,10 @@ int main(int argc, char* argv[])
     blitzenPrivateContext.pRenderingResources = renderingResources.Data();
     BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
 
-    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager};
+    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager, &platform};
 
 
-    // Loading resources
+    // LOADING RESOURCES
     std::mutex mtx;
     std::condition_variable loadingDoneConditional;
     std::atomic<bool> loadingDone(false);
@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
     // Placeholder loop, waiting to load
     while (engine.m_state == BlitzenCore::EngineState::LOADING)
     {
-        coreClock.Update();
+        BlitzenCore::UpdateWorldClock(coreClock);
 
         BlitzenPlatform::PlatformPumpMessages();
         eventSystem->UpdateInput(0.f);
@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
 
         if(engine.m_state != BlitzenCore::EngineState::SUSPENDED)
         {
-            coreClock.Update();
+            BlitzenCore::UpdateWorldClock(coreClock);
 
             BlitzenEngine::UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
 
@@ -145,11 +145,10 @@ int main(int argc, char* argv[])
     loadingDoneConditional.wait(lock, [&] { return loadingDone.load(); });
 
     // Actual shutdown
-    BlitzenPlatform::PlatformShutdown();
+    BlitzenPlatform::PlatformShutdown(&platform);
 }
-
-
 #else
+// this was supposed to test my string but I have forgotten about it
 int main()
 {
     BlitzenCore::MemoryManagerState blitzenMemory;

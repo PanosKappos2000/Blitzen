@@ -64,7 +64,7 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight, HWND hwnd)
+    uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pPlatform)
     {
         #if !defined(BLIT_DOUBLE_BUFFERING)
             BLIT_WARN("Double buffering enabled by default for Dx12");
@@ -131,8 +131,7 @@ namespace BlitzenDX12
 			}
 		}
 
-		if (!CreateSwapchain(m_factory.Get(), m_commandQueue.Get(), windowWidth, windowHeight, 
-            hwnd, &m_swapchain))
+		if (!CreateSwapchain(m_factory.Get(), m_commandQueue.Get(), windowWidth, windowHeight, pPlatform->m_hwnd, &m_swapchain))
 		{
 			BLIT_ERROR("Failed to create swapchain");
             if (CheckForDeviceRemoval(m_device.Get()))

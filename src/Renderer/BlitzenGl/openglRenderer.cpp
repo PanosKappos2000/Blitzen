@@ -7,9 +7,9 @@ namespace BlitzenGL
 {
     OpenglRenderer* OpenglRenderer::s_pRenderer;
 
-    bool OpenglRenderer::Init(uint32_t windowWidth, uint32_t windowHeight)
+    bool OpenglRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform)
     {
-        if(!BlitzenPlatform::CreateOpenglDrawContext())
+        if(!BlitzenPlatform::CreateOpenglDrawContext(pPlatform))
         {
             BLIT_ERROR("Opengl failed to load")
             return false;
@@ -230,7 +230,7 @@ namespace BlitzenGL
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, context.m_renders.m_renderCount, sizeof(IndirectDrawCommand));
 
         // Swaps the framebuffer
-	    BlitzenPlatform::OpenglSwapBuffers();
+	    BlitzenPlatform::OpenglSwapBuffers(context.m_pPlatform);
     }
 
     void OpenglRenderer::DrawWhileWaiting()

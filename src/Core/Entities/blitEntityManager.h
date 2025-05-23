@@ -13,8 +13,8 @@ namespace BlitzenCore
         template<class T>
         using Entity = BlitCL::SmartPointer<T, BlitzenCore::AllocationType::Entity>;
 
-        BlitCL::StaticArray<Entity<BlitzenEngine::GameObject>, BlitzenCore::Ce_MaxDynamicObjectCount> m_gameObjects;
-        uint32_t m_objectCount = 0;
+        Entity<BlitzenEngine::GameObject> m_entities[BlitzenCore::Ce_MaxDynamicObjectCount];
+        uint32_t m_entityCount = 0;
 
         BlitzenEngine::GameObject* m_pDynamicEntities[Ce_MaxDynamicObjectCount]{ nullptr };
         uint32_t m_dynamicEntityCount{ 0 };
@@ -22,10 +22,10 @@ namespace BlitzenCore
         BlitzenEngine::RenderContainer m_renderContainer;
 
         template<class DERIVED, typename... ARGS>
-        inline bool AddObject(BlitzenEngine::MeshResources& meshes, BlitzenEngine::MeshTransform& initialTransform, bool isDynamic, 
+        bool AddObject(BlitzenEngine::MeshResources& meshes, BlitzenEngine::MeshTransform& initialTransform, bool isDynamic, 
 			const char* meshName, ARGS&&... args)
         {
-            if (m_objectCount >= BlitzenCore::Ce_MaxDynamicObjectCount)
+            if (m_entityCount >= BlitzenCore::Ce_MaxDynamicObjectCount)
             {
                 BLIT_ERROR("Maximum object count reached");
                 return false;
@@ -41,7 +41,7 @@ namespace BlitzenCore
 			}
 
             // Adds a derived game object
-            auto& entity = m_gameObjects[m_objectCount++];
+            auto& entity = m_entities[m_entityCount++];
             entity.MakeAs<DERIVED>(&m_renderContainer.m_transforms[transformId], transformId, pMesh, isDynamic, std::forward<ARGS>(args)...);
 
             if (entity->IsDynamic())

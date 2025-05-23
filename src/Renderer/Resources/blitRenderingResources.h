@@ -1,7 +1,5 @@
 #pragma once
 #include "Mesh/blitMeshes.h"
-#include "BlitCL/blitArray.h"
-#include "Game/blitCamera.h"
 #include "Textures/blitTextures.h"
 
 

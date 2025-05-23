@@ -2,14 +2,6 @@
 #include "Core/blitzenEngine.h"
 #include "Platform/platform.h"
 
-namespace BlitzenPlatform
-{
-    // Sets up clock frequency
-    void PlatfrormSetupClock();
-    // Get delta time based on the above
-    double PlatformGetAbsoluteTime();
-}
-
 namespace BlitzenCore
 {
     class WorldTimerManager
@@ -18,19 +10,10 @@ namespace BlitzenCore
 
         WorldTimerManager();
 
-        inline void Update()
-        {
-            m_elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime() - m_startTime;
-            m_deltaTime = m_elapsedTime - m_previousTime;
-            m_previousTime = m_elapsedTime;
-        }
-
         inline double GetDeltaTime()
         {
             return m_deltaTime;
         }
-
-    private:
 
         double m_startTime;
 
@@ -39,5 +22,17 @@ namespace BlitzenCore
         double m_previousTime;
 
         double m_deltaTime;
+
+        double m_clockFrequency;
     };
+
+    void UpdateWorldClock(WorldTimerManager& clock);
+}
+
+namespace BlitzenPlatform
+{
+    
+    void PlatfrormSetupClock(BlitzenCore::WorldTimerManager* pClock);
+    
+    double PlatformGetAbsoluteTime(double Frequence);
 }

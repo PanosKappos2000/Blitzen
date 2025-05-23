@@ -1,3 +1,5 @@
+#include "blitPlatformContext.h"
+
 #if defined(_WIN32)
 #include <cstring>
 #include <windows.h>
@@ -15,32 +17,11 @@
 
 namespace BlitzenPlatform
 {
-
-    struct PlatformState
-    {
-        HINSTANCE hinstance;
-        HWND hwnd;
-
-        // gl render context
-        HGLRC hglrc;
-
-        BlitzenCore::EventSystem* pEvents;
-    };
-
-    inline PlatformState inl_pPlatformState;
-
-    void* GetWindowHandle() { return inl_pPlatformState.hwnd; }
-
     inline double inl_clockFrequency;
     inline LARGE_INTEGER inl_startTime;
 
     // WINDOW CALLBACK
     LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM w_param, LPARAM l_param);
-
-    size_t GetPlatformMemoryRequirements()
-    {
-        return sizeof(PlatformState);
-    }
 
     static HWND CreateStandardWindow(HINSTANCE hInstance, LONG width, LONG height, const char* appName)
     {
@@ -77,15 +58,12 @@ namespace BlitzenPlatform
             return nullptr;
         }
 
-        // Success
-        ShowWindow(hwnd, SW_SHOW);
-        UpdateWindow(hwnd);
         return hwnd;
     }
 
-    bool PlatformStartup(const char* appName, void* pEvents, void* pRenderer)
+    bool PlatformStartup(const char* appName, void* pPlatform, void* pEvents, void* pRenderer)
     {
-        inl_pPlatformState.pEvents = reinterpret_cast<BlitzenCore::EventSystem*>(pEvents);
+		auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
 
         HINSTANCE hInstance = GetModuleHandleA(nullptr);
         HWND hwnd = CreateStandardWindow(hInstance, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, appName);
@@ -95,12 +73,17 @@ namespace BlitzenPlatform
             return false;
         }
 
+        // UPDATES
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pEvents));
+        ShowWindow(hwnd, SW_SHOW);
+        UpdateWindow(hwnd);
+
         // These two need to be set before the renderer for some APIs
-        inl_pPlatformState.hinstance = hInstance;
-        inl_pPlatformState.hwnd = hwnd;
+        platform->m_hinstance = hInstance;
+        platform->m_hwnd = hwnd;
         
 		auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
-        if (!pBackendRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, hwnd))
+        if (!pBackendRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, platform))
         {
             BLIT_FATAL("Failed to initialize rendering API");
             return false;
@@ -110,37 +93,41 @@ namespace BlitzenPlatform
         return true;
     }
 
-    void PlatfrormSetupClock()
+    void PlatfrormSetupClock(BlitzenCore::WorldTimerManager* pClock)
     {
         LARGE_INTEGER frequency;
         QueryPerformanceFrequency(&frequency);
-        inl_clockFrequency = 1.0 / static_cast<double>(frequency.QuadPart);
-        QueryPerformanceCounter(&inl_startTime);
+
+        pClock->m_clockFrequency = 1.0 / double(frequency.QuadPart);
+        //QueryPerformanceCounter(&inl_startTime); LARGE_INTEGER startTime never used
     }
 
-    double PlatformGetAbsoluteTime()
+    double PlatformGetAbsoluteTime(double clockFrequency)
     {
         LARGE_INTEGER nowTime;
         QueryPerformanceCounter(&nowTime);
-        return static_cast<double>(nowTime.QuadPart) * inl_clockFrequency;
+        return double(nowTime.QuadPart) * clockFrequency;
     }
 
-    void PlatformShutdown()
+    void PlatformShutdown(void* pPlatform)
     {
-        if (inl_pPlatformState.hglrc)
+        auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
+
+        if (platform->m_hglrc)
         {
-            wglDeleteContext(inl_pPlatformState.hglrc);
+            wglDeleteContext(platform->m_hglrc);
         }
 
-        if (inl_pPlatformState.hwnd)
+        if (platform->m_hwnd)
         {
-            DestroyWindow(inl_pPlatformState.hwnd);
+            DestroyWindow(platform->m_hwnd);
         }
     }
 
     bool PlatformPumpMessages()
     {
         MSG message;
+
         while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&message);
@@ -177,24 +164,29 @@ namespace BlitzenPlatform
         Sleep(static_cast<DWORD>(ms));
     }
 
-    uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
+    uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator, void* pPlatform)
     {
+        auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
+
         VkWin32SurfaceCreateInfoKHR info = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
-        info.hinstance = inl_pPlatformState.hinstance;
-        info.hwnd = inl_pPlatformState.hwnd;
+        info.hinstance = platform->m_hinstance;
+        info.hwnd = platform->m_hwnd;
 
         auto res = vkCreateWin32SurfaceKHR(instance, &info, pAllocator, &surface);
         if (res != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create Vulkan surface");
             return 0;
         }
         return 1;
     }
 
-    uint8_t CreateOpenglDrawContext()
+    uint8_t CreateOpenglDrawContext(void* pPlatform)
     {
+        auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
+
         // Get the device context of the window
-        auto hdc = GetDC(inl_pPlatformState.hwnd);
+        auto hdc = GetDC(platform->m_hwnd);
 
         // Pixel format
         PIXELFORMATDESCRIPTOR pfd;
@@ -210,44 +202,50 @@ namespace BlitzenPlatform
         int formatIndex = ChoosePixelFormat(hdc, &pfd);
         if(!formatIndex)
         {
+			BLIT_ERROR("Failed to choose pixel format");
             return 0;
         }
         if(!SetPixelFormat(hdc, formatIndex, &pfd))
         {
+			BLIT_ERROR("Failed to set pixel format");
             return 0;
         }
         if (!DescribePixelFormat(hdc, formatIndex, sizeof(pfd), &pfd))
         {
+			BLIT_ERROR("Failed to describe pixel format");
             return 0;
         }
 
         if ((pfd.dwFlags & PFD_SUPPORT_OPENGL) != PFD_SUPPORT_OPENGL)
         {
+			BLIT_ERROR("Pixel format does not support OpenGL");
             return 0;
         }
 
         // Create the dummy render context
-        inl_pPlatformState.hglrc = wglCreateContext(hdc);
+        platform->m_hglrc = wglCreateContext(hdc);
 
         // Make this the current context so that glew can be initialized
-        if(!wglMakeCurrent(hdc, inl_pPlatformState.hglrc))
+        if(!wglMakeCurrent(hdc, platform->m_hglrc))
         {
+			BLIT_ERROR("Failed to make OpenGL context current");
             return 0;
         }
 
         // Initializes glew
         if (glewInit() != GLEW_OK)
         {
+			BLIT_ERROR("Failed to initialize GLEW");
             return 0;
         }
 
         // With glew now available, extension function pointers can be accessed and a better gl context can be retrieved
         // So the old render context is deleted and the device is released
-        wglDeleteContext(inl_pPlatformState.hglrc);
-        ReleaseDC(inl_pPlatformState.hwnd, hdc);
+        wglDeleteContext(platform->m_hglrc);
+        ReleaseDC(platform->m_hwnd, hdc);
 
         // Get a new device context
-        hdc = GetDC(inl_pPlatformState.hwnd);
+        hdc = GetDC(platform->m_hwnd);
 
         // Choose a pixel format with attributes
         const int attribList[] =
@@ -273,13 +271,13 @@ namespace BlitzenPlatform
         // Create a new render context with attributes (latest opengl version)
         int const createAttribs[] = {WGL_CONTEXT_MAJOR_VERSION_ARB, 4, WGL_CONTEXT_MINOR_VERSION_ARB,  6,
 	    WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB, 0};
-        inl_pPlatformState.hglrc = wglCreateContextAttribsARB(hdc, 0, createAttribs);
+        platform->m_hglrc = wglCreateContextAttribsARB(hdc, 0, createAttribs);
 
         // Set the gl render context as the new one
-        return (wglMakeCurrent(hdc, inl_pPlatformState.hglrc));
+        return (wglMakeCurrent(hdc, platform->m_hglrc));
     }
 
-    void OpenglSwapBuffers()
+    void OpenglSwapBuffers(BlitzenPlatform::PlatformContext* pPlatform)
     {
         #if defined(BLIT_VSYNC)
             wglSwapIntervalEXT(1);
@@ -287,11 +285,13 @@ namespace BlitzenPlatform
             wglSwapIntervalEXT(0);
         #endif
 
-        wglSwapLayerBuffers(GetDC(inl_pPlatformState.hwnd), WGL_SWAP_MAIN_PLANE);
+        wglSwapLayerBuffers(GetDC(pPlatform->m_hwnd), WGL_SWAP_MAIN_PLANE);
     }
 
-    LRESULT CALLBACK Win32ProcessMessage(HWND winWindow, uint32_t msg, WPARAM w_param, LPARAM l_param)
+    LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM w_param, LPARAM l_param)
     {
+        auto pEventSystem = reinterpret_cast<BlitzenCore::EventSystem*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
         switch(msg)
         {
             case WM_ERASEBKGND:
@@ -301,7 +301,7 @@ namespace BlitzenPlatform
             }
             case WM_CLOSE:
             {
-                return inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::EngineShutdown);
+                return pEventSystem->FireEvent(BlitzenCore::BlitEventType::EngineShutdown);
             }
 
             case WM_DESTROY:
@@ -313,12 +313,12 @@ namespace BlitzenPlatform
             {
                 // Get the updated size.
                 RECT rect;
-                GetClientRect(winWindow, &rect);
+                GetClientRect(hwnd, &rect);
 
                 uint32_t width = rect.right - rect.left;
                 uint32_t height = rect.bottom - rect.top;
 
-                auto& camera{ inl_pPlatformState.pEvents->m_blitzenContext.pCameraContainer->GetMainCamera()};
+                auto& camera{ pEventSystem->m_blitzenContext.pCameraContainer->GetMainCamera()};
 
                 auto oldWidth = camera.transformData.windowWidth;
                 auto oldHeight = camera.transformData.windowHeight;
@@ -326,7 +326,7 @@ namespace BlitzenPlatform
                 camera.transformData.windowWidth = float(width);
                 camera.transformData.windowHeight = float(height);
 
-                if (!inl_pPlatformState.pEvents->FireEvent(BlitzenCore::BlitEventType::WindowUpdate))
+                if (!pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowUpdate))
                 {
                     camera.transformData.windowWidth = oldWidth;
                     camera.transformData.windowHeight = oldHeight;
@@ -344,7 +344,7 @@ namespace BlitzenPlatform
 
                 auto key = BlitzenCore::BlitKey(w_param);
 
-                inl_pPlatformState.pEvents->InputProcessKey(key, bPressed);
+                pEventSystem->InputProcessKey(key, bPressed);
 
                 break;
             } 
@@ -355,7 +355,7 @@ namespace BlitzenPlatform
                 int32_t mouseX = GET_X_LPARAM(l_param);
                 int32_t mouseY = GET_Y_LPARAM(l_param);
 
-                inl_pPlatformState.pEvents->InputProcessMouseMove(mouseX, mouseY);
+                pEventSystem->InputProcessMouseMove(mouseX, mouseY);
 
                 break;
             } 
@@ -367,7 +367,7 @@ namespace BlitzenPlatform
                     // Flatten the input to an OS-independent (-1, 1)
                     zDelta = (zDelta < 0) ? -1 : 1;
 
-                    inl_pPlatformState.pEvents->InputProcessMouseWheel(zDelta);
+                    pEventSystem->InputProcessMouseWheel(zDelta);
                 }
                 break;
             }
@@ -405,12 +405,12 @@ namespace BlitzenPlatform
                 }
                 if (button != BlitzenCore::MouseButton::MaxButtons)
                 {
-                    inl_pPlatformState.pEvents->InputProcessButton(button, bPressed);
+                    pEventSystem->InputProcessButton(button, bPressed);
                 }
                 break;
             } 
         }
-        return DefWindowProcA(winWindow, msg, w_param, l_param); 
+        return DefWindowProcA(hwnd, msg, w_param, l_param); 
     }
 
         void* PlatformMalloc(size_t size, uint8_t aligned)

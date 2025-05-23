@@ -70,20 +70,20 @@ namespace BlitML
 
     static uint8_t sRandSeeded = 0;
 
-    inline int32_t Rand() 
+    inline int32_t Rand(BlitzenCore::WorldTimerManager& clock) 
     {
         if(!sRandSeeded)
         {
-            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime()));
+            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime(clock.m_clockFrequency)));
             sRandSeeded = 1;
         }
         return rand();
     }
-    inline int32_t RandInRange(int32_t min, int32_t max)
+    inline int32_t RandInRange(BlitzenCore::WorldTimerManager& clock, int32_t min, int32_t max)
     {
         if (!sRandSeeded) 
         {
-            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime()));
+            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime(clock.m_clockFrequency)));
             sRandSeeded = 1;
         }
         return (rand() % (max - min + 1)) + min;

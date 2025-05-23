@@ -91,7 +91,6 @@ namespace BlitzenDX12
     constexpr UINT Ce_InstanceBufferRangeElement = 4;
 
 
-
     /* DESCRIPTORS FOR culling shaders */
     constexpr uint32_t Ce_CullSrvRangeCount = 3;
 

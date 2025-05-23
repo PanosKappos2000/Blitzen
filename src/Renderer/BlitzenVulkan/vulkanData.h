@@ -497,5 +497,5 @@ namespace BlitzenVulkan
 namespace BlitzenPlatform
 {
     // Creates the surface used by the vulkan renderer. Implemented on Platform.cpp
-    uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator);
+    uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator, void* pPlatform);
 }

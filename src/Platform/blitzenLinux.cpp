@@ -32,9 +32,6 @@ namespace BlitzenPlatform
             xcb_screen_t* pScreen;
             xcb_atom_t wm_protocols;
             xcb_atom_t wm_delete_win;
-
-            BlitzenCore::EventSystemState* pEventSystem;
-            BlitzenCore::InputSystemState* pInputSystem;
         };
 
         inline PlatformState s_state;

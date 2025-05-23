@@ -3,6 +3,7 @@
 #include "BlitCL/DynamicArray.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
 #include "Renderer/Interface/blitRendererInterface.h"
+#include "Platform/blitPlatformContext.h"
 
 namespace BlitzenGL
 {
@@ -30,7 +31,7 @@ namespace BlitzenGL
     class OpenglRenderer
     {
     public:
-        bool Init(uint32_t windowWidth, uint32_t windowHeight);
+        bool Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform);
 
         ~OpenglRenderer();
 
@@ -102,7 +103,7 @@ namespace BlitzenGL
 
 namespace BlitzenPlatform
 {
-    uint8_t CreateOpenglDrawContext();
+    uint8_t CreateOpenglDrawContext(void* pPlatform);
 
-    void OpenglSwapBuffers();
+    void OpenglSwapBuffers(BlitzenPlatform::PlatformContext* pPlatform);
 }

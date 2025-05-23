@@ -139,7 +139,8 @@ namespace BlitzenEngine
             RandomizeTransform(transform, 100.f, 1.f);
 
             // Type info thing kept here just because
-            if (!pManager->template AddObject<BlitzenEngine::ClientTest>(meshes, transform, true, "kitten"))
+            bool bObjectAdded{ pManager->template AddObject<BlitzenEngine::ClientTest>(meshes, transform, true, "kitten") };
+            if (!bObjectAdded/*!pManager->template AddObject<BlitzenEngine::ClientTest>(meshes, transform, true, "kitten")*/)
             {
                 BLIT_ERROR("Failed to create dynamic object");
                 return;

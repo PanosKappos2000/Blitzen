@@ -902,7 +902,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle)
+    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform)
     {
         if(!CreateInstance(m_instance, &m_debugMessenger))
         {
@@ -910,7 +910,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator))
+        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator, pPlatform))
         {
             BLIT_ERROR("Failed to create Vulkan window surface");
             return 0;

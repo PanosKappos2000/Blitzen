@@ -4,6 +4,7 @@
 #include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
 #include "Core/blitLogger.h"
+#include "Platform/blitPlatformContext.h"
 
 namespace BlitzenDX12
 {
@@ -18,7 +19,7 @@ namespace BlitzenDX12
         Dx12Renderer operator = (const Dx12Renderer& dx) = delete;
     
         // API initialization. Basically loads thing that do not need to depend on CPU resources
-        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, HWND hwnd);
+        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pContext);
     
         // 2nd part of initialization. Initializes handles that require context from the CPU's loaded resources
         uint8_t SetupForRendering(BlitzenEngine::DrawContext& context);
