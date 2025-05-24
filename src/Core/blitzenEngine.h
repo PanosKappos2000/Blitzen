@@ -136,17 +136,17 @@ namespace BlitzenCore
     inline void LogAllocation(AllocationType alloc, size_t size, AllocationAction action)
     {
         static size_t totalAllocated{ 0 };
-        size_t typeAllocations[static_cast<size_t>(AllocationType::MaxTypes)]{ 0 };
+        static size_t typeAllocations[size_t(AllocationType::MaxTypes)]{ 0 };
 
         if (action == AllocationAction::ALLOC)
         {
             totalAllocated += size;
-            typeAllocations[static_cast<uint8_t>(alloc)] += size;
+            typeAllocations[uint8_t(alloc)] += size;
         }
         else if (action == AllocationAction::FREE)
         {
             totalAllocated -= size;
-            typeAllocations[static_cast<uint8_t>(alloc)] -= size;
+            typeAllocations[uint8_t(alloc)] -= size;
         }
         else if (action == AllocationAction::FREE_ALL)
         {

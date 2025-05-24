@@ -1,6 +1,6 @@
 #include "dx12Renderer.h"
 #include "dx12Commands.h"
-#include "Platform/platform.h"
+#include "Platform/blitPlatform.h"
 #include "dx12Resources.h"
 #include "dx12Pipelines.h"
 #include "dx12RNDResources.h"

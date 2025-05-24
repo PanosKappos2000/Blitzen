@@ -34,6 +34,7 @@ namespace BlitzenEngine
 			return false;
 		}
         
+        // Does not return false by design, might change later.
         if (!pResources->m_textureManager.AddTexture(BlitzenCore::Ce_DefaultTextureName))
         {
             BLIT_ERROR("Something went wrong with texture map");

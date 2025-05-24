@@ -3,7 +3,7 @@
 #include "Renderer/Interface/blitRendererInterface.h"
 #include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
-#include "Core/blitLogger.h"
+#include "Core/DbLog/blitLogger.h"
 #include "Platform/blitPlatformContext.h"
 
 namespace BlitzenDX12

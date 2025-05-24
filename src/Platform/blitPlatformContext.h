@@ -17,6 +17,8 @@ namespace BlitzenPlatform
 		HWND m_hwnd;
 		HINSTANCE m_hinstance;
 		HGLRC m_hglrc;
+
+		~PlatformContext();
 	};
 #elif defined(linux)
 	struct PlatformContext
@@ -29,6 +31,8 @@ namespace BlitzenPlatform
 		xcb_atom_t m_wmDeleteWin;
 
 		void* m_pEvents;
+
+		~PlatformContext();
 	};
 #else
 	static_assert(true, "Platform not supported");

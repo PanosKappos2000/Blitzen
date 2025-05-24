@@ -342,10 +342,10 @@ namespace BlitzenCore
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
-        auto deltaTime = static_cast<float>(blitzenContext.pCoreClock->GetDeltaTime());
+        auto deltaTime = float(blitzenContext.pCoreClock->m_deltaTime);
 
-        auto xMovement = static_cast<float>(currentX - previousX);
-        auto yMovement = static_cast<float>(currentY - previousY);
+        auto xMovement = float(currentX - previousX);
+        auto yMovement = float(currentY - previousY);
 
         BlitzenEngine::RotateCamera(camera, deltaTime, yMovement, xMovement);
 

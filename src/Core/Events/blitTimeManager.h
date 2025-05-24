@@ -1,6 +1,5 @@
 #pragma once
 #include "Core/blitzenEngine.h"
-#include "Platform/platform.h"
 
 namespace BlitzenCore
 {
@@ -9,11 +8,6 @@ namespace BlitzenCore
     public:
 
         WorldTimerManager();
-
-        inline double GetDeltaTime()
-        {
-            return m_deltaTime;
-        }
 
         double m_startTime;
 

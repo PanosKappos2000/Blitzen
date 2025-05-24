@@ -1,7 +1,7 @@
 #pragma once
 #include <stdio.h>
 #include "blitDDS.h"
-#include "Platform/filesystem.h"
+#include "Platform/Filesystem/blitCFILE.h"
 #include "BlitCL/blitHashMap.h"
 #include "Renderer/Resources/renderingResourcesTypes.h"
 

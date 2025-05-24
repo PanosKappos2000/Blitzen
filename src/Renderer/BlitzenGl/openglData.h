@@ -1,5 +1,5 @@
 #pragma once
-#include "Core/blitLogger.h"
+#include "Core/DbLog/blitLogger.h"
 #define GLEW_STATIC
 #include <GL/glew.h>
 

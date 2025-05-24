@@ -13,9 +13,9 @@ add_executable(BlitzenEngine
                 src/Core/blitMemory.h
                 src/Core/blitzenEntry.cpp
                 # LOGGING / DEBUG
-                src/Core/blitLogger.h
-                src/Core/blitzenLogger.cpp
-                src/Core/blitAssert.h
+                src/Core/DbLog/blitLogger.h
+                src/Core/DbLog/blitLogger.cpp
+                src/Core/DbLog/blitAssert.h
                 # EVENTS
                 src/Core/Events/blitKeys.h
                 src/Core/Events/blitEvents.h
@@ -28,6 +28,31 @@ add_executable(BlitzenEngine
                 # ENTITIES
                 src/Core/Entities/blitEntityManager.h
                 src/Core/Entities/blitzenEntityManager.cpp
+
+
+                # BLITZEN CONTAINER LIBRARY
+                src/BlitCL/blitPfn.h
+                src/BlitCL/blitzenContainerLibrary.h
+                src/BlitCL/DynamicArray.h
+                src/BlitCL/blitString.h
+                src/BlitCL/blitSmartPointer.h
+                src/BlitCL/blitArray.h
+                src/BlitCL/blitHashMap.h
+                src/BlitCL/blitArrayIterator.h
+
+                # BLITZEN MATH LIBRARY
+                src/BlitzenMathLibrary/blitML.h
+                src/BlitzenMathLibrary/blitMLTypes.h
+                
+
+                # PLATFORM
+                src/Platform/blitPlatformContext.h
+                src/Platform/blitPlatform.h
+                src/Platform/blitzenWindows.cpp
+                src/Platform/blitzenLinux.cpp
+                src/Platform/Filesystem/blitCFILE.h
+                src/Platform/Filesystem/blitCFILE.cpp
+
 
                 # ENGINE RENDERING 
                 src/Renderer/Interface/blitRenderer.h
@@ -78,31 +103,13 @@ add_executable(BlitzenEngine
                 src/Renderer/BlitzenDX12/dx12RendererSetup.cpp
                 src/Renderer/BlitzenDX12/dx12Draw.cpp
 
+
                 src/Game/blitObject.h
                 src/Game/blitzenObject.cpp
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
-
-                # BLITCL
-                src/BlitCL/blitPfn.h
-                src/BlitCL/blitzenContainerLibrary.h
-                src/BlitCL/DynamicArray.h
-                src/BlitCL/blitString.h
-                src/BlitCL/blitSmartPointer.h
-                src/BlitCL/blitArray.h
-                src/BlitCL/blitHashMap.h
-                src/BlitCL/blitArrayIterator.h
-
-                src/BlitzenMathLibrary/blitML.h
-                src/BlitzenMathLibrary/blitMLTypes.h
                 
-                src/Platform/platform.h
-                src/Platform/blitzenWindows.cpp
-                src/Platform/blitzenLinux.cpp
-                src/Platform/filesystem.h
-                src/Platform/filesystem.cpp
-                src/Platform/blitPlatformContext.h
-                
+
                 src/VendorCode/fast_obj.h
                 src/VendorCode/objparser.cpp
                 src/VendorCode/Meshoptimizer/indexgenerator.cpp
@@ -120,9 +127,9 @@ add_executable(BlitzenEngine
                 src/Core/blitMemory.h
                 src/Core/blitzenEntry.cpp
                 # LOGGING / DEBUG
-                src/Core/blitLogger.h
-                src/Core/blitzenLogger.cpp
-                src/Core/blitAssert.h
+                src/Core/DbLog/blitLogger.h
+                src/Core/DbLog/blitLogger.cpp
+                src/Core/DbLog/blitAssert.h
                 # EVENTS
                 src/Core/Events/blitKeys.h
                 src/Core/Events/blitEvents.h
@@ -135,6 +142,31 @@ add_executable(BlitzenEngine
                 # ENTITIES
                 src/Core/Entities/blitEntityManager.h
                 src/Core/Entities/blitzenEntityManager.cpp
+
+
+                # BLITZEN CONTAINER LIBRARY
+                src/BlitCL/blitPfn.h
+                src/BlitCL/blitzenContainerLibrary.h
+                src/BlitCL/DynamicArray.h
+                src/BlitCL/blitString.h
+                src/BlitCL/blitSmartPointer.h
+                src/BlitCL/blitArray.h
+                src/BlitCL/blitHashMap.h
+                src/BlitCL/blitArrayIterator.h
+
+                # BLITZEN MATH LIBRARY
+                src/BlitzenMathLibrary/blitML.h
+                src/BlitzenMathLibrary/blitMLTypes.h
+                
+
+                # PLATFORM
+                src/Platform/blitPlatformContext.h
+                src/Platform/blitPlatform.h
+                src/Platform/blitzenWindows.cpp
+                src/Platform/blitzenLinux.cpp
+                src/Platform/Filesystem/blitCFILE.h
+                src/Platform/Filesystem/blitCFILE.cpp
+
 
                 # ENGINE RENDERING 
                 src/Renderer/Interface/blitRenderer.h
@@ -170,25 +202,6 @@ add_executable(BlitzenEngine
                 src/Game/blitzenObject.cpp
                 src/Game/blitCamera.h
                 src/Game/blitzenCamera.cpp
-
-                # BLITCL
-                src/BlitCL/blitPfn.h
-                src/BlitCL/blitzenContainerLibrary.h
-                src/BlitCL/DynamicArray.h
-                src/BlitCL/blitString.h
-                src/BlitCL/blitSmartPointer.h
-                src/BlitCL/blitArray.h
-                src/BlitCL/blitHashMap.h
-                src/BlitCL/blitArrayIterator.h
-
-                src/BlitzenMathLibrary/blitML.h
-                src/BlitzenMathLibrary/blitMLTypes.h
-                
-                src/Platform/platform.h
-                src/Platform/blitzenWindows.cpp
-                src/Platform/blitzenLinux.cpp
-                src/Platform/filesystem.h
-                src/Platform/filesystem.cpp
                 
                 src/VendorCode/fast_obj.h
                 src/VendorCode/objparser.cpp
@@ -219,7 +232,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_GDEV_EDT # Activates standard main
                             BLIT_ASSERTIONS_ENABLED
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode

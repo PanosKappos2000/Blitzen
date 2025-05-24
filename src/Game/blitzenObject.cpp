@@ -29,7 +29,7 @@ namespace BlitzenEngine
 	
 	void RotateObject(float& yaw, float& pitch, float speed, MeshTransform* pTransform, BlitzenWorld::BlitzenWorldContext& context)
 	{
-		float deltaTime{ float(context.pCoreClock->GetDeltaTime()) };
+		float deltaTime{ float(context.pCoreClock->m_deltaTime) };
 
 		yaw += speed * deltaTime;
 		pitch += speed * deltaTime;

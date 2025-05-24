@@ -2,6 +2,7 @@
 #include "Renderer/Interface/blitRenderer.h"
 #include "Core/Events/blitEvents.h"
 #include "Platform/blitPlatformContext.h"
+#include "Platform/blitPlatform.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -48,14 +49,16 @@ int main(int argc, char* argv[])
     EventSystemMemory eventSystem;
     eventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
 
+    RndResourcesMemory renderingResources;
+    renderingResources.Make();
+    blitzenPrivateContext.pRenderingResources = renderingResources.Data();
+
+    // Platform preferably created last and destroyed first
     BlitzenPlatform::PlatformContext platform{};
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenCore::Ce_BlitzenVersion, &platform, eventSystem.Data(), renderer.Data()));
 
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
-    RndResourcesMemory renderingResources;
-    renderingResources.Make();
-    blitzenPrivateContext.pRenderingResources = renderingResources.Data();
     BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
 
     BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager, &platform};
@@ -103,9 +106,9 @@ int main(int argc, char* argv[])
     {
         BlitzenCore::UpdateWorldClock(coreClock);
 
-        BlitzenPlatform::PlatformPumpMessages(&platform);
+        BlitzenPlatform::DispatchEvents(&platform);
         eventSystem->UpdateInput(0.f);
-        renderer->DrawWhileWaiting(float(coreClock.GetDeltaTime()));
+        renderer->DrawWhileWaiting(float(coreClock.m_deltaTime));
     }
 
     // Extra setup step needed by dx12
@@ -117,7 +120,7 @@ int main(int argc, char* argv[])
     // MAIN LOOP
     while(engine.m_state == BlitzenCore::EngineState::RUNNING || engine.m_state == BlitzenCore::EngineState::SUSPENDED)
     {
-        if(!BlitzenPlatform::PlatformPumpMessages(&platform))
+        if(!BlitzenPlatform::DispatchEvents(&platform))
         {
             engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
         }
@@ -126,7 +129,7 @@ int main(int argc, char* argv[])
         {
             BlitzenCore::UpdateWorldClock(coreClock);
 
-            BlitzenEngine::UpdateCamera(mainCamera, static_cast<float>(coreClock.GetDeltaTime()));
+            BlitzenEngine::UpdateCamera(mainCamera, float(coreClock.m_deltaTime));
 
 			BlitzenEngine::UpdateDynamicObjects(renderer.Data(), entityManager.Data(), blitzenWorldContext);
             
@@ -137,15 +140,12 @@ int main(int argc, char* argv[])
         // Reset window resize, TODO: Why is this here??????
         mainCamera.transformData.bWindowResize = false;
 
-        eventSystem->UpdateInput(coreClock.GetDeltaTime());
+        eventSystem->UpdateInput(coreClock.m_deltaTime);
     }
 
 
     std::unique_lock<std::mutex> lock(mtx);
     loadingDoneConditional.wait(lock, [&] { return loadingDone.load(); });
-
-    // Actual shutdown
-    BlitzenPlatform::PlatformShutdown(&platform);
 }
 #else
 // this was supposed to test my string but I have forgotten about it

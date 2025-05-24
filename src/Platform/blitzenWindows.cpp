@@ -10,17 +10,14 @@
 #include "Renderer/BlitzenGl/openglRenderer.h"
 #include "Renderer/Interface/blitRenderer.h"
 #include <GL/wglew.h>
-#include "platform.h"
+#include "blitPlatform.h"
 #include "Core/Events/blitEvents.h"
 #include "Core/blitzenEngine.h"
 #include "Game/blitCamera.h"
 
 namespace BlitzenPlatform
 {
-    inline double inl_clockFrequency;
-    inline LARGE_INTEGER inl_startTime;
-
-    // WINDOW CALLBACK
+    // EVENT CALLBACK
     LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM w_param, LPARAM l_param);
 
     static HWND CreateStandardWindow(HINSTANCE hInstance, LONG width, LONG height, const char* appName)
@@ -94,6 +91,14 @@ namespace BlitzenPlatform
         return true;
     }
 
+    void BlitzenSleep(uint64_t ms)
+    {
+        Sleep(static_cast<DWORD>(ms));
+    }
+
+    /*
+        TIME MANAGER
+    */
     void PlatfrormSetupClock(BlitzenCore::WorldTimerManager* pClock)
     {
         LARGE_INTEGER frequency;
@@ -110,34 +115,9 @@ namespace BlitzenPlatform
         return double(nowTime.QuadPart) * clockFrequency;
     }
 
-    void PlatformShutdown(void* pPlatform)
-    {
-        auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
-
-        if (platform->m_hglrc)
-        {
-            wglDeleteContext(platform->m_hglrc);
-        }
-
-        if (platform->m_hwnd)
-        {
-            DestroyWindow(platform->m_hwnd);
-        }
-    }
-
-    bool PlatformPumpMessages(void* pPlatform)
-    {
-        MSG message;
-
-        while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&message);
-            DispatchMessage(&message);
-        }
-
-        return true;
-    }
-
+    /*
+        LOGGING
+    */
     static void BlitWinLogSetup(const char* message, uint8_t color, HANDLE consoleHandle)
     {
         static uint8_t levels[6] = { 64, 4, 6, 2, 1, 8 };
@@ -160,11 +140,9 @@ namespace BlitzenPlatform
         BlitWinLogSetup(message, color, consoleHandle);
     }
 
-    void PlatformSleep(uint64_t ms)
-    {
-        Sleep(static_cast<DWORD>(ms));
-    }
-
+    /*
+        VULKAN
+    */
     uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator, void* pPlatform)
     {
         auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
@@ -182,6 +160,9 @@ namespace BlitzenPlatform
         return 1;
     }
 
+    /*
+        OPENGL
+    */
     uint8_t CreateOpenglDrawContext(void* pPlatform)
     {
         auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
@@ -289,6 +270,23 @@ namespace BlitzenPlatform
         wglSwapLayerBuffers(GetDC(pPlatform->m_hwnd), WGL_SWAP_MAIN_PLANE);
     }
 
+    /*
+        EVENT SYSTEM
+    */
+    bool DispatchEvents(void* pPlatform)
+    {
+        MSG message;
+
+        while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&message);
+            DispatchMessage(&message);
+        }
+
+        return true;
+    }
+
+    // CALLBACK
     LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM w_param, LPARAM l_param)
     {
         auto pEventSystem = reinterpret_cast<BlitzenCore::EventSystem*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
@@ -414,29 +412,47 @@ namespace BlitzenPlatform
         return DefWindowProcA(hwnd, msg, w_param, l_param); 
     }
 
-        void* PlatformMalloc(size_t size, uint8_t aligned)
+    void* PlatformMalloc(size_t size, uint8_t aligned)
+    {
+        return malloc(size);
+    }
+
+    void PlatformFree(void* pBlock, uint8_t aligned)
+    {
+        free(pBlock);
+    }
+
+    void* PlatformMemZero(void* pBlock, size_t size)
+    {
+        return memset(pBlock, 0, size);
+    }
+
+    void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
+    {
+        return memcpy(pDst, pSrc, size);
+    }
+
+    void* PlatformMemSet(void* pDst, int32_t value, size_t size)
+    {
+        return memset(pDst, value, size);
+    }
+
+    static void PlatformShutdown(PlatformContext* P_HANDLE)
+    {
+        if (P_HANDLE->m_hglrc)
         {
-            return malloc(size);
+            wglDeleteContext(P_HANDLE->m_hglrc);
         }
 
-        void PlatformFree(void* pBlock, uint8_t aligned)
+        if (P_HANDLE->m_hwnd)
         {
-            free(pBlock);
+            DestroyWindow(P_HANDLE->m_hwnd);
         }
+    }
 
-        void* PlatformMemZero(void* pBlock, size_t size)
-        {
-            return memset(pBlock, 0, size);
-        }
-
-        void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
-        {
-            return memcpy(pDst, pSrc, size);
-        }
-
-        void* PlatformMemSet(void* pDst, int32_t value, size_t size)
-        {
-            return memset(pDst, value, size);
-        }
+    PlatformContext::~PlatformContext()
+    {
+		PlatformShutdown(this);
+    }
 }
 #endif

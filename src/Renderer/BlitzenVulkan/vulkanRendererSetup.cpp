@@ -3,7 +3,6 @@
 #include "vulkanCommands.h"
 #include "vulkanRenderer.h"
 #include "vulkanPipelines.h"
-#include "Platform/filesystem.h"
 
 namespace BlitzenVulkan
 {

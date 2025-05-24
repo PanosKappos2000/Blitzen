@@ -1,8 +1,8 @@
 #pragma once
 #include "Core/blitzenEngine.h"
 #if defined(BLIT_REIN_SANT_ENG)
-    #include "Core/blitLogger.h"
-    #include "Core/blitAssert.h"
+    #include "Core/DbLog/blitLogger.h"
+    #include "Core/DbLog/blitAssert.h"
 #else
     #include <stdio.h>
 #endif

@@ -39,8 +39,6 @@ namespace BlitzenVulkan
         // When a dynamic object moves, it should call this function to update the staging buffer
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
-        // Static function that allows access to vulkan renderer at any scope
-        inline static VulkanRenderer* GetRendererInstance() { return m_pThisRenderer; }
         inline VulkanStats GetStats() const { return m_stats; }
 
     public:
@@ -296,9 +294,6 @@ namespace BlitzenVulkan
         Queue m_presentQueue;
         Queue m_computeQueue;
         Queue m_transferQueue;
-
-        // Static singleton pointer
-        static VulkanRenderer* m_pThisRenderer;
     };
 
 

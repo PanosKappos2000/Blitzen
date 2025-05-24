@@ -13,7 +13,7 @@
 #else
 #include <unistd.h>  // usleep
 #endif
-#include "platform.h"
+#include "blitPlatform.h"
 #include "Core/Events/blitEvents.h"
 #include "Renderer/BlitzenVulkan/vulkanData.h"
 #include <vulkan/vulkan_xcb.h>
@@ -110,11 +110,30 @@ namespace BlitzenPlatform
             return true;
         }
 
+        void BlitzenSleep(uint64_t ms)
+        {
+            #if _POSIX_C_SOURCE >= 199309L
+            struct timespec ts;
+            ts.tv_sec = ms / 1000;
+            ts.tv_nsec = (ms % 1000) * 1000 * 1000;
+            nanosleep(&ts, 0);
+            #else
+            if (ms >= 1000)
+            {
+                sleep(ms / 1000);
+            }
+            usleep((ms % 1000) * 1000);
+            #endif
+        }
+
         void PlatfrormSetupClock(BlitzenCore::WorldTimerManager* pClock)
         {
             
         }
 
+        /*
+			TIME MANAGER
+        */
         double PlatformGetAbsoluteTime(double frequence) 
         {
             struct timespec now;
@@ -124,17 +143,43 @@ namespace BlitzenPlatform
             return now.tv_sec + now.tv_nsec * 0.000000001;
         }
 
-        void PlatformShutdown(void* pPlatform) 
+        /*
+            LOGGING
+        */
+        void PlatformConsoleWrite(const char* message, uint8_t color)
         {
-            auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
-
-            // yeah... we got to turn this shit back on, because it's global for the OS
-            // TODO: Put this somewhere So that it is done automatically(maybe the handle could have a Platform dependent destructor?)
-            XAutoRepeatOn(P_HANDLE->m_pDisplay);
-
-            xcb_destroy_window(P_HANDLE->m_pConnection, P_HANDLE->m_window);
+            // FATAL,ERROR,WARN,INFO,DEBUG,TRACE
+            const char* colorStrings[] = { "0;41", "1;31", "1;33", "1;32", "1;34", "1;30" };
+            printf("\033[%sm%s\033[0m", colorStrings[color], message);
+        }
+        void PlatformConsoleError(const char* message, uint8_t color)
+        {
+            // FATAL,ERROR,WARN,INFO,DEBUG,TRACE
+            const char* colorStrings[] = { "0;41", "1;31", "1;33", "1;32", "1;34", "1;30" };
+            printf("\033[%sm%s\033[0m", colorStrings[color], message);
         }
 
+        /*
+            VULKAN
+        */
+        uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator, void* pPlatform)
+        {
+            auto P_HANDLE{ reinterpret_cast<PlatformContext*>(pPlatform) };
+
+            VkXcbSurfaceCreateInfoKHR info{};
+            info.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+            info.connection = P_HANDLE->m_pConnection;
+            info.window = P_HANDLE->m_window;
+
+            VkResult res = vkCreateXcbSurfaceKHR(instance, &info, pAllocator, &surface);
+            if (res != VK_SUCCESS)
+                return 0;
+            return 1;
+        }
+
+        /*
+            EVENT SYSTEM
+        */
         struct scoped_linux_event
         {
             xcb_generic_event_t* m_pEvent;
@@ -147,7 +192,7 @@ namespace BlitzenPlatform
                 }
             }
         };
-        bool PlatformPumpMessages(void* pPlatform) 
+        bool DispatchEvents(void* pPlatform) 
         {
             auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
             auto pEventSystem{reinterpret_cast<BlitzenCore::EventSystem*>(P_HANDLE->m_pEvents)};
@@ -266,74 +311,6 @@ namespace BlitzenPlatform
 
             return !quitFlagged;
         }
-
-        void* PlatformMalloc(size_t size, uint8_t aligned)
-        {
-            return malloc(size);
-        }
-
-        void PlatformFree(void* pBlock, uint8_t aligned)
-        {
-            free(pBlock);
-        }
-
-        void* PlatformMemZero(void* pBlock, size_t size)
-        {
-            return memset(pBlock, 0, size);
-        }
-        void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
-        {
-            return memcpy(pDst, pSrc, size);
-        }
-        void* PlatformMemSet(void* pDst, int32_t value, size_t size)
-        {
-            return memset(pDst, value, size);
-        }
-
-        void PlatformConsoleWrite(const char* message, uint8_t color)
-        {
-            // FATAL,ERROR,WARN,INFO,DEBUG,TRACE
-            const char* colorStrings[] = { "0;41", "1;31", "1;33", "1;32", "1;34", "1;30" };
-            printf("\033[%sm%s\033[0m", colorStrings[color], message);
-        }
-        void PlatformConsoleError(const char* message, uint8_t color)
-        {
-            // FATAL,ERROR,WARN,INFO,DEBUG,TRACE
-            const char* colorStrings[] = { "0;41", "1;31", "1;33", "1;32", "1;34", "1;30" };
-            printf("\033[%sm%s\033[0m", colorStrings[color], message);
-        }
-
-        uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator, void* pPlatform)
-        {
-            auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
-
-            VkXcbSurfaceCreateInfoKHR info{};
-            info.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-            info.connection = P_HANDLE->m_pConnection;
-            info.window = P_HANDLE->m_window;
-
-            VkResult res = vkCreateXcbSurfaceKHR(instance, &info, pAllocator,&surface);
-            if(res != VK_SUCCESS)
-                return 0;
-            return 1;
-        }
-
-        void PlatformSleep(uint64_t ms) 
-        {
-            #if _POSIX_C_SOURCE >= 199309L
-                struct timespec ts;
-                ts.tv_sec = ms / 1000;
-                ts.tv_nsec = (ms % 1000) * 1000 * 1000;
-                nanosleep(&ts, 0);
-            #else
-                if (ms >= 1000) 
-                {
-                    sleep(ms / 1000);
-                }
-                usleep((ms % 1000) * 1000);
-            #endif
-        }
-
 
         BlitzenCore::BlitKey TranslateKeycode(uint32_t x_keycode)
         {
@@ -604,6 +581,45 @@ namespace BlitzenPlatform
                     return BlitzenCore::BlitKey::MAX_KEYS;
             }
 
+        }
+
+        /*
+            MEMORY
+        */
+        void* PlatformMalloc(size_t size, uint8_t aligned)
+        {
+            return malloc(size);
+        }
+
+        void PlatformFree(void* pBlock, uint8_t aligned)
+        {
+            free(pBlock);
+        }
+
+        void* PlatformMemZero(void* pBlock, size_t size)
+        {
+            return memset(pBlock, 0, size);
+        }
+        void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
+        {
+            return memcpy(pDst, pSrc, size);
+        }
+        void* PlatformMemSet(void* pDst, int32_t value, size_t size)
+        {
+            return memset(pDst, value, size);
+        }
+
+        static void PlatformShutdown(PlatformContext* P_HANDLE)
+        {
+            // yeah... we got to turn this shit back on, because it's global for the OS
+            XAutoRepeatOn(P_HANDLE->m_pDisplay);
+
+            xcb_destroy_window(P_HANDLE->m_pConnection, P_HANDLE->m_window);
+        }
+
+        PlatformContext::~PlatformContext()
+        {
+            PlatformShutdown(this);
         }
 }
 #endif

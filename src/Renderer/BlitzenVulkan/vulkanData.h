@@ -332,28 +332,15 @@ namespace BlitzenVulkan
         VkDevice device;
         VkInstance instance;
 
-		static MemoryCrucialHandles* GetInstance()
-		{
-            return s_pInstance;
-		}
-
-        inline MemoryCrucialHandles()
-        {
-            s_pInstance = this;
-        }
-
         inline ~MemoryCrucialHandles()
         {
             vmaDestroyAllocator(allocator);
             vkDestroyDevice(device, nullptr);
             vkDestroyInstance(instance, nullptr);
         }
-
-    private:
-
-        inline static MemoryCrucialHandles* s_pInstance;
     };
 
+    MemoryCrucialHandles* InitMemoryCrucialHandles(MemoryCrucialHandles* pHandles);
 
 
     struct AllocatedImage

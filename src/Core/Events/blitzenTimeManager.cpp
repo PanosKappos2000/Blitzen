@@ -1,4 +1,5 @@
 #include "blitTimeManager.h"
+#include "Platform/blitPlatform.h"
 
 namespace BlitzenCore
 {

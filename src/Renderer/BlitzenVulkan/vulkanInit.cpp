@@ -1,20 +1,18 @@
 #include "vulkanRenderer.h"
 #include "vulkanCommands.h"
-#include "Platform/platform.h"
+#include "Platform/blitPlatform.h"
 #include "vulkanResourceFunctions.h"
 #include "vulkanPipelines.h"
 #include <cstring> // For strcmp
 
 namespace BlitzenVulkan
 {
-    VulkanRenderer* VulkanRenderer::m_pThisRenderer = nullptr;
-
     VulkanRenderer::VulkanRenderer() :
         m_pCustomAllocator{ nullptr }, m_debugMessenger{ VK_NULL_HANDLE },
         m_currentFrame{ 0 }, m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f },
         m_depthPyramidMipLevels{ 0 }, textureCount{ 0 }
     {
-        m_pThisRenderer = this;
+
     }
 
     static void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
@@ -956,10 +954,17 @@ namespace BlitzenVulkan
             return 0;
         }
 
+        // Resource management
         m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_memoryCrucials);
         if (!m_stats.bResourceManagementReady)
         {
             BLIT_ERROR("Failed to initialize Vulkan resource management");
+            return 0;
+        }
+        auto pMemory{ InitMemoryCrucialHandles(&m_memoryCrucials) };
+        if (!pMemory)
+        {
+            BLIT_ERROR("Failed to save memory crucial handles");
             return 0;
         }
 

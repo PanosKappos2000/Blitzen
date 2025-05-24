@@ -2,11 +2,22 @@
 
 namespace BlitzenVulkan
 {
+    static MemoryCrucialHandles* S_GET_VULKAN_MEMORY(MemoryCrucialHandles* pHandles = nullptr)
+    {
+        static MemoryCrucialHandles* s_pMemoryHandles{ pHandles };
+        return s_pMemoryHandles;
+    }
+
+    MemoryCrucialHandles* InitMemoryCrucialHandles(MemoryCrucialHandles* pHandles)
+    {
+		return S_GET_VULKAN_MEMORY(pHandles);
+    }
+
     SurfaceKHR::~SurfaceKHR()
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto inst = VulkanRenderer::GetRendererInstance()->m_instance;
+            auto inst = S_GET_VULKAN_MEMORY()->instance;
 
             vkDestroySurfaceKHR(inst, handle, nullptr);
         }
@@ -16,7 +27,7 @@ namespace BlitzenVulkan
     {
         if (swapchainHandle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
 
             for (auto view : swapchainImageViews)
             {
@@ -37,13 +48,13 @@ namespace BlitzenVulkan
     {
         if (image != VK_NULL_HANDLE)
         {
-            auto vma = VulkanRenderer::GetRendererInstance()->m_allocator;
+            auto vma = S_GET_VULKAN_MEMORY()->allocator;
             vmaDestroyImage(vma, image, allocation);
         }
 
         if (imageView != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyImageView(vdv, imageView, nullptr);
         }
     }
@@ -52,7 +63,7 @@ namespace BlitzenVulkan
     {
         if (bufferHandle != VK_NULL_HANDLE)
         {
-            auto vma = VulkanRenderer::GetRendererInstance()->m_allocator;
+            auto vma = S_GET_VULKAN_MEMORY()->allocator;
             vmaDestroyBuffer(vma, bufferHandle, allocation);
         }
     }
@@ -61,7 +72,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyPipeline(vdv, handle, nullptr);
         }
     }
@@ -70,7 +81,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyPipelineLayout(vdv, handle, nullptr);
         }
     }
@@ -79,7 +90,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyShaderModule(vdv, handle, nullptr);
         }
     }
@@ -88,7 +99,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyDescriptorSetLayout(vdv, handle, nullptr);
         }
     }
@@ -97,7 +108,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyDescriptorPool(vdv, handle, nullptr);
         }
     }
@@ -106,7 +117,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroySampler(vdv, handle, nullptr);
         }
     }
@@ -115,7 +126,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyCommandPool(vdv, handle, nullptr);
         }
     }
@@ -124,7 +135,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroySemaphore(vdv, handle, nullptr);
         }
     }
@@ -133,7 +144,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
             vkDestroyFence(vdv, handle, nullptr);
         }
     }
@@ -152,8 +163,8 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto vdv = VulkanRenderer::GetRendererInstance()->m_device;
-            auto inst = VulkanRenderer::GetRendererInstance()->m_instance;
+            auto vdv = S_GET_VULKAN_MEMORY()->device;
+            auto inst = S_GET_VULKAN_MEMORY()->instance;
             DestroyAccelerationStructureKHR(inst, vdv, handle, nullptr);
         }
     }
