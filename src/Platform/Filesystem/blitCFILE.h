@@ -36,6 +36,5 @@ namespace BlitzenPlatform
 
     bool FilesystemReadAllBytes(C_FILE_SCOPE& handle, uint8_t** pBytesRead, size_t* byteCount);
 
-    // This overload uses a (terrible) RAII wrapper instead of the linear allocator, so it should be prefered
     bool FilesystemReadAllBytes(C_FILE_SCOPE& handle, BlitCL::String& bytes, size_t* byteCount);
 }

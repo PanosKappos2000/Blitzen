@@ -48,8 +48,13 @@ add_executable(BlitzenEngine
                 # PLATFORM
                 src/Platform/blitPlatformContext.h
                 src/Platform/blitPlatform.h
+                src/Platform/Common/blitMappedFile.h
+                # WINDOWS
                 src/Platform/blitzenWindows.cpp
+                src/Platform/BlitzenWindows/blitMappedFile.cpp
+                # LINUX
                 src/Platform/blitzenLinux.cpp
+                # OTHER
                 src/Platform/Filesystem/blitCFILE.h
                 src/Platform/Filesystem/blitCFILE.cpp
 
@@ -231,8 +236,9 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
                             BLIT_GDEV_EDT # Activates standard main
                             BLIT_ASSERTIONS_ENABLED
+                            #BLIT_CONSOLE_LOGGER
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode

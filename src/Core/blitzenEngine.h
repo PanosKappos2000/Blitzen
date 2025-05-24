@@ -22,8 +22,19 @@ namespace BlitzenCore
         "{Trace}: "
     };
 
+    constexpr uint8_t CE_PLATFORM_CONSOLE_LOGGER_COLORS[6] = 
+    { 
+        64, 
+        4, 
+        6, 
+        2, 
+        1, 
+        8 
+    };
+
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
+	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
 
     // Camera initial settings
     constexpr float Ce_InitialCameraX = 20.f;

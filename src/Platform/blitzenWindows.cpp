@@ -1,8 +1,8 @@
-#include "blitPlatformContext.h"
-
 #if defined(_WIN32)
+
+#include "blitPlatformContext.h"
+#include "Common/blitMappedFile.h"
 #include <cstring>
-#include <windows.h>
 #include <windowsx.h>
 #include <WinUser.h>
 #include "Renderer/BlitzenVulkan/vulkanData.h"
@@ -120,11 +120,12 @@ namespace BlitzenPlatform
     */
     static void BlitWinLogSetup(const char* message, uint8_t color, HANDLE consoleHandle)
     {
-        static uint8_t levels[6] = { 64, 4, 6, 2, 1, 8 };
-        SetConsoleTextAttribute(consoleHandle, levels[color]);
+        SetConsoleTextAttribute(consoleHandle, BlitzenCore::CE_PLATFORM_CONSOLE_LOGGER_COLORS[color]);
+
         OutputDebugStringA(message);
         uint64_t length = strlen(message);
         LPDWORD numberWritten = 0;
+
         WriteConsoleA(consoleHandle, message, static_cast<DWORD>(length), numberWritten, 0);
     }
 
@@ -138,6 +139,31 @@ namespace BlitzenPlatform
     {
         auto consoleHandle = GetStdHandle(STD_ERROR_HANDLE);
         BlitWinLogSetup(message, color, consoleHandle);
+    }
+
+    void PlatformLoggerFileWrite(const char* message, uint8_t color)
+    {
+        static MEMORY_MAPPED_FILE_SCOPE s_scopedFile;
+
+        if (s_scopedFile.m_pFileView == INVALID_HANDLE_VALUE)
+        {
+            auto mmfResult{ s_scopedFile.Open("blitLogOutput.txt", FileModes::Write, BlitzenCore::Ce_BlitLogOutputFileSize) };
+            if (mmfResult != BLIT_MMF_RES::SUCCESS)
+            {
+                const char* mmfErrorString{ GET_BLIT_MMF_RES_ERROR_STR(mmfResult) };
+                PlatformConsoleError(mmfErrorString, (uint8_t)BlitzenCore::LogLevel::Error);
+                PlatformConsoleWrite(message, color);
+                return;
+            }
+        }
+
+        WriteMemoryMappedFile(s_scopedFile, 0, strlen(message), const_cast<char*>(message));
+        
+    }
+
+    void PlatformLoggerFileError(const char* message, uint8_t color)
+    {
+        PlatformLoggerFileWrite(message, color);
     }
 
     /*

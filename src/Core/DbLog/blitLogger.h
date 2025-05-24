@@ -15,6 +15,9 @@ namespace BlitzenPlatform
 {
     void PlatformConsoleWrite(const char* message, uint8_t color);
     void PlatformConsoleError(const char* message, uint8_t color);
+
+    void PlatformLoggerFileWrite(const char* message, uint8_t color);
+	void PlatformLoggerFileError(const char* message, uint8_t color);   
 }
 
 namespace BlitzenCore
@@ -41,6 +44,20 @@ namespace BlitzenCore
         snprintf(outMessage2, CE_MESSAGE_BUFFER_SIZE,"%s%s\n", CE_LOGGER_LEVELS[uint8_t(level)], outMessage);
 
         bool isError = level < LogLevel::Info;
+
+        #if !defined(BLIT_CONSOLE_LOGGER) && defined(_WIN32)
+
+		if (isError)
+		{
+			BlitzenPlatform::PlatformLoggerFileError(outMessage2, uint8_t(level));
+		}
+		else
+		{
+			BlitzenPlatform::PlatformLoggerFileWrite(outMessage2, uint8_t(level));
+		}
+
+        #else
+        
         if (isError) 
         {
             BlitzenPlatform::PlatformConsoleError(outMessage2, uint8_t(level));
@@ -49,6 +66,8 @@ namespace BlitzenCore
         {
             BlitzenPlatform::PlatformConsoleWrite(outMessage2, uint8_t(level));
         }
+
+        #endif
     }
 }
 
