@@ -9,7 +9,6 @@ namespace BlitzenPlatform
         DWORD accessFlags = 0;
         DWORD creationDisposition = OPEN_EXISTING;
 
-        // Set access mode flags based on FileModes
         if (mode == FileModes::Read)
         {
             accessFlags = GENERIC_READ;
@@ -17,17 +16,19 @@ namespace BlitzenPlatform
         else if (mode == FileModes::Write)
         {
             accessFlags = GENERIC_WRITE;
+
+            // Creates file if it does not exist
+            // Might want to put a parameter for this
             creationDisposition = OPEN_ALWAYS;
         }
 
-        // Open the file with specified flags
         m_hFile = CreateFileA(path, accessFlags, 0, nullptr, creationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (m_hFile == INVALID_HANDLE_VALUE)
         {
             return BLIT_MMF_RES::FILE_CREATION_FAILED;
         }
 
-        // Get the size of the file
+        // GET SIZE FOR READ
         if (mode == FileModes::Read)
         {
             m_fileSize = GetFileSize(m_hFile, nullptr);
@@ -40,6 +41,7 @@ namespace BlitzenPlatform
                 return BLIT_MMF_RES::FILE_SIZE_ZERO;
             }
         }
+        // SET SIZE FOR WRITE
         else if (mode == FileModes::Write)
         {
             if (writeSize == 0)
@@ -54,11 +56,41 @@ namespace BlitzenPlatform
             return BLIT_MMF_RES::BLIT_MMF_RES_MAX;
         }
 
-        // Create a memory-mapped file
-        m_pMapping = CreateFileMappingA(m_hFile, nullptr, PAGE_READWRITE, 0, m_fileSize, nullptr);
+        DWORD ffProtect{ mode == FileModes::Read ? (DWORD)PAGE_READONLY : (DWORD)PAGE_READWRITE };
+
+        // MEMORY MAPPING
+        m_pMapping = CreateFileMappingA(m_hFile, nullptr, ffProtect, 0, m_fileSize, nullptr);
         if (!m_pMapping)
         {
-            return BLIT_MMF_RES::FILE_MAPPING_NULL;
+            if (mode == FileModes::Write)
+            {
+                // RESET
+                CloseHandle(m_hFile);
+                m_hFile = nullptr;
+
+                // TRY GENERAL
+                accessFlags = GENERIC_WRITE | GENERIC_READ;
+                ffProtect = PAGE_READWRITE;
+
+                m_hFile = CreateFileA(path, accessFlags, 0, nullptr, creationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (m_hFile == INVALID_HANDLE_VALUE)
+                {
+                    return BLIT_MMF_RES::FILE_CREATION_FAILED;
+                }
+
+                // MEMORY MAPPING
+                m_pMapping = CreateFileMappingA(m_hFile, nullptr, ffProtect, 0, m_fileSize, nullptr);
+                if (!m_pMapping)
+                {
+                    DWORD error = GetLastError();
+                    return BLIT_MMF_RES::FILE_MAPPING_NULL;
+                }
+            }
+            else
+            {
+                DWORD error = GetLastError();
+                return BLIT_MMF_RES::FILE_MAPPING_NULL;
+            }
         }
 
         // Map the file to memory
@@ -85,10 +117,10 @@ namespace BlitzenPlatform
             m_pMapping = nullptr;
         }
 
-        if (m_hFile != INVALID_HANDLE_VALUE)
+        if (m_hFile != nullptr)
         {
             CloseHandle(m_hFile);
-            m_hFile = INVALID_HANDLE_VALUE;
+            m_hFile = nullptr;
         }
     }
 
@@ -119,6 +151,11 @@ namespace BlitzenPlatform
 
         // Copy the data into the memory-mapped view
         BlitzenPlatform::PlatformMemCopy(reinterpret_cast<uint8_t*>(platformFile.m_pFileView) + offset, pData, size);
+
+        if (platformFile.m_endOffset < offset + size)
+        {
+            platformFile.m_endOffset = (DWORD)(offset + size);
+        }
 
         return true;
     }

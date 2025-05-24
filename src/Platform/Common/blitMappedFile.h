@@ -38,6 +38,10 @@ namespace BlitzenPlatform
     {
         BLIT_MMF_RES Open(const char* path, FileModes mode, DWORD writeSize);
 
+        BLIT_MMF_RES OpenRead(const char* path);
+
+        BLIT_MMF_RES OpenWrite(const char* path, DWORD writeSize);
+
         void Close();
 
         ~MEMORY_MAPPED_FILE_SCOPE();
@@ -45,7 +49,11 @@ namespace BlitzenPlatform
         HANDLE m_hFile{ nullptr };                
         HANDLE m_pMapping{ nullptr };             
         LPVOID m_pFileView{ INVALID_HANDLE_VALUE };            
-        DWORD m_fileSize{ 0 };             
+        DWORD m_fileSize{ 0 };
+        DWORD m_endOffset{ 0 };
+
+    private:
+        FileModes m_mode;
     };
 
     #elif defined(linux)

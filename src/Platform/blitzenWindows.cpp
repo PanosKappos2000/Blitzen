@@ -157,7 +157,7 @@ namespace BlitzenPlatform
             }
         }
 
-        WriteMemoryMappedFile(s_scopedFile, 0, strlen(message), const_cast<char*>(message));
+        WriteMemoryMappedFile(s_scopedFile, s_scopedFile.m_endOffset, strlen(message), const_cast<char*>(message));
         
     }
 
