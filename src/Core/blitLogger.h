@@ -1,7 +1,5 @@
 #pragma once
-#include <stdio.h>
-#include <cstdint>
-#include <cstddef>
+#include "Core/blitzenEngine.h"
 #include <utility>
 
 #define LOGGER_LEVEL_FATAL
@@ -50,7 +48,8 @@ namespace BlitzenCore
     {
         char outMessage[MessageBufferSize]{""};
         snprintf(outMessage, MessageBufferSize, msg, std::forward<ARGS>(args)...);
-        char outMessage2[MessageBufferSize];
+
+        char outMessage2[MessageBufferSize]{""};
         snprintf(outMessage2, MessageBufferSize,"%s%s\n", LogLevels[uint8_t(level)], outMessage);
 
         bool isError = level < LogLevel::Info;
