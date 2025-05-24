@@ -12,6 +12,18 @@ namespace BlitzenCore
     constexpr uint32_t Ce_InitialWindowHeight = 720;
     constexpr float Ce_DefaultWindowBackgroundColor[4] = { 0.f, 0.2f, 0.4f, 1.f };
 
+    constexpr const char* CE_LOGGER_LEVELS[6] =
+    {
+        "{FATAL}: ",
+        "{ERROR}: ",
+        "{Info}: ",
+        "{Warning}: ",
+        "{Debug}: ",
+        "{Trace}: "
+    };
+
+    constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
+
 
     // Camera initial settings
     constexpr float Ce_InitialCameraX = 20.f;

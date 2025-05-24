@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project (
-    BlitzenEngine 
-    VERSION 0
-    LANGUAGES C CXX)
+project (BlitzenEngine VERSION 0 LANGUAGES C CXX)
 
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -150,6 +147,8 @@ add_executable(BlitzenEngine
                 src/Renderer/Resources/Textures/blitzenTextures.cpp
                 src/Renderer/Resources/Mesh/blitMeshes.h
                 src/Renderer/Resources/Mesh/blitzenMeshes.cpp
+                src/Renderer/Resources/RenderObject/blitRender.h
+                src/Renderer/Resources/RenderObject/blitzenRender.cpp
                 src/Renderer/Resources/Scene/blitScene.h
                 src/Renderer/Resources/Scene/blitzenScene.cpp
                 # VULKAN

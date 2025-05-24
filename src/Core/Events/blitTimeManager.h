@@ -34,5 +34,5 @@ namespace BlitzenPlatform
     
     void PlatfrormSetupClock(BlitzenCore::WorldTimerManager* pClock);
     
-    double PlatformGetAbsoluteTime(double Frequence);
+    double PlatformGetAbsoluteTime(double frequence);
 }

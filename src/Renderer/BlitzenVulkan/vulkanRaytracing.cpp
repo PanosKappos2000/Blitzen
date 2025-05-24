@@ -1,4 +1,3 @@
-#pragma once
 #include "vulkanResourceFunctions.h"
 #include "vulkanCommands.h"
 #include "vulkanRenderer.h"

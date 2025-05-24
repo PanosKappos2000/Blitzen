@@ -30,27 +30,15 @@ namespace BlitzenCore
     };
 
     bool InitLogging();
-
-    constexpr const char* LogLevels[6] =
-    {
-        "{FATAL}: ",
-        "{ERROR}: ",
-        "{Info}: ",
-        "{Warning}: ",
-        "{Debug}: ",
-        "{Trace}: "
-    };
-
-    constexpr uint32_t MessageBufferSize = 1500;
     
     template<typename... ARGS>
     void BlitLog(LogLevel level, const char* msg, ARGS... args)
     {
-        char outMessage[MessageBufferSize]{""};
-        snprintf(outMessage, MessageBufferSize, msg, std::forward<ARGS>(args)...);
+        char outMessage[CE_MESSAGE_BUFFER_SIZE]{""};
+        snprintf(outMessage, CE_MESSAGE_BUFFER_SIZE, msg, std::forward<ARGS>(args)...);
 
-        char outMessage2[MessageBufferSize]{""};
-        snprintf(outMessage2, MessageBufferSize,"%s%s\n", LogLevels[uint8_t(level)], outMessage);
+        char outMessage2[CE_MESSAGE_BUFFER_SIZE]{""};
+        snprintf(outMessage2, CE_MESSAGE_BUFFER_SIZE,"%s%s\n", CE_LOGGER_LEVELS[uint8_t(level)], outMessage);
 
         bool isError = level < LogLevel::Info;
         if (isError) 

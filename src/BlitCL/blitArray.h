@@ -46,7 +46,7 @@ namespace BlitCL
 
         inline T* Data() { return m_array; }
 
-        inline size_t Size() { return S; }
+        inline size_t Size() { return SIZE; }
 
         ~StaticArray()
         {

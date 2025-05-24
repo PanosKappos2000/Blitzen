@@ -11,9 +11,7 @@ namespace BlitzenPlatform
     // Called when engine shuts down to shutdown the platform system
     void PlatformShutdown(void* pPlatform);
 
-    bool PlatformPumpMessages();
+    bool PlatformPumpMessages(void* pPlatform);
 
     void PlatformSleep(uint64_t ms);
-
-    void* GetWindowHandle(void* pPlatform);
 }

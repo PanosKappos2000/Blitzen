@@ -111,8 +111,7 @@ namespace BlitzenEngine
 
         transform.scale = scale;
 
-        transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3((float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1),
-            BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), 0);
+        transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3((float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1), BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), 0);
     }
 
     void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderContainer& renders, MeshResources& meshContext, float randomTransformMultiplier, float scale)
@@ -124,8 +123,6 @@ namespace BlitzenEngine
 		CreateRenderObjectFromMesh(renders, meshContext, meshId, transform, false);
     }
 
-    // Creates the rendering stress test scene. 
-    // TODO: This function is unsafe, calling it after another function that creates render object will cause issues
     void LoadGeometryStressTest(RenderContainer& renders, MeshResources& meshContext, float transformMultiplier)
     {
         // Don't load the stress test if ray tracing is on

@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
     {
         BlitzenCore::UpdateWorldClock(coreClock);
 
-        BlitzenPlatform::PlatformPumpMessages();
+        BlitzenPlatform::PlatformPumpMessages(&platform);
         eventSystem->UpdateInput(0.f);
         renderer->DrawWhileWaiting(float(coreClock.GetDeltaTime()));
     }
@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
     // MAIN LOOP
     while(engine.m_state == BlitzenCore::EngineState::RUNNING || engine.m_state == BlitzenCore::EngineState::SUSPENDED)
     {
-        if(!BlitzenPlatform::PlatformPumpMessages())
+        if(!BlitzenPlatform::PlatformPumpMessages(&platform))
         {
             engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
         }

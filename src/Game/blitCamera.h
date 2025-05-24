@@ -76,7 +76,7 @@ namespace BlitzenEngine
     {
     public:
 
-        inline CameraContainer::CameraContainer() :m_mainCamera{ m_cameraList[BlitzenCore::Ce_MainCameraId] }
+        inline CameraContainer() :m_mainCamera{ m_cameraList[BlitzenCore::Ce_MainCameraId] }
         {}
 
         // Returns the main camera

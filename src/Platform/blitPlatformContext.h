@@ -21,12 +21,14 @@ namespace BlitzenPlatform
 #elif defined(linux)
 	struct PlatformContext
 	{
-		Display* pDisplay;
-		xcb_connection_t* pConnection;
-		xcb_window_t window;
-		xcb_screen_t* pScreen;
-		xcb_atom_t wm_protocols;
-		xcb_atom_t wm_delete_win;
+		Display* m_pDisplay;
+		xcb_connection_t* m_pConnection;
+		xcb_window_t m_window;
+		xcb_screen_t* m_pScreen;
+		xcb_atom_t m_wmProtocols;
+		xcb_atom_t m_wmDeleteWin;
+
+		void* m_pEvents;
 	};
 #else
 	static_assert(true, "Platform not supported");

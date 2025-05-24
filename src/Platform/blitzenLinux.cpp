@@ -1,3 +1,5 @@
+#include "blitPlatformContext.h"
+
 #if defined(linux)
 #include <cstring>
 #include <stdlib.h>
@@ -5,9 +7,6 @@
 #include <string.h>
 #include <xcb/xcb.h>
 #include <X11/keysym.h>
-#include <X11/XKBlib.h>  // sudo apt-get install libx11-dev
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev
 #include <sys/time.h>
 #if _POSIX_C_SOURCE >= 199309L
 #include <time.h>  // nanosleep
@@ -15,107 +14,85 @@
 #include <unistd.h>  // usleep
 #endif
 #include "platform.h"
-#include "Core/blitInput.h"
-#include "BlitzenVulkan/vulkanData.h"
+#include "Core/Events/blitEvents.h"
+#include "Renderer/BlitzenVulkan/vulkanData.h"
 #include <vulkan/vulkan_xcb.h>
-#include "Engine/blitzenEngine.h"
-#include "Renderer/blitRenderer.h"
+#include "Core/blitzenEngine.h"
+#include "Renderer/Interface/blitRenderer.h"
 
 
 namespace BlitzenPlatform
 {
-        struct PlatformState
-        {
-            Display* pDisplay;
-            xcb_connection_t* pConnection;
-            xcb_window_t window;
-            xcb_screen_t* pScreen;
-            xcb_atom_t wm_protocols;
-            xcb_atom_t wm_delete_win;
-        };
-
-        inline PlatformState s_state;
 
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);
 
-        bool PlatformStartup(const char* appName, BlitzenCore::EventSystemState* pEventSystem, BlitzenCore::InputSystemState* pInputSystem, void* pRenderer)
+        bool PlatformStartup(const char* appName, void* pPlatform, void* pEvents, void* pRenderer)
         {
-            s_state.pDisplay = XOpenDisplay(nullptr);
+            auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
+            P_HANDLE->m_pEvents = pEvents;
 
-            s_state.pEventSystem = pEventSystem;
-            s_state.pInputSystem = pInputSystem;
+            // DISPLAY, KEY REPEATS OFF
+            P_HANDLE->m_pDisplay = XOpenDisplay(nullptr);
+            XAutoRepeatOff(P_HANDLE->m_pDisplay);
 
-            // Turn off key repeats.
-            XAutoRepeatOff(s_state.pDisplay);
+            // CONNECTION
+            P_HANDLE->m_pConnection = XGetXCBConnection(P_HANDLE->m_pDisplay);
 
-            // Retrieve the connection from the display.
-            s_state.pConnection = XGetXCBConnection(s_state.pDisplay);
-
-            if (xcb_connection_has_error(s_state.pConnection)) 
+            if (xcb_connection_has_error(P_HANDLE->m_pConnection)) 
             {
                 BLIT_FATAL("Failed to connect to X server via XCB.");
-                return 0;
+                return false;
             }
 
-            const struct xcb_setup_t* setup = xcb_get_setup(s_state.pConnection);
+            const struct xcb_setup_t* setup = xcb_get_setup(P_HANDLE->m_pConnection);
 
-            // Loop through screens using iterator
-            xcb_screen_iterator_t it = xcb_setup_roots_iterator(setup);
-            int screenP = 0;
-            for (int32_t s = screenP; s > 0; s--)
+            // SCREEN LOOP
+            auto iterator = xcb_setup_roots_iterator(setup);
+            int32_t screenP = 0;
+            for (int32_t screen = screenP; screen > 0; screen--)
             {
-                xcb_screen_next(&it);
+                xcb_screen_next(&iterator);
             }
 
-            // After screens have been looped through, assign it.
-            s_state.pScreen = it.data;
+            // GET SCREEN
+            P_HANDLE->m_pScreen = iterator.data;
 
-            // Allocate a XID for the window to be created.
-            s_state.window = xcb_generate_id(s_state.pConnection);
-
-            // Register event types.
+            // EVENT TYPES
             // XCB_CW_BACK_PIXEL = filling then window bg with a single colour
             // XCB_CW_EVENT_MASK is required.
             uint32_t eventMask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-
-            // Listen for keyboard and mouse buttons
             uint32_t eventValues = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
             XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
             // Values to be sent over XCB (bg colour, events)
-            uint32_t valueList[] = { s_state.pScreen->black_pixel, eventValues };
+            uint32_t valueList[] = { P_HANDLE->m_pScreen->black_pixel, eventValues };
 
-            // Create the window
-            xcb_void_cookie_t cookie = xcb_create_window(s_state.pConnection,XCB_COPY_FROM_PARENT/* depth */, s_state.window,
-            s_state.pScreen->root/* parent */,
-            BlitzenEngine::ce_windowStartingX, BlitzenEngine::ce_windowStartingY, 
-            BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, 0/* No border */, 
-            XCB_WINDOW_CLASS_INPUT_OUTPUT, s_state.pScreen->root_visual, eventMask, valueList);
+            // WINDOW
+            P_HANDLE->m_window = xcb_generate_id(P_HANDLE->m_pConnection);
+            auto cookie = xcb_create_window(P_HANDLE->m_pConnection,XCB_COPY_FROM_PARENT, P_HANDLE->m_window, P_HANDLE->m_pScreen->root, 
+            BlitzenCore::Ce_WindowStartingX, BlitzenCore::Ce_WindowStartingY, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, 0,
+            XCB_WINDOW_CLASS_INPUT_OUTPUT, P_HANDLE->m_pScreen->root_visual, eventMask, valueList);
 
-            // Change the title
-            xcb_change_property( s_state.pConnection, XCB_PROP_MODE_REPLACE, s_state.window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING,
-            8/* data should be viewed 8 bits at a time */, strlen(appName), appName);
+            // TITLE
+            xcb_change_property(P_HANDLE->m_pConnection, XCB_PROP_MODE_REPLACE, P_HANDLE->m_wmProtocols, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(appName), appName);
 
-            // Tell the server to notify when the window manager
-            // attempts to destroy the window.
-            auto wm_delete_cookie = 
-                xcb_intern_atom(s_state.pConnection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
-            auto wm_protocols_cookie = 
-                xcb_intern_atom(s_state.pConnection, 0, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
-            xcb_intern_atom_reply_t* wm_delete_reply = xcb_intern_atom_reply(s_state.pConnection, wm_delete_cookie, nullptr);
-            xcb_intern_atom_reply_t* wm_protocols_reply = xcb_intern_atom_reply( s_state.pConnection, wm_protocols_cookie, nullptr);
-            s_state.wm_delete_win = wm_delete_reply->atom;
-            s_state.wm_protocols = wm_protocols_reply->atom;
+            // Tell the server to notify when the window manager attempts to destroy the window.
+            auto wm_delete_cookie = xcb_intern_atom(P_HANDLE->m_pConnection, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW");
+            auto wm_protocols_cookie = xcb_intern_atom(P_HANDLE->m_pConnection, 0, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS");
+            auto wm_delete_reply = xcb_intern_atom_reply(P_HANDLE->m_pConnection, wm_delete_cookie, nullptr);
+            auto wm_protocols_reply = xcb_intern_atom_reply(P_HANDLE->m_pConnection, wm_protocols_cookie, nullptr);
+            P_HANDLE->m_wmDeleteWin = wm_delete_reply->atom;
+            P_HANDLE->m_wmProtocols = wm_protocols_reply->atom;
 
-            xcb_change_property(s_state.pConnection,XCB_PROP_MODE_REPLACE, s_state.window, wm_protocols_reply->atom, 4, 32, 1, 
-            &wm_delete_reply->atom);
+            // i don't remember
+            xcb_change_property(P_HANDLE->m_pConnection, XCB_PROP_MODE_REPLACE, P_HANDLE->m_window, wm_protocols_reply->atom, 4, 32, 1, &wm_delete_reply->atom);
 
-            // Map the window to the screen
-            xcb_map_window(s_state.pConnection, s_state.window);
+            // MAP WINDOW TO SCREEN
+            xcb_map_window(P_HANDLE->m_pConnection, P_HANDLE->m_window);
 
-            // Flush the stream
-            int32_t streamResult = xcb_flush(s_state.pConnection);
+            // Flushes the stream
+            int32_t streamResult = xcb_flush(P_HANDLE->m_pConnection);
             if (streamResult <= 0)
             {
                 BLIT_FATAL("An error occurred when flusing the stream: %d", streamResult);
@@ -123,69 +100,101 @@ namespace BlitzenPlatform
             }
 
             auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
-            if (!pBackendRenderer->Init(BlitzenEngine::ce_initialWindowWidth, BlitzenEngine::ce_initialWindowHeight, nullptr))
+            if (!pBackendRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, P_HANDLE))
             {
                 BLIT_FATAL("Failed to initialize rendering API");
                 return false;
             }
 
+            // success
             return true;
         }
 
-        void PlatfrormSetupClock()
+        void PlatfrormSetupClock(BlitzenCore::WorldTimerManager* pClock)
         {
             
         }
 
-        void PlatformShutdown() 
+        double PlatformGetAbsoluteTime(double frequence) 
         {
-            // Turn key repeats back on since this is global for the OS... just... wow.
-            XAutoRepeatOn(s_state.pDisplay);
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
 
-            xcb_destroy_window(s_state.pConnection, s_state.window);
+            // I don't know if this is any good I did not write it
+            return now.tv_sec + now.tv_nsec * 0.000000001;
         }
 
-        bool PlatformPumpMessages() 
+        void PlatformShutdown(void* pPlatform) 
         {
-            
-            xcb_generic_event_t* event;
-            xcb_client_message_event_t* cm;
+            auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
 
-            uint8_t quitFlagged = 0;
+            // yeah... we got to turn this shit back on, because it's global for the OS
+            // TODO: Put this somewhere So that it is done automatically(maybe the handle could have a Platform dependent destructor?)
+            XAutoRepeatOn(P_HANDLE->m_pDisplay);
 
-            // Poll for events until null is returned.
-            while (event) 
+            xcb_destroy_window(P_HANDLE->m_pConnection, P_HANDLE->m_window);
+        }
+
+        struct scoped_linux_event
+        {
+            xcb_generic_event_t* m_pEvent;
+
+            inline ~scoped_linux_event()
             {
-                event = xcb_poll_for_event(s_state.pConnection);
-                if (!event) 
+                if(m_pEvent)
+                {
+                    free(m_pEvent);
+                }
+            }
+        };
+        bool PlatformPumpMessages(void* pPlatform) 
+        {
+            auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
+            auto pEventSystem{reinterpret_cast<BlitzenCore::EventSystem*>(P_HANDLE->m_pEvents)};
+
+            xcb_client_message_event_t* pClientMessage;
+
+            bool quitFlagged = false;
+
+            // POLL 
+            while (true) 
+            {
+                scoped_linux_event scopedLinuxEvent;
+                scopedLinuxEvent.m_pEvent = xcb_poll_for_event(P_HANDLE->m_pConnection);
+
+                if (!scopedLinuxEvent.m_pEvent) 
                 {
                     break;
                 }
 
                 // Input events
-                switch (event->response_type & ~0x80) {
+                switch (scopedLinuxEvent.m_pEvent->response_type & ~0x80) 
+                {
                 case XCB_KEY_PRESS:
                 case XCB_KEY_RELEASE: 
                 {
-                    // Key press event - xcb_key_press_event_t and xcb_key_release_event_t are the same
-                    xcb_key_press_event_t* kb_event = (xcb_key_press_event_t*)event;
-                    uint8_t pressed = event->response_type == XCB_KEY_PRESS;
-                    xcb_keycode_t code = kb_event->detail;
-                    KeySym keySym = XkbKeycodeToKeysym(s_state.pDisplay,(KeyCode)code,  //event.xkey.keycode,
-                    0, code & ShiftMask ? 1 : 0);
+                    // TRANSLATE KEY
+                    auto pKbEvent = reinterpret_cast<xcb_key_press_event_t*>(scopedLinuxEvent.m_pEvent);
+                    auto code = pKbEvent->detail;
+                    KeySym keySym = XkbKeycodeToKeysym(P_HANDLE->m_pDisplay, (KeyCode)code, 0, code & ShiftMask ? 1 : 0);
+                    auto key = TranslateKeycode(keySym);
 
-                    BlitzenCore::BlitKey key = TranslateKeycode(keySym);
+                    // EVENT SYSTEM
+                    bool pressed = scopedLinuxEvent.m_pEvent->response_type == XCB_KEY_PRESS;
+                    pEventSystem->InputProcessKey(key, pressed);
+                }
+                // NOTE: This is not a mistake, the loop needs to break here, otherwise I will keep getting the same message
+                break;
 
-                    // Pass to the input subsystem for processing.
-                    s_state.pInputSystem->InputProcessKey(key, pressed);
-                } break;
                 case XCB_BUTTON_PRESS:
                 case XCB_BUTTON_RELEASE: 
                 {
-                    xcb_button_press_event_t* mouseEvent = (xcb_button_press_event_t*)event;
-                    uint8_t bPressed = event->response_type == XCB_BUTTON_PRESS;
-                    BlitzenCore::MouseButton mouseButton = BlitzenCore::MouseButton::MaxButtons;
-                    switch (mouseEvent->detail) {
+                    auto pMouseEvent = reinterpret_cast<xcb_button_press_event_t*>(scopedLinuxEvent.m_pEvent);
+                    auto mouseButton = BlitzenCore::MouseButton::MaxButtons;
+
+                    // GET MOUSE BUTTON
+                    switch (pMouseEvent->detail) 
+                    {
                     case XCB_BUTTON_INDEX_1:
                         mouseButton = BlitzenCore::MouseButton::Left;
                         break;
@@ -197,51 +206,64 @@ namespace BlitzenPlatform
                         break;
                     }
 
-                    // Pass over to the input subsystem.
-                    if (mouseButton != BlitzenCore::MouseButton::MaxButtons) {
-                        s_state.pInputSystem->InputProcessButton(mouseButton, bPressed);
+                    // EVENT SYSTEM
+                    bool bPressed = scopedLinuxEvent.m_pEvent->response_type == XCB_BUTTON_PRESS;
+                    if (mouseButton != BlitzenCore::MouseButton::MaxButtons) 
+                    {
+                        pEventSystem->InputProcessButton(mouseButton, bPressed);
                     }
-                } break;
-                case XCB_MOTION_NOTIFY: {
-                    // Mouse move
-                    xcb_motion_notify_event_t* moveEvent = (xcb_motion_notify_event_t*)event;
+                }
+                // NOTE: This is not a mistake, the loop needs to break here, otherwise I will keep getting the same message
+                break;
 
-                    // Pass over to the input subsystem.
-                    s_state.pInputSystem->InputProcessMouseMove(moveEvent->event_x, moveEvent->event_y);
-                } break;
-                case XCB_CONFIGURE_NOTIFY: {
-                    // Resizing - note that this is also triggered by moving the window, but should be
-                    // passed anyway since a change in the x/y could mean an upper-left resize.
-                    // The application layer can decide what to do with this.
-                    xcb_configure_notify_event_t* configureEvent = (xcb_configure_notify_event_t*)event;
+                case XCB_MOTION_NOTIFY: 
+                {
+                    auto pMouseMoveEvent = reinterpret_cast<xcb_motion_notify_event_t*>(scopedLinuxEvent.m_pEvent);
+                    pEventSystem->InputProcessMouseMove(pMouseMoveEvent->event_x, pMouseMoveEvent->event_y);
+                }
+                // NOTE: This is not a mistake, the loop needs to break here, otherwise I will keep getting the same message
+                break;
 
-                    // Fire the event. The application layer should pick this up, but not handle it
-                    // as it shouldn be visible to other parts of the application.
-                    BlitzenCore::EventContext context;
-                    context.data.ui32[0] = configureEvent->width;
-                    context.data.ui32[1] = configureEvent->height;
-                    s_state.pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowResize, 0, context);
+                case XCB_CONFIGURE_NOTIFY: 
+                {
+                    auto pConfigureEvent = reinterpret_cast<xcb_configure_notify_event_t*>(scopedLinuxEvent.m_pEvent);
+
+                    auto& camera{ pEventSystem->m_blitzenContext.pCameraContainer->GetMainCamera()};
+
+                    auto oldWidth = camera.transformData.windowWidth;
+                    auto oldHeight = camera.transformData.windowHeight;
+
+                    // The camera will carry the context for the window resize
+                    camera.transformData.windowWidth = float(pConfigureEvent->width);
+                    camera.transformData.windowHeight = float(pConfigureEvent->height);
+
+                    if (!pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowUpdate))
+                    {
+                        camera.transformData.windowWidth = oldWidth;
+                        camera.transformData.windowHeight = oldHeight;
+                    }
+
                     break;
                 }
 
                 case XCB_CLIENT_MESSAGE: 
                 {
-                    cm = (xcb_client_message_event_t*)event;
+                    pClientMessage = reinterpret_cast<xcb_client_message_event_t*>(scopedLinuxEvent.m_pEvent);
 
                     // Window close
-                    if (cm->data.data32[0] == s_state.wm_delete_win) 
+                    if (pClientMessage->data.data32[0] == P_HANDLE->m_wmDeleteWin) 
                     {
                         quitFlagged = true;
                     }
                     break;
                 }
                 default:
-                    // Something else
+                {
                     break;
                 }
-
-                free(event);
+                }
             }
+
             return !quitFlagged;
         }
 
@@ -281,24 +303,19 @@ namespace BlitzenPlatform
             printf("\033[%sm%s\033[0m", colorStrings[color], message);
         }
 
-        uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator)
+        uint8_t CreateVulkanSurface(VkInstance& instance, VkSurfaceKHR& surface, VkAllocationCallbacks* pAllocator, void* pPlatform)
         {
+            auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
+
             VkXcbSurfaceCreateInfoKHR info{};
             info.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-            info.connection = s_state.pConnection;
-            info.window = s_state.window;
+            info.connection = P_HANDLE->m_pConnection;
+            info.window = P_HANDLE->m_window;
 
             VkResult res = vkCreateXcbSurfaceKHR(instance, &info, pAllocator,&surface);
             if(res != VK_SUCCESS)
                 return 0;
             return 1;
-        }
-
-        double PlatformGetAbsoluteTime() 
-        {
-            struct timespec now;
-            clock_gettime(CLOCK_MONOTONIC, &now);
-            return now.tv_sec + now.tv_nsec * 0.000000001;
         }
 
         void PlatformSleep(uint64_t ms) 

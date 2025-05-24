@@ -125,7 +125,7 @@ namespace BlitzenPlatform
         }
     }
 
-    bool PlatformPumpMessages()
+    bool PlatformPumpMessages(void* pPlatform)
     {
         MSG message;
 

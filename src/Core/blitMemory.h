@@ -62,8 +62,9 @@ namespace BlitzenCore
                 BLIT_FATAL("Linear allocator depleted, memory not allocated");
                 return nullptr;
             }
-            void* pBlock = reinterpret_cast<uint8_t*>(m_pBlock) + m_totalAllocated;
-            totalAllocated += allocSize;
+
+            void* pBlock = reinterpret_cast<T*>(m_pBlock)[m_totalAllocated];
+            m_totalAllocated += allocSize;
 
             return reinterpret_cast<T*>(pBlock);
         }
