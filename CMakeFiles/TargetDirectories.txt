@@ -1,7 +1,0 @@
-/home/pkappos/dev/BlitzenEngine0/CMakeFiles/BlitzenEngine.dir
-/home/pkappos/dev/BlitzenEngine0/CMakeFiles/copy_assets.dir
-/home/pkappos/dev/BlitzenEngine0/CMakeFiles/copy_glsl_shaders.dir
-/home/pkappos/dev/BlitzenEngine0/CMakeFiles/copy_hlsl_shaders.dir
-/home/pkappos/dev/BlitzenEngine0/CMakeFiles/VulkanShaders.dir
-/home/pkappos/dev/BlitzenEngine0/CMakeFiles/edit_cache.dir
-/home/pkappos/dev/BlitzenEngine0/CMakeFiles/rebuild_cache.dir

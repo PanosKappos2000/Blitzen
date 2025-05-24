@@ -1,5 +1,6 @@
 .vscode/
 .vs/
+CMakeFiles/
 build/
 out/
 ClangBuild/
