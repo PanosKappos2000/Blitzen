@@ -1,6 +1,14 @@
 #pragma once
 #include "Platform/blitPlatformContext.h"
 #include "Platform/Filesystem/blitCFILE.h"
+#if defined(linux)
+
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstring>
+
+#endif
 
 namespace BlitzenPlatform
 {
@@ -56,9 +64,11 @@ namespace BlitzenPlatform
         DWORD m_fileSize{ 0 };
         DWORD m_endOffset{ 0 };
 
-        bool IsRead() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Read; }
+        inline bool IsRead() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Read; }
 
-        bool IsWrite() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Write; }
+        inline bool IsWrite() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Write; }
+
+        inline bool Failed() const { return m_pFileView == INVALID_HANDLE_VALUE; }
 
     private:
         FILE_MODE_FLAGS m_mode;
@@ -66,7 +76,33 @@ namespace BlitzenPlatform
 
     #elif defined(linux)
 
-    using MEMORY_MAPPED_FILE_SCOPE = C_FILE_SCOPE;// TEMPORARY
+    struct MEMORY_MAPPED_FILE_SCOPE
+    {
+        BLIT_MMF_RES OpenRead(const char* path);
+
+        BLIT_MMF_RES OpenWrite(const char* path, size_t writeSize);
+
+        BLIT_MMF_RES OpenGeneral(const char* path, size_t writeSize);
+
+        void Close();
+
+        ~MEMORY_MAPPED_FILE_SCOPE();
+
+        int32_t m_hFile{ -1 };            
+        void* m_pFileView{ nullptr }; 
+        size_t m_fileSize{ 0 };
+        size_t m_endOffset{ 0 };
+
+        inline bool IsRead() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Read; }
+
+        inline bool IsWrite() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Write; }
+
+        inline bool Failed() const { return m_pFileView == nullptr; }
+
+    private:
+
+        FILE_MODE_FLAGS m_mode{(FILE_MODE_FLAG_BITS)FileModes::NONE}; 
+    };
 
     #endif
 

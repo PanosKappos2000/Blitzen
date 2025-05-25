@@ -32,7 +32,7 @@ namespace BlitzenPlatform
     {
         static MEMORY_MAPPED_FILE_SCOPE s_scopedFile;
 
-        if (s_scopedFile.m_pFileView == INVALID_HANDLE_VALUE)
+        if (s_scopedFile.Failed())
         {
             auto mmfResult{ s_scopedFile.OpenWrite("blitLogOutput.txt", BlitzenCore::Ce_BlitLogOutputFileSize) };
             if (mmfResult != BLIT_MMF_RES::SUCCESS && mmfResult != BLIT_MMF_RES::SUCCESS_FALLBACK)

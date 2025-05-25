@@ -6,7 +6,9 @@ namespace BlitzenPlatform
     enum class FileModes : uint8_t
     {
         Read = 0x1,
-        Write = 0x2
+        Write = 0x2, 
+
+        NONE = 0x3
     };
 
     class C_FILE_SCOPE

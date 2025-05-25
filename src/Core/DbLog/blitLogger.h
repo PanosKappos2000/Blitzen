@@ -45,7 +45,7 @@ namespace BlitzenCore
 
         bool isError = level < LogLevel::Info;
 
-        #if !defined(BLIT_CONSOLE_LOGGER) && defined(_WIN32)
+        #if !defined(BLIT_CONSOLE_LOGGER)
 
 		if (isError)
 		{
