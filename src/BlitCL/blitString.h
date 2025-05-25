@@ -64,13 +64,20 @@ namespace BlitCL
     class String
     {
     public:
-        inline String() :
-            m_data{ nullptr }, 
-            m_capacity{ 0 }, 
-            m_size{ 0 }
-        {}
+        inline String() : m_data{ nullptr }, m_capacity{ 0 }, m_size{ 0 }
+        {
 
-        inline String(const char* data) 
+        }
+
+        inline String(const char* data)
+        {
+            m_size = strlen(data);
+            m_capacity = m_size * ce_blitStringCapacityMultiplier + 1;
+            m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
+            snprintf(m_data, m_size + 1, "%s", data);
+        }
+
+        inline String(char* data)
         {
             m_size = strlen(data);
             m_capacity = m_size * ce_blitStringCapacityMultiplier + 1;
@@ -85,7 +92,13 @@ namespace BlitCL
             m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
         }
 
+        /*inline String(String&& str) :m_size{str.GetSize()}, m_capacity{str.GetCapacity()}, m_data{str.Data()} noexcept
+        {
+
+        }*/
+
         inline String(const String& str) = delete;
+
         inline String operator = (const String& str) = delete;
 
         inline ~String()
@@ -97,10 +110,15 @@ namespace BlitCL
 		}
 
         inline char operator [] (size_t idx) const { return m_data[idx]; }
+
         inline const char* GetClassic() const { return m_data; }
+
         inline char* Data() { return m_data; }
+
         inline char** GetDataPointer() { return &m_data; }
+
         inline size_t GetSize() const { return m_size; }
+
 		inline size_t GetCapacity() const { return m_capacity; }
 
 		inline void Resize(size_t size)
@@ -151,6 +169,9 @@ namespace BlitCL
             newStringData.AllocateStorage(size + 1);
             snprintf(newStringData.Data(), size + 1, "%s", m_data + start);
 
+            // I don't know what is happening behind the scenes here
+            // C++14 fails to compile this
+            // Switching to an implicit move constructor will also cause issues
             return String{ newStringData.Data() };
         }
 

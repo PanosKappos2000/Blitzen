@@ -479,7 +479,7 @@ namespace BlitzenDX12
 
 		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{
-			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawOccTemporal.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.drawOccRoot, context.ppDrawCullPso, "HlslShaders/CS/drawOccTemporal.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawOccTemporal.cs shader program");
 				return 0;
@@ -682,7 +682,11 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(copyDestBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 			// Conditional barriers
-			if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
+			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+			{
+
+			}
+			else if constexpr (CE_DX12OCCLUSION)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferDestBarrier, buffers.drawVisibilityBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -703,7 +707,11 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 			// Conditional staging barriers
-			if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
+			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+			{
+
+			}
+			else if constexpr (CE_DX12OCCLUSION)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferSourceBarrier, drawVisibilityStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -723,7 +731,11 @@ namespace BlitzenDX12
 			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), transformStaging.Get());
 
 			// Conditional copy
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+			{
+
+			}
+			else if constexpr (CE_DX12OCCLUSION)
 			{
 				frameTools.transferCommandList->CopyResource(buffers.drawVisibilityBuffer.buffer.Get(), drawVisibilityStaging.Get());
 			}
@@ -1030,7 +1042,11 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
 
-			if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
+			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+			{
+
+			}
+			else if constexpr (CE_DX12OCCLUSION)
 			{
 				CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, renderCount, sizeof(uint32_t), 0);

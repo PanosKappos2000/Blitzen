@@ -325,7 +325,7 @@ namespace BlitzenDX12
         auto csSize{ GetShaderBytes(device, filename, csBytes) };
         if (!csSize)
         {
-            BLIT_ERROR("Failed to create main opaque vertex shader");
+            BLIT_ERROR("Failed to create compute shader program");
             return 0;
         }
         D3D12_SHADER_BYTECODE csCode{};
