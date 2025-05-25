@@ -1,7 +1,7 @@
 #if defined(_WIN32)
 
 #include "Platform/blitPlatformContext.h"
-#include "Renderer/BlitzenGl/openglRenderer.h"
+#include "Renderer/BlitzenGL/openglRenderer.h"
 #include <GL/wglew.h>
 
 namespace BlitzenPlatform

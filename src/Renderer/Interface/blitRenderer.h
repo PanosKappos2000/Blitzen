@@ -2,7 +2,7 @@
 #include "Renderer/Resources/Scene/blitScene.h"
 #include "Core/Entities/blitEntityManager.h"
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
-#include "Renderer/BlitzenGl/openglRenderer.h"
+#include "Renderer/BlitzenGL/openglRenderer.h"
 #include "Renderer/BlitzenDX12/dx12Renderer.h"
 #include <typeinfo>
 #include <cstring>

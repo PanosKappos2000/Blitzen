@@ -22,7 +22,7 @@ add_executable(BlitzenEngine
                 "src/Core/Events/blitTimeManager.h"
                 "src/Core/Events/blitzenTimeManager.cpp"
                 # WORLD (ALL SYSTEMS)
-                "src/Core/BlitzenWorld/blitzenWorld.h "
+                "src/Core/BlitzenWorld/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 # ENTITIES
                 "src/Core/Entities/blitEntityManager.h"
@@ -102,16 +102,16 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenGL/openglData.h"
                 "src/Renderer/BlitzenGL/openglRenderer.h"
                 "src/Renderer/BlitzenGL/openglResources.cpp"
-                "src/Renderer/BlitzenGl/openglRenderer.cpp"
+                "src/Renderer/BlitzenGL/openglRenderer.cpp"
                 # DX12
                 "src/Renderer/BlitzenDX12/dx12Data.h"
                 "src/Renderer/BlitzenDX12/dx12Renderer.h"
                 "src/Renderer/BlitzenDX12/dx12Commands.h" 
-                src/Renderer/BlitzenDX12/dx12Commands.cpp
-                src/Renderer/BlitzenDX12/dx12Resources.h
-                src/Renderer/BlitzenDX12/dx12Resources.cpp
-                src/Renderer/BlitzenDX12/dx12Pipelines.h
-                src/Renderer/BlitzenDX12/dx12Pipelines.cpp
+                "src/Renderer/BlitzenDX12/dx12Commands.cpp"
+                "src/Renderer/BlitzenDX12/dx12Resources.h"
+                "src/Renderer/BlitzenDX12/dx12Resources.cpp"
+                "src/Renderer/BlitzenDX12/dx12Pipelines.h"
+                "src/Renderer/BlitzenDX12/dx12Pipelines.cpp"
                 src/Renderer/BlitzenDX12/dx12RNDResources.h
                 src/Renderer/BlitzenDX12/dx12RNDResources.cpp
                 src/Renderer/BlitzenDX12/dx12Init.cpp

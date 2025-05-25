@@ -32,6 +32,16 @@ namespace BlitzenCore
         8 
     };
 
+    constexpr const char* CE_UNIX_CONSOLE_LOGGER_COLORS[6] = 
+    { 
+        "0;41", 
+        "1;31", 
+        "1;33", 
+        "1;32", 
+        "1;34", 
+        "1;30" 
+    };
+
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
