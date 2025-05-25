@@ -34,8 +34,8 @@ namespace BlitzenPlatform
 
         if (s_scopedFile.m_pFileView == INVALID_HANDLE_VALUE)
         {
-            auto mmfResult{ s_scopedFile.Open("blitLogOutput.txt", FileModes::Write, BlitzenCore::Ce_BlitLogOutputFileSize) };
-            if (mmfResult != BLIT_MMF_RES::SUCCESS)
+            auto mmfResult{ s_scopedFile.OpenWrite("blitLogOutput.txt", BlitzenCore::Ce_BlitLogOutputFileSize) };
+            if (mmfResult != BLIT_MMF_RES::SUCCESS && mmfResult != BLIT_MMF_RES::SUCCESS_FALLBACK)
             {
                 const char* mmfErrorString{ GET_BLIT_MMF_RES_ERROR_STR(mmfResult) };
                 PlatformConsoleError(mmfErrorString, (uint8_t)BlitzenCore::LogLevel::Error);

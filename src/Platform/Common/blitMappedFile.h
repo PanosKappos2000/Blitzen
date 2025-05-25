@@ -7,13 +7,14 @@ namespace BlitzenPlatform
     enum class BLIT_MMF_RES : uint8_t
     {
         SUCCESS = 0,
+        SUCCESS_FALLBACK = 1,
 
-        FILE_CREATION_FAILED = 1,
-        FILE_SIZE_INVALID = 2,
-        FILE_SIZE_ZERO = 3,
-        WRITE_SIZE_ZERO = 4,
-        FILE_MAPPING_NULL = 5,
-        FILE_MAPPING_VIEW_NULL = 6,
+        FILE_CREATION_FAILED = 2,
+        FILE_SIZE_INVALID = 3,
+        FILE_SIZE_ZERO = 4,
+        WRITE_SIZE_ZERO = 5,
+        FILE_MAPPING_NULL = 6,
+        FILE_MAPPING_VIEW_NULL = 7,
 
         BLIT_MMF_RES_MAX
     };
@@ -33,14 +34,17 @@ namespace BlitzenPlatform
 		}
 	}
 
+    using FILE_MODE_FLAGS = uint32_t;
+    using FILE_MODE_FLAG_BITS = uint8_t;
+
     #if defined(_WIN32)
     struct MEMORY_MAPPED_FILE_SCOPE
     {
-        BLIT_MMF_RES Open(const char* path, FileModes mode, DWORD writeSize);
-
         BLIT_MMF_RES OpenRead(const char* path);
 
         BLIT_MMF_RES OpenWrite(const char* path, DWORD writeSize);
+
+        BLIT_MMF_RES OpenGeneral(const char* path, DWORD writeSize);
 
         void Close();
 
@@ -52,8 +56,12 @@ namespace BlitzenPlatform
         DWORD m_fileSize{ 0 };
         DWORD m_endOffset{ 0 };
 
+        bool IsRead() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Read; }
+
+        bool IsWrite() const { return m_mode & (FILE_MODE_FLAG_BITS)FileModes::Write; }
+
     private:
-        FileModes m_mode;
+        FILE_MODE_FLAGS m_mode;
     };
 
     #elif defined(linux)

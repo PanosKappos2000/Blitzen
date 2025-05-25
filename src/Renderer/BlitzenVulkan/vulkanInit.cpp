@@ -214,14 +214,17 @@ namespace BlitzenVulkan
             instanceInfo.pNext = &validationFeatures;
 
             // If the layer for synchronization 2 is found, it enables that as well
-            if (ce_bSynchronizationValidationRequested && EnabledInstanceSynchronizationValidation())
+            if constexpr (ce_bSynchronizationValidationRequested)
             {
-                instanceInfo.enabledLayerCount = 2;
-            }
-            else
-            {
-                BLIT_WARN("Failed to enable Vulkan synchronization validation");
-                instanceInfo.enabledLayerCount = 1;
+                if (EnabledInstanceSynchronizationValidation())
+                {
+                    instanceInfo.enabledLayerCount = 2;
+                }
+                else
+                {
+                    BLIT_WARN("Failed to enable Vulkan synchronization validation");
+                    instanceInfo.enabledLayerCount = 1;
+                }
             }
 
             instanceInfo.ppEnabledLayerNames = ppEnabledLayerNames;
@@ -268,8 +271,6 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to find all required instance extensions");
             return 0;
         }
-
-        BlitzenPlatform::UNSET_VALIDATION_LAYER_LENS();
 
         instanceInfo.enabledLayerCount = 0;
         uint8_t validationLayersEnabled = 0;

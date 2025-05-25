@@ -147,9 +147,6 @@ target_include_directories(
             "${PROJECT_SOURCE_DIR}/ExternalDependencies/Submodules/ImGui"
 )
 
-# This might interfere with Vulkan
-set(ENV{VK_INSTANCE_LAYERS} "")
-
 target_compile_definitions(BlitzenEngine PUBLIC
 
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
