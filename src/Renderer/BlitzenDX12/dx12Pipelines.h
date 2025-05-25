@@ -1,4 +1,7 @@
 #pragma once
+
+#if defined(_WIN32)
+
 #include "dx12Data.h"
 #include <d3dcompiler.h>
 #include <string>
@@ -59,7 +62,7 @@ namespace BlitzenDX12
         STDMETHOD(Close)(LPCVOID pData) override;
     private:
         std::string m_content;
-    };
-
-    
+    };    
 }
+
+#endif

@@ -1,3 +1,5 @@
+#if defined(_WIN32)
+
 #include "dx12Renderer.h"
 #include "dx12RNDResources.h"
 
@@ -761,3 +763,5 @@ namespace BlitzenDX12
 		m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
 	}
 }
+
+#endif

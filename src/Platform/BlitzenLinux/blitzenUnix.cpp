@@ -1,6 +1,6 @@
-#include "blitPlatformContext.h"
-
 #if defined(linux)
+
+
 #include <cstring>
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,6 +14,7 @@
 #include <unistd.h>  // usleep
 #endif
 #include "blitPlatform.h"
+#include "Platform/blitPlatformContext.h"
 #include "Core/Events/blitEvents.h"
 #include "Renderer/BlitzenVulkan/vulkanData.h"
 #include <vulkan/vulkan_xcb.h>

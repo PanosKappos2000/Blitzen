@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     BlitzenEngine::SetupCamera(mainCamera);
     blitzenWorldContext.pCameraContainer = &cameraSystem;
 
-    BlitzenCore::WorldTimerManager coreClock;
+    BlitzenCore::WorldTimeManager coreClock;
     blitzenWorldContext.pCoreClock = &coreClock;
 
     BlitzenEngine::Renderer renderer;

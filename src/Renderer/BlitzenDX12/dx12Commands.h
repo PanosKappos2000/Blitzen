@@ -1,4 +1,6 @@
 #pragma once
+#if defined(_WIN32)
+
 #include "dx12Renderer.h"
 
 namespace BlitzenDX12
@@ -7,3 +9,5 @@ namespace BlitzenDX12
         D3D12_COMMAND_QUEUE_FLAGS flags, D3D12_COMMAND_LIST_TYPE type,
         INT priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL, UINT mask = 0);
 }
+
+#endif

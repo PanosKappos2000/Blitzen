@@ -1,4 +1,7 @@
-#pragma once 
+#pragma once
+
+#if defined(_WIN32)
+
 #include <D3d12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
@@ -320,3 +323,5 @@ namespace BlitzenDX12
         return 0;
     }
 }
+
+#endif

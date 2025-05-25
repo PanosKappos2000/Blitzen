@@ -2,12 +2,8 @@
 #include "Renderer/Resources/Scene/blitScene.h"
 #include "Core/Entities/blitEntityManager.h"
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
-#if defined(_WIN32)
-    #include "Renderer/BlitzenGl/openglRenderer.h"
-#endif
-#if defined(_WIN32)
-    #include "Renderer/BlitzenDX12/dx12Renderer.h"
-#endif
+#include "Renderer/BlitzenGl/openglRenderer.h"
+#include "Renderer/BlitzenDX12/dx12Renderer.h"
 #include <typeinfo>
 #include <cstring>
 

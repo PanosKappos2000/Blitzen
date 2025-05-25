@@ -1,3 +1,5 @@
+#if defined(_WIN32)
+
 #include "dx12Pipelines.h"
 #include "dx12Renderer.h"
 
@@ -343,3 +345,5 @@ namespace BlitzenDX12
         return 1;
     }
 }
+
+#endif

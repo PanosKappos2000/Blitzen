@@ -5,98 +5,108 @@ project (BlitzenEngine VERSION 0 LANGUAGES C CXX)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Blitzen Engine Windows
-IF(WIN32)
+# SOURCE
 add_executable(BlitzenEngine
                 # ENGINE CORE
-                src/Core/blitzenEngine.h
-                src/Core/blitMemory.h
-                src/Core/blitzenEntry.cpp
+                "src/Core/blitzenEngine.h"
+                "src/Core/blitMemory.h"
+                "src/Core/blitzenEntry.cpp"
                 # LOGGING / DEBUG
-                src/Core/DbLog/blitLogger.h
-                src/Core/DbLog/blitLogger.cpp
-                src/Core/DbLog/blitAssert.h
+                "src/Core/DbLog/blitLogger.h"
+                "src/Core/DbLog/blitLogger.cpp"
+                "src/Core/DbLog/blitAssert.h"
                 # EVENTS
-                src/Core/Events/blitKeys.h
-                src/Core/Events/blitEvents.h
-                src/Core/Events/blitzenEvents.cpp
-                src/Core/Events/blitTimeManager.h
-                src/Core/Events/blitzenTimeManager.cpp
+                "src/Core/Events/blitKeys.h"
+                "src/Core/Events/blitEvents.h"
+                "src/Core/Events/blitzenEvents.cpp"
+                "src/Core/Events/blitTimeManager.h"
+                "src/Core/Events/blitzenTimeManager.cpp"
                 # WORLD (ALL SYSTEMS)
-                src/Core/BlitzenWorld/blitzenWorld.h 
-                src/Core/BlitzenWorld/blitzenWorldPrivate.h
+                "src/Core/BlitzenWorld/blitzenWorld.h "
+                "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 # ENTITIES
-                src/Core/Entities/blitEntityManager.h
-                src/Core/Entities/blitzenEntityManager.cpp
+                "src/Core/Entities/blitEntityManager.h"
+                "src/Core/Entities/blitzenEntityManager.cpp"
 
 
                 # BLITZEN CONTAINER LIBRARY
-                src/BlitCL/blitPfn.h
-                src/BlitCL/blitzenContainerLibrary.h
-                src/BlitCL/DynamicArray.h
-                src/BlitCL/blitString.h
-                src/BlitCL/blitSmartPointer.h
-                src/BlitCL/blitArray.h
-                src/BlitCL/blitHashMap.h
-                src/BlitCL/blitArrayIterator.h
+                "src/BlitCL/blitPfn.h"
+                "src/BlitCL/blitzenContainerLibrary.h"
+                "src/BlitCL/DynamicArray.h"
+                "src/BlitCL/blitString.h"
+                "src/BlitCL/blitSmartPointer.h"
+                "src/BlitCL/blitArray.h"
+                "src/BlitCL/blitHashMap.h"
+                "src/BlitCL/blitArrayIterator.h"
 
                 # BLITZEN MATH LIBRARY
-                src/BlitzenMathLibrary/blitML.h
-                src/BlitzenMathLibrary/blitMLTypes.h
+                "src/BlitzenMathLibrary/blitML.h"
+                "src/BlitzenMathLibrary/blitMLTypes.h"
                 
 
                 # PLATFORM
-                src/Platform/blitPlatformContext.h
-                src/Platform/blitPlatform.h
-                src/Platform/Common/blitMappedFile.h
+                "src/Platform/blitPlatformContext.h"
+                "src/Platform/blitPlatform.h"
+                "src/Platform/Common/blitMappedFile.h"
                 # WINDOWS
-                src/Platform/blitzenWindows.cpp
-                src/Platform/BlitzenWindows/blitMappedFile.cpp
+                "src/Platform/BlitzenWindows/blitzenWin32.cpp"
+                "src/Platform/BlitzenWindows/win32Memory.cpp"
+                "src/Platform/BlitzenWindows/win32Clock.cpp"
+                "src/Platform/BlitzenWindows/win32MappedFile.cpp"
+                "src/Platform/BlitzenWindows/win32Log.cpp"
+                "src/Platform/BlitzenWindows/win32GL.cpp"
+                "src/Platform/BlitzenWindows/win32VK.cpp"
                 # LINUX
-                src/Platform/blitzenLinux.cpp
+                "src/Platform/BlitzenLinux/blitzenUnix.cpp"
+                "src/Platform/BlitzenLinux/unixMemory.cpp"
+                "src/Platform/BlitzenLinux/unixClock.cpp"
+                "src/Platform/BlitzenLinux/unixMappedFile.cpp"
+                "src/Platform/BlitzenLinux/unixLog.cpp"
+                "src/Platform/BlitzenLinux/unixGL.cpp"
+                "src/Platform/BlitzenLinux/unixVK.cpp"
                 # OTHER
-                src/Platform/Filesystem/blitCFILE.h
-                src/Platform/Filesystem/blitCFILE.cpp
+                "src/Platform/Filesystem/blitCFILE.h"
+                "src/Platform/Filesystem/blitCFILE.cpp"
 
 
                 # ENGINE RENDERING 
-                src/Renderer/Interface/blitRenderer.h
-                src/Renderer/Interface/blitzenRenderer.cpp
-                src/Renderer/Interface/blitRendererInterface.h
-                src/Renderer/Resources/renderingResourcesTypes.h
-                src/Renderer/Resources/blitRenderingResources.h
-                src/Renderer/Resources/blitzenRenderingResources.cpp
-                src/Renderer/Resources/Textures/blitTextures.h
-                src/Renderer/Resources/Textures/blitzenTextures.cpp
-                src/Renderer/Resources/Mesh/blitMeshes.h
-                src/Renderer/Resources/Mesh/blitzenMeshes.cpp
-                src/Renderer/Resources/RenderObject/blitRender.h
-                src/Renderer/Resources/RenderObject/blitzenRender.cpp
-                src/Renderer/Resources/Scene/blitScene.h
-                src/Renderer/Resources/Scene/blitzenScene.cpp
+                "src/Renderer/Interface/blitRenderer.h"
+                "src/Renderer/Interface/blitzenRenderer.cpp"
+                "src/Renderer/Interface/blitRendererInterface.h"
+                "src/Renderer/Resources/renderingResourcesTypes.h"
+                "src/Renderer/Resources/blitRenderingResources.h"
+                "src/Renderer/Resources/blitzenRenderingResources.cpp"
+                "src/Renderer/Resources/Textures/blitTextures.h"
+                "src/Renderer/Resources/Textures/blitzenTextures.cpp"
+                "src/Renderer/Resources/Mesh/blitMeshes.h"
+                "src/Renderer/Resources/Mesh/blitzenMeshes.cpp"
+                "src/Renderer/Resources/RenderObject/blitRender.h"
+                "src/Renderer/Resources/RenderObject/blitzenRender.cpp"
+                "src/Renderer/Resources/Scene/blitScene.h"
+                "src/Renderer/Resources/Scene/blitzenScene.cpp"
                 # VULKAN
-                src/Renderer/BlitzenVulkan/vulkanData.h
-                src/Renderer/BlitzenVulkan/vulkanRenderer.h
-                src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h
-                src/Renderer/BlitzenVulkan/vulkanCommands.h
-                src/Renderer/BlitzenVulkan/vulkanPipelines.h
-                src/Renderer/BlitzenVulkan/vulkanHandles.cpp
-                src/Renderer/BlitzenVulkan/vulkanInit.cpp
-                src/Renderer/BlitzenVulkan/vulkanResources.cpp
-                src/Renderer/BlitzenVulkan/vulkanPipelines.cpp
-                src/Renderer/BlitzenVulkan/vulkanRaytracing.cpp
-                src/Renderer/BlitzenVulkan/vulkanRendererSetup.cpp
-                src/Renderer/BlitzenVulkan/vulkanCommands.cpp
-                src/Renderer/BlitzenVulkan/vulkanDraw.cpp
+                "src/Renderer/BlitzenVulkan/vulkanData.h"
+                "src/Renderer/BlitzenVulkan/vulkanRenderer.h"
+                "src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h"
+                "src/Renderer/BlitzenVulkan/vulkanCommands.h"
+                "src/Renderer/BlitzenVulkan/vulkanPipelines.h"
+                "src/Renderer/BlitzenVulkan/vulkanHandles.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanInit.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanResources.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanPipelines.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanRaytracing.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanRendererSetup.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanCommands.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanDraw.cpp"
                 # GL
-                src/Renderer/BlitzenGL/openglData.h
-                src/Renderer/BlitzenGL/openglRenderer.h
-                src/Renderer/BlitzenGL/openglResources.cpp
-                src/Renderer/BlitzenGl/openglRenderer.cpp
+                "src/Renderer/BlitzenGL/openglData.h"
+                "src/Renderer/BlitzenGL/openglRenderer.h"
+                "src/Renderer/BlitzenGL/openglResources.cpp"
+                "src/Renderer/BlitzenGl/openglRenderer.cpp"
                 # DX12
-                src/Renderer/BlitzenDX12/dx12Data.h
-                src/Renderer/BlitzenDX12/dx12Renderer.h
-                src/Renderer/BlitzenDX12/dx12Commands.h 
+                "src/Renderer/BlitzenDX12/dx12Data.h"
+                "src/Renderer/BlitzenDX12/dx12Renderer.h"
+                "src/Renderer/BlitzenDX12/dx12Commands.h" 
                 src/Renderer/BlitzenDX12/dx12Commands.cpp
                 src/Renderer/BlitzenDX12/dx12Resources.h
                 src/Renderer/BlitzenDX12/dx12Resources.cpp
@@ -108,14 +118,14 @@ add_executable(BlitzenEngine
                 src/Renderer/BlitzenDX12/dx12RendererSetup.cpp
                 src/Renderer/BlitzenDX12/dx12Draw.cpp
 
-
-                src/Game/blitObject.h
-                src/Game/blitzenObject.cpp
-                src/Game/blitCamera.h
-                src/Game/blitzenCamera.cpp
+                # CLIENT(TODO: THESE ARE PROBABLY MORE FITTING INSIDE CORE OR RENDERER)
+                "src/Game/blitObject.h"
+                "src/Game/blitzenObject.cpp"
+                "src/Game/blitCamera.h"
+                "src/Game/blitzenCamera.cpp"
                 
 
-                src/VendorCode/fast_obj.h
+                "src/VendorCode/fast_obj.h"
                 src/VendorCode/objparser.cpp
                 src/VendorCode/Meshoptimizer/indexgenerator.cpp
                 src/VendorCode/Meshoptimizer/quantization.cpp
@@ -125,102 +135,8 @@ add_executable(BlitzenEngine
                 src/VendorCode/Meshoptimizer/simplifier.cpp
                 src/VendorCode/Cgltf/cgltf.h
 )
-ELSEIF(UNIX)
-add_executable(BlitzenEngine
-                # ENGINE CORE
-                src/Core/blitzenEngine.h
-                src/Core/blitMemory.h
-                src/Core/blitzenEntry.cpp
-                # LOGGING / DEBUG
-                src/Core/DbLog/blitLogger.h
-                src/Core/DbLog/blitLogger.cpp
-                src/Core/DbLog/blitAssert.h
-                # EVENTS
-                src/Core/Events/blitKeys.h
-                src/Core/Events/blitEvents.h
-                src/Core/Events/blitzenEvents.cpp
-                src/Core/Events/blitTimeManager.h
-                src/Core/Events/blitzenTimeManager.cpp
-                # WORLD (ALL SYSTEMS)
-                src/Core/BlitzenWorld/blitzenWorld.h 
-                src/Core/BlitzenWorld/blitzenWorldPrivate.h
-                # ENTITIES
-                src/Core/Entities/blitEntityManager.h
-                src/Core/Entities/blitzenEntityManager.cpp
 
-
-                # BLITZEN CONTAINER LIBRARY
-                src/BlitCL/blitPfn.h
-                src/BlitCL/blitzenContainerLibrary.h
-                src/BlitCL/DynamicArray.h
-                src/BlitCL/blitString.h
-                src/BlitCL/blitSmartPointer.h
-                src/BlitCL/blitArray.h
-                src/BlitCL/blitHashMap.h
-                src/BlitCL/blitArrayIterator.h
-
-                # BLITZEN MATH LIBRARY
-                src/BlitzenMathLibrary/blitML.h
-                src/BlitzenMathLibrary/blitMLTypes.h
-                
-
-                # PLATFORM
-                src/Platform/blitPlatformContext.h
-                src/Platform/blitPlatform.h
-                src/Platform/blitzenWindows.cpp
-                src/Platform/blitzenLinux.cpp
-                src/Platform/Filesystem/blitCFILE.h
-                src/Platform/Filesystem/blitCFILE.cpp
-
-
-                # ENGINE RENDERING 
-                src/Renderer/Interface/blitRenderer.h
-                src/Renderer/Interface/blitzenRenderer.cpp
-                src/Renderer/Interface/blitRendererInterface.h
-                src/Renderer/Resources/renderingResourcesTypes.h
-                src/Renderer/Resources/blitRenderingResources.h
-                src/Renderer/Resources/blitzenRenderingResources.cpp
-                src/Renderer/Resources/Textures/blitTextures.h
-                src/Renderer/Resources/Textures/blitzenTextures.cpp
-                src/Renderer/Resources/Mesh/blitMeshes.h
-                src/Renderer/Resources/Mesh/blitzenMeshes.cpp
-                src/Renderer/Resources/RenderObject/blitRender.h
-                src/Renderer/Resources/RenderObject/blitzenRender.cpp
-                src/Renderer/Resources/Scene/blitScene.h
-                src/Renderer/Resources/Scene/blitzenScene.cpp
-                # VULKAN
-                src/Renderer/BlitzenVulkan/vulkanData.h
-                src/Renderer/BlitzenVulkan/vulkanRenderer.h
-                src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h
-                src/Renderer/BlitzenVulkan/vulkanCommands.h
-                src/Renderer/BlitzenVulkan/vulkanPipelines.h
-                src/Renderer/BlitzenVulkan/vulkanHandles.cpp
-                src/Renderer/BlitzenVulkan/vulkanInit.cpp
-                src/Renderer/BlitzenVulkan/vulkanResources.cpp
-                src/Renderer/BlitzenVulkan/vulkanPipelines.cpp
-                src/Renderer/BlitzenVulkan/vulkanRaytracing.cpp
-                src/Renderer/BlitzenVulkan/vulkanRendererSetup.cpp
-                src/Renderer/BlitzenVulkan/vulkanCommands.cpp
-                src/Renderer/BlitzenVulkan/vulkanDraw.cpp
-
-                src/Game/blitObject.h
-                src/Game/blitzenObject.cpp
-                src/Game/blitCamera.h
-                src/Game/blitzenCamera.cpp
-                
-                src/VendorCode/fast_obj.h
-                src/VendorCode/objparser.cpp
-                src/VendorCode/Meshoptimizer/indexgenerator.cpp
-                src/VendorCode/Meshoptimizer/quantization.cpp
-                src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp
-                src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
-                src/VendorCode/Meshoptimizer/clusterizer.cpp
-                src/VendorCode/Meshoptimizer/simplifier.cpp
-                src/VendorCode/Cgltf/cgltf.h
-)
-ENDIF(WIN32)
-
-# Specify directories that hold header files
+# INCLUDES
 target_include_directories(
     BlitzenEngine PUBLIC
             "${PROJECT_SOURCE_DIR}/src"
@@ -231,6 +147,9 @@ target_include_directories(
             "${PROJECT_SOURCE_DIR}/ExternalDependencies/Submodules/ImGui"
 )
 
+# This might interfere with Vulkan
+set(ENV{VK_INSTANCE_LAYERS} "")
+
 target_compile_definitions(BlitzenEngine PUBLIC
 
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
@@ -238,7 +157,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_ASSERTIONS_ENABLED
                             #BLIT_CONSOLE_LOGGER
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
@@ -253,7 +172,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Vulkan specific preprocessor macros
                             BLIT_VK_VALIDATION_LAYERS
-                            BLIT_VK_SYNCHRONIZATION_VALIDATION
+                            #BLIT_VK_SYNCHRONIZATION_VALIDATION
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
@@ -261,7 +180,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
 
-# Linker file directories and libraries to link for linux and Windows
+# LINKER
 IF(WIN32)
     target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib"

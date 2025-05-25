@@ -1,3 +1,5 @@
+#if defined(_WIN32)
+
 #include "openglRenderer.h"
 #include "Platform/Filesystem/blitCFILE.h"
 #include <string>
@@ -344,3 +346,5 @@ namespace BlitzenGL
         
     }
 }
+
+#endif

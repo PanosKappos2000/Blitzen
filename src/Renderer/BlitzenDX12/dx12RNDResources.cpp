@@ -1,3 +1,5 @@
+#if defined(_WIN32)
+
 #include "dx12RNDResources.h"
 
 namespace BlitzenDX12
@@ -232,3 +234,5 @@ namespace BlitzenDX12
 		swapchain->Present(1, 0);
 	}
 }
+
+#endif

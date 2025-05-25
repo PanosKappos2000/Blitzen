@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/blitzenEngine.h"
+#include "Platform/blitPlatform.h"
 #if defined(BLIT_REIN_SANT_ENG)
     #include "Core/DbLog/blitLogger.h"
     #include "Core/DbLog/blitAssert.h"
@@ -9,39 +10,9 @@
 #include <utility>
 #include <stdlib.h>
 
-// Platform specific code, needed to allocate on the heap
-namespace BlitzenPlatform
-{
-    // Implementation changes, depending on if the memory manager is used by Blitzen or a different application
-    #if defined(BLIT_REIN_SANT_ENG)
-        void* PlatformMalloc(size_t size, uint8_t aligned);
-        void PlatformFree(void* pBlock, uint8_t aligned);
-        void* PlatformMemZero(void* pBlock, size_t size);
-        void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
-        void* PlatformMemSet(void* pDst, int32_t value, size_t size);
-    #else
-        inline void* PlatformMalloc(size_t size, uint8_t aligned)
-        {
-            return malloc(size);
-        }
-        inline void PlatformFree(void* pBlock, uint8_t aligned)
-        {
-            free(pBlock);
-        }
-        inline void* PlatformMemZero(void* pBlock, size_t size)
-        {
-            return memset(pBlock, 0, size);
-        }
-        inline void* PlatformMemCopy(void* pDst, void* pSrc, size_t size)
-        {
-            return memcpy(pDst, pSrc, size);
-        }
-        inline void* PlatformMemSet(void* pDst, int32_t value, size_t size)
-        {
-            return memset(pDst, value, size);
-        }
+    #if !defined(BLIT_REIN_SANT_ENG)
+    #include "BlitCL/platform.h"
     #endif
-}
 
 namespace BlitzenCore
 {

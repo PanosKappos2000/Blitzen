@@ -102,7 +102,7 @@ namespace BlitzenVulkan
     }
 
     // Debug messenger callback function
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    static VKAPI_ATTR VkBool32 VKAPI_CALL S_DEBUG_CALLBACK(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
     {
         switch (messageSeverity)
@@ -168,7 +168,7 @@ namespace BlitzenVulkan
             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
         // Debug messenger callback function defined at the top of this file
-        debugMessengerInfo.pfnUserCallback = debugCallback;
+        debugMessengerInfo.pfnUserCallback = S_DEBUG_CALLBACK;
 
         debugMessengerInfo.pNext = nullptr;
         debugMessengerInfo.pUserData = nullptr;
@@ -181,7 +181,7 @@ namespace BlitzenVulkan
         // Getting all supported validation layers
         uint32_t availableLayerCount = 0;
         vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
-        BlitCL::DynamicArray<VkLayerProperties> availableLayers(static_cast<size_t>(availableLayerCount));
+        BlitCL::DynamicArray<VkLayerProperties> availableLayers{ size_t(availableLayerCount) };
         vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.Data());
 
         // Checking if the requested validation layers are supported
@@ -268,6 +268,8 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to find all required instance extensions");
             return 0;
         }
+
+        BlitzenPlatform::UNSET_VALIDATION_LAYER_LENS();
 
         instanceInfo.enabledLayerCount = 0;
         uint8_t validationLayersEnabled = 0;
@@ -902,6 +904,7 @@ namespace BlitzenVulkan
 
     uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform)
     {
+
         if(!CreateInstance(m_instance, &m_debugMessenger))
         {
             BLIT_ERROR("Failed to create vulkan instance");

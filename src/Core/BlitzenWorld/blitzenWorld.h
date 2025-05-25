@@ -7,11 +7,9 @@ namespace BlitzenWorld
 {
     struct BlitzenWorldContext
     {
-        // TODO:
-        // This should be changed for client protection. Right now they can just break the engine by accessing these guys
         BlitzenEngine::CameraContainer* pCameraContainer;
-        BlitzenCore::WorldTimerManager* pCoreClock;
-
+        // TODO: MOVE TIME MANAGER TO PRIVATE
+        BlitzenCore::WorldTimeManager* pCoreClock;
         BlitzenEngine::RendererEvent rendererEvent;
     };
 }

@@ -1,4 +1,5 @@
 #if defined(_WIN32)
+
 #include "Platform/Common/blitMappedFile.h"
 
 
@@ -160,4 +161,5 @@ namespace BlitzenPlatform
         return true;
     }
 }
+
 #endif

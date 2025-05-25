@@ -1,3 +1,5 @@
+#if defined(_WIN32)
+
 #include "dx12Renderer.h"
 #include "dx12Commands.h"
 #include "Platform/blitPlatform.h"
@@ -201,3 +203,5 @@ namespace BlitzenDX12
         }
     }
 }
+
+#endif

@@ -1,4 +1,7 @@
 #pragma once
+
+#if defined(_WIN32)
+
 #include "dx12Data.h"
 #include "Renderer/Interface/blitRendererInterface.h"
 #include "Renderer/Resources/blitRenderingResources.h"
@@ -244,3 +247,5 @@ namespace BlitzenDX12
 
     };
 }
+
+#endif

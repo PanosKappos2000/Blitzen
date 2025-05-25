@@ -1,4 +1,7 @@
 #pragma once
+
+#if defined(_WIN32)
+
 #include "dx12Data.h"
 
 namespace BlitzenDX12
@@ -144,3 +147,5 @@ namespace BlitzenDX12
         return 1;
     }
 }
+
+#endif

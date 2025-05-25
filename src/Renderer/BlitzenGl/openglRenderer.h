@@ -1,4 +1,7 @@
 #pragma once
+
+#if defined(_WIN32)
+
 #include "openglData.h"
 #include "BlitCL/DynamicArray.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
@@ -105,3 +108,5 @@ namespace BlitzenPlatform
 
     void OpenglSwapBuffers(BlitzenPlatform::PlatformContext* pPlatform);
 }
+
+#endif

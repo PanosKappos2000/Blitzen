@@ -1,4 +1,7 @@
 #pragma once
+
+#if defined(_WIN32)
+
 #include "dx12Resources.h"
 #include "dx12Renderer.h"
 
@@ -21,3 +24,5 @@ namespace BlitzenDX12
         UINT depthPyramidWidth, UINT depthPyramidHeight, ID3D12DescriptorHeap* descriptorHeap, ID3D12CommandQueue* queue, IDXGISwapChain3* swapchain, 
         uint32_t pyramidMip, uint32_t swapchainWidht, uint32_t swapchainHeight);
 }
+
+#endif

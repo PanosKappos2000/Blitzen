@@ -70,7 +70,7 @@ namespace BlitML
 
     static uint8_t sRandSeeded = 0;
 
-    inline int32_t Rand(BlitzenCore::WorldTimerManager& clock) 
+    inline int32_t Rand(BlitzenCore::WorldTimeManager& clock) 
     {
         if(!sRandSeeded)
         {
@@ -79,7 +79,8 @@ namespace BlitML
         }
         return rand();
     }
-    inline int32_t RandInRange(BlitzenCore::WorldTimerManager& clock, int32_t min, int32_t max)
+
+    inline int32_t RandInRange(BlitzenCore::WorldTimeManager& clock, int32_t min, int32_t max)
     {
         if (!sRandSeeded) 
         {

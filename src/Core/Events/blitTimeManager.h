@@ -3,11 +3,11 @@
 
 namespace BlitzenCore
 {
-    class WorldTimerManager
+    class WorldTimeManager
     {
     public:
 
-        WorldTimerManager();
+        WorldTimeManager();
 
         double m_startTime;
 
@@ -20,13 +20,13 @@ namespace BlitzenCore
         double m_clockFrequency;
     };
 
-    void UpdateWorldClock(WorldTimerManager& clock);
+    void UpdateWorldClock(WorldTimeManager& clock);
 }
 
 namespace BlitzenPlatform
 {
     
-    void PlatfrormSetupClock(BlitzenCore::WorldTimerManager* pClock);
+    void PlatfrormSetupClock(BlitzenCore::WorldTimeManager* pClock);
     
     double PlatformGetAbsoluteTime(double frequence);
 }
