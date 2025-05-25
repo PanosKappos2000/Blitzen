@@ -112,11 +112,11 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/dx12Resources.cpp"
                 "src/Renderer/BlitzenDX12/dx12Pipelines.h"
                 "src/Renderer/BlitzenDX12/dx12Pipelines.cpp"
-                src/Renderer/BlitzenDX12/dx12RNDResources.h
-                src/Renderer/BlitzenDX12/dx12RNDResources.cpp
-                src/Renderer/BlitzenDX12/dx12Init.cpp
-                src/Renderer/BlitzenDX12/dx12RendererSetup.cpp
-                src/Renderer/BlitzenDX12/dx12Draw.cpp
+                "src/Renderer/BlitzenDX12/dx12RNDResources.h"
+                "src/Renderer/BlitzenDX12/dx12RNDResources.cpp"
+                "src/Renderer/BlitzenDX12/dx12Init.cpp"
+                "src/Renderer/BlitzenDX12/dx12RendererSetup.cpp"
+                "src/Renderer/BlitzenDX12/dx12Draw.cpp"
 
                 # CLIENT(TODO: THESE ARE PROBABLY MORE FITTING INSIDE CORE OR RENDERER)
                 "src/Game/blitObject.h"
@@ -154,7 +154,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_ASSERTIONS_ENABLED
                             #BLIT_CONSOLE_LOGGER
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
@@ -173,7 +173,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
-                            #DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
+                            DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
                             #DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
 

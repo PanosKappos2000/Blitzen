@@ -580,9 +580,22 @@ namespace BlitzenDX12
 
 		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{
+			// Render target barrier
+			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
+			CreateResourcesTransitionBarrier(renderTargetBarrier, m_swapchainBackBuffers[swapchainIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			frameTools.mainGraphicsCommandList->ResourceBarrier(1, &renderTargetBarrier);
 
+			// Viewport and scissor
+			DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
+
+			// One pass
+			const uint8_t singlePass = 1;
+			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(),
+				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, singlePass);
+
+			// Ends pass
+			frameTools.mainGraphicsCommandList->EndRenderPass();
 		}
-
 		/*
 			-FRUSTUM CULLING AND LOD SELECTION AT RENDER OBJECT LEVEL BEFORE DRAW INDIRECT
 			-FIRST PASS CULLS PREVIOSLY VISIBLE OBJECTS TO CREATE OCCLUDERS
@@ -617,6 +630,8 @@ namespace BlitzenDX12
 			// Shaders used: opaqueDraw.vs.hlsl + opaqueDraw.ps.hlsl
 			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
 				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+
+			// Ends pass
 			frameTools.mainGraphicsCommandList->EndRenderPass();
 			firstPass = 0;
 

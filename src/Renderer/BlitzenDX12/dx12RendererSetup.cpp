@@ -350,7 +350,7 @@ namespace BlitzenDX12
 		CreateDescriptorRange(cullSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
 		CreateDescriptorRange(cullSrvRanges[Ce_IndirectCountBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectCountBufferDescriptorCount, Ce_IndirectCountBufferRegister);
 		CreateDescriptorRange(cullSrvRanges[Ce_LODBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_LODBufferDescriptorCount, Ce_LODBufferRegister);
-		if constexpr (CE_DX12OCCLUSION)
+		if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
 		{
 			D3D12_DESCRIPTOR_RANGE drawVisibilityBufferRange{};
 			CreateDescriptorRange(drawVisibilityBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DrawVisibilityBufferDescriptorCount, Ce_DrawVisibilityBufferRegister);
@@ -477,7 +477,21 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if constexpr (CE_DX12OCCLUSION)
+		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+		{
+			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawOccTemporal.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawOccTemporal.cs shader program");
+				return 0;
+			}
+
+			if (!CreateComputeShaderProgram(device, context.depthPyramidRoot, context.ppDepthPyramidPso, "HlslShaders/CS/depthPyramid.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create depthPyramid.cs shader program");
+				return 0;
+			}
+		}
+		else if constexpr (CE_DX12OCCLUSION)
 		{
 			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawOccFirst.cs.hlsl.bin"))
 			{
@@ -624,12 +638,16 @@ namespace BlitzenDX12
 			{
 				BlitCL::DynamicArray<uint32_t> zeroData{ renderCount, 0 };
 				
-				visibilityBufferSize = CreateSSBO(device, buffers.drawVisibilityBuffer, drawVisibilityStaging, (size_t)renderCount,
-					zeroData.Data(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-				if(!visibilityBufferSize)
+				// For occlusion with pre pass, the draw visibility buffer is needed
+				if constexpr (!CE_DX12TEMPORAL_OCCLUSION)
 				{
-					BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
-					return 0;
+					visibilityBufferSize = CreateSSBO(device, buffers.drawVisibilityBuffer, drawVisibilityStaging, (size_t)renderCount,
+						zeroData.Data(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+					if (!visibilityBufferSize)
+					{
+						BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
+						return 0;
+					}
 				}
 
 				if (!CreateDepthPyramidResource(device, buffers.depthPyramid, swapchainWidth, swapchainHeight))
@@ -664,7 +682,7 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(copyDestBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 			// Conditional barriers
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferDestBarrier, buffers.drawVisibilityBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -685,7 +703,7 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 			// Conditional staging barriers
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferSourceBarrier, drawVisibilityStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -1012,7 +1030,7 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
 				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
 
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
 			{
 				CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, renderCount, sizeof(uint32_t), 0);
@@ -1155,12 +1173,15 @@ namespace BlitzenDX12
 
 		if constexpr (CE_DX12OCCLUSION)
 		{
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			if constexpr (!CE_DX12TEMPORAL_OCCLUSION)
 			{
-				D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
-				CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_varBuffers[i].drawVisibilityBuffer.buffer.Get(),
-					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-				varBuffersFinalState.PushBack(drawVisibilityBarrier);
+				for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+				{
+					D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
+					CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_varBuffers[i].drawVisibilityBuffer.buffer.Get(),
+						D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+					varBuffersFinalState.PushBack(drawVisibilityBarrier);
+				}
 			}
 
 			for (uint32_t f = 0; f < ce_framesInFlight; ++f)

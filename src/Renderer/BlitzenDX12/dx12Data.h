@@ -215,9 +215,10 @@ namespace BlitzenDX12
     // Buffer size used for texture staging buffer
     constexpr SIZE_T Ce_TextureDataStagingSize = 128 * 1024 * 1024;
 
+// OCCLUSION MODES
 #if defined(DX12_TEMPORAL_DRAW_OCCLUSION)
     constexpr uint8_t CE_DX12TEMPORAL_OCCLUSION = 1;
-    constexpr uint8_t CE_DX12OCCLUSION = 0;
+    constexpr uint8_t CE_DX12OCCLUSION = 1;
 #elif defined(DX12_OCCLUSION_DRAW_CULL)
     constexpr uint8_t CE_DX12OCCLUSION = 1;
     constexpr uint8_t CE_DX12TEMPORAL_OCCLUSION = 0;
