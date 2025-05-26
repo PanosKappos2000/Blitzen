@@ -139,9 +139,9 @@ namespace BlitzenDX12
     constexpr UINT Ce_CullSharedSRVsParameterId = 1;
     constexpr UINT Ce_CullDrawCountParameterId = 2;
 
-    // ROOT PARAMETER OCCLUSION LATE PASS
-    constexpr UINT Ce_DrawOccLateRootParameterCount = 4;
-    constexpr uint32_t Ce_DrawOccLateDepthPyramidParameterId = 3;
+    // ROOT PARAMETER OCCLUSION PASS
+    constexpr UINT Ce_DrawOccRootParameterCount = 4;
+    constexpr uint32_t Ce_DrawOccDepthPyramidParameterId = 3;
 
 
 

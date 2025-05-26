@@ -223,7 +223,7 @@ namespace BlitzenDX12
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
-	static void GenerateDepthPyramid(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
+	static void GenerateHI_Z_MAP(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
 		UINT frame, UINT swapchainId, ID3D12RootSignature* pyramidSig, ID3D12PipelineState* pyramidPso, Dx12Renderer::VarBuffers& varBuffers, ID3D12Resource* depthTarget, 
 		uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
@@ -319,7 +319,7 @@ namespace BlitzenDX12
 		commandList->SetComputeRootSignature(cullRoot);
 		commandList->SetComputeRootDescriptorTable(Ce_CullSharedSRVsParameterId, descriptorContext.sharedSrvHandle[frame]);
 		commandList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, descriptorContext.cullSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateDepthPyramidParameterId, descriptorContext.depthPyramidSrvHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccDepthPyramidParameterId, descriptorContext.depthPyramidSrvHandle[frame]);
 
 		// Pipeline + constants
 		commandList->SetPipelineState(cullPso);
@@ -337,6 +337,48 @@ namespace BlitzenDX12
 		CreateResourceUAVBarrier(graphicsBarriers[2], varBuffers.indirectDrawBuffer.buffer.Get());
 		CreateResourceUAVBarrier(graphicsBarriers[3], varBuffers.indirectDrawCount.buffer.Get());
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
+	}
+
+	static void DrawOccTemporalPass(BlitzenEngine::DrawContext& drawContext, ID3D12GraphicsCommandList* cmdList, UINT frame,
+		ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext, ID3D12RootSignature* resetRoot,
+		ID3D12PipelineState* resetPso, ID3D12RootSignature* cullRoot, ID3D12PipelineState* cullPso, Dx12Renderer::VarBuffers& varBuffers)
+	{
+		// Binds heap for compute
+		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		cmdList->SetDescriptorHeaps(1, srvHeaps);
+
+		// Draw count reset
+		DrawCountReset(cmdList, resetRoot, resetPso, descriptorContext.cullSrvHandle[frame], varBuffers);
+
+		// Blocks culling shader, waits for indirect command read and count reset(the depth pyramid has a barrier in its generate function)
+		D3D12_RESOURCE_BARRIER cullingBarriers[2]{};
+		// Command ssbo
+		CreateResourcesTransitionBarrier(cullingBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		// Count reset
+		CreateResourceUAVBarrier(cullingBarriers[1], varBuffers.indirectDrawCount.buffer.Get());
+		cmdList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
+
+		// Descriptors
+		cmdList->SetComputeRootSignature(cullRoot);
+		cmdList->SetComputeRootDescriptorTable(Ce_CullSharedSRVsParameterId, descriptorContext.sharedSrvHandle[frame]);
+		cmdList->SetComputeRootDescriptorTable(Ce_CullExclusiveSRVsParameterId, descriptorContext.cullSrvHandle[frame]);
+		cmdList->SetComputeRootDescriptorTable(Ce_DrawOccDepthPyramidParameterId, descriptorContext.depthPyramidSrvHandle[frame]);
+
+		// Pipeline + root constants
+		cmdList->SetPipelineState(cullPso);
+		cmdList->SetComputeRoot32BitConstant(Ce_CullDrawCountParameterId, drawContext.m_renders.m_renderCount, 0);
+
+		// CULL
+		cmdList->Dispatch(BlitML::GetComputeShaderGroupSize(drawContext.m_renders.m_renderCount, 64), 1, 1);
+
+		// Blocks graphics, waits for command to be written and count to be set
+		D3D12_RESOURCE_BARRIER graphicsBarriers[2]{};
+		CreateResourcesTransitionBarrier(graphicsBarriers[0], varBuffers.indirectDrawBuffer.buffer.Get(), 
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		CreateResourcesTransitionBarrier(graphicsBarriers[1], varBuffers.indirectDrawCount.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		cmdList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
 	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle,
@@ -580,6 +622,11 @@ namespace BlitzenDX12
 
 		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{
+			// Culling with Occlusion using previous frame depth pyramid
+			DrawOccTemporalPass(context, frameTools.mainGraphicsCommandList.Get(), m_currentFrame, m_srvHeap.Get(), 
+				m_descriptorContext, m_drawCountResetRoot.Get(), m_drawCountResetPso.Get(), m_drawOccLateSignature.Get(), 
+				m_drawCullPso.Get(), varBuffers);
+
 			// Render target barrier
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
 			CreateResourcesTransitionBarrier(renderTargetBarrier, m_swapchainBackBuffers[swapchainIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -593,8 +640,15 @@ namespace BlitzenDX12
 			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(),
 				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, singlePass);
 
+			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_opaqueRootSignature.Get(),
+				m_opaqueGraphicsPso.Get(), m_opaqueCmdSingature.Get(), m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+
 			// Ends pass
 			frameTools.mainGraphicsCommandList->EndRenderPass();
+
+			GenerateHI_Z_MAP(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
+				m_depthPyramidSignature.Get(), m_depthPyramidPso.Get(), varBuffers, m_depthBuffers[swapchainIndex].Get(),
+				m_swapchainWidth, m_swapchainHeight);
 		}
 		/*
 			-FRUSTUM CULLING AND LOD SELECTION AT RENDER OBJECT LEVEL BEFORE DRAW INDIRECT
@@ -636,7 +690,7 @@ namespace BlitzenDX12
 			firstPass = 0;
 
 			// 4. DEPTH TARGET IS COPIED TO A HI-Z MAP
-			GenerateDepthPyramid(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
+			GenerateHI_Z_MAP(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
 				m_depthPyramidSignature.Get(), m_depthPyramidPso.Get(), varBuffers, m_depthBuffers[swapchainIndex].Get(), 
 				m_swapchainWidth, m_swapchainHeight);
 

@@ -210,7 +210,7 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12RootSignature> m_drawCullSignature;
         DX12WRAPPER<ID3D12PipelineState> m_drawCullPso;
         // Draw occlusion mode only
-        DX12WRAPPER<ID3D12RootSignature> m_drawOccLateSignature;
+        DX12WRAPPER<ID3D12RootSignature> m_drawOccLateSignature;// TODO: REMEMBER TO RENAME THESE IN THE UPCOMING REFACTOR
         DX12WRAPPER<ID3D12PipelineState> m_drawOccLatePso;
         DX12WRAPPER<ID3D12RootSignature> m_depthPyramidSignature;
         DX12WRAPPER<ID3D12PipelineState> m_depthPyramidPso;

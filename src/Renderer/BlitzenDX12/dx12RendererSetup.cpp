@@ -387,13 +387,13 @@ namespace BlitzenDX12
 			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
 			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidCullDescriptorCount, Ce_DepthPyramidCullRegister);
 
-			D3D12_ROOT_PARAMETER drawOccLateRootParameters[Ce_DrawOccLateRootParameterCount]{};
+			D3D12_ROOT_PARAMETER drawOccLateRootParameters[Ce_DrawOccRootParameterCount]{};
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterPushConstants(drawOccLateRootParameters[Ce_CullDrawCountParameterId], Ce_CullShaderRootConstantRegister, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateDepthPyramidParameterId], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccDepthPyramidParameterId], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
-			if (!CreateRootSignature(device, ppDrawOccSignature, Ce_DrawOccLateRootParameterCount, drawOccLateRootParameters))
+			if (!CreateRootSignature(device, ppDrawOccSignature, Ce_DrawOccRootParameterCount, drawOccLateRootParameters))
 			{
 				BLIT_ERROR("Failed to create late cull (occlusion culling) root parameter");
 				return 0;
