@@ -989,10 +989,10 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static void CreateResourceViews(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
+	static void CreateResourceViews(ID3D12Device* device, DescriptorContext& ctx,
 		Dx12Renderer::FrameTools& tools, ID3D12CommandQueue* queue, Dx12Renderer::ConstBuffers& staticBuffers, Dx12Renderer::VarBuffers* varBuffers, 
 		BlitzenEngine::DrawContext& context, UINT textureCount, DX2DTEX* pTextures, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, 
-		UINT drawHeight, ID3D12DescriptorHeap* samplerHeap)
+		UINT drawHeight)
 	{
 		const auto& vertices{ context.m_meshes.m_hlslVtxs };
 		const auto& transforms{ context.m_renders.m_transforms };
@@ -1006,64 +1006,57 @@ namespace BlitzenDX12
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			// Saves the offset of this group of descriptors and begins
-			descriptorContext.opaqueSrvOffset[i] = descriptorContext.srvHeapOffset;
-			descriptorContext.opaqueSrvHandle[i] = descriptorContext.srvHandle;
-			descriptorContext.opaqueSrvHandle[i].ptr += descriptorContext.opaqueSrvOffset[i] * descriptorContext.srvIncrementSize;
+			ctx.m_opaqueDrawViewsExclusiveOffset[i] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_opaqueDrawViewsExclusiveHandle[i] = ctx.m_viewHeapHandle;
+			ctx.m_opaqueDrawViewsExclusiveHandle[i].ptr += ctx.m_opaqueDrawViewsExclusiveOffset[i] * ctx.m_viewHeapIncrement;
 
 			auto& vars = varBuffers[i];
 
-			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.vertexBuffer.heapOffset[i], (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+			CreateBufferShaderResourceView(device, staticBuffers.vertexBuffer.buffer.Get(), ctx, (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
 		}
 
 		// Teams of descriptors used by both graphics and compute pipelines
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			// Saves the offset of this group of descriptors and begins
-			descriptorContext.sharedSrvOffset[i] = descriptorContext.srvHeapOffset;
-			descriptorContext.sharedSrvHandle[i] = descriptorContext.srvHandle;
-			descriptorContext.sharedSrvHandle[i].ptr += descriptorContext.sharedSrvOffset[i] * descriptorContext.srvIncrementSize;
+			ctx.m_sharedViewsOffset[i] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_sharedViewHandle[i] = ctx.m_viewHeapHandle;
+			ctx.m_sharedViewHandle[i].ptr += ctx.m_sharedViewsOffset[i] * ctx.m_viewHeapIncrement;
 
 			auto& vars = varBuffers[i];
 
-			CreateBufferShaderResourceView(device, staticBuffers.surfaceBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.surfaceBuffer.heapOffset[i], (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
+			CreateBufferShaderResourceView(device, staticBuffers.surfaceBuffer.buffer.Get(), ctx, (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
 
-			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, vars.transformBuffer.heapOffset, context.m_renders.m_transformCount, sizeof(BlitzenEngine::MeshTransform));
+			CreateBufferShaderResourceView(device, vars.transformBuffer.buffer.Get(), ctx, context.m_renders.m_transformCount, sizeof(BlitzenEngine::MeshTransform));
 
-			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.renderBuffer.heapOffset[i], renderCount, sizeof(BlitzenEngine::RenderObject));
+			CreateBufferShaderResourceView(device, staticBuffers.renderBuffer.buffer.Get(), ctx, renderCount, sizeof(BlitzenEngine::RenderObject));
 
 			// This shit need to be cleaned up at some point
 			vars.viewDataBuffer.cbvDesc = {};
 			vars.viewDataBuffer.cbvDesc.BufferLocation = vars.viewDataBuffer.buffer->GetGPUVirtualAddress();
 			vars.viewDataBuffer.cbvDesc.SizeInBytes = sizeof(BlitzenEngine::CameraViewData);
-			auto descriptorHandle = srvHeap->GetCPUDescriptorHandleForHeapStart();
-			descriptorHandle.ptr += descriptorContext.srvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			auto descriptorHandle = ctx.m_viewHeap->GetCPUDescriptorHandleForHeapStart();
+			descriptorHandle.ptr += ctx.m_viewHeapCurrentOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
-			descriptorContext.srvHeapOffset++;
+			ctx.m_viewHeapCurrentOffset++;
 		}
 
 		// Teams of descriptors used for draw culling shaders
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			// Saves the offset of this group of descriptors and begins
-			descriptorContext.cullSrvOffset[i] = descriptorContext.srvHeapOffset;
-			descriptorContext.cullSrvHandle[i] = descriptorContext.srvHandle;
-			descriptorContext.cullSrvHandle[i].ptr += descriptorContext.cullSrvOffset[i] * descriptorContext.srvIncrementSize;
+			ctx.m_drawCullViewsOffset[i] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_drawCullViewsHandle[i] = ctx.m_viewHeapHandle;
+			ctx.m_drawCullViewsHandle[i].ptr += ctx.m_drawCullViewsOffset[i] * ctx.m_viewHeapIncrement;
 
 			auto& vars = varBuffers[i];
 
-			CreateUnorderedAccessView(device, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
-				srvHeap->GetCPUDescriptorHandleForHeapStart(), descriptorContext.srvHeapOffset, Ce_IndirectDrawCmdBufferSize, 
-				sizeof(IndirectDrawCmd), 0);
+			CreateBufferUnorderedAccessView(device, ctx, vars.indirectDrawBuffer.buffer.Get(), vars.indirectDrawCount.buffer.Get(),
+				Ce_IndirectDrawCmdBufferSize, sizeof(IndirectDrawCmd), 0);
 
-			CreateUnorderedAccessView(device, vars.indirectDrawCount.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(), 
-				descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0);
+			CreateBufferUnorderedAccessView(device, ctx, vars.indirectDrawCount.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
-			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));	
+			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), ctx, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));	
 		}
 
 		// Instancing unique descriptors
@@ -1073,15 +1066,15 @@ namespace BlitzenDX12
 			{
 				auto& vars = varBuffers[i];
 
-				descriptorContext.drawInstViewsOffset[i] = descriptorContext.srvHeapOffset;
-				descriptorContext.drawInstViewsHandle[i] = descriptorContext.srvHandle;
-				descriptorContext.drawInstViewsHandle[i].ptr += descriptorContext.drawInstViewsOffset[i] * descriptorContext.srvIncrementSize;
+				ctx.m_drawCullInstUAVsOffset[i] = ctx.m_viewHeapCurrentOffset;
+				ctx.m_drawCullInstUAVsHandle[i] = ctx.m_viewHeapHandle;
+				ctx.m_drawCullInstUAVsHandle[i].ptr += ctx.m_drawCullInstUAVsOffset[i] * ctx.m_viewHeapIncrement;
 
-				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
+				CreateBufferUnorderedAccessView(device, ctx, vars.drawInstBuffer.buffer.Get(), nullptr, 
+					UINT(lods.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
 
-				CreateUnorderedAccessView(device, vars.lodInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
+				CreateBufferUnorderedAccessView(device, ctx, vars.lodInstBuffer.buffer.Get(), nullptr, 
+					(UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
 			}
 		}
 
@@ -1092,34 +1085,31 @@ namespace BlitzenDX12
 			{
 				auto& vars = varBuffers[i];
 
-				descriptorContext.drawVisUAVOffset[i] = descriptorContext.srvHeapOffset;
-				descriptorContext.drawVisUANHandle[i] = descriptorContext.srvHandle;
-				descriptorContext.drawVisUANHandle[i].ptr += descriptorContext.drawVisUAVOffset[i] * descriptorContext.srvIncrementSize;
+				ctx.m_drawVisUAVOffset[i] = ctx.m_viewHeapCurrentOffset;
+				ctx.m_drawVisUANHandle[i] = ctx.m_viewHeapHandle;
+				ctx.m_drawVisUANHandle[i].ptr += ctx.m_drawVisUAVOffset[i] * ctx.m_viewHeapIncrement;
 
-				CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, renderCount, sizeof(uint32_t), 0);
+				CreateBufferUnorderedAccessView(device, ctx, vars.drawVisibilityBuffer.buffer.Get(), nullptr, renderCount, sizeof(uint32_t), 0);
 			}
 
-			CreateDepthPyramidDescriptors(device, varBuffers, descriptorContext, srvHeap, pDepthTargets, drawWidth, drawHeight, samplerHeap);
+			CreateDepthPyramidDescriptors(device, varBuffers, ctx, pDepthTargets, drawWidth, drawHeight);
 		}
 		
 		// material buffer, single srv bound to pixel shader
-		descriptorContext.materialSrvOffset = descriptorContext.srvHeapOffset;
-		descriptorContext.materialSrvHandle = descriptorContext.srvHandle;
-		descriptorContext.materialSrvHandle.ptr += descriptorContext.materialSrvOffset * descriptorContext.srvIncrementSize;
-		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-			descriptorContext.srvHeapOffset, staticBuffers.materialBuffer.heapOffset[0], (UINT)materialCount, sizeof(BlitzenEngine::Material));
+		ctx.m_materialSRVOffset = ctx.m_viewHeapCurrentOffset;
+		ctx.m_materialSRVHandle = ctx.m_viewHeapHandle;
+		ctx.m_materialSRVHandle.ptr += ctx.m_materialSRVOffset * ctx.m_viewHeapIncrement;
+		CreateBufferShaderResourceView(device, staticBuffers.materialBuffer.buffer.Get(), ctx, (UINT)materialCount, sizeof(BlitzenEngine::Material));
 
-		descriptorContext.texturesSrvOffset = descriptorContext.srvHeapOffset;
-		descriptorContext.textureSrvHandle = descriptorContext.srvHandle;
-		descriptorContext.textureSrvHandle.ptr += descriptorContext.texturesSrvOffset * descriptorContext.srvIncrementSize;
+		ctx.m_texDescriptorsSRVOffset = ctx.m_viewHeapCurrentOffset;
+		ctx.m_texDescriptorsSRVHandle = ctx.m_viewHeapHandle;
+		ctx.m_texDescriptorsSRVHandle.ptr += ctx.m_texDescriptorsSRVOffset * ctx.m_viewHeapIncrement;
 		// TEXTURES SHOULD BE THE LAST THING LOADED FOR THE SRV HEAP
 		for (size_t i = 0; i < textureCount; ++i)
 		{
 			auto& tex2D{ pTextures[i] };
 
-			CreateTextureShaderResourceView(device, tex2D.resource.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, tex2D.format, tex2D.mipLevels);
+			CreateTexture2DShaderResourceView(device, tex2D.resource.Get(), ctx, tex2D.format, tex2D.mipLevels);
 		}
 	}
 
@@ -1152,9 +1142,8 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		CreateResourceViews(m_device.Get(), m_srvHeap.Get(), m_descriptorContext, m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), 
-			m_constBuffers, m_varBuffers, context, m_textureCount, m_tex2DList, m_depthBuffers, m_swapchainWidth, m_swapchainHeight, 
-			m_samplerHeap.Get());
+		CreateResourceViews(m_device.Get(), m_descriptorContext, m_frameTools[m_currentFrame], m_transferCommandQueue.Get(), 
+			m_constBuffers, m_varBuffers, context, m_textureCount, m_tex2DList, m_depthBuffers, m_swapchainWidth, m_swapchainHeight);
 		if (!CheckForDeviceRemoval(m_device.Get()))
 		{
 			BLIT_ERROR("Failed to create shader resource views");

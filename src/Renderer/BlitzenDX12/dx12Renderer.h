@@ -101,73 +101,6 @@ namespace BlitzenDX12
             SSBO materialBuffer;
         };
 
-        struct DescriptorContext
-        {
-            /* SRV HEAP */
-            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle;
-            SIZE_T srvIncrementSize;
-            SIZE_T srvHeapOffset{ 0 };
-
-            SIZE_T sharedSrvOffset[ce_framesInFlight];
-            D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle[ce_framesInFlight];
-
-            SIZE_T opaqueSrvOffset[ce_framesInFlight];
-            D3D12_GPU_DESCRIPTOR_HANDLE opaqueSrvHandle[ce_framesInFlight];
-
-            SIZE_T cullSrvOffset[ce_framesInFlight];
-            D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle[ce_framesInFlight];
-
-            SIZE_T texturesSrvOffset;
-            D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandle;
-
-            SIZE_T materialSrvOffset;
-            D3D12_GPU_DESCRIPTOR_HANDLE materialSrvHandle;
-
-            SIZE_T depthTargetSrvOffset[ce_framesInFlight];
-            D3D12_GPU_DESCRIPTOR_HANDLE depthTargetSrvHandle[ce_framesInFlight];
-
-            SIZE_T depthPyramidSrvOffset[ce_framesInFlight];
-            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSrvHandle[ce_framesInFlight];
-
-            SIZE_T depthPyramidMipsSrvOffset[ce_framesInFlight];
-            SIZE_T depthPyramidMipsEnd;
-            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidMipsSrvHandle[ce_framesInFlight];
-
-            SIZE_T drawInstViewsOffset[ce_framesInFlight];
-			D3D12_GPU_DESCRIPTOR_HANDLE drawInstViewsHandle[ce_framesInFlight];
-
-			SIZE_T drawVisUAVOffset[ce_framesInFlight];
-			D3D12_GPU_DESCRIPTOR_HANDLE drawVisUANHandle[ce_framesInFlight]; 
-
-
-            /* SAMPLER HEAP */
-            D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
-            SIZE_T samplerIncrementSize;
-            SIZE_T samplerHeapOffset{ 0 };
-
-            SIZE_T defaultTextureSamplerOffset;
-            D3D12_GPU_DESCRIPTOR_HANDLE defaultTextureSamplerHandle;
-
-            SIZE_T depthPyramidSamplerOffset;
-            D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSamplerHandle;
-
-
-            /* RTV HEAP */
-            SIZE_T rtvIncrementSize;
-            SIZE_T rtvHeapOffset{ 0 };
-
-            const SIZE_T swapchainRtvOffset{ 0 };
-            D3D12_GPU_DESCRIPTOR_HANDLE swapchainRtvHandle;
-
-
-            /* DSV HEAP */
-            SIZE_T dsvIncrementSize;
-            SIZE_T dsvHeapOffset{ 0 };
-
-            const SIZE_T depthTargetOffset{ 0 };
-            D3D12_GPU_DESCRIPTOR_HANDLE depthTargetDsvHandle;
-        };
-
         DX12WRAPPER<IDXGIFactory6> m_factory;
 
         DX12WRAPPER<ID3D12Device> m_device;
@@ -210,12 +143,6 @@ namespace BlitzenDX12
         ConstBuffers m_constBuffers;
 
         DescriptorContext m_descriptorContext;
-
-        // TODO: Put these in descriptor context
-        DX12WRAPPER<ID3D12DescriptorHeap> m_srvHeap;
-        DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
-        DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
-        DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
 
         PipelineContext m_pipelineContext;
 

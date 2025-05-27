@@ -2,30 +2,28 @@
 
 #if defined(_WIN32)
 
-#include "dx12Data.h"
+#include "dx12Context.h"
 
 namespace BlitzenDX12
 {
-    uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, ID3D12DescriptorHeap** ppSrvHeap, 
-        ID3D12DescriptorHeap** ppDsvHeap, ID3D12DescriptorHeap** pSamplerHeap);
+    uint8_t CreateDescriptorHeaps(ID3D12Device* device, DescriptorContext& ctx);
 
     uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, UINT bufferCount, 
         D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags);
 
-    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& srvOffset,
-		SIZE_T& thisOffset, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags = D3D12_BUFFER_SRV_FLAG_NONE);
+    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, DescriptorContext& ctx, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags = D3D12_BUFFER_SRV_FLAG_NONE);
 
-    void CreateTextureShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& srvOffset,
-        DXGI_FORMAT format, UINT mipLevels);
+    void CreateTexture2DShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, DescriptorContext& ctx, DXGI_FORMAT format, UINT mipLevels);
 
-    void CreateUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, ID3D12Resource* counterResource, D3D12_CPU_DESCRIPTOR_HANDLE handle,
-        SIZE_T& srvOffset, UINT numElements, UINT stride, UINT64 counterOffsetInBytes, D3D12_BUFFER_UAV_FLAGS flags = D3D12_BUFFER_UAV_FLAG_NONE);
+    void CreateBufferUnorderedAccessView(ID3D12Device* device, DescriptorContext& ctx, ID3D12Resource* resource, ID3D12Resource* counterResource, 
+        UINT numElements, UINT stride, UINT64 counterOffsetInBytes, D3D12_BUFFER_UAV_FLAGS flags = D3D12_BUFFER_UAV_FLAG_NONE);
 
-    void Create2DTextureUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, DXGI_FORMAT format,
-        UINT mipSlice, SIZE_T& srvOffset, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+    void Create2DTextureUnorderedAccessView(ID3D12Device* device, DescriptorContext& ctx, ID3D12Resource* resource, DXGI_FORMAT format, UINT mipSlice);
 
-    void CreateRenderTargetView(ID3D12Device* device, DXGI_FORMAT format, D3D12_RTV_DIMENSION dimension, ID3D12Resource* resource,
-        D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& rtvOffset);
+    void CreateRenderTargetView(ID3D12Device* device, DescriptorContext& ctx, DXGI_FORMAT format, D3D12_RTV_DIMENSION dimension, ID3D12Resource* resource);
+
+    void CreateSampler(ID3D12Device* device, DescriptorContext& ctx, D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW,
+        FLOAT* pBorderColors, D3D12_FILTER filter, D3D12_COMPARISON_FUNC compFunc = D3D12_COMPARISON_FUNC_NEVER);
 
     void CreateResourcesTransitionBarrier(D3D12_RESOURCE_BARRIER& barrier, ID3D12Resource* pResource,
         D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter,
@@ -43,10 +41,6 @@ namespace BlitzenDX12
     uint8_t CreateImageResource(ID3D12Device* device, ID3D12Resource** ppResource, UINT width, UINT height, UINT mipLevels,DXGI_FORMAT format, 
         D3D12_RESOURCE_FLAGS flags, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES state, D3D12_CLEAR_VALUE* pClear, 
         D3D12_TEXTURE_LAYOUT layout = D3D12_TEXTURE_LAYOUT_UNKNOWN);
-
-    void CreateSampler(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& samplerHeapOffset,
-        D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW,
-        FLOAT* pBorderColors, D3D12_FILTER filter, D3D12_COMPARISON_FUNC compFunc = D3D12_COMPARISON_FUNC_NEVER);
 
     uint8_t CreateDepthPyramidResource(ID3D12Device* device, DepthPyramid& depthPyramid, uint32_t width, uint32_t height);
 

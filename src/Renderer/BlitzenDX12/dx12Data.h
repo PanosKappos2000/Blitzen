@@ -215,15 +215,15 @@ namespace BlitzenDX12
     constexpr UINT Ce_OpaqueDrawInstTexSRVRootID = 5;
     constexpr UINT Ce_OpaqueDrawInstInstSRVRootID = 6;
 
-    constexpr uint32_t Ce_SrvDescriptorCount = (Ce_OpaqueDrawExclusiveSRVsRangeCount + 
-        Ce_SharedSRVsRangeCount + 
-        Ce_DrawCullSRVsRangeCount +
-		Ce_DrawCullInstSRVsRangeCount +
-        1 + // Visiblity buffer 
-        Ce_OpaqueDrawInstAdditionalSRVsRangeCount +
-        Ce_DepthPyramidMaxMips) * ce_framesInFlight;// Double or triple buffering
 
-    constexpr UINT Ce_SamplerDescriptorCount = 2; // Depth pyramid and texture samplers
+    // VIEW HEAP DESCRIPTOR COUNT
+    constexpr UINT Ce_MaterialSRVDescriptorCount = 1;
+    constexpr UINT Ce_DrawVisUavDescriptorCount = 1;
+	constexpr UINT Ce_DepthTargetSRVDescriptorCount = 1;
+	constexpr UINT Ce_HI_Z_MapSRVDescriptorCount = 1;
+
+    // SAMPLER HEAP DESCRIPTOR COUNT
+    constexpr UINT Ce_TexSmpDescriptorCount = 1;
 
 
     /* SSBO data copy helpers */
@@ -279,7 +279,6 @@ namespace BlitzenDX12
     struct SSBO
     {
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
-        SIZE_T heapOffset[ce_framesInFlight]{};
     };
 
     struct VarSSBO

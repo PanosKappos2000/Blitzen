@@ -46,8 +46,7 @@ namespace BlitzenDX12
         return SUCCEEDED(D3D12CreateDevice(adapter, Ce_DeviceFeatureLevel, IID_PPV_ARGS(ppDevice)));
     }
 
-    static uint8_t CreateDebugController(ID3D12Debug* pDebugController, Microsoft::WRL::ComPtr<ID3D12Debug1>& debugController1, 
-        ID3D12Device* device)
+    static uint8_t CreateDebugController(ID3D12Debug* pDebugController, Microsoft::WRL::ComPtr<ID3D12Debug1>& debugController1, ID3D12Device* device)
     {
         if (SUCCEEDED(pDebugController->QueryInterface(IID_PPV_ARGS(debugController1.ReleaseAndGetAddressOf()))))
         {
@@ -145,39 +144,29 @@ namespace BlitzenDX12
 		m_swapchainWidth = windowWidth;
 		m_swapchainHeight = windowHeight;
 
-        if (!CreateDescriptorHeaps(m_device.Get(), m_rtvHeap.ReleaseAndGetAddressOf(), m_srvHeap.ReleaseAndGetAddressOf(), m_dsvHeap.ReleaseAndGetAddressOf(), 
-            m_samplerHeap.ReleaseAndGetAddressOf()))
+        if (!CreateDescriptorHeaps(m_device.Get(), m_descriptorContext))
         {
             BLIT_ERROR("Failed to create descriptor heaps");
             return 0;
         }
-        m_descriptorContext.srvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
-        m_descriptorContext.srvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        m_descriptorContext.samplerHandle = m_samplerHeap->GetGPUDescriptorHandleForHeapStart();
-        m_descriptorContext.samplerIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-        m_descriptorContext.rtvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        m_descriptorContext.dsvIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
-
-		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), m_swapchainBackBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
-            m_descriptorContext.rtvHeapOffset))
+		
+		if (!CreateSwapchainResources(m_swapchain.Get(), m_device.Get(), m_swapchainBackBuffers, m_descriptorContext))
 		{
 			BLIT_ERROR("Failed to create swapchain back buffers");
 			return 0;
 		}
 
-        if (!CreateDepthTargets(m_device.Get(), m_depthBuffers, m_dsvHeap->GetCPUDescriptorHandleForHeapStart(),
-            m_descriptorContext.dsvHeapOffset, m_swapchainWidth, m_swapchainHeight))
+        if (!CreateDepthTargets(m_device.Get(), m_depthBuffers, m_descriptorContext, m_swapchainWidth, m_swapchainHeight))
         {
             BLIT_ERROR("Failed to create swapchain back buffers");
             return 0;
         }
 
-        m_descriptorContext.defaultTextureSamplerOffset = m_descriptorContext.samplerHeapOffset;
-        m_descriptorContext.defaultTextureSamplerHandle = m_descriptorContext.samplerHandle;
-        m_descriptorContext.defaultTextureSamplerHandle.ptr += m_descriptorContext.defaultTextureSamplerOffset * m_descriptorContext.samplerIncrementSize;
-        CreateSampler(m_device.Get(), m_samplerHeap->GetCPUDescriptorHandleForHeapStart(), m_descriptorContext.samplerHeapOffset,
-            D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
+        m_descriptorContext.m_texSmpOffset = m_descriptorContext.m_samplerHeapCurrentOffset;
+        m_descriptorContext.m_texSmpHandle = m_descriptorContext.m_samplerHeapHandle;
+        m_descriptorContext.m_texSmpHandle.ptr += m_descriptorContext.m_texSmpOffset * m_descriptorContext.m_samplerHeapIncrement;
+        CreateSampler(m_device.Get(), m_descriptorContext, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 
 		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_pipelineContext.m_triangleRoot, m_pipelineContext.m_trianglePso.ReleaseAndGetAddressOf()))
 		{

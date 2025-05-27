@@ -49,32 +49,40 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers,
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, SIZE_T& rtvHeapOffset)
+	uint8_t CreateSwapchainResources(IDXGISwapChain3* swapchain, ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* backBuffers, DescriptorContext& ctx)
 	{
 		for (UINT i = 0; i < ce_framesInFlight; i++)
 		{
-			auto getBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].GetAddressOf()));
+			ctx.m_swapchainRtvOffset[i] = ctx.m_rtvHeapOffset;
+			ctx.m_swapchainRtvHandle[i] = ctx.m_rtvHeapHandle;
+			ctx.m_swapchainRtvHandle[i].ptr += ctx.m_swapchainRtvOffset[i] * ctx.m_rtvHeapIncrement;
+
+			HRESULT getBackBufferResult = swapchain->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].GetAddressOf()));
 			if (FAILED(getBackBufferResult))
 			{
 				return LOG_ERROR_MESSAGE_AND_RETURN(getBackBufferResult);
 			}
-			CreateRenderTargetView(device, Ce_SwapchainFormat, D3D12_RTV_DIMENSION_TEXTURE2D, backBuffers[i].Get(), rtvHeapHandle, rtvHeapOffset);
+
+			CreateRenderTargetView(device, ctx, Ce_SwapchainFormat, D3D12_RTV_DIMENSION_TEXTURE2D, backBuffers[i].Get());
 		}
 
 		// Success
 		return 1;
 	}
 
-	uint8_t CreateDepthTargets(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* depthBuffers, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle,
-		SIZE_T& dsvHeapOffset, uint32_t swapchainWidth, uint32_t swapchainHeight)
+	uint8_t CreateDepthTargets(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* depthBuffers, DescriptorContext& ctx, uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
 		for (UINT i = 0; i < ce_framesInFlight; i++)
 		{
+			ctx.m_depthTargetDsvOffset[i] = ctx.m_dsvHeapOffset;
+			ctx.m_depthTargetDSVHandle[i] = ctx.m_dsvHeapHandle;
+			ctx.m_depthTargetDSVHandle[i].ptr += ctx.m_depthTargetDsvOffset[i] * ctx.m_dsvHeapIncrement;
+
 			D3D12_CLEAR_VALUE clear{};
 			clear.Format = Ce_DepthTargetFormat;
 			clear.DepthStencil.Depth = Ce_ClearDepth;
-			auto resourceRes{ CreateImageResource(device, depthBuffers[i].GetAddressOf(), swapchainWidth, swapchainHeight, 1,
+
+			HRESULT resourceRes{ CreateImageResource(device, depthBuffers[i].GetAddressOf(), swapchainWidth, swapchainHeight, 1,
 				Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear) };
 			if (FAILED(resourceRes))
 			{
@@ -84,11 +92,15 @@ namespace BlitzenDX12
 			D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc{};
 			viewDesc.Format = Ce_DepthTargetFormat;
 			viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-			// Creates the view with the right offset
-			dsvHeapHandle.ptr += dsvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-			device->CreateDepthStencilView(depthBuffers[i].Get(), &viewDesc, dsvHeapHandle);
+
+			auto handle{ ctx.m_dsvHeapHandle };
+			handle.ptr += ctx.m_dsvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+			// Creates view
+			device->CreateDepthStencilView(depthBuffers[i].Get(), &viewDesc, handle);
+
 			// Increments the offset
-			dsvHeapOffset++;
+			ctx.m_dsvHeapOffset++;
 		}
 
 		// success
@@ -119,65 +131,56 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	void CreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, Dx12Renderer::DescriptorContext& context,
-		ID3D12DescriptorHeap* srvHeap, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight, ID3D12DescriptorHeap* samplerHeap)
+	void CreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, DescriptorContext& context,
+		DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
 	{
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			auto& var = pBuffers[i];
 
-			context.depthPyramidSrvOffset[i] = context.srvHeapOffset;
-			context.depthPyramidSrvHandle[i] = context.srvHandle;
-			context.depthPyramidSrvHandle[i].ptr += context.depthPyramidSrvOffset[i] * context.srvIncrementSize;
+			context.m_HI_Z_MapSRVOffset[i] = context.m_viewHeapCurrentOffset;
+			context.m_HI_Z_MapSRVHandle[i] = context.m_viewHeapHandle;
+			context.m_HI_Z_MapSRVHandle[i].ptr += context.m_HI_Z_MapSRVOffset[i] * context.m_viewHeapIncrement;
 
-			CreateTextureShaderResourceView(device, var.depthPyramid.pyramid.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				context.srvHeapOffset, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
+			CreateTexture2DShaderResourceView(device, var.depthPyramid.pyramid.Get(), context, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
 		}
 
-		context.depthPyramidMipsEnd = context.srvHeapOffset;
 		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
 		{
 			auto& var = pBuffers[f];
 
-			context.depthPyramidMipsSrvOffset[f] = context.depthPyramidMipsEnd;
-			context.depthPyramidMipsSrvHandle[f] = context.srvHandle;
-			context.depthPyramidMipsSrvHandle[f].ptr += context.depthPyramidMipsSrvOffset[f] * context.srvIncrementSize;
-			context.srvHeapOffset = context.depthPyramidMipsEnd;
+			context.m_HI_Z_MapMipsFirstUAVOffset[f] = context.m_viewHeapCurrentOffset;
+			context.m_HI_Z_MapMipsFirstUAVHandle[f] = context.m_viewHeapHandle;
+			context.m_HI_Z_MapMipsFirstUAVHandle[f].ptr += context.m_HI_Z_MapMipsFirstUAVOffset[f] * context.m_viewHeapIncrement;
 
-			// Allocates space for all possible mips (in case of screen resize)
-			auto mipHandleStart = context.depthPyramidMipsSrvHandle[f];
+			SIZE_T mipsEndOffset = context.m_viewHeapCurrentOffset;
+			auto mipsStartHandle = context.m_HI_Z_MapMipsFirstUAVHandle[f];
+
+
 			for (uint32_t i = 0; i < Ce_DepthPyramidMaxMips; ++i)
 			{
-				var.depthPyramid.mips[i] = mipHandleStart;
-				var.depthPyramid.mips[i].ptr += i * context.srvIncrementSize;
-				context.depthPyramidMipsEnd++;
+				var.depthPyramid.mips[i] = mipsStartHandle;
+				var.depthPyramid.mips[i].ptr += i * context.m_viewHeapIncrement;
+				mipsEndOffset++;
 			}
 			
 			for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
 			{
-				Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, context.srvHeapOffset,
-					srvHeap->GetCPUDescriptorHandleForHeapStart());
+				Create2DTextureUnorderedAccessView(device, context, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i);
 			}
-		}
 
-		// Next descriptor after depth pyramid
-		context.srvHeapOffset = context.depthPyramidMipsEnd;
+			context.m_viewHeapCurrentOffset = mipsEndOffset;
+		}
+		
 
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			context.depthTargetSrvOffset[i] = context.srvHeapOffset;
-			context.depthTargetSrvHandle[i] = context.srvHandle;
-			context.depthTargetSrvHandle[i].ptr += context.depthTargetSrvOffset[i] * context.srvIncrementSize;
+			context.m_depthTargetSRVOffset[i] = context.m_viewHeapCurrentOffset;
+			context.m_depthTargetSRVHandle[i] = context.m_viewHeapHandle;
+			context.m_depthTargetSRVHandle[i].ptr += context.m_depthTargetSRVOffset[i] * context.m_viewHeapIncrement;
 
-			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				context.srvHeapOffset, Ce_DepthTargetSRVFormat, 1);
+			CreateTexture2DShaderResourceView(device, pDepthTargets[i].Get(), context, Ce_DepthTargetSRVFormat, 1);
 		}
-
-		context.depthPyramidSamplerOffset = context.samplerHeapOffset;
-		context.depthPyramidSamplerHandle = context.samplerHandle;
-		context.depthPyramidSamplerHandle.ptr += context.depthPyramidSamplerOffset * context.samplerIncrementSize;
-		CreateSampler(device, samplerHeap->GetCPUDescriptorHandleForHeapStart(), context.samplerHeapOffset, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 
-			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 	}
 
 	void CopyDepthPyramidToSwapchain(ID3D12GraphicsCommandList4* commandList, ID3D12Resource* swapchainBackBuffer, ID3D12Resource* depthPyramid,

@@ -39,63 +39,89 @@ namespace BlitzenDX12
 
     struct DescriptorContext
     {
-        /* SRV HEAP */
-        D3D12_GPU_DESCRIPTOR_HANDLE srvHandle;
-        SIZE_T srvIncrementSize;
-        SIZE_T srvHeapOffset{ 0 };
+        DX12WRAPPER<ID3D12DescriptorHeap> m_viewHeap;
 
-        SIZE_T sharedSrvOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle[ce_framesInFlight];
+        // Base view heap
+        D3D12_GPU_DESCRIPTOR_HANDLE m_viewHeapHandle;
+        SIZE_T m_viewHeapIncrement;
+        SIZE_T m_viewHeapCurrentOffset{ 0 };
 
-        SIZE_T opaqueSrvOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE opaqueSrvHandle[ce_framesInFlight];
+        // Views for descriptors that are used by compute and grahics
+        SIZE_T m_sharedViewsOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_sharedViewHandle[ce_framesInFlight];
 
-        SIZE_T cullSrvOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle[ce_framesInFlight];
+        // Views for descriptors used by all draw cull shaders
+        SIZE_T m_drawCullViewsOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_drawCullViewsHandle[ce_framesInFlight];
 
-        SIZE_T texturesSrvOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandle;
+        // Views for descriptors used by instanced culling shaders
+		SIZE_T m_drawCullInstUAVsOffset[ce_framesInFlight];
+		D3D12_GPU_DESCRIPTOR_HANDLE m_drawCullInstUAVsHandle[ce_framesInFlight];
 
-        SIZE_T materialSrvOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE materialSrvHandle;
+        // View for draw visibility descriptor
+		SIZE_T  m_drawVisUAVOffset[ce_framesInFlight];
+		D3D12_GPU_DESCRIPTOR_HANDLE m_drawVisUANHandle[ce_framesInFlight];
 
-        SIZE_T depthTargetSrvOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE depthTargetSrvHandle[ce_framesInFlight];
+        // View for depth target descriptor
+        SIZE_T m_depthTargetSRVOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_depthTargetSRVHandle[ce_framesInFlight];
 
-        SIZE_T depthPyramidSrvOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSrvHandle[ce_framesInFlight];
+        // SRV for hi_z_map
+        SIZE_T m_HI_Z_MapSRVOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MapSRVHandle[ce_framesInFlight];
 
-        SIZE_T depthPyramidMipsSrvOffset[ce_framesInFlight];
-        SIZE_T depthPyramidMipsEnd;
-        D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidMipsSrvHandle[ce_framesInFlight];
+		// first UAV for all mips of the HI_Z map (the rest are held by the depth pyramid struct)
+        SIZE_T m_HI_Z_MapMipsFirstUAVOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MapMipsFirstUAVHandle[ce_framesInFlight];
 
+        // Views for descriptors only used by opaqueDraw.cs
+        SIZE_T m_opaqueDrawViewsExclusiveOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_opaqueDrawViewsExclusiveHandle[ce_framesInFlight];
 
-        /* SAMPLER HEAP */
-        D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
-        SIZE_T samplerIncrementSize;
-        SIZE_T samplerHeapOffset{ 0 };
+        // UAV for instance indices descriptor
+		SIZE_T m_opaqueDrawInstInstUAVOffset[ce_framesInFlight];
+		D3D12_GPU_DESCRIPTOR_HANDLE m_opaqueDrawInstInstUAVHandle[ce_framesInFlight];
 
-        SIZE_T defaultTextureSamplerOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE defaultTextureSamplerHandle;
+        // View for material descriptor
+        SIZE_T m_materialSRVOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_materialSRVHandle;
 
-        SIZE_T depthPyramidSamplerOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidSamplerHandle;
-
-
-        /* RTV HEAP */
-        SIZE_T rtvIncrementSize;
-        SIZE_T rtvHeapOffset{ 0 };
-
-        const SIZE_T swapchainRtvOffset{ 0 };
-        D3D12_GPU_DESCRIPTOR_HANDLE swapchainRtvHandle;
+        // Views for texture descriptor array start
+        SIZE_T m_texDescriptorsSRVOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_texDescriptorsSRVHandle;
 
 
-        /* DSV HEAP */
-        SIZE_T dsvIncrementSize;
-        SIZE_T dsvHeapOffset{ 0 };
+        // SAMPLERS
+        DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
 
-        const SIZE_T depthTargetOffset{ 0 };
-        D3D12_GPU_DESCRIPTOR_HANDLE depthTargetDsvHandle;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_samplerHeapHandle;
+        SIZE_T m_samplerHeapIncrement;
+        SIZE_T m_samplerHeapCurrentOffset{ 0 };
+
+        SIZE_T m_texSmpOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_texSmpHandle;
+
+
+        // RTVs
+        DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE m_rtvHeapHandle;
+        SIZE_T m_rtvHeapIncrement;
+        SIZE_T m_rtvHeapOffset{ 0 };
+
+        SIZE_T m_swapchainRtvOffset[ce_framesInFlight];
+        D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandle[ce_framesInFlight];
+
+
+        // DSVs
+		DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE m_dsvHeapHandle;
+        SIZE_T m_dsvHeapIncrement;
+        SIZE_T m_dsvHeapOffset{ 0 };
+
+        SIZE_T m_depthTargetDsvOffset[ce_framesInFlight];
+        D3D12_CPU_DESCRIPTOR_HANDLE m_depthTargetDSVHandle[ce_framesInFlight];
     };
 
 	struct PipelineContext

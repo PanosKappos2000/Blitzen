@@ -39,9 +39,9 @@ namespace BlitzenDX12
 	}
 
 	static void RecreateSwapchain(BlitzenEngine::DrawContext& context, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
-		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets, 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle, Dx12Renderer::FrameTools* pTools)
+		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets, DescriptorContext& descriptorContext, Dx12Renderer::FrameTools* pTools)
 	{
+		// Waits for all frames
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			auto& tools{ pTools[i] };
@@ -52,50 +52,126 @@ namespace BlitzenDX12
 		}
 
 		pSwapchain->ReleaseAndGetAddressOf();
-		auto hwnd = context.m_pPlatform->m_hwnd;
+		HWND hwnd = context.m_pPlatform->m_hwnd;
 		BLIT_ASSERT(CreateSwapchain(factory, queue, newWidth, newHeight, hwnd, pSwapchain));
 		
 		// Automatically releases when trying to create. Creates 
-		SIZE_T rtvSwapchainOffset{ 0 };
-		BLIT_ASSERT(CreateSwapchainResources(pSwapchain->Get(), device, pSwapchainBuffers, rtvHeapHandle, rtvSwapchainOffset));
+		for (UINT i = 0; i < ce_framesInFlight; i++)
+		{
+			SIZE_T offset{ descriptorContext.m_swapchainRtvOffset[i]};
+
+			HRESULT getBackBufferResult = pSwapchain->Get()->GetBuffer(i, IID_PPV_ARGS(pSwapchainBuffers[i].GetAddressOf()));
+			BLIT_ASSERT(SUCCEEDED(getBackBufferResult));
+
+			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+			rtvDesc.Format = Ce_SwapchainFormat;
+			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+			// Handle for heap start
+			auto handle = descriptorContext.m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+			handle.ptr += offset * descriptorContext.m_rtvHeapIncrement;
+
+			// Creates view
+			device->CreateRenderTargetView(pSwapchainBuffers[i].Get(), &rtvDesc, handle);
+		}
 		
-		SIZE_T dsvDepthTargetOffset{ 0 };
-		BLIT_ASSERT(CreateDepthTargets(device, pDepthTargets, dsvHeapHandle, dsvDepthTargetOffset, newWidth, newHeight));
+		for (UINT i = 0; i < ce_framesInFlight; i++)
+		{
+			SIZE_T offset{ descriptorContext.m_depthTargetDsvOffset[i]};
+
+			D3D12_CLEAR_VALUE clear{};
+			clear.Format = Ce_DepthTargetFormat;
+			clear.DepthStencil.Depth = Ce_ClearDepth;
+
+			HRESULT depthTargetRes{ CreateImageResource(device, pDepthTargets[i].GetAddressOf(), newWidth, newHeight, 1, Ce_DepthTargetFormat,
+				D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear) };
+			BLIT_ASSERT(SUCCEEDED(depthTargetRes));
+
+			D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc{};
+			viewDesc.Format = Ce_DepthTargetFormat;
+			viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+
+			auto handle{ descriptorContext.m_dsvHeap->GetCPUDescriptorHandleForHeapStart() };
+			handle.ptr += offset * descriptorContext.m_dsvHeapIncrement;
+
+			device->CreateDepthStencilView(pDepthTargets[i].Get(), &viewDesc, handle);
+		}
 	}
 
-	static void RecreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, Dx12Renderer::DescriptorContext& context,
-		ID3D12DescriptorHeap* srvHeap, UINT drawWidth, UINT drawHeight, SIZE_T offset)
+	static void RecreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, DescriptorContext& context, UINT drawWidth, UINT drawHeight)
 	{
-		
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		SIZE_T offset{ context.m_HI_Z_MapSRVOffset[0]};
+
+		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			auto& var = pBuffers[i];
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+			srvDesc.Format = Ce_DepthPyramidFormat;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MipLevels = var.depthPyramid.mipCount;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.PlaneSlice = 0;
+
+			// handle for heap start
+			auto handle{ context.m_viewHeap->GetCPUDescriptorHandleForHeapStart() };
+			handle.ptr += offset * context.m_viewHeapIncrement;
+
+			// Creates view
+			device->CreateShaderResourceView(var.depthPyramid.pyramid.Get(), &srvDesc, handle);
+
+			// Increments offset
+			offset++;
+		}
+
+		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
+		{
+			auto& var = pBuffers[f];
+			offset = context.m_HI_Z_MapMipsFirstUAVOffset[f];
+
+			for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
 			{
-				auto& var = pBuffers[i];
+				D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+				uavDesc.Format = Ce_DepthPyramidFormat;
+				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+				uavDesc.Texture2D.MipSlice = i;
+				uavDesc.Texture2D.PlaneSlice = 0;
 
-				CreateTextureShaderResourceView(device, var.depthPyramid.pyramid.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					offset, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
+				// Handle for heap start
+				auto handle{ context.m_viewHeap->GetCPUDescriptorHandleForHeapStart() };
+				handle.ptr += offset * context.m_viewHeapIncrement;
+
+				// Creates view
+				device->CreateUnorderedAccessView(var.depthPyramid.pyramid.Get(), nullptr, &uavDesc, handle);
+
+				// Increments offset 
+				offset++;
 			}
-
-			for (uint32_t f = 0; f < ce_framesInFlight; ++f)
-			{
-				auto& var = pBuffers[f];
-				offset = context.depthPyramidMipsSrvOffset[f];
-
-				for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
-				{
-					Create2DTextureUnorderedAccessView(device, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i, offset,
-						srvHeap->GetCPUDescriptorHandleForHeapStart());
-				}
-			}
+		}
 		
 	}
 
-	static void RecreateDepthTargetDescriptor(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* pDepthTargets, ID3D12DescriptorHeap* srvHeap, 
-		SIZE_T offset)
+	static void RecreateDepthTargetDescriptor(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* pDepthTargets, DescriptorContext& ctx)
 	{
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			CreateTextureShaderResourceView(device, pDepthTargets[i].Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				offset, Ce_DepthTargetSRVFormat, 1);
+			SIZE_T offset{ ctx.m_depthTargetSRVOffset[i] };
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+			srvDesc.Format = Ce_DepthTargetFormat;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.PlaneSlice = 0;
+
+			// handle for heap start
+			auto handle{ ctx.m_viewHeap->GetCPUDescriptorHandleForHeapStart() };
+			handle.ptr += ctx.m_viewHeapCurrentOffset * ctx.m_viewHeapIncrement;
+
+			// Creates view
+			device->CreateShaderResourceView(pDepthTargets[i].Get(), &srvDesc, handle);
 		}
 	}
 
@@ -133,15 +209,15 @@ namespace BlitzenDX12
 		commandList->Dispatch(1, 1, 1);
 	}
 
-	static void DrawCullPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
+	static void DrawCullPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, UINT frame,
 		PipelineContext& pipelineContext, Dx12Renderer::VarBuffers& varBuffers, uint32_t objCount)
 	{
 		// Binds heap for compute
-		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get() };
 		commandList->SetDescriptorHeaps(1, srvHeaps);
 
 		// Resets Count
-		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.cullSrvHandle[frame], varBuffers);
+		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], varBuffers);
 
 		// Culling barrier, waits for draw count reset and draw command read
 		D3D12_RESOURCE_BARRIER cullingBarriers[2]{};
@@ -154,8 +230,8 @@ namespace BlitzenDX12
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pipelineContext.m_drawCullRoot.Get());
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullSharedSRVsRootID, descriptorContext.sharedSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullExclusiveSRVsRootID, descriptorContext.cullSrvHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullSharedSRVsRootID, descriptorContext.m_sharedViewHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullExclusiveSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
 
 		// Pipeline + constants
 		commandList->SetPipelineState(pipelineContext.m_drawCullPso.Get());
@@ -173,15 +249,15 @@ namespace BlitzenDX12
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
-	static void DrawOccFirstPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
+	static void DrawOccFirstPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, UINT frame,
 		PipelineContext& pipelineContext, Dx12Renderer::VarBuffers& varBuffers, uint32_t objCount)
 	{
 		// Binds heap for compute
-		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get() };
 		commandList->SetDescriptorHeaps(1, srvHeaps);
 
 		// Resets Count
-		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.cullSrvHandle[frame], varBuffers);
+		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], varBuffers);
 
 		// Culling barrier, waits for draw count reset and draw command read, and draw visibility write as well
 		D3D12_RESOURCE_BARRIER cullingBarriers[3]{};
@@ -196,9 +272,9 @@ namespace BlitzenDX12
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pipelineContext.m_drawOccFirstRoot.Get());
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccFirstSharedSRVsRootId, descriptorContext.sharedSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccFirstExclusiveSRVsRootId, descriptorContext.cullSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccFirstDrawVisUAVRootId, descriptorContext.drawVisUANHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccFirstSharedSRVsRootId, descriptorContext.m_sharedViewHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccFirstExclusiveSRVsRootId, descriptorContext.m_drawCullViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccFirstDrawVisUAVRootId, descriptorContext.m_drawVisUANHandle[frame]);
 
 		// Pipeline + constants
 		commandList->SetPipelineState(pipelineContext.m_drawOccFirstPso.Get());
@@ -216,12 +292,12 @@ namespace BlitzenDX12
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
-	static void GenerateHI_Z_MAP(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext,
+	static void GenerateHI_Z_MAP(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext,
 		UINT frame, UINT swapchainId, PipelineContext& pipelineContext, Dx12Renderer::VarBuffers& varBuffers, ID3D12Resource* depthTarget, 
 		uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
 		// Binds heap for compute
-		ID3D12DescriptorHeap* heaps[] = { srvHeap };
+		ID3D12DescriptorHeap* heaps[] = { descriptorContext.m_viewHeap.Get()};
 		commandList->SetDescriptorHeaps(1, heaps);
 
 		// Barrier for depth pyramid generation, waits for depth target write and depth pyramid read
@@ -254,11 +330,11 @@ namespace BlitzenDX12
 			// Binds read texture (For first level, it's the depth target. For every other level, it's the depth pyramid itself)
 			if (i == 0)
 			{
-				commandList->SetComputeRootDescriptorTable(Ce_HI_Z_MapSRVRootID, descriptorContext.depthTargetSrvHandle[swapchainId]);
+				commandList->SetComputeRootDescriptorTable(Ce_HI_Z_MapSRVRootID, descriptorContext.m_depthTargetSRVHandle[swapchainId]);
 			}
 			else
 			{
-				commandList->SetComputeRootDescriptorTable(Ce_HI_Z_MapSRVRootID, descriptorContext.depthPyramidSrvHandle[frame]);
+				commandList->SetComputeRootDescriptorTable(Ce_HI_Z_MapSRVRootID, descriptorContext.m_HI_Z_MapSRVHandle[frame]);
 				mipLevel++;
 			}
 
@@ -282,15 +358,15 @@ namespace BlitzenDX12
 		commandList->ResourceBarrier(1, &graphicsBarrier);
 	}
 
-	static void DrawOccLatePass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
+	static void DrawOccLatePass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, UINT frame,
 		PipelineContext& pipelineContext, Dx12Renderer::VarBuffers& varBuffers, uint32_t objCount)
 	{
 		// Binds heap for compute
-		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap};
+		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get()};
 		commandList->SetDescriptorHeaps(1, srvHeaps);
 
 		// Resets Count
-		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.cullSrvHandle[frame], varBuffers);
+		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], varBuffers);
 
 		// Culling barrier, waits for draw count reset and draw command read, and draw visibility read as well
 		// Finally, it needs to wait for the depth pyramid (occlusion culling)
@@ -307,10 +383,10 @@ namespace BlitzenDX12
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pipelineContext.m_drawOccLateRoot.Get());
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateSharedSRVsRootId, descriptorContext.sharedSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateExclusiveSRVsRootId, descriptorContext.cullSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateDrawVisUAVRootId, descriptorContext.drawVisUANHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateHI_Z_MapRootId, descriptorContext.depthPyramidSrvHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateSharedSRVsRootId, descriptorContext.m_sharedViewHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateExclusiveSRVsRootId, descriptorContext.m_drawCullViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateDrawVisUAVRootId, descriptorContext.m_drawVisUANHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawOccLateHI_Z_MapRootId, descriptorContext.m_HI_Z_MapSRVHandle[frame]);
 
 		// Pipeline + constants
 		commandList->SetPipelineState(pipelineContext.m_drawOccLatePso.Get());
@@ -328,15 +404,15 @@ namespace BlitzenDX12
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
-	static void DrawOccTemporalPass(BlitzenEngine::DrawContext& drawContext, ID3D12GraphicsCommandList* cmdList, UINT frame,
-		ID3D12DescriptorHeap* srvHeap, Dx12Renderer::DescriptorContext& descriptorContext, PipelineContext& pipelineContext, Dx12Renderer::VarBuffers& varBuffers)
+	static void DrawOccTemporalPass(BlitzenEngine::DrawContext& drawContext, ID3D12GraphicsCommandList* cmdList, UINT frame, DescriptorContext& descriptorContext, 
+		PipelineContext& pipelineContext, Dx12Renderer::VarBuffers& varBuffers)
 	{
 		// Binds heap for compute
-		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get()};
 		cmdList->SetDescriptorHeaps(1, srvHeaps);
 
 		// Draw count reset
-		DrawCountReset(cmdList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.cullSrvHandle[frame], varBuffers);
+		DrawCountReset(cmdList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], varBuffers);
 
 		// Blocks culling shader, waits for indirect command read and count reset(the depth pyramid has a barrier in its generate function)
 		D3D12_RESOURCE_BARRIER cullingBarriers[2]{};
@@ -349,9 +425,9 @@ namespace BlitzenDX12
 
 		// Descriptors
 		cmdList->SetComputeRootSignature(pipelineContext.m_drawOccLateRoot.Get());
-		cmdList->SetComputeRootDescriptorTable(Ce_DrawOccTemporalSharedSRVsRootId, descriptorContext.sharedSrvHandle[frame]);
-		cmdList->SetComputeRootDescriptorTable(Ce_DrawOccTemporalExclusiveSRVsRootId, descriptorContext.cullSrvHandle[frame]);
-		cmdList->SetComputeRootDescriptorTable(Ce_DrawOccTemporalHI_Z_MapRootId, descriptorContext.depthPyramidSrvHandle[frame]);
+		cmdList->SetComputeRootDescriptorTable(Ce_DrawOccTemporalSharedSRVsRootId, descriptorContext.m_sharedViewHandle[frame]);
+		cmdList->SetComputeRootDescriptorTable(Ce_DrawOccTemporalExclusiveSRVsRootId, descriptorContext.m_drawCullViewsHandle[frame]);
+		cmdList->SetComputeRootDescriptorTable(Ce_DrawOccTemporalHI_Z_MapRootId, descriptorContext.m_HI_Z_MapSRVHandle[frame]);
 
 		// Pipeline + root constants
 		cmdList->SetPipelineState(pipelineContext.m_drawOccTemporalPso.Get());
@@ -369,19 +445,18 @@ namespace BlitzenDX12
 		cmdList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
-	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, D3D12_GPU_DESCRIPTOR_HANDLE sharedSrvHandle,
-		D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle, Dx12Renderer::DescriptorContext& descriptorContext, UINT frame,
+	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, UINT frame,
 		PipelineContext& pipelineContext, Dx12Renderer::VarBuffers& varBuffers, BlitzenEngine::DrawContext& context)
 	{
 		size_t lodDataCount{ context.m_meshes.m_LODs.GetSize()};
 		uint32_t objCount{ context.m_renders.m_renderCount };
 
 		// Binds heap for compute
-		ID3D12DescriptorHeap* srvHeaps[] = { srvHeap };
+		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get()};
 		commandList->SetDescriptorHeaps(1, srvHeaps);
 
 		// Resets Count
-		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), cullSrvHandle, varBuffers);
+		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], varBuffers);
 
 		// Blocks instance counter reset
 		D3D12_RESOURCE_BARRIER instCounterResetBarrier{};
@@ -390,8 +465,8 @@ namespace BlitzenDX12
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pipelineContext.m_drawCullInstRoot.Get());
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstSharedSRVsRootID, cullSrvHandle);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstAdditionalSRVsRootID, descriptorContext.drawInstViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstSharedSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstAdditionalSRVsRootID, descriptorContext.m_drawCullInstUAVsHandle[frame]);
 
 		// Pipeline + Constants
 		commandList->SetPipelineState(pipelineContext.m_drawInstCountResetPso.Get());
@@ -416,9 +491,9 @@ namespace BlitzenDX12
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pipelineContext.m_drawCullInstRoot.Get());
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstExclusiveSRVsRootID, descriptorContext.cullSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstSharedSRVsRootID, descriptorContext.sharedSrvHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstAdditionalSRVsRootID, descriptorContext.drawInstViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstExclusiveSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstSharedSRVsRootID, descriptorContext.m_sharedViewHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstAdditionalSRVsRootID, descriptorContext.m_drawCullInstUAVsHandle[frame]);
 
 		// Pipeline + constants
 		commandList->SetPipelineState(pipelineContext.m_drawCullInstPso.Get());
@@ -433,8 +508,8 @@ namespace BlitzenDX12
 		commandList->ResourceBarrier(1, &instancingBarrier);
 
 		// Descriptors
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullExclusiveSRVsRootID, cullSrvHandle);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstAdditionalSRVsRootID, descriptorContext.drawInstViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullExclusiveSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstAdditionalSRVsRootID, descriptorContext.m_drawCullInstUAVsHandle[frame]);
 
 		// Pipeline + Constants
 		commandList->SetPipelineState(pipelineContext.m_drawInstCmdPso.Get());
@@ -456,8 +531,7 @@ namespace BlitzenDX12
 	}
 
 	static void ClearWindow(ID3D12GraphicsCommandList* cmdList, float swapchainWidth, float swapchainHeight, 
-		ID3D12Resource* swapchainBackBuffer, ID3D12DescriptorHeap* rvtHeap, ID3D12DescriptorHeap* dsvHeap, 
-		Dx12Renderer::DescriptorContext& descriptorContext, UINT swapchainIndex)
+		ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, UINT swapchainIndex)
 	{
 		DefineViewportAndScissor(cmdList, swapchainWidth, swapchainHeight);
 
@@ -466,32 +540,22 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(renderTargetBarrier, swapchainBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		cmdList->ResourceBarrier(1, &renderTargetBarrier);
 
-		// Render target bind
-		auto rtvHandle = rvtHeap->GetCPUDescriptorHandleForHeapStart();
-		rtvHandle.ptr += (descriptorContext.swapchainRtvOffset + swapchainIndex) * descriptorContext.rtvIncrementSize;
-		auto dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
-		dsvHandle.ptr += (descriptorContext.depthTargetOffset + swapchainIndex) * descriptorContext.dsvIncrementSize;
-		cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+		cmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIndex], FALSE, &descriptorContext.m_depthTargetDSVHandle[swapchainIndex]);
 
-		cmdList->ClearRenderTargetView(rtvHandle, BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
-		cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
+		cmdList->ClearRenderTargetView(descriptorContext.m_swapchainRtvHandle[swapchainIndex], BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
+		cmdList->ClearDepthStencilView(descriptorContext.m_depthTargetDSVHandle[swapchainIndex], D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
 	}
 
-	static void BeginRenderPass(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, 
-		ID3D12DescriptorHeap* rvtHeap, ID3D12DescriptorHeap* dsvHeap,Dx12Renderer::DescriptorContext& descriptorContext, 
+	static void BeginRenderPass(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, 
 		UINT swapchainIndex, uint8_t isFirstPass)
 	{
 		// Render target bind
-		auto rtvHandle = rvtHeap->GetCPUDescriptorHandleForHeapStart();
-		rtvHandle.ptr += (descriptorContext.swapchainRtvOffset + swapchainIndex) * descriptorContext.rtvIncrementSize;
-		auto dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
-		dsvHandle.ptr += (descriptorContext.depthTargetOffset + swapchainIndex) * descriptorContext.dsvIncrementSize;
-		cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+		cmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIndex], FALSE, &descriptorContext.m_depthTargetDSVHandle[swapchainIndex]);
 
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthTargetDesc{};
 		D3D12_RENDER_PASS_RENDER_TARGET_DESC renderTargetDesc{};
-		depthTargetDesc.cpuDescriptor = dsvHandle;
-		renderTargetDesc.cpuDescriptor = rtvHandle;
+		depthTargetDesc.cpuDescriptor = descriptorContext.m_depthTargetDSVHandle[swapchainIndex];
+		renderTargetDesc.cpuDescriptor = descriptorContext.m_swapchainRtvHandle[swapchainIndex];
 		if (isFirstPass)
 		{
 			depthTargetDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
@@ -520,20 +584,19 @@ namespace BlitzenDX12
 		cmdList->BeginRenderPass(1, &renderTargetDesc, &depthTargetDesc, D3D12_RENDER_PASS_FLAG_NONE);
 	}
 
-	static void DrawIndirect(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, ID3D12DescriptorHeap* samplerHeap,
-		PipelineContext& pipelineContext, Dx12Renderer::DescriptorContext& descriptorContext, 
+	static void DrawIndirect(ID3D12GraphicsCommandList* commandList, PipelineContext& pipelineContext, DescriptorContext& descriptorContext, 
 		Dx12Renderer::ConstBuffers& constBuffers, Dx12Renderer::VarBuffers& varBuffers, UINT frame)
 	{
-		ID3D12DescriptorHeap* graphicsHeaps[] = { srvHeap, samplerHeap};
+		ID3D12DescriptorHeap* graphicsHeaps[] = { descriptorContext.m_viewHeap.Get(), descriptorContext.m_samplerHeap.Get()};
 		commandList->SetDescriptorHeaps(2, graphicsHeaps);
 		commandList->SetGraphicsRootSignature(pipelineContext.m_opaqueDrawRoot.Get());
 
 		// Opaque graphics pipeline exclusive descriptors
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawExclusiveSRVsRootID, descriptorContext.opaqueSrvHandle[frame]);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawSharedSRVsRootID, descriptorContext.sharedSrvHandle[frame]);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawTexSMPRootID, descriptorContext.samplerHandle);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawMatSRVRootID, descriptorContext.materialSrvHandle);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawTexSRVRootID, descriptorContext.textureSrvHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawExclusiveSRVsRootID, descriptorContext.m_opaqueDrawViewsExclusiveHandle[frame]);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawSharedSRVsRootID, descriptorContext.m_sharedViewHandle[frame]);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawTexSMPRootID, descriptorContext.m_texSmpHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawMatSRVRootID, descriptorContext.m_materialSRVHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawTexSRVRootID, descriptorContext.m_texDescriptorsSRVHandle);
 
 		// Draw
 		commandList->SetPipelineState(pipelineContext.m_opaqueDrawPso.Get());
@@ -543,21 +606,20 @@ namespace BlitzenDX12
 			varBuffers.indirectDrawBuffer.buffer.Get(), 0, varBuffers.indirectDrawCount.buffer.Get(), 0);
 	}
 
-	static void DrawOpaqueInst(ID3D12GraphicsCommandList* commandList, ID3D12DescriptorHeap* srvHeap, ID3D12DescriptorHeap* samplerHeap,
-		PipelineContext& pipelineContext, Dx12Renderer::DescriptorContext& descriptorContext,
+	static void DrawOpaqueInst(ID3D12GraphicsCommandList* commandList, PipelineContext& pipelineContext, DescriptorContext& descriptorContext,
 		Dx12Renderer::ConstBuffers& constBuffers, Dx12Renderer::VarBuffers& varBuffers, UINT frame)
 	{
-		ID3D12DescriptorHeap* graphicsHeaps[] = { srvHeap, samplerHeap };
+		ID3D12DescriptorHeap* graphicsHeaps[] = { descriptorContext.m_viewHeap.Get(), descriptorContext.m_samplerHeap.Get() };
 		commandList->SetDescriptorHeaps(2, graphicsHeaps);
 		commandList->SetGraphicsRootSignature(pipelineContext.m_opaqueDrawInstRoot.Get());
 
 		// Opaque graphics pipeline exclusive descriptors
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstExclusiveSRVsRootID, descriptorContext.opaqueSrvHandle[frame]);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstSharedSRVsRootID, descriptorContext.sharedSrvHandle[frame]);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstTexSMPRootID, descriptorContext.samplerHandle);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstMatSRVRootID, descriptorContext.materialSrvHandle);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstTexSRVRootID, descriptorContext.textureSrvHandle);
-		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstInstSRVRootID, descriptorContext.drawInstViewsHandle[frame]);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstExclusiveSRVsRootID, descriptorContext.m_opaqueDrawViewsExclusiveHandle[frame]);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstSharedSRVsRootID, descriptorContext.m_sharedViewHandle[frame]);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstTexSMPRootID, descriptorContext.m_texSmpHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstMatSRVRootID, descriptorContext.m_materialSRVHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstTexSRVRootID, descriptorContext.m_texDescriptorsSRVHandle);
+		commandList->SetGraphicsRootDescriptorTable(Ce_OpaqueDrawInstInstSRVRootID, descriptorContext.m_drawCullInstUAVsHandle[frame]);
 
 		// Draw
 		commandList->SetPipelineState(pipelineContext.m_opaqueDrawInstPso.Get());
@@ -612,8 +674,7 @@ namespace BlitzenDX12
 			m_swapchainHeight = (UINT)context.m_camera.transformData.windowHeight;
 
 			RecreateSwapchain(context, m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain, 
-				m_swapchainBackBuffers, m_depthBuffers, m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), 
-				m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameTools.Data());
+				m_swapchainBackBuffers, m_depthBuffers, m_descriptorContext, m_frameTools.Data());
 
 			if (CE_DX12OCCLUSION)
 			{
@@ -622,10 +683,9 @@ namespace BlitzenDX12
 					CreateDepthPyramidResource(m_device.Get(), m_varBuffers[i].depthPyramid, m_swapchainWidth, m_swapchainHeight);
 				}
 
-				RecreateDepthPyramidDescriptors(m_device.Get(), m_varBuffers, m_descriptorContext, m_srvHeap.Get(),
-					m_swapchainWidth, m_swapchainHeight, m_descriptorContext.depthPyramidSrvOffset[0]);
+				RecreateDepthPyramidDescriptors(m_device.Get(), m_varBuffers, m_descriptorContext, m_swapchainWidth, m_swapchainHeight);
 
-				RecreateDepthTargetDescriptor(m_device.Get(), m_depthBuffers, m_srvHeap.Get(), m_descriptorContext.depthTargetSrvOffset[0]);
+				RecreateDepthTargetDescriptor(m_device.Get(), m_depthBuffers, m_descriptorContext);
 			}
 
 			context.m_camera.viewData.pyramidWidth = float(varBuffers.depthPyramid.width);
@@ -647,8 +707,7 @@ namespace BlitzenDX12
 		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{
 			// Culling with Occlusion using previous frame depth pyramid
-			DrawOccTemporalPass(context, frameTools.mainGraphicsCommandList.Get(), m_currentFrame, m_srvHeap.Get(), 
-				m_descriptorContext, m_pipelineContext, varBuffers);
+			DrawOccTemporalPass(context, frameTools.mainGraphicsCommandList.Get(), m_currentFrame, m_descriptorContext, m_pipelineContext, varBuffers);
 
 			// Render target barrier
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
@@ -660,15 +719,14 @@ namespace BlitzenDX12
 
 			// One pass
 			const uint8_t singlePass = 1;
-			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(),
-				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, singlePass);
+			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_descriptorContext, swapchainIndex, singlePass);
 
-			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_pipelineContext, m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_pipelineContext, m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 
 			// Ends pass
 			frameTools.mainGraphicsCommandList->EndRenderPass();
 
-			GenerateHI_Z_MAP(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
+			GenerateHI_Z_MAP(frameTools.mainGraphicsCommandList.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
 				m_pipelineContext, varBuffers, m_depthBuffers[swapchainIndex].Get(), m_swapchainWidth, m_swapchainHeight);
 		}
 		/*
@@ -682,7 +740,7 @@ namespace BlitzenDX12
 			// 1. FRUSTUM CULLING AND LOD SELECTION. COMMANDS CREATED FOR VISIBLE OBJECTS BASED ON THE SELECTED LOD
 			// ONLY OBJECTS THAT WERE TAGGED AS VISIBLE LAST FRAME ARE CHECKED
 			// Shaders used: drawCountReset.cs.hlsl + drawOccFirst.cs.hlsl
-			DrawOccFirstPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(),  m_descriptorContext, m_currentFrame, m_pipelineContext, varBuffers, context.m_renders.m_renderCount);
+			DrawOccFirstPass(frameTools.mainGraphicsCommandList.Get(), m_descriptorContext, m_currentFrame, m_pipelineContext, varBuffers, context.m_renders.m_renderCount);
 
 			// Render target barrier
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
@@ -696,34 +754,30 @@ namespace BlitzenDX12
 			DefineViewportAndScissor(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
 			// 2. BEGINS RENDERING. For the first pass the render target and depth target are cleared and stored for the second pass
-			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), 
-				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, firstPass);
+			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_descriptorContext, swapchainIndex, firstPass);
 
 			// 3. TAKES THE COMMNANDS FROM THE DRAW CULL SHADER AND DRAWS THE SCENE. THIS ALSO CREATES THE OCCLUDERS
 			// Shaders used: opaqueDraw.vs.hlsl + opaqueDraw.ps.hlsl
-			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_pipelineContext, 
-				m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_pipelineContext, m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 
 			// Ends pass
 			frameTools.mainGraphicsCommandList->EndRenderPass();
 			firstPass = 0;
 
 			// 4. DEPTH TARGET IS COPIED TO A HI-Z MAP
-			GenerateHI_Z_MAP(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
+			GenerateHI_Z_MAP(frameTools.mainGraphicsCommandList.Get(), m_descriptorContext, m_currentFrame, swapchainIndex,
 				m_pipelineContext, varBuffers, m_depthBuffers[swapchainIndex].Get(), m_swapchainWidth, m_swapchainHeight);
 
 			// 5. SECOND PASS DOES THE SAME AS THE OTHER PASS + OCCLUSION CULLING, OBJECTS THAT ARE NOW VISIBLE BUT WERE TAGGED AS NOT VISIBLE BEFORE GET DRAW COMMANDS
 			// 6. ALL OBJECTS THAT ARE VISIBLE GET TAGGED AS VISIBLE FOR THE NEXT FRAME
 			// Shaders used: drawCountReset.cs.hlsl + drawOccLate.cs.hlsl
-			DrawOccLatePass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, m_pipelineContext, varBuffers, context.m_renders.m_renderCount);
+			DrawOccLatePass(frameTools.mainGraphicsCommandList.Get(), m_descriptorContext, m_currentFrame, m_pipelineContext, varBuffers, context.m_renders.m_renderCount);
 			
 			// 7. BEGINS SECOND RENDER PASS. RENDER TARGET AND DEPTH TARGET ARE NOT CLEARED, BUT LOADED
-			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(),
-				m_dsvHeap.Get(), m_descriptorContext, swapchainIndex, firstPass);
+			BeginRenderPass(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_descriptorContext, swapchainIndex, firstPass);
 			
 			// 8. DRAWS FOR THE SECOND PASS. SAME THING AS STEP 3
-			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_pipelineContext, 
-				m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_pipelineContext, m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 			frameTools.mainGraphicsCommandList->EndRenderPass();
 		}
 
@@ -736,17 +790,15 @@ namespace BlitzenDX12
 			// 1. FRUSTUM CULLING AND LOD SELECTION. INSTANCE COUNTER INCREMENTED EACH TIME AN LOD IS VISIBLE
 			// 2. PASS OVER INSTANCE COUNTER, TO CREATE DRAW COMMANDS WITH INSTANCE COUNT
 			// Shaders used: drawCountReset.cs.hlsl + drawInstCountReset.cs.hlsl + drawInstCull.cs.hlsl + drawInstCmd.cs.hlsl
-			DrawInstanceCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext.sharedSrvHandle[m_currentFrame], 
-				m_descriptorContext.cullSrvHandle[m_currentFrame], m_descriptorContext, m_currentFrame, m_pipelineContext, varBuffers, context);
+			DrawInstanceCullPass(frameTools.mainGraphicsCommandList.Get(), m_descriptorContext, m_currentFrame, m_pipelineContext, varBuffers, context);
 
 			// 3. BEGINS RENDERING
 			ClearWindow(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight, 
-				m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), m_dsvHeap.Get(), m_descriptorContext, swapchainIndex);
+				m_swapchainBackBuffers[swapchainIndex].Get(), m_descriptorContext, swapchainIndex);
 
 			// 4. TAKES THE COMMNADS FROM THE DRAW CULL SHADER AND DRAWS THE SCENE
 			// Shaders used: opaqueDrawInst.vs.hlsl + opaqueDraw.ps.hlsl
-			DrawOpaqueInst(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_pipelineContext,
-				m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			DrawOpaqueInst(frameTools.mainGraphicsCommandList.Get(), m_pipelineContext, m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 		}
 
 		/* FRUSTUM CULLING AND LOD SELECTION AT RENDER OBJECT LEVEL BEFORE DRAW INDIRECT */
@@ -754,17 +806,16 @@ namespace BlitzenDX12
 		{
 			// 1. FRUSTUM CULLING AND LOD SELCTION. COMMANDS CREATED FOR VISIBLE OBJECTS BASED ON THE SELECTED LOD
 			// Shaders used: drawCountReset.cs.hlsl + drawCull.cs.hlsl
-			DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_descriptorContext, m_currentFrame, m_pipelineContext, 
+			DrawCullPass(frameTools.mainGraphicsCommandList.Get(), m_descriptorContext, m_currentFrame, m_pipelineContext, 
 				varBuffers, context.m_renders.m_renderCount);
 
 			// 2. BEGINS RENDERING
 			ClearWindow(frameTools.mainGraphicsCommandList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight,
-				m_swapchainBackBuffers[swapchainIndex].Get(), m_rtvHeap.Get(), m_dsvHeap.Get(), m_descriptorContext, swapchainIndex);
+				m_swapchainBackBuffers[swapchainIndex].Get(), m_descriptorContext, swapchainIndex);
 
 			// 3. TAKES THE COMMNANDS FROM THE DRAW CULL SHADER AND DRAWS THE SCENE
 			// Shaders used: opaqueDraw.vs.hlsl + opaqueDraw.ps.hlsl
-			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_srvHeap.Get(), m_samplerHeap.Get(), m_pipelineContext, 
-				m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
+			DrawIndirect(frameTools.mainGraphicsCommandList.Get(), m_pipelineContext, m_descriptorContext, m_constBuffers, varBuffers, m_currentFrame);
 		}
 
 		// Transform buffer should be ready to receive new dynamic transforms at the end of next frame
@@ -774,15 +825,15 @@ namespace BlitzenDX12
 
 		// Depth pyramid debugging
 		#if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)
-		{
-			CopyDepthPyramidToSwapchain(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), varBuffers.depthPyramid.pyramid.Get(), 
-				varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get(), 
-				context.pCamera->transformData.debugPyramidLevel, m_swapchainWidth, m_swapchainHeight);
-		}
+
+		CopyDepthPyramidToSwapchain(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), varBuffers.depthPyramid.pyramid.Get(), 
+			varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get(), context.pCamera->transformData.debugPyramidLevel, 
+			m_swapchainWidth, m_swapchainHeight);
+
 		#else
-		{
-			Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
-		}
+			
+		Present(frameTools, m_swapchain.Get(), m_commandQueue.Get(), m_swapchainBackBuffers[swapchainIndex].Get());
+		
 		#endif
 
 		m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
@@ -805,11 +856,9 @@ namespace BlitzenDX12
 			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		frameTools.mainGraphicsCommandList->ResourceBarrier(1, &attachmentBarrier);
 
-		auto rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-		rtvHandle.ptr += (m_descriptorContext.swapchainRtvOffset + m_currentFrame) * m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+		frameTools.mainGraphicsCommandList->OMSetRenderTargets(1, &m_descriptorContext.m_swapchainRtvHandle[m_currentFrame], FALSE, nullptr);
 
-		frameTools.mainGraphicsCommandList->ClearRenderTargetView(rtvHandle, BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
+		frameTools.mainGraphicsCommandList->ClearRenderTargetView(m_descriptorContext.m_swapchainRtvHandle[m_currentFrame], BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 
 		//BlitML::vec3 triangleColor{ 0, 0.8f, 0.4f };
 		//frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstants(0, 3, &triangleColor, 0);

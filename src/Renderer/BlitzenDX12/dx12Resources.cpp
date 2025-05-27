@@ -5,52 +5,71 @@
 
 namespace BlitzenDX12
 {
-    uint8_t CreateDescriptorHeaps(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, ID3D12DescriptorHeap** ppSrvHeap, 
-        ID3D12DescriptorHeap** ppDsvHeap, ID3D12DescriptorHeap** ppSamplerHeap)
+    uint8_t CreateDescriptorHeaps(ID3D12Device* device, DescriptorContext& ctx)
     {
         if (!CheckForDeviceRemoval(device))
         {
             return 0;
         }
 
-        if (!CreateDescriptorHeap(device, ppSrvHeap, Ce_SrvDescriptorCount + Ce_OpaqueDrawTexDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
+		UINT srvHeapDescriptorCount = (Ce_SharedSRVsRangeCount + Ce_DrawCullSRVsRangeCount + Ce_OpaqueDrawExclusiveSRVsRangeCount) * ce_framesInFlight;
+        srvHeapDescriptorCount += Ce_OpaqueDrawTexDescriptorCount;
+
+        if (BlitzenCore::Ce_InstanceCulling)
+        {
+			srvHeapDescriptorCount += Ce_DrawCullInstSRVsRangeCount * ce_framesInFlight;// This include the descriptor used by the graphics pipeline in instanced mode
+        }
+
+		if (CE_DX12OCCLUSION)
+		{
+            srvHeapDescriptorCount += (Ce_DepthPyramidMaxMips + Ce_DrawVisUavDescriptorCount + Ce_DepthTargetSRVDescriptorCount + Ce_HI_Z_MapSRVDescriptorCount) * ce_framesInFlight;
+		}
+
+        if (!CreateDescriptorHeap(device, ctx.m_viewHeap.ReleaseAndGetAddressOf(), srvHeapDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
             D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
         {
             BLIT_ERROR("Failed to create srv descriptor heap");
             return 0;
         } 
+        ctx.m_viewHeapHandle = ctx.m_viewHeap->GetGPUDescriptorHandleForHeapStart();
+		ctx.m_viewHeapIncrement = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-        if (!CreateDescriptorHeap(device, ppRtvHeap, ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
+        if (!CreateDescriptorHeap(device, ctx.m_rtvHeap.ReleaseAndGetAddressOf(), ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
         {
             BLIT_ERROR("Failed to create rtv descriptor heap");
             return 0;
         }
+		ctx.m_rtvHeapHandle = ctx.m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+		ctx.m_rtvHeapIncrement = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-        if (!CreateDescriptorHeap(device, ppDsvHeap, ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
+        if (!CreateDescriptorHeap(device, ctx.m_dsvHeap.ReleaseAndGetAddressOf(), ce_framesInFlight, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE))
         {
             BLIT_ERROR("Failed to create dsv descriptor heap");
             return 0;
         }
+		ctx.m_dsvHeapHandle = ctx.m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+		ctx.m_dsvHeapIncrement = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
-        if (!CreateDescriptorHeap(device, ppSamplerHeap, Ce_SamplerDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        if (!CreateDescriptorHeap(device, ctx.m_samplerHeap.ReleaseAndGetAddressOf(), Ce_TexSmpDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
         {
             BLIT_ERROR("Failed to create sampler descriptor heap");
             return 0;
         }
+		ctx.m_samplerHeapHandle = ctx.m_samplerHeap->GetGPUDescriptorHandleForHeapStart();
+		ctx.m_samplerHeapIncrement = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
         // success
         return 1;
     }
 
-    uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, UINT descriptorCount,
-        D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags)
+    uint8_t CreateDescriptorHeap(ID3D12Device* device, ID3D12DescriptorHeap** ppRtvHeap, UINT descriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags)
     {
         D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
         rtvHeapDesc.NumDescriptors = descriptorCount;
         rtvHeapDesc.Type = type;
         rtvHeapDesc.Flags = flags;
 
-        auto descriptorHeapResult = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(ppRtvHeap));
+        HRESULT descriptorHeapResult = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(ppRtvHeap));
         if (FAILED(descriptorHeapResult))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(descriptorHeapResult);
@@ -60,25 +79,25 @@ namespace BlitzenDX12
         return 1;
     }
 
-    void CreateRenderTargetView(ID3D12Device* device, DXGI_FORMAT format, D3D12_RTV_DIMENSION dimension, ID3D12Resource* resource, 
-        D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& rtvOffset)
+    void CreateRenderTargetView(ID3D12Device* device, DescriptorContext& ctx, DXGI_FORMAT format, D3D12_RTV_DIMENSION dimension, ID3D12Resource* resource)
     {
         D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
         rtvDesc.Format = Ce_SwapchainFormat;
         rtvDesc.ViewDimension = dimension;
+        
+        // Handle for heap start
+		auto handle = ctx.m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+        handle.ptr += ctx.m_rtvHeapOffset * ctx.m_rtvHeapIncrement;
 
-        handle.ptr += rtvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        // Creates view
         device->CreateRenderTargetView(resource, &rtvDesc, handle);
 
-        // Increase the srv offset
-        rtvOffset++;
+        // Increments the srv offset
+        ctx.m_rtvHeapOffset++;
     }
 
-    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& srvOffset,
-        SIZE_T& thisOffset, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags /*=D3D12_BUFFER_SRV_FLAG_NONE*/)
+    void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, DescriptorContext& ctx, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags)
     {
-        thisOffset = srvOffset;
-
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -88,16 +107,18 @@ namespace BlitzenDX12
 		srvDesc.Buffer.StructureByteStride = stride;
 		srvDesc.Buffer.Flags = flags;
 
-        // Find the offset of the srv registers for this heap
-        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		// handle for heap start
+		auto handle{ ctx.m_viewHeap->GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += ctx.m_viewHeapCurrentOffset * ctx.m_viewHeapIncrement;
+
+        // Creates view
 		device->CreateShaderResourceView(resource, &srvDesc, handle);
 
-        // Increase srv offset
-        srvOffset++;
+        // Increments offset
+        ctx.m_viewHeapCurrentOffset++;
     }
 
-    void CreateTextureShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& srvOffset,
-        DXGI_FORMAT format, UINT mipLevels)
+    void CreateTexture2DShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, DescriptorContext& ctx, DXGI_FORMAT format, UINT mipLevels)
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = format;
@@ -107,13 +128,19 @@ namespace BlitzenDX12
         srvDesc.Texture2D.MostDetailedMip = 0;
         srvDesc.Texture2D.PlaneSlice = 0;
 
-        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        // handle for heap start
+        auto handle{ ctx.m_viewHeap->GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += ctx.m_viewHeapCurrentOffset * ctx.m_viewHeapIncrement;
+
+        // Creates view
         device->CreateShaderResourceView(resource, &srvDesc, handle);
-        srvOffset++;
+
+        // Increments offset
+        ctx.m_viewHeapCurrentOffset++;
     }
 
-    void CreateUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, ID3D12Resource* counterResource, D3D12_CPU_DESCRIPTOR_HANDLE handle, 
-        SIZE_T& srvOffset, UINT numElements, UINT stride, UINT64 counterOffsetInBytes, D3D12_BUFFER_UAV_FLAGS flags /*=D3D12_BUFFER_UAV_FLAG_NONE*/)
+    void CreateBufferUnorderedAccessView(ID3D12Device* device, DescriptorContext& ctx, ID3D12Resource* resource, ID3D12Resource* counterResource,
+        UINT numElements, UINT stride, UINT64 counterOffsetInBytes, D3D12_BUFFER_UAV_FLAGS flags)
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         uavDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -124,14 +151,15 @@ namespace BlitzenDX12
         uavDesc.Buffer.Flags = flags;
         uavDesc.Buffer.CounterOffsetInBytes = counterOffsetInBytes;
 
-        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		// Handle for heap start
+		auto handle{ ctx.m_viewHeap->GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += ctx.m_viewHeapCurrentOffset * ctx.m_viewHeapIncrement;
         device->CreateUnorderedAccessView(resource, counterResource, &uavDesc, handle);
 
-        srvOffset++;
+        ctx.m_viewHeapCurrentOffset++;
     }
 
-    void Create2DTextureUnorderedAccessView(ID3D12Device* device, ID3D12Resource* resource, DXGI_FORMAT format, 
-        UINT mipSlice, SIZE_T& srvOffset, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+    void Create2DTextureUnorderedAccessView(ID3D12Device* device, DescriptorContext& ctx, ID3D12Resource* resource, DXGI_FORMAT format, UINT mipSlice)
     {
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         uavDesc.Format = format;
@@ -139,10 +167,15 @@ namespace BlitzenDX12
         uavDesc.Texture2D.MipSlice = mipSlice;
         uavDesc.Texture2D.PlaneSlice = 0;
 
-        handle.ptr += srvOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		// Handle for heap start
+		auto handle{ ctx.m_viewHeap->GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += ctx.m_viewHeapCurrentOffset * ctx.m_viewHeapIncrement;
+
+        // Creates view
         device->CreateUnorderedAccessView(resource, nullptr, &uavDesc, handle);
 
-        srvOffset++;
+        // Increments offset 
+        ctx.m_viewHeapCurrentOffset++;
     }
 
     uint8_t CreateBuffer(ID3D12Device* device, ID3D12Resource** ppBuffer, UINT64 bufferSize,
@@ -275,8 +308,7 @@ namespace BlitzenDX12
         return sizeof(uint32_t) * elementCount;
     }
 
-    void CreateSampler(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE handle, SIZE_T& samplerHeapOffset,
-        D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW, 
+    void CreateSampler(ID3D12Device* device, DescriptorContext& ctx, D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW, 
         FLOAT* pBorderColors, D3D12_FILTER filter, D3D12_COMPARISON_FUNC compFunc/*D3D12_COMPARISON_FUNC_NEVER*/)
     {
         D3D12_SAMPLER_DESC desc{};
@@ -299,9 +331,15 @@ namespace BlitzenDX12
         desc.MaxLOD = D3D12_FLOAT32_MAX;
         desc.MipLODBias = 0.f;
 
-        handle.ptr += samplerHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        // Gets current handle for heap start
+		auto handle{ ctx.m_samplerHeap->GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += ctx.m_samplerHeapCurrentOffset * ctx.m_samplerHeapIncrement;
+
+        // Creates sampler
         device->CreateSampler(&desc, handle);
-        samplerHeapOffset++;
+
+        // Increments offset for next descriptor
+        ctx.m_samplerHeapCurrentOffset++;
     }
 
     void PlaceFence(UINT64& fenceValue, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE& event)
