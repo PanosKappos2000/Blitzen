@@ -302,116 +302,171 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateRootSignatures(ID3D12Device* device, ID3D12RootSignature** ppOpaqueRootSignature, 
-		ID3D12RootSignature** ppCullRootSignature, ID3D12RootSignature** ppResetSignature, ID3D12RootSignature** ppDrawOccSignature, 
-		ID3D12RootSignature** ppDepthPyramidSignature)
+	static uint8_t CreateRootSignatures(ID3D12Device* device, PipelineContext& context)
 	{
-		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueSrvRangeCount]{};
-		CreateDescriptorRange(opaqueSrvRanges[Ce_VertexBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_VertexBufferDescriptorCount, Ce_VertexBufferRegister);
+		// Range for descriptor table for SRVs that are allocated in the exclusive region of the heap for this root
+		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueDrawExclusiveSRVsRangeCount]{};
+		CreateDescriptorRange(opaqueSrvRanges[Ce_OpaqueDrawVtxSRVRangeId], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawVtxxSRVRegister);
 
-		BlitCL::DynamicArray<D3D12_DESCRIPTOR_RANGE> sharedSrvRanges{ Ce_SharedSrvRangeCount };
-		CreateDescriptorRange(sharedSrvRanges[Ce_SurfaceBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_SurfaceBufferDescriptorCount, Ce_SurfaceBufferRegister);
-		CreateDescriptorRange(sharedSrvRanges[Ce_TransformBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TransformBufferDescriptorCount, Ce_TransformBufferRegister);
-		CreateDescriptorRange(sharedSrvRanges[Ce_RenderObjectBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_RenderObjectBufferDescriptorCount, Ce_RenderObjectBufferRegister);
-		CreateDescriptorRange(sharedSrvRanges[Ce_ViewDataBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, Ce_ViewDataBufferDescriptorCount, Ce_ViewDataBufferRegister);
+		// Ranges for descrtiptor table for SRVs that are allocated in the shared section of the heap
+		D3D12_DESCRIPTOR_RANGE sharedSrvRanges[Ce_SharedSRVsRangeCount]{};
+		CreateDescriptorRange(sharedSrvRanges[Ce_SurfaceSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_SurfaceSRVRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_TransformSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_TransformSRVRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_RenderSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_RenderSRVRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_ViewCBVRootID], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, Ce_ViewCBVRegister);
 
-		// ADDITIONAL
-		if constexpr (BlitzenCore::Ce_InstanceCulling && !CE_DX12OCCLUSION)// draw occlusion mode does not have instancing
-		{
-			D3D12_DESCRIPTOR_RANGE instanceBufferRange{};
-			CreateDescriptorRange(instanceBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_InstanceBufferDescriptorCount, Ce_InstanceBufferRegister);
-			sharedSrvRanges.PushBack(instanceBufferRange);
-		}
-
+		// Texture sampler
 		D3D12_DESCRIPTOR_RANGE textureSamplerRange{};
-		CreateDescriptorRange(textureSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, Ce_DefaultTextureSamplerDescriptorCount, Ce_DefaultTextureSamplerRegister);
+		CreateDescriptorRange(textureSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, Ce_OpaqueDrawTexSMPRegister);
 
+		// Range for material buffer (pixel shader only)
 		D3D12_DESCRIPTOR_RANGE materialSrvRange{};
-		CreateDescriptorRange(materialSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_MaterialBufferDescriptorCount, Ce_MaterialBufferRegister);
+		CreateDescriptorRange(materialSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawMatSRVRegister);
 
+		// Range for textures
 		D3D12_DESCRIPTOR_RANGE textureSrvsRange{};
-		CreateDescriptorRange(textureSrvsRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_TextureDescriptorCount, Ce_TextureDescriptorsRegister);
+		CreateDescriptorRange(textureSrvsRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_OpaqueDrawTexDescriptorCount, Ce_OpaqueDrawTexRegister);
 
-		D3D12_ROOT_PARAMETER rootParameters[Ce_OpaqueRootParameterCount]{};
-		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueExclusiveBuffersElement], opaqueSrvRanges, Ce_OpaqueSrvRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSharedBuffersElement], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterPushConstants(rootParameters[Ce_OpaqueObjectIdElement], Ce_ObjectIdRegister, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterDescriptorTable(rootParameters[Ce_OpaqueSamplerElement], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-		CreateRootParameterDescriptorTable(rootParameters[Ce_MaterialSrvElement], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-		CreateRootParameterDescriptorTable(rootParameters[Ce_TextureDescriptorsElement], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		// ROOT PARAMS
+		D3D12_ROOT_PARAMETER opaqueDrawRootParams[Ce_OpaqueDrawRootParameterCount]{};
+		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawExclusiveSRVsRootID], opaqueSrvRanges, Ce_OpaqueDrawExclusiveSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterPushConstants(opaqueDrawRootParams[Ce_OpaqueDrawObjIDRootID], Ce_OpaqueDrawObjIDConstantRegister, 0, Ce_OpaqueDrawObjIDConstant32BitCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawTexSMPRootID], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawMatSRVRootID], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawTexSRVRootID], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
-		if (!CreateRootSignature(device, ppOpaqueRootSignature, Ce_OpaqueRootParameterCount, rootParameters, D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
+		// OPAQUE DRAW ROOT
+		if (!CreateRootSignature(device, context.m_opaqueDrawRoot.ReleaseAndGetAddressOf(), Ce_OpaqueDrawRootParameterCount, opaqueDrawRootParams, D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
 		}
 
-		BlitCL::DynamicArray<D3D12_DESCRIPTOR_RANGE> cullSrvRanges{ Ce_CullSrvRangeCount };
-		CreateDescriptorRange(cullSrvRanges[Ce_IndirectDrawBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectDrawBufferDescriptorCount, Ce_IndirectDrawBufferRegister);
-		CreateDescriptorRange(cullSrvRanges[Ce_IndirectCountBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_IndirectCountBufferDescriptorCount, Ce_IndirectCountBufferRegister);
-		CreateDescriptorRange(cullSrvRanges[Ce_LODBufferRangeElement], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_LODBufferDescriptorCount, Ce_LODBufferRegister);
-		if constexpr (CE_DX12OCCLUSION && !CE_DX12TEMPORAL_OCCLUSION)
-		{
-			D3D12_DESCRIPTOR_RANGE drawVisibilityBufferRange{};
-			CreateDescriptorRange(drawVisibilityBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DrawVisibilityBufferDescriptorCount, Ce_DrawVisibilityBufferRegister);
-			cullSrvRanges.PushBack(drawVisibilityBufferRange);
-		}
-		else if constexpr (BlitzenCore::Ce_InstanceCulling)
-		{
-			D3D12_DESCRIPTOR_RANGE lodInstanceBufferRange{};
-			CreateDescriptorRange(lodInstanceBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_LODInstanceBufferDescriptorCount, Ce_LODInstanceBufferRegister);
-			cullSrvRanges.PushBack(lodInstanceBufferRange);
-		}
+		// Range for descriptor table for SRVs that are allocated in the exclusive region of the heap for this root
+		D3D12_DESCRIPTOR_RANGE drawCullSrvRanges[Ce_DrawCullSRVsRangeCount]{};
+		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullDrawCmdUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawCullDrawCmdUAVRegister);
+		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullDrawCmdCountUAVRegister], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawCullDrawCmdCountUAVRegister);
+		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullLODSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawCullLODSRVRegister);
 
-		D3D12_ROOT_PARAMETER drawCullRootParameters[Ce_CullRootParameterCount]{};
-		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
-		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
-		CreateRootParameterPushConstants(drawCullRootParameters[Ce_CullDrawCountParameterId], Ce_CullShaderRootConstantRegister, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+		// ROOT PARAMS
+		D3D12_ROOT_PARAMETER drawCullRootParameters[Ce_DrawCullRootParameterCount]{};
+		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_DrawCullExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_DrawCullSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterPushConstants(drawCullRootParameters[Ce_DrawCullDrawCountConstantRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
 
-		if (!CreateRootSignature(device, ppCullRootSignature, Ce_CullRootParameterCount, drawCullRootParameters))
+		// DRAW CULL ROOT
+		if (!CreateRootSignature(device, context.m_drawCullRoot.ReleaseAndGetAddressOf(), Ce_DrawCullRootParameterCount, drawCullRootParameters))
 		{
 			BLIT_ERROR("Failed to create draw cull root signature");
 			return 0;
 		}
 
 		D3D12_ROOT_PARAMETER resetShaderRootParameter{};
-		CreateRootParameterDescriptorTable(resetShaderRootParameter, cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
-		if (!CreateRootSignature(device, ppResetSignature, 1, &resetShaderRootParameter))
+		CreateRootParameterDescriptorTable(resetShaderRootParameter, drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+
+		// DRAW COUNT RESET ROOT
+		if (!CreateRootSignature(device, context.m_drawCountResetRoot.ReleaseAndGetAddressOf(), 1, &resetShaderRootParameter))
 		{
 			BLIT_ERROR("Failed to create draw count reset shader push constant");
 			return 0;
 		}
 
-		if (CE_DX12OCCLUSION)
+		// DRAW INST ADDITIONAL
+		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
+			// Range for inst buffer
+			D3D12_DESCRIPTOR_RANGE instanceBufferRange{};
+			CreateDescriptorRange(instanceBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_OpaqueDrawInstInstUAVRegister);
+
+			// ROOT PARAMS
+			D3D12_ROOT_PARAMETER opaqueDrawInstRootParams[Ce_OpaqueDrawInstRootParameterCount]{};
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstExclusiveSRVsRootID], opaqueSrvRanges, Ce_OpaqueDrawExclusiveSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+			CreateRootParameterPushConstants(opaqueDrawInstRootParams[Ce_OpaqueDrawObjIDRootID], Ce_OpaqueDrawObjIDConstantRegister, 0, Ce_OpaqueDrawObjIDConstant32BitCount, D3D12_SHADER_VISIBILITY_VERTEX);
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstTexSMPRootID], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstMatSRVRootID], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstTexSRVRootID], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstInstSRVRootID], &instanceBufferRange, 1, D3D12_SHADER_VISIBILITY_VERTEX);
+
+			// OPAQUE DRAW INST ROOT
+			if (!CreateRootSignature(device, context.m_opaqueDrawInstRoot.ReleaseAndGetAddressOf(), Ce_OpaqueDrawInstRootParameterCount, opaqueDrawInstRootParams, D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
+			{
+				BLIT_ERROR("Failed to create opaque root signature");
+				return 0;
+			}
+
+			// Draw cull inst additional ranges
+			D3D12_DESCRIPTOR_RANGE drawCullInstRanges[Ce_DrawCullInstSRVsRangeCount]{};
+			CreateDescriptorRange(drawCullInstRanges[Ce_DrawCullInstInstIdsxUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawCullInstInstIdsxUAVRegister);
+			CreateDescriptorRange(drawCullInstRanges[Ce_DrawCullInstInstCounterUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawCullInstInstCounterUAVRegister);
+
+			D3D12_ROOT_PARAMETER drawInstCullRootParameters[Ce_DrawCullInstRootParameterCount]{};
+			CreateRootParameterDescriptorTable(drawInstCullRootParameters[Ce_DrawCullInstExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawInstCullRootParameters[Ce_DrawCullInstSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(drawInstCullRootParameters[Ce_DrawCullInstDrawCountConstantRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawInstCullRootParameters[Ce_DrawCullInstAdditionalSRVsRootID], drawCullInstRanges, Ce_DrawCullInstSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+
+			// DRAW CULL INST ROOT
+			if (!CreateRootSignature(device, context.m_drawCullInstRoot.ReleaseAndGetAddressOf(), Ce_DrawCullInstRootParameterCount, drawInstCullRootParameters))
+			{
+				BLIT_ERROR("Failed to create draw cull inst root signature");
+				return 0;
+			}
+		}
+
+		// DRAW OCC ADDITIONAL
+		if constexpr (CE_DX12OCCLUSION)
+		{
+			// Additional Draw visibility srv 
+			D3D12_DESCRIPTOR_RANGE drawVisibilityBufferRange{};
+			CreateDescriptorRange(drawVisibilityBufferRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawOccFirstDrawVisUAVRegister);
+
+			D3D12_ROOT_PARAMETER drawOccFirstRootParameters[Ce_DrawOccFirstRootParameterCount]{};
+			CreateRootParameterDescriptorTable(drawOccFirstRootParameters[Ce_DrawOccFirstExclusiveSRVsRootId], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccFirstRootParameters[Ce_DrawOccFirstSharedSRVsRootId], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(drawOccFirstRootParameters[Ce_DrawOccFirstDrawCountRootId], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccFirstRootParameters[Ce_DrawOccFirstDrawVisUAVRootId], &drawVisibilityBufferRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+
+			// DRAW OCC FIRST PASS ROOT
+			if (!CreateRootSignature(device, context.m_drawOccFirstRoot.ReleaseAndGetAddressOf(), Ce_DrawOccFirstRootParameterCount, drawOccFirstRootParameters))
+			{
+				BLIT_ERROR("Failed to create draw occ first root signature");
+				return 0;
+			}
+
+			// Additional Depth pyramid srv
 			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
-			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidCullDescriptorCount, Ce_DepthPyramidCullRegister);
+			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawOccLateHI_Z_MapSRVRegister);
 
-			D3D12_ROOT_PARAMETER drawOccLateRootParameters[Ce_DrawOccRootParameterCount]{};
-			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullExclusiveSRVsParameterId], cullSrvRanges.Data(), (UINT)cullSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_CullSharedSRVsParameterId], sharedSrvRanges.Data(), (UINT)sharedSrvRanges.GetSize(), D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(drawOccLateRootParameters[Ce_CullDrawCountParameterId], Ce_CullShaderRootConstantRegister, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccDepthPyramidParameterId], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			D3D12_ROOT_PARAMETER drawOccLateRootParameters[Ce_DrawOccLateRootParameterCount]{};
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateExclusiveSRVsRootId], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateSharedSRVsRootId], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(drawOccLateRootParameters[Ce_DrawOccLateDrawCountRootId], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateDrawVisUAVRootId], &drawVisibilityBufferRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateHI_Z_MapRootId], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
-			if (!CreateRootSignature(device, ppDrawOccSignature, Ce_DrawOccRootParameterCount, drawOccLateRootParameters))
+			// DRAW OCC LATE PASS ROOT
+			if (!CreateRootSignature(device, context.m_drawOccLateRoot.ReleaseAndGetAddressOf(), Ce_DrawOccLateRootParameterCount, drawOccLateRootParameters))
 			{
 				BLIT_ERROR("Failed to create late cull (occlusion culling) root parameter");
 				return 0;
 			}
 
+			// Additional for hi_z_map generation
 			D3D12_DESCRIPTOR_RANGE depthPyramidUAVRange{};
-			CreateDescriptorRange(depthPyramidUAVRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, Ce_DepthPyramidGenUAVDescriptorCount, Ce_DepthPyramidGenUAVRegister);
+			CreateDescriptorRange(depthPyramidUAVRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_HI_Z_MapUAVRegister);
 
 			D3D12_DESCRIPTOR_RANGE depthPyramidSRVRange{};
-			CreateDescriptorRange(depthPyramidSRVRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Ce_DepthPyramidSRVDescriptorCount, Ce_DepthPyramidSRVRegister);
+			CreateDescriptorRange(depthPyramidSRVRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_HI_Z_MapSRVRegister);
 
-			D3D12_ROOT_PARAMETER depthPyramidGenParameters[Ce_DepthPyramidParameterCount]{};
-			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidUAVRootParameterId], &depthPyramidUAVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_DepthPyramidSRVRootParameterId], &depthPyramidSRVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_DepthPyramidRootConstantParameterId], Ce_DepthPyramidRootConstantsRegister, 
-				0, Ce_DepthPyramidRootConstantsCount, D3D12_SHADER_VISIBILITY_ALL);
+			D3D12_ROOT_PARAMETER depthPyramidGenParameters[Ce_HI_Z_MapRootParameterCount]{};
+			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_HI_Z_MapUAVRootID], &depthPyramidUAVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_HI_Z_MapSRVRootID], &depthPyramidSRVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_HI_Z_MapMipLvlConstantRootID], Ce_HI_Z_MapMipLvlConstantRegister, 0, Ce_HI_Z_MapMipLvlContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
 
-			if (!CreateRootSignature(device, ppDepthPyramidSignature, Ce_DepthPyramidParameterCount, depthPyramidGenParameters))
+			// HI_Z MAP ROOT
+			if (!CreateRootSignature(device, context.m_HI_Z_MapRoot.ReleaseAndGetAddressOf(), Ce_HI_Z_MapRootParameterCount, depthPyramidGenParameters))
 			{
 				BLIT_ERROR("Failed to create depth pyramid root parameter");
 				return 0;
@@ -423,7 +478,7 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateCmdSignatures(ID3D12Device* device, ID3D12RootSignature* opaqueRootSignature, ID3D12CommandSignature** ppOpaqueCmdSignature)
+	static uint8_t CreateCmdSignatures(ID3D12Device* device, PipelineContext& ctx)
 	{
 		// Draw command
 		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[2]{};
@@ -432,118 +487,107 @@ namespace BlitzenDX12
 		// Object id root constant
 		indirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
 		indirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
-		indirectDescs[0].Constant.Num32BitValuesToSet = 1;
-		indirectDescs[0].Constant.RootParameterIndex = Ce_OpaqueObjectIdElement;
+		indirectDescs[0].Constant.Num32BitValuesToSet = Ce_OpaqueDrawObjIDConstant32BitCount;
+		indirectDescs[0].Constant.RootParameterIndex = Ce_OpaqueDrawObjIDRootID;
 
 		D3D12_COMMAND_SIGNATURE_DESC sigDesc{};
 		sigDesc.NodeMask = 0;
 		sigDesc.NumArgumentDescs = 2;
 		sigDesc.pArgumentDescs = indirectDescs;
 		sigDesc.ByteStride = sizeof(IndirectDrawCmd);
-		auto opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, opaqueRootSignature, IID_PPV_ARGS(ppOpaqueCmdSignature)) };
+
+		// regular opaque draw cmd signature
+		HRESULT opaqueCmdRes{ device->CreateCommandSignature(&sigDesc, ctx.m_opaqueDrawRoot.Get(), IID_PPV_ARGS(ctx.m_opaqueDrawCmdSign.ReleaseAndGetAddressOf()))};
 		if (FAILED(opaqueCmdRes))
 		{
+			BLIT_ERROR("Failed to create opaque draw command signature");
 			return LOG_ERROR_MESSAGE_AND_RETURN(opaqueCmdRes);
+		}
+
+		// opaque draw inst cmd signature
+		if constexpr (BlitzenCore::Ce_InstanceCulling)
+		{
+			HRESULT opaqueInstCmdRes{ device->CreateCommandSignature(&sigDesc, ctx.m_opaqueDrawInstRoot.Get(), IID_PPV_ARGS(ctx.m_opaqueDrawInstCmdSign.ReleaseAndGetAddressOf())) };
+			if (FAILED(opaqueInstCmdRes))
+			{
+				BLIT_ERROR("Failed to create opaque draw instanced command signature");
+				return LOG_ERROR_MESSAGE_AND_RETURN(opaqueInstCmdRes);
+			}
 		}
 
 		// success
 		return 1;
 	}
 
-	struct PipelineCreationContext
+	static uint8_t CreatePipelines(ID3D12Device* device, PipelineContext& context)
 	{
-		ID3D12RootSignature* opaqueRoot; 
-		ID3D12PipelineState** ppOpaquePso;
-
-		ID3D12RootSignature* drawCullRoot;
-		ID3D12PipelineState** ppDrawCullPso;
-		ID3D12PipelineState** ppDrawInstCmdPso;
-		ID3D12PipelineState** ppDrawInstCountResetPso;
-
-		ID3D12RootSignature* resetRoot;
-		ID3D12PipelineState** ppResetPso;
-
-		ID3D12RootSignature* drawOccRoot;
-		ID3D12PipelineState** ppDrawOccPso;
-
-		ID3D12RootSignature* depthPyramidRoot;
-		ID3D12PipelineState** ppDepthPyramidPso;
-	};
-	static uint8_t CreatePipelines(ID3D12Device* device, PipelineCreationContext& context)
-	{
-		if (!CreateOpaqueGraphicsPipeline(device, context.opaqueRoot, context.ppOpaquePso))
+		if (!CreateOpaqueGraphicsPipeline(device, context))
 		{
 			BLIT_ERROR("Failed to create opaque grahics pipeline");
 			return 0;
 		}
 
-		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+		if (!CreateComputeShaderProgram(device, context.m_drawCountResetRoot.Get(), context.m_drawCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawCountReset.cs.hlsl.bin"))
 		{
-			if (!CreateComputeShaderProgram(device, context.drawOccRoot, context.ppDrawCullPso, "HlslShaders/CS/drawOccTemporal.cs.hlsl.bin"))
-			{
-				BLIT_ERROR("Failed to create drawOccTemporal.cs shader program");
-				return 0;
-			}
-
-			if (!CreateComputeShaderProgram(device, context.depthPyramidRoot, context.ppDepthPyramidPso, "HlslShaders/CS/depthPyramid.cs.hlsl.bin"))
-			{
-				BLIT_ERROR("Failed to create depthPyramid.cs shader program");
-				return 0;
-			}
+			BLIT_ERROR("Failed to create drawCountReset.cs shader program");
+			return 0;
 		}
-		else if constexpr (CE_DX12OCCLUSION)
+
+		if (!CreateComputeShaderProgram(device, context.m_drawCullRoot.Get(), context.m_drawCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawCull.cs.hlsl.bin"))
 		{
-			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawOccFirst.cs.hlsl.bin"))
+			BLIT_ERROR("Failed to create drawCull.cs shader program");
+			return 0;
+		}
+
+		if constexpr (CE_DX12OCCLUSION)
+		{
+			if (!CreateComputeShaderProgram(device, context.m_drawOccFirstRoot.Get(), context.m_drawOccFirstPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccFirst.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawCull.cs shader program");
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.drawOccRoot, context.ppDrawOccPso, "HlslShaders/CS/drawOccLate.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.m_drawOccLateRoot.Get(), context.m_drawOccLatePso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccLate.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawOccLate.cs shader program");
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.depthPyramidRoot, context.ppDepthPyramidPso, "HlslShaders/CS/depthPyramid.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.m_HI_Z_MapRoot.Get(), context.m_HI_Z_MapPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/hi_z_map.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create depthPyramid.cs shader program");
 				return 0;
 			}
 		}
-		else if constexpr (BlitzenCore::Ce_InstanceCulling)
+
+		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{
-			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawInstCull.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.m_drawOccLateRoot.Get(), context.m_drawOccTemporalPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccTemporal.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create drawOccTemporal.cs shader program");
+				return 0;
+			}
+		}
+
+		if constexpr (BlitzenCore::Ce_InstanceCulling)
+		{
+			if (!CreateComputeShaderProgram(device, context.m_drawCullInstRoot.Get(), context.m_drawCullInstPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawInstCull.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawInstCull.cs shader program");
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawInstCmdPso, "HlslShaders/CS/drawInstCmd.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.m_drawCullInstRoot.Get(), context.m_drawInstCmdPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawInstCmd.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawInstCull.cs shader program");
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawInstCountResetPso, "HlslShaders/CS/drawInstCountReset.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.m_drawCullInstRoot.Get(), context.m_drawInstCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawInstCountReset.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawInstCountReset.cs shader program");
 				return 0;
 			}
-		}
-		else
-		{
-			if (!CreateComputeShaderProgram(device, context.drawCullRoot, context.ppDrawCullPso, "HlslShaders/CS/drawCull.cs.hlsl.bin"))
-			{
-				BLIT_ERROR("Failed to create drawCull.cs shader program");
-				return 0;
-			}
-		}
-
-		if (!CreateComputeShaderProgram(device, context.resetRoot, context.ppResetPso, "HlslShaders/CS/drawCountReset.cs.hlsl.bin"))
-		{
-			BLIT_ERROR("Failed to create drawCountReset.cs shader program");
-			return 0;
 		}
 
 		return 1;
@@ -638,16 +682,12 @@ namespace BlitzenDX12
 			{
 				BlitCL::DynamicArray<uint32_t> zeroData{ renderCount, 0 };
 				
-				// For occlusion with pre pass, the draw visibility buffer is needed
-				if constexpr (!CE_DX12TEMPORAL_OCCLUSION)
+				visibilityBufferSize = CreateSSBO(device, buffers.drawVisibilityBuffer, drawVisibilityStaging, (size_t)renderCount,
+					zeroData.Data(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+				if (!visibilityBufferSize)
 				{
-					visibilityBufferSize = CreateSSBO(device, buffers.drawVisibilityBuffer, drawVisibilityStaging, (size_t)renderCount,
-						zeroData.Data(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-					if (!visibilityBufferSize)
-					{
-						BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
-						return 0;
-					}
+					BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
+					return 0;
 				}
 
 				if (!CreateDepthPyramidResource(device, buffers.depthPyramid, swapchainWidth, swapchainHeight))
@@ -656,7 +696,8 @@ namespace BlitzenDX12
 					return 0;
 				}
 			}
-			else if constexpr (BlitzenCore::Ce_InstanceCulling)
+
+			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				UINT64 instanceBufferSize{ lodData.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD * sizeof(uint32_t) };
 				if (!CreateBuffer(device, buffers.drawInstBuffer.buffer.ReleaseAndGetAddressOf(), instanceBufferSize,
@@ -681,18 +722,14 @@ namespace BlitzenDX12
 			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copyDestBarriers{ Ce_VarSSBODataCount };
 			CreateResourcesTransitionBarrier(copyDestBarriers[0], buffers.transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
-			// Conditional barriers
-			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
-			{
-
-			}
-			else if constexpr (CE_DX12OCCLUSION)
+			if constexpr (CE_DX12OCCLUSION)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferDestBarrier, buffers.drawVisibilityBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 				copyDestBarriers.PushBack(visibilityBufferDestBarrier);
 			}
-			else if constexpr (BlitzenCore::Ce_InstanceCulling)
+
+			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				D3D12_RESOURCE_BARRIER lodInstBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(lodInstBufferDestBarrier, buffers.lodInstBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -706,18 +743,14 @@ namespace BlitzenDX12
 			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copySourceBarriers{ Ce_VarSSBODataCount };
 			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-			// Conditional staging barriers
-			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
-			{
-
-			}
-			else if constexpr (CE_DX12OCCLUSION)
+			if constexpr (CE_DX12OCCLUSION)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferSourceBarrier, drawVisibilityStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 				copySourceBarriers.PushBack(visibilityBufferSourceBarrier);
 			}
-			else if constexpr (BlitzenCore::Ce_InstanceCulling)
+
+			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				D3D12_RESOURCE_BARRIER lodInstBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(lodInstBufferSourceBarrier, lodInstStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -730,16 +763,12 @@ namespace BlitzenDX12
 			// Copy
 			frameTools.transferCommandList->CopyResource(buffers.transformBuffer.buffer.Get(), transformStaging.Get());
 
-			// Conditional copy
-			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
-			{
-
-			}
-			else if constexpr (CE_DX12OCCLUSION)
+			if constexpr (CE_DX12OCCLUSION)
 			{
 				frameTools.transferCommandList->CopyResource(buffers.drawVisibilityBuffer.buffer.Get(), drawVisibilityStaging.Get());
 			}
-			else if constexpr (BlitzenCore::Ce_InstanceCulling)
+
+			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				frameTools.transferCommandList->CopyResource(buffers.lodInstBuffer.buffer.Get(), lodInstStaging.Get());
 			}
@@ -1014,12 +1043,6 @@ namespace BlitzenDX12
 			descriptorHandle.ptr += descriptorContext.srvHeapOffset * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			device->CreateConstantBufferView(&vars.viewDataBuffer.cbvDesc, descriptorHandle);
 			descriptorContext.srvHeapOffset++;
-
-			if (BlitzenCore::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Instancing not supported for draw occlusion mode
-			{
-				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
-			}
 		}
 
 		// Teams of descriptors used for draw culling shaders
@@ -1040,26 +1063,43 @@ namespace BlitzenDX12
 				descriptorContext.srvHeapOffset, 1, sizeof(uint32_t), 0);
 
 			CreateBufferShaderResourceView(device, staticBuffers.lodBuffer.buffer.Get(), srvHeap->GetCPUDescriptorHandleForHeapStart(),
-				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));
+				descriptorContext.srvHeapOffset, staticBuffers.lodBuffer.heapOffset[i], (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));	
+		}
 
-			if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+		// Instancing unique descriptors
+		if (BlitzenCore::Ce_InstanceCulling)
+		{
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
+				auto& vars = varBuffers[i];
 
+				descriptorContext.drawInstViewsOffset[i] = descriptorContext.srvHeapOffset;
+				descriptorContext.drawInstViewsHandle[i] = descriptorContext.srvHandle;
+				descriptorContext.drawInstViewsHandle[i].ptr += descriptorContext.drawInstViewsOffset[i] * descriptorContext.srvIncrementSize;
+
+				CreateUnorderedAccessView(device, vars.drawInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
+					descriptorContext.srvHeapOffset, UINT(lods.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD), sizeof(uint32_t), 0);
+
+				CreateUnorderedAccessView(device, vars.lodInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
+					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
 			}
-			else if constexpr (CE_DX12OCCLUSION)
+		}
+
+		// Teams of descriptors used for occlusion shaders
+		if constexpr (CE_DX12OCCLUSION)
+		{
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
+				auto& vars = varBuffers[i];
+
+				descriptorContext.drawVisUAVOffset[i] = descriptorContext.srvHeapOffset;
+				descriptorContext.drawVisUANHandle[i] = descriptorContext.srvHandle;
+				descriptorContext.drawVisUANHandle[i].ptr += descriptorContext.drawVisUAVOffset[i] * descriptorContext.srvIncrementSize;
+
 				CreateUnorderedAccessView(device, vars.drawVisibilityBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
 					descriptorContext.srvHeapOffset, renderCount, sizeof(uint32_t), 0);
 			}
-			else if constexpr (BlitzenCore::Ce_InstanceCulling)
-			{
-				CreateUnorderedAccessView(device, vars.lodInstBuffer.buffer.Get(), nullptr, srvHeap->GetCPUDescriptorHandleForHeapStart(),
-					descriptorContext.srvHeapOffset, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
-			}	
-		}
 
-		if constexpr (CE_DX12OCCLUSION)
-		{
 			CreateDepthPyramidDescriptors(device, varBuffers, descriptorContext, srvHeap, pDepthTargets, drawWidth, drawHeight, samplerHeap);
 		}
 		
@@ -1087,14 +1127,13 @@ namespace BlitzenDX12
 	{
 		GenerateHlslVertices(context.m_meshes);
 
-		if (!CreateRootSignatures(m_device.Get(), m_opaqueRootSignature.ReleaseAndGetAddressOf(), m_drawCullSignature.ReleaseAndGetAddressOf(), 
-			m_drawCountResetRoot.ReleaseAndGetAddressOf(), m_drawOccLateSignature.ReleaseAndGetAddressOf(), m_depthPyramidSignature.ReleaseAndGetAddressOf()))
+		if (!CreateRootSignatures(m_device.Get(), m_pipelineContext))
 		{
 			BLIT_ERROR("Failed to create root signatures");
 			return 0;
 		}
 
-		if (!CreateCmdSignatures(m_device.Get(), m_opaqueRootSignature.Get(), m_opaqueCmdSingature.ReleaseAndGetAddressOf()))
+		if (!CreateCmdSignatures(m_device.Get(), m_pipelineContext))
 		{
 			BLIT_ERROR("Failed to create command signatures");
 			return 0;
@@ -1122,11 +1161,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		PipelineCreationContext pipelineContext{ m_opaqueRootSignature.Get(), m_opaqueGraphicsPso.ReleaseAndGetAddressOf(), 
-			m_drawCullSignature.Get(), m_drawCullPso.ReleaseAndGetAddressOf(), m_drawInstCmdPso.ReleaseAndGetAddressOf(), 
-			m_drawInstCountResetPso.ReleaseAndGetAddressOf(), m_drawCountResetRoot.Get(), m_drawCountResetPso.ReleaseAndGetAddressOf(), 
-			m_drawOccLateSignature.Get(), m_drawOccLatePso.ReleaseAndGetAddressOf(), m_depthPyramidSignature.Get(), m_depthPyramidPso.ReleaseAndGetAddressOf()};
-		if (!CreatePipelines(m_device.Get(), pipelineContext))
+		if (!CreatePipelines(m_device.Get(), m_pipelineContext))
 		{
 			BLIT_ERROR("Failed to create graphics pipelines");
 			return 0;
@@ -1189,15 +1224,13 @@ namespace BlitzenDX12
 
 		if constexpr (CE_DX12OCCLUSION)
 		{
-			if constexpr (!CE_DX12TEMPORAL_OCCLUSION)
+			
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
-				for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-				{
-					D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
-					CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_varBuffers[i].drawVisibilityBuffer.buffer.Get(),
-						D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-					varBuffersFinalState.PushBack(drawVisibilityBarrier);
-				}
+				D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
+				CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_varBuffers[i].drawVisibilityBuffer.buffer.Get(),
+					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				varBuffersFinalState.PushBack(drawVisibilityBarrier);
 			}
 
 			for (uint32_t f = 0; f < ce_framesInFlight; ++f)
@@ -1211,7 +1244,8 @@ namespace BlitzenDX12
 				}
 			}
 		}
-		else if constexpr (BlitzenCore::Ce_InstanceCulling)
+
+		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{

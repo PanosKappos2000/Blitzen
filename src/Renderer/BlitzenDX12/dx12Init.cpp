@@ -179,7 +179,7 @@ namespace BlitzenDX12
         CreateSampler(m_device.Get(), m_samplerHeap->GetCPUDescriptorHandleForHeapStart(), m_descriptorContext.samplerHeapOffset,
             D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 
-		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_triangleRootSignature, m_trianglePso.ReleaseAndGetAddressOf()))
+		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_pipelineContext.m_triangleRoot, m_pipelineContext.m_trianglePso.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create triangle graphics pipeline");
 			return 0;

@@ -2,7 +2,7 @@
 
 #if defined(_WIN32)
 
-#include "dx12Data.h"
+#include "dx12Context.h"
 #include "Renderer/Interface/blitRendererInterface.h"
 #include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
@@ -133,6 +133,12 @@ namespace BlitzenDX12
             SIZE_T depthPyramidMipsEnd;
             D3D12_GPU_DESCRIPTOR_HANDLE depthPyramidMipsSrvHandle[ce_framesInFlight];
 
+            SIZE_T drawInstViewsOffset[ce_framesInFlight];
+			D3D12_GPU_DESCRIPTOR_HANDLE drawInstViewsHandle[ce_framesInFlight];
+
+			SIZE_T drawVisUAVOffset[ce_framesInFlight];
+			D3D12_GPU_DESCRIPTOR_HANDLE drawVisUANHandle[ce_framesInFlight]; 
+
 
             /* SAMPLER HEAP */
             D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
@@ -163,7 +169,10 @@ namespace BlitzenDX12
         };
 
         DX12WRAPPER<IDXGIFactory6> m_factory;
+
         DX12WRAPPER<ID3D12Device> m_device;
+
+        Dx12Stats m_stats;
 
     private:
 
@@ -175,9 +184,8 @@ namespace BlitzenDX12
         DX12WRAPPER<IDXGISwapChain3> m_swapchain;
 		UINT m_swapchainWidth;
 		UINT m_swapchainHeight;
-        // The swapchain will be the color target
+        
         DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
-
         DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];
 
     /*
@@ -185,65 +193,31 @@ namespace BlitzenDX12
     */
     private:
 
+        uint32_t m_currentFrame{ 0 };
+
+        BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
+
+        DX12WRAPPER<ID3D12CommandQueue> m_commandQueue;
+
+        DX12WRAPPER<ID3D12CommandQueue> m_transferCommandQueue;
+
+        VarBuffers m_varBuffers[ce_framesInFlight];
+
+        // TODO: Put this in const buffers
+        DX2DTEX m_tex2DList[BlitzenCore::Ce_MaxTextureCount];
+        uint32_t m_textureCount{ 0 };
+
+        ConstBuffers m_constBuffers;
+
         DescriptorContext m_descriptorContext;
 
+        // TODO: Put these in descriptor context
         DX12WRAPPER<ID3D12DescriptorHeap> m_srvHeap;
         DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
         DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
         DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
 
-    /*
-        Pipelines and Root Signatures
-    */
-    private:
-
-        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC m_depthTargetDesc{};
-        D3D12_RENDER_PASS_RENDER_TARGET_DESC m_renderTargetDesc{};
-
-        DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
-        DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
-
-        /* CULLING COMPUTE */
-        // All modes
-        DX12WRAPPER<ID3D12RootSignature> m_drawCountResetRoot;
-        DX12WRAPPER<ID3D12PipelineState> m_drawCountResetPso;
-        DX12WRAPPER<ID3D12RootSignature> m_drawCullSignature;
-        DX12WRAPPER<ID3D12PipelineState> m_drawCullPso;
-        // Draw occlusion mode only
-        DX12WRAPPER<ID3D12RootSignature> m_drawOccLateSignature;// TODO: REMEMBER TO RENAME THESE IN THE UPCOMING REFACTOR
-        DX12WRAPPER<ID3D12PipelineState> m_drawOccLatePso;
-        DX12WRAPPER<ID3D12RootSignature> m_depthPyramidSignature;
-        DX12WRAPPER<ID3D12PipelineState> m_depthPyramidPso;
-        // Draw Instance cull mode only
-        DX12WRAPPER<ID3D12PipelineState> m_drawInstCountResetPso;
-        DX12WRAPPER<ID3D12PipelineState> m_drawInstCmdPso;
-
-
-        DX12WRAPPER<ID3D12CommandSignature> m_opaqueCmdSingature;
-        DX12WRAPPER<ID3D12RootSignature> m_opaqueRootSignature;
-        // General objects
-        DX12WRAPPER<ID3D12PipelineState> m_opaqueGraphicsPso;
-        // Transparent
-        DX12WRAPPER<ID3D12PipelineState> m_transparentGraphicsPso;
-
-    private:
-
-        DX12WRAPPER<ID3D12CommandQueue> m_commandQueue;
-        DX12WRAPPER<ID3D12CommandQueue> m_transferCommandQueue;
-
-        BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
-		VarBuffers m_varBuffers[ce_framesInFlight];
-
-        ConstBuffers m_constBuffers;
-
-        Dx12Stats m_stats;
-
-        uint32_t m_currentFrame = 0;
-
-        DX2DTEX m_tex2DList[BlitzenCore::Ce_MaxTextureCount];
-        uint32_t m_textureCount{ 0 };
-
-    private:
+        PipelineContext m_pipelineContext;
 
     };
 }

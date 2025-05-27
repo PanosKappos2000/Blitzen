@@ -153,6 +153,17 @@ namespace BlitCL
             return -1;
         }
 
+		inline void Clear()
+		{
+			if (m_capacity > 0)
+			{
+				BlitzenCore::BlitFree<char>(StrAlloc, m_data, m_capacity);
+			}
+            m_data = "";
+			m_capacity = 0;
+			m_size = 0;
+		}
+
         inline void CopyString(const char* str)
         {
             size_t size = strlen(str);

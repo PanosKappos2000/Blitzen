@@ -2,7 +2,7 @@
 
 #if defined(_WIN32)
 
-#include "dx12Data.h"
+#include "dx12Context.h"
 #include <d3dcompiler.h>
 #include <string>
 #include "BlitCL/blitString.h"
@@ -47,7 +47,7 @@ namespace BlitzenDX12
 	uint8_t CreateTriangleGraphicsPipeline(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12RootSignature>& rootSignature, ID3D12PipelineState** ppPso);
 
     // Main drawing pipeline creation
-    uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso);
+    uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx);
 
     class ShaderIncludeHandler : public ID3DInclude 
     {

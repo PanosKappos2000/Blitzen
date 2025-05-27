@@ -4,7 +4,7 @@
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
-cbuffer ObjCountConstant: register (b2)
+cbuffer ObjCountConstant: register (b1)
 {
     uint objCount;
 };

@@ -100,31 +100,60 @@ namespace BlitzenDX12
 
 	struct PipelineContext
 	{
-        DX12WRAPPER<ID3D12RootSignature> m_triangleRootSignature;
-        DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
-
-        /* CULLING COMPUTE */
-        // All modes
+        // Small compute shader for setting draw count rwssbo to 0
         DX12WRAPPER<ID3D12RootSignature> m_drawCountResetRoot;
         DX12WRAPPER<ID3D12PipelineState> m_drawCountResetPso;
-        DX12WRAPPER<ID3D12RootSignature> m_drawCullSignature;
+
+		// Culling compute shader. Performs frustum culling and LOD selection. Creates indirect draw commands
+        DX12WRAPPER<ID3D12RootSignature> m_drawCullRoot;
         DX12WRAPPER<ID3D12PipelineState> m_drawCullPso;
-        // Draw occlusion mode only
-        DX12WRAPPER<ID3D12RootSignature> m_drawOccLateSignature;
+
+        // Small compute shader for instance count rwssbo reset
+        // Uses draw cull inst root
+		DX12WRAPPER<ID3D12PipelineState> m_drawInstCountResetPso;
+
+        // Culling compute shader. Performs frumtum culling and LOD selection. Sets instance counter
+        DX12WRAPPER<ID3D12RootSignature> m_drawCullInstRoot;
+		DX12WRAPPER<ID3D12PipelineState> m_drawCullInstPso;
+
+        // Command compute shader. Takes the instance count and sets indirect draw commands for each instance
+        // Uses draw cull inst root
+		DX12WRAPPER<ID3D12PipelineState> m_drawInstCmdPso;
+
+		// Culling compute shader. Performs frustum culling and LOD selection. Ignores objects that were tagged not visible last frame.
+        DX12WRAPPER<ID3D12RootSignature> m_drawOccFirstRoot;
+		DX12WRAPPER<ID3D12PipelineState> m_drawOccFirstPso;
+
+        // Resource copy compute shader. Generates HI_Z map for occlusion culling.
+        DX12WRAPPER<ID3D12RootSignature> m_HI_Z_MapRoot;
+        DX12WRAPPER<ID3D12PipelineState> m_HI_Z_MapPso;
+        
+        // Culling compute shader. Performs frustum and occlusion culling and LOD selection. 
+        // Creates indirect draw commands for objects that were not tagged as visible last frame.
+		// Tags objects with their visibility for the next frame.
+        DX12WRAPPER<ID3D12RootSignature> m_drawOccLateRoot;
         DX12WRAPPER<ID3D12PipelineState> m_drawOccLatePso;
-        DX12WRAPPER<ID3D12RootSignature> m_depthPyramidSignature;
-        DX12WRAPPER<ID3D12PipelineState> m_depthPyramidPso;
-        // Draw Instance cull mode only
-        DX12WRAPPER<ID3D12PipelineState> m_drawInstCountResetPso;
-        DX12WRAPPER<ID3D12PipelineState> m_drawInstCmdPso;
 
+        // Culling compute shader. Performs frustum and occlusion culling and LOD selection. Uses previous HI_Z map
+		// Uses draw occ late root
+		DX12WRAPPER<ID3D12PipelineState> m_drawOccTemporalPso;
 
-        DX12WRAPPER<ID3D12CommandSignature> m_opaqueCmdSingature;
-        DX12WRAPPER<ID3D12RootSignature> m_opaqueRootSignature;
-        // General objects
-        DX12WRAPPER<ID3D12PipelineState> m_opaqueGraphicsPso;
+        // Draws triangle with hardcoded vertices in the shader (legacy shader)
+        DX12WRAPPER<ID3D12RootSignature> m_triangleRoot;
+        DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
+
+        // Vertex and Pixel shaders for opaque objects. Uses execute indirect
+        DX12WRAPPER<ID3D12CommandSignature> m_opaqueDrawCmdSign;
+        DX12WRAPPER<ID3D12RootSignature> m_opaqueDrawRoot;
+        DX12WRAPPER<ID3D12PipelineState> m_opaqueDrawPso;
+
+		// Vertex and Pixel shader for opaque objects with instancing. Uses execute indirect
+        DX12WRAPPER<ID3D12CommandSignature> m_opaqueDrawInstCmdSign;
+        DX12WRAPPER<ID3D12RootSignature> m_opaqueDrawInstRoot;
+        DX12WRAPPER<ID3D12PipelineState> m_opaqueDrawInstPso;
+
         // Transparent
-        DX12WRAPPER<ID3D12PipelineState> m_transparentGraphicsPso;
+        DX12WRAPPER<ID3D12PipelineState> m_transparentDrawPso;
 	};
 
     struct CommandContext

@@ -34,7 +34,6 @@ namespace BlitzenDX12
 
     HRESULT ShaderIncludeHandler::Close(LPCVOID pData)
     {
-        // No action needed here as we're not dynamically allocating memory
         return S_OK;
     }
 
@@ -134,8 +133,7 @@ namespace BlitzenDX12
             return LOG_ERROR_MESSAGE_AND_RETURN(serializeRes);
         }
 
-        auto rootSignatureResult = device->CreateRootSignature(0, serializedRootSignature->GetBufferPointer(), serializedRootSignature->GetBufferSize(),
-            IID_PPV_ARGS(ppRootSignature));
+        HRESULT rootSignatureResult = device->CreateRootSignature(0, serializedRootSignature->GetBufferPointer(), serializedRootSignature->GetBufferSize(), IID_PPV_ARGS(ppRootSignature));
         if (FAILED(rootSignatureResult))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(rootSignatureResult);
@@ -146,8 +144,8 @@ namespace BlitzenDX12
 
     uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, const char* entryPoint, ID3DBlob** shaderBlob)
     {
-        Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-        auto compileResult = D3DCompileFromFile(filepath, nullptr, &inl_shaderIncludeHandler, entryPoint, target, 0, 0, shaderBlob, errorBlob.GetAddressOf());
+        DX12WRAPPER<ID3DBlob> errorBlob;
+        HRESULT compileResult = D3DCompileFromFile(filepath, nullptr, &inl_shaderIncludeHandler, entryPoint, target, 0, 0, shaderBlob, errorBlob.GetAddressOf());
         if (FAILED(compileResult))
         {
             if (errorBlob) 
@@ -169,6 +167,7 @@ namespace BlitzenDX12
         {
             return 0;
         }
+
         // Reads the shader code in byte format
         size_t filesize = 0;
         if (!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
@@ -235,17 +234,17 @@ namespace BlitzenDX12
         if (!CreateRootSignature(device, rootSignature.ReleaseAndGetAddressOf(), 0, nullptr, 
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT))
         {
-            BLIT_ERROR("Failed to create opaque root signature");
+            BLIT_ERROR("Failed to create triangle root signature");
             return 0;
         }
 
-        Microsoft::WRL::ComPtr<ID3DBlob> vertexShader;
+        DX12WRAPPER<ID3DBlob> vertexShader;
         if (!CreateShaderProgram(L"HlslShadersLegacy/loadingTriangle.vs.hlsl", "vs_5_0", "main", vertexShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading vertex shader");
             return 0;
         }
-        Microsoft::WRL::ComPtr<ID3DBlob> pixelShader;
+        DX12WRAPPER<ID3DBlob> pixelShader;
         if (!CreateShaderProgram(L"HlslShadersLegacy/loadingTriangle.ps.hlsl", "ps_5_0", "main", pixelShader.ReleaseAndGetAddressOf()))
         {
             BLIT_ERROR("Failed to create triangle loading pixel shader");
@@ -261,7 +260,7 @@ namespace BlitzenDX12
         psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
 
-        auto psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
+        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
         if (FAILED(psoResult))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
@@ -270,19 +269,12 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, ID3D12RootSignature* rootSignature, ID3D12PipelineState** ppPso)
+    uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx)
     {
         BlitCL::String vsBytes;
         size_t vsSize{ 0 };
-        if constexpr (BlitzenCore::Ce_InstanceCulling && !CE_DX12OCCLUSION)// Draw occlusion mode does not have instancing
-        {
-            vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDrawInst.vs.hlsl.bin", vsBytes);
-        }
-        else
-        {
-            vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDraw.vs.hlsl.bin", vsBytes);
-        }
-        
+
+        vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDraw.vs.hlsl.bin", vsBytes);
         if(!vsSize)
         {
 			BLIT_ERROR("Failed to create main opaque vertex shader");
@@ -305,15 +297,42 @@ namespace BlitzenDX12
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 		CreateDefaultPsoDescription(psoDesc);
-        psoDesc.pRootSignature = rootSignature;
+        psoDesc.pRootSignature = ctx.m_opaqueDrawRoot.Get();
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;
         psoDesc.DSVFormat = Ce_DepthTargetFormat;
 
-        auto psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
+        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawPso.ReleaseAndGetAddressOf()));
         if (FAILED(psoResult))
         {
+			BLIT_ERROR("Failed to create opaque draw pipeline state object");
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
+        }
+
+        if constexpr (BlitzenCore::Ce_InstanceCulling)
+        {
+			vsBytes.Clear();
+            vsSize = 0;
+
+            vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDrawInst.vs.hlsl.bin", vsBytes);
+            if (vsSize == 0)
+            {
+				BLIT_ERROR("Failed to create opaque instanced vertex shader");
+                return 0;
+            }
+
+			vsCode.BytecodeLength = vsSize;
+			vsCode.pShaderBytecode = vsBytes.Data();
+
+			psoDesc.VS = vsCode;
+			psoDesc.pRootSignature = ctx.m_opaqueDrawInstRoot.Get();
+
+			HRESULT psoInstResult{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawInstPso.ReleaseAndGetAddressOf())) };
+			if (FAILED(psoInstResult))
+			{
+				BLIT_ERROR("Failed to create opaque draw instanced pipeline state object");
+				return LOG_ERROR_MESSAGE_AND_RETURN(psoInstResult);
+			}
         }
 
         return 1;
@@ -328,6 +347,7 @@ namespace BlitzenDX12
             BLIT_ERROR("Failed to create compute shader program");
             return 0;
         }
+
         D3D12_SHADER_BYTECODE csCode{};
         csCode.BytecodeLength = csSize;
         csCode.pShaderBytecode = csBytes.Data();
@@ -336,7 +356,7 @@ namespace BlitzenDX12
         psoDesc.CS = csCode;
         psoDesc.pRootSignature = root;
 
-        auto cullPsoResult = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso));
+        HRESULT cullPsoResult{ device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso)) };
         if (FAILED(cullPsoResult))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(cullPsoResult);

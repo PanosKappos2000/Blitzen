@@ -1,7 +1,7 @@
 #define DRAW_INSTANCING
 #include "../Headers/cullBuffers.hlsl"
 
-cbuffer LodCount : register(b2)
+cbuffer LodCount : register(b1)
 {
     uint lodCount;
 }
