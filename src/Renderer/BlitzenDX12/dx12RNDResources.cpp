@@ -4,8 +4,7 @@
 
 namespace BlitzenDX12
 {
-	uint8_t CreateSwapchain(IDXGIFactory6* factory, ID3D12CommandQueue* queue, uint32_t windowWidth, uint32_t windowHeight,
-		HWND hWnd, Microsoft::WRL::ComPtr <IDXGISwapChain3>* pSwapchain)
+	uint8_t CreateSwapchain(IDXGIFactory6* factory, ID3D12CommandQueue* queue, uint32_t windowWidth, uint32_t windowHeight, HWND hwnd, DX12WRAPPER<IDXGISwapChain3>* pSwapchain)
 	{
 		DXGI_SWAP_CHAIN_DESC1 scDesc = {};
 		scDesc.BufferCount = ce_framesInFlight;
@@ -31,17 +30,18 @@ namespace BlitzenDX12
 			scDesc.Flags = 0;
 		}
 
-		Microsoft::WRL::ComPtr<IDXGISwapChain1> tempSwapchain;
-		// Creates the swapchain
-		auto swapchainRes{ factory->CreateSwapChainForHwnd(queue, hWnd, &scDesc, nullptr, nullptr, &tempSwapchain) };
+		DX12WRAPPER<IDXGISwapChain1> tempSwapchain;
+		HRESULT swapchainRes{ factory->CreateSwapChainForHwnd(queue, hwnd, &scDesc, nullptr, nullptr, &tempSwapchain) };
 		if (FAILED(swapchainRes))
 		{
+			BLIT_ERROR("Failed to create swapchain")
 			return LOG_ERROR_MESSAGE_AND_RETURN(swapchainRes);
 		}
-		// Casted to IDXGISwapChain3
-		auto swapchainCastRest = tempSwapchain.As(pSwapchain);
+		
+		HRESULT swapchainCastRest = tempSwapchain.As(pSwapchain);
 		if (FAILED(swapchainCastRest))
 		{
+			BLIT_ERROR("Failed to cast IDXGISwapChain1 to IDXGISwapChain3");
 			return LOG_ERROR_MESSAGE_AND_RETURN(swapchainCastRest);
 		}
 
@@ -107,22 +107,62 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	uint8_t CreateDepthPyramidResource(ID3D12Device* device, DepthPyramid& depthPyramid, uint32_t width, uint32_t height)
+	UINT64 CreateIndexBuffer(ID3D12Device* device, INDEX_BUFFER& idxBuffer, DX12WRAPPER<ID3D12Resource>& stagingBuffer, size_t elementCount, void* pData)
+	{
+		if (elementCount == 0)
+		{
+			BLIT_ERROR("Passed element count 0 to index buffer creation");
+			return 0;
+		}
+
+		UINT64 idxBufferSize{ sizeof(uint32_t) * elementCount };
+
+		if (!CreateBuffer(device, idxBuffer.m_buffer.ReleaseAndGetAddressOf(), idxBufferSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT))
+		{
+			BLIT_ERROR("Failed to create index buffer resource");
+			return 0;
+		}
+
+		if (!CreateBuffer(device, stagingBuffer.ReleaseAndGetAddressOf(), idxBufferSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+		{
+			BLIT_ERROR("Failed to create index staging buffer");
+			return 0;
+		}
+		
+		void* pMappedData{ nullptr };
+		HRESULT mappingRes{ stagingBuffer->Map(0, nullptr, &pMappedData) };
+		if (FAILED(mappingRes))
+		{
+			BLIT_ERROR("Failed to map pointer to index staging buffer");
+			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+		}
+
+		BlitzenCore::BlitMemCopy(pMappedData, pData, idxBufferSize);
+
+		idxBuffer.m_view = {};
+		idxBuffer.m_view.BufferLocation = idxBuffer.m_buffer->GetGPUVirtualAddress();
+		idxBuffer.m_view.SizeInBytes = UINT(idxBufferSize);
+		idxBuffer.m_view.Format = DXGI_FORMAT_R32_UINT;
+
+		// Success
+		return idxBufferSize;
+	}
+
+	uint8_t CreateDepthPyramidResource(ID3D12Device* device, HI_Z_MAP& hi_z, uint32_t width, uint32_t height)
 	{
 		// Conservative starting extent
 		//depthPyramid.width = BlitML::PreviousPow2(width);
 		//depthPyramid.height = BlitML::PreviousPow2(height);
 
 		// NOTE: THIS IS DIFFERENT FROM VULKAN BECAUSE THE SHADER GENERATION LOGIC IS DIFFERENT
-		depthPyramid.width = BlitML::Max(1u, (width) >> 1);
-		depthPyramid.height = BlitML::Max(1u, (height) >> 1);
+		hi_z.width = BlitML::Max(1u, (width) >> 1);
+		hi_z.height = BlitML::Max(1u, (height) >> 1);
 
-		depthPyramid.mipCount = BlitML::GetDepthPyramidMipLevels(depthPyramid.width, depthPyramid.height);
+		hi_z.mipCount = BlitML::GetDepthPyramidMipLevels(hi_z.width, hi_z.height);
 
 		// Image resource
-		if (!CreateImageResource(device, depthPyramid.pyramid.ReleaseAndGetAddressOf(), depthPyramid.width, depthPyramid.height,
-			depthPyramid.mipCount, Ce_DepthPyramidFormat, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_HEAP_TYPE_DEFAULT,
-			D3D12_RESOURCE_STATE_COMMON, nullptr))
+		if (!CreateImageResource(device, hi_z.pyramid.ReleaseAndGetAddressOf(), hi_z.width, hi_z.height,hi_z.mipCount, Ce_DepthPyramidFormat, 
+			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON, nullptr))
 		{
 			BLIT_ERROR("Failed to create depth pyramid resource");
 			return 0;
@@ -131,23 +171,22 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	void CreateDepthPyramidDescriptors(ID3D12Device* device, Dx12Renderer::VarBuffers* pBuffers, DescriptorContext& context,
-		DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
+	void CreateDepthPyramidDescriptors(ID3D12Device* device, ReadWriteResources* rwResourcesArray, DescriptorContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
 	{
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			auto& var = pBuffers[i];
+			auto& rwResources = rwResourcesArray[i];
 
 			context.m_HI_Z_MapSRVOffset[i] = context.m_viewHeapCurrentOffset;
 			context.m_HI_Z_MapSRVHandle[i] = context.m_viewHeapHandle;
 			context.m_HI_Z_MapSRVHandle[i].ptr += context.m_HI_Z_MapSRVOffset[i] * context.m_viewHeapIncrement;
 
-			CreateTexture2DShaderResourceView(device, var.depthPyramid.pyramid.Get(), context, Ce_DepthPyramidFormat, var.depthPyramid.mipCount);
+			CreateTexture2DShaderResourceView(device, rwResources.m_HI_Z.pyramid.Get(), context, Ce_DepthPyramidFormat, rwResources.m_HI_Z.mipCount);
 		}
 
 		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
 		{
-			auto& var = pBuffers[f];
+			auto& rwResources = rwResourcesArray[f];
 
 			context.m_HI_Z_MapMipsFirstUAVOffset[f] = context.m_viewHeapCurrentOffset;
 			context.m_HI_Z_MapMipsFirstUAVHandle[f] = context.m_viewHeapHandle;
@@ -159,20 +198,19 @@ namespace BlitzenDX12
 
 			for (uint32_t i = 0; i < Ce_DepthPyramidMaxMips; ++i)
 			{
-				var.depthPyramid.mips[i] = mipsStartHandle;
-				var.depthPyramid.mips[i].ptr += i * context.m_viewHeapIncrement;
+				rwResources.m_HI_Z.mips[i] = mipsStartHandle;
+				rwResources.m_HI_Z.mips[i].ptr += i * context.m_viewHeapIncrement;
 				mipsEndOffset++;
 			}
 			
-			for (uint32_t i = 0; i < var.depthPyramid.mipCount; ++i)
+			for (uint32_t i = 0; i < rwResources.m_HI_Z.mipCount; ++i)
 			{
-				Create2DTextureUnorderedAccessView(device, context, var.depthPyramid.pyramid.Get(), Ce_DepthPyramidFormat, i);
+				Create2DTextureUnorderedAccessView(device, context, rwResources.m_HI_Z.pyramid.Get(), Ce_DepthPyramidFormat, i);
 			}
 
 			context.m_viewHeapCurrentOffset = mipsEndOffset;
 		}
 		
-
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
 			context.m_depthTargetSRVOffset[i] = context.m_viewHeapCurrentOffset;
@@ -188,10 +226,9 @@ namespace BlitzenDX12
 		uint32_t pyramidMip, uint32_t swapchainWidht, uint32_t swapchainHeight)
 	{
 		D3D12_RESOURCE_BARRIER barrier[2] {};
-		CreateResourcesTransitionBarrier(barrier[0], depthPyramid, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_COPY_SOURCE);
-		CreateResourcesTransitionBarrier(barrier[1], swapchainBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET,
-			D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(barrier[0], depthPyramid, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(barrier[1], swapchainBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+		// execute
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(barrier), barrier);
 
 		D3D12_TEXTURE_COPY_LOCATION srcLocation {};
@@ -213,8 +250,8 @@ namespace BlitzenDX12
 		copyRegion.left = 0;
 		copyRegion.top = 0;
 		copyRegion.front = 0;
-		copyRegion.right = mipWidth;  // Width of the mip
-		copyRegion.bottom = mipHeight;  // Height of the mip
+		copyRegion.right = mipWidth;  
+		copyRegion.bottom = mipHeight;  
 		copyRegion.back = 1;
 
 		commandList->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, &copyRegion);

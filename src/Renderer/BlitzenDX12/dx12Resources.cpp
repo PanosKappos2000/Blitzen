@@ -96,6 +96,21 @@ namespace BlitzenDX12
         ctx.m_rtvHeapOffset++;
     }
 
+    void CreateConstantBufferView(ID3D12Device* device, DescriptorContext& ctx, ID3D12Resource* pResource, UINT size)
+    {
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
+
+        cbvDesc.BufferLocation = pResource->GetGPUVirtualAddress();
+        cbvDesc.SizeInBytes = size;
+
+        auto descriptorHandle = ctx.m_viewHeap->GetCPUDescriptorHandleForHeapStart();
+        descriptorHandle.ptr += ctx.m_viewHeapCurrentOffset * ctx.m_viewHeapIncrement;
+
+        device->CreateConstantBufferView(&cbvDesc, descriptorHandle);
+
+        ctx.m_viewHeapCurrentOffset++;
+    }
+
     void CreateBufferShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, DescriptorContext& ctx, UINT numElements, UINT stride, D3D12_BUFFER_SRV_FLAGS flags)
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -202,7 +217,8 @@ namespace BlitzenDX12
         ssboBufferDesc.SampleDesc.Count = 1;
         ssboBufferDesc.SampleDesc.Quality = 0;
         ssboBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        auto resourceRes = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &ssboBufferDesc, initialState, nullptr, IID_PPV_ARGS(ppBuffer));
+
+        HRESULT resourceRes = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &ssboBufferDesc, initialState, nullptr, IID_PPV_ARGS(ppBuffer));
         if (FAILED(resourceRes))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(resourceRes);
@@ -239,7 +255,7 @@ namespace BlitzenDX12
         desc.Layout = layout;
         desc.Flags = flags;
 
-        auto res = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &desc, state, pClear, IID_PPV_ARGS(ppResource));
+        HRESULT res = device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &desc, state, pClear, IID_PPV_ARGS(ppResource));
         if (FAILED(res))
         {
             return LOG_ERROR_MESSAGE_AND_RETURN(res);
@@ -249,10 +265,8 @@ namespace BlitzenDX12
         return 1;
     }
 
-    void CreateResourcesTransitionBarrier(D3D12_RESOURCE_BARRIER& barrier, ID3D12Resource* pResource,
-        D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter, 
-        UINT subresource/*=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES*/,
-        D3D12_RESOURCE_BARRIER_FLAGS flags/*=D3D12_RESOURCE_BARRIER_FLAG_NONE*/)
+    void CreateResourcesTransitionBarrier(D3D12_RESOURCE_BARRIER& barrier, ID3D12Resource* pResource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter, 
+        UINT subresource/*=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES*/, D3D12_RESOURCE_BARRIER_FLAGS flags/*=D3D12_RESOURCE_BARRIER_FLAG_NONE*/)
     {
         barrier = {}; 
 
@@ -264,48 +278,13 @@ namespace BlitzenDX12
         barrier.Transition.Subresource = subresource;
     }
 
-    void CreateResourceUAVBarrier(D3D12_RESOURCE_BARRIER& barrier, ID3D12Resource* pResource, 
-        D3D12_RESOURCE_BARRIER_FLAGS flags /*=D3D12_RESOURCE_BARRIER_FLAG_NONE*/)
+    void CreateResourceUAVBarrier(D3D12_RESOURCE_BARRIER& barrier, ID3D12Resource* pResource, D3D12_RESOURCE_BARRIER_FLAGS flags /*=D3D12_RESOURCE_BARRIER_FLAG_NONE*/)
     {
         barrier = {};
 
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
         barrier.UAV.pResource = pResource;
         barrier.Flags = flags;
-    }
-
-    UINT64 CreateIndexBuffer(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>& indexBuffer, DX12WRAPPER<ID3D12Resource>& stagingBuffer,
-        size_t elementCount, void* pData, D3D12_INDEX_BUFFER_VIEW& ibv)
-    {
-        // SSBO (GPU side buffer)
-        if (!CreateBuffer(device, indexBuffer.ReleaseAndGetAddressOf(), sizeof(uint32_t) * elementCount, 
-            D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT))
-        {
-            return 0;
-        }
-
-        // Staging buffer (CPU side buffer)
-        if (!CreateBuffer(device, stagingBuffer.ReleaseAndGetAddressOf(), sizeof(uint32_t) * elementCount, 
-            D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
-        {
-            return 0;
-        }
-        // Staging buffer holds the data for the SSBO
-        void* pMappedData{ nullptr };
-        auto mappingRes{ stagingBuffer->Map(0, nullptr, &pMappedData) };
-        if (FAILED(mappingRes))
-        {
-            return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
-        }
-        BlitzenCore::BlitMemCopy(pMappedData, pData, sizeof(uint32_t) * elementCount);
-
-        ibv = {};
-        ibv.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-        ibv.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * elementCount);
-        ibv.Format = DXGI_FORMAT_R32_UINT;
-
-        // Success
-        return sizeof(uint32_t) * elementCount;
     }
 
     void CreateSampler(ID3D12Device* device, DescriptorContext& ctx, D3D12_TEXTURE_ADDRESS_MODE addressU, D3D12_TEXTURE_ADDRESS_MODE addressV, D3D12_TEXTURE_ADDRESS_MODE addressW, 

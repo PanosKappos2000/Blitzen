@@ -10,15 +10,10 @@
 
 namespace BlitzenDX12
 {
-
-    Dx12Renderer::Dx12Renderer()
-    {
-        
-    }
-
     static uint8_t CreateFactory(IDXGIFactory6** ppFactory, Microsoft::WRL::ComPtr<ID3D12Debug>& debugController)
     {
 		UINT dxgiFactoryFlags = 0;
+
         if constexpr (ce_bDebugController)
         {
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.ReleaseAndGetAddressOf()))))
@@ -59,6 +54,7 @@ namespace BlitzenDX12
         }
         else
         {
+            BLIT_ERROR("Failed to create debug controller");
             return 0;
         }
 
@@ -68,7 +64,9 @@ namespace BlitzenDX12
     uint8_t Dx12Renderer::Init(uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pPlatform)
     {
         #if !defined(BLIT_DOUBLE_BUFFERING)
-            BLIT_WARN("Double buffering enabled by default for Dx12");
+
+        BLIT_WARN("Double buffering enabled by default for Dx12");
+
         #endif
 
         if (!CreateFactory(&m_factory, m_debugController))
@@ -88,11 +86,13 @@ namespace BlitzenDX12
             BLIT_ERROR("Failed to create device");
             return 0;
         }
+
 		if (!m_device)
 		{
 			BLIT_ERROR("Device is null");
 			return 0;
 		}
+
 		if (!CheckForDeviceRemoval(m_device.Get()))
 		{
 			BLIT_ERROR("Device removed");
@@ -109,15 +109,13 @@ namespace BlitzenDX12
 		}
         //TODO: Think about adding ID3D12DebugDevice or whatever it is called to watchout for unfreed resources
 
-		if (!CreateCommandQueue(m_device.Get(), m_commandQueue.ReleaseAndGetAddressOf(),
-            D3D12_COMMAND_QUEUE_FLAG_NONE, D3D12_COMMAND_LIST_TYPE_DIRECT))
+		if (!CreateCommandQueue(m_device.Get(), m_commandQueue.ReleaseAndGetAddressOf(), D3D12_COMMAND_QUEUE_FLAG_NONE, D3D12_COMMAND_LIST_TYPE_DIRECT))
 		{
 			BLIT_ERROR("Failed to create command queue");
 			return 0;
 		}
 
-        if (!CreateCommandQueue(m_device.Get(), m_transferCommandQueue.ReleaseAndGetAddressOf(),
-            D3D12_COMMAND_QUEUE_FLAG_NONE, D3D12_COMMAND_LIST_TYPE_COPY))
+        if (!CreateCommandQueue(m_device.Get(), m_transferCommandQueue.ReleaseAndGetAddressOf(), D3D12_COMMAND_QUEUE_FLAG_NONE, D3D12_COMMAND_LIST_TYPE_COPY))
         {
             BLIT_ERROR("Failed to create transfer command queue");
             return 0;
@@ -163,11 +161,6 @@ namespace BlitzenDX12
             return 0;
         }
 
-        m_descriptorContext.m_texSmpOffset = m_descriptorContext.m_samplerHeapCurrentOffset;
-        m_descriptorContext.m_texSmpHandle = m_descriptorContext.m_samplerHeapHandle;
-        m_descriptorContext.m_texSmpHandle.ptr += m_descriptorContext.m_texSmpOffset * m_descriptorContext.m_samplerHeapIncrement;
-        CreateSampler(m_device.Get(), m_descriptorContext, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
-
 		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_pipelineContext.m_triangleRoot, m_pipelineContext.m_trianglePso.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create triangle graphics pipeline");
@@ -181,15 +174,7 @@ namespace BlitzenDX12
     {
         auto& frameTools = m_frameTools[m_currentFrame];
 
-        const UINT64 fence = frameTools.inFlightFenceValue;
-        m_commandQueue->Signal(frameTools.inFlightFence.Get(), fence);
-        frameTools.inFlightFenceValue++;
-        // Waits for the previous frame
-        if (frameTools.inFlightFence->GetCompletedValue() < fence)
-        {
-            frameTools.inFlightFence->SetEventOnCompletion(fence, frameTools.inFlightFenceEvent);
-            WaitForSingleObject(frameTools.inFlightFenceEvent, INFINITE);
-        }
+        PlaceFence(frameTools.inFlightFenceValue, m_commandQueue.Get(), frameTools.inFlightFence.Get(), frameTools.inFlightFenceEvent);
     }
 }
 

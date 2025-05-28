@@ -268,10 +268,9 @@ namespace BlitzenDX12
 	using DX12WRAPPER = Microsoft::WRL::ComPtr<HANDLE>;
 
     template<typename DATA>
-    struct CBuffer
+    struct CBUFFER
     {
         DX12WRAPPER<ID3D12Resource> buffer;
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
 
         DATA* pData{ nullptr };
     };
@@ -281,7 +280,7 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
     };
 
-    struct VarSSBO
+    struct CPU_WRITE_SSBO
     {
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
         SIZE_T heapOffset{};
@@ -291,7 +290,13 @@ namespace BlitzenDX12
         size_t dataCopySize{ 0 };
     };
 
-    struct DX2DTEX
+    struct INDEX_BUFFER
+    {
+        DX12WRAPPER<ID3D12Resource> m_buffer;
+        D3D12_INDEX_BUFFER_VIEW m_view;
+    };
+
+    struct TEX2D
     {
         DX12WRAPPER<ID3D12Resource> resource;
         UINT mipLevels{ 0 };
@@ -299,7 +304,7 @@ namespace BlitzenDX12
         D3D12_GPU_DESCRIPTOR_HANDLE view;
     };
 
-    struct DepthPyramid
+    struct HI_Z_MAP
     {
         DX12WRAPPER<ID3D12Resource> pyramid;
         uint32_t width{ 0 };
@@ -307,6 +312,13 @@ namespace BlitzenDX12
 
         UINT mipCount{ 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE mips[Ce_DepthPyramidMaxMips];
+    };
+
+    struct SWAPCHAIN
+    {
+        DX12WRAPPER<IDXGISwapChain3> swapchain;
+        UINT width;
+        UINT height;
     };
 
 
@@ -332,7 +344,8 @@ namespace BlitzenDX12
     // Useful helper to check for device removal before calling a function that uses it
     inline uint8_t CheckForDeviceRemoval(ID3D12Device* device)
     {
-        auto removalReason = device->GetDeviceRemovedReason();
+        HRESULT removalReason = device->GetDeviceRemovedReason();
+
         if (FAILED(removalReason))
         {
             _com_error err{ removalReason };

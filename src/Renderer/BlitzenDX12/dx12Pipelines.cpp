@@ -115,27 +115,31 @@ namespace BlitzenDX12
         D3D_ROOT_SIGNATURE_VERSION rootSignatureVersion /*=D3D_ROOT_SIGNATURE_VERSION::D3D_ROOT_SIGNATURE_VERSION_1*/)
     {
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+
         rootSignatureDesc.NumParameters = numParameters;
         rootSignatureDesc.pParameters = pParameters;
         rootSignatureDesc.Flags = flags;
 
-        Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSignature;
-        Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-        auto serializeRes = D3D12SerializeRootSignature(&rootSignatureDesc, rootSignatureVersion,
-            serializedRootSignature.GetAddressOf(), errorBlob.GetAddressOf());
+        DX12WRAPPER<ID3DBlob> serializedRootSignature;
+        DX12WRAPPER<ID3DBlob> errorBlob;
+
+        HRESULT serializeRes = D3D12SerializeRootSignature(&rootSignatureDesc, rootSignatureVersion, serializedRootSignature.GetAddressOf(), errorBlob.GetAddressOf());
         if (FAILED(serializeRes))
         {
-            // Handle serialization error, log message from errorBlob if available
+            BLIT_ERROR("Failed to serialize root signature");
+            
             if (errorBlob)
             {
                 OutputDebugStringA((char*)errorBlob->GetBufferPointer());
             }
+
             return LOG_ERROR_MESSAGE_AND_RETURN(serializeRes);
         }
 
         HRESULT rootSignatureResult = device->CreateRootSignature(0, serializedRootSignature->GetBufferPointer(), serializedRootSignature->GetBufferSize(), IID_PPV_ARGS(ppRootSignature));
         if (FAILED(rootSignatureResult))
         {
+            BLIT_ERROR("Failed to create root signature");
             return LOG_ERROR_MESSAGE_AND_RETURN(rootSignatureResult);
         }
 
@@ -145,14 +149,18 @@ namespace BlitzenDX12
     uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, const char* entryPoint, ID3DBlob** shaderBlob)
     {
         DX12WRAPPER<ID3DBlob> errorBlob;
+
         HRESULT compileResult = D3DCompileFromFile(filepath, nullptr, &inl_shaderIncludeHandler, entryPoint, target, 0, 0, shaderBlob, errorBlob.GetAddressOf());
         if (FAILED(compileResult))
         {
+            BLIT_ERROR("Failed to compile shader program");
+
             if (errorBlob) 
             {
                 OutputDebugStringA((char*)errorBlob->GetBufferPointer());
             }
-            return 0;
+
+            return LOG_ERROR_MESSAGE_AND_RETURN(compileResult);
         }
 
         // Success
@@ -161,17 +169,18 @@ namespace BlitzenDX12
 
     size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes)
     {
-        // Tries to open the file with the provided path
         BlitzenPlatform::C_FILE_SCOPE scopedFILE;
+
         if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
         {
+            BLIT_ERROR("Failed to open shader file");
             return 0;
         }
 
-        // Reads the shader code in byte format
         size_t filesize = 0;
         if (!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
         {
+            BLIT_ERROR("Failed to read shader file");
             return 0;
         }
 
@@ -263,6 +272,7 @@ namespace BlitzenDX12
         HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ppPso));
         if (FAILED(psoResult))
         {
+            BLIT_ERROR("Failed to create triangle pipeline");
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
         }
 
@@ -280,12 +290,13 @@ namespace BlitzenDX12
 			BLIT_ERROR("Failed to create main opaque vertex shader");
 			return 0;
         }
+
         D3D12_SHADER_BYTECODE vsCode{};
         vsCode.BytecodeLength = vsSize;
         vsCode.pShaderBytecode = vsBytes.Data();
 
         BlitCL::String psBytes;
-        auto psSize{ GetShaderBytes(device, "HlslShaders/PS/opaqueDraw.ps.hlsl.bin", psBytes) };
+        size_t psSize{ GetShaderBytes(device, "HlslShaders/PS/opaqueDraw.ps.hlsl.bin", psBytes) };
         if(!psSize)
         {
 			BLIT_ERROR("Failed to create main opaque pixel shader");
@@ -341,7 +352,7 @@ namespace BlitzenDX12
     uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const char* filename)
     {
         BlitCL::String csBytes;
-        auto csSize{ GetShaderBytes(device, filename, csBytes) };
+        size_t csSize{ GetShaderBytes(device, filename, csBytes) };
         if (!csSize)
         {
             BLIT_ERROR("Failed to create compute shader program");
@@ -359,6 +370,7 @@ namespace BlitzenDX12
         HRESULT cullPsoResult{ device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(pso)) };
         if (FAILED(cullPsoResult))
         {
+            BLIT_ERROR("Failed to create compute pipeline");
             return LOG_ERROR_MESSAGE_AND_RETURN(cullPsoResult);
         }
 

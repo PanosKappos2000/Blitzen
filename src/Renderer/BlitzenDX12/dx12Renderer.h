@@ -15,34 +15,26 @@ namespace BlitzenDX12
     {
     public:
 
-        Dx12Renderer();
-        ~Dx12Renderer();
-
+        Dx12Renderer() = default;
         Dx12Renderer(const Dx12Renderer& dx) = delete;
         Dx12Renderer operator = (const Dx12Renderer& dx) = delete;
+
+        ~Dx12Renderer();
     
-        // API initialization. Basically loads thing that do not need to depend on CPU resources
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pContext);
     
-        // 2nd part of initialization. Initializes handles that require context from the CPU's loaded resources
         uint8_t SetupForRendering(BlitzenEngine::DrawContext& context);
 
-        // Layout transition throwaway function. Some command list incompatibility makes it necessary
         void FinalSetup();
     
-        // Function for DDS texture loading
         uint8_t UploadTexture(const char* filepath);
     
-        // Draws a simple loading screen using a shader that should be valid after Init.
         void DrawWhileWaiting(float deltaTime);
         
-        // CPU work while the GPU is busy. Call the fence at the end
         void Update(const BlitzenEngine::DrawContext& context);
     
-        // Speaks for itself
         void DrawFrame(BlitzenEngine::DrawContext& context);
     
-        // Updates transform data on the cpu side side buffer
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
     public:
@@ -71,36 +63,6 @@ namespace BlitzenDX12
             uint8_t Init(ID3D12Device* device);
         };
 
-        struct VarBuffers
-        {
-            VarSSBO transformBuffer;
-
-            SSBO indirectDrawBuffer;
-            VarSSBO indirectDrawCount;
-
-            SSBO drawVisibilityBuffer;
-
-            SSBO drawInstBuffer;
-            SSBO lodInstBuffer;
-
-            CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
-
-            DepthPyramid depthPyramid;
-        };
-
-        struct ConstBuffers
-        {
-            SSBO vertexBuffer;
-            DX12WRAPPER<ID3D12Resource> indexBuffer;
-            D3D12_INDEX_BUFFER_VIEW indexBufferView;
-
-            SSBO surfaceBuffer;
-            SSBO renderBuffer;
-            SSBO lodBuffer;
-
-            SSBO materialBuffer;
-        };
-
         DX12WRAPPER<IDXGIFactory6> m_factory;
 
         DX12WRAPPER<ID3D12Device> m_device;
@@ -119,12 +81,8 @@ namespace BlitzenDX12
 		UINT m_swapchainHeight;
         
         DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
-        DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];
 
-    /*
-        Descriptors
-    */
-    private:
+        DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];
 
         uint32_t m_currentFrame{ 0 };
 
@@ -134,13 +92,9 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12CommandQueue> m_transferCommandQueue;
 
-        VarBuffers m_varBuffers[ce_framesInFlight];
-
-        // TODO: Put this in const buffers
-        DX2DTEX m_tex2DList[BlitzenCore::Ce_MaxTextureCount];
-        uint32_t m_textureCount{ 0 };
-
-        ConstBuffers m_constBuffers;
+        ReadWriteResources m_rwResources[ce_framesInFlight];
+        
+        ReadOnlyResources m_roResources;
 
         DescriptorContext m_descriptorContext;
 

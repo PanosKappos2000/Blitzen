@@ -7,34 +7,41 @@
 
 namespace BlitzenDX12
 {
-    struct ReadOnlyBuffers
+    struct ReadOnlyResources
     {
-        SSBO vertexBuffer;
-        DX12WRAPPER<ID3D12Resource> indexBuffer;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView;
+        SSBO m_vtxBuffer;
 
-        SSBO surfaceBuffer;
-        SSBO renderBuffer;
-        SSBO lodBuffer;
+        INDEX_BUFFER m_idxBuffer;
 
-        SSBO materialBuffer;
+        SSBO m_surfaceBuffer;
+
+        SSBO m_renderBuffer;
+
+        SSBO m_LODBuffer;
+
+        SSBO m_matBuffer;
+
+        TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
+        UINT m_textureCount{ 0 };
     };
 
-    struct ReadWriteBuffers
+    struct ReadWriteResources
     {
-        VarSSBO transformBuffer;
+        CPU_WRITE_SSBO m_transformBuffer;
 
-        SSBO indirectDrawBuffer;
-        VarSSBO indirectDrawCount;
+        SSBO m_drawCmdBuffer;
 
-        SSBO drawVisibilityBuffer;
+        CPU_WRITE_SSBO m_drawCmdCounterBuffer;
 
-        SSBO drawInstBuffer;
-        SSBO lodInstBuffer;
+        SSBO m_drawVisBuffer;
 
-        CBuffer<BlitzenEngine::CameraViewData> viewDataBuffer;
+        SSBO m_drawInstBuffer;
 
-        DepthPyramid depthPyramid;
+        SSBO m_instCounterBuffer;
+
+        CBUFFER<BlitzenEngine::CameraViewData> m_viewBuffer;
+
+        HI_Z_MAP m_HI_Z;
     };
 
     struct DescriptorContext
