@@ -373,6 +373,10 @@ namespace BlitzenDX12
 			}
 		}
 
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+
+		}
 
 		// success
 		return 1;
@@ -413,6 +417,11 @@ namespace BlitzenDX12
 				BLIT_ERROR("Failed to create opaque draw instanced command signature");
 				return LOG_ERROR_MESSAGE_AND_RETURN(opaqueInstCmdRes);
 			}
+		}
+
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+
 		}
 
 		// success
@@ -490,6 +499,11 @@ namespace BlitzenDX12
 			}
 		}
 
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+
+		}
+
 		return 1;
 	}
 
@@ -548,7 +562,10 @@ namespace BlitzenDX12
 					BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
 					return 0;
 				}
+			}
 
+			if constexpr (CE_DX12_BUILD_HI_Z_MAP)
+			{
 				if (!CreateDepthPyramidResource(device, rwResources.m_HI_Z, swapchainWidth, swapchainHeight))
 				{
 					BLIT_ERROR("Failed to create depth pyramid for occlusion culling");
@@ -577,6 +594,12 @@ namespace BlitzenDX12
 					BLIT_ERROR("Failed to create lod instance counter buffer");
 					return 0;
 				}
+			}
+
+			// CLUSTER CULL MODE
+			if constexpr (BlitzenCore::Ce_BuildClusters)
+			{
+
 			}
 
 			// DATA COPY
@@ -718,6 +741,11 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+
+		}
+
 		// DATA COPIES
 		cmdContext.m_copyCmdAlloc->Reset();
 		cmdContext.m_copyCmdList->Reset(cmdContext.m_copyCmdAlloc.Get(), nullptr);
@@ -794,10 +822,12 @@ namespace BlitzenDX12
 			BLIT_ERROR("Failed to create material staging buffer for texture indices update");
 			return 0;
 		}
+
 		void* pData{ nullptr };
-		auto mapRes{ staging->Map(0, nullptr, &pData) };
+		HRESULT mapRes{ staging->Map(0, nullptr, &pData) };
 		if (FAILED(mapRes))
 		{
+			BLIT_ERROR("Failed to map pointer to mat staging buffer");
 			return LOG_ERROR_MESSAGE_AND_RETURN(mapRes);
 		}
 		BlitzenCore::BlitMemCopy(pData, pMaterials, dataSize);
@@ -910,8 +940,16 @@ namespace BlitzenDX12
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawVisBuffer.buffer.Get(), nullptr, context.m_renders.m_renderCount, sizeof(uint32_t), 0);
 			}
+		}
 
+		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
+		{
 			CreateDepthPyramidDescriptors(device, rwResourcesArray, ctx, pDepthTargets, drawWidth, drawHeight);
+		}
+
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+
 		}
 		
 		// material buffer, single srv bound to pixel shader
@@ -935,6 +973,12 @@ namespace BlitzenDX12
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::DrawContext& context)
 	{
 		GenerateHlslVertices(context.m_meshes);
+
+		if (!BlitzenEngine::GenerateHLSLClusters(context.m_meshes))
+		{
+			BLIT_ERROR("Failed to generate HLSL clusters");
+			return 0;
+		}
 
 		// Texture sampler offsets before creation
 		m_descriptorContext.m_texSmpOffset = m_descriptorContext.m_samplerHeapCurrentOffset;
@@ -1038,29 +1082,6 @@ namespace BlitzenDX12
 			rwID++;
 		}
 
-		if constexpr (CE_DX12OCCLUSION)
-		{
-			
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-			{
-				D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
-				CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_rwResources[i].m_drawVisBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-				rwBuffersFinal.PushBack(drawVisibilityBarrier);
-			}
-
-			for (uint32_t f = 0; f < ce_framesInFlight; ++f)
-			{
-				for (uint32_t hi_z_mip = 0; hi_z_mip < m_rwResources[f].m_HI_Z.mipCount; ++hi_z_mip)
-				{
-					D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
-					CreateResourcesTransitionBarrier(depthPyramidBarrier, m_rwResources[f].m_HI_Z.pyramid.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, hi_z_mip);
-
-					rwBuffersFinal.PushBack(depthPyramidBarrier);
-				}
-			}
-		}
-
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
@@ -1078,6 +1099,37 @@ namespace BlitzenDX12
 
 				rwBuffersFinal.PushBack(lodInstBufferBarrier);
 			}
+		}
+
+		if constexpr (CE_DX12OCCLUSION)
+		{
+			
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			{
+				D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
+				CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_rwResources[i].m_drawVisBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+				rwBuffersFinal.PushBack(drawVisibilityBarrier);
+			}
+		}
+
+		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
+		{
+			for (uint32_t f = 0; f < ce_framesInFlight; ++f)
+			{
+				for (uint32_t hi_z_mip = 0; hi_z_mip < m_rwResources[f].m_HI_Z.mipCount; ++hi_z_mip)
+				{
+					D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
+					CreateResourcesTransitionBarrier(depthPyramidBarrier, m_rwResources[f].m_HI_Z.pyramid.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, hi_z_mip);
+
+					rwBuffersFinal.PushBack(depthPyramidBarrier);
+				}
+			}
+		}
+
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+
 		}
 
 		// EXECUTE

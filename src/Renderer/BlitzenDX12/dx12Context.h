@@ -180,6 +180,7 @@ namespace BlitzenDX12
 		DX12WRAPPER<ID3D12PipelineState> m_drawOccTemporalPso;
 
         // Cluster culling mode
+        DX12WRAPPER<ID3D12CommandSignature> m_clusterCullCmdSign;
         DX12WRAPPER<ID3D12RootSignature> m_clusterCullRoot;
 
         // Resets cluster dispatch counter, used for cluster cull shader invocation

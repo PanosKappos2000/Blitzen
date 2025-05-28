@@ -245,6 +245,10 @@ namespace BlitzenDX12
     constexpr SIZE_T Ce_TextureDataStagingSize = 128 * 1024 * 1024;
 
 // OCCLUSION MODES
+#if defined(BLITZEN_CLUSTER_CULLING) || defined(DX12_TEMPORAL_DRAW_OCCLUSION) || defined(DX12_OCCLUSION_DRAW_CULL)
+    constexpr uint8_t CE_DX12_BUILD_HI_Z_MAP = 1;
+#endif
+
 #if defined(DX12_TEMPORAL_DRAW_OCCLUSION)
     constexpr uint8_t CE_DX12TEMPORAL_OCCLUSION = 1;
     constexpr uint8_t CE_DX12OCCLUSION = 1;

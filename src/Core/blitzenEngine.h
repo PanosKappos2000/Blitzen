@@ -71,12 +71,19 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMaterialCount = 10'000;
 	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
-    constexpr uint8_t Ce_MaxLodCountPerSurface = 8;
-    constexpr uint32_t Ce_MaxInstanceCountPerLOD = 100'000;
-    constexpr uint32_t Ce_MaxInstanceCountPerCluster = 100'000;
 
-    constexpr uint32_t Ce_MaxMeshCount = 100'000; 
-	constexpr const char* Ce_DefaultMeshName = "bunny";
+    constexpr uint32_t Ce_MaxMeshCount = 10'000;
+    constexpr const char* Ce_DefaultMeshName = "bunny";
+
+    constexpr uint32_t Ce_MaxMeshPrimitivesCount = 10'000;
+
+    constexpr uint8_t Ce_MaxLodCountPerSurface = 8;
+    constexpr uint32_t Ce_MaxLODs = Ce_MaxMeshPrimitivesCount * Ce_MaxLodCountPerSurface;
+    constexpr uint32_t Ce_MaxInstanceCountPerLOD = 100'000;
+
+    // CE_MAX_CLUSTER_PER_SURFACE ?????
+    constexpr uint32_t Ce_MaxClusters = 1'000;
+    constexpr uint32_t Ce_MaxInstanceCountPerCluster = 100'000;
 
     constexpr uint32_t Ce_MaxRenderObjects = 5'000'000;
     constexpr uint32_t Ce_MaxTransparentRenderObjects = 100'000;

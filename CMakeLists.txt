@@ -183,6 +183,7 @@ IF(WIN32)
     target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib"
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/lib/Release/x64")
+
     target_link_libraries(BlitzenEngine PUBLIC  
                         vulkan-1
 
@@ -196,6 +197,7 @@ IF(WIN32)
 ELSEIF(UNIX)
     target_link_directories(BlitzenEngine PUBLIC
                         "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixLib")
+
     target_link_libraries(BlitzenEngine PUBLIC
                         libvulkan.so.1
                         X11.so
@@ -206,18 +208,15 @@ ENDIF(WIN32)
 
 
 # Copies the assets folder to the binary directory
-add_custom_target(copy_assets
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets)
+add_custom_target(copy_assets COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets)
 add_dependencies(BlitzenEngine copy_assets)
 
 # Copies the opengl glsl shaders to the binary directory
-add_custom_target(copy_glsl_shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/src/Renderer/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders)
+add_custom_target(copy_glsl_shaders COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/src/Renderer/GlslShaders ${CMAKE_CURRENT_BINARY_DIR}/GlslShaders)
 add_dependencies(BlitzenEngine copy_glsl_shaders)
 
 # Copies the legacy hlsl shaders to the binary directory
-add_custom_target(copy_hlsl_shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/src/Renderer/HlslShadersLegacy ${CMAKE_CURRENT_BINARY_DIR}/HlslShadersLegacy)
+add_custom_target(copy_hlsl_shaders COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/src/Renderer/HlslShadersLegacy ${CMAKE_CURRENT_BINARY_DIR}/HlslShadersLegacy)
 add_dependencies(BlitzenEngine copy_hlsl_shaders)
 
 
@@ -228,9 +227,11 @@ IF(WIN32)
 
     find_program(DXC dxc HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin")
     set(DXC "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Bin/dxc.exe")
+
 ELSEIF(UNIX)
     find_program(GLSL_VALIDATOR glslangValidator HINTS $"{PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixBin")
     set(GLSL_VALIDATOR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixBin/glslangValidator")
+
 ENDIF(WIN32)
 
 

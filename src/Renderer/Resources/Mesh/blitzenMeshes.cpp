@@ -398,6 +398,30 @@ namespace BlitzenEngine
         }
     }
 
+    bool GenerateHLSLClusters(MeshResources& context)
+    {
+        if (context.m_hlslClusterCount != 0)
+        {
+            return false;
+        }
+
+        for (size_t i = 0; i < context.m_clusters.GetSize(); ++i)
+        {
+            const auto& glslClusters{ context.m_clusters[i]};
+            auto& cluster{ context.m_hlslClusters[context.m_hlslClusterCount++] };
+
+            cluster.center = glslClusters.center;
+            cluster.radius = glslClusters.radius;
+
+            cluster.idxCount = glslClusters.triangleCount * 3;
+            cluster.idxOffset = glslClusters.dataOffset;
+
+            cluster.coneAxisDataPack = glslClusters.coneAxisX << 24 | glslClusters.coneAxisY << 16 | glslClusters.coneAxisZ << 8 | glslClusters.coneCutoff;
+        }
+
+        return true;
+    }
+
     void LoadTestGeometry(MeshResources& context)
     {
         LoadMeshFromObj(context, "Assets/Meshes/dragon.obj", "dragon");

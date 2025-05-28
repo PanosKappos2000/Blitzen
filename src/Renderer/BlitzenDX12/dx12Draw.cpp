@@ -438,6 +438,18 @@ namespace BlitzenDX12
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
 
+	static void ClusterCullDispatch(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources,
+		BlitzenEngine::DrawContext& context, uint32_t frame)
+	{
+
+	}
+
+	static void ClusterCull(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources,
+		BlitzenEngine::DrawContext& context, uint32_t frame)
+	{
+
+	}
+
 	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources,
 		BlitzenEngine::DrawContext& context, uint32_t frame)
 	{
@@ -696,6 +708,31 @@ namespace BlitzenDX12
 		D3D12_RESOURCE_BARRIER transformAfterCopyBarrier{};
 		CreateResourcesTransitionBarrier(transformAfterCopyBarrier, rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &transformAfterCopyBarrier);
+
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			ClusterCullDispatch(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context, m_currentFrame);
+
+			ClusterCull(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context, m_currentFrame);
+
+			// Render target barrier
+			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
+			CreateResourcesTransitionBarrier(renderTargetBarrier, m_swapchainBackBuffers[swapchainIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			cmdContext.m_graphicsCmdList->ResourceBarrier(1, &renderTargetBarrier);
+
+			// Viewport and scissor
+			DefineViewportAndScissor(cmdContext.m_graphicsCmdList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
+
+			// One pass
+			const uint8_t singlePass = 1;
+			BeginRenderPass(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), m_descriptorContext, swapchainIndex, singlePass);
+
+			// Ends pass
+			cmdContext.m_graphicsCmdList->EndRenderPass();
+
+			GenerateHI_Z_MAP(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_currentFrame, swapchainIndex, m_pipelineContext, rwResources,
+				m_depthBuffers[swapchainIndex].Get(), m_swapchainWidth, m_swapchainHeight);
+		}
 
 		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{

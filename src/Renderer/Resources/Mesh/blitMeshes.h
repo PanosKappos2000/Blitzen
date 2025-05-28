@@ -55,6 +55,8 @@ namespace BlitzenEngine
 
     void GenerateHlslVertices(MeshResources& context);
 
+    bool GenerateHLSLClusters(MeshResources& context);
+
     // Tester. Loads kitten, stanford dragon and a male human
     void LoadTestGeometry(MeshResources& context);
 }
