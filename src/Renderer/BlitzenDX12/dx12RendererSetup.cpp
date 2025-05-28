@@ -352,7 +352,10 @@ namespace BlitzenDX12
 				BLIT_ERROR("Failed to create late cull (occlusion culling) root parameter");
 				return 0;
 			}
+		}
 
+		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
+		{
 			// Additional for hi_z_map generation
 			D3D12_DESCRIPTOR_RANGE depthPyramidUAVRange{};
 			CreateDescriptorRange(depthPyramidUAVRange, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_HI_Z_MapUAVRegister);
@@ -375,7 +378,24 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
+			D3D12_DESCRIPTOR_RANGE clusterDispatchAdditionalViewRanges[Ce_ClusterDispatchAdditionalViewsRangeCount]{};
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterDispatchCmdUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterDispatchCmdUAVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterDispatchCmdCounterUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterDispatchCmdCounterUAVRegister);
+			
+			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
+			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawOccLateHI_Z_MapSRVRegister);
 
+			D3D12_DESCRIPTOR_RANGE clusterSrvRange{};
+			CreateDescriptorRange(clusterSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_ClusterCullClusterSRVRegister);
+
+			D3D12_ROOT_PARAMETER clusterCullRootParameters[Ce_ClusterCullRootParameterCount]{};
+			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(clusterCullRootParameters[Ce_ClusterCullDrawCountRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(clusterCullRootParameters[Ce_ClusterCullIdxDataConstantRootID], CE_ClusterCullIdsDataConstantRegister, 0, Ce_ClusterCullIdxDataConstant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullAdditionalViewsRootID], clusterDispatchAdditionalViewRanges, Ce_ClusterDispatchAdditionalViewsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullClusterSRVRootID], &clusterSrvRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullHI_Z_MapSrvRootID], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 		}
 
 		// success
@@ -421,7 +441,27 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
+			D3D12_INDIRECT_ARGUMENT_DESC clusterDispatchIndirectDescs[2]{};
+			
+			clusterDispatchIndirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+			clusterDispatchIndirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
+			clusterDispatchIndirectDescs[0].Constant.Num32BitValuesToSet = Ce_ClusterCullIdxDataConstant32BitCount;
+			clusterDispatchIndirectDescs[0].Constant.RootParameterIndex = Ce_ClusterCullIdxDataConstantRootID;
 
+			clusterDispatchIndirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+
+			D3D12_COMMAND_SIGNATURE_DESC clusterSigDesc{};
+			clusterSigDesc.NodeMask = 0;
+			clusterSigDesc.NumArgumentDescs = BLIT_ARRAY_SIZE(clusterDispatchIndirectDescs);
+			clusterSigDesc.pArgumentDescs = clusterDispatchIndirectDescs;
+			clusterSigDesc.ByteStride = sizeof(ClusterDispatchCmd);
+
+			HRESULT clusterDispatchCmdRes{ device->CreateCommandSignature(&clusterSigDesc, ctx.m_clusterCullRoot.Get(), IID_PPV_ARGS(ctx.m_clusterCullCmdSign.ReleaseAndGetAddressOf())) };
+			if (FAILED(clusterDispatchCmdRes))
+			{
+				BLIT_ERROR("Failed to create cluster dispatch command signature");
+				return LOG_ERROR_MESSAGE_AND_RETURN(clusterDispatchCmdRes);
+			}
 		}
 
 		// success
@@ -448,6 +488,15 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
+		{
+			if (!CreateComputeShaderProgram(device, context.m_HI_Z_MapRoot.Get(), context.m_HI_Z_MapPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/hi_z_map.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create depthPyramid.cs shader program");
+				return 0;
+			}
+		}
+
 		if constexpr (CE_DX12OCCLUSION)
 		{
 			if (!CreateComputeShaderProgram(device, context.m_drawOccFirstRoot.Get(), context.m_drawOccFirstPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccFirst.cs.hlsl.bin"))
@@ -459,12 +508,6 @@ namespace BlitzenDX12
 			if (!CreateComputeShaderProgram(device, context.m_drawOccLateRoot.Get(), context.m_drawOccLatePso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccLate.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawOccLate.cs shader program");
-				return 0;
-			}
-
-			if (!CreateComputeShaderProgram(device, context.m_HI_Z_MapRoot.Get(), context.m_HI_Z_MapPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/hi_z_map.cs.hlsl.bin"))
-			{
-				BLIT_ERROR("Failed to create depthPyramid.cs shader program");
 				return 0;
 			}
 		}
@@ -501,7 +544,23 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullDispatchPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullDispatch.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create clusterCullDispatch.cs shader program");
+				return 0;
+			}
 
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCull.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create clusterCull.cs shader program");
+				return 0;
+			}
+
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterDispatchCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterDispatchCountReset.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create clusterDispatchCountReset.cs shader program");
+				return 0;
+			}
 		}
 
 		return 1;

@@ -4,10 +4,14 @@ struct ClusterDispatchCmd
 {
     uint objId;
     uint clusterOffset;
+    uint clusterCount;
     
     uint groupX;
     uint groupY;
     uint groupZ;
+
+    uint padding0;
+    uint padding1;
 };
 RWStructuredBuffer<ClusterDispatchCmd> rwssbo_ClusterDispatch : register(u5);
 

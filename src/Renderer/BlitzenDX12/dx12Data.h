@@ -170,6 +170,33 @@ namespace BlitzenDX12
 	constexpr UINT Ce_DrawOccTemporalDrawCountRootId = 2;
 	constexpr UINT Ce_DrawOccTemporalHI_Z_MapRootId = 3;
 
+    // DESCRIPTOR FOR CLUSTER CULL:
+    constexpr UINT Ce_ClusterDispatchAdditionalViewsRangeCount = 2;
+
+    constexpr UINT Ce_ClusterDispatchCmdUAVRegister = 5;
+    constexpr UINT Ce_ClusterDispatchCmdUAVRangeID = 0;
+
+    constexpr UINT Ce_ClusterDispatchCmdCounterUAVRegister = 6;
+    constexpr UINT Ce_ClusterDispatchCmdCounterUAVRangeID = 1;
+
+    // Cluster srv buffer
+    constexpr UINT Ce_ClusterCullClusterSRVRegister = 11;
+
+    // Cluster data indices constant
+    constexpr UINT CE_ClusterCullIdsDataConstantRegister = 2;
+    constexpr UINT Ce_ClusterCullIdxDataConstant32BitCount = 3;
+
+    // root param descriptor grouping
+    constexpr UINT Ce_ClusterCullRootParameterCount = 7;
+
+    constexpr UINT Ce_ClusterCullExclusiveSRVsRootID = 0;
+    constexpr UINT Ce_ClusterCullSharedSRVsRootID = 1;
+    constexpr UINT Ce_ClusterCullDrawCountRootID = 2;
+    constexpr UINT Ce_ClusterCullAdditionalViewsRootID = 3;
+    constexpr UINT Ce_ClusterCullIdxDataConstantRootID = 4;
+    constexpr UINT Ce_ClusterCullClusterSRVRootID = 5;
+    constexpr UINT Ce_ClusterCullHI_Z_MapSrvRootID = 6;
+
     // DESCRIPTORS FOR OPAQUE DRAW :
     // exclusive range specific
     constexpr UINT Ce_OpaqueDrawExclusiveSRVsRangeCount = 1;
@@ -333,8 +360,6 @@ namespace BlitzenDX12
     };
 
 
-
-   
     // Draw Indirect command struct (passed to the shaders)
     struct IndirectDrawCmd
     {
@@ -350,6 +375,19 @@ namespace BlitzenDX12
     static_assert(sizeof(IndirectDrawCmd) % 16 == 0);
     constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 1'000'000;
 
+    struct ClusterDispatchCmd
+    {
+        uint32_t objId;
+        uint32_t clusterOffset;
+        uint32_t clusterCount;
+
+        D3D12_DISPATCH_ARGUMENTS command;// 3 32 bit integers
+
+        uint32_t padding0;
+        uint32_t padding1;
+    };
+    static_assert(sizeof(ClusterDispatchCmd) % 16 == 0);
+    constexpr uint32_t Ce_ClusterDispatchCmdBufferSize = Ce_IndirectDrawCmdBufferSize;
 
 
     // Useful helper to check for device removal before calling a function that uses it

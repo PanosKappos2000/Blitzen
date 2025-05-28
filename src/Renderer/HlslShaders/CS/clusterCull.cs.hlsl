@@ -6,7 +6,7 @@
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
-cbuffer ClusterIndicesConstant : register(b1)
+cbuffer ClusterIndicesConstant : register(b2)
 {
     uint objId;
     uint clusterOffset;
