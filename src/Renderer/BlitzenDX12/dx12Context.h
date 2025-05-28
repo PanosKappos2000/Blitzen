@@ -13,13 +13,17 @@ namespace BlitzenDX12
 
         INDEX_BUFFER m_idxBuffer;
 
-        SSBO m_surfaceBuffer;
+        INDEX_BUFFER m_clusterIdxBuffer;
 
-        SSBO m_renderBuffer;
+        SSBO m_surfaceBuffer;
 
         SSBO m_LODBuffer;
 
+        SSBO m_clusterBuffer;
+
         SSBO m_matBuffer;
+
+        SSBO m_renderBuffer;
 
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
@@ -31,7 +35,11 @@ namespace BlitzenDX12
 
         SSBO m_drawCmdBuffer;
 
-        CPU_WRITE_SSBO m_drawCmdCounterBuffer;
+        SSBO m_drawCmdCounterBuffer;
+
+        SSBO m_clusterDispatchBuffer;
+
+        SSBO m_clusterDispatchCounterBuffer;
 
         SSBO m_drawVisBuffer;
 
@@ -171,6 +179,18 @@ namespace BlitzenDX12
 		// Uses draw occ late root
 		DX12WRAPPER<ID3D12PipelineState> m_drawOccTemporalPso;
 
+        // Cluster culling mode
+        DX12WRAPPER<ID3D12RootSignature> m_clusterCullRoot;
+
+        // Resets cluster dispatch counter, used for cluster cull shader invocation
+        DX12WRAPPER<ID3D12PipelineState> m_clusterDispatchCountResetPso;
+
+        // Culling compute shader. Performs frustum culling and LOD selection. Create indirect compute commands for cluster culling
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullDispatchPso;
+
+        // Culling compute shader. Performs frustum, backface and occlusion culling on Clusters. Creates draw commands for every visible cluster
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullPso;
+
         // Draws triangle with hardcoded vertices in the shader (legacy shader)
         DX12WRAPPER<ID3D12RootSignature> m_triangleRoot;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
@@ -189,27 +209,17 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12PipelineState> m_transparentDrawPso;
 	};
 
-    struct CommandContext
+    struct CmdContext
     {
-        // Used for graphics and most other operations
-        DX12WRAPPER<ID3D12CommandAllocator> mainGraphicsCommandAllocator;
-        DX12WRAPPER<ID3D12GraphicsCommandList4> mainGraphicsCommandList;
+        DX12WRAPPER<ID3D12CommandAllocator> m_graphicsCmdAlloc;
+        DX12WRAPPER<ID3D12GraphicsCommandList4> m_graphicsCmdList;
 
-        // Used for transfer commands in the loading phase, to get better access to all commands
-        DX12WRAPPER<ID3D12CommandAllocator> transferCommandAllocator;
-        DX12WRAPPER<ID3D12GraphicsCommandList> transferCommandList;
+        DX12WRAPPER<ID3D12CommandAllocator> m_copyCmdAlloc;
+        DX12WRAPPER<ID3D12GraphicsCommandList> m_copyCmdList;
 
-        // Used for transfer commands while drawing, for efficiency
-        DX12WRAPPER<ID3D12CommandAllocator> dedicatedTransferAllocator;
-        DX12WRAPPER<ID3D12CommandList> dedicatedTransferList;
+        FENCE m_frameFence;
 
-        DX12WRAPPER<ID3D12Fence> inFlightFence;
-        UINT64 inFlightFenceValue;
-        HANDLE inFlightFenceEvent;
-
-        DX12WRAPPER<ID3D12Fence> copyFence;
-        UINT64 copyFenceValue;
-        HANDLE copyFenceEvent;
+        FENCE m_copyFence;
 
         uint8_t Init(ID3D12Device* device);
     };

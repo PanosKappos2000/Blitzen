@@ -123,7 +123,7 @@ namespace BlitzenDX12
 
 		for (uint32_t i = 0; i < ce_framesInFlight; i++)
 		{
-			if (!m_frameTools[i].Init(m_device.Get()))
+			if (!m_cmdContext[i].Init(m_device.Get()))
 			{
 				BLIT_ERROR("Failed to create frame tools");
 				return 0;
@@ -172,9 +172,9 @@ namespace BlitzenDX12
 
     Dx12Renderer::~Dx12Renderer()
     {
-        auto& frameTools = m_frameTools[m_currentFrame];
+        auto& cmdContext = m_cmdContext[m_currentFrame];
 
-        PlaceFence(frameTools.inFlightFenceValue, m_commandQueue.Get(), frameTools.inFlightFence.Get(), frameTools.inFlightFenceEvent);
+        PlaceFence(cmdContext.m_frameFence.m_value, m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
     }
 }
 

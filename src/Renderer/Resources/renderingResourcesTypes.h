@@ -56,8 +56,8 @@ namespace BlitzenEngine
         int32_t coneAxisDataPack;
 
         // Used to setup draw commands
-        uint32_t clusterOffset;
-        uint32_t vertexCount;
+        uint32_t idxOffset;
+        uint32_t idxCount;
 
         // Id for ClusterIntanceCounter
         uint32_t instanceCounterId;

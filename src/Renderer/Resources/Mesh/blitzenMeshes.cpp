@@ -264,7 +264,7 @@ namespace BlitzenEngine
 
             const unsigned int* vertexLookup = &meshletVertices[meshlet.vertex_offset];
             const unsigned char* triangles = &meshletTriangles[meshlet.triangle_offset];
-            auto dataOffset = context.m_clusterIndices.GetSize();
+            size_t dataOffset = context.m_clusterIndices.GetSize();
             for (unsigned int t = 0; t < meshlet.triangle_count; ++t)
             {
                 // Each triangle has 3 indices into the local meshlet vertex array
@@ -272,6 +272,7 @@ namespace BlitzenEngine
                 {
                     unsigned int localIndex = triangles[t * 3 + j];
                     unsigned int globalIndex = vertexLookup[localIndex] + vertexOffset;
+
                     context.m_clusterIndices.PushBack(globalIndex);
                 }
             }
@@ -280,7 +281,7 @@ namespace BlitzenEngine
                 &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
 
             Cluster cluster{};
-            cluster.dataOffset = static_cast<uint32_t>(dataOffset);
+            cluster.dataOffset = uint32_t(dataOffset);
             cluster.triangleCount = meshlet.triangle_count;
             cluster.vertexCount = meshlet.vertex_count;
 

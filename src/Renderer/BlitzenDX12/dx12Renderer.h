@@ -38,43 +38,19 @@ namespace BlitzenDX12
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
     public:
-        struct FrameTools
-        {
-            // Used for graphics and most other operations
-            DX12WRAPPER<ID3D12CommandAllocator> mainGraphicsCommandAllocator;
-            DX12WRAPPER<ID3D12GraphicsCommandList4> mainGraphicsCommandList;
-
-            // Used for transfer commands in the loading phase, to get better access to all commands
-            DX12WRAPPER<ID3D12CommandAllocator> transferCommandAllocator;
-            DX12WRAPPER<ID3D12GraphicsCommandList> transferCommandList;
-
-            // Used for transfer commands while drawing, for efficiency
-            DX12WRAPPER<ID3D12CommandAllocator> dedicatedTransferAllocator;
-            DX12WRAPPER<ID3D12CommandList> dedicatedTransferList;
-
-            DX12WRAPPER<ID3D12Fence> inFlightFence;
-            UINT64 inFlightFenceValue;
-            HANDLE inFlightFenceEvent;
-
-            DX12WRAPPER<ID3D12Fence> copyFence;
-            UINT64 copyFenceValue;
-            HANDLE copyFenceEvent;
-
-            uint8_t Init(ID3D12Device* device);
-        };
 
         DX12WRAPPER<IDXGIFactory6> m_factory;
 
         DX12WRAPPER<ID3D12Device> m_device;
 
-        Dx12Stats m_stats;
-
-    private:
-
         DX12WRAPPER<ID3D12Debug> m_debugController;
         DX12WRAPPER<ID3D12Debug1> m_debugController1;
 
         DX12WRAPPER<IDXGIAdapter4> m_chosenAdapter;
+
+        Dx12Stats m_stats;
+
+    private:
 
         DX12WRAPPER<IDXGISwapChain3> m_swapchain;
 		UINT m_swapchainWidth;
@@ -86,7 +62,7 @@ namespace BlitzenDX12
 
         uint32_t m_currentFrame{ 0 };
 
-        BlitCL::StaticArray<FrameTools, ce_framesInFlight> m_frameTools;
+        CmdContext m_cmdContext[ce_framesInFlight];
 
         DX12WRAPPER<ID3D12CommandQueue> m_commandQueue;
 

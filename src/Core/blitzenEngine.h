@@ -75,7 +75,7 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxInstanceCountPerLOD = 100'000;
     constexpr uint32_t Ce_MaxInstanceCountPerCluster = 100'000;
 
-    constexpr uint32_t Ce_MaxMeshCount = 1'000'000; 
+    constexpr uint32_t Ce_MaxMeshCount = 100'000; 
 	constexpr const char* Ce_DefaultMeshName = "bunny";
 
     constexpr uint32_t Ce_MaxRenderObjects = 5'000'000;

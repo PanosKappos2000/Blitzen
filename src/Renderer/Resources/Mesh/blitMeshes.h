@@ -21,6 +21,8 @@ namespace BlitzenEngine
 
         // Lod has one or more clusters (if they are generated)
         BlitCL::DynamicArray<Cluster> m_clusters;
+        HCluster m_hlslClusters[BlitzenCore::Ce_MaxRenderObjects];// temp count
+        uint32_t m_hlslClusterCount{ 0 };
         // Index buffer for cluster modes
         BlitCL::DynamicArray<uint32_t> m_clusterIndices;
 

@@ -1,5 +1,5 @@
 #define DRAW_CULL_OCCLUSION
-#define HI_Z_MAP_DRAW_OCCLUSION
+#define HI_Z_MAP_OCCLUSION
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"

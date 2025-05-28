@@ -95,3 +95,8 @@ float4 UnpackTangents(uint packed)
 
 	return float4(x, y, z, w);
 }
+
+uint GetComputeShaderGroupSize(uint totalWorkCount, uint threadsPerGroup)
+{
+    return (totalWorkCount / threadsPerGroup) + 1;
+}

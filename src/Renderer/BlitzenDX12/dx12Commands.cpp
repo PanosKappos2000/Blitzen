@@ -1,77 +1,63 @@
 #if defined(_WIN32)
 
-#include "dx12Renderer.h"
+#include "dx12Context.h"
 
 namespace BlitzenDX12
 {
-    uint8_t Dx12Renderer::FrameTools::Init(ID3D12Device* device)
+    uint8_t CmdContext::Init(ID3D12Device* device)
     {
         if (!CheckForDeviceRemoval(device))
         {
             return 0;
         }
 
-		HRESULT commandAllocatorRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(mainGraphicsCommandAllocator.ReleaseAndGetAddressOf()));
+		HRESULT commandAllocatorRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(m_graphicsCmdAlloc.ReleaseAndGetAddressOf()));
 		if (FAILED(commandAllocatorRes))
 		{
             BLIT_ERROR("Failed to create graphics command allocator");
 			return LOG_ERROR_MESSAGE_AND_RETURN(commandAllocatorRes);
 		}
         
-		HRESULT commandListRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, mainGraphicsCommandAllocator.Get(), nullptr, IID_PPV_ARGS(mainGraphicsCommandList.ReleaseAndGetAddressOf()));
+		HRESULT commandListRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_graphicsCmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_graphicsCmdList.ReleaseAndGetAddressOf()));
         if (FAILED(commandListRes))
         {
             BLIT_ERROR("Failed to create graphics command list");
 			return LOG_ERROR_MESSAGE_AND_RETURN(commandListRes);
         }
-        mainGraphicsCommandList->Close();
+        m_graphicsCmdList->Close();
 
-        HRESULT transferCommandAllocatorRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(transferCommandAllocator.ReleaseAndGetAddressOf()));
+        HRESULT transferCommandAllocatorRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(m_copyCmdAlloc.ReleaseAndGetAddressOf()));
         if (FAILED(transferCommandAllocatorRes))
         {
             BLIT_ERROR("Failed to create transfer command allocator");
             return LOG_ERROR_MESSAGE_AND_RETURN(transferCommandAllocatorRes);
         }
         
-        HRESULT transferCmdListRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, transferCommandAllocator.Get(), nullptr, IID_PPV_ARGS(transferCommandList.ReleaseAndGetAddressOf()));
+        HRESULT transferCmdListRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, m_copyCmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_copyCmdList.ReleaseAndGetAddressOf()));
         if (FAILED(transferCmdListRes))
         {
             BLIT_ERROR("Failed to create transfer command list");
             return LOG_ERROR_MESSAGE_AND_RETURN(transferCmdListRes);
         }
-        transferCommandList->Close();
+        m_copyCmdList->Close();
 
-        HRESULT dedicatedTransferRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(dedicatedTransferAllocator.ReleaseAndGetAddressOf()));
-        if (FAILED(dedicatedTransferRes))
-        {
-            BLIT_ERROR("Failed to create transfer command allocator");
-            return LOG_ERROR_MESSAGE_AND_RETURN(dedicatedTransferRes);
-        }
-        
-        dedicatedTransferRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, dedicatedTransferAllocator.Get(), nullptr, IID_PPV_ARGS(dedicatedTransferList.ReleaseAndGetAddressOf()));
-        if (FAILED(dedicatedTransferRes))
-        {
-            BLIT_ERROR("Failed to create transfer command list");
-            return LOG_ERROR_MESSAGE_AND_RETURN(dedicatedTransferRes);
-        }
-
-        HRESULT fenceRes = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(inFlightFence.ReleaseAndGetAddressOf()));
+        HRESULT fenceRes = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_frameFence.m_dx12Handle.ReleaseAndGetAddressOf()));
         if (FAILED(fenceRes))
         {
             BLIT_ERROR("Failed to create fence");
             return LOG_ERROR_MESSAGE_AND_RETURN(fenceRes);
         }
-		inFlightFenceValue = 1;
-		inFlightFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		m_frameFence.m_value = 1;
+		m_frameFence.m_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 
-        HRESULT copyFenceRes = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(copyFence.ReleaseAndGetAddressOf()));
+        HRESULT copyFenceRes = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_copyFence.m_dx12Handle.ReleaseAndGetAddressOf()));
         if (FAILED(copyFenceRes))
         {
             BLIT_ERROR("Failed to create copy fence")
             return LOG_ERROR_MESSAGE_AND_RETURN(copyFenceRes);
         }
-        copyFenceValue = 100;
-        copyFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        m_copyFence.m_value = 100;
+        m_copyFence.m_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 
         // success
         return 1;

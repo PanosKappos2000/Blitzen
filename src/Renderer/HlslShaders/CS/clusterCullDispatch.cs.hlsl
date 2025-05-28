@@ -1,11 +1,10 @@
-#define DRAW_OCCLUSION_TEMPORAL
-#define HI_Z_MAP_OCCLUSION
+#define CLUSTER_DISPATCH
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
-cbuffer ObjCountConstant: register (b1)
+cbuffer ObjCountConstant : register(b1)
 {
     uint objCount;
 };
@@ -15,11 +14,11 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 {
     uint objId = dispatchThreadID.x;
     // Early return if it's out of bounds
-    if(objId >= objCount)
+    if (objId >= objCount)
     {
         return;
     }
-
+    
     Render obj = ssbo_Renders[objId];
     Surface surface = ssbo_Surfaces[obj.surfaceId];
     Transform transform = ssbo_Transforms[obj.transformId];
@@ -31,35 +30,21 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
     // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
-
-    // Occlusion culling
+    
     if (visible)
-	{
-		float4 aabb = float4(0, 0, 0, 0);
-		if (ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
-		{
-			visible = visible && OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear);
-		}
-	}
-
-    if(visible)
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
         // Command count
-        uint cmdId;
-        InterlockedAdd(rwb_DrawCmdCounter[0], 1, cmdId);
+        uint dispatchID;
+        InterlockedAdd(rwb_ClusterDispatchCounter[0], 1, dispatchID);
 
         // Render object id constant
-        ssbo_DrawCmd[cmdId].objId = objId;
-
-        // Vertices
-        ssbo_DrawCmd[cmdId].indexCount = ssbo_LODs[lodId].indexCount;
-        ssbo_DrawCmd[cmdId].indexOffset = ssbo_LODs[lodId].indexOffset;
-        ssbo_DrawCmd[cmdId].vertOffset = 0; // Already added to the index buffer
-
-        // Instances
-        ssbo_DrawCmd[cmdId].instCount = 1;
-        ssbo_DrawCmd[cmdId].insOffset = 0;
+        rwssbo_ClusterDispatch[dispatchID].objId = objId;
+        rwssbo_ClusterDispatch[dispatchID].clusterOffset = ssbo_LODs[lodId].clusterOffset;
+        
+        rwssbo_ClusterDispatch[dispatchID].groupX = GetComputeShaderGroupSize(ssbo_LODs[lodId].clusterCount, 64);
+        rwssbo_ClusterDispatch[dispatchID].groupY = 1;
+        rwssbo_ClusterDispatch[dispatchID].groupZ = 1;
     }
 }

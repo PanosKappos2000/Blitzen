@@ -314,6 +314,13 @@ namespace BlitzenDX12
         D3D12_GPU_DESCRIPTOR_HANDLE mips[Ce_DepthPyramidMaxMips];
     };
 
+    struct FENCE
+    {
+        DX12WRAPPER<ID3D12Fence> m_dx12Handle;
+        UINT64 m_value;
+        HANDLE m_event;
+    };
+
     struct SWAPCHAIN
     {
         DX12WRAPPER<IDXGISwapChain3> swapchain;

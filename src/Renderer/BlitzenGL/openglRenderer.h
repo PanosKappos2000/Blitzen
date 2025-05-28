@@ -10,32 +10,14 @@
 
 namespace BlitzenGL
 {
-    using GraphicsProgram = ShaderProgram;
-    using ComputeProgram = ShaderProgram;
-
-    struct IndirectDrawCommand
-    {
-        uint32_t  indexCount;
-        uint32_t  instanceCount;
-        uint32_t  firstIndex;
-        uint32_t  vertexOffset;
-        uint32_t  firstInstance;
-    };
-
-    struct CullData
-    {
-        uint32_t drawCount;
-
-        inline CullData(uint32_t dc) :drawCount{dc} 
-        {}
-    };
-
     class OpenglRenderer
     {
     public:
-        bool Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform);
+        OpenglRenderer() = default;
 
         ~OpenglRenderer();
+
+        bool Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform);
 
         uint8_t UploadTexture(const char* filepath);
 
@@ -46,8 +28,6 @@ namespace BlitzenGL
         void DrawWhileWaiting();
 
         void DrawFrame(BlitzenEngine::DrawContext& context);
-
-        static OpenglRenderer* GetRendererInstance() { return s_pRenderer; }
 
     private:
 
@@ -90,8 +70,6 @@ namespace BlitzenGL
         GlTexture m_textures[BlitzenCore::Ce_MaxTextureCount];
 
         uint32_t m_textureCount = 0;
-
-        static OpenglRenderer* s_pRenderer;
     };
 
     uint8_t CompileShader(GlShader& shader, GLenum shaderType, const char* filepath);

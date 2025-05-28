@@ -4,10 +4,10 @@
 #include "Platform/Filesystem/blitCFILE.h"
 #include <string>
 #include "Game/blitCamera.h"
+#include "Renderer/Interface/blitRenderer.h"
 
 namespace BlitzenGL
 {
-    OpenglRenderer* OpenglRenderer::s_pRenderer;
 
     bool OpenglRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform)
     {
@@ -16,8 +16,6 @@ namespace BlitzenGL
             BLIT_ERROR("Opengl failed to load")
             return false;
         }
-
-        s_pRenderer = this;
 
         // Set the viewport
         glViewport(0, 0, windowWidth, windowHeight);
@@ -124,7 +122,7 @@ namespace BlitzenGL
 
         glGenBuffers(1, &m_indirectDrawBuffer.handle);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer.handle);
-        glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(IndirectDrawCommand) * context.m_renders.m_renderCount, nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawCmd) * context.m_renders.m_renderCount, nullptr, GL_STATIC_DRAW);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
         // Binds the indirect draw buffer as an SSBO, so that it can be accessed by the culling shaders
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_indirectDrawBuffer.handle);
@@ -192,10 +190,6 @@ namespace BlitzenGL
         glBindBuffer(GL_UNIFORM_BUFFER, m_viewDataBuffer.handle);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CameraViewData), &context.m_camera.viewData, GL_STATIC_READ);
 
-        CullData cull{ context.m_renders.m_renderCount};
-        glBindBuffer(GL_UNIFORM_BUFFER, m_cullDataBuffer.handle);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(CullData), &(cull), GL_STATIC_READ);
-
         // Switches to the culling compute program
         glUseProgram(m_initialDrawCullCompProgram.handle);
 
@@ -230,7 +224,7 @@ namespace BlitzenGL
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_viewDataBuffer.handle);
 
         // Draw the objects with indirect commands
-        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, context.m_renders.m_renderCount, sizeof(IndirectDrawCommand));
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, context.m_renders.m_renderCount, sizeof(DrawCmd));
 
         // Swaps the framebuffer
 	    BlitzenPlatform::OpenglSwapBuffers(context.m_pPlatform);

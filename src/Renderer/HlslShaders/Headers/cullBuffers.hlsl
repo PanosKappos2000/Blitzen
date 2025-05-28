@@ -1,3 +1,37 @@
+#ifdef CLUSTER_DISPATCH
+
+struct ClusterDispatchCmd
+{
+    uint objId;
+    uint clusterOffset;
+    
+    uint groupX;
+    uint groupY;
+    uint groupZ;
+};
+RWStructuredBuffer<ClusterDispatchCmd> rwssbo_ClusterDispatch : register(u5);
+
+RWBuffer<uint> rwb_ClusterDispatchCounter : register(u6);
+
+struct Cluster
+{
+    // Bounding sphere
+    float3 center;
+    float radius;
+
+    // Packs data for backface culling
+    int coneAxisDataPack;
+
+    // Used to setup draw commands
+    uint clusterOffset;
+    uint vertexCount;
+
+    uint padding0;
+};
+StructuredBuffer<Cluster> ssbo_Clusters : register(t8);
+
+#endif
+
 struct DrawCmd
 {
     // Index into render object buffer
@@ -71,7 +105,7 @@ RWStructuredBuffer<uint> rwssbo_DrawVisibilityBuffer : register (u5);
 
 #endif
 
-#ifdef HI_Z_MAP_DRAW_OCCLUSION
+#ifdef HI_Z_MAP_OCCLUSION
 
 Texture2D<float4> tex_HiZMap : register (t10);
 
