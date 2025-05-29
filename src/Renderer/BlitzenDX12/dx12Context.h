@@ -9,6 +9,8 @@ namespace BlitzenDX12
 {
     struct ReadOnlyResources
     {
+        UINT BUFFER_COUNT{ 0 };
+
         SSBO m_vtxBuffer;
 
         INDEX_BUFFER m_idxBuffer;
@@ -96,6 +98,12 @@ namespace BlitzenDX12
         // UAV for instance indices descriptor
 		SIZE_T m_opaqueDrawInstInstUAVOffset[ce_framesInFlight];
 		D3D12_GPU_DESCRIPTOR_HANDLE m_opaqueDrawInstInstUAVHandle[ce_framesInFlight];
+
+        SIZE_T m_clusterDispatchAdditionalUAVsOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_clusterDispatchAdditionalUAVsHandle[ce_framesInFlight];
+
+        SIZE_T m_clusterCullClustersSRVOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_clusterCullClustersSRVHandle;
 
         // View for material descriptor
         SIZE_T m_materialSRVOffset;

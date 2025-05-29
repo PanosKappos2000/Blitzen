@@ -53,7 +53,7 @@ namespace BlitzenEngine
 
     void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices);
 
-    void GenerateHlslVertices(MeshResources& context);
+    bool GenerateHlslVertices(MeshResources& context);
 
     bool GenerateHLSLClusters(MeshResources& context);
 

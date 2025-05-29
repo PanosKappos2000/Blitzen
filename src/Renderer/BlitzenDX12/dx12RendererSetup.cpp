@@ -44,7 +44,9 @@ namespace BlitzenDX12
 			case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
 			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
 			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+			{
 				return (DXGI_FORMAT)header10.dxgiFormat;
+			}
 			}
 		}
 
@@ -63,7 +65,7 @@ namespace BlitzenDX12
 		auto file = scopedFILE.m_pHandle;
 
 		blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
-		auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+		size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
 
 		size_t readSize = fread(pData, 1, imageSize, file);
 
@@ -396,6 +398,12 @@ namespace BlitzenDX12
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullAdditionalViewsRootID], clusterDispatchAdditionalViewRanges, Ce_ClusterDispatchAdditionalViewsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullClusterSRVRootID], &clusterSrvRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullHI_Z_MapSrvRootID], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
+
+			if (!CreateRootSignature(device, context.m_clusterCullRoot.ReleaseAndGetAddressOf(), Ce_ClusterCullRootParameterCount, clusterCullRootParameters))
+			{
+				BLIT_ERROR("Failed to create cluster cull root signature");
+				return 0;
+			}
 		}
 
 		// success
@@ -566,8 +574,8 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateVarBuffers(ID3D12Device* device, ID3D12CommandQueue* commandQueue, CmdContext& cmdContext, 
-		ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, uint32_t swapchainWidth, uint32_t swapchainHeight)
+	static uint8_t CreateRWResources(ID3D12Device* device, ID3D12CommandQueue* commandQueue, CmdContext& cmdContext, ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, 
+		uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
 		const auto& transforms{ context.m_renders.m_transforms };
 		const auto& lodData{ context.m_meshes.m_LODs };
@@ -658,7 +666,19 @@ namespace BlitzenDX12
 			// CLUSTER CULL MODE
 			if constexpr (BlitzenCore::Ce_BuildClusters)
 			{
+				if (!CreateBuffer(device, rwResources.m_clusterDispatchBuffer.buffer.ReleaseAndGetAddressOf(), Ce_ClusterDispatchCmdBufferSize * sizeof(ClusterDispatchCmd), D3D12_RESOURCE_STATE_COMMON,
+					D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+				{
+					BLIT_ERROR("Failed to create cluster dispatch buffer");
+					return 0;
+				}
 
+				if (!CreateBuffer(device, rwResources.m_clusterDispatchCounterBuffer.buffer.ReleaseAndGetAddressOf(), sizeof(uint32_t), D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT,
+					D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+				{
+					BLIT_ERROR("Failed to create cluster dispatch counter buffer");
+					return 0;
+				}
 			}
 
 			// DATA COPY
@@ -744,7 +764,7 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	static uint8_t CreateConstBuffers(ID3D12Device* device, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, BlitzenEngine::DrawContext& context, ReadOnlyResources& roResources)
+	static uint8_t CreateROResources(ID3D12Device* device, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, BlitzenEngine::DrawContext& context, ReadOnlyResources& roResources)
 	{
 		const auto& vertices{ context.m_meshes.m_hlslVtxs };
 		const auto& indices{ context.m_meshes.m_indices };
@@ -800,9 +820,16 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		DX12WRAPPER<ID3D12Resource> clusterStaging{ nullptr };
+		UINT64 clusterBufferSize{ 0 };
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-
+			clusterBufferSize = CreateSSBO(device, roResources.m_clusterBuffer, clusterStaging, context.m_meshes.m_hlslClusterCount, context.m_meshes.m_hlslClusters);
+			if (clusterBufferSize == 0)
+			{
+				BLIT_ERROR("Failed to create cluster buffer");
+				return 0;
+			}
 		}
 
 		// DATA COPIES
@@ -810,7 +837,7 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdList->Reset(cmdContext.m_copyCmdAlloc.Get(), nullptr);
 
 		// DEST BARRIERS
-		D3D12_RESOURCE_BARRIER copyDestBarriers[Ce_ConstDataSSBOCount]{};
+		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copyDestBarriers{ Ce_ConstDataSSBOCount, {} };
 
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_VertexStagingBufferIndex], roResources.m_vtxBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
@@ -823,12 +850,21 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_LodStagingIndex], roResources.m_LODBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_MaterialStagingIndex], roResources.m_matBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			D3D12_RESOURCE_BARRIER clusterBufferBarrier{};
+			CreateResourcesTransitionBarrier(clusterBufferBarrier, roResources.m_clusterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
+			copyDestBarriers.PushBack(clusterBufferBarrier);
+		}
 		
 		// execute
-		cmdContext.m_copyCmdList->ResourceBarrier(Ce_ConstDataSSBOCount, copyDestBarriers);
+		roResources.BUFFER_COUNT = (UINT(copyDestBarriers.GetSize()));
+		cmdContext.m_copyCmdList->ResourceBarrier(roResources.BUFFER_COUNT, copyDestBarriers.Data());
 
 		// SRC BARRIERS
-		D3D12_RESOURCE_BARRIER copySourceBarriers[Ce_ConstDataSSBOCount]{};
+		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copySourceBarriers{ Ce_ConstDataSSBOCount, {} };
 
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VertexStagingBufferIndex], vertexStagingBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		
@@ -842,8 +878,22 @@ namespace BlitzenDX12
 		
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_MaterialStagingIndex], materialStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			D3D12_RESOURCE_BARRIER clusterStagingBarrier{};
+			CreateResourcesTransitionBarrier(clusterStagingBarrier, clusterStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+			copySourceBarriers.PushBack(clusterStagingBarrier);
+		}
+
+		if (copySourceBarriers.GetSize() != roResources.BUFFER_COUNT)
+		{
+			BLIT_ERROR("SRC and DEST read only buffer count difference");
+			return 0;
+		}
+
 		// execute
-		cmdContext.m_copyCmdList->ResourceBarrier(Ce_ConstDataSSBOCount, copySourceBarriers);
+		cmdContext.m_copyCmdList->ResourceBarrier(Ce_ConstDataSSBOCount, copySourceBarriers.Data());
 
 		cmdContext.m_copyCmdList->CopyResource(roResources.m_vtxBuffer.buffer.Get(), vertexStagingBuffer.Get());
 		cmdContext.m_copyCmdList->CopyResource(roResources.m_idxBuffer.m_buffer.Get(), indexStagingBuffer.Get());
@@ -918,12 +968,10 @@ namespace BlitzenDX12
 		const auto& surfaces{ context.m_meshes.m_surfaces };
 		auto pRenders{ context.m_renders.m_renders };
 		const auto& lods{ context.m_meshes.m_LODs };
-		auto pMaterials{ context.m_textures.m_materials };
-		auto materialCount{ context.m_textures.m_materialCount };
 
+		// DRAW DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			// Saves the offset of this group of descriptors and begins
 			ctx.m_opaqueDrawViewsExclusiveOffset[i] = ctx.m_viewHeapCurrentOffset;
 			ctx.m_opaqueDrawViewsExclusiveHandle[i] = ctx.m_viewHeapHandle;
 			ctx.m_opaqueDrawViewsExclusiveHandle[i].ptr += ctx.m_opaqueDrawViewsExclusiveOffset[i] * ctx.m_viewHeapIncrement;
@@ -931,10 +979,9 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, roResources.m_vtxBuffer.buffer.Get(), ctx, (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
 		}
 
-		// Teams of descriptors used by both graphics and compute pipelines
+		// SHARED DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			// Saves the offset of this group of descriptors and begins
 			ctx.m_sharedViewsOffset[i] = ctx.m_viewHeapCurrentOffset;
 			ctx.m_sharedViewHandle[i] = ctx.m_viewHeapHandle;
 			ctx.m_sharedViewHandle[i].ptr += ctx.m_sharedViewsOffset[i] * ctx.m_viewHeapIncrement;
@@ -950,10 +997,9 @@ namespace BlitzenDX12
 			CreateConstantBufferView(device, ctx, rwResources.m_viewBuffer.buffer.Get(), sizeof(BlitzenEngine::CameraViewData));
 		}
 
-		// Teams of descriptors used for draw culling shaders
+		// CULLING DESCRIPTORS (all modes)
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			// Saves the offset of this group of descriptors and begins
 			ctx.m_drawCullViewsOffset[i] = ctx.m_viewHeapCurrentOffset;
 			ctx.m_drawCullViewsHandle[i] = ctx.m_viewHeapHandle;
 			ctx.m_drawCullViewsHandle[i].ptr += ctx.m_drawCullViewsOffset[i] * ctx.m_viewHeapIncrement;
@@ -968,7 +1014,7 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));	
 		}
 
-		// Instancing unique descriptors
+		// INSTANCING DESCRIPTORS
 		if (BlitzenCore::Ce_InstanceCulling)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
@@ -986,7 +1032,7 @@ namespace BlitzenDX12
 			}
 		}
 
-		// Teams of descriptors used for occlusion shaders
+		// VISIBILITY BUFFER FOR OCCLUSION (non-temporal)
 		if constexpr (CE_DX12OCCLUSION)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
@@ -1001,21 +1047,41 @@ namespace BlitzenDX12
 			}
 		}
 
+		// HI_Z_MAP DESCRIPTORS
 		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
 		{
 			CreateDepthPyramidDescriptors(device, rwResourcesArray, ctx, pDepthTargets, drawWidth, drawHeight);
 		}
 
+		// CLUSTER DESCRIPTORS
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			{
+				auto& rwResources{ rwResourcesArray[i] };
 
+				ctx.m_clusterDispatchAdditionalUAVsOffset[i] = ctx.m_viewHeapCurrentOffset;
+				ctx.m_clusterDispatchAdditionalUAVsHandle[i] = ctx.m_viewHeapHandle;
+				ctx.m_clusterDispatchAdditionalUAVsHandle[i].ptr += ctx.m_clusterDispatchAdditionalUAVsOffset[i] * ctx.m_viewHeapIncrement;
+
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchBuffer.buffer.Get(), rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), 
+					Ce_ClusterDispatchCmdBufferSize, sizeof(ClusterDispatchCmd), 0);
+
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+			}
+
+			ctx.m_clusterCullClustersSRVOffset = ctx.m_viewHeapCurrentOffset;
+			ctx.m_clusterCullClustersSRVHandle = ctx.m_viewHeapHandle;
+			ctx.m_clusterCullClustersSRVHandle.ptr += ctx.m_clusterCullClustersSRVOffset * ctx.m_viewHeapIncrement;
+
+			CreateBufferShaderResourceView(device, roResources.m_clusterBuffer.buffer.Get(), ctx, context.m_meshes.m_hlslClusterCount, sizeof(BlitzenEngine::HCluster));
 		}
 		
-		// material buffer, single srv bound to pixel shader
+		// MAT DESCRIPTOR (pixel shader)
 		ctx.m_materialSRVOffset = ctx.m_viewHeapCurrentOffset;
 		ctx.m_materialSRVHandle = ctx.m_viewHeapHandle;
 		ctx.m_materialSRVHandle.ptr += ctx.m_materialSRVOffset * ctx.m_viewHeapIncrement;
-		CreateBufferShaderResourceView(device, roResources.m_matBuffer.buffer.Get(), ctx, (UINT)materialCount, sizeof(BlitzenEngine::Material));
+		CreateBufferShaderResourceView(device, roResources.m_matBuffer.buffer.Get(), ctx, context.m_textures.m_materialCount, sizeof(BlitzenEngine::Material));
 
 		// TEXTURE DESCRIPTORS
 		ctx.m_texDescriptorsSRVOffset = ctx.m_viewHeapCurrentOffset;
@@ -1031,7 +1097,11 @@ namespace BlitzenDX12
 
 	uint8_t Dx12Renderer::SetupForRendering(BlitzenEngine::DrawContext& context)
 	{
-		GenerateHlslVertices(context.m_meshes);
+		if (!BlitzenEngine::GenerateHlslVertices(context.m_meshes))
+		{
+			BLIT_ERROR("Failed to generate HLSL vertices");
+			return 0;
+		}
 
 		if (!BlitzenEngine::GenerateHLSLClusters(context.m_meshes))
 		{
@@ -1058,20 +1128,20 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateConstBuffers(m_device.Get(), m_cmdContext[m_currentFrame], m_transferCommandQueue.Get(), context, m_roResources))
+		if (!CreateROResources(m_device.Get(), m_cmdContext[m_currentFrame], m_transferCommandQueue.Get(), context, m_roResources))
 		{
 			BLIT_ERROR("Failed to create constant buffers");
 			return 0;
 		}
 
-		if (!CreateVarBuffers(m_device.Get(), m_transferCommandQueue.Get(), m_cmdContext[m_currentFrame], m_rwResources, context, m_swapchainWidth, m_swapchainHeight))
+		if (!CreateRWResources(m_device.Get(), m_transferCommandQueue.Get(), m_cmdContext[m_currentFrame], m_rwResources, context, m_swapchainWidth, m_swapchainHeight))
 		{
 			BLIT_ERROR("Failed to create var buffers");
 			return 0;
 		}
 
-		CreateResourceViews(m_device.Get(), m_descriptorContext, m_cmdContext[m_currentFrame], m_transferCommandQueue.Get(),
-			m_roResources, m_rwResources, context, m_depthBuffers, m_swapchainWidth, m_swapchainHeight);
+		CreateResourceViews(m_device.Get(), m_descriptorContext, m_cmdContext[m_currentFrame], m_transferCommandQueue.Get(),m_roResources, m_rwResources, context, m_depthBuffers, 
+			m_swapchainWidth, m_swapchainHeight);
 
 		if (!CheckForDeviceRemoval(m_device.Get()))
 		{
@@ -1100,7 +1170,7 @@ namespace BlitzenDX12
 		cmdContext.m_graphicsCmdList->Reset(cmdContext.m_graphicsCmdAlloc.Get(), nullptr);
 
 		// READ ONLY BARRIERS
-		D3D12_RESOURCE_BARRIER staticBufferBarriers[Ce_ConstDataSSBOCount]{};
+		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> staticBufferBarriers{ m_roResources.BUFFER_COUNT, {} };
 
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_VertexStagingBufferIndex], m_roResources.m_vtxBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -1114,8 +1184,13 @@ namespace BlitzenDX12
 
 		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_MaterialStagingIndex], m_roResources.m_matBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
+		if (BlitzenCore::Ce_BuildClusters)
+		{
+			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterStagingIndex], m_roResources.m_clusterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		}
+
 		// EXECUTE
-		cmdContext.m_graphicsCmdList->ResourceBarrier(Ce_ConstDataSSBOCount, staticBufferBarriers);
+		cmdContext.m_graphicsCmdList->ResourceBarrier(m_roResources.BUFFER_COUNT, staticBufferBarriers.Data());
 
 		// RW BUFFERS
 		uint32_t rwID{ 0 };
@@ -1188,7 +1263,20 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
+			for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
+			{
+				auto& rwResources{ m_rwResources[frame] };
 
+				D3D12_RESOURCE_BARRIER clusterDispatchBarrier{};
+				CreateResourcesTransitionBarrier(clusterDispatchBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
+				rwBuffersFinal.PushBack(clusterDispatchBarrier);
+
+				D3D12_RESOURCE_BARRIER clusterDispatchCounterBarrier{};
+				CreateResourcesTransitionBarrier(clusterDispatchCounterBarrier, rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
+				rwBuffersFinal.PushBack(clusterDispatchCounterBarrier);
+			}
 		}
 
 		// EXECUTE

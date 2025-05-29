@@ -734,7 +734,7 @@ namespace BlitzenDX12
 				m_depthBuffers[swapchainIndex].Get(), m_swapchainWidth, m_swapchainHeight);
 		}
 
-		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+		else if constexpr (CE_DX12TEMPORAL_OCCLUSION)
 		{
 			// Culling with Occlusion using previous frame depth pyramid
 			DrawOccTemporalPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_renders.m_renderCount, m_currentFrame);

@@ -22,8 +22,19 @@ namespace BlitzenDX12
 
 		if (CE_DX12OCCLUSION)
 		{
-            srvHeapDescriptorCount += (Ce_DepthPyramidMaxMips + Ce_DrawVisUavDescriptorCount + Ce_DepthTargetSRVDescriptorCount + Ce_HI_Z_MapSRVDescriptorCount) * ce_framesInFlight;
+            srvHeapDescriptorCount += Ce_DrawVisUavDescriptorCount * ce_framesInFlight;
 		}
+
+        if (CE_DX12_BUILD_HI_Z_MAP)
+        {
+            srvHeapDescriptorCount += (Ce_DepthPyramidMaxMips + Ce_DepthTargetSRVDescriptorCount + Ce_HI_Z_MapSRVDescriptorCount) * ce_framesInFlight;
+        }
+
+        if (BlitzenCore::Ce_BuildClusters)
+        {
+            srvHeapDescriptorCount += Ce_ClusterDispatchUAVsCount * ce_framesInFlight;
+            srvHeapDescriptorCount += Ce_ClusterCullClustersSRVCount;
+        }
 
         if (!CreateDescriptorHeap(device, ctx.m_viewHeap.ReleaseAndGetAddressOf(), srvHeapDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
             D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))

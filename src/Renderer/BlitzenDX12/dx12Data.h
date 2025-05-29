@@ -180,7 +180,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_ClusterDispatchCmdCounterUAVRangeID = 1;
 
     // Cluster srv buffer
-    constexpr UINT Ce_ClusterCullClusterSRVRegister = 11;
+    constexpr UINT Ce_ClusterCullClusterSRVRegister = 8;
 
     // Cluster data indices constant
     constexpr UINT CE_ClusterCullIdsDataConstantRegister = 2;
@@ -248,6 +248,8 @@ namespace BlitzenDX12
     constexpr UINT Ce_DrawVisUavDescriptorCount = 1;
 	constexpr UINT Ce_DepthTargetSRVDescriptorCount = 1;
 	constexpr UINT Ce_HI_Z_MapSRVDescriptorCount = 1;
+    constexpr UINT Ce_ClusterDispatchUAVsCount = 2;
+    constexpr UINT Ce_ClusterCullClustersSRVCount = 1;
 
     // SAMPLER HEAP DESCRIPTOR COUNT
     constexpr UINT Ce_TexSmpDescriptorCount = 1;
@@ -261,6 +263,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_RenderStagingBufferIndex = 3;
     constexpr UINT Ce_LodStagingIndex = 4;
     constexpr UINT Ce_MaterialStagingIndex = 5;
+    constexpr UINT Ce_ClusterStagingIndex = 6;
     
     constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
 

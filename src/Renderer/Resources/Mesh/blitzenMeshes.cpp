@@ -374,11 +374,12 @@ namespace BlitzenEngine
         }
     }
 
-    void GenerateHlslVertices(MeshResources& context)
+    bool GenerateHlslVertices(MeshResources& context)
     {
         if (context.m_hlslVtxs.GetSize())
         {
-            return;
+            BLIT_ERROR("hlslVtxs should be empty before generation");
+            return false;
         }
 
         for (size_t i = 0; i < context.m_vertices.GetSize(); ++i)
@@ -396,6 +397,8 @@ namespace BlitzenEngine
 
             context.m_hlslVtxs.PushBack(hlsl);
         }
+
+        return true;
     }
 
     bool GenerateHLSLClusters(MeshResources& context)
