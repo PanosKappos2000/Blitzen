@@ -17,6 +17,10 @@ RWStructuredBuffer<ClusterDispatchCmd> rwssbo_ClusterDispatch : register(u5);
 
 RWBuffer<uint> rwb_ClusterDispatchCounter : register(u6);
 
+#endif
+
+#ifdef CLUSTER_CULL
+
 struct Cluster
 {
     // Bounding sphere

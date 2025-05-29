@@ -42,7 +42,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         // Root constant data
         rwssbo_ClusterDispatch[dispatchID].objId = objId;
         rwssbo_ClusterDispatch[dispatchID].clusterOffset = ssbo_LODs[lodId].clusterOffset;
-        rwssbo_ClusterDispatch[dispatchID].clusterOffset = ssbo_LODs[lodId].clusterCount;
+        rwssbo_ClusterDispatch[dispatchID].clusterCount = ssbo_LODs[lodId].clusterCount;
         
         rwssbo_ClusterDispatch[dispatchID].groupX = GetComputeShaderGroupSize(ssbo_LODs[lodId].clusterCount, 64);
         rwssbo_ClusterDispatch[dispatchID].groupY = 1;

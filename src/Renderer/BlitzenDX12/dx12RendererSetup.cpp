@@ -901,6 +901,10 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdList->CopyResource(roResources.m_renderBuffer.buffer.Get(), renderStagingBuffer.Get());
 		cmdContext.m_copyCmdList->CopyResource(roResources.m_LODBuffer.buffer.Get(), lodStaging.Get());
 		cmdContext.m_copyCmdList->CopyResource(roResources.m_matBuffer.buffer.Get(), materialStaging.Get());
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterBuffer.buffer.Get(), clusterStaging.Get());
+		}
 
 		cmdContext.m_copyCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmdContext.m_copyCmdList.Get() };

@@ -16,11 +16,12 @@ cbuffer ClusterIndicesConstant : register(b2)
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
 {
-    uint clusterId = clusterOffset + dispatchThreadID.x;
-    if (clusterId >= clusterCount)
+    if (dispatchThreadID.x >= clusterCount)
     {
         return;
     }
+    
+    uint clusterId = clusterOffset + dispatchThreadID.x;
     
     Render render = ssbo_Renders[objId];
     Transform transform = ssbo_Transforms[render.transformId];
