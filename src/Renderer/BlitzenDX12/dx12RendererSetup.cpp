@@ -381,8 +381,10 @@ namespace BlitzenDX12
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_DESCRIPTOR_RANGE clusterDispatchAdditionalViewRanges[Ce_ClusterDispatchAdditionalViewsRangeCount]{};
-			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterDispatchCmdUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterDispatchCmdUAVRegister);
-			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterDispatchCmdCounterUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterDispatchCmdCounterUAVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullCmdUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterCullCmdUAVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullCounterUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterCullCounterUAVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullGroupDataUAVRangerID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterCullGroupDataUAVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullClustersSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_ClusterCullClusterSRVRegister);
 			
 			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
 			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawOccLateHI_Z_MapSRVRegister);
@@ -394,9 +396,7 @@ namespace BlitzenDX12
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterPushConstants(clusterCullRootParameters[Ce_ClusterCullDrawCountRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(clusterCullRootParameters[Ce_ClusterCullIdxDataConstantRootID], CE_ClusterCullIdsDataConstantRegister, 0, Ce_ClusterCullIdxDataConstant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullAdditionalViewsRootID], clusterDispatchAdditionalViewRanges, Ce_ClusterDispatchAdditionalViewsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullClusterSRVRootID], &clusterSrvRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullHI_Z_MapSrvRootID], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
 			if (!CreateRootSignature(device, context.m_clusterCullRoot.ReleaseAndGetAddressOf(), Ce_ClusterCullRootParameterCount, clusterCullRootParameters))
@@ -449,22 +449,17 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			D3D12_INDIRECT_ARGUMENT_DESC clusterDispatchIndirectDescs[2]{};
-			
-			clusterDispatchIndirectDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-			clusterDispatchIndirectDescs[0].Constant.DestOffsetIn32BitValues = 0;
-			clusterDispatchIndirectDescs[0].Constant.Num32BitValuesToSet = Ce_ClusterCullIdxDataConstant32BitCount;
-			clusterDispatchIndirectDescs[0].Constant.RootParameterIndex = Ce_ClusterCullIdxDataConstantRootID;
+			D3D12_INDIRECT_ARGUMENT_DESC clusterDispatchIndirectDesc{};
 
-			clusterDispatchIndirectDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+			clusterDispatchIndirectDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
 
 			D3D12_COMMAND_SIGNATURE_DESC clusterSigDesc{};
 			clusterSigDesc.NodeMask = 0;
-			clusterSigDesc.NumArgumentDescs = BLIT_ARRAY_SIZE(clusterDispatchIndirectDescs);
-			clusterSigDesc.pArgumentDescs = clusterDispatchIndirectDescs;
+			clusterSigDesc.NumArgumentDescs = 1;
+			clusterSigDesc.pArgumentDescs = &clusterDispatchIndirectDesc;
 			clusterSigDesc.ByteStride = sizeof(ClusterDispatchCmd);
 
-			HRESULT clusterDispatchCmdRes{ device->CreateCommandSignature(&clusterSigDesc, ctx.m_clusterCullRoot.Get(), IID_PPV_ARGS(ctx.m_clusterCullCmdSign.ReleaseAndGetAddressOf())) };
+			HRESULT clusterDispatchCmdRes{ device->CreateCommandSignature(&clusterSigDesc, nullptr, IID_PPV_ARGS(ctx.m_clusterCullCmdSign.ReleaseAndGetAddressOf()))};
 			if (FAILED(clusterDispatchCmdRes))
 			{
 				BLIT_ERROR("Failed to create cluster dispatch command signature");
@@ -558,6 +553,12 @@ namespace BlitzenDX12
 				return 0;
 			}
 
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullCmdPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullCmd.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create clusterCullCmd.cs shader program");
+				return 0;
+			}
+
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCull.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create clusterCull.cs shader program");
@@ -591,9 +592,10 @@ namespace BlitzenDX12
 				return 0;
 			}
 
+			UINT transformCount{ BlitzenCore::Ce_MaxDynamicObjectCount + context.m_renders.m_staticTransformCount };
 			DX12WRAPPER<ID3D12Resource> transformStaging;
-			if (!CreateCPUDataSSBO(device, rwResources.m_transformBuffer, transformStaging, context.m_renders.m_transformCount, context.m_renders.m_transforms, 
-				context.m_renders.m_dynamicTransformCount))
+			if (!CreateCPUDataSSBO(device, rwResources.m_transformBuffer, transformStaging, transformCount, context.m_renders.m_transforms,
+				context.m_renders.m_dynamicTransformCount, context.m_renders.m_staticTransformCount, BlitzenCore::Ce_MaxDynamicObjectCount))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
 				return 0;
@@ -666,7 +668,7 @@ namespace BlitzenDX12
 			// CLUSTER CULL MODE
 			if constexpr (BlitzenCore::Ce_BuildClusters)
 			{
-				if (!CreateBuffer(device, rwResources.m_clusterDispatchBuffer.buffer.ReleaseAndGetAddressOf(), Ce_ClusterDispatchCmdBufferSize * sizeof(ClusterDispatchCmd), D3D12_RESOURCE_STATE_COMMON,
+				if (!CreateBuffer(device, rwResources.m_clusterDispatchBuffer.buffer.ReleaseAndGetAddressOf(), sizeof(ClusterDispatchCmd), D3D12_RESOURCE_STATE_COMMON,
 					D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 				{
 					BLIT_ERROR("Failed to create cluster dispatch buffer");
@@ -677,6 +679,13 @@ namespace BlitzenDX12
 					D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 				{
 					BLIT_ERROR("Failed to create cluster dispatch counter buffer");
+					return 0;
+				}
+
+				if (!CreateBuffer(device, rwResources.m_clusterGroupDataBuffer.buffer.ReleaseAndGetAddressOf(), Ce_ClusterGroupDataBufferSize * sizeof(ClusterGroupData), D3D12_RESOURCE_STATE_COMMON,
+					D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+				{
+					BLIT_ERROR("Failed to create cluster group data buffer");
 					return 0;
 				}
 			}
@@ -733,9 +742,6 @@ namespace BlitzenDX12
 			// Execute
 			cmdContext.m_copyCmdList->ResourceBarrier(UINT(copySourceBarriers.GetSize()), copySourceBarriers.Data());
 
-			// transforms
-			cmdContext.m_copyCmdList->CopyResource(rwResources.m_transformBuffer.buffer.Get(), transformStaging.Get());
-
 			// visibilities zeroed
 			if constexpr (CE_DX12OCCLUSION)
 			{
@@ -753,6 +759,11 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(dynamicTransformBarrier, rwResources.m_transformBuffer.staging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			// execute
 			cmdContext.m_copyCmdList->ResourceBarrier(1, &dynamicTransformBarrier);
+
+			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), 0, rwResources.m_transformBuffer.staging.Get(), 0, rwResources.m_transformBuffer.dataCopySize);
+
+			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), BlitzenCore::Ce_MaxDynamicObjectCount * sizeof(BlitzenEngine::MeshTransform),
+				transformStaging.Get(), 0, context.m_renders.m_staticTransformCount * sizeof(BlitzenEngine::MeshTransform));
 
 			cmdContext.m_copyCmdList->Close();
 			ID3D12CommandList* commandLists[] = { cmdContext.m_copyCmdList.Get() };
@@ -994,7 +1005,8 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
 
-			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.buffer.Get(), ctx, context.m_renders.m_transformCount, sizeof(BlitzenEngine::MeshTransform));
+			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.buffer.Get(), ctx, BlitzenCore::Ce_MaxDynamicObjectCount + context.m_renders.m_staticTransformCount, 
+				sizeof(BlitzenEngine::MeshTransform));
 
 			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_renders.m_renderCount, sizeof(BlitzenEngine::RenderObject));
 
@@ -1068,17 +1080,14 @@ namespace BlitzenDX12
 				ctx.m_clusterDispatchAdditionalUAVsHandle[i] = ctx.m_viewHeapHandle;
 				ctx.m_clusterDispatchAdditionalUAVsHandle[i].ptr += ctx.m_clusterDispatchAdditionalUAVsOffset[i] * ctx.m_viewHeapIncrement;
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchBuffer.buffer.Get(), rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), 
-					Ce_ClusterDispatchCmdBufferSize, sizeof(ClusterDispatchCmd), 0);
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchBuffer.buffer.Get(), nullptr, 1, sizeof(ClusterDispatchCmd), 0);
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterGroupDataBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize, sizeof(ClusterGroupData), 0);
+
+				CreateBufferShaderResourceView(device, roResources.m_clusterBuffer.buffer.Get(), ctx, context.m_meshes.m_hlslClusterCount, sizeof(BlitzenEngine::HCluster));
 			}
-
-			ctx.m_clusterCullClustersSRVOffset = ctx.m_viewHeapCurrentOffset;
-			ctx.m_clusterCullClustersSRVHandle = ctx.m_viewHeapHandle;
-			ctx.m_clusterCullClustersSRVHandle.ptr += ctx.m_clusterCullClustersSRVOffset * ctx.m_viewHeapIncrement;
-
-			CreateBufferShaderResourceView(device, roResources.m_clusterBuffer.buffer.Get(), ctx, context.m_meshes.m_hlslClusterCount, sizeof(BlitzenEngine::HCluster));
 		}
 		
 		// MAT DESCRIPTOR (pixel shader)
@@ -1280,6 +1289,11 @@ namespace BlitzenDX12
 				CreateResourcesTransitionBarrier(clusterDispatchCounterBarrier, rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
 				rwBuffersFinal.PushBack(clusterDispatchCounterBarrier);
+
+				D3D12_RESOURCE_BARRIER clusterGroupDataBarrier{};
+				CreateResourcesTransitionBarrier(clusterGroupDataBarrier, rwResources.m_clusterGroupDataBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+				rwBuffersFinal.PushBack(clusterGroupDataBarrier);
 			}
 		}
 

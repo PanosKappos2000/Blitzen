@@ -43,6 +43,8 @@ namespace BlitzenDX12
 
         SSBO m_clusterDispatchCounterBuffer;
 
+        SSBO m_clusterGroupDataBuffer;
+
         SSBO m_drawVisBuffer;
 
         SSBO m_drawInstBuffer;
@@ -101,9 +103,6 @@ namespace BlitzenDX12
 
         SIZE_T m_clusterDispatchAdditionalUAVsOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_clusterDispatchAdditionalUAVsHandle[ce_framesInFlight];
-
-        SIZE_T m_clusterCullClustersSRVOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE m_clusterCullClustersSRVHandle;
 
         // View for material descriptor
         SIZE_T m_materialSRVOffset;
@@ -196,6 +195,8 @@ namespace BlitzenDX12
 
         // Culling compute shader. Performs frustum culling and LOD selection. Create indirect compute commands for cluster culling
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullDispatchPso;
+
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdPso;
 
         // Culling compute shader. Performs frustum, backface and occlusion culling on Clusters. Creates draw commands for every visible cluster
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullPso;

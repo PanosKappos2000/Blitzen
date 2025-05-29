@@ -7,7 +7,7 @@ namespace BlitzenEngine
 	{
 		MeshTransform m_transforms[BlitzenCore::Ce_MaxRenderObjects ];
 		uint32_t m_transformCount{ 0 };
-		uint32_t m_staticTransformOffset{ BlitzenCore::Ce_MaxDynamicObjectCount };
+		uint32_t m_staticTransformOffset{ BlitzenCore::Ce_MaxDynamicObjectCount};
 		uint32_t m_staticTransformCount{ 0 };
 		uint32_t m_dynamicTransformCount{ 0 };
 

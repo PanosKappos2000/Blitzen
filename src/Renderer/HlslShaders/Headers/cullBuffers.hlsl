@@ -1,25 +1,26 @@
-#ifdef CLUSTER_DISPATCH
+#ifdef CLUSTER_CULL
 
 struct ClusterDispatchCmd
 {
-    uint objId;
-    uint clusterOffset;
-    uint clusterCount;
-    
     uint groupX;
     uint groupY;
     uint groupZ;
 
     uint padding0;
-    uint padding1;
 };
 RWStructuredBuffer<ClusterDispatchCmd> rwssbo_ClusterDispatch : register(u5);
 
 RWBuffer<uint> rwb_ClusterDispatchCounter : register(u6);
 
-#endif
+struct ClusterGroupData
+{
+    uint objId;
+    uint clusterOffset;
+    uint clusterCount;
 
-#ifdef CLUSTER_CULL
+    uint padding0;
+};
+RWStructuredBuffer<ClusterGroupData> rwssbo_ClusterGroupData : register(u7);
 
 struct Cluster
 {

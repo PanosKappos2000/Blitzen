@@ -93,7 +93,7 @@ namespace BlitzenCore
     #if defined(BLIT_DYNAMIC_OBJECT_TEST)
         constexpr uint8_t Ce_LoadDynamicObjectTest = 1;
     #else
-	    consterxpr uint8_t Ce_LoadDynamicObjectTest = 0;
+        constexpr uint8_t Ce_LoadDynamicObjectTest = 0;
     #endif
 
     #ifdef BLITZEN_CLUSTER_CULLING

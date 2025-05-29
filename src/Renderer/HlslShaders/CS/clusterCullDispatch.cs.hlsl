@@ -1,4 +1,4 @@
-#define CLUSTER_DISPATCH
+#define CLUSTER_CULL
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
@@ -35,17 +35,20 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
 
-        // Command count
-        uint dispatchID;
-        InterlockedAdd(rwb_ClusterDispatchCounter[0], 1, dispatchID);
+        uint clusterOffset = ssbo_LODs[lodId].clusterOffset;
+        uint clusterCount = ssbo_LODs[lodId].clusterCount;
+        
+        uint dataId;
+        InterlockedAdd(rwb_ClusterDispatchCounter[0], clusterCount, dataId);
 
         // Root constant data
-        rwssbo_ClusterDispatch[dispatchID].objId = objId;
-        rwssbo_ClusterDispatch[dispatchID].clusterOffset = ssbo_LODs[lodId].clusterOffset;
-        rwssbo_ClusterDispatch[dispatchID].clusterCount = ssbo_LODs[lodId].clusterCount;
-        
-        rwssbo_ClusterDispatch[dispatchID].groupX = GetComputeShaderGroupSize(ssbo_LODs[lodId].clusterCount, 64);
-        rwssbo_ClusterDispatch[dispatchID].groupY = 1;
-        rwssbo_ClusterDispatch[dispatchID].groupZ = 1;
+        for (uint i = 0; i < clusterCount; i++)
+        {
+            rwssbo_ClusterGroupData[i + dataId].objId = objId;
+            rwssbo_ClusterGroupData[i + dataId].clusterOffset = clusterOffset + i;
+            rwssbo_ClusterGroupData[i + dataId].clusterCount = clusterCount;
+            
+            ++dataId;
+        }
     }
 }

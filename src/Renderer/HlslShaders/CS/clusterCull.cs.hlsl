@@ -1,4 +1,3 @@
-#define CLUSTER_DISPATCH
 #define CLUSTER_CULL
 #define HI_Z_MAP_OCCLUSION
 
@@ -6,22 +5,23 @@
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
-cbuffer ClusterIndicesConstant : register(b2)
+cbuffer ClusterCount : register(b1)
 {
-    uint objId;
-    uint clusterOffset;
     uint clusterCount;
 };
 
 [numthreads(64, 1, 1)]
-void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
+void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
 {
-    if (dispatchThreadID.x >= clusterCount)
+    ClusterGroupData groupData = rwssbo_ClusterGroupData[dispatchThreadID.x];
+
+    uint clusterId = groupData.clusterOffset; //+ groupThreadID.x;
+    uint objId = groupData.objId;
+    
+    if (clusterId >= groupData.clusterCount + groupData.clusterOffset)
     {
         return;
     }
-    
-    uint clusterId = clusterOffset + dispatchThreadID.x;
     
     Render render = ssbo_Renders[objId];
     Transform transform = ssbo_Transforms[render.transformId];

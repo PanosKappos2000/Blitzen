@@ -171,31 +171,32 @@ namespace BlitzenDX12
 	constexpr UINT Ce_DrawOccTemporalHI_Z_MapRootId = 3;
 
     // DESCRIPTOR FOR CLUSTER CULL:
-    constexpr UINT Ce_ClusterDispatchAdditionalViewsRangeCount = 2;
+    constexpr UINT Ce_ClusterDispatchAdditionalViewsRangeCount = 4;
 
-    constexpr UINT Ce_ClusterDispatchCmdUAVRegister = 5;
-    constexpr UINT Ce_ClusterDispatchCmdUAVRangeID = 0;
+    // Cluster dispatch command buffer
+    constexpr UINT Ce_ClusterCullCmdUAVRegister = 5;
+    constexpr UINT Ce_ClusterCullCmdUAVRangeID = 0;
 
-    constexpr UINT Ce_ClusterDispatchCmdCounterUAVRegister = 6;
-    constexpr UINT Ce_ClusterDispatchCmdCounterUAVRangeID = 1;
+    // Cluster dispatch counter buffer
+    constexpr UINT Ce_ClusterCullCounterUAVRegister = 6;
+    constexpr UINT Ce_ClusterCullCounterUAVRangeID = 1;
+
+    // Cluster group data buffer
+    constexpr UINT Ce_ClusterCullGroupDataUAVRegister = 7;
+    constexpr UINT Ce_ClusterCullGroupDataUAVRangerID = 2;
 
     // Cluster srv buffer
     constexpr UINT Ce_ClusterCullClusterSRVRegister = 8;
-
-    // Cluster data indices constant
-    constexpr UINT CE_ClusterCullIdsDataConstantRegister = 2;
-    constexpr UINT Ce_ClusterCullIdxDataConstant32BitCount = 3;
+    constexpr UINT Ce_ClusterCullClustersSRVRangeID = 3;
 
     // root param descriptor grouping
-    constexpr UINT Ce_ClusterCullRootParameterCount = 7;
+    constexpr UINT Ce_ClusterCullRootParameterCount = 5;
 
     constexpr UINT Ce_ClusterCullExclusiveSRVsRootID = 0;
     constexpr UINT Ce_ClusterCullSharedSRVsRootID = 1;
     constexpr UINT Ce_ClusterCullDrawCountRootID = 2;
     constexpr UINT Ce_ClusterCullAdditionalViewsRootID = 3;
-    constexpr UINT Ce_ClusterCullIdxDataConstantRootID = 4;
-    constexpr UINT Ce_ClusterCullClusterSRVRootID = 5;
-    constexpr UINT Ce_ClusterCullHI_Z_MapSrvRootID = 6;
+    constexpr UINT Ce_ClusterCullHI_Z_MapSrvRootID = 4;
 
     // DESCRIPTORS FOR OPAQUE DRAW :
     // exclusive range specific
@@ -248,7 +249,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_DrawVisUavDescriptorCount = 1;
 	constexpr UINT Ce_DepthTargetSRVDescriptorCount = 1;
 	constexpr UINT Ce_HI_Z_MapSRVDescriptorCount = 1;
-    constexpr UINT Ce_ClusterDispatchUAVsCount = 2;
+    constexpr UINT Ce_ClusterDispatchUAVsCount = 4;
     constexpr UINT Ce_ClusterCullClustersSRVCount = 1;
 
     // SAMPLER HEAP DESCRIPTOR COUNT
@@ -378,19 +379,23 @@ namespace BlitzenDX12
     static_assert(sizeof(IndirectDrawCmd) % 16 == 0);
     constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 1'000'000;
 
-    struct ClusterDispatchCmd
+    struct ClusterGroupData
     {
         uint32_t objId;
         uint32_t clusterOffset;
         uint32_t clusterCount;
+        uint32_t padding0;
+    };
+    static_assert(sizeof(ClusterGroupData) % 16 == 0);
+    constexpr uint32_t Ce_ClusterGroupDataBufferSize = 5'000'000;
 
+    struct ClusterDispatchCmd
+    {
         D3D12_DISPATCH_ARGUMENTS command;// 3 32 bit integers
 
         uint32_t padding0;
-        uint32_t padding1;
     };
     static_assert(sizeof(ClusterDispatchCmd) % 16 == 0);
-    constexpr uint32_t Ce_ClusterDispatchCmdBufferSize = Ce_IndirectDrawCmdBufferSize;
 
 
     // Useful helper to check for device removal before calling a function that uses it

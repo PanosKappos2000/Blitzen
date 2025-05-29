@@ -33,7 +33,6 @@ namespace BlitzenDX12
         if (BlitzenCore::Ce_BuildClusters)
         {
             srvHeapDescriptorCount += Ce_ClusterDispatchUAVsCount * ce_framesInFlight;
-            srvHeapDescriptorCount += Ce_ClusterCullClustersSRVCount;
         }
 
         if (!CreateDescriptorHeap(device, ctx.m_viewHeap.ReleaseAndGetAddressOf(), srvHeapDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,

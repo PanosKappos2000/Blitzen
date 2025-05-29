@@ -64,7 +64,8 @@ namespace BlitzenDX12
     }
 
     template<typename DATA>
-    UINT64 CreateCPUDataSSBO(ID3D12Device* device, CPU_WRITE_SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& tempStaging, size_t elementCount, DATA* data, UINT persistentStagingElementCount)
+    UINT64 CreateCPUDataSSBO(ID3D12Device* device, CPU_WRITE_SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& tempStaging, size_t elementCount, DATA* data, UINT persistentStagingElementCount, 
+        UINT tempStagingElementCount, UINT tempStagingOffset)
     {
         if (elementCount == 0)
         {
@@ -80,7 +81,15 @@ namespace BlitzenDX12
             return 0;
         }
 
-        if (!CreateBuffer(device, tempStaging.ReleaseAndGetAddressOf(), ssboSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+        UINT64 tempStagingSize{ sizeof(DATA) * tempStagingElementCount };
+
+        if (tempStagingElementCount == 0)
+        {
+            BLIT_ERROR("Passed element count zero for temp staging buffer");
+            return 0;
+        }
+
+        if (!CreateBuffer(device, tempStaging.ReleaseAndGetAddressOf(), tempStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
         {
             BLIT_ERROR("Failed to create initial staging buffer");
             return 0;
@@ -94,13 +103,11 @@ namespace BlitzenDX12
             return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
         }
 
-        BlitzenCore::BlitMemCopy(pMappedData, data, ssboSize);
-
         // PERSISTENT CPU DATA
         if (persistentStagingElementCount == 0)
         {
-            BLIT_ERROR("Passed size 0 for persistent staging buffer");
-            return 0;
+            BLIT_ERROR("Passed size 0 for persistent staging buffer, creating placeholder");
+            persistentStagingElementCount = 1;
         }
 
         UINT64 stagingSize{ sizeof(DATA) * persistentStagingElementCount };
@@ -120,6 +127,7 @@ namespace BlitzenDX12
 
         ssbo.dataCopySize = stagingSize;
         BlitzenCore::BlitMemCopy(ssbo.pData, data, ssbo.dataCopySize);
+        BlitzenCore::BlitMemCopy(pMappedData, data + tempStagingOffset, tempStagingSize);
 
         // Success
         return ssboSize;

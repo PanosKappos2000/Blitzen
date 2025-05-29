@@ -6,8 +6,11 @@ namespace BlitzenEngine
     
     void UpdateDynamicObjects(RendererPtrType pRenderer, BlitzenCore::EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext)
     {
-        for (auto pEntity : pEntityManager->m_pDynamicEntities)
+        // WARING: DO NOT USE FOR EACH. NOT EVERYTHING IN THIS ARRAY IS INITIALIZED, ONLY THOSE UP TO CURRENT COUNT
+        for (uint32_t i = 0; i < pEntityManager->m_dynamicEntityCount; ++i)
         {
+            auto pEntity = pEntityManager->m_pDynamicEntities[i];
+
             pEntity->Update(blitzenContext);
 
             switch (blitzenContext.rendererEvent)

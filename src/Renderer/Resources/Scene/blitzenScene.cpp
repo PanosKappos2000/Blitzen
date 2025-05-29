@@ -216,10 +216,11 @@ namespace BlitzenEngine
                 // TODO: better warnings for non-uniform or negative scale
 
                 // Gets id from surface indices
-                auto surfaceOffset = surfaceIndices[cgltf_mesh_index(cgltfScope.pData, node->mesh)];
-                auto transformId = renders.m_staticTransformOffset;
+                uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(cgltfScope.pData, node->mesh)];
+                uint32_t transformId = renders.m_staticTransformOffset;
                 renders.m_transforms[renders.m_staticTransformOffset++] = transform;
 				renders.m_transformCount++;
+                renders.m_staticTransformCount++;
 
                 // Adds mesh primitives as render objects
                 bool bPrimitivesLoaded = true;

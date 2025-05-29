@@ -72,6 +72,7 @@ namespace BlitzenEngine
 			}
             transformId = context.m_staticTransformOffset;
 			context.m_transforms[context.m_staticTransformOffset++] = transform;
+            context.m_staticTransformCount++;
             context.m_transformCount++;
         }
 

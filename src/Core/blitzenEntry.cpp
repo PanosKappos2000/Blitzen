@@ -75,17 +75,19 @@ int main(int argc, char* argv[])
 
             if (!BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entityManager.Data()))
             {
-                BLIT_FATAL("Failed to allocate resource for requested scene");
+                BLIT_FATAL("Failed to allocate resource for requested scene, Blitzen shutting down");
                 loadingDone = true;
                 loadingDoneConditional.notify_one();
+                engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
                 return;
             }
-            // Updates renderer
+
             if (!renderer->SetupForRendering(drawContext))
             {
-                BLIT_FATAL("Renderer failed to setup, Blitzen's rendering system is offline");
+                BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
                 loadingDone = true;
                 loadingDoneConditional.notify_one();
+                engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
                 return;
             }
 
