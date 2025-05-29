@@ -38,17 +38,21 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         uint clusterOffset = ssbo_LODs[lodId].clusterOffset;
         uint clusterCount = ssbo_LODs[lodId].clusterCount;
         
-        uint dataId;
-        InterlockedAdd(rwb_ClusterDispatchCounter[0], clusterCount, dataId);
+        int i = clusterCount;
+        uint current = 0;
 
         // Root constant data
-        for (uint i = 0; i < clusterCount; i++)
+        while(i > 0)
         {
-            rwssbo_ClusterGroupData[i + dataId].objId = objId;
-            rwssbo_ClusterGroupData[i + dataId].clusterOffset = clusterOffset + i;
-            rwssbo_ClusterGroupData[i + dataId].clusterCount = clusterCount;
+            uint dataId;
+            InterlockedAdd(rwssbo_ClusterDispatch[0].groupX, 1, dataId);
             
-            ++dataId;
+            rwssbo_ClusterGroupData[dataId].objId = objId;
+            rwssbo_ClusterGroupData[dataId].clusterOffset = clusterOffset + current * 64;
+            rwssbo_ClusterGroupData[dataId].clusterCount = clusterCount + clusterOffset;
+            
+            i -= 64;
+            current++;
         }
     }
 }

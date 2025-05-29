@@ -13,19 +13,25 @@ cbuffer ClusterCount : register(b1)
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
 {
-    ClusterGroupData groupData = rwssbo_ClusterGroupData[dispatchThreadID.x];
+    ClusterGroupData groupData = rwssbo_ClusterGroupData[dispatchGroupID.x];
 
-    uint clusterId = groupData.clusterOffset; //+ groupThreadID.x;
+    uint clusterId = groupData.clusterOffset + groupThreadID.x;
     uint objId = groupData.objId;
     
-    if (clusterId >= groupData.clusterCount + groupData.clusterOffset)
+    if (clusterId >= clusterCount)
+    {
+        return;
+    }
+    
+    if (clusterId >= groupData.clusterCount)
     {
         return;
     }
     
     Render render = ssbo_Renders[objId];
     Transform transform = ssbo_Transforms[render.transformId];
-    Cluster cluster = ssbo_Clusters[clusterId];
+    uint vertexCount = ssbo_Clusters[clusterId].vertexCount;
+    uint indexOffset = ssbo_Clusters[clusterId].clusterOffset;
     
     bool visible = true;
     
@@ -37,8 +43,8 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         ssbo_DrawCmd[cmdId].objId = objId;
         
         // Vertices
-        ssbo_DrawCmd[cmdId].indexCount = cluster.vertexCount;
-        ssbo_DrawCmd[cmdId].indexOffset = cluster.clusterOffset;
+        ssbo_DrawCmd[cmdId].indexCount = vertexCount;
+        ssbo_DrawCmd[cmdId].indexOffset = indexOffset;
         ssbo_DrawCmd[cmdId].vertOffset = 0; // Already added to the index buffer
 
         // Instances

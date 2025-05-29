@@ -5,6 +5,7 @@
 [numthreads(1, 1, 1)]
 void csMain()
 {
-    rwb_ClusterDispatchCounter[0] = 0;
     rwssbo_ClusterDispatch[0].groupX = 0;
+    rwssbo_ClusterDispatch[0].groupY = 0;
+    rwssbo_ClusterDispatch[0].groupZ = 0;
 }
