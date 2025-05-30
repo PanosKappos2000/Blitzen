@@ -85,6 +85,10 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxClusters = 1'000;
     constexpr uint32_t Ce_MaxInstanceCountPerCluster = 100'000;
 
+    constexpr uint32_t Ce_MaxVerticesPerCluster = 64;
+    constexpr uint32_t Ce_MaxTrianglesPerCluster = 124;
+    constexpr float Ce_ClusterConeWeight = 0.25f;
+
     constexpr uint32_t Ce_MaxRenderObjects = 5'000'000;
     constexpr uint32_t Ce_MaxTransparentRenderObjects = 100'000;
     constexpr uint32_t Ce_MaxONPC_Objects = 100;

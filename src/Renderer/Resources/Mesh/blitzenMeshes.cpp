@@ -226,59 +226,62 @@ namespace BlitzenEngine
         context.m_indices.AppendArray(allLodIndices);
     }
 
-    // Loads cluster using the meshoptimizer library
     size_t GenerateClusters(MeshResources& context, BlitCL::DynamicArray<Vertex>& inVertices, BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
     {
-        const size_t maxVertices = 64;
-        const size_t maxTriangles = 124;
-        const float coneWeight = 0.25f;
+        BlitCL::DynamicArray<meshopt_Meshlet> meshop_meshlets{ meshopt_buildMeshletsBound(inIndices.GetSize(), BlitzenCore::Ce_MaxVerticesPerCluster, 
+            BlitzenCore::Ce_MaxTrianglesPerCluster) };
 
-        BlitCL::DynamicArray<meshopt_Meshlet> akMeshlets{ meshopt_buildMeshletsBound(inIndices.GetSize(), maxVertices, maxTriangles) };
-        BlitCL::DynamicArray<unsigned int> meshletVertices{ akMeshlets.GetSize() * maxVertices };
-        BlitCL::DynamicArray<unsigned char> meshletTriangles{ akMeshlets.GetSize() * maxTriangles * 3 };
+        BlitCL::DynamicArray<uint32_t> meshletVertices{ meshop_meshlets.GetSize() * BlitzenCore::Ce_MaxVerticesPerCluster };
 
-        akMeshlets.Resize(meshopt_buildMeshlets(akMeshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(),
-            &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex), maxVertices, maxTriangles, coneWeight));
+        BlitCL::DynamicArray<unsigned char> meshletTriangles{ meshop_meshlets.GetSize() * BlitzenCore::Ce_MaxTrianglesPerCluster * 3 };
+
+        meshop_meshlets.Resize(meshopt_buildMeshlets(meshop_meshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(),
+            &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex), BlitzenCore::Ce_MaxVerticesPerCluster, BlitzenCore::Ce_MaxTrianglesPerCluster, 
+            BlitzenCore::Ce_ClusterConeWeight));
 
 
-        for (size_t i = 0; i < akMeshlets.GetSize(); ++i)
+        for (size_t i = 0; i < meshop_meshlets.GetSize(); ++i)
         {
-            auto& meshlet = akMeshlets[i];
+            auto& meshlet = meshop_meshlets[i];
 
-            meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset],
-                &meshletTriangles[meshlet.triangle_offset],
-                meshlet.triangle_count, meshlet.vertex_count);
+            meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset], &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, meshlet.vertex_count);
 
-            /*auto dataOffset = m_clusterIndices.GetSize();
-            for(unsigned int i = 0; i < meshlet.vertex_count; ++i)
+            #if defined(BLIT_MESH_SHADERS)
+
+            size_t dataOffset = m_clusterIndices.GetSize();
+            for(uint32_t i = 0; i < meshlet.vertex_count; ++i)
             {
                 m_clusterIndices.PushBack(meshletVertices[meshlet.vertex_offset + i]);
             }
-            auto indexGroups = reinterpret_cast<unsigned int*>(
-                &meshletTriangles[0] + meshlet.triangle_offset);
-            unsigned int indexGroupCount = meshlet.triangle_count * 3;
-            for(unsigned int i = 0; i < indexGroupCount; ++i)
+            uint32_t indexGroups = reinterpret_cast<uint32_t*>(&meshletTriangles[0] + meshlet.triangle_offset);
+            uint32_t indexGroupCount = meshlet.triangle_count * 3;
+            for(uint32_t i = 0; i < indexGroupCount; ++i)
             {
                 m_clusterIndices.PushBack(indexGroups[size_t(i)]);
-            }*/
+            }
 
-            const unsigned int* vertexLookup = &meshletVertices[meshlet.vertex_offset];
-            const unsigned char* triangles = &meshletTriangles[meshlet.triangle_offset];
+            #else
+
             size_t dataOffset = context.m_clusterIndices.GetSize();
-            for (unsigned int t = 0; t < meshlet.triangle_count; ++t)
+
+            const uint32_t* vertexLookup = &meshletVertices[meshlet.vertex_offset];
+            const unsigned char* triangles = &meshletTriangles[meshlet.triangle_offset];
+            for (uint32_t t = 0; t < meshlet.triangle_count; ++t)
             {
                 // Each triangle has 3 indices into the local meshlet vertex array
-                for (int j = 0; j < 3; ++j)
+                for (uint32_t j = 0; j < 3; ++j)
                 {
-                    unsigned int localIndex = triangles[t * 3 + j];
-                    unsigned int globalIndex = vertexLookup[localIndex] + vertexOffset;
+                    uint32_t localIndex = triangles[t * 3 + j];
+                    uint32_t globalIndex = vertexLookup[localIndex] + vertexOffset;
 
                     context.m_clusterIndices.PushBack(globalIndex);
                 }
             }
 
-            auto bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset],
-                &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
+            #endif
+
+            auto bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, 
+                &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
 
             Cluster cluster{};
             cluster.dataOffset = uint32_t(dataOffset);
@@ -295,7 +298,7 @@ namespace BlitzenEngine
             context.m_clusters.PushBack(cluster);
         }
 
-        return akMeshlets.GetSize();
+        return meshop_meshlets.GetSize();
     }
 
     void GenerateBoundingSphere(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)

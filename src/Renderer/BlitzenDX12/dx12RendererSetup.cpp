@@ -778,7 +778,7 @@ namespace BlitzenDX12
 	static uint8_t CreateROResources(ID3D12Device* device, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, BlitzenEngine::DrawContext& context, ReadOnlyResources& roResources)
 	{
 		const auto& vertices{ context.m_meshes.m_hlslVtxs };
-		const auto& indices{ context.m_meshes.m_indices };
+		const auto& indices{ BlitzenCore::Ce_BuildClusters? context.m_meshes.m_clusterIndices : context.m_meshes.m_indices };
 		const auto& surfaces{ context.m_meshes.m_surfaces };
 		const auto& lods{ context.m_meshes.m_LODs};
 
