@@ -23,7 +23,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
             return;
         }
         
-        if (rwb_ClusterVisibility[dispatchThreadID.x + i] == 1)
+        if (rwb_ClusterVisibility[dispatchThreadID.x * 64 + i] == 1)
         {
             if(visible == 1)
             {

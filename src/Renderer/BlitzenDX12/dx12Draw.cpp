@@ -512,7 +512,6 @@ namespace BlitzenDX12
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullHI_Z_MapSrvRootID, descriptorContext.m_HI_Z_MapSRVHandle[frame]);
 
 		commandList->SetPipelineState(pipelineContext.m_clusterCullPso.Get());
-		commandList->SetComputeRoot32BitConstant(Ce_ClusterCullDrawCountRootID, context.m_meshes.m_hlslClusterCount, 0);
 
 		// CULL CLUSTERS
 		commandList->ExecuteIndirect(pipelineContext.m_clusterCullCmdSign.Get(), 1, rwResources.m_clusterDispatchBuffer.buffer.Get(), 0, nullptr, 0);
@@ -551,7 +550,6 @@ namespace BlitzenDX12
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullAdditionalViewsRootID, descriptorContext.m_clusterDispatchAdditionalUAVsHandle[frame]);
 
 		commandList->SetPipelineState(pipelineContext.m_clusterCullBatchPso.Get());
-		commandList->SetComputeRoot32BitConstant(Ce_ClusterCullDrawCountRootID, context.m_meshes.m_hlslClusterCount, 0);
 
 		// BATCH CLUSTERS
 		commandList->ExecuteIndirect(pipelineContext.m_clusterCullCmdSign.Get(), 1, rwResources.m_clusterDispatchBuffer.buffer.Get(), 0, nullptr, 0);

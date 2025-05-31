@@ -5,11 +5,6 @@
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
-cbuffer ClusterCount : register(b1)
-{
-    uint clusterCount;
-};
-
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
 {
@@ -17,12 +12,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
     uint clusterId = groupData.clusterOffset + groupThreadID.x;
     uint objId = groupData.objId;
-    
-    // Probaly unneccessary
-    if (clusterId >= clusterCount)
-    {
-        return;
-    }
     
     if (clusterId >= groupData.clusterCount)
     {
