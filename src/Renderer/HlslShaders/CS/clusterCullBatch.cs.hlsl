@@ -33,6 +33,8 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
             {
                 InterlockedAdd(rwb_DrawCmdCounter[0], 1, cmdId);
                 
+                ssbo_DrawCmd[cmdId].objId = groupData.objId;
+                
                 ssbo_DrawCmd[cmdId].indexCount = ssbo_Clusters[groupData.clusterOffset + i].idxCount;
                 ssbo_DrawCmd[cmdId].indexOffset = ssbo_Clusters[groupData.clusterOffset + i].idxOffset;
                 ssbo_DrawCmd[cmdId].vertOffset = 0;

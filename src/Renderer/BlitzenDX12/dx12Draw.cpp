@@ -539,7 +539,7 @@ namespace BlitzenDX12
 		D3D12_RESOURCE_BARRIER clusterBatchBarriers[5]{};
 		CreateResourcesTransitionBarrier(clusterBatchBarriers[0], rwResources.m_drawCmdBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		CreateResourceUAVBarrier(clusterBatchBarriers[1], rwResources.m_drawCmdCounterBuffer.buffer.Get());
-		CreateResourcesTransitionBarrier(clusterBatchBarriers[2], rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		CreateResourcesTransitionBarrier(clusterBatchBarriers[2], rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 		CreateResourceUAVBarrier(clusterBatchBarriers[3], rwResources.m_clusterVisibilityBuffer.buffer.Get());
 		CreateResourceUAVBarrier(clusterBatchBarriers[4], rwResources.m_clusterGroupDataBuffer.buffer.Get());
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(clusterBatchBarriers), clusterBatchBarriers);
