@@ -1,4 +1,5 @@
 #define CLUSTER_CULL
+#define HI_Z_MAP_OCCLUSION
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
@@ -31,6 +32,16 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
     
+    // Occlusion culling
+    if (visible)
+    {
+        float4 aabb = float4(0.f, 0.f, 0.f, 0.f);
+        if (ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
+        {
+            visible = OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear);
+        }
+    }
+    
     if (visible)
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
@@ -50,6 +61,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
             rwssbo_ClusterGroupData[dataId].objId = objId;
             rwssbo_ClusterGroupData[dataId].clusterOffset = clusterOffset + current * 64;
             rwssbo_ClusterGroupData[dataId].clusterCount = clusterCount + clusterOffset;
+            rwssbo_ClusterGroupData[dataId].visibleAny = 0;
             
             i -= 64;
             current++;

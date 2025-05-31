@@ -547,15 +547,21 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullCmdResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullCmdReset.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create clusterDispatchCmdReset.cs shader program");
+				return 0;
+			}
+
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullDispatchPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullDispatch.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create clusterCullDispatch.cs shader program");
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullCmdPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullCmd.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullCmdSetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullCmdSet.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create clusterCullCmd.cs shader program");
+				BLIT_ERROR("Failed to create clusterCullCmdSet.cs shader program");
 				return 0;
 			}
 
@@ -565,9 +571,15 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterDispatchCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterDispatchCountReset.cs.hlsl.bin"))
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullBatchCmdPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullBatchCmd.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create clusterDispatchCountReset.cs shader program");
+				BLIT_ERROR("Failed to create clusterCullBatchCmd.cs shader program");
+				return 0;
+			}
+
+			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullBatchPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullBatch.cs.hlsl.bin"))
+			{
+				BLIT_ERROR("Failed to create clusterCullBatch.cs shader program");
 				return 0;
 			}
 		}
@@ -675,7 +687,8 @@ namespace BlitzenDX12
 					return 0;
 				}
 
-				if (!CreateBuffer(device, rwResources.m_clusterDispatchCounterBuffer.buffer.ReleaseAndGetAddressOf(), sizeof(uint32_t), D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT,
+				if (!CreateBuffer(device, rwResources.m_clusterVisibilityBuffer.buffer.ReleaseAndGetAddressOf(), Ce_ClusterGroupDataBufferSize * 64 * sizeof(uint32_t), 
+					D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT,
 					D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 				{
 					BLIT_ERROR("Failed to create cluster dispatch counter buffer");
@@ -1082,7 +1095,7 @@ namespace BlitzenDX12
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchBuffer.buffer.Get(), nullptr, 1, sizeof(ClusterDispatchCmd), 0);
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterVisibilityBuffer.buffer.Get(), nullptr, 1, Ce_ClusterGroupDataBufferSize * 64 * sizeof(uint32_t), 0);
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterGroupDataBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize, sizeof(ClusterGroupData), 0);
 
@@ -1286,7 +1299,7 @@ namespace BlitzenDX12
 				rwBuffersFinal.PushBack(clusterDispatchBarrier);
 
 				D3D12_RESOURCE_BARRIER clusterDispatchCounterBarrier{};
-				CreateResourcesTransitionBarrier(clusterDispatchCounterBarrier, rwResources.m_clusterDispatchCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+				CreateResourcesTransitionBarrier(clusterDispatchCounterBarrier, rwResources.m_clusterVisibilityBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 				rwBuffersFinal.PushBack(clusterDispatchCounterBarrier);
 

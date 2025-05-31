@@ -445,29 +445,26 @@ namespace BlitzenDX12
 		commandList->SetDescriptorHeaps(1, srvHeaps);
 
 		// Unordered access counter
-		D3D12_RESOURCE_BARRIER dispatchResetBarrier[2]{};
-		CreateResourceUAVBarrier(dispatchResetBarrier[0], rwResources.m_clusterDispatchCounterBuffer.buffer.Get());
-		CreateResourcesTransitionBarrier(dispatchResetBarrier[1], rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(dispatchResetBarrier), dispatchResetBarrier);
+		D3D12_RESOURCE_BARRIER dispatchResetBarrier{};
+		CreateResourcesTransitionBarrier(dispatchResetBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		commandList->ResourceBarrier(1, &dispatchResetBarrier);
 
 		// Descriptors
 		commandList->SetComputeRootSignature(pipelineContext.m_clusterCullRoot.Get());
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullAdditionalViewsRootID, descriptorContext.m_clusterDispatchAdditionalUAVsHandle[frame]);
 
 		// Pipeline
-		commandList->SetPipelineState(pipelineContext.m_clusterDispatchCountResetPso.Get());
+		commandList->SetPipelineState(pipelineContext.m_clusterCullCmdResetPso.Get());
 
 		// DISPATCH COUNTER RESET
 		commandList->Dispatch(1, 1, 1);
 
 		// Blocks dispatch, waits for cluster dispatch counter reset and dispatch cmd read
-		D3D12_RESOURCE_BARRIER clusterDispatchBarriers[3]{};
+		D3D12_RESOURCE_BARRIER clusterDispatchBarriers[2]{};
 		// dispatch counter reset
-		CreateResourceUAVBarrier(clusterDispatchBarriers[0], rwResources.m_clusterDispatchCounterBuffer.buffer.Get());
+		CreateResourceUAVBarrier(clusterDispatchBarriers[0], rwResources.m_clusterDispatchBuffer.buffer.Get());
 		// dispatch group data read
 		CreateResourceUAVBarrier(clusterDispatchBarriers[1], rwResources.m_clusterGroupDataBuffer.buffer.Get());
-		// dispatch buffer reset
-		CreateResourceUAVBarrier(clusterDispatchBarriers[2], rwResources.m_clusterDispatchBuffer.buffer.Get());
 		// execute
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(clusterDispatchBarriers), clusterDispatchBarriers);
 
@@ -475,6 +472,7 @@ namespace BlitzenDX12
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullExclusiveSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullSharedSRVsRootID, descriptorContext.m_sharedViewHandle[frame]);
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullAdditionalViewsRootID, descriptorContext.m_clusterDispatchAdditionalUAVsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullHI_Z_MapSrvRootID, descriptorContext.m_HI_Z_MapSRVHandle[frame]);
 
 		// Pipelines and constants
 		commandList->SetPipelineState(pipelineContext.m_clusterCullDispatchPso.Get());
@@ -483,15 +481,9 @@ namespace BlitzenDX12
 		// CULL DRAWS
 		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(context.m_renders.m_renderCount, 64), 1, 1);
 
-		D3D12_RESOURCE_BARRIER clusterCmdBarrier{};
-		// dispatch cmd read
-		CreateResourceUAVBarrier(clusterCmdBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get());
-		commandList->ResourceBarrier(1, &clusterCmdBarrier);
-
+		// Sets y and z on cluster dispatch buffer (possibly unnecessary)
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullAdditionalViewsRootID, descriptorContext.m_clusterDispatchAdditionalUAVsHandle[frame]);
-		
-		commandList->SetPipelineState(pipelineContext.m_clusterCullCmdPso.Get());
-
+		commandList->SetPipelineState(pipelineContext.m_clusterCullCmdSetPso.Get());
 		commandList->Dispatch(1, 1, 1);
 	}
 
@@ -501,18 +493,14 @@ namespace BlitzenDX12
 		ID3D12DescriptorHeap* srvHeaps[]{ descriptorContext.m_viewHeap.Get() };
 		commandList->SetDescriptorHeaps(1, srvHeaps);
 
-		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], rwResources);
-
 		// Blocks culling, waits for cluster dispatch count write and cluster dispatch cmd write, draw cmd read and draw cmd count reset
-		D3D12_RESOURCE_BARRIER clusterCullBarriers[4]{};
+		D3D12_RESOURCE_BARRIER clusterCullBarriers[3]{};
 		// cluster dispatch count
 		CreateResourceUAVBarrier(clusterCullBarriers[0], rwResources.m_clusterGroupDataBuffer.buffer.Get());
 		// cluster dispatch cmd
 		CreateResourcesTransitionBarrier(clusterCullBarriers[1], rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		// draw cmd read
-		CreateResourcesTransitionBarrier(clusterCullBarriers[2], rwResources.m_drawCmdBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		// draw cmd count reset
-		CreateResourceUAVBarrier(clusterCullBarriers[3], rwResources.m_drawCmdCounterBuffer.buffer.Get());
+		CreateResourceUAVBarrier(clusterCullBarriers[2], rwResources.m_clusterVisibilityBuffer.buffer.Get());
 		// execute
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(clusterCullBarriers), clusterCullBarriers);
 
@@ -527,6 +515,45 @@ namespace BlitzenDX12
 		commandList->SetComputeRoot32BitConstant(Ce_ClusterCullDrawCountRootID, context.m_meshes.m_hlslClusterCount, 0);
 
 		// CULL CLUSTERS
+		commandList->ExecuteIndirect(pipelineContext.m_clusterCullCmdSign.Get(), 1, rwResources.m_clusterDispatchBuffer.buffer.Get(), 0, nullptr, 0);
+	}
+
+	static void ClusterBatch(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources,
+		BlitzenEngine::DrawContext& context, uint32_t frame)
+	{
+		ID3D12DescriptorHeap* srvHeaps[]{ descriptorContext.m_viewHeap.Get() };
+		commandList->SetDescriptorHeaps(1, srvHeaps);
+
+		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], rwResources);
+
+		D3D12_RESOURCE_BARRIER clusterBatchCmdBarrier{};
+		CreateResourcesTransitionBarrier(clusterBatchCmdBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		commandList->ResourceBarrier(1, &clusterBatchCmdBarrier);
+
+		commandList->SetComputeRootSignature(pipelineContext.m_clusterCullRoot.Get());
+		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullAdditionalViewsRootID, descriptorContext.m_clusterDispatchAdditionalUAVsHandle[frame]);
+
+		commandList->SetPipelineState(pipelineContext.m_clusterCullBatchCmdPso.Get());
+		commandList->Dispatch(1, 1, 1);
+
+		D3D12_RESOURCE_BARRIER clusterBatchBarriers[5]{};
+		CreateResourcesTransitionBarrier(clusterBatchBarriers[0], rwResources.m_drawCmdBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		CreateResourceUAVBarrier(clusterBatchBarriers[1], rwResources.m_drawCmdCounterBuffer.buffer.Get());
+		CreateResourcesTransitionBarrier(clusterBatchBarriers[2], rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		CreateResourceUAVBarrier(clusterBatchBarriers[3], rwResources.m_clusterVisibilityBuffer.buffer.Get());
+		CreateResourceUAVBarrier(clusterBatchBarriers[4], rwResources.m_clusterGroupDataBuffer.buffer.Get());
+		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(clusterBatchBarriers), clusterBatchBarriers);
+
+		// descriptors
+		commandList->SetComputeRootSignature(pipelineContext.m_clusterCullRoot.Get());
+		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullExclusiveSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullSharedSRVsRootID, descriptorContext.m_sharedViewHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullAdditionalViewsRootID, descriptorContext.m_clusterDispatchAdditionalUAVsHandle[frame]);
+
+		commandList->SetPipelineState(pipelineContext.m_clusterCullBatchPso.Get());
+		commandList->SetComputeRoot32BitConstant(Ce_ClusterCullDrawCountRootID, context.m_meshes.m_hlslClusterCount, 0);
+
+		// BATCH CLUSTERS
 		commandList->ExecuteIndirect(pipelineContext.m_clusterCullCmdSign.Get(), 1, rwResources.m_clusterDispatchBuffer.buffer.Get(), 0, nullptr, 0);
 
 		// Block graphics, should wait for command and count write
@@ -803,6 +830,8 @@ namespace BlitzenDX12
 			ClusterCullDispatch(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context, m_currentFrame);
 
 			ClusterCull(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context, m_currentFrame);
+
+			ClusterBatch(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context, m_currentFrame);
 
 			// Render target barrier
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};

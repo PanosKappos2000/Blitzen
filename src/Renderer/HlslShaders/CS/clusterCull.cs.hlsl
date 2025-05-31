@@ -18,6 +18,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     uint clusterId = groupData.clusterOffset + groupThreadID.x;
     uint objId = groupData.objId;
     
+    // Probaly unneccessary
     if (clusterId >= clusterCount)
     {
         return;
@@ -30,25 +31,30 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     
     Render render = ssbo_Renders[objId];
     Transform transform = ssbo_Transforms[render.transformId];
-    uint vertexCount = ssbo_Clusters[clusterId].vertexCount;
-    uint indexOffset = ssbo_Clusters[clusterId].clusterOffset;
+    Cluster cluster = ssbo_Clusters[clusterId];
     
-    bool visible = true;
+    float3 center = RotateQuat(cluster.center, transform.orientation) * transform.scale + transform.position;
+    center = mul(viewMatrix, float4(center, 1)).xyz;
+    float radius = cluster.radius * transform.scale;
+    
+    bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
+    
+    /*if (visible)
+    {
+        float4 aabb = float4(0.f, 0.f, 0.f, 0.f);
+        if(ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
+        {
+            visible = OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear);
+        }
+    }*/
     
     if(visible)
     {
-        uint cmdId;
-        InterlockedAdd(rwb_DrawCmdCounter[0], 1, cmdId);
-
-        ssbo_DrawCmd[cmdId].objId = objId;
-        
-        // Vertices
-        ssbo_DrawCmd[cmdId].indexCount = vertexCount;
-        ssbo_DrawCmd[cmdId].indexOffset = indexOffset;
-        ssbo_DrawCmd[cmdId].vertOffset = 0; // Already added to the index buffer
-
-        // Instances
-        ssbo_DrawCmd[cmdId].instCount = 1;
-        ssbo_DrawCmd[cmdId].insOffset = 0;
+        rwssbo_ClusterGroupData[dispatchGroupID.x].visibleAny = 1;
+        rwb_ClusterVisibility[dispatchThreadID.x] = 1;
+    }
+    else
+    {
+        rwb_ClusterVisibility[dispatchThreadID.x] = 0;
     }
 }

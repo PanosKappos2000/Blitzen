@@ -41,7 +41,7 @@ namespace BlitzenDX12
 
         SSBO m_clusterDispatchBuffer;
 
-        SSBO m_clusterDispatchCounterBuffer;
+        SSBO m_clusterVisibilityBuffer;
 
         SSBO m_clusterGroupDataBuffer;
 
@@ -186,20 +186,23 @@ namespace BlitzenDX12
 		// Uses draw occ late root
 		DX12WRAPPER<ID3D12PipelineState> m_drawOccTemporalPso;
 
-        // Cluster culling mode
+
+        // CLUSTER CULLING MODE
         DX12WRAPPER<ID3D12CommandSignature> m_clusterCullCmdSign;
         DX12WRAPPER<ID3D12RootSignature> m_clusterCullRoot;
 
-        // Resets cluster dispatch counter, used for cluster cull shader invocation
-        DX12WRAPPER<ID3D12PipelineState> m_clusterDispatchCountResetPso;
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdResetPso;
 
-        // Culling compute shader. Performs frustum culling and LOD selection. Create indirect compute commands for cluster culling
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullDispatchPso;
 
-        DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdPso;
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdSetPso;
 
-        // Culling compute shader. Performs frustum, backface and occlusion culling on Clusters. Creates draw commands for every visible cluster
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullPso;
+
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullBatchCmdPso;
+
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullBatchPso;
+
 
         // Draws triangle with hardcoded vertices in the shader (legacy shader)
         DX12WRAPPER<ID3D12RootSignature> m_triangleRoot;

@@ -10,15 +10,14 @@ struct ClusterDispatchCmd
 };
 RWStructuredBuffer<ClusterDispatchCmd> rwssbo_ClusterDispatch : register(u5);
 
-RWBuffer<uint> rwb_ClusterDispatchCounter : register(u6);
+RWStructuredBuffer<uint> rwb_ClusterVisibility : register(u6);
 
 struct ClusterGroupData
 {
     uint objId;
     uint clusterOffset;
     uint clusterCount;
-
-    uint padding0;
+    uint visibleAny;
 };
 RWStructuredBuffer<ClusterGroupData> rwssbo_ClusterGroupData : register(u7);
 
@@ -32,8 +31,8 @@ struct Cluster
     int coneAxisDataPack;
 
     // Used to setup draw commands
-    uint clusterOffset;
-    uint vertexCount;
+    uint idxOffset;
+    uint idxCount;
 
     uint padding0;
 };
