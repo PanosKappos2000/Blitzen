@@ -825,6 +825,9 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
+			GenerateHI_Z_MAP(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_currentFrame, swapchainIndex, m_pipelineContext, rwResources,
+				m_depthBuffers[swapchainIndex].Get(), m_swapchainWidth, m_swapchainHeight);
+
 			ClusterCullDispatch(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context, m_currentFrame);
 
 			ClusterCull(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context, m_currentFrame);
@@ -847,9 +850,6 @@ namespace BlitzenDX12
 
 			// Ends pass
 			cmdContext.m_graphicsCmdList->EndRenderPass();
-
-			GenerateHI_Z_MAP(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_currentFrame, swapchainIndex, m_pipelineContext, rwResources,
-				m_depthBuffers[swapchainIndex].Get(), m_swapchainWidth, m_swapchainHeight);
 		}
 
 		else if constexpr (CE_DX12TEMPORAL_OCCLUSION)

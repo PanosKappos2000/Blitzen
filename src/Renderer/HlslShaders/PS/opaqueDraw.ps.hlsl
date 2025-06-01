@@ -30,8 +30,17 @@ struct VSOutput
     float4 tangent : TANGENT;
 };
 
+//#define NO_PS_TEST
+
 PSOutput main(VSOutput input)
 {
+    #ifdef NO_PS_TEST
+    
+    PSOutput output;
+    output.color = float4(1, 0, 0, 1);
+    return output;
+    
+    #else
     PSOutput output;
     Material mat = ssbo_MaterialBuffer[input.materialId];
     
@@ -62,4 +71,6 @@ PSOutput main(VSOutput input)
 
     output.color = float4(albedoMap.rgb * sqrt(ndotl + 0.05) + emissiveMap, albedoMap.a);
     return output;
+    
+    #endif
 }

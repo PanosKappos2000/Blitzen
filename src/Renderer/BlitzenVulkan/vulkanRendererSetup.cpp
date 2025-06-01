@@ -227,23 +227,18 @@ namespace BlitzenVulkan
             depthPyramidBindings.Data(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
         if (depthPyramidSetLayout == VK_NULL_HANDLE)
         {
-            BLIT_ERROR("Failed to create depth pyramid descriptor set layout")
-                return 0;
+            BLIT_ERROR("Failed to create depth pyramid descriptor set layout");
+            return 0;
         }
 
         // Generate presentation image layout
         constexpr uint32_t Ce_PresentationGenerationBindingCount = 2;
-        BlitCL::StaticArray<VkDescriptorSetLayoutBinding, Ce_DepthPyramidGenerationBindingCount>
-            presentGenerationBindings{ {} };
-        CreateDescriptorSetLayoutBinding(presentGenerationBindings[0],
-            0, descriptorCountOfEachPushDescriptorLayoutBinding,
-            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-        CreateDescriptorSetLayoutBinding(presentGenerationBindings[1],
-            colorAttachment.m_descriptorBinding, descriptorCountOfEachPushDescriptorLayoutBinding,
+        BlitCL::StaticArray<VkDescriptorSetLayoutBinding, Ce_DepthPyramidGenerationBindingCount>presentGenerationBindings{ {} };
+        CreateDescriptorSetLayoutBinding(presentGenerationBindings[0], 0, descriptorCountOfEachPushDescriptorLayoutBinding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(presentGenerationBindings[1], colorAttachment.m_descriptorBinding, descriptorCountOfEachPushDescriptorLayoutBinding,
             colorAttachment.m_descriptorType, VK_SHADER_STAGE_COMPUTE_BIT);
-        presentationSetLayout = CreateDescriptorSetLayout(device,
-            Ce_PresentationGenerationBindingCount, presentGenerationBindings.Data(),
-            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+
+        presentationSetLayout = CreateDescriptorSetLayout(device, Ce_PresentationGenerationBindingCount, presentGenerationBindings.Data(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
         if (presentationSetLayout == VK_NULL_HANDLE)
         {
             BLIT_ERROR("Failed to create present image generation layout");
@@ -254,8 +249,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    static uint8_t VarBuffersInit(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue,
-        BlitzenEngine::DrawContext& context, VulkanRenderer::VarBuffers* varBuffers)
+    static uint8_t VarBuffersInit(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue, BlitzenEngine::DrawContext& context, VulkanRenderer::VarBuffers* varBuffers)
     {
         const auto& transforms{ context.m_renders.m_transforms };
         size_t transformDynamicDataSize{ context.m_renders.m_dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform)};
@@ -512,8 +506,7 @@ namespace BlitzenVulkan
         // Visibility buffer, for occlusion culling mechanics
         auto visibilityBufferSize
         {
-            SetupPushDescriptorBuffer<uint32_t>(vma, VMA_MEMORY_USAGE_GPU_ONLY, staticBuffers.visibilityBuffer, renderObjectCount,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+            SetupPushDescriptorBuffer<uint32_t>(vma, VMA_MEMORY_USAGE_GPU_ONLY, staticBuffers.visibilityBuffer, renderObjectCount, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
         };
         if (visibilityBufferSize == 0)
         {
@@ -705,23 +698,16 @@ namespace BlitzenVulkan
         }
     }
 
-    static uint8_t CreatePipelineLayouts(VkDevice device, VkDescriptorSetLayout bufferPushDescriptorLayout,
-        VkDescriptorSetLayout textureSetLayout, VkPipelineLayout* mainGraphicsLayout, VkPipelineLayout* drawCullLayout,
-        VkDescriptorSetLayout depthPyramidSetLayout, VkPipelineLayout* depthPyramidGenerationLayout,
-        VkPipelineLayout* onpcGeometryLayout, VkDescriptorSetLayout presentationSetLayout,
-        VkPipelineLayout* generatePresentationLayout, VkPipelineLayout* clusterCullLayout)
+    static uint8_t CreatePipelineLayouts(VkDevice device, PipelineContext& context, VkDescriptorSetLayout bufferPushDescriptorLayout,
+        VkDescriptorSetLayout textureSetLayout, VkDescriptorSetLayout depthPyramidSetLayout, VkDescriptorSetLayout presentationSetLayout)
     {
 
         // Grapchics pipeline layout
-        VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] =
-        {
-            bufferPushDescriptorLayout,
-            textureSetLayout
-        };
+        VkDescriptorSetLayout defaultGraphicsPipelinesDescriptorSetLayouts[2] = { bufferPushDescriptorLayout, textureSetLayout };
         VkPushConstantRange globalShaderDataPushContant{};
         CreatePushConstantRange(globalShaderDataPushContant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(GlobalShaderDataPushConstant));
-        if (!CreatePipelineLayout(device, mainGraphicsLayout, BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts),
-            defaultGraphicsPipelinesDescriptorSetLayouts, Ce_SinglePointer, &globalShaderDataPushContant))
+        if (!CreatePipelineLayout(device, &context.m_opaqueDrawLayout.handle, BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts),
+            defaultGraphicsPipelinesDescriptorSetLayouts, 1, &globalShaderDataPushContant))
         {
             BLIT_ERROR("Failed to create main graphics pipeline layout");
             return 0;
@@ -729,39 +715,38 @@ namespace BlitzenVulkan
 
         // Culling shader shared layout (slight differences are not enough to create permutations
         VkPushConstantRange cullShaderPushConstant{};
-        CreatePushConstantRange(cullShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT,
-            sizeof(DrawCullShaderPushConstant));
-        if (!CreatePipelineLayout(device, drawCullLayout, Ce_SinglePointer, &bufferPushDescriptorLayout,
-            Ce_SinglePointer, &cullShaderPushConstant))
+        CreatePushConstantRange(cullShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
+        if (!CreatePipelineLayout(device, &context.m_drawCullLayout.handle, Ce_SinglePointer, &bufferPushDescriptorLayout, 1, &cullShaderPushConstant))
         {
             BLIT_ERROR("Failed to create culling pipeline layout");
             return 0;
         }
 
         VkPushConstantRange clusterCullPushConstant{};
-        CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ClusterCullShaderPushConstant));
-        if (!CreatePipelineLayout(device, clusterCullLayout, Ce_SinglePointer, &bufferPushDescriptorLayout,
-            Ce_SinglePointer, &clusterCullPushConstant))
+        if (BlitzenCore::Ce_BuildClusters)
         {
-            BLIT_ERROR("Failed to create culling pipeline layout");
-            return 0;
+            CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ClusterCullShaderPushConstant));
+            if (!CreatePipelineLayout(device, &context.m_clusterCullLayout.handle, Ce_SinglePointer, &bufferPushDescriptorLayout, 1, &clusterCullPushConstant))
+            {
+                BLIT_ERROR("Failed to create culling pipeline layout");
+                return 0;
+            }
         }
 
         // Layout for depth pyramid generation pipeline
         VkPushConstantRange depthPyramidMipExtentPushConstant{};
         CreatePushConstantRange(depthPyramidMipExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
-        if (!CreatePipelineLayout(device, depthPyramidGenerationLayout, Ce_SinglePointer, &depthPyramidSetLayout,
-            Ce_SinglePointer, &depthPyramidMipExtentPushConstant))
+        if (!CreatePipelineLayout(device, &context.m_hiZLayout.handle, 1, &depthPyramidSetLayout, 1, &depthPyramidMipExtentPushConstant))
         {
-            BLIT_ERROR("Failed to create depth pyramid generation pipeline layout")
-                return 0;
+            BLIT_ERROR("Failed to create depth pyramid generation pipeline layout");
+            return 0;
         }
 
         // I need to remove this one
         VkPushConstantRange onpcMatrixPushConstant{};
         CreatePushConstantRange(onpcMatrixPushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(BlitML::mat4));
-        if (!CreatePipelineLayout(device, onpcGeometryLayout, BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts), defaultGraphicsPipelinesDescriptorSetLayouts,
-            Ce_SinglePointer, &onpcMatrixPushConstant))
+        if (!CreatePipelineLayout(device, &context.m_onpcLayout.handle, BLIT_ARRAY_SIZE(defaultGraphicsPipelinesDescriptorSetLayouts), defaultGraphicsPipelinesDescriptorSetLayouts, 
+            1, &onpcMatrixPushConstant))
         {
             BLIT_ERROR("Failed to create onpc graphics pipeline");
             return 0;
@@ -770,7 +755,7 @@ namespace BlitzenVulkan
         // Generate present image compute shader layout
         VkPushConstantRange colorAttachmentExtentPushConstant{};
         CreatePushConstantRange(colorAttachmentExtentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
-        if (!CreatePipelineLayout(device, generatePresentationLayout, Ce_SinglePointer, &presentationSetLayout, Ce_SinglePointer, &colorAttachmentExtentPushConstant))
+        if (!CreatePipelineLayout(device, &context.m_presentLayout.handle, Ce_SinglePointer, &presentationSetLayout, 1, &colorAttachmentExtentPushConstant))
         {
             BLIT_ERROR("Failed to create presentation generation pipeline layout");
             return 0;
@@ -780,8 +765,8 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    static uint8_t AllocateTextureDescriptorSet(VkDevice device, uint32_t textureCount, TextureData* pTextures,
-        VkDescriptorPool& descriptorPool, VkDescriptorSetLayout* pLayout, VkDescriptorSet& descriptorSet)
+    static uint8_t AllocateTextureDescriptorSet(VkDevice device, uint32_t textureCount, TextureData* pTextures, VkDescriptorPool& descriptorPool, VkDescriptorSetLayout* pLayout, 
+        VkDescriptorSet& descriptorSet)
     {
         if (textureCount == 0)
         {
@@ -827,27 +812,22 @@ namespace BlitzenVulkan
     {
         BLIT_ASSERT(m_stats.bResourceManagementReady);
 
-        if (!RenderingAttachmentsInit(m_device, m_allocator, m_colorAttachment, m_colorAttachmentInfo, 
-            m_depthAttachment, m_depthAttachmentInfo, m_depthPyramid, m_depthPyramidMipLevels, m_depthPyramidMips, 
+        if (!RenderingAttachmentsInit(m_device, m_allocator, m_colorAttachment, m_colorAttachmentInfo, m_depthAttachment, m_depthAttachmentInfo, m_depthPyramid, m_depthPyramidMipLevels, m_depthPyramidMips, 
             m_drawExtent, m_depthPyramidExtent))
         {
             BLIT_ERROR("Failed to create rendering attachments");
             return 0;
         }
 
-        if(!CreateDescriptorLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_varBuffers[0], m_staticBuffers, 
-            m_stats.bRayTracingSupported, m_stats.meshShaderSupport, (uint32_t)textureCount, m_textureDescriptorSetlayout.handle, 
-            m_depthAttachment, m_depthPyramid, m_depthPyramidDescriptorLayout.handle, m_colorAttachment, 
+        if(!CreateDescriptorLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_varBuffers[0], m_staticBuffers, m_stats.bRayTracingSupported, m_stats.meshShaderSupport, 
+            (uint32_t)textureCount, m_textureDescriptorSetlayout.handle, m_depthAttachment, m_depthPyramid, m_depthPyramidDescriptorLayout.handle, m_colorAttachment, 
             m_generatePresentationImageSetLayout.handle))
         {
             BLIT_ERROR("Failed to create descriptor set layouts");
             return 0;
         }
 
-        if (!CreatePipelineLayouts(m_device, m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle, 
-            &m_graphicsPipelineLayout.handle, &m_drawCullLayout.handle, m_depthPyramidDescriptorLayout.handle, 
-            &m_depthPyramidGenerationLayout.handle, &m_onpcReflectiveGeometryLayout.handle, 
-            m_generatePresentationImageSetLayout.handle, &m_generatePresentationLayout.handle, &m_clusterCullLayout.handle))
+        if (!CreatePipelineLayouts(m_device, m_pipelines, m_pushDescriptorBufferLayout.handle, m_textureDescriptorSetlayout.handle, m_depthPyramidDescriptorLayout.handle, m_generatePresentationImageSetLayout.handle))
         {
             BLIT_ERROR("Failed to create pipeline layouts");
             return 0;
@@ -874,26 +854,14 @@ namespace BlitzenVulkan
 
         SetupGpuBufferDescriptorWriteArrays(m_staticBuffers, m_varBuffers[0], m_graphicsDescriptors, m_drawCullDescriptors);
 
-        if (!CreateComputeShaders(m_device, &m_initialDrawCullPipeline.handle, &m_lateDrawCullPipeline.handle, 
-            &m_onpcDrawCullPipeline.handle, &m_transparentDrawCullPipeline.handle, m_drawCullLayout.handle, 
-            &m_depthPyramidGenerationPipeline.handle, m_depthPyramidGenerationLayout.handle, 
-            &m_generatePresentationPipeline.handle, m_generatePresentationLayout.handle))
+        if (!CreateComputeShaders(m_device, m_pipelines))
         {
             BLIT_ERROR("Failed to create compute shaders");
             return 0;
         }
-
-        if (BlitzenCore::Ce_BuildClusters && !CreateClusterComputePipelines(m_device, &m_preClusterCullPipeline.handle, 
-            &m_intialClusterCullPipeline.handle, &m_transparentClusterCullPipeline.handle, m_clusterCullLayout.handle))
-        {
-            BLIT_ERROR("Failed to create cluster shaders");
-            return 0;
-        }
         
         // Create the graphics pipeline object 
-        if(!CreateGraphicsPipelines(m_device, m_stats.meshShaderSupport, &m_opaqueGeometryPipeline.handle,
-            &m_postPassGeometryPipeline.handle, m_graphicsPipelineLayout.handle, 
-            &m_onpcReflectiveGeometryPipeline.handle, m_onpcReflectiveGeometryLayout.handle))
+        if(!CreateGraphicsPipelines(m_device, m_stats.meshShaderSupport, m_pipelines))
         {
             BLIT_ERROR("Failed to create the primary graphics pipeline object");
             return 0;

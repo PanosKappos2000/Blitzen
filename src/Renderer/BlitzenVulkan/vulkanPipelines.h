@@ -3,18 +3,12 @@
 
 namespace BlitzenVulkan
 {
-    void GetDefaultPipelineInfo(VkGraphicsPipelineCreateInfo& pipelineInfo,
-        VkPipelineRenderingCreateInfo& dynamicRenderingInfo, VkFormat* pFormat,
-        VkPipelineInputAssemblyStateCreateInfo& inputAssembly,
-        VkPipelineViewportStateCreateInfo& viewport,
-        VkPipelineDynamicStateCreateInfo& dynamicState,
-        VkPipelineRasterizationStateCreateInfo& rasterization,
-        VkPipelineMultisampleStateCreateInfo& multisampling,
-        VkPipelineDepthStencilStateCreateInfo& depthState,
-        VkPipelineColorBlendAttachmentState& colorBlendAttachment,
-        VkPipelineColorBlendStateCreateInfo& colorBlendState,
-        VkPipelineVertexInputStateCreateInfo& vertexInput, 
-        VkDynamicState* pDynamicStates);
+    void GetDefaultPipelineInfo(VkGraphicsPipelineCreateInfo& pipelineInfo, VkPipelineRenderingCreateInfo& dynamicRenderingInfo, VkFormat* pFormat,
+        VkPipelineInputAssemblyStateCreateInfo& inputAssembly, VkPipelineViewportStateCreateInfo& viewport,
+        VkPipelineDynamicStateCreateInfo& dynamicState, VkPipelineRasterizationStateCreateInfo& rasterization,
+        VkPipelineMultisampleStateCreateInfo& multisampling, VkPipelineDepthStencilStateCreateInfo& depthState,
+        VkPipelineColorBlendAttachmentState& colorBlendAttachment, VkPipelineColorBlendStateCreateInfo& colorBlendState,
+        VkPipelineVertexInputStateCreateInfo& vertexInput, VkDynamicState* pDynamicStates);
 
     // Creates a shader stage with a given module handle and a filepath to a shader
     uint8_t CreateShaderProgram(const VkDevice& device, const char* filepath, VkShaderStageFlagBits shaderStage, const char* entryPointName, 
@@ -66,22 +60,14 @@ namespace BlitzenVulkan
         VkDescriptorSetLayoutCreateFlags flags = 0, void* pNextChain = nullptr);
 
     //Helper function for pipeline layout creation, takes care of a single push constant creation
-    void CreatePushConstantRange(VkPushConstantRange& pushConstant, VkShaderStageFlags shaderStage, 
-        uint32_t size, uint32_t offset = 0);
+    void CreatePushConstantRange(VkPushConstantRange& pushConstant, VkShaderStageFlags shaderStage, uint32_t size, uint32_t offset = 0);
 
     // Creates main compute shaders. Implemented in vulkanPipeline.cpp
-    uint8_t CreateComputeShaders(VkDevice device, VkPipeline* cullingPipeline, VkPipeline* lateCullingPipeline,
-        VkPipeline* onpcCullPipeline, VkPipeline* transparentCullShaderPipeline, VkPipelineLayout mainCullingShaderLayout,
-        VkPipeline* depthPyramidGenerationPipeline, VkPipelineLayout depthPyramidGenerationLayout,
-        VkPipeline* presentImageGenerationPipeline, VkPipelineLayout presentImageGenerationPipelineLayout);
-
-    uint8_t CreateClusterComputePipelines(VkDevice device, VkPipeline* preClusterPipeline, VkPipeline* initialCullingPipeline,
-        VkPipeline* lateCullingPipeline, VkPipelineLayout mainCullingShaderLayout);
+    uint8_t CreateComputeShaders(VkDevice device, PipelineContext& context);
 
     // Creates most of the graphics pipelines. I need to refactor this
-    uint8_t CreateGraphicsPipelines(VkDevice device, uint8_t bMeshShaders, VkPipeline* mainGraphicsPipeline, VkPipeline* postPassGraphicsPipeline, 
-        VkPipelineLayout mainGraphicsPipelineLayout, VkPipeline* onpcPipeline, VkPipelineLayout onpcPipelineLayout);
+    uint8_t CreateGraphicsPipelines(VkDevice device, uint8_t bMeshShaders, PipelineContext& context);
 
     // Creates loading triangle pipeline
-    uint8_t CreateLoadingTrianglePipeline(VkDevice device, VkPipeline& pipeline, VkPipelineLayout& layout);
+    uint8_t CreateLoadingTrianglePipeline(VkDevice device, PipelineContext& pipelineContext);
 }

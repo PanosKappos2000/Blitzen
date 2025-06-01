@@ -1,5 +1,5 @@
 #pragma once
-#include "vulkanData.h"
+#include "vulkanContext.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
 #include "Game/blitCamera.h"
 #include "Game/blitObject.h"
@@ -12,9 +12,12 @@ namespace BlitzenVulkan
 
     public:
 
-        VulkanRenderer();
-        ~VulkanRenderer();
+        VulkanRenderer() = default;
         VulkanRenderer operator = (const VulkanRenderer& vk) = delete;
+        VulkanRenderer(const VulkanRenderer& vk) = delete;
+
+        ~VulkanRenderer();
+        
 
         // Initalizes the Vulkan API.
         uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle);
@@ -225,54 +228,8 @@ namespace BlitzenVulkan
         // Descriptor set layout for src and dst image for the generate presentation compute shader
         DescriptorSetLayout m_generatePresentationImageSetLayout;
 
-        /*
-            Pipelines section
-        */
-    private:
-
-        // Main graphics pipeline. Draws opaque objects that have no special properties
-        PipelineObject m_opaqueGeometryPipeline;
-        PipelineObject m_postPassGeometryPipeline;
-        PipelineLayout m_graphicsPipelineLayout;
-
-        // Draws objects that use the near plane clipping matrix.
-        PipelineObject m_onpcReflectiveGeometryPipeline;
-        PipelineLayout m_onpcReflectiveGeometryLayout;
-
-        // Oblique Near place clipping culling pipeline. Might not be necessary
-        PipelineObject m_onpcDrawCullPipeline;
-
-        // Draws a triangle. Used while resources are being loaded, so that the screen in not white. Temporary
-        PipelineObject m_loadingTrianglePipeline;
-        PipelineLayout m_loadingTriangleLayout;
-        BlitML::vec3 m_loadingTriangleVertexColor;
-
-        // Culling shaders. Initial does furstum culling and LOD selection
-        // Late culling exists to add occlusion culling
-        PipelineObject m_initialDrawCullPipeline;
-        PipelineObject m_lateDrawCullPipeline;
-        PipelineObject m_transparentDrawCullPipeline;
-        PipelineLayout m_drawCullLayout;
-
-        // Culling shader for clusters (no mesh shaders)
-        PipelineObject m_preClusterCullPipeline;
-        PipelineObject m_intialClusterCullPipeline;
-        PipelineObject m_transparentClusterCullPipeline;
-        PipelineLayout m_clusterCullLayout;
-
-        // The depth pyramid generation pipeline will hold a helper compute shader for the late culling pipeline.
-        // It will generate the depth pyramid from the 1st pass' depth buffer. It will then be used for occlusion culling 
-        PipelineObject m_depthPyramidGenerationPipeline;
-        PipelineLayout m_depthPyramidGenerationLayout;
-
-        // Used when draw count is 0 to generate a default background (might use it with normal drawing as well in the future)
-        PipelineObject m_basicBackgroundPipeline;
-        PipelineLayout m_basicBackgroundLayout;
-
-        // Copies the color attachment to the current swapchain image. Used at the end of the DrawFrame function
-        PipelineObject m_generatePresentationPipeline;
-        PipelineLayout m_generatePresentationLayout;
-
+        PipelineContext m_pipelines;
+        
         /*
             Runtime section
         */
@@ -303,15 +260,11 @@ namespace BlitzenVulkan
         VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
 
     // Initalizes structure needed to call the DrawWhileWaiting function
-    uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline,
-        VkPipelineLayout& layout, VkDescriptorSetLayout& setLayout,
-        uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
+    uint8_t CreateIdleDrawHandles(VkDevice device, PipelineContext& context, VkDescriptorSetLayout& setLayout, uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
 
+    uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue, BlitzenEngine::DrawContext& context, 
+        VulkanRenderer::StaticBuffers& staticBuffers);
 
-
-    uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
-        BlitzenEngine::DrawContext& context, VulkanRenderer::StaticBuffers& staticBuffers);
-
-    uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
-        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::DrawContext& context);
+    uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue, VulkanRenderer::StaticBuffers& staticBuffers, 
+        BlitzenEngine::DrawContext& context);
 }

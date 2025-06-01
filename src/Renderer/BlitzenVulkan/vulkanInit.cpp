@@ -7,14 +7,6 @@
 
 namespace BlitzenVulkan
 {
-    VulkanRenderer::VulkanRenderer() :
-        m_pCustomAllocator{ nullptr }, m_debugMessenger{ VK_NULL_HANDLE },
-        m_currentFrame{ 0 }, m_loadingTriangleVertexColor{ 0.1f, 0.8f, 0.3f },
-        m_depthPyramidMipLevels{ 0 }, textureCount{ 0 }
-    {
-
-    }
-
     static void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
         const char* engineName, uint32_t engineVersion, uint32_t apiVersion = VK_API_VERSION_1_3)
     {
@@ -965,6 +957,7 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to initialize Vulkan resource management");
             return 0;
         }
+
         auto pMemory{ InitMemoryCrucialHandles(&m_memoryCrucials) };
         if (!pMemory)
         {
@@ -972,15 +965,13 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        
-		if (!CreateIdleDrawHandles(m_device, m_basicBackgroundPipeline.handle, m_basicBackgroundLayout.handle, m_backgroundImageSetLayout.handle, 
-            m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
+		if (!CreateIdleDrawHandles(m_device, m_pipelines, m_backgroundImageSetLayout.handle, m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
 		{
             BLIT_ERROR("Failed to create idle draw handles");
 		    return 0;
 		}
 
-        if (!CreateLoadingTrianglePipeline(m_device, m_loadingTrianglePipeline.handle, m_loadingTriangleLayout.handle))
+        if (!CreateLoadingTrianglePipeline(m_device, m_pipelines))
         {
             BLIT_ERROR("Failed to create loading triangle pipeline");
             return 0;
@@ -1095,11 +1086,9 @@ namespace BlitzenVulkan
         VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
         VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
 
-        newSwapchain.swapchainExtent.width =
-            BlitML::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
+        newSwapchain.swapchainExtent.width = BlitML::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
 
-        newSwapchain.swapchainExtent.height =
-            BlitML::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
+        newSwapchain.swapchainExtent.height = BlitML::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
 
         // Swapchain extent fully checked and ready to pass to the swapchain info struct
         info.imageExtent = newSwapchain.swapchainExtent;
@@ -1226,7 +1215,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateIdleDrawHandles(VkDevice device, VkPipeline& pipeline, VkPipelineLayout& layout, VkDescriptorSetLayout& setLayout, 
+    uint8_t CreateIdleDrawHandles(VkDevice device, PipelineContext& pipelineContext, VkDescriptorSetLayout& setLayout, 
         uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer)
     {
         VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
@@ -1241,17 +1230,17 @@ namespace BlitzenVulkan
         // Creates the layout for the background compute shader
         VkPushConstantRange backgroundImageShaderPushConstant{};
         CreatePushConstantRange(backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BackgroundShaderPushConstant));
-        if (!CreatePipelineLayout(device, &layout, Ce_SinglePointer, &setLayout, Ce_SinglePointer, &backgroundImageShaderPushConstant))
+        if (!CreatePipelineLayout(device, &pipelineContext.m_backgroundLayout.handle, 1, &setLayout, 1, &backgroundImageShaderPushConstant))
         {
             BLIT_ERROR("Failed to create background image pipeline layout");
             return 0;
         }
 
         // Create the background shader in case the renderer has not objects
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/BasicBackground.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", layout, &pipeline))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/background.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", pipelineContext.m_backgroundLayout.handle, 
+            &pipelineContext.m_backgroundPso.handle))
         {
-            BLIT_ERROR("Failed to create BasicBackground.comp shader program");
+            BLIT_ERROR("Failed to create background.comp shader program");
             return 0;
         }
 

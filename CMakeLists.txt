@@ -86,6 +86,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/Resources/Scene/blitzenScene.cpp"
                 # VULKAN
                 "src/Renderer/BlitzenVulkan/vulkanData.h"
+                "src/Renderer/BlitzenVulkan/vulkanContext.h"
                 "src/Renderer/BlitzenVulkan/vulkanRenderer.h"
                 "src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h"
                 "src/Renderer/BlitzenVulkan/vulkanCommands.h"
@@ -130,16 +131,15 @@ add_executable(BlitzenEngine
                 "src/VendorCode/objparser.cpp"
                 "src/VendorCode/Meshoptimizer/indexgenerator.cpp"
                 "src/VendorCode/Meshoptimizer/quantization.cpp"
-                src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp
-                src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp
-                src/VendorCode/Meshoptimizer/clusterizer.cpp
-                src/VendorCode/Meshoptimizer/simplifier.cpp
-                src/VendorCode/Cgltf/cgltf.h
+                "src/VendorCode/Meshoptimizer/vcacheoptimizer.cpp"
+                "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
+                "src/VendorCode/Meshoptimizer/clusterizer.cpp"
+                "src/VendorCode/Meshoptimizer/simplifier.cpp"
+                "src/VendorCode/Cgltf/cgltf.h"
 )
 
 # INCLUDES
-target_include_directories(
-    BlitzenEngine PUBLIC
+target_include_directories(BlitzenEngine PUBLIC
             "${PROJECT_SOURCE_DIR}/src"
             "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
             "${PROJECT_SOURCE_DIR}/ExternalDependencies"
@@ -153,9 +153,9 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
                             BLIT_GDEV_EDT # Activates standard main
                             BLIT_ASSERTIONS_ENABLED
-                            #BLIT_CONSOLE_LOGGER
+                            BLIT_CONSOLE_LOGGER
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
@@ -175,7 +175,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
                             DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
-                            DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
+                            #DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
 
 # LINKER

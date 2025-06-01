@@ -278,6 +278,8 @@ namespace BlitzenDX12
 // OCCLUSION MODES
 #if defined(BLITZEN_CLUSTER_CULLING) || defined(DX12_TEMPORAL_DRAW_OCCLUSION) || defined(DX12_OCCLUSION_DRAW_CULL)
     constexpr uint8_t CE_DX12_BUILD_HI_Z_MAP = 1;
+#else
+    constexpr uint8_t CE_DX12_BUILD_HI_Z_MAP = 0;
 #endif
 
 #if defined(DX12_TEMPORAL_DRAW_OCCLUSION)
@@ -299,8 +301,8 @@ namespace BlitzenDX12
         uint8_t bResourceManagement = 0;
     };
 
-    template<typename HANDLE>
-	using DX12WRAPPER = Microsoft::WRL::ComPtr<HANDLE>;
+    template<class DX12TYPE>
+	using DX12WRAPPER = Microsoft::WRL::ComPtr<DX12TYPE>;
 
     template<typename DATA>
     struct CBUFFER

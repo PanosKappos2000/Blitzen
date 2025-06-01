@@ -322,93 +322,70 @@ namespace BlitzenVulkan
     }
 
 
-    uint8_t CreateClusterComputePipelines(VkDevice device, VkPipeline* preClusterPipeline, VkPipeline* initialCullingPipeline,
-        VkPipeline* transparentClusterCullPipeline, VkPipelineLayout mainCullingShaderLayout)
-    {
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/PreClusterDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, preClusterPipeline))
-        {
-            BLIT_ERROR("Failed to create PreClusterDrawCull.comp shader program");
-            return 0;
-        }
-
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/InitialClusterCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, initialCullingPipeline))
-        {
-            BLIT_ERROR("Failed to create InitialClusterCull.comp shader program");
-            return 0;
-        }
-
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/TransparentClusterCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, transparentClusterCullPipeline))
-        {
-			BLIT_ERROR("Failed to create transparentClusterCull.comp shader program");
-            return 0;
-        }
-
-		// Success
-        return 1;
-    }
-
-
-    uint8_t CreateComputeShaders(VkDevice device, VkPipeline* cullingPipeline, VkPipeline* lateCullingPipeline, 
-        VkPipeline* onpcCullPipeline, VkPipeline* transparentCullShaderPipeline, VkPipelineLayout mainCullingShaderLayout, 
-        VkPipeline* depthPyramidGenerationPipeline, VkPipelineLayout depthPyramidGenerationLayout, 
-        VkPipeline* presentImageGenerationPipeline, VkPipelineLayout presentImageGenerationPipelineLayout)
+    uint8_t CreateComputeShaders(VkDevice device, PipelineContext& context)
     {
 
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/InitialDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, cullingPipeline))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/drawCullFirst.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_drawCullFirstPso.handle))
         {
-            BLIT_ERROR("Failed to create InitialDrawCull.comp shader program");
+            BLIT_ERROR("Failed to create drawCullFirst.comp shader program");
             return 0;
         }
 
         // Late culling shader compute pipeline
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/LateDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, lateCullingPipeline))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/drawCullLate.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_drawCullLatePso.handle))
         {
-            BLIT_ERROR("Failed to create LateDrawCull.comp shader program");
+            BLIT_ERROR("Failed to create drawCullLate.comp shader program");
             return 0;
         }
 
         // Generate depth pyramid compute shader
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/DepthPyramidGeneration.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", depthPyramidGenerationLayout, depthPyramidGenerationPipeline))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/hi_z_map.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_hiZLayout.handle, &context.m_hiZPso.handle))
         {
-            BLIT_ERROR("Failed to create DepthPyramidGeneration.comp shader program");
+            BLIT_ERROR("Failed to create hi_z_map.comp shader program");
             return 0;
         }
 
         // Redundant shader
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/OnpcDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, onpcCullPipeline))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/onpcCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_onpcCull.handle))
         {
-            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program");
+            BLIT_ERROR("Failed to create onpcCull.comp shader program");
             return 0;
         }
 
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/TransparentDrawCull.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", mainCullingShaderLayout, transparentCullShaderPipeline))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/transCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_transDrawCullPso.handle))
         {
-            BLIT_ERROR("Failed to create OnpcDrawCull.comp shader program");
+            BLIT_ERROR("Failed to create transCull.comp shader program");
             return 0;
         }
 
         // Creates the generate presentation image compute shader program
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/GeneratePresentation.comp.glsl.spv",
-            VK_SHADER_STAGE_COMPUTE_BIT, "main", presentImageGenerationPipelineLayout, presentImageGenerationPipeline))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/present.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_presentLayout.handle, &context.m_presentPso.handle))
         {
-            BLIT_ERROR("Failed to create GeneratePresentation.comp shader program");
+            BLIT_ERROR("Failed to create present.comp shader program");
             return 0;
+        }
+
+        if (BlitzenCore::Ce_BuildClusters)
+        {
+            if (!CreateComputeShaderProgram(device, "VulkanShaders/clusterCullDispatch.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_clusterCullLayout.handle,
+                &context.m_clusterCullDispatchPso.handle))
+            {
+                BLIT_ERROR("Failed to create clusterCullDispatch.comp shader program");
+                return 0;
+            }
+
+            if (!CreateComputeShaderProgram(device, "VulkanShaders/clusterCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_clusterCullLayout.handle, &context.m_clusterCullPso.handle))
+            {
+                BLIT_ERROR("Failed to create clusterCull.comp shader program");
+                return 0;
+            }
         }
 
         // Success
         return 1;
     }
 
-    static uint8_t CreateGraphicsPipelineWithShader(VkDevice device, VkPipelineLayout layout, VkPipeline* pPipeline, 
-        uint32_t shaderStageCount, VkPipelineShaderStageCreateInfo* pShaderStages)
+    static uint8_t CreateGraphicsPipelineWithShader(VkDevice device, VkPipelineLayout layout, VkPipeline* pPipeline, uint32_t shaderStageCount, VkPipelineShaderStageCreateInfo* pShaderStages)
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
@@ -423,15 +400,15 @@ namespace BlitzenVulkan
         VkPipelineColorBlendStateCreateInfo colorBlendState{};
         VkPipelineVertexInputStateCreateInfo vertexInput{};
         VkDynamicState dynamicStates[2] = {};
-        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
-            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
+        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat, inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
             colorBlendState, vertexInput, dynamicStates);
+
         // Main graphics pipeline
         pipelineInfo.stageCount = shaderStageCount;
         pipelineInfo.pStages = pShaderStages;
         pipelineInfo.layout = layout;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr,
-            pPipeline) != VK_SUCCESS)
+
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline) != VK_SUCCESS)
         {
             return 0;
         }
@@ -440,9 +417,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateGraphicsPipelines(VkDevice device, uint8_t bMeshShaders, 
-        VkPipeline* mainGraphicsPipeline, VkPipeline* postPassGraphicsPipeline, VkPipelineLayout mainGraphicsPipelineLayout, 
-        VkPipeline* onpcPipeline, VkPipelineLayout onpcPipelineLayout)
+    uint8_t CreateGraphicsPipelines(VkDevice device, uint8_t bMeshShaders, PipelineContext& context)
     {
         // Main(opaque) graphics pipeline
         ShaderModule vertexShaderModule;
@@ -450,15 +425,13 @@ namespace BlitzenVulkan
         VkPipelineShaderStageCreateInfo shaderStages[3] = {};
         if(bMeshShaders)
         {
-            if (!CreateShaderProgram(device, "VulkanShaders/MeshShader.mesh.glsl.spv",
-                VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule.handle, shaderStages[0]))
+            if (!CreateShaderProgram(device, "VulkanShaders/MeshShader.mesh.glsl.spv", VK_SHADER_STAGE_MESH_BIT_EXT, "main", vertexShaderModule.handle, shaderStages[0]))
             {
                 BLIT_ERROR("Failed to create MeshShader.mesh shader program");
                 return 0;
             }
 
-            if (!CreateShaderProgram(device, "VulkanShaders/MeshShader.task.glsl.spv",
-                VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule.handle, shaderStages[2]))
+            if (!CreateShaderProgram(device, "VulkanShaders/MeshShader.task.glsl.spv", VK_SHADER_STAGE_TASK_BIT_EXT, "main", taskShaderModule.handle, shaderStages[2]))
             {
                 BLIT_ERROR("Failed to create MeshShader.task shader program");
                 return 0;
@@ -467,22 +440,21 @@ namespace BlitzenVulkan
         else
         {
             // Vertex shader for traditional pipeline
-            if (!CreateShaderProgram(device, "VulkanShaders/MainObjectShader.vert.glsl.spv",
-                VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
+            if (!CreateShaderProgram(device, "VulkanShaders/opaqueDraw.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
             {
-                BLIT_ERROR("Failed to create MainObjectShader.vert shader program");
+                BLIT_ERROR("Failed to create opaqueDraw.vert shader program");
                 return 0;
             }
         }
+
         ShaderModule fragShaderModule;
-        if (!CreateShaderProgram(device, "VulkanShaders/MainObjectShader.frag.glsl.spv",
-            VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
+        if (!CreateShaderProgram(device, "VulkanShaders/fragDraw.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
         {
-            BLIT_ERROR("Failed to create MainObjectShader.frag shader program");
+            BLIT_ERROR("Failed to create fragDraw.frag shader program");
             return 0;
         }
-		if (!CreateGraphicsPipelineWithShader(device, mainGraphicsPipelineLayout, mainGraphicsPipeline, 
-            bMeshShaders ? 3 : 2, shaderStages))
+
+		if (!CreateGraphicsPipelineWithShader(device, context.m_opaqueDrawLayout.handle, &context.m_opaqueDrawPso.handle, bMeshShaders ? 3 : 2, shaderStages))
 		{
 			BLIT_ERROR("Failed to create main graphics pipeline");
 			return 0;
@@ -494,18 +466,17 @@ namespace BlitzenVulkan
         VkSpecializationMapEntry postPassSpecializationMapEntry{};
         VkSpecializationInfo postPassSpecialization{};
         uint32_t postPass = 1;
-        CreateShaderProgramSpecializationConstant(postPassSpecializationMapEntry,
-            0, 0, sizeof(uint32_t), postPassSpecialization, &postPass);
+        CreateShaderProgramSpecializationConstant(postPassSpecializationMapEntry, 0, 0, sizeof(uint32_t), postPassSpecialization, &postPass);
         ShaderModule postPassFragShaderModule;
-        if (!CreateShaderProgram(device, "VulkanShaders/MainObjectShader.frag.glsl.spv",
-            VK_SHADER_STAGE_FRAGMENT_BIT, "main", postPassFragShaderModule.handle,
+
+        if (!CreateShaderProgram(device, "VulkanShaders/fragDraw.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", postPassFragShaderModule.handle,
             postPassShaderStages[1], &postPassSpecialization))
         {
-            BLIT_ERROR("Failed to create MainObjectShader.frag post pass specialization shader program");
+            BLIT_ERROR("Failed to create fragDraw.frag post pass specialization shader program");
             return 0;
         }
-        if (!CreateGraphicsPipelineWithShader(device, mainGraphicsPipelineLayout, postPassGraphicsPipeline, 
-            BLIT_ARRAY_SIZE(postPassShaderStages), postPassShaderStages))
+
+        if (!CreateGraphicsPipelineWithShader(device, context.m_opaqueDrawLayout.handle, &context.m_tranparentDrawPso.handle, BLIT_ARRAY_SIZE(postPassShaderStages), postPassShaderStages))
         {
             BLIT_ERROR("Failed to create post pass graphics pipeline")
             return 0;
@@ -514,15 +485,13 @@ namespace BlitzenVulkan
         // This was for a temporary math test, I will keep it for some time
         ShaderModule onpcVertexShaderModule;
         VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
-        if (!CreateShaderProgram(device, "VulkanShaders/OnpcGeometry.vert.glsl.spv",
-            VK_SHADER_STAGE_VERTEX_BIT, "main", onpcVertexShaderModule.handle, onpcGeometryShaderStages[0]))
+        if (!CreateShaderProgram(device, "VulkanShaders/onpcDraw.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", onpcVertexShaderModule.handle, onpcGeometryShaderStages[0]))
         {
-            BLIT_ERROR("Failed to create OnpcGeometry.vert shader program");
+            BLIT_ERROR("Failed to create onpcDraw.vert shader program");
             return 0;
         }
         onpcGeometryShaderStages[1] = shaderStages[1];
-        if (!CreateGraphicsPipelineWithShader(device, onpcPipelineLayout, onpcPipeline, 
-            BLIT_ARRAY_SIZE(onpcGeometryShaderStages), onpcGeometryShaderStages))
+        if (!CreateGraphicsPipelineWithShader(device, context.m_onpcLayout.handle, &context.m_onpcDraw.handle, BLIT_ARRAY_SIZE(onpcGeometryShaderStages), onpcGeometryShaderStages))
         {
 			BLIT_ERROR("Failed to create onpc graphics pipeline");
             return 0;
@@ -532,7 +501,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t CreateLoadingTrianglePipeline(VkDevice device, VkPipeline& pipeline, VkPipelineLayout& layout)
+    uint8_t CreateLoadingTrianglePipeline(VkDevice device, PipelineContext& pipelineContext)
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
@@ -553,8 +522,7 @@ namespace BlitzenVulkan
 
         ShaderModule vertexShaderModule;
         VkPipelineShaderStageCreateInfo shaderStages[2] = {};
-        if (!CreateShaderProgram(device, "VulkanShaders/LoadingTriangle.vert.glsl.spv",
-            VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
+        if (!CreateShaderProgram(device, "VulkanShaders/triangle.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
         {
             BLIT_ERROR("Failed to create idle draw fragment shader program");
             return 0;
@@ -562,8 +530,7 @@ namespace BlitzenVulkan
 
         // Fragment shader is common
         ShaderModule fragShaderModule;
-        if (!CreateShaderProgram(device, "VulkanShaders/LoadingTriangle.frag.glsl.spv",
-            VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
+        if (!CreateShaderProgram(device, "VulkanShaders/triangle.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
         {
             BLIT_ERROR("Failed to create idle draw fragment shader program");
             return 0;
@@ -575,17 +542,15 @@ namespace BlitzenVulkan
 
         VkPushConstantRange pushConstant{};
 		CreatePushConstantRange(pushConstant, VK_SHADER_STAGE_VERTEX_BIT, sizeof(BlitML::vec3));
-        if (!CreatePipelineLayout(device, &layout,
-            0, nullptr, 1, &pushConstant))
+        if (!CreatePipelineLayout(device, &pipelineContext.m_triangleLayout.handle, 0, nullptr, 1, &pushConstant))
         {
             BLIT_ERROR("Failed to create idle draw pipeline layout");
             return 0;
         }
 
         //Create the graphics pipeline
-        pipelineInfo.layout = layout;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, Ce_SinglePointer, &pipelineInfo,
-            nullptr, &pipeline) != VK_SUCCESS)
+        pipelineInfo.layout = pipelineContext.m_triangleLayout.handle;
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, Ce_SinglePointer, &pipelineInfo, nullptr, &pipelineContext.m_trianglePso.handle) != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create idle draw pipeline");
             return 0;

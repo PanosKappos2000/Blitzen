@@ -195,6 +195,21 @@ namespace BlitzenEngine
                 }
             }
 
+            else if (strcmp(argv[1], "ClusterStressTest") == 0)
+            {
+                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 1'500.f);
+
+                // The following arguments are used as gltf filepaths
+                for (int32_t i = 2; i < argc; ++i)
+                {
+                    if (!ManageGltf(argv[i], pResources, pManager, pRenderer))
+                    {
+                        BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
+                        return false;
+                    }
+                }
+            }
+
             // Special argument. Test oblique near-plane clipping technique. Not working yet.
             else if (strcmp(argv[1], "OnpcReflectionTest") == 0)
             {
