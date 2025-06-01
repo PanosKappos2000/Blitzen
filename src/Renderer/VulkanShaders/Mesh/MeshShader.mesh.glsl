@@ -7,7 +7,8 @@
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
-#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
+#include "../Headers/sharedBuffers.glsl"
+#include "../Headers/cullBuffers.glsl"
 
 layout(location = 0) out vec2 outUv[];
 layout(location = 1) out vec3 outNormal[];

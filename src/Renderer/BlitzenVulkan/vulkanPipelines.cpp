@@ -3,18 +3,10 @@
 
 namespace BlitzenVulkan
 {
-    void GetDefaultPipelineInfo(VkGraphicsPipelineCreateInfo& pipelineInfo, 
-        VkPipelineRenderingCreateInfo& dynamicRenderingInfo, VkFormat* pFormat, 
-        VkPipelineInputAssemblyStateCreateInfo& inputAssembly, 
-        VkPipelineViewportStateCreateInfo& viewport, 
-        VkPipelineDynamicStateCreateInfo& dynamicState, 
-        VkPipelineRasterizationStateCreateInfo& rasterization, 
-		VkPipelineMultisampleStateCreateInfo& multisampling,
-        VkPipelineDepthStencilStateCreateInfo& depthState, 
-        VkPipelineColorBlendAttachmentState& colorBlendAttachment,
-        VkPipelineColorBlendStateCreateInfo& colorBlendState, 
-        VkPipelineVertexInputStateCreateInfo& vertexInput, 
-        VkDynamicState* pDynamicStates)
+    void GetDefaultPipelineInfo(VkGraphicsPipelineCreateInfo& pipelineInfo, VkPipelineRenderingCreateInfo& dynamicRenderingInfo, VkFormat* pFormat, VkPipelineInputAssemblyStateCreateInfo& inputAssembly, 
+        VkPipelineViewportStateCreateInfo& viewport, VkPipelineDynamicStateCreateInfo& dynamicState, VkPipelineRasterizationStateCreateInfo& rasterization, 
+        VkPipelineMultisampleStateCreateInfo& multisampling, VkPipelineDepthStencilStateCreateInfo& depthState, VkPipelineColorBlendAttachmentState& colorBlendAttachment,
+        VkPipelineColorBlendStateCreateInfo& colorBlendState, VkPipelineVertexInputStateCreateInfo& vertexInput, VkDynamicState* pDynamicStates)
     {
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.flags = 0;
@@ -55,13 +47,8 @@ namespace BlitzenVulkan
         pipelineInfo.pDepthStencilState = &depthState;
 
         // No color blending by default
-        CreateColorBlendAttachment(colorBlendAttachment, 
-            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, 
-            VK_FALSE, VK_BLEND_OP_ADD, 
-            VK_BLEND_OP_ADD, VK_BLEND_FACTOR_CONSTANT_ALPHA,
-            VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, 
-            VK_BLEND_FACTOR_CONSTANT_ALPHA);
+        CreateColorBlendAttachment(colorBlendAttachment, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, 
+            VK_FALSE, VK_BLEND_OP_ADD, VK_BLEND_OP_ADD, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA);
         CreateColorBlendState(colorBlendState, 1, &colorBlendAttachment, VK_FALSE, VK_LOGIC_OP_AND);
         pipelineInfo.pColorBlendState = &colorBlendState;
 
@@ -92,6 +79,7 @@ namespace BlitzenVulkan
         BlitzenPlatform::C_FILE_SCOPE scopedFILE;
         if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
         {
+            BLIT_ERROR("Failed to open shader file");
             return 0;
         }
         
@@ -100,16 +88,19 @@ namespace BlitzenVulkan
         BlitCL::String bytes;
         if(!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
         {
+            BLIT_ERROR("Failed to read shader file");
             return 0;
         }
 
         //Wraps the code in a shader module object
         VkShaderModuleCreateInfo shaderModuleInfo{};
         shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        shaderModuleInfo.codeSize = static_cast<uint32_t>(filesize);
+        shaderModuleInfo.codeSize = uint32_t(filesize);
         shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(bytes.Data());
+
         if (vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule) != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create shader module");
             return 0;
         }
 
@@ -131,9 +122,9 @@ namespace BlitzenVulkan
         // Creates the shader module and the shader stage
         ShaderModule module{};
         VkPipelineShaderStageCreateInfo shaderStageInfo{};
-        if (!CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, module.handle,
-            shaderStageInfo, pSpecializationInfo))
+        if (!CreateShaderProgram(device, filepath, VK_SHADER_STAGE_COMPUTE_BIT, entryPointName, module.handle, shaderStageInfo, pSpecializationInfo))
         {
+            BLIT_ERROR("Failed to create compute shader program")
             return 0;
         }
 
@@ -148,6 +139,7 @@ namespace BlitzenVulkan
         // Creates the compute pipeline
         if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline) != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create compute pipeline")
             return 0;
         }
         
@@ -155,9 +147,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void CreateShaderProgramSpecializationConstant(VkSpecializationMapEntry& specializationEntry,
-        uint32_t constantId, uint32_t offset, size_t size,
-        VkSpecializationInfo& specializationInfo, void* pData)
+    void CreateShaderProgramSpecializationConstant(VkSpecializationMapEntry& specializationEntry, uint32_t constantId, uint32_t offset, size_t size, VkSpecializationInfo& specializationInfo, void* pData)
     {
         specializationEntry.constantID = constantId;
         specializationEntry.offset = offset;
@@ -198,7 +188,7 @@ namespace BlitzenVulkan
     }
 
     void SetRasterizationState(VkPipelineRasterizationStateCreateInfo& rasterization, VkPolygonMode polygonMode, VkCullModeFlags cullMode, 
-    VkFrontFace frontFace, VkBool32 depthClampEnable /* = VK_FALSE*/, VkBool32 depthBiasEnable /* = VK_FALSE */)
+        VkFrontFace frontFace, VkBool32 depthClampEnable /* = VK_FALSE*/, VkBool32 depthBiasEnable /* = VK_FALSE */)
     {
         rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterization.rasterizerDiscardEnable = VK_FALSE;
@@ -215,7 +205,7 @@ namespace BlitzenVulkan
     }
 
     void SetupMulitsampling(VkPipelineMultisampleStateCreateInfo& multisampling, VkBool32 sampleShadingEnable, VkSampleCountFlagBits rasterizationSamples, 
-    float minSampleShading, VkSampleMask* pSampleMask, VkBool32 alphaToCoverageEnable, VkBool32 alphaToOneEnable)
+        float minSampleShading, VkSampleMask* pSampleMask, VkBool32 alphaToCoverageEnable, VkBool32 alphaToOneEnable)
     {
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.pNext = nullptr;
@@ -228,7 +218,7 @@ namespace BlitzenVulkan
     }
 
     void SetupDepthTest(VkPipelineDepthStencilStateCreateInfo& depthState, VkBool32 depthTestEnable, VkCompareOp depthCompareOp, VkBool32 depthWriteEnable, 
-    VkBool32 depthBoundsTestEnable, float maxDepthBounds, float minDepthBounds, VkBool32 stencilTestEnable, VkStencilOpState* front, VkStencilOpState* back)
+        VkBool32 depthBoundsTestEnable, float maxDepthBounds, float minDepthBounds, VkBool32 stencilTestEnable, VkStencilOpState* front, VkStencilOpState* back)
     {
         depthState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         depthState.flags = 0;
@@ -240,15 +230,20 @@ namespace BlitzenVulkan
         depthState.maxDepthBounds = maxDepthBounds;
         depthState.minDepthBounds = minDepthBounds;
         depthState.stencilTestEnable = stencilTestEnable;
-        if(front)
+
+        if (front)
+        {
             depthState.front = *front;
-        if(back)
+        }
+        if (back)
+        {
             depthState.back = *back;
+        }
     }
 
     void CreateColorBlendAttachment(VkPipelineColorBlendAttachmentState& colorBlendAttachment, VkColorComponentFlags colorWriteMask, VkBool32 blendEnable, 
-    VkBlendOp colorBlendOp, VkBlendOp alphaBlendOp, VkBlendFactor dstAlphaBlendFactor, VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstColorBlendFactor, 
-    VkBlendFactor srcColorBlendFactor)
+        VkBlendOp colorBlendOp, VkBlendOp alphaBlendOp, VkBlendFactor dstAlphaBlendFactor, VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstColorBlendFactor, 
+        VkBlendFactor srcColorBlendFactor)
     {
         colorBlendAttachment.colorWriteMask = colorWriteMask;
         colorBlendAttachment.blendEnable = blendEnable;
@@ -281,9 +276,15 @@ namespace BlitzenVulkan
         layoutInfo.pSetLayouts = pDescriptorSetLayouts;
         layoutInfo.pushConstantRangeCount = pushConstantRangeCount;
         layoutInfo.pPushConstantRanges = pPushConstantRanges;
+
         VkResult res = vkCreatePipelineLayout(device, &layoutInfo, nullptr, pLayout);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create pipeline layout");
             return 0;
+        }
+
+        // success
         return 1;
     }
 
@@ -309,8 +310,12 @@ namespace BlitzenVulkan
 
         VkDescriptorSetLayout setLayout;
         VkResult res = vkCreateDescriptorSetLayout(device, &info, nullptr, &setLayout);
-        if(res != VK_SUCCESS)
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create descriptor set layout");
             return VK_NULL_HANDLE;
+        }
+
         return setLayout;
     }
 
@@ -325,41 +330,37 @@ namespace BlitzenVulkan
     uint8_t CreateComputeShaders(VkDevice device, PipelineContext& context)
     {
 
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/drawCullFirst.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_drawCullFirstPso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/drawCullFirst.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            context.m_drawCullLayout.handle, &context.m_drawCullFirstPso.handle))
         {
             BLIT_ERROR("Failed to create drawCullFirst.comp shader program");
             return 0;
         }
 
         // Late culling shader compute pipeline
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/drawCullLate.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_drawCullLatePso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/drawCullLate.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            context.m_drawCullLayout.handle, &context.m_drawCullLatePso.handle))
         {
             BLIT_ERROR("Failed to create drawCullLate.comp shader program");
             return 0;
         }
 
         // Generate depth pyramid compute shader
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/hi_z_map.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_hiZLayout.handle, &context.m_hiZPso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/hi_z_map.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_hiZLayout.handle, &context.m_hiZPso.handle))
         {
             BLIT_ERROR("Failed to create hi_z_map.comp shader program");
             return 0;
         }
 
-        // Redundant shader
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/onpcCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_onpcCull.handle))
-        {
-            BLIT_ERROR("Failed to create onpcCull.comp shader program");
-            return 0;
-        }
-
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/transCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_transDrawCullPso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/transCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
+            context.m_drawCullLayout.handle, &context.m_transDrawCullPso.handle))
         {
             BLIT_ERROR("Failed to create transCull.comp shader program");
             return 0;
         }
 
         // Creates the generate presentation image compute shader program
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/present.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_presentLayout.handle, &context.m_presentPso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/present.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_presentLayout.handle, &context.m_presentPso.handle))
         {
             BLIT_ERROR("Failed to create present.comp shader program");
             return 0;
@@ -367,14 +368,14 @@ namespace BlitzenVulkan
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            if (!CreateComputeShaderProgram(device, "VulkanShaders/clusterCullDispatch.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_clusterCullLayout.handle,
+            if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/clusterCullDispatch.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_clusterCullLayout.handle,
                 &context.m_clusterCullDispatchPso.handle))
             {
                 BLIT_ERROR("Failed to create clusterCullDispatch.comp shader program");
                 return 0;
             }
 
-            if (!CreateComputeShaderProgram(device, "VulkanShaders/clusterCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_clusterCullLayout.handle, &context.m_clusterCullPso.handle))
+            if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/clusterCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_clusterCullLayout.handle, &context.m_clusterCullPso.handle))
             {
                 BLIT_ERROR("Failed to create clusterCull.comp shader program");
                 return 0;
@@ -440,7 +441,7 @@ namespace BlitzenVulkan
         else
         {
             // Vertex shader for traditional pipeline
-            if (!CreateShaderProgram(device, "VulkanShaders/opaqueDraw.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
+            if (!CreateShaderProgram(device, "VulkanShaders/Vert/opaqueDraw.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
             {
                 BLIT_ERROR("Failed to create opaqueDraw.vert shader program");
                 return 0;
@@ -448,7 +449,7 @@ namespace BlitzenVulkan
         }
 
         ShaderModule fragShaderModule;
-        if (!CreateShaderProgram(device, "VulkanShaders/fragDraw.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
+        if (!CreateShaderProgram(device, "VulkanShaders/Frag/fragDraw.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
         {
             BLIT_ERROR("Failed to create fragDraw.frag shader program");
             return 0;
@@ -469,7 +470,7 @@ namespace BlitzenVulkan
         CreateShaderProgramSpecializationConstant(postPassSpecializationMapEntry, 0, 0, sizeof(uint32_t), postPassSpecialization, &postPass);
         ShaderModule postPassFragShaderModule;
 
-        if (!CreateShaderProgram(device, "VulkanShaders/fragDraw.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", postPassFragShaderModule.handle,
+        if (!CreateShaderProgram(device, "VulkanShaders/Frag/fragDraw.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", postPassFragShaderModule.handle,
             postPassShaderStages[1], &postPassSpecialization))
         {
             BLIT_ERROR("Failed to create fragDraw.frag post pass specialization shader program");
@@ -485,7 +486,7 @@ namespace BlitzenVulkan
         // This was for a temporary math test, I will keep it for some time
         ShaderModule onpcVertexShaderModule;
         VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
-        if (!CreateShaderProgram(device, "VulkanShaders/onpcDraw.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", onpcVertexShaderModule.handle, onpcGeometryShaderStages[0]))
+        if (!CreateShaderProgram(device, "VulkanShaders/Vert/onpcDraw.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", onpcVertexShaderModule.handle, onpcGeometryShaderStages[0]))
         {
             BLIT_ERROR("Failed to create onpcDraw.vert shader program");
             return 0;
@@ -516,13 +517,13 @@ namespace BlitzenVulkan
         VkPipelineColorBlendStateCreateInfo colorBlendState{};
         VkPipelineVertexInputStateCreateInfo vertexInput{};
         VkDynamicState dynamicStates[2];
-        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,
-            inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
+
+        GetDefaultPipelineInfo(pipelineInfo, dynamicRenderingInfo, &colorAttachmentFormat,inputAssembly, viewport, dynamicState, rasterization, multisampling, depthState, colorBlendAttachment,
             colorBlendState, vertexInput, dynamicStates);
 
         ShaderModule vertexShaderModule;
         VkPipelineShaderStageCreateInfo shaderStages[2] = {};
-        if (!CreateShaderProgram(device, "VulkanShaders/triangle.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
+        if (!CreateShaderProgram(device, "VulkanShaders/Vert/triangle.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", vertexShaderModule.handle, shaderStages[0]))
         {
             BLIT_ERROR("Failed to create idle draw fragment shader program");
             return 0;
@@ -530,7 +531,7 @@ namespace BlitzenVulkan
 
         // Fragment shader is common
         ShaderModule fragShaderModule;
-        if (!CreateShaderProgram(device, "VulkanShaders/triangle.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
+        if (!CreateShaderProgram(device, "VulkanShaders/Frag/triangle.frag.glsl.spv", VK_SHADER_STAGE_FRAGMENT_BIT, "main", fragShaderModule.handle, shaderStages[1]))
         {
             BLIT_ERROR("Failed to create idle draw fragment shader program");
             return 0;

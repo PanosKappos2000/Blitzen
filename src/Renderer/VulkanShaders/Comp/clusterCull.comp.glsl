@@ -4,8 +4,9 @@
 
 #define COMPUTE_PIPELINE
 #define CLUSTER_CULLING
-#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
-#include "../VulkanShaderHeaders/CullingShaderData.glsl"
+#include "../Headers/sharedBuffers.glsl"
+#include "../Headers/cullBuffers.glsl"
+#include "../Headers/math.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 

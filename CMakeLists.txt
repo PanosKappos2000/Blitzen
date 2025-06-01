@@ -237,19 +237,48 @@ ENDIF(WIN32)
 
 
 # SPIRV (Vulkan)
-# Finds all glsl shaders files
-file(GLOB_RECURSE GLSL_SOURCE_FILES "src/Renderer/VulkanShaders/*.glsl")
-foreach(GLSL ${GLSL_SOURCE_FILES})
-    get_filename_component(FILE_NAME ${GLSL} NAME)
-    set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/${FILE_NAME}.spv")
+# COMPUTE
+file(GLOB_RECURSE GLSL_COMP_FILES "src/Renderer/VulkanShaders/Comp/*.glsl")
+foreach(COMP ${GLSL_COMP_FILES})
+    get_filename_component(FILE_NAME ${COMP} NAME)
+    set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/Comp/${FILE_NAME}.spv")
 
     add_custom_command(OUTPUT ${SPIRV}
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/"
-        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${GLSL} -o ${SPIRV}
-        DEPENDS ${GLSL})
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/Comp"
+        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${COMP} -o ${SPIRV}
+        DEPENDS ${COMP})
 
     list(APPEND SPIRV_BINARY_FILES ${SPIRV})
-endforeach(GLSL)
+endforeach(COMP)
+
+# VERTEX
+file(GLOB_RECURSE GLSL_VERT_FILES "src/Renderer/VulkanShaders/Vert/*.glsl")
+foreach(VERT ${GLSL_VERT_FILES})
+    get_filename_component(FILE_NAME ${VERT} NAME)
+    set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/Vert/${FILE_NAME}.spv")
+
+    add_custom_command(OUTPUT ${SPIRV}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/Vert"
+        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${VERT} -o ${SPIRV}
+        DEPENDS ${VERT})
+
+    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+endforeach(VERT)
+
+# FRAGMENT
+file(GLOB_RECURSE GLSL_FRAG_FILES "src/Renderer/VulkanShaders/Frag/*.glsl")
+foreach(FRAG ${GLSL_FRAG_FILES})
+    get_filename_component(FILE_NAME ${FRAG} NAME)
+    set(SPIRV "${PROJECT_BINARY_DIR}/VulkanShaders/Frag/${FILE_NAME}.spv")
+
+    add_custom_command(OUTPUT ${SPIRV}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/VulkanShaders/Frag"
+        COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${FRAG} -o ${SPIRV}
+        DEPENDS ${FRAG})
+
+    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+endforeach(FRAG)
+
 add_custom_target(VulkanShaders DEPENDS ${SPIRV_BINARY_FILES})
 add_dependencies(BlitzenEngine VulkanShaders)
 

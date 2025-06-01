@@ -1,7 +1,3 @@
-/*
-    Including structs to improve my older versions
-*/
-
 struct IndirectDrawCommand {
     uint indexCount;
     uint instanceCount;

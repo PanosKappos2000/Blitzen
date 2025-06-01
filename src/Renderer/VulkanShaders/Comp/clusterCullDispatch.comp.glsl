@@ -5,8 +5,9 @@
 #define COMPUTE_PIPELINE
 #define CLUSTER_CULLING
 #define PRE_CLUSTER
-#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
-#include "../VulkanShaderHeaders/CullingShaderData.glsl"
+#include "../Headers/sharedBuffers.glsl"
+#include "../Headers/cullBuffers.glsl"
+#include "../Headers/math.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -17,16 +18,14 @@ void main()
     {
         return;
     }
+    
     RenderObject obj = pushConstant.renderObjectBuffer.objects[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
 
     vec3 center;
     float radius;
-    bool visible = IsObjectInsideViewFrustum(center, radius, 
-        surfaceBuffer.surfaces[obj.surfaceId].center, surfaceBuffer.surfaces[obj.surfaceId].radius,
-        transform.scale, transform.pos, transform.orientation,
-        viewData.view, viewData.frustumRight, viewData.frustumLeft,
-        viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar);
+    bool visible = CheckFrustum(center, radius, surfaceBuffer.surfaces[obj.surfaceId].center, surfaceBuffer.surfaces[obj.surfaceId].radius, transform.scale, transform.pos, transform.orientation,
+        viewData.view, viewData.frustumRight, viewData.frustumLeft, viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar);
 
     if (visible)
     {

@@ -943,8 +943,8 @@ namespace BlitzenVulkan
         m_drawExtent = {m_swapchainValues.swapchainExtent.width, m_swapchainValues.swapchainExtent.height};
 
         // Texture sampler. Global for all textures for now
-        m_textureSampler.handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-        if (m_textureSampler.handle == VK_NULL_HANDLE)
+        m_textureSampler.m_handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+        if (m_textureSampler.m_handle == VK_NULL_HANDLE)
         {
             BLIT_ERROR("Failed to create texture sampler");
             return 0;
@@ -1237,7 +1237,7 @@ namespace BlitzenVulkan
         }
 
         // Create the background shader in case the renderer has not objects
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/background.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", pipelineContext.m_backgroundLayout.handle, 
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/background.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", pipelineContext.m_backgroundLayout.handle, 
             &pipelineContext.m_backgroundPso.handle))
         {
             BLIT_ERROR("Failed to create background.comp shader program");

@@ -3,8 +3,9 @@
 //#extension GL_EXT_debug_printf : enable
 
 #define COMPUTE_PIPELINE
-#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
-#include "../VulkanShaderHeaders/CullingShaderData.glsl"
+#include "../Headers/sharedBuffers.glsl"
+#include "../Headers/cullBuffers.glsl"
+#include "../Headers/math.glsl"
 #define CULL  true
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -17,20 +18,14 @@ void main()
     {
         return;
     }
+
     RenderObject obj = pushConstant.renderObjectBuffer.objects[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
     
-    // Frustum culling
     vec3 center;
 	float radius;
-	bool visible = IsObjectInsideViewFrustum(center, radius, 
-        surfaceBuffer.surfaces[obj.surfaceId].center, surfaceBuffer.surfaces[obj.surfaceId].radius, // bounding sphere
-        transform.scale, transform.pos, transform.orientation, // object transform
-        viewData.view, // view matrix
-        viewData.frustumRight, viewData.frustumLeft, // frustum planes
-        viewData.frustumTop, viewData.frustumBottom, // frustum planes part 2
-        viewData.zNear, viewData.zFar // zFar and zNear
-    );
+	bool visible = CheckFrustum(center, radius, surfaceBuffer.surfaces[obj.surfaceId].center, surfaceBuffer.surfaces[obj.surfaceId].radius, transform.scale, transform.pos, transform.orientation, viewData.view, viewData.frustumRight, 
+        viewData.frustumLeft, viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar);
 
     // TODO: Remember to enable this for testing
     // If an object passes frustum culling, it goes through occlusion culling
@@ -48,18 +43,21 @@ void main()
     {
         uint lodOffset = surfaceBuffer.surfaces[obj.surfaceId].lodOffset;
         uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
+
         uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, lodOffset, lodCount);
         lodIndex += lodOffset;
         Lod currentLod = lodBuffer.levels[lodIndex];
 
         // Increments draw command count
         uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
-        // Indirect commands + object id (the object id is needed for the vertex shader to access object data)
+        
         indirectDrawBuffer.draws[drawID].objectId = objectIndex;
+
         indirectDrawBuffer.draws[drawID].indexCount = currentLod.indexCount;
-        indirectDrawBuffer.draws[drawID].instanceCount = 1;
         indirectDrawBuffer.draws[drawID].firstIndex = currentLod.firstIndex;
         indirectDrawBuffer.draws[drawID].vertexOffset = 0;
+
+        indirectDrawBuffer.draws[drawID].instanceCount = 1;
         indirectDrawBuffer.draws[drawID].firstInstance = 0;
     }
 }

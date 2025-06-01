@@ -228,7 +228,7 @@ namespace BlitzenVulkan
         }
 
         WriteImageDescriptorSets(image.descriptorWrite, image.descriptorInfo, image.m_descriptorType, VK_NULL_HANDLE, image.m_descriptorBinding, 
-            image.m_layout, image.image.imageView, (image.sampler.handle != VK_NULL_HANDLE) ? image.sampler.handle : VK_NULL_HANDLE );
+            image.m_layout, image.image.imageView, (image.sampler.m_handle != VK_NULL_HANDLE) ? image.sampler.m_handle : VK_NULL_HANDLE );
 
         return 1;
     }
@@ -730,9 +730,13 @@ namespace BlitzenVulkan
     uint8_t PushDescriptorImage::SamplerInit(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode,
         VkSamplerAddressMode addressMode, void* pNextChain)
     {
-        sampler.handle = CreateSampler(device, filter, mipmapMode, addressMode, pNextChain);
-        if (sampler.handle == VK_NULL_HANDLE)
+        sampler.m_handle = CreateSampler(device, filter, mipmapMode, addressMode, pNextChain);
+        if (sampler.m_handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create sampler");
             return 0;
+        }
+
         return 1;
     }
 }

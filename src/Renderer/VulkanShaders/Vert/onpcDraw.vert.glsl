@@ -3,7 +3,8 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_shader_draw_parameters : require
 
-#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
+#include "../Headers/sharedBuffers.glsl"
+#include "../Headers/math.glsl"
 
 layout(push_constant) uniform Constants
 {

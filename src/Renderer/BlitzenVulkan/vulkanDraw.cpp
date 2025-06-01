@@ -163,7 +163,7 @@ namespace BlitzenVulkan
         VkWriteDescriptorSet depthPyramidDescriptor{};
         VkDescriptorImageInfo depthPyramidDescriptorInfo{};
         WriteImageDescriptorSets(depthPyramidDescriptor, depthPyramidDescriptorInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE,
-            Ce_DepthPyramidImageBindingID, VK_IMAGE_LAYOUT_GENERAL, depthPyramid.image.imageView, depthAttachment.sampler.handle);
+            Ce_DepthPyramidImageBindingID, VK_IMAGE_LAYOUT_GENERAL, depthPyramid.image.imageView, depthAttachment.sampler.m_handle);
 
         // Count reset barrier
         VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
@@ -996,7 +996,7 @@ namespace BlitzenVulkan
             if constexpr (BlitzenCore::Ce_DepthPyramidDebug)
             {
                 CopyPyramidToSwapchain(m_instance, fTools.commandBuffer, m_depthPyramid, m_swapchainValues, m_drawExtent, m_depthPyramidExtent, m_depthPyramidMipLevels, 
-                    m_depthPyramidMips, m_pipelines, swapchainIdx, context.m_camera.transformData.debugPyramidLevel, m_depthAttachment.sampler.handle);
+                    m_depthPyramidMips, m_pipelines, swapchainIdx, context.m_camera.transformData.debugPyramidLevel, m_depthAttachment.sampler.m_handle);
             }
             else
             {

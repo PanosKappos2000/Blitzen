@@ -68,6 +68,33 @@ namespace BlitzenVulkan
         }
     }
 
+    Buffer::~Buffer()
+    {
+        if (m_handle != VK_NULL_HANDLE)
+        {
+            auto vma = S_GET_VULKAN_MEMORY()->allocator;
+            vmaDestroyBuffer(vma, m_handle, m_vmaAlloc);
+        }
+    }
+
+    Image::~Image()
+    {
+        if (m_handle != VK_NULL_HANDLE)
+        {
+            auto vma{ S_GET_VULKAN_MEMORY()->allocator };
+            vmaDestroyImage(vma, m_handle, m_vmaAlloc);
+        }
+    }
+
+    ImageView::~ImageView()
+    {
+        if (m_handle != VK_NULL_HANDLE)
+        {
+            auto dv{ S_GET_VULKAN_MEMORY()->device };
+            vkDestroyImageView(dv, m_handle, nullptr);
+        }
+    }
+
     PipelineObject::~PipelineObject()
     {
         if (handle != VK_NULL_HANDLE)
@@ -115,10 +142,10 @@ namespace BlitzenVulkan
 
     ImageSampler::~ImageSampler()
     {
-        if (handle != VK_NULL_HANDLE)
+        if (m_handle != VK_NULL_HANDLE)
         {
             auto vdv = S_GET_VULKAN_MEMORY()->device;
-            vkDestroySampler(vdv, handle, nullptr);
+            vkDestroySampler(vdv, m_handle, nullptr);
         }
     }
 

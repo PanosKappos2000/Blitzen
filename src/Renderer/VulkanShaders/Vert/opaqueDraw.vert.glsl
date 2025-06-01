@@ -3,7 +3,8 @@
 #extension GL_ARB_shader_draw_parameters : require
 
 #define GRAPHICS_PIPELINE 
-#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
+#include "../Headers/sharedBuffers.glsl"
+#include "../Headers/math.glsl"
 
 //#define MESH_TEST
 

@@ -87,7 +87,7 @@ namespace BlitzenVulkan
         }
         
         // Add the global sampler at the element in the array that was just porcessed
-        loadedTextures[textureCount].sampler = m_textureSampler.handle;
+        loadedTextures[textureCount].sampler = m_textureSampler.m_handle;
         textureCount++;
         return 1;
     }

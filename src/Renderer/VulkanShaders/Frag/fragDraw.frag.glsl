@@ -11,7 +11,7 @@
 layout(set = 0, binding = 15) uniform accelerationStructureEXT tlas;
 #endif
 
-#include "../VulkanShaderHeaders/ShaderBuffers.glsl"
+#include "../Headers/sharedBuffers.glsl"
 
 // Specialization constant. Its value changes for the post pass pipeline. This should theoritically allow for gpu compiler optimizations
 layout (constant_id = 0) const uint POST_PASS = 0;

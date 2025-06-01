@@ -145,6 +145,57 @@ namespace BlitzenVulkan
     #else
         constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 7;
     #endif
+    
+    // GRAPHICS DESCRIPTORS
+    constexpr uint32_t Ce_GraphicsDescriptorCount = 2;
+
+    constexpr uint32_t Ce_VertexBufferDescriptorBinding = 1;
+    constexpr uint32_t Ce_VertexBufferGraphicsPushID = 0;
+
+    constexpr uint32_t Ce_MatBufferDescriptorBinding = 6;
+    constexpr uint32_t Ce_MatBufferGraphicsPushID = 1;
+
+    // SHARED DESCRIPTORS
+    constexpr uint32_t Ce_SharedDescriptorCount = 4;
+
+    constexpr uint32_t Ce_ViewDataBufferDescriptorBinding = 0;
+    constexpr uint32_t Ce_ViewDataBufferSharedPushID = 0;
+
+    constexpr uint32_t Ce_SurfaceBufferDescriptorBinding = 2;
+    constexpr uint32_t Ce_SurfaceBufferSharedPushID = 1;
+
+    constexpr uint32_t Ce_TransformBufferDescriptorBinding = 5;
+    constexpr uint32_t Ce_TransformBufferSharedPushID = 2;
+
+    constexpr uint32_t Ce_DrawCmdBufferDescriptorBinding = 7;
+    constexpr uint32_t Ce_DrawCmdBufferSharedPushID = 3;
+
+    // CULL DESCRIPTORS
+    constexpr uint32_t Ce_CullDescriptorCount = 2;
+
+    constexpr uint32_t Ce_LODBufferDescriptorBinding = 4;
+    constexpr uint32_t Ce_LODBufferCullPushID = 0;
+
+    constexpr uint32_t Ce_DrawCmdCounterDescriptorBinding = 9;
+    constexpr uint32_t Ce_DrawCmdCounterCullPushID = 1;
+
+    // DRAW OCC DESCRIPTORS
+    constexpr uint32_t Ce_DrawOcclusionDescriptorCount = 1;
+
+    constexpr uint32_t Ce_DrawVisBufferDescriptorBinding = 10;
+    constexpr uint32_t Ce_DrawVisBufferOccPushID = 0;
+
+    // HI_Z Culling Descriptor
+    constexpr uint32_t Ce_HI_Z_CullBinding = 3;
+
+    // Cluster culling descriptors
+    constexpr uint32_t Ce_ClusterCullDescriptorCount = 2;
+
+    constexpr uint32_t Ce_ClusterBufferDescriptorBinding = 11;
+    constexpr uint32_t Ce_ClusterBufferPushID = 0;
+
+    constexpr uint32_t Ce_ClusterGroupDataDescriptorBinding = 13;
+
 
     constexpr uint32_t ce_viewDataWriteElement = 0;
     constexpr uint32_t Ce_LodBufferDescriptorId = 1;
@@ -322,6 +373,38 @@ namespace BlitzenVulkan
         ~Swapchain();
     };
 
+    struct Buffer
+    {
+        VkBuffer m_handle{ VK_NULL_HANDLE };
+
+        VmaAllocation m_vmaAlloc;
+        VmaAllocationInfo m_vmaInfo;
+
+        ~Buffer();
+    };
+
+    struct Image
+    {
+        VkImage m_handle{ VK_NULL_HANDLE };
+        VmaAllocation m_vmaAlloc;
+
+        ~Image();
+    };
+
+    struct ImageView
+    {
+        VkImageView m_handle{ VK_NULL_HANDLE };
+
+        ~ImageView();
+    };
+
+    struct ImageSampler
+    {
+        VkSampler m_handle{ VK_NULL_HANDLE };
+
+        ~ImageSampler();
+    };
+
 
 
 
@@ -342,6 +425,57 @@ namespace BlitzenVulkan
 
     MemoryCrucialHandles* InitMemoryCrucialHandles(MemoryCrucialHandles* pHandles);
 
+    struct BlitVk_SSBO
+    {
+        Buffer m_buffer;
+    };
+
+    template<class DATA>
+    struct BlitVk_CPU_DATA_SSBO
+    {
+        Buffer m_buffer;
+
+        Buffer m_staging;
+
+        DATA* m_pMapped{ nullptr };
+    };
+
+    template<class DATA>
+    struct BlitVk_UBUFFER
+    {
+        Buffer m_buffer;
+
+        DATA* m_pMapped{ nullptr };
+    };
+
+    struct BlitVk_2DIMAGE
+    {
+        Image m_image;
+        ImageView m_view;
+
+        uint32_t m_width;
+        uint32_t m_height;
+    };
+
+    struct BlitVk_2DIMAGE_SAMP
+    {
+        BlitVk_2DIMAGE m_pyramid;
+
+        ImageSampler m_samp;
+    };
+
+    struct hi_z_map
+    {
+        BlitVk_2DIMAGE m_pyramid;
+
+        ImageSampler m_samp;
+
+        VkImageView m_levels[ce_maxDepthPyramidMipLevels];
+        uint8_t m_levelCount;
+
+        uint32_t width;
+        uint32_t height;
+    };
 
     struct AllocatedImage
     {
@@ -358,13 +492,6 @@ namespace BlitzenVulkan
 
         // Implemented in vulkanResoures.cpp
         ~AllocatedImage();
-    };
-
-    struct ImageSampler
-    {
-        VkSampler handle = VK_NULL_HANDLE;
-
-        ~ImageSampler();
     };
 
     struct PushDescriptorImage
@@ -418,6 +545,19 @@ namespace BlitzenVulkan
 
         inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type)
             : descriptorBinding{binding}, descriptorType{type} {}
+    };
+
+    struct BlitVkPushDescriptor
+    {
+        VkWriteDescriptorSet m_write{};
+
+        uint32_t m_bindingID;
+        VkDescriptorType m_type;
+
+        inline BlitVkPushDescriptor(uint32_t binding, VkDescriptorType type): m_bindingID{ binding }, m_type{ type }
+        {
+
+        }
     };
 
 
