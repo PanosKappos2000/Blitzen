@@ -145,7 +145,7 @@ namespace BlitzenVulkan
         submitInfo.signalSemaphoreInfoCount = signalSemaphoreCount;
         submitInfo.pSignalSemaphoreInfos = signalSemaphore;
 
-        VK_CHECK(vkQueueSubmit2(queue, 1, &submitInfo, fence))
+        VK_CHECK_MSG(vkQueueSubmit2(queue, 1, &submitInfo, fence));
     }
 
     void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo, VkSemaphore semaphore, VkPipelineStageFlags2 stage)

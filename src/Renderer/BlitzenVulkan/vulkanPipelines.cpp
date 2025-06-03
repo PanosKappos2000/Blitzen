@@ -15,7 +15,7 @@ namespace BlitzenVulkan
         dynamicRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         dynamicRenderingInfo.colorAttachmentCount = 1;
         dynamicRenderingInfo.pColorAttachmentFormats = pFormat;
-        dynamicRenderingInfo.depthAttachmentFormat = ce_depthAttachmentFormat;
+        dynamicRenderingInfo.depthAttachmentFormat = Ce_DepthTargetFormat;
         pipelineInfo.pNext = &dynamicRenderingInfo;
 
         // Setting up triangle primitive assembly
@@ -390,7 +390,7 @@ namespace BlitzenVulkan
     {
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
-        VkFormat colorAttachmentFormat = ce_colorAttachmentFormat;
+        VkFormat colorAttachmentFormat = Ce_ColorTargetFormat;
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         VkPipelineViewportStateCreateInfo viewport{};
         VkPipelineDynamicStateCreateInfo dynamicState{};
@@ -411,6 +411,7 @@ namespace BlitzenVulkan
 
         if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline) != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create graphics pipeline");
             return 0;
         }
 
@@ -482,21 +483,6 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create post pass graphics pipeline")
             return 0;
         }
-        
-        // This was for a temporary math test, I will keep it for some time
-        ShaderModule onpcVertexShaderModule;
-        VkPipelineShaderStageCreateInfo onpcGeometryShaderStages[2] = {};
-        if (!CreateShaderProgram(device, "VulkanShaders/Vert/onpcDraw.vert.glsl.spv", VK_SHADER_STAGE_VERTEX_BIT, "main", onpcVertexShaderModule.handle, onpcGeometryShaderStages[0]))
-        {
-            BLIT_ERROR("Failed to create onpcDraw.vert shader program");
-            return 0;
-        }
-        onpcGeometryShaderStages[1] = shaderStages[1];
-        if (!CreateGraphicsPipelineWithShader(device, context.m_onpcLayout.handle, &context.m_onpcDraw.handle, BLIT_ARRAY_SIZE(onpcGeometryShaderStages), onpcGeometryShaderStages))
-        {
-			BLIT_ERROR("Failed to create onpc graphics pipeline");
-            return 0;
-        }
 
         // Success
         return 1;
@@ -551,7 +537,7 @@ namespace BlitzenVulkan
 
         //Create the graphics pipeline
         pipelineInfo.layout = pipelineContext.m_triangleLayout.handle;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, Ce_SinglePointer, &pipelineInfo, nullptr, &pipelineContext.m_trianglePso.handle) != VK_SUCCESS)
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipelineContext.m_trianglePso.handle) != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create idle draw pipeline");
             return 0;

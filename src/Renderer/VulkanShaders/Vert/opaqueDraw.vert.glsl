@@ -1,6 +1,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #extension GL_ARB_shader_draw_parameters : require
+//#extension GL_EXT_debug_printf : enable
 
 #define GRAPHICS_PIPELINE 
 #include "../Headers/sharedBuffers.glsl"
@@ -26,6 +27,8 @@ void main()
     Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
     RenderObject object = rodvpc.renderObjects.objects[indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
+
+    //debugPrintfEXT("%u", object.meshInstanceId);
 
     // Model position. Will be used for gl_position and exported to frag
     vec3 modelPosition = RotateQuat(vertex.position, transform.orientation) * transform.scale + transform.pos;

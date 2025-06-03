@@ -16,16 +16,47 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/quaternion.hpp"*/
 
-// Deactivate validation layers on debug mode even if they are requested
-#if defined(NDEBUG)
-#undef BLIT_VK_VALIDATION_LAYERS
-#define VK_CHECK(expr)              expr;
-#else
-#define VK_CHECK(expr)              BLIT_ASSERT(expr == VK_SUCCESS)                                          
-#endif
-
 namespace BlitzenVulkan
 {
+    // INCOMPLETE
+    inline const char* VK_TRANS_RES(VkResult res)
+    {
+        switch (res)
+        {
+        case VK_SUCCESS: return "VULKAN_RES_SUCCESS";
+        case VK_NOT_READY: return "VULKAN_RES_NOT_READY";
+        case VK_TIMEOUT: return "VULKAN_RES_TIMEDOUT";
+        case VK_EVENT_SET: return "VULKAN_RES_EVENT_SET";
+        case VK_EVENT_RESET: return "VULKAN_RES_EVENT_RESET";
+        case VK_INCOMPLETE: return "VULKAN_RES_INCOMPLETE";
+        case VK_ERROR_OUT_OF_HOST_MEMORY: return "VULKAN_RES_OUT_OF_HOST_MEMORY";
+        case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "VULKAN_RES_OUT_OF_DEVICE_MEMORY";
+        case VK_ERROR_INITIALIZATION_FAILED: return "VULKAN_RES_INIT_FAILED";
+        case VK_ERROR_DEVICE_LOST: return "VULKAN_RES_DEVICE_LOST";
+        case VK_RESULT_MAX_ENUM: default: return "VULKAN_RES_UNKNOWN";
+        }
+    }
+
+    inline void VK_RES_MSG_ASSRT(VkResult res)
+    {
+        if (res != VK_SUCCESS)
+        {
+            BLIT_ASSERT_MESSAGE(res == VK_SUCCESS, VK_TRANS_RES(res))
+        }
+    }
+
+    inline uint8_t VK_LOG_ERROR_MSG_AND_RETURN(VkResult res)
+    {
+        if (res < 0)
+        {
+            BLIT_ERROR(VK_TRANS_RES(res));
+            return 0;
+        }
+
+        BLIT_WARN("No error message found");
+        return 0;
+    }
+
     constexpr uint32_t Ce_VkApiVersion = VK_API_VERSION_1_3;
 
 
@@ -96,7 +127,6 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_GPUPrintfDeviceExtensionElement = 7;
     constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequired = 0;
 
-
     constexpr uint32_t Ce_MaxUniqueueDeviceQueueIndices = 4;
 
     constexpr uint32_t Ce_GraphicsQueueInfoIndex = 0;
@@ -118,11 +148,13 @@ namespace BlitzenVulkan
 #endif
 
     constexpr VkImageUsageFlags Ce_SwapchainImageUsageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    constexpr uint32_t Ce_SwapchainDescriptorBinding = 0;
 
     // The format and usage flags that will be set for the color and depth attachments
-    constexpr VkFormat ce_colorAttachmentFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-    constexpr VkImageLayout ce_ColorAttachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    constexpr VkImageUsageFlags ce_colorAttachmentImageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+    constexpr VkFormat Ce_ColorTargetFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+    constexpr VkImageLayout Ce_ColorTargetLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    constexpr VkImageUsageFlags Ce_ColorTargetUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+    constexpr uint32_t Ce_ColorTargetDescriptorBinding = 1;
     constexpr VkClearColorValue ce_WindowClearColor =
     {
         BlitzenCore::Ce_DefaultWindowBackgroundColor[0],
@@ -131,13 +163,16 @@ namespace BlitzenVulkan
         BlitzenCore::Ce_DefaultWindowBackgroundColor[3]
     };
 
-    constexpr VkFormat ce_depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
-    constexpr VkImageLayout ce_DepthAttachmentLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    constexpr VkImageUsageFlags ce_depthAttachmentImageUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    constexpr VkFormat Ce_DepthTargetFormat = VK_FORMAT_D32_SFLOAT;
+    constexpr VkImageLayout Ce_DepthTargetLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    constexpr VkImageUsageFlags Ce_DepthTargetUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    constexpr uint32_t Ce_DepthTargetDescriptorBinding = 1;
+    constexpr uint32_t Ce_DepthTargetDescriptorID = 0;
 
     constexpr VkFormat Ce_DepthPyramidFormat = VK_FORMAT_R32_SFLOAT;
     constexpr VkImageUsageFlags Ce_DepthPyramidImageUsage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
     constexpr uint8_t ce_maxDepthPyramidMipLevels = 16;
+    constexpr uint32_t Ce_HI_Z_MAPDescriptorID = 1;
 
     // The size of the stack arrays that hold push descriptor writes
     #if defined(BLITZEN_CLUSTER_CULLING)
@@ -145,6 +180,9 @@ namespace BlitzenVulkan
     #else
         constexpr uint32_t Ce_ComputeDescriptorWriteArraySize = 7;
     #endif
+
+    
+    constexpr uint32_t Ce_PushDescriptorSetID = 0;
     
     // GRAPHICS DESCRIPTORS
     constexpr uint32_t Ce_GraphicsDescriptorCount = 2;
@@ -154,6 +192,9 @@ namespace BlitzenVulkan
 
     constexpr uint32_t Ce_MatBufferDescriptorBinding = 6;
     constexpr uint32_t Ce_MatBufferGraphicsPushID = 1;
+
+    constexpr uint32_t Ce_TextureDescriptorsBinding = 0;
+    constexpr uint32_t Ce_TextureDescriptorsSetID = 1;
 
     // SHARED DESCRIPTORS
     constexpr uint32_t Ce_SharedDescriptorCount = 4;
@@ -196,53 +237,18 @@ namespace BlitzenVulkan
 
     constexpr uint32_t Ce_ClusterGroupDataDescriptorBinding = 13;
 
+    // Tlas 
+    constexpr uint32_t Ce_TlasBufferBinding = 13;
 
-    constexpr uint32_t ce_viewDataWriteElement = 0;
-    constexpr uint32_t Ce_LodBufferDescriptorId = 1;
-    constexpr uint32_t Ce_TransformBufferDrawCullDescriptorId = 2;
-    constexpr uint32_t Ce_DrawCmdBufferDrawCullDescriptorId = 3;
-    constexpr uint32_t Ce_DrawCountBufferDrawCullDescriptorId = 4;
-    constexpr uint32_t Ce_VisibilityBufferDrawCullDescriptorId = 5;
-    constexpr uint32_t Ce_SurfaceBufferDrawCullDescriptorId = 6;
-    constexpr uint32_t Ce_ClusterBufferDrawCullDescriptorId = 7;
+    // HI_Z GENERATION DESCRIPTORS
+    constexpr uint32_t Ce_HI_Z_DescriptorCount = 2;
 
-    constexpr uint32_t Ce_DepthPyramidImageBindingID = 3;
+    constexpr uint32_t Ce_HI_Z_DstImageBinding = 0;
+    constexpr uint32_t Ce_HI_Z_SrcImageBinding = 1;
 
-    constexpr uint32_t Ce_GraphicsDescriptorWriteArraySize = 6;
-
-    constexpr uint32_t Ce_VertexBufferPushDescriptorId = 1;
-    constexpr uint32_t Ce_MaterialBufferPushDescriptorId = 2;
-    constexpr uint32_t Ce_TransformBufferGraphicsDescriptorId = 3;
-    constexpr uint32_t Ce_DrawCmdBufferGraphicsDescriptorId = 4;
-    constexpr uint32_t Ce_SurfaceBufferGraphicsDescriptorId = 5;
-
-    constexpr uint32_t Ce_StaticSSBODataCount = 10;
-
-    constexpr uint32_t Ce_VertexBufferDataCopyIndex = 0;
-    constexpr uint32_t Ce_IndexBufferDataCopyIndex = 1;
-    constexpr uint32_t Ce_OpaqueRenderBufferCopyIndex = 2;
-    constexpr uint32_t Ce_TransparentRenderBufferCopyIndex = 3;
-    constexpr uint32_t Ce_ONPCRenderBufferCopyIndex = 4;
-    constexpr uint32_t Ce_SurfaceBufferDataCopyIndex = 5;
-    constexpr uint32_t Ce_LodBufferDataCopyIndex = 6;
-    constexpr uint32_t Ce_MaterialBufferDataCopyIndex = 7;
-    constexpr uint32_t Ce_ClusterBufferDataCopyIndex = 8;
-    constexpr uint32_t Ce_ClusterIndexBufferDataCopyIndex = 9;
-
-    
-    constexpr uint32_t IndirectDrawElementCount = 10'000'000;
-    constexpr uint32_t Ce_TrasparentDispatchElementCount = 500'000;
-
-	// TODO: REMOVE THIS 
-    constexpr uint32_t Ce_SinglePointer = 1;
+    constexpr uint32_t Ce_DefaultPushDescriptorBindingCount = 10;
 
     constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
-
-    constexpr uint32_t PushDescriptorSetID = 0;// Used when calling PuhsDesriptors for the set parameter
-    constexpr uint32_t TextureDescriptorSetID = 1;
-
-    constexpr uint8_t Ce_LateCulling = 1;// Sets the late culling boolean to 1
-    constexpr uint8_t Ce_InitialCulling = 0;// Sets the late culling boolean to 0
 
     constexpr uint64_t ce_fenceTimeout = 1000000000;
     constexpr uint64_t ce_swapchainImageTimeout = ce_fenceTimeout;
@@ -438,6 +444,8 @@ namespace BlitzenVulkan
         Buffer m_staging;
 
         DATA* m_pMapped{ nullptr };
+
+        size_t m_copyDataSize { 0 };
     };
 
     template<class DATA>
@@ -459,105 +467,25 @@ namespace BlitzenVulkan
 
     struct BlitVk_2DIMAGE_SAMP
     {
-        BlitVk_2DIMAGE m_pyramid;
+        BlitVk_2DIMAGE m_image;
 
         ImageSampler m_samp;
     };
 
-    struct hi_z_map
+    struct HI_Z_MAP
     {
         BlitVk_2DIMAGE m_pyramid;
-
-        ImageSampler m_samp;
 
         VkImageView m_levels[ce_maxDepthPyramidMipLevels];
         uint8_t m_levelCount;
 
-        uint32_t width;
-        uint32_t height;
-    };
-
-    struct AllocatedImage
-    {
-        VkImage image = VK_NULL_HANDLE;
-        VkImageView imageView = VK_NULL_HANDLE;
-
-        VkExtent3D extent;
-        VkFormat format;
-
-        VmaAllocation allocation;
-
-        // Manually cleanup the resources of an image
-        void CleanupResources(VmaAllocator allocator, VkDevice device);
-
-        // Implemented in vulkanResoures.cpp
-        ~AllocatedImage();
-    };
-
-    struct PushDescriptorImage
-    {
-        AllocatedImage image;
-        
-        ImageSampler sampler;
-
-        VkDescriptorType m_descriptorType;
-        uint32_t m_descriptorBinding;
-        VkImageLayout m_layout;
-
-        VkWriteDescriptorSet descriptorWrite{};
-        VkDescriptorImageInfo descriptorInfo{};
-
-        inline PushDescriptorImage(VkDescriptorType type, uint32_t binding, VkImageLayout layout) 
-            :m_descriptorType{type}, m_descriptorBinding{binding}, m_layout{layout}
-        {}
-
-        uint8_t SamplerInit(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode, 
-            VkSamplerAddressMode addressMode, void* pNextChain);
+        ~HI_Z_MAP();
     };
 
     struct TextureData
     {
-        AllocatedImage image;
+        BlitVk_2DIMAGE image;
         VkSampler sampler;
-    };
-
-    struct AllocatedBuffer
-    {
-        VkBuffer bufferHandle = VK_NULL_HANDLE;
-        VmaAllocation allocation;
-        VmaAllocationInfo allocationInfo;
-
-        ~AllocatedBuffer();
-    };
-
-    template<typename T>
-    struct PushDescriptorBuffer
-    {
-        AllocatedBuffer buffer;
-
-        VkDescriptorBufferInfo bufferInfo{};
-        VkWriteDescriptorSet descriptorWrite{};
-
-        uint32_t descriptorBinding;
-        VkDescriptorType descriptorType;
-
-        T* pData;
-
-        inline PushDescriptorBuffer(uint32_t binding, VkDescriptorType type)
-            : descriptorBinding{binding}, descriptorType{type} {}
-    };
-
-    struct BlitVkPushDescriptor
-    {
-        VkWriteDescriptorSet m_write{};
-
-        uint32_t m_bindingID;
-        VkDescriptorType m_type;
-
-        inline BlitVkPushDescriptor(uint32_t binding, VkDescriptorType type): m_bindingID{ binding }, m_type{ type }
-        {
-
-        }
     };
 
 
@@ -571,6 +499,7 @@ namespace BlitzenVulkan
         uint32_t drawId;
         VkDrawIndexedIndirectCommand drawIndirect;// 5 32bit integers
     };
+    constexpr uint32_t Ce_DrawCmdElementCount = 500'000;
 
     struct IndirectTaskData
     {
@@ -579,12 +508,17 @@ namespace BlitzenVulkan
     };
 
     // TODO: Either remove lodIndex or add padding in the future
-    struct ClusterDispatchData
+    struct ClusterGroupData
     {
         uint32_t objectId;
         uint32_t lodIndex;
         uint32_t clusterId;
+
+        uint32_t padding0;
     };
+    static_assert(sizeof(ClusterGroupData) % 16 == 0, "Unexpected alignment for ClusterGroupData");
+    constexpr uint32_t Ce_ClusterGroupBufferSize = 1'000'000;
+    constexpr uint32_t Ce_TransClusterGouprBufferSize = 10'000;
 
 	struct alignas(16) ClusterCullShaderPushConstant
 	{
@@ -619,6 +553,21 @@ namespace BlitzenVulkan
         BlitML::vec4 data4;
     };
 }
+
+// Deactivate validation layers on debug mode even if they are requested
+#if defined(NDEBUG)
+
+#define VK_CHECK(expr)              expr;
+
+#define VK_CHECK_MSG(expr)          expr;
+
+#else
+
+#define VK_CHECK(expr)              BLIT_ASSERT(expr == VK_SUCCESS)
+
+#define VK_CHECK_MSG(expr)               VK_RES_MSG_ASSRT(expr)
+
+#endif
 
 
 namespace BlitzenPlatform

@@ -18,7 +18,7 @@ void main()
     {
         return;
     }
-    ClusterDispatchData data = pushConstant.clusterDispatchBuffer.data[objectIndex];
+    ClusterGroupData data = pushConstant.clusterDispatchBuffer.data[objectIndex];
     RenderObject obj = pushConstant.renderObjectBuffer.objects[data.objectId];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
 

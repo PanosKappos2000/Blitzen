@@ -23,99 +23,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t RenderingAttachmentsInit(VkDevice device, VmaAllocator vma, PushDescriptorImage& colorAttachment, VkRenderingAttachmentInfo& colorAttachmentInfo,
-        PushDescriptorImage& depthAttachment, VkRenderingAttachmentInfo& depthAttachmentInfo, PushDescriptorImage& depthPyramid,
-        uint8_t& depthPyramidMipCount, VkImageView* depthPyramidMips, VkExtent2D drawExtent, VkExtent2D& depthPyramidExtent)
-    {
-        // Color attachment
-        if (!colorAttachment.SamplerInit(device, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, nullptr))
-        {
-            BLIT_ERROR("Failed to create color attachment sampler");
-            return 0;
-        }
-        
-        // Color attachment image resource and descriptor
-        if (!CreatePushDescriptorImage(device, vma, colorAttachment, { drawExtent.width, drawExtent.height, 1 }, 
-            ce_colorAttachmentFormat, ce_colorAttachmentImageUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY))
-        {
-            BLIT_ERROR("Failed to create color attachment image resource");
-            return 0;
-        }
-        
-        // Color attachment rendering info
-        CreateRenderingAttachmentInfo(colorAttachmentInfo, colorAttachment.image.imageView, ce_ColorAttachmentLayout, 
-            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, ce_WindowClearColor);
-
-
-        // Depth attachment
-        VkSamplerReductionModeCreateInfo reductionInfo{};
-        reductionInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
-        reductionInfo.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
-        if (!depthAttachment.SamplerInit(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST,
-            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, &reductionInfo))
-        {
-            BLIT_ERROR("Failed to create depth attachment sampler");
-            return 0;
-        }
-
-        // Depth attachment image resource and descriptor
-        if (!CreatePushDescriptorImage(device, vma, depthAttachment, { drawExtent.width, drawExtent.height, 1 },
-            ce_depthAttachmentFormat, ce_depthAttachmentImageUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY))
-        {
-            BLIT_ERROR("Failed to create depth attachment image resource");
-            return 0;
-        }
-        
-        // Depth attachment rendering info
-        CreateRenderingAttachmentInfo(depthAttachmentInfo, depthAttachment.image.imageView, ce_DepthAttachmentLayout, 
-            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, { 0, 0, 0, 0 }, { 0, 0 });
-        
-
-        // Depth pyramid
-        if (!CreateDepthPyramid(depthPyramid, depthPyramidExtent, depthPyramidMips, depthPyramidMipCount, drawExtent, device, vma))
-        {
-            BLIT_ERROR("Failed to create the depth pyramid");
-            return 0;
-        }
-
-        // Success
-        return 1;
-    }
-
-    uint8_t CreateDepthPyramid(PushDescriptorImage& depthPyramidImage, VkExtent2D& depthPyramidExtent, VkImageView* depthPyramidMips,
-        uint8_t& depthPyramidMipLevels, VkExtent2D drawExtent, VkDevice device, VmaAllocator allocator)
-    {
-        // Non Conservative for tests with dx12
-        //depthPyramidExtent.width = BlitML::Max(1u, (drawExtent.width) >> 1);
-        //depthPyramidExtent.height = BlitML::Max(1u, (drawExtent.height) >> 1);
-
-        // Conservative starting extent
-        depthPyramidExtent.width = BlitML::PreviousPow2(drawExtent.width);
-        depthPyramidExtent.height = BlitML::PreviousPow2(drawExtent.height);
-        depthPyramidMipLevels = BlitML::GetDepthPyramidMipLevels(depthPyramidExtent.width, depthPyramidExtent.height);
-
-        // Image resource
-        if (!CreatePushDescriptorImage(device, allocator, depthPyramidImage, { depthPyramidExtent.width, depthPyramidExtent.height, 1 },
-            Ce_DepthPyramidFormat, Ce_DepthPyramidImageUsage, depthPyramidMipLevels, VMA_MEMORY_USAGE_GPU_ONLY))
-        {
-            BLIT_ERROR("Failed to create depth pyramid resource");
-            return 0;
-        }
-
-        // Levels
-        for (uint8_t i = 0; i < depthPyramidMipLevels; ++i)
-        {
-            if (!CreateImageView(device, depthPyramidMips[size_t(i)], depthPyramidImage.image.image, Ce_DepthPyramidFormat, i, 1))
-            {
-                BLIT_ERROR("Failed to create depth pyramid mips");
-                return 0;
-            }
-        }
-
-        return 1;
-    }
-
-    uint8_t CreateBuffer(VmaAllocator allocator, AllocatedBuffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
+    uint8_t CreateBuffer(VmaAllocator allocator, Buffer& buffer, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memoryUsage, VkDeviceSize bufferSize, 
     VmaAllocationCreateFlags allocationFlags)
     {
         VkBufferCreateInfo bufferInfo{};
@@ -130,41 +38,13 @@ namespace BlitzenVulkan
         bufferAllocationInfo.usage = memoryUsage;
         bufferAllocationInfo.flags = allocationFlags;
 
-        VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, &buffer.bufferHandle, &buffer.allocation, &buffer.allocationInfo);
+        VkResult res = vmaCreateBuffer(allocator, &bufferInfo, &bufferAllocationInfo, &buffer.m_handle, &buffer.m_vmaAlloc, &buffer.m_vmaInfo);
         if (res != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create buffer resource");
             return 0;
         }
 
-        return 1;
-    }
-
-    uint8_t CreateSSBO(VmaAllocator allocator, VkDevice device, void* pData, AllocatedBuffer& storageBuffer, AllocatedBuffer& stagingBuffer, VkBufferUsageFlags usage, VkDeviceSize size)
-    {
-        if (size == 0)
-        {
-            BLIT_ERROR("Cannot create buffer with size 0");
-            return 0;
-        }
-
-        // SSBO
-        if(!CreateBuffer(allocator, storageBuffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-        {
-            return 0;
-        }
-
-        // Staging buffer
-        if(!CreateBuffer(allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, size, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-        {
-            return 0;
-        }
-
-        // Copies data to the staging buffer address
-        void* pVertexBufferData = stagingBuffer.allocationInfo.pMappedData;
-        BlitzenCore::BlitMemCopy(pVertexBufferData, pData, size);
-
-        // Success
         return 1;
     }
 
@@ -178,23 +58,23 @@ namespace BlitzenVulkan
         return vkGetBufferDeviceAddress(device, &indirectBufferAddressInfo);
     }
 
-    uint8_t CreateImage(VkDevice device, VmaAllocator allocator, AllocatedImage& image, VkExtent3D extent, VkFormat format, VkImageUsageFlags imageUsage, 
-        uint8_t mipLevels /*= 1*/, VmaMemoryUsage memoryUsage /*=VMA_MEMORY_USAGE_GPU_ONLY*/)
+    uint8_t Create2DImageResource(VkDevice device, VmaAllocator allocator, BlitVk_2DIMAGE& image, uint32_t width, uint32_t height, VkFormat format,
+        VkImageUsageFlags imageUsage, uint8_t mipLevels, VmaMemoryUsage memoryUsage)
     {
-        image.extent = extent;
-        image.format = format;
+        image.m_width = width;
+        image.m_height = height;
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.flags = 0;
         imageInfo.pNext = nullptr;
 
-        imageInfo.extent = extent;
+        imageInfo.extent = { width, height, 1 };
         imageInfo.mipLevels  = mipLevels;
         imageInfo.format = format;
         imageInfo.usage = imageUsage;
         
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;// No MSAA
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.arrayLayers = 1;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -203,32 +83,18 @@ namespace BlitzenVulkan
         imageAllocationInfo.usage = memoryUsage;
         imageAllocationInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &image.image, &image.allocation, nullptr);
+        VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &image.m_image.m_handle, &image.m_image.m_vmaAlloc, nullptr);
         if (res != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create image resource");
             return 0;
         }
 
-        if (!CreateImageView(device, image.imageView, image.image, format, 0, mipLevels))
+        if (!CreateImageView(device, image.m_view.m_handle, image.m_image.m_handle, format, 0, mipLevels))
         {
             BLIT_ERROR("Failed to create image view");
             return 0;
         }
-
-        return 1;
-    }
-
-    uint8_t CreatePushDescriptorImage(VkDevice device, VmaAllocator allocator, PushDescriptorImage& image, 
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, uint8_t mipLevels, VmaMemoryUsage memoryUsage)
-    {
-        if (!CreateImage(device, allocator, image.image, extent, format, usage, mipLevels, memoryUsage))
-        {
-            return 0;
-        }
-
-        WriteImageDescriptorSets(image.descriptorWrite, image.descriptorInfo, image.m_descriptorType, VK_NULL_HANDLE, image.m_descriptorBinding, 
-            image.m_layout, image.image.imageView, (image.sampler.m_handle != VK_NULL_HANDLE) ? image.sampler.m_handle : VK_NULL_HANDLE );
 
         return 1;
     }
@@ -254,17 +120,16 @@ namespace BlitzenVulkan
         VkResult res = vkCreateImageView(device, &info, nullptr, &imageView);
         if (res != VK_SUCCESS)
         {
+            BLIT_ERROR("Failed to create image view");
             return 0;
         }
         return 1;
     }
 
-    uint8_t CreateTextureImage(AllocatedBuffer& buffer, VkDevice device, VmaAllocator allocator, AllocatedImage& image, 
-        VkExtent3D extent, VkFormat format, VkImageUsageFlags usage, VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels)
+    uint8_t Create2DTexture(Buffer& buffer, VkDevice device, VmaAllocator allocator, BlitVk_2DIMAGE& tex, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage, 
+        VkCommandBuffer commandBuffer, VkQueue queue, uint8_t mipLevels)
     {
-        // Create an image for the texture data to be copied into. 
-        // Adds the VK_IMAGE_USAGE_TRANSFER_DST_BIT, so that it can accept the data transfer from the buffer
-        if (!CreateImage(device, allocator, image, extent, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels))
+        if (!Create2DImageResource(device, allocator, tex, extent.width, extent.height, format, usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT, mipLevels, VMA_MEMORY_USAGE_GPU_ONLY))
         {
             BLIT_ERROR("Failed to create image resource for texture");
             return 0;
@@ -291,19 +156,19 @@ namespace BlitzenVulkan
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         // Create an image barrier for transiton to transfer dst optimal layout
-        VkImageMemoryBarrier2 transitionToTransferDSToptimal{};
-        ImageMemoryBarrier(image.image, transitionToTransferDSToptimal, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
-        VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, 
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &transitionToTransferDSToptimal);
+        VkImageMemoryBarrier2 copyBarrier{};
+        ImageMemoryBarrier(tex.m_image.m_handle, copyBarrier, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COPY_BIT, 
+            VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        // execute
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &copyBarrier);
 
-        CopyBufferToImage(commandBuffer, buffer.bufferHandle, image.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, copyRegions.Data());
+        CopyBufferToImage(commandBuffer, buffer.m_handle, tex.m_image.m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, copyRegions.Data());
 
-        VkImageMemoryBarrier2 transitionImageToShaderReadOptimal{};
-        ImageMemoryBarrier(image.image, transitionImageToShaderReadOptimal, VK_PIPELINE_STAGE_2_COPY_BIT, 
-        VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &transitionImageToShaderReadOptimal);
+        VkImageMemoryBarrier2 transitionBarrier{};
+        ImageMemoryBarrier(tex.m_image.m_handle, transitionBarrier, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        // execute
+        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &transitionBarrier);
 
         SubmitCommandBuffer(queue, commandBuffer);
         vkQueueWaitIdle(queue);
@@ -595,19 +460,14 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType, uint32_t dstBinding, VkBuffer buffer, void* pNextChain,
-        VkDescriptorSet dstSet,  VkDeviceSize offset, uint32_t descriptorCount, VkDeviceSize range /*=VK_WHOLE_SIZE*/, uint32_t dstArrayElement /*=0*/)
+    void WriteBufferDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorBufferInfo* pBufferInfo, VkDescriptorType descriptorType, uint32_t dstBinding, void* pNextChain,
+        VkDescriptorSet dstSet, uint32_t descriptorCount, uint32_t dstArrayElement)
     {
-        bufferInfo = {};
-        bufferInfo.buffer = buffer;
-        bufferInfo.offset = offset;
-        bufferInfo.range = range;
-
         write = {};
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.pNext = pNextChain;
 
-        write.pBufferInfo = &bufferInfo;
+        write.pBufferInfo = pBufferInfo;
 
         write.descriptorType = descriptorType;
         write.descriptorCount = descriptorCount;
@@ -651,20 +511,16 @@ namespace BlitzenVulkan
         write.dstArrayElement = dstArrayElement;
     }
 
-    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo& imageInfo, VkDescriptorType descirptorType, VkDescriptorSet dstSet, 
-    uint32_t binding, VkImageLayout layout, VkImageView imageView, VkSampler sampler /*= VK_NULL_HANDLE*/)
+    void WriteImageDescriptorSets(VkWriteDescriptorSet& write, VkDescriptorImageInfo* pImageInfo, VkDescriptorType descirptorType, VkDescriptorSet dstSet, uint32_t binding)
     {
-        imageInfo.imageLayout = layout;
-        imageInfo.imageView = imageView;
-        imageInfo.sampler = sampler;
-
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.pNext = nullptr;
         write.dstSet = dstSet;
         write.dstBinding = binding;
         write.descriptorType = descirptorType;
         write.descriptorCount = 1; // Hardcoded, for more than one descriptor, the above function should be used
-        write.pImageInfo = &imageInfo;
+
+        write.pImageInfo = pImageInfo;
     }
 
     void PipelineBarrier(VkCommandBuffer commandBuffer, uint32_t memoryBarrierCount, VkMemoryBarrier2* pMemoryBarriers, uint32_t bufferBarrierCount, 
@@ -725,18 +581,5 @@ namespace BlitzenVulkan
         barrier.srcAccessMask = firstAccessStage;
         barrier.dstStageMask = secondSyncStage;
         barrier.dstAccessMask = secondAccessStage;
-    }
-
-    uint8_t PushDescriptorImage::SamplerInit(VkDevice device, VkFilter filter, VkSamplerMipmapMode mipmapMode,
-        VkSamplerAddressMode addressMode, void* pNextChain)
-    {
-        sampler.m_handle = CreateSampler(device, filter, mipmapMode, addressMode, pNextChain);
-        if (sampler.m_handle == VK_NULL_HANDLE)
-        {
-            BLIT_ERROR("Failed to create sampler");
-            return 0;
-        }
-
-        return 1;
     }
 }

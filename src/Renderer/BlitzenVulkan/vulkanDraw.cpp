@@ -2,6 +2,7 @@
 #include "vulkanCommands.h"
 #include "vulkanPipelines.h"
 #include "vulkanResourceFunctions.h"
+#include "vulkanRNDResources.h"
 #include "Core/Events/blitTimeManager.h"
 
 // Not necessary since I have my own math library
@@ -42,11 +43,10 @@ namespace BlitzenVulkan
         return plane / glm::length(glm::vec3(plane));
     }
 
-    static void UpdateBuffers(BlitzenEngine::DrawContext& context, VulkanRenderer::FrameTools& tools, VulkanRenderer::VarBuffers& buffers, VkQueue queue)
+    static void UpdateBuffers(BlitzenEngine::DrawContext& context, VulkanRenderer::FrameTools& tools, RWResources& buffers, VkQueue queue)
     {
         BeginCommandBuffer(tools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-        CopyBufferToBuffer(tools.transferCommandBuffer, buffers.transformStagingBuffer.bufferHandle,
-            buffers.transformBuffer.buffer.bufferHandle, buffers.dynamicTransformDataSize, 0, 0);
+        CopyBufferToBuffer(tools.transferCommandBuffer, buffers.m_transformBuffer.m_staging.m_handle, buffers.m_transformBuffer.m_buffer.m_handle, buffers.m_transformBuffer.m_copyDataSize, 0, 0);
 
         // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT is used here because the signal comes from a transfer queue.
         // More specific shader stages (like VERTEX or COMPUTE) are invalid for transfer queues per Vulkan spec.
@@ -102,285 +102,414 @@ namespace BlitzenVulkan
     }
 
     // Prepares the first culling compute pass (Frustum culling, lod selection, only previously visible objects)
-    static void DrawCullFirstPass(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, VulkanRenderer::StaticBuffers& staticBuffers, 
-        VulkanRenderer::VarBuffers& varBuffers, uint32_t drawCount, uint32_t descriptorCount, VkWriteDescriptorSet* pDescriptors, VkDeviceAddress objAddress)
+    static void DrawCullFirstPass(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies, 
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
         // Count reset barrier
-        VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, waitBeforeZeroingCountBuffer,  VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 
+        VkBufferMemoryBarrier2 countResetBarrier{};
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, countResetBarrier,  VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 
             VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Execute 
-        PipelineBarrier(cmdb, 0, nullptr, 1, &waitBeforeZeroingCountBuffer, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, 1, &countResetBarrier, 0, nullptr);
 
         // Reset
-        vkCmdFillBuffer(cmdb, staticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, sizeof(uint32_t), 0);
+        vkCmdFillBuffer(cmdb, readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
 
         // Barrier waits for count reset, last frame draw commands read and visibility buffer write
-        VkBufferMemoryBarrier2 dispatchBarriers[3]{};
+        VkBufferMemoryBarrier2 cullBarriers[3]{};
         // Count reset barrier
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, dispatchBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, cullBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Commands read barrier
-        BufferMemoryBarrier(staticBuffers.indirectDrawBuffer.buffer.bufferHandle, dispatchBarriers[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, cullBarriers[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
             VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Visibility buffer Barrier
-        BufferMemoryBarrier(staticBuffers.visibilityBuffer.buffer.bufferHandle, dispatchBarriers[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,  VK_ACCESS_2_SHADER_WRITE_BIT, 
+        BufferMemoryBarrier(readWrites.m_drawVisBuffer.m_buffer.m_handle, cullBarriers[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,  VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
         // execute
-        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(dispatchBarriers), dispatchBarriers, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullBarriers), cullBarriers, 0, nullptr);
 
         // Descriptors
-        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, PushDescriptorSetID, descriptorCount, pDescriptors);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount, 
+            &descriptorContext.m_pushDescriptorsCull[frame * Ce_CullDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[frame * Ce_SharedDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_DrawOcclusionDescriptorCount,
+            &descriptorContext.m_pushDescriptorsDrawOcc[frame]);
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullFirstPso.handle);
-        DrawCullShaderPushConstant pushConstant{ objAddress, drawCount };
+        DrawCullShaderPushConstant pushConstant{ descriptorContext.m_opaqueRenderAddr, drawContext.m_renders.m_renderCount};
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_renders.m_renderCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
-        VkBufferMemoryBarrier2 waitForCullingShader[2] = {};
+        VkBufferMemoryBarrier2 graphicsBarriers[2]{};
         // Count
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, waitForCullingShader[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, graphicsBarriers[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 0, VK_WHOLE_SIZE);
         // Commands
-        BufferMemoryBarrier(staticBuffers.indirectDrawBuffer.buffer.bufferHandle, waitForCullingShader[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, 
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, graphicsBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
             VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
         // Execute
-        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers, 0, nullptr);
     }
 
     // Prepares the second culling compute pass (frustum culling, LOD selection, occlusion, visibility setting)
     // Creates commands for previously culled objects. Sets visibility for non-culled objects (already drawn after previous pass)
-    static void DrawCullOcclusionPass(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext,
-        VulkanRenderer::StaticBuffers& staticBuffers, VulkanRenderer::VarBuffers& varBuffers, PushDescriptorImage& depthPyramid, 
-        PushDescriptorImage& depthAttachment, uint32_t drawCount, uint32_t descriptorCount, VkWriteDescriptorSet* pDescriptors, VkDeviceAddress objAddress)
+    static void DrawCullOcclusionPass(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
-        // Depth pyramid update
-        VkWriteDescriptorSet depthPyramidDescriptor{};
-        VkDescriptorImageInfo depthPyramidDescriptorInfo{};
-        WriteImageDescriptorSets(depthPyramidDescriptor, depthPyramidDescriptorInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE,
-            Ce_DepthPyramidImageBindingID, VK_IMAGE_LAYOUT_GENERAL, depthPyramid.image.imageView, depthAttachment.sampler.m_handle);
-
         // Count reset barrier
-        VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, waitBeforeZeroingCountBuffer, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 
+        VkBufferMemoryBarrier2 resetBarrier{};
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, resetBarrier, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
             VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Execute 
-        PipelineBarrier(cmdb, 0, nullptr, 1, &waitBeforeZeroingCountBuffer, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, 1, &resetBarrier, 0, nullptr);
 
         // Reset
-        vkCmdFillBuffer(cmdb, staticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, sizeof(uint32_t), 0);
+        vkCmdFillBuffer(cmdb, readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
 
         // Barrier waits for count reset, last frame draw commands read and visibility buffer read
-        VkBufferMemoryBarrier2 dispatchBarriers[3]{};
+        VkBufferMemoryBarrier2 cullBarriers[3]{};
         // Count reset barrier
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, dispatchBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, cullBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Commands read barrier
-        BufferMemoryBarrier(staticBuffers.indirectDrawBuffer.buffer.bufferHandle, dispatchBarriers[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, 
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, cullBarriers[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
             VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Visibility buffer Barrier
-        BufferMemoryBarrier(staticBuffers.visibilityBuffer.buffer.bufferHandle, dispatchBarriers[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_READ_BIT, 
+        BufferMemoryBarrier(readWrites.m_drawVisBuffer.m_buffer.m_handle, cullBarriers[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,VK_ACCESS_2_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         
         // Additional image memory barrier for depth pyramid
-        VkImageMemoryBarrier2 waitForDepthPyramidGeneration{};
-        ImageMemoryBarrier(depthPyramid.image.image, waitForDepthPyramidGeneration, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        VkImageMemoryBarrier2 HI_Z_barrier{};
+        ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, HI_Z_barrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
             VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         
         // Execute
-        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(dispatchBarriers), dispatchBarriers, 1, &waitForDepthPyramidGeneration);
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullBarriers), cullBarriers, 1, &HI_Z_barrier);
 
         // Descriptors
-        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, PushDescriptorSetID, descriptorCount, pDescriptors);
-        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, PushDescriptorSetID, 1, &depthPyramidDescriptor);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount, 
+            &descriptorContext.m_pushDescriptorsCull[frame * Ce_CullDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[frame * Ce_SharedDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_DrawOcclusionDescriptorCount,
+            &descriptorContext.m_pushDescriptorsDrawOcc[frame * Ce_DrawOcclusionDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, 1, 
+            &descriptorContext.m_HI_Z_cullDescriptor[frame]);
 
         // Pipeline and push Constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLatePso.handle);
-        DrawCullShaderPushConstant pushConstant{ objAddress, drawCount };
+        DrawCullShaderPushConstant pushConstant{ descriptorContext.m_opaqueRenderAddr, drawContext.m_renders.m_renderCount };
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_renders.m_renderCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
-        VkBufferMemoryBarrier2 waitForCullingShader[2] = {};
+        VkBufferMemoryBarrier2 graphicsBarriers[2] = {};
         // Count
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, waitForCullingShader[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, graphicsBarriers[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 0, VK_WHOLE_SIZE);
         // Commands
-        BufferMemoryBarrier(staticBuffers.indirectDrawBuffer.buffer.bufferHandle, waitForCullingShader[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, graphicsBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
             VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
         // Execute
-        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers, 0, nullptr);
     }
 
-    static void DrawCullTrans(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, VulkanRenderer::StaticBuffers& staticBuffers,
-        VulkanRenderer::VarBuffers& varBuffers, uint32_t drawCount, uint32_t descriptorCount, VkWriteDescriptorSet* pDescriptors, VkDeviceAddress objAddress)
+    static void DrawCullTrans(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
         // Count reset barrier
-        VkBufferMemoryBarrier2 waitBeforeZeroingCountBuffer{};
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, waitBeforeZeroingCountBuffer, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+        VkBufferMemoryBarrier2 resetBarrier{};
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, resetBarrier, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
             VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Execute 
-        PipelineBarrier(cmdb, 0, nullptr, 1, &waitBeforeZeroingCountBuffer, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, 1, &resetBarrier, 0, nullptr);
 
         // Reset
-        vkCmdFillBuffer(cmdb, staticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, sizeof(uint32_t), 0);
+        vkCmdFillBuffer(cmdb, readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
 
         // Barrier waits for count reset, last frame draw commands read and visibility buffer write
-        VkBufferMemoryBarrier2 dispatchBarriers[3]{};
+        VkBufferMemoryBarrier2 dispatchBarriers[2]{};
         // Count reset barrier
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, dispatchBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, dispatchBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Commands read barrier
-        BufferMemoryBarrier(staticBuffers.indirectDrawBuffer.buffer.bufferHandle, dispatchBarriers[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, dispatchBarriers[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
             VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
-        // Visibility buffer Barrier
-        BufferMemoryBarrier(staticBuffers.visibilityBuffer.buffer.bufferHandle, dispatchBarriers[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
+
+        // Additional image memory barrier for depth pyramid
+        VkImageMemoryBarrier2 HI_Z_barrier{};
+        ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, HI_Z_barrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+
         // execute
-        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(dispatchBarriers), dispatchBarriers, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(dispatchBarriers), dispatchBarriers, 1, &HI_Z_barrier);
 
         // Descriptors
-        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, PushDescriptorSetID, descriptorCount, pDescriptors);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount, 
+            &descriptorContext.m_pushDescriptorsCull[Ce_CullDescriptorCount * frame]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[Ce_SharedDescriptorCount * frame]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, 1, 
+            &descriptorContext.m_HI_Z_cullDescriptor[frame]);
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_transDrawCullPso.handle);
-        DrawCullShaderPushConstant pushConstant{ objAddress, drawCount };
+        DrawCullShaderPushConstant pushConstant{ descriptorContext.m_transRenderAddr, drawContext.m_renders.m_transparentRenderCount };
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_renders.m_transparentRenderCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
-        VkBufferMemoryBarrier2 waitForCullingShader[2] = {};
+        VkBufferMemoryBarrier2 waitForCullingShader[2]{};
         // Count
-        BufferMemoryBarrier(staticBuffers.indirectCountBuffer.buffer.bufferHandle, waitForCullingShader[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, waitForCullingShader[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 0, VK_WHOLE_SIZE);
         // Commands
-        BufferMemoryBarrier(staticBuffers.indirectDrawBuffer.buffer.bufferHandle, waitForCullingShader[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, waitForCullingShader[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
             VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
             VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
         // Execute
         PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
     }
 
-    static void ClusterDispatch(VkCommandBuffer commandBuffer, PipelineContext& pipelineContext, uint32_t descriptorWriteCount, 
-        VkWriteDescriptorSet* pDescriptorWrites, VkBuffer clusterCountBuffer, VkDeviceAddress clusterCountBufferAddress,
-        VkBuffer clusterDataBuffer, VkDeviceAddress clusterDispatchBufferAddress,  VkBuffer clusterCountCopy, uint32_t drawCount, 
-        VkDeviceAddress renderObjectBufferAddress, uint8_t lateCulling, VkInstance instance)
+    static void ClusterDispatch(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
         // Barrier before count reset
-        VkBufferMemoryBarrier2 waitBeforeZeroingClusterCount{};
-        BufferMemoryBarrier(clusterCountBuffer, waitBeforeZeroingClusterCount, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
-            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, sizeof(uint32_t));
-        PipelineBarrier(commandBuffer, 0, nullptr, Ce_SinglePointer, &waitBeforeZeroingClusterCount, 0, nullptr);
+        VkBufferMemoryBarrier2 clusterResetBarrier{};
+        BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, clusterResetBarrier, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // execute
+        PipelineBarrier(cmdb, 0, nullptr, 1, &clusterResetBarrier, 0, nullptr);
+
         // Reset
-        vkCmdFillBuffer(commandBuffer, clusterCountBuffer, 0, sizeof(uint32_t), 0);
+        vkCmdFillBuffer(cmdb, readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
 
         // Barrier for previous frame cluster count and cluster dispatch read
-        VkBufferMemoryBarrier2 waitForBuffersBeforeDispatch[2]{};
+        VkBufferMemoryBarrier2 cullBarriers[2]{};
         // Cluster count
-        BufferMemoryBarrier(clusterCountBuffer, waitForBuffersBeforeDispatch[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, sizeof(uint32_t));
+        BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, cullBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         // Cluster dispatch
-        BufferMemoryBarrier(clusterDataBuffer, waitForBuffersBeforeDispatch[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, sizeof(ClusterDispatchData) * drawCount);
+        BufferMemoryBarrier(readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle, cullBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
         
         // Execute
-        PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitForBuffersBeforeDispatch), waitForBuffersBeforeDispatch, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullBarriers), cullBarriers, 0, nullptr);
 
         // Descriptors
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, PushDescriptorSetID, descriptorWriteCount, pDescriptorWrites);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount, 
+            &descriptorContext.m_pushDescriptorsCull[Ce_CullDescriptorCount * frame]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[Ce_SharedDescriptorCount * frame]);
 
 		// Pipeline and push constants
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullDispatchPso.handle);
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullDispatchPso.handle);
         ClusterCullShaderPushConstant pushConstant
         {
-            renderObjectBufferAddress, clusterDispatchBufferAddress, 
-            clusterCountBufferAddress, drawCount
+            descriptorContext.m_opaqueRenderAddr, descriptorContext.m_clusterGroupAddr[frame],
+            descriptorContext.m_clusterCounterAddr[frame], drawContext.m_renders.m_renderCount
         };
-        vkCmdPushConstants(commandBuffer, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         // Dispatch
-        vkCmdDispatch(commandBuffer, (drawCount / 64) + 1, 1, 1);
+        vkCmdDispatch(cmdb, (drawContext.m_renders.m_renderCount / 64) + 1, 1, 1);
 
         // Cluster dispatch read barrier
-        VkBufferMemoryBarrier2 clusterDispatchVisibilityBarrier{};
-        BufferMemoryBarrier(clusterDataBuffer, clusterDispatchVisibilityBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        VkBufferMemoryBarrier2 clusterCullBarrier{};
+        BufferMemoryBarrier(readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle, clusterCullBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
         // execute
-        PipelineBarrier(commandBuffer, 0, nullptr, 1, &clusterDispatchVisibilityBarrier, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, 1, &clusterCullBarrier, 0, nullptr);
 
         // Cluster count copy barrier
-        VkBufferMemoryBarrier2 copyToStagingBufferBarrier{};
-        BufferMemoryBarrier(clusterCountBuffer, copyToStagingBufferBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        VkBufferMemoryBarrier2 countCopyBarrier{};
+        BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, countCopyBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 0, sizeof(uint32_t));
-        PipelineBarrier(commandBuffer, 0, nullptr, 1, &copyToStagingBufferBarrier, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, 1, &countCopyBarrier, 0, nullptr);
         // Copy
-        CopyBufferToBuffer(commandBuffer, clusterCountBuffer, clusterCountCopy, sizeof(uint32_t), 0, 0);
+        CopyBufferToBuffer(cmdb, readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, readWrites.m_clusterDispatchCounterCopy.m_buffer.m_handle, sizeof(uint32_t), 0, 0);
     }
 
-    static void ClusterCull(VkCommandBuffer commandBuffer, PipelineContext& pipelineContext, uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites,
-        VkBuffer clusterCountBuffer, AllocatedBuffer& clusterCountCopyBuffer, VkBuffer clusterDispatchBuffer, VkDeviceAddress clusterDispatchBufferAddress, 
-        VkBuffer drawCountBuffer, VkBuffer indirectDrawBuffer, uint32_t dispatchCount, VkDeviceAddress renderObjectBufferAddress, VkInstance instance)
+    static void ClusterCullDispatchTrans(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
-        // Draw count reset barrier
-        VkBufferMemoryBarrier2 drawCountFillBarrier{};
-        BufferMemoryBarrier(drawCountBuffer, drawCountFillBarrier, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
-            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, sizeof(uint32_t));
-        PipelineBarrier(commandBuffer, 0, nullptr, Ce_SinglePointer, &drawCountFillBarrier, 0, nullptr);
-        vkCmdFillBuffer(commandBuffer, drawCountBuffer, 0, sizeof(uint32_t), 0);
+        // Barrier before count reset
+        VkBufferMemoryBarrier2 clusterResetBarrier{};
+        BufferMemoryBarrier(readWrites.m_transClusterDispatchCounterBuffer.m_buffer.m_handle, clusterResetBarrier, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // execute
+        PipelineBarrier(cmdb, 0, nullptr, 1, &clusterResetBarrier, 0, nullptr);
 
-        // Wait for draw count reset, previous frame command read and cluster dispatch write
-        VkBufferMemoryBarrier2 waitBeforeDispatchingShaders[3] = {};
-        // Draw count reset
-        BufferMemoryBarrier(drawCountBuffer, waitBeforeDispatchingShaders[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
-            0, VK_WHOLE_SIZE);
-        // Command read barrier
-        BufferMemoryBarrier(indirectDrawBuffer, waitBeforeDispatchingShaders[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
-            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-            0, VK_WHOLE_SIZE);
-        // Cluster dispatch barrier
-        BufferMemoryBarrier(clusterDispatchBuffer, waitBeforeDispatchingShaders[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
-        // Execution
-        PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitBeforeDispatchingShaders), waitBeforeDispatchingShaders, 0, nullptr);
+        // Reset
+        vkCmdFillBuffer(cmdb, readWrites.m_transClusterDispatchCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
+
+        // Barrier for previous frame cluster count and cluster dispatch read
+        VkBufferMemoryBarrier2 cullBarriers[2]{};
+        // Cluster count
+        BufferMemoryBarrier(readWrites.m_transClusterDispatchCounterBuffer.m_buffer.m_handle, cullBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // Cluster dispatch
+        BufferMemoryBarrier(readWrites.m_transClusterGroupDataBuffer.m_buffer.m_handle, cullBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+
+        // Execute
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullBarriers), cullBarriers, 0, nullptr);
 
         // Descriptors
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, PushDescriptorSetID, descriptorWriteCount, pDescriptorWrites);
-        
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount,
+            &descriptorContext.m_pushDescriptorsCull[Ce_CullDescriptorCount * frame]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[Ce_SharedDescriptorCount * frame]);
+
         // Pipeline and push constants
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullPso.handle);
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullDispatchPso.handle);
+        ClusterCullShaderPushConstant pushConstant
+        {
+            descriptorContext.m_transRenderAddr, descriptorContext.m_transClusterGroupAddr[frame],
+            descriptorContext.m_transClusterCounterAddr[frame], drawContext.m_renders.m_transparentRenderCount
+        };
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        // Dispatch
+        vkCmdDispatch(cmdb, (drawContext.m_renders.m_transparentRenderCount / 64) + 1, 1, 1);
+
+        // Cluster dispatch read barrier
+        VkBufferMemoryBarrier2 clusterCullBarrier{};
+        BufferMemoryBarrier(readWrites.m_transClusterGroupDataBuffer.m_buffer.m_handle, clusterCullBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
+        // execute
+        PipelineBarrier(cmdb, 0, nullptr, 1, &clusterCullBarrier, 0, nullptr);
+
+        // Cluster count copy barrier
+        VkBufferMemoryBarrier2 countCopyBarrier{};
+        BufferMemoryBarrier(readWrites.m_transClusterDispatchCounterBuffer.m_buffer.m_handle, countCopyBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 0, sizeof(uint32_t));
+        PipelineBarrier(cmdb, 0, nullptr, 1, &countCopyBarrier, 0, nullptr);
+        // Copy
+        CopyBufferToBuffer(cmdb, readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, readWrites.m_clusterDispatchCounterCopy.m_buffer.m_handle, sizeof(uint32_t), 0, 0);
+    }
+
+    static void ClusterCull(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, uint32_t dispatchCount)
+    {
+        // Draw count reset barrier
+        VkBufferMemoryBarrier2 drawCountResetBarrier{};
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, drawCountResetBarrier, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, sizeof(uint32_t));
+        PipelineBarrier(cmdb, 0, nullptr, 1, &drawCountResetBarrier, 0, nullptr);
+
+        vkCmdFillBuffer(cmdb, readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
+
+        // Wait for draw count reset, previous frame command read and cluster dispatch write
+        VkBufferMemoryBarrier2 cullingShaders[3] = {};
+        // Draw count reset
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, cullingShaders[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // Command read barrier
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, cullingShaders[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // Cluster dispatch barrier
+        BufferMemoryBarrier(readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle, cullingShaders[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
+        // Execution
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullingShaders), cullingShaders, 0, nullptr);
+
+        // Descriptors
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount, 
+            &descriptorContext.m_pushDescriptorsCull[frame * Ce_CullDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[frame * Ce_SharedDescriptorCount]);
+
+        // Pipeline and push constants
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullPso.handle);
         ClusterCullShaderPushConstant pushConstant
         { 
-            renderObjectBufferAddress, clusterDispatchBufferAddress, 0, dispatchCount
+            descriptorContext.m_opaqueRenderAddr, descriptorContext.m_clusterGroupAddr[frame], 0, dispatchCount
         };
-        vkCmdPushConstants(commandBuffer, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         // Dispatch
-        vkCmdDispatch(commandBuffer, BlitML::GetComputeShaderGroupSize(dispatchCount, 64) , 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(dispatchCount, 64) , 1, 1);
 
         // Barriers stop graphics command read and count read
         VkBufferMemoryBarrier2 waitForCullingShader[2]{};
         // Count read
-        BufferMemoryBarrier(drawCountBuffer, waitForCullingShader[0],VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, waitForCullingShader[0],VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 0, VK_WHOLE_SIZE);
         // Command read
-        BufferMemoryBarrier(indirectDrawBuffer, waitForCullingShader[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, waitForCullingShader[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT,
             0, VK_WHOLE_SIZE);
         // Execute
-        PipelineBarrier(commandBuffer, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
     }
 
-    static void ClusterBatch()
+    static void ClusterCullTransparent(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, uint32_t dispatchCount)
+    {
+        VkBufferMemoryBarrier2 drawCountResetBarrier{};
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, drawCountResetBarrier, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, sizeof(uint32_t));
+        PipelineBarrier(cmdb, 0, nullptr, 1, &drawCountResetBarrier, 0, nullptr);
+
+        vkCmdFillBuffer(cmdb, readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
+
+        // Wait for draw count reset, previous frame command read and cluster dispatch write
+        VkBufferMemoryBarrier2 cullingShaders[3] {};
+        // Draw count reset
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, cullingShaders[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // Command read barrier
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, cullingShaders[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // Cluster dispatch barrier
+        BufferMemoryBarrier(readWrites.m_transClusterGroupDataBuffer.m_buffer.m_handle, cullingShaders[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
+        // Execution
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullingShaders), cullingShaders, 0, nullptr);
+
+        // Descriptors
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount,
+            &descriptorContext.m_pushDescriptorsCull[frame * Ce_CullDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[frame * Ce_SharedDescriptorCount]);
+
+        // Pipeline and push constants
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullPso.handle);
+        ClusterCullShaderPushConstant pushConstant
+        {
+            descriptorContext.m_transRenderAddr, descriptorContext.m_transClusterGroupAddr[frame], 0, dispatchCount
+        };
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        // Dispatch
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(dispatchCount, 64), 1, 1);
+
+        // Barriers stop graphics command read and count read
+        VkBufferMemoryBarrier2 waitForCullingShader[2]{};
+        // Count read
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, waitForCullingShader[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 0, VK_WHOLE_SIZE);
+        // Command read
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, waitForCullingShader[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT,
+            0, VK_WHOLE_SIZE);
+        // Execute
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
+    }
+
+    static void ClusterBatch(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext)
     {
 
     }
@@ -398,87 +527,80 @@ namespace BlitzenVulkan
         }*/
     }
 
-    static void DrawOpaque(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
-        PipelineContext& pipelineContext, VkDescriptorSet* textureSet, VkRenderingAttachmentInfo& colorAttachmentInfo, 
-        VkRenderingAttachmentInfo& depthAttachmentInfo, VkExtent2D drawExtent, VulkanRenderer::StaticBuffers& staticBuffers,
-        uint32_t drawCount, uint8_t latePass, VkInstance instance, uint8_t bRaytracing, uint32_t tlasCount, VkAccelerationStructureKHR* pTlas)
+    static void DrawOpaque(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, 
+        VkExtent2D drawExtent, uint8_t latePass)
     {
         // Render pass begin
-        colorAttachmentInfo.loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
-        depthAttachmentInfo.loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
-        BeginRendering(commandBuffer, drawExtent, {0, 0}, 1, &colorAttachmentInfo, &depthAttachmentInfo, nullptr);
-
-        // Raytracing
-        VkWriteDescriptorSetAccelerationStructureKHR layoutAccelerationStructurePNext{};
-        if(bRaytracing)
-        {
-            layoutAccelerationStructurePNext.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-            layoutAccelerationStructurePNext.accelerationStructureCount = tlasCount;
-            layoutAccelerationStructurePNext.pAccelerationStructures = pTlas;
-            //tlasBuffer.descriptorWrite.pNext = &layoutAccelerationStructurePNext;
-            //PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, PushDescriptorSetID, 1, pDescriptorWrites);
-        }
+        pipelineContext.m_colorTargetInfo[frame].loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
+        pipelineContext.m_depthTargetInfo[frame].loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
+        BeginRendering(cmdb, drawExtent, {0, 0}, 1, &pipelineContext.m_colorTargetInfo[frame], &pipelineContext.m_depthTargetInfo[frame], nullptr);
 
         // Descriptors
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, PushDescriptorSetID, descriptorWriteCount, pDescriptorWrites);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, TextureDescriptorSetID, 1, textureSet, 0, nullptr);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_PushDescriptorSetID, Ce_GraphicsDescriptorCount,
+            descriptorContext.m_pushDescriptorsGraphics);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[frame * Ce_SharedDescriptorCount]);
+        vkCmdBindDescriptorSets(cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_TextureDescriptorsSetID, 1,
+            &descriptorContext.m_textureDescriptorSet, 0, nullptr);
 
         // Push constants
-        GlobalShaderDataPushConstant pcData{ staticBuffers.renderObjectBufferAddress };
-        vkCmdPushConstants(commandBuffer, pipelineContext.m_opaqueDrawLayout.handle, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GlobalShaderDataPushConstant), &pcData);
+        GlobalShaderDataPushConstant pcData{ descriptorContext.m_opaqueRenderAddr };
+        vkCmdPushConstants(cmdb, pipelineContext.m_opaqueDrawLayout.handle, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GlobalShaderDataPushConstant), &pcData);
 
         // Draw
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawPso.handle);
-        vkCmdBindIndexBuffer(commandBuffer, staticBuffers.indexBuffer.bufferHandle, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexedIndirectCount(commandBuffer, staticBuffers.indirectDrawBuffer.buffer.bufferHandle, offsetof(IndirectDrawData, drawIndirect),
-            staticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, IndirectDrawElementCount, sizeof(IndirectDrawData));
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawPso.handle);
+        vkCmdBindIndexBuffer(cmdb, readOnlies.m_idxBuffer.m_buffer.m_handle, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexedIndirectCount(cmdb, readWrites.m_drawCmdBuffer.m_buffer.m_handle, offsetof(IndirectDrawData, drawIndirect),
+            readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, Ce_DrawCmdElementCount, sizeof(IndirectDrawData));
 
         // End pass
-        vkCmdEndRendering(commandBuffer);
+        vkCmdEndRendering(cmdb);
     }
 
     static void DrawOpaqueRT()
     {
-
+        // Raytracing
+        //VkWriteDescriptorSetAccelerationStructureKHR layoutAccelerationStructurePNext{};
+        //if (bRaytracing)
+        //{
+        //    layoutAccelerationStructurePNext.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+        //    layoutAccelerationStructurePNext.accelerationStructureCount = tlasCount;
+        //    layoutAccelerationStructurePNext.pAccelerationStructures = pTlas;
+        //    //tlasBuffer.descriptorWrite.pNext = &layoutAccelerationStructurePNext;
+        //    //PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, PushDescriptorSetID, 1, pDescriptorWrites);
+        //}
     }
 
-    static void DrawTransparents(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
-        PipelineContext& pipelineContext, VkDescriptorSet* textureSet, VkRenderingAttachmentInfo& colorAttachmentInfo,
-        VkRenderingAttachmentInfo& depthAttachmentInfo, VkExtent2D drawExtent, VulkanRenderer::StaticBuffers& staticBuffers,
-        uint32_t drawCount, VkInstance instance, uint8_t bRaytracing, uint32_t tlasCount, VkAccelerationStructureKHR* pTlas)
+    static void DrawTransparents(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, 
+        VkExtent2D drawExtent)
     {
         // Render pass begin
-        colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        BeginRendering(commandBuffer, drawExtent, { 0, 0 }, 1, &colorAttachmentInfo, &depthAttachmentInfo, nullptr);
-
-        // Raytracing
-        VkWriteDescriptorSetAccelerationStructureKHR layoutAccelerationStructurePNext{};
-        if (bRaytracing)
-        {
-            layoutAccelerationStructurePNext.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-            layoutAccelerationStructurePNext.accelerationStructureCount = tlasCount;
-            layoutAccelerationStructurePNext.pAccelerationStructures = pTlas;
-            //tlasBuffer.descriptorWrite.pNext = &layoutAccelerationStructurePNext;
-            //PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, PushDescriptorSetID, 1, pDescriptorWrites);
-        }
+        pipelineContext.m_colorTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        pipelineContext.m_colorTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        BeginRendering(cmdb, drawExtent, { 0, 0 }, 1, &pipelineContext.m_colorTargetInfo[frame], &pipelineContext.m_depthTargetInfo[frame], nullptr);
 
         // Descriptors
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, PushDescriptorSetID, descriptorWriteCount, pDescriptorWrites);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, TextureDescriptorSetID, 1, textureSet, 0, nullptr);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_PushDescriptorSetID, Ce_GraphicsDescriptorCount,
+            descriptorContext.m_pushDescriptorsGraphics);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[frame * Ce_SharedDescriptorCount]);
+        vkCmdBindDescriptorSets(cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_TextureDescriptorsSetID, 1, 
+            &descriptorContext.m_textureDescriptorSet, 0, nullptr);
 
         // Push constants
-        GlobalShaderDataPushConstant pcData{ staticBuffers.transparentRenderObjectBufferAddress };
-        vkCmdPushConstants(commandBuffer, pipelineContext.m_opaqueDrawLayout.handle, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GlobalShaderDataPushConstant), &pcData);
+        GlobalShaderDataPushConstant pcData{ descriptorContext.m_transRenderAddr };
+        vkCmdPushConstants(cmdb, pipelineContext.m_opaqueDrawLayout.handle, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GlobalShaderDataPushConstant), &pcData);
 
         // Draw
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_tranparentDrawPso.handle);
-        vkCmdBindIndexBuffer(commandBuffer, staticBuffers.indexBuffer.bufferHandle, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexedIndirectCount(commandBuffer, staticBuffers.indirectDrawBuffer.buffer.bufferHandle, offsetof(IndirectDrawData, drawIndirect),
-            staticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, IndirectDrawElementCount, sizeof(IndirectDrawData));
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_tranparentDrawPso.handle);
+        vkCmdBindIndexBuffer(cmdb, readOnlies.m_idxBuffer.m_buffer.m_handle, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexedIndirectCount(cmdb, readWrites.m_drawCmdBuffer.m_buffer.m_handle, offsetof(IndirectDrawData, drawIndirect),
+            readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, Ce_DrawCmdElementCount, sizeof(IndirectDrawData));
 
         // End pass
-        vkCmdEndRendering(commandBuffer);
+        vkCmdEndRendering(cmdb);
     }
 
     static void DrawTransRT()
@@ -486,202 +608,160 @@ namespace BlitzenVulkan
 
     }
 
-    static void DrawONPC(VkCommandBuffer commandBuffer, VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorWriteCount,
-        PipelineContext& pipelineContext, VkDescriptorSet* textureSet, VkRenderingAttachmentInfo& colorAttachmentInfo,
-        VkRenderingAttachmentInfo& depthAttachmentInfo, VkExtent2D drawExtent, VulkanRenderer::StaticBuffers& staticBuffers,
-        uint32_t drawCount, VkInstance instance, uint8_t bRaytracing, uint32_t tlasCount, VkAccelerationStructureKHR* pTlas, 
-        BlitML::mat4* pOnpcMatrix)
+    static void GenerateHiZ(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
-        // Render pass begin
-        colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        depthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        BeginRendering(commandBuffer, drawExtent, { 0, 0 }, 1, &colorAttachmentInfo, &depthAttachmentInfo, nullptr);
-
-        // Raytracing
-        VkWriteDescriptorSetAccelerationStructureKHR layoutAccelerationStructurePNext{};
-        if (bRaytracing)
-        {
-            layoutAccelerationStructurePNext.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-            layoutAccelerationStructurePNext.accelerationStructureCount = tlasCount;
-            layoutAccelerationStructurePNext.pAccelerationStructures = pTlas;
-            //tlasBuffer.descriptorWrite.pNext = &layoutAccelerationStructurePNext;
-            //PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, PushDescriptorSetID, 1, pDescriptorWrites);
-        }
-
-        // Descriptors
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_onpcLayout.handle, PushDescriptorSetID, descriptorWriteCount, pDescriptorWrites);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_onpcLayout.handle, TextureDescriptorSetID, 1, textureSet, 0, nullptr);
-
-        vkCmdPushConstants(commandBuffer, pipelineContext.m_onpcLayout.handle, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(BlitML::mat4), pOnpcMatrix);
-
-        // Draw
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_onpcDraw.handle);
-        vkCmdBindIndexBuffer(commandBuffer, staticBuffers.indexBuffer.bufferHandle, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexedIndirectCount(commandBuffer, staticBuffers.indirectDrawBuffer.buffer.bufferHandle, offsetof(IndirectDrawData, drawIndirect),
-            staticBuffers.indirectCountBuffer.buffer.bufferHandle, 0, IndirectDrawElementCount, sizeof(IndirectDrawData));
-
-        // End pass
-        vkCmdEndRendering(commandBuffer);
-    }
-
-    static void GenerateHiZ(VkCommandBuffer commandBuffer, VkInstance instance, PushDescriptorImage& depthAttachment, PushDescriptorImage& depthPyramid,
-        VkExtent2D depthPyramidExtent, uint32_t depthPyramidMipCount, VkImageView* depthPyramidMips, PipelineContext& pipelineContext)
-    {
-        VkImageMemoryBarrier2 depthTransitionBarriers[2]{};
+        VkImageMemoryBarrier2 HI_Z_barriers[2]{};
         // Depth attachment to shader read
-        ImageMemoryBarrier(depthAttachment.image.image, depthTransitionBarriers[0], VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, 
+        ImageMemoryBarrier(readWrites.m_depthTarget.m_image.m_image.m_handle, HI_Z_barriers[0], VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
             VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
         // Depth pyramid to shader write
-        ImageMemoryBarrier(depthPyramid.image.image, depthTransitionBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
+        ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, HI_Z_barriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 
             VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         // Execute
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 2, depthTransitionBarriers);
+        PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 2, HI_Z_barriers);
 
         // Creates the descriptor write array. Initially it will holds the depth attachment layout and image view
-        depthAttachment.descriptorInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        depthAttachment.descriptorInfo.imageView = depthAttachment.image.imageView;
-        VkWriteDescriptorSet pyramidDescriptors[2]{};
-        pyramidDescriptors[0] = depthAttachment.descriptorWrite;
-        pyramidDescriptors[1] = depthPyramid.descriptorWrite;
+        descriptorContext.m_depthTargetDescInfo[frame].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        descriptorContext.m_depthTargetDescInfo[frame].imageView = readWrites.m_depthTarget.m_image.m_view.m_handle;
+        descriptorContext.m_depthTargetDescInfo[frame].sampler = readWrites.m_depthTarget.m_samp.m_handle;
 
         // Binds the compute pipeline. It will be dispatched for every loop iteration
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_hiZPso.handle);
-        for(size_t i = 0; i < depthPyramidMipCount; ++i)
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_hiZPso.handle);
+        for(size_t i = 0; i < readWrites.m_HI_Z_MAP.m_levelCount; ++i)
         {
             // Updates image info for each iteration
             if(i != 0)
             {
-                depthAttachment.descriptorInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-                depthAttachment.descriptorInfo.imageView = depthPyramidMips[i - 1];
-
-                pyramidDescriptors[0].pImageInfo = &depthAttachment.descriptorInfo;
+                descriptorContext.m_depthTargetDescInfo[frame].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                descriptorContext.m_depthTargetDescInfo[frame].imageView = readWrites.m_HI_Z_MAP.m_levels[i - 1];
             }
 
-			// The depth pyramid image view is updated for the current mip level
-            depthPyramid.descriptorInfo.imageView = depthPyramidMips[i];
-            pyramidDescriptors[1].pImageInfo = &depthPyramid.descriptorInfo;
+            descriptorContext.m_HI_Z_descInfo[frame].imageView = readWrites.m_HI_Z_MAP.m_levels[i];
 
             // Descriptors
-            PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_hiZLayout.handle, 0, BLIT_ARRAY_SIZE(pyramidDescriptors), pyramidDescriptors);
+            PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_hiZLayout.handle, 0, 2, &descriptorContext.m_HI_Z_descriptors[2 * frame]);
 
             // Mip size calculcations
-            uint32_t levelWidth = BlitML::Max(1u, (depthPyramidExtent.width) >> i);
-            uint32_t levelHeight = BlitML::Max(1u, (depthPyramidExtent.height) >> i);
+            uint32_t levelWidth = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_width) >> i);
+            uint32_t levelHeight = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_height) >> i);
 
             // Push constant for extent
             BlitML::vec2 pyramidLevelExtentPushConstant{float(levelWidth), float(levelHeight)};
-            vkCmdPushConstants(commandBuffer, pipelineContext.m_hiZLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &pyramidLevelExtentPushConstant);
+            vkCmdPushConstants(cmdb, pipelineContext.m_hiZLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &pyramidLevelExtentPushConstant);
 
             // Dispatch the shader to generate the current mip level of the depth pyramid
-            vkCmdDispatch(commandBuffer, levelWidth / 32 + 1, levelHeight / 32 + 1, 1);
+            vkCmdDispatch(cmdb, levelWidth / 32 + 1, levelHeight / 32 + 1, 1);
 
             // Barrier for the next loop, since it will use the current mip as the read descriptor
-            VkImageMemoryBarrier2 dispatchWriteBarrier{};
-            ImageMemoryBarrier(depthPyramid.image.image, dispatchWriteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VkImageMemoryBarrier2 hizWriteBarrier{};
+            ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, hizWriteBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, 
                 VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-            PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &dispatchWriteBarrier);
+            PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &hizWriteBarrier);
         }
 
         // Pipeline barrier to transition back to depth attachment optimal layout
         VkImageMemoryBarrier2 depthAttachmentReadBarrier{};
-        ImageMemoryBarrier(depthAttachment.image.image, depthAttachmentReadBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
+        ImageMemoryBarrier(readWrites.m_depthTarget.m_image.m_image.m_handle, depthAttachmentReadBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 
             VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &depthAttachmentReadBarrier);
+        PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &depthAttachmentReadBarrier);
     }
 
-    static void CopyPyramidToSwapchain(VkInstance instance, VkCommandBuffer commandBuffer, PushDescriptorImage& depthPyramid, Swapchain& swapchain, VkExtent2D drawExtent,
-        VkExtent2D depthPyramidExtent, uint32_t depthPyramidMipCount, VkImageView* depthPyramidMips, PipelineContext& pipelineContext, uint32_t swapchainIdx, 
-        uint32_t pyramidMip, VkSampler sampler)
+    static void CopyPyramidToSwapchain(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, 
+        Swapchain& swapchain, uint32_t swapchainIDX, uint32_t drawWidth, uint32_t drawHeight, uint32_t pyramidMip)
     {
         // Swapchain image and attachment image descriptors
         VkWriteDescriptorSet swapchainImageWrite{};
         VkDescriptorImageInfo swapchainImageDescriptorInfo{};
-        WriteImageDescriptorSets(swapchainImageWrite, swapchainImageDescriptorInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE,
-            0, VK_IMAGE_LAYOUT_GENERAL, swapchain.swapchainImageViews[swapchainIdx]);
+        swapchainImageDescriptorInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        swapchainImageDescriptorInfo.imageView = swapchain.swapchainImageViews[swapchainIDX];
 
-        depthPyramid.descriptorInfo.imageView = depthPyramidMips[pyramidMip];
-        uint32_t levelWidth = BlitML::Max(1u, (depthPyramidExtent.width) >> pyramidMip);
-        uint32_t levelHeight = BlitML::Max(1u, (depthPyramidExtent.height) >> pyramidMip);
+        WriteImageDescriptorSets(swapchainImageWrite, &swapchainImageDescriptorInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, Ce_SwapchainDescriptorBinding);
 
-        depthPyramid.descriptorWrite.pImageInfo = &depthPyramid.descriptorInfo;
-        depthPyramid.descriptorInfo.sampler = sampler;
-        depthPyramid.descriptorWrite.dstBinding = 1;
-        depthPyramid.descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorContext.m_HI_Z_descInfo[frame].imageView = readWrites.m_HI_Z_MAP.m_levels[pyramidMip];
+        uint32_t levelWidth = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_width) >> pyramidMip);
+        uint32_t levelHeight = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_height) >> pyramidMip);
+
+        VkWriteDescriptorSet hizWrite{};
 
         VkWriteDescriptorSet colorAttachmentCopyWrite[2] =
         {
-            depthPyramid.descriptorWrite, swapchainImageWrite
+            hizWrite, swapchainImageWrite
         };
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentLayout.handle, 0, 2, colorAttachmentCopyWrite);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentLayout.handle, 0, 2, colorAttachmentCopyWrite);
 
         // Extent push constant
         BlitML::vec2 presentImageExtentPcVal
         {
             float(swapchain.swapchainExtent.width), float(swapchain.swapchainExtent.height)
         };
-        vkCmdPushConstants(commandBuffer, pipelineContext.m_presentLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &presentImageExtentPcVal);
+        vkCmdPushConstants(cmdb, pipelineContext.m_presentLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &presentImageExtentPcVal);
 
         // Dispatches copy shader
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentPso.handle);
-        vkCmdDispatch(commandBuffer, BlitML::GetComputeShaderGroupSize(levelWidth, 8), drawExtent.height / 8 + 1, 1);
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentPso.handle);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(levelWidth, 8), levelHeight / 8 + 1, 1);
 
         // Layout transition barrier
         VkImageMemoryBarrier2 presentImageBarrier{};
-        ImageMemoryBarrier(swapchain.swapchainImages[swapchainIdx], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        ImageMemoryBarrier(swapchain.swapchainImages[swapchainIDX], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
-
-        depthPyramid.descriptorWrite.dstBinding = 0;
-        depthPyramid.descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
 
-    static void DrawBackgroundImage(VkCommandBuffer commandBuffer, PipelineContext& pipelineContext, 
-        VkInstance instance, VkImageView view, VkExtent2D extent)
+    static void DrawBackgroundImage(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_backgroundPso.handle);
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_backgroundPso.handle);
         VkWriteDescriptorSet backgroundImageWrite{};
         VkDescriptorImageInfo backgroundImageInfo{};
-        WriteImageDescriptorSets(backgroundImageWrite, backgroundImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, view);
+        backgroundImageInfo.imageView = readWrites.m_colorTarget.m_image.m_view.m_handle;
+        backgroundImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-	    PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_backgroundLayout.handle, 0, 1, &backgroundImageWrite);
+        WriteImageDescriptorSets(backgroundImageWrite, &backgroundImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0);
+
+	    PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_backgroundLayout.handle, 0, 1, &backgroundImageWrite);
 
 	    BackgroundShaderPushConstant pc;
 	    pc.data1 = BlitML::vec4(1, 0, 0, 1);
 	    pc.data2 = BlitML::vec4(0, 0, 1, 1);
-	    vkCmdPushConstants(commandBuffer, pipelineContext.m_backgroundLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BackgroundShaderPushConstant), &pc);
+	    vkCmdPushConstants(cmdb, pipelineContext.m_backgroundLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BackgroundShaderPushConstant), &pc);
 
-	    vkCmdDispatch(commandBuffer, uint32_t(std::ceil(extent.width / 16.0)), 
-        uint32_t(std::ceil(extent.height / 16.0)), 1);
+	    vkCmdDispatch(cmdb, uint32_t(std::ceil(readWrites.m_colorTarget.m_image.m_width / 16.0)), uint32_t(std::ceil(readWrites.m_colorTarget.m_image.m_height / 16.0)), 1);
     }
 
-    static void CopyToSwapchain(VkCommandBuffer commandBuffer, VkImageView swapchainView, VkImage swapchainImage, 
-        PushDescriptorImage& colorAttachment, VkExtent2D drawExtent, PipelineContext& pipelineContext, VkInstance instance)
+    static void CopyToSwapchain(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, 
+        Swapchain& swapchain, uint32_t swapchainIDX)
     {
-        // Swapchain image and attachment image descriptors
-        VkWriteDescriptorSet swapchainImageWrite{};
-        VkDescriptorImageInfo swapchainImageDescriptorInfo{};
-        WriteImageDescriptorSets(swapchainImageWrite, swapchainImageDescriptorInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 0, VK_IMAGE_LAYOUT_GENERAL, swapchainView);
 
-        VkWriteDescriptorSet colorAttachmentCopyWrite[2]{ colorAttachment.descriptorWrite, swapchainImageWrite };
-        PushDescriptors(instance, commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentLayout.handle, 0, 2, colorAttachmentCopyWrite);
+        VkDescriptorImageInfo swapchainDescInfo{};
+        swapchainDescInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        swapchainDescInfo.imageView = swapchain.swapchainImageViews[swapchainIDX];
+
+        VkWriteDescriptorSet swapchainImageWrite{};
+        WriteImageDescriptorSets(swapchainImageWrite, &swapchainDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 1, Ce_SwapchainDescriptorBinding);
+
+        VkWriteDescriptorSet colorAttachmentCopyWrite[2]{ descriptorContext.m_colorTargetDescriptor[frame], swapchainImageWrite};
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentLayout.handle, 0, 2, colorAttachmentCopyWrite);
 
         // Extent push constant
-        BlitML::vec2 presentImageExtentPcVal{ float(drawExtent.width), float(drawExtent.height) };
-        vkCmdPushConstants(commandBuffer, pipelineContext.m_presentLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &presentImageExtentPcVal);
+        BlitML::vec2 presentImageExtentPcVal{ float(readWrites.m_colorTarget.m_image.m_width), float(readWrites.m_colorTarget.m_image.m_height)};
+        vkCmdPushConstants(cmdb, pipelineContext.m_presentLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &presentImageExtentPcVal);
 
         // Dispatches copy shader
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentPso.handle);
-        vkCmdDispatch(commandBuffer, drawExtent.width / 8 + 1, drawExtent.height / 8 + 1, 1);
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentPso.handle);
+        vkCmdDispatch(cmdb, readWrites.m_colorTarget.m_image.m_width / 8 + 1, readWrites.m_colorTarget.m_image.m_height / 8 + 1, 1);
 
         // Layout transition barrier
         VkImageMemoryBarrier2 presentImageBarrier{};
-        ImageMemoryBarrier(swapchainImage, presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, 
-            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-        PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
+        ImageMemoryBarrier(swapchain.swapchainImages[swapchainIDX], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
 
     static void Present(VkDevice device, VkQueue queue, VkSwapchainKHR* pSwapchains, uint32_t swapchainCount, uint32_t waitSemaphoreCount, VkSemaphore* pWaitSemaphores, 
@@ -703,45 +783,31 @@ namespace BlitzenVulkan
         vkQueuePresentKHR(queue, &info);
     }
 
-    static void RecreateSwapchain(VkDevice device, VkPhysicalDevice pdv, VkSurfaceKHR surface, VmaAllocator vma, 
-        Swapchain& swapchainData, Queue graphicQueue, Queue presentQueue, Queue computeQueue, 
-        PushDescriptorImage& colorAttachment, VkRenderingAttachmentInfo& colorAttachmentInfo,
-        PushDescriptorImage& depthAttachment, VkRenderingAttachmentInfo& depthAttachmentInfo,
-        PushDescriptorImage& depthPyramid, uint8_t& depthPyramidMipCount, VkImageView* depthPyramidMips, VkExtent2D& depthPyramidExtent,
-        uint32_t windowWidth, uint32_t windowHeight, VkExtent2D& drawExtent)
+    static void RecreateSwapchain(VkDevice device, VkInstance instance, Swapchain& swapchainData, VkSurfaceKHR surface, VkPhysicalDevice pdv, VmaAllocator vma,
+        PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources* readWrites, DescriptorContext& descriptorContext, uint32_t windowWidth, uint32_t windowHeight, uint32_t frame, Queue graphicsQueue, Queue presentQueue, Queue computeQueue)
     {
         vkDeviceWaitIdle(device);
 
         // Creates new swapchain, after saving the old handle to destroy it
         auto oldSwapchain = swapchainData.swapchainHandle;
-        CreateSwapchain(device, surface, pdv,  windowWidth, windowHeight, graphicQueue, presentQueue, computeQueue, nullptr, swapchainData, oldSwapchain);
+        CreateSwapchain(device, surface, pdv, windowWidth, windowHeight, graphicsQueue, presentQueue, computeQueue, nullptr, swapchainData, oldSwapchain);
 
         vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
 
-        // Destroys old depth pyramid
-        depthPyramid.image.CleanupResources(vma, device);
-        for(uint8_t i = 0; i < depthPyramidMipCount; ++i)
+        for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
-            vkDestroyImageView(device, depthPyramidMips[i], nullptr);
+            auto rws{ readWrites[frame] };
+
+            // Destroys old depth pyramid
+            rws.m_HI_Z_MAP.~HI_Z_MAP();
+
+            // Destroys old attachments
+            rws.m_colorTarget.m_image.m_image.~Image();
+            rws.m_depthTarget.m_image.m_image.~Image();
+
+            RenderingAttachmentsInit(device, vma, readOnlies, rws, descriptorContext, pipelineContext, windowWidth, windowHeight, frame);
         }
-
-        // Destroys old attachments
-        colorAttachment.image.CleanupResources(vma, device);
-        depthAttachment.image.CleanupResources(vma, device);
-
-        drawExtent.width = windowWidth;
-        drawExtent.height = windowHeight;
-
-        // Recreates color attachment
-        CreatePushDescriptorImage(device, vma, colorAttachment, {drawExtent.width, drawExtent.height, 1}, ce_colorAttachmentFormat, ce_colorAttachmentImageUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY);
-        CreateRenderingAttachmentInfo(colorAttachmentInfo, colorAttachment.image.imageView, ce_ColorAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, ce_WindowClearColor);
-
-        // Recreates Depth attachment
-        CreatePushDescriptorImage(device, vma, depthAttachment, {drawExtent.width, drawExtent.height, 1}, ce_depthAttachmentFormat, ce_depthAttachmentImageUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY);
-        CreateRenderingAttachmentInfo(depthAttachmentInfo, depthAttachment.image.imageView, ce_DepthAttachmentLayout, VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, { 0, 0, 0, 0 }, { 0, 0 });
-
-        // Recreates the depth pyramid after the old one has been destroyed
-        CreateDepthPyramid(depthPyramid, depthPyramidExtent, depthPyramidMips, depthPyramidMipCount, drawExtent, device, vma);
     }
 
 
@@ -749,51 +815,41 @@ namespace BlitzenVulkan
     {
         if (context.m_camera.transformData.bWindowResize)
         {
-            RecreateSwapchain(m_device, m_physicalDevice, m_surface.handle, m_allocator,
-                m_swapchainValues, m_graphicsQueue, m_presentQueue, m_computeQueue,
-                m_colorAttachment, m_colorAttachmentInfo, m_depthAttachment, m_depthAttachmentInfo,
-                m_depthPyramid, m_depthPyramidMipLevels, m_depthPyramidMips, m_depthPyramidExtent,
-                uint32_t(context.m_camera.transformData.windowWidth), uint32_t(context.m_camera.transformData.windowHeight),
-                m_drawExtent);
+            m_drawWidth = (uint32_t)context.m_camera.transformData.windowWidth;
+            m_drawHeight = (uint32_t)context.m_camera.transformData.windowHeight;
 
-            context.m_camera.viewData.pyramidWidth = float(m_depthPyramidExtent.width);
-            context.m_camera.viewData.pyramidHeight = float(m_depthPyramidExtent.height);
+            RecreateSwapchain(m_device, m_instance, m_swapchainValues, m_surface.handle, m_physicalDevice, m_allocator, m_pipelines, m_readOnlies, m_readWrites, m_descriptorContext, 
+                m_drawWidth, m_drawHeight, m_currentFrame, m_graphicsQueue, m_presentQueue, m_computeQueue);
+
+            context.m_camera.viewData.pyramidWidth = float(m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_width);
+            context.m_camera.viewData.pyramidHeight = float(m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_height);
         }
-
-        auto& fTools = m_frameToolsList[m_currentFrame];
-        auto& vBuffers = m_varBuffers[m_currentFrame];
-
-        // The buffer info for vbuffers is updated 
-        m_graphicsDescriptors[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
-        m_drawCullDescriptors[ce_viewDataWriteElement].pBufferInfo = &vBuffers.viewDataBuffer.bufferInfo;
-        m_graphicsDescriptors[Ce_TransformBufferGraphicsDescriptorId].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
-        m_drawCullDescriptors[Ce_TransformBufferDrawCullDescriptorId].pBufferInfo = &vBuffers.transformBuffer.bufferInfo;
     }
 
     void VulkanRenderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
     {
-        auto pData = m_varBuffers[m_currentFrame].pTransformData;
+        auto pData = m_readWrites[m_currentFrame].m_transformBuffer.m_pMapped;
         BlitzenCore::BlitMemCopy(pData + transformId, pTransform, sizeof(BlitzenEngine::MeshTransform));
     }
 
     void VulkanRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
         auto& fTools = m_frameToolsList[m_currentFrame];
-        auto& vBuffers = m_varBuffers[m_currentFrame];
+        auto& readWrites = m_readWrites[m_currentFrame];
 
         // Waits for the fence in the current frame tools struct to be signaled and resets it for next time when it gets signalled
         vkWaitForFences(m_device, 1, &fTools.inFlightFence.handle, VK_TRUE, ce_fenceTimeout);
-        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)))
-        UpdateBuffers(context, fTools, vBuffers, m_transferQueue.handle);
+        VK_CHECK(vkResetFences(m_device, 1, &(fTools.inFlightFence.handle)));
 
+        UpdateBuffers(context, fTools, readWrites, m_transferQueue.handle);
         if (context.m_camera.transformData.bFreezeFrustum)
         {
             // Only change the matrix that moves the camera if the freeze frustum debug functionality is active
-            vBuffers.viewDataBuffer.pData->projectionViewMatrix = context.m_camera.viewData.projectionViewMatrix;
+            readWrites.m_viewDataBuffer.m_pMapped->projectionViewMatrix = context.m_camera.viewData.projectionViewMatrix;
         }
         else
         {
-            *(vBuffers.viewDataBuffer.pData) = context.m_camera.viewData;
+            *(readWrites.m_viewDataBuffer.m_pMapped) = context.m_camera.viewData;
         }
 
         // Swapchain image, needed to present the color attachment results
@@ -809,16 +865,10 @@ namespace BlitzenVulkan
             BeginCommandBuffer(fTools.computeCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 			// Generates cluster dispatch data and count for the opaque render objects
-            ClusterDispatch(fTools.computeCommandBuffer, m_pipelines, BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.clusterCountBuffer.bufferHandle,
-                m_staticBuffers.clusterCountBufferAddress, m_staticBuffers.clusterDispatchBuffer.bufferHandle,
-                m_staticBuffers.clusterDispatchBufferAddress, m_staticBuffers.clusterCountCopyBuffer.bufferHandle,
-                context.m_renders.m_renderCount, m_staticBuffers.renderObjectBufferAddress, Ce_InitialCulling, m_instance);
+            ClusterDispatch(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-			// Generates cluster dispatch data and count for the transparent render objects
-            ClusterDispatch(fTools.computeCommandBuffer, m_pipelines, BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.transparentClusterCountBuffer.bufferHandle,
-                m_staticBuffers.transparentClusterCountBufferAddress, m_staticBuffers.transparentClusterDispatchBuffer.bufferHandle,m_staticBuffers.transparentClusterDispatchBufferAddress, 
-                m_staticBuffers.transparentClusterCountCopyBuffer.bufferHandle, uint32_t(context.m_renders.m_transparentRenderCount), m_staticBuffers.transparentRenderObjectBufferAddress,
-				Ce_InitialCulling, m_instance);
+            // Generates cluster dispatch data and count for the transparent render objects
+            ClusterCullDispatchTrans(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
             // Submits command buffer to generate cluster dispatch count
             VkSemaphoreSubmitInfo bufferUpdateWaitSemaphore{};
@@ -835,53 +885,48 @@ namespace BlitzenVulkan
             DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.swapchainExtent);
 
             // Attachment barriers for layout transitions before rendering
-            VkImageMemoryBarrier2 renderingAttachmentDefinitionBarriers[2] = {};
-            ImageMemoryBarrier(m_colorAttachment.image.image, renderingAttachmentDefinitionBarriers[0], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
+            VkImageMemoryBarrier2 renderPassBarriers[2] {};
+            ImageMemoryBarrier(readWrites.m_colorTarget.m_image.m_image.m_handle, renderPassBarriers[0], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
                 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, VK_IMAGE_ASPECT_COLOR_BIT,
                 0, VK_REMAINING_MIP_LEVELS);
-            ImageMemoryBarrier(m_depthAttachment.image.image, renderingAttachmentDefinitionBarriers[1], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
+            ImageMemoryBarrier(readWrites.m_depthTarget.m_image.m_image.m_handle, renderPassBarriers[1], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
                 VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
                 VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
             // execute
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderingAttachmentDefinitionBarriers);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderPassBarriers);
 
-            auto dispatchCount{uint32_t( *reinterpret_cast<uint32_t*>(m_staticBuffers.clusterCountCopyBuffer.allocationInfo.pMappedData)) };
-			auto transparentDispatchCount{ static_cast<uint32_t>(*reinterpret_cast<uint32_t*>(m_staticBuffers.transparentClusterCountCopyBuffer.allocationInfo.pMappedData)) };
+            auto dispatchCount{uint32_t( *reinterpret_cast<uint32_t*>(readWrites.m_clusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData)) };
+			auto transparentDispatchCount{ static_cast<uint32_t>(*reinterpret_cast<uint32_t*>(readWrites.m_transClusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData)) };
 
             // Culls opaque render object clusters
-            ClusterCull(fTools.commandBuffer, m_pipelines, BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.clusterCountBuffer.bufferHandle,
-                m_staticBuffers.clusterCountCopyBuffer, m_staticBuffers.clusterDispatchBuffer.bufferHandle, m_staticBuffers.clusterDispatchBufferAddress, 
-                m_staticBuffers.indirectCountBuffer.buffer.bufferHandle, m_staticBuffers.indirectDrawBuffer.buffer.bufferHandle, dispatchCount, m_staticBuffers.renderObjectBufferAddress, m_instance);
+            ClusterCull(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, dispatchCount);
 
-            DrawOpaque(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_pipelines, &m_textureDescriptorSet, m_colorAttachmentInfo,
-                m_depthAttachmentInfo, m_drawExtent, m_staticBuffers, dispatchCount, Ce_InitialCulling, m_instance, m_stats.bRayTracingSupported, Ce_SinglePointer, &m_staticBuffers.tlasData.handle);
+            DrawOpaque(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, 
+                {m_drawWidth, m_drawHeight}, 0);
             
-            if (m_stats.bTranspartentObjectsExist)
+            if (context.m_renders.m_transparentRenderCount != 0)
             {
-                ClusterCull(fTools.commandBuffer, m_pipelines, BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.transparentClusterCountBuffer.bufferHandle,
-                    m_staticBuffers.transparentClusterCountCopyBuffer, m_staticBuffers.transparentClusterDispatchBuffer.bufferHandle, m_staticBuffers.transparentClusterDispatchBufferAddress,
-                    m_staticBuffers.indirectCountBuffer.buffer.bufferHandle, m_staticBuffers.indirectDrawBuffer.buffer.bufferHandle, transparentDispatchCount, 
-                    m_staticBuffers.transparentRenderObjectBufferAddress, m_instance);
+                ClusterCullTransparent(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], 
+                    m_descriptorContext, context, m_currentFrame, transparentDispatchCount);
 
-                DrawTransparents(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_pipelines, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                    m_drawExtent, m_staticBuffers, transparentDispatchCount, m_instance, m_stats.bRayTracingSupported, Ce_SinglePointer, &m_staticBuffers.tlasData.handle);
+                DrawTransparents(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, 
+                    {m_drawWidth, m_drawHeight});
             }
 
 
             // Image barriers to transition the layout of the color attachment and the swapchain image
-            VkImageMemoryBarrier2 colorAttachmentTransferBarriers[2] = {};
-            ImageMemoryBarrier(m_colorAttachment.image.image, colorAttachmentTransferBarriers[0], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VkImageMemoryBarrier2 presentBarriers[2] = {};
+            ImageMemoryBarrier(readWrites.m_colorTarget.m_image.m_image.m_handle, presentBarriers[0], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-            ImageMemoryBarrier(m_swapchainValues.swapchainImages[size_t(swapchainIdx)], colorAttachmentTransferBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT,
-                0, VK_REMAINING_MIP_LEVELS);
-            // execute
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
+            ImageMemoryBarrier(m_swapchainValues.swapchainImages[size_t(swapchainIdx)], presentBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+            // Execute
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, BLIT_ARRAY_SIZE(presentBarriers), presentBarriers);
 
             // Copies the color attachment to the swapchain image
-            CopyToSwapchain(fTools.commandBuffer, m_swapchainValues.swapchainImageViews[swapchainIdx], m_swapchainValues.swapchainImages[swapchainIdx], m_colorAttachment,m_drawExtent, 
-                m_pipelines, m_instance);
+            CopyToSwapchain(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, m_swapchainValues, 
+                swapchainIdx);
 
             VkSemaphoreSubmitInfo waitSemaphores[2]{ {}, {} };
             CreateSemahoreSubmitInfo(waitSemaphores[0], fTools.imageAcquiredSemaphore.handle, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
@@ -901,20 +946,20 @@ namespace BlitzenVulkan
             // The viewport and scissor are dynamic, so they should be set here
             DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.swapchainExtent);
             // Attachment barriers for layout transitions before rendering
-            VkImageMemoryBarrier2 renderingAttachmentDefinitionBarriers[2] = {};
-            ImageMemoryBarrier(m_colorAttachment.image.image, renderingAttachmentDefinitionBarriers[0], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
-                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout, 
+            VkImageMemoryBarrier2 renderPassBarriers[2] = {};
+            ImageMemoryBarrier(readWrites.m_colorTarget.m_image.m_image.m_handle, renderPassBarriers[0], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
+                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, colorAttachmentWorkingLayout,
                 VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-            ImageMemoryBarrier(m_depthAttachment.image.image, renderingAttachmentDefinitionBarriers[1], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
-                VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
+            ImageMemoryBarrier(readWrites.m_depthTarget.m_image.m_image.m_handle, renderPassBarriers[1], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
+                VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                 VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
             // execute
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderingAttachmentDefinitionBarriers);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, BLIT_ARRAY_SIZE(renderPassBarriers), renderPassBarriers);
 
             if (context.m_renders.m_renderCount == 0)
             {
                 // TODO: Change this so that it instantly goes to present and quits the function before going further
-                DrawBackgroundImage(fTools.commandBuffer, m_pipelines, m_instance, m_colorAttachment.image.imageView, m_drawExtent);
+                DrawBackgroundImage(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
             }
             /*
                 !RENDER OPERATIONS INFO:
@@ -945,34 +990,33 @@ namespace BlitzenVulkan
                   Its fragment shader also has a modified specialization constant for alpha discard
             */
 
+            uint8_t latePass{ 0 };
+
             // First culling pass
-            DrawCullFirstPass(fTools.commandBuffer, m_instance, m_pipelines, m_staticBuffers, vBuffers, context.m_renders.m_renderCount, BLIT_ARRAY_SIZE(m_drawCullDescriptors),
-                m_drawCullDescriptors, m_staticBuffers.renderObjectBufferAddress);
+            DrawCullFirstPass(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
             // First draw pass
-            DrawOpaque(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_pipelines, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                m_drawExtent, m_staticBuffers, context.m_renders.m_renderCount, Ce_InitialCulling, m_instance, m_stats.bRayTracingSupported, 1, &m_staticBuffers.tlasData.handle);
+            DrawOpaque(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, 
+                { m_drawWidth, m_drawHeight }, latePass);
+
+            latePass = 1;
 
             // Depth pyramid generation
-            GenerateHiZ(fTools.commandBuffer, m_instance, m_depthAttachment, m_depthPyramid, m_depthPyramidExtent, m_depthPyramidMipLevels, m_depthPyramidMips, m_pipelines);
+            GenerateHiZ(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
             // Second culling pass 
-            DrawCullOcclusionPass(fTools.commandBuffer, m_instance, m_pipelines, m_staticBuffers, vBuffers, m_depthPyramid, m_depthAttachment, context.m_renders.m_renderCount,
-                BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.renderObjectBufferAddress);
+            DrawCullOcclusionPass(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
             // Second draw pass
-            DrawOpaque(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_pipelines, &m_textureDescriptorSet, m_colorAttachmentInfo, m_depthAttachmentInfo,
-                m_drawExtent, m_staticBuffers, context.m_renders.m_renderCount, Ce_LateCulling, m_instance, m_stats.bRayTracingSupported,
-                1, &m_staticBuffers.tlasData.handle);
+            DrawOpaque(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame,
+                {m_drawWidth, m_drawHeight}, latePass);
 
-            if (m_stats.bTranspartentObjectsExist)
+            if (context.m_renders.m_transparentRenderCount != 0)
             {
-                DrawCullTrans(fTools.commandBuffer, m_instance, m_pipelines, m_staticBuffers, vBuffers, uint32_t(context.m_renders.m_transparentRenderCount), 
-                    BLIT_ARRAY_SIZE(m_drawCullDescriptors), m_drawCullDescriptors, m_staticBuffers.transparentRenderObjectBufferAddress);
+                DrawCullTrans(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-                DrawTransparents(fTools.commandBuffer, m_graphicsDescriptors, BLIT_ARRAY_SIZE(m_graphicsDescriptors), m_pipelines, &m_textureDescriptorSet, m_colorAttachmentInfo, 
-                    m_depthAttachmentInfo, m_drawExtent, m_staticBuffers, uint32_t(context.m_renders.m_transparentRenderCount), m_instance,
-                    m_stats.bRayTracingSupported, Ce_SinglePointer, &m_staticBuffers.tlasData.handle);
+                DrawTransparents(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, 
+                    {m_drawWidth, m_drawHeight});
             }
 
             /*
@@ -983,25 +1027,25 @@ namespace BlitzenVulkan
             */
 
             // Image barriers to transition the layout of the color attachment and the swapchain image
-            VkImageMemoryBarrier2 colorAttachmentTransferBarriers[2] = {};
-            ImageMemoryBarrier(m_colorAttachment.image.image, colorAttachmentTransferBarriers[0], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VkImageMemoryBarrier2 presentBarriers[2] = {};
+            ImageMemoryBarrier(readWrites.m_colorTarget.m_image.m_image.m_handle, presentBarriers[0], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-            ImageMemoryBarrier(m_swapchainValues.swapchainImages[size_t(swapchainIdx)], colorAttachmentTransferBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
+            ImageMemoryBarrier(m_swapchainValues.swapchainImages[size_t(swapchainIdx)], presentBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
             // Execute
-            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, colorAttachmentTransferBarriers);
+            PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, BLIT_ARRAY_SIZE(presentBarriers), presentBarriers);
 
             // Copies the color attachment to the swapchain image
             if constexpr (BlitzenCore::Ce_DepthPyramidDebug)
             {
-                CopyPyramidToSwapchain(m_instance, fTools.commandBuffer, m_depthPyramid, m_swapchainValues, m_drawExtent, m_depthPyramidExtent, m_depthPyramidMipLevels, 
-                    m_depthPyramidMips, m_pipelines, swapchainIdx, context.m_camera.transformData.debugPyramidLevel, m_depthAttachment.sampler.m_handle);
+                CopyPyramidToSwapchain(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, 
+                    m_swapchainValues, swapchainIdx, m_drawWidth, m_drawHeight, context.m_camera.transformData.debugPyramidLevel);
             }
             else
             {
-                CopyToSwapchain(fTools.commandBuffer, m_swapchainValues.swapchainImageViews[swapchainIdx], m_swapchainValues.swapchainImages[swapchainIdx], m_colorAttachment, 
-                    m_drawExtent, m_pipelines, m_instance);
+                CopyToSwapchain(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, 
+                    m_swapchainValues, swapchainIdx);
             }
             
 

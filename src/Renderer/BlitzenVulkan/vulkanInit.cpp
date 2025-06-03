@@ -3,6 +3,7 @@
 #include "Platform/blitPlatform.h"
 #include "vulkanResourceFunctions.h"
 #include "vulkanPipelines.h"
+#include "vulkanRNDResources.h"
 #include <cstring> // For strcmp
 
 namespace BlitzenVulkan
@@ -218,6 +219,10 @@ namespace BlitzenVulkan
                     instanceInfo.enabledLayerCount = 1;
                 }
             }
+            else
+            {
+                instanceInfo.enabledLayerCount = 1;
+            }
 
             instanceInfo.ppEnabledLayerNames = ppEnabledLayerNames;
 
@@ -271,9 +276,16 @@ namespace BlitzenVulkan
         VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
         VkValidationFeaturesEXT validationFeatures{};
         const char* layerNames[2] = { ce_baseValidationLayerName, Ce_SyncValidationLayerName };
-        if (ce_bValidationLayersRequested && extensionContext.extensionSupportFound[Ce_ValidationExtensionElement])
+        if constexpr (ce_bValidationLayersRequested)
         {
-            validationLayersEnabled = EnableValidationLayers(instanceInfo, debugMessengerInfo, validationFeatures, enables, layerNames);
+            if (extensionContext.extensionSupportFound[Ce_ValidationExtensionElement])
+            {
+                validationLayersEnabled = EnableValidationLayers(instanceInfo, debugMessengerInfo, validationFeatures, enables, layerNames);
+                if (!validationLayersEnabled)
+                {
+                    BLIT_ERROR("Failed to enable validation layers");
+                }
+            }
         }
 
         auto res = vkCreateInstance(&instanceInfo, nullptr, &instance);
@@ -904,7 +916,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, m_pCustomAllocator, pPlatform))
+        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, nullptr, pPlatform))
         {
             BLIT_ERROR("Failed to create Vulkan window surface");
             return 0;
@@ -922,17 +934,16 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
-            m_pCustomAllocator, m_swapchainValues))
+        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, nullptr, m_swapchainValues))
         {
             BLIT_ERROR("Failed to create Vulkan swapchain");
             return 0;
         }
 
         // Commands
-        for (size_t i = 0; i < ce_framesInFlight; ++i)
+        for (size_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
-            if (!m_frameToolsList[i].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
+            if (!m_frameToolsList[frame].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
             {
                 BLIT_ERROR("Failed to create frame tools");
                 return 0;
@@ -940,15 +951,8 @@ namespace BlitzenVulkan
         }
 
         // This will be referred to by rendering attachments and will be updated when the window is resized
-        m_drawExtent = {m_swapchainValues.swapchainExtent.width, m_swapchainValues.swapchainExtent.height};
-
-        // Texture sampler. Global for all textures for now
-        m_textureSampler.m_handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-        if (m_textureSampler.m_handle == VK_NULL_HANDLE)
-        {
-            BLIT_ERROR("Failed to create texture sampler");
-            return 0;
-        }
+        m_drawWidth = m_swapchainValues.swapchainExtent.width;
+        m_drawHeight = m_swapchainValues.swapchainExtent.height;
 
         // Resource management
         m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_memoryCrucials);
@@ -965,7 +969,16 @@ namespace BlitzenVulkan
             return 0;
         }
 
-		if (!CreateIdleDrawHandles(m_device, m_pipelines, m_backgroundImageSetLayout.handle, m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
+        for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
+        {
+            if (!RenderingAttachmentsInit(m_device, m_allocator, m_readOnlies, m_readWrites[frame], m_descriptorContext, m_pipelines, m_drawWidth, m_drawHeight, frame))
+            {
+                BLIT_ERROR("Failed to create rendering attachments");
+                return 0;
+            }
+        }
+
+		if (!CreateIdleDrawHandles(m_device, m_pipelines, m_descriptorContext.m_backgroundSetLayout.handle, m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
 		{
             BLIT_ERROR("Failed to create idle draw handles");
 		    return 0;
@@ -974,6 +987,14 @@ namespace BlitzenVulkan
         if (!CreateLoadingTrianglePipeline(m_device, m_pipelines))
         {
             BLIT_ERROR("Failed to create loading triangle pipeline");
+            return 0;
+        }
+
+        // Texture sampler. Global for all textures for now
+        m_readOnlies.m_textureSampler.m_handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+        if (m_readOnlies.m_textureSampler.m_handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create texture sampler");
             return 0;
         }
 
@@ -1269,14 +1290,9 @@ namespace BlitzenVulkan
         // Wait for the device to finish its work before destroying resources
         vkDeviceWaitIdle(m_device);
 
-        for(size_t i = 0; i < m_depthPyramidMipLevels; ++i)
-        {
-            vkDestroyImageView(m_device, m_depthPyramidMips[i], m_pCustomAllocator);
-        }
-
         if (m_debugMessenger != VK_NULL_HANDLE)
         {
-            DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_pCustomAllocator);
+            DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
         }
     }
 }

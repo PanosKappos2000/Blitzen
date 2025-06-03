@@ -43,22 +43,24 @@ uint LODSelection(vec3 center, float radius, float scale, float lodTarget, uint 
     return lodIndex;
 }
 
-struct ClusterDispatchData
+struct ClusterGroupData
 {
     uint objectId;
     uint lodIndex;
     uint clusterId;
+
+    uint padding0;
 };
 
 #ifdef PRE_CLUSTER
 layout(buffer_reference, std430) writeonly buffer ClusterDispatchBuffer
 {
-	ClusterDispatchData data[];
+	ClusterGroupData data[];
 };
 #else
 layout(buffer_reference, std430) readonly buffer ClusterDispatchBuffer
 {
-	ClusterDispatchData data[];
+	ClusterGroupData data[];
 };
 #endif
 
@@ -80,6 +82,7 @@ layout(set = 0, binding = 10, std430) buffer VisibilityBuffer
 }visibilityBuffer;
 
 #ifdef CLUSTER_CULLING
+
 layout (push_constant) uniform PushConstants
 {
     RenderObjectBuffer renderObjectBuffer;
@@ -88,11 +91,40 @@ layout (push_constant) uniform PushConstants
     uint drawCount;
 	uint padding0;
 }pushConstant;
+
+// Meshlet used in the mesh shader to draw a surface or mesh
+struct Cluster
+{
+    // Bounding sphere for frustum culling
+    vec3 center;
+    float radius;
+
+    // This is for backface culling
+    int8_t coneAxisX;
+    int8_t coneAxisY;
+    int8_t coneAxisZ;
+    int8_t coneCutoff;
+
+    uint dataOffset; // Index into meshlet data
+    uint8_t vertexCount;
+    uint8_t triangleCount;
+    uint8_t padding0;
+    uint8_t padding1;
+};
+
+// The single buffer that holds all meshlet data in the scene
+layout(set = 0, binding = 12, std430) readonly buffer ClusterBuffer
+{
+    Cluster clusters[];
+}clusterBuffer;
+
 #else
+
 layout (push_constant) uniform CullingConstants
 {
     RenderObjectBuffer renderObjectBuffer;
     uint drawCount;
 	uint padding0;
 }pushConstant;
+
 #endif

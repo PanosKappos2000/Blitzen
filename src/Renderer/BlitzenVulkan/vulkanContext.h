@@ -52,29 +52,79 @@ namespace BlitzenVulkan
 
         // Oblique Near place clipping culling pipeline. Might not be necessary
         PipelineObject m_onpcCull;
+
+        VkRenderingAttachmentInfo m_depthTargetInfo[ce_framesInFlight]{};
+        VkRenderingAttachmentInfo m_colorTargetInfo[ce_framesInFlight]{};
 	};
 
     struct DescriptorContext
     {
+        VkWriteDescriptorSet m_pushDescriptorsShared[Ce_SharedDescriptorCount * ce_framesInFlight]{};
 
-        VkWriteDescriptorSet m_pushDescriptorsShared[Ce_SharedDescriptorCount]{};
+        VkWriteDescriptorSet m_pushDescriptorsCull[Ce_CullDescriptorCount * ce_framesInFlight]{};
 
-        VkWriteDescriptorSet m_pushDescriptorsCull[Ce_CullDescriptorCount]{};
+        VkWriteDescriptorSet m_pushDescriptorsGraphics[Ce_GraphicsDescriptorCount * ce_framesInFlight]{};
 
-        VkWriteDescriptorSet m_drawCullDescriptors[Ce_GraphicsDescriptorCount]{};
+        VkWriteDescriptorSet m_pushDescriptorsDrawOcc[Ce_DrawOcclusionDescriptorCount * ce_framesInFlight]{};
+
+        VkWriteDescriptorSet m_HI_Z_cullDescriptor[ce_framesInFlight]{};
+
+        VkWriteDescriptorSet m_colorTargetDescriptor[ce_framesInFlight]{};
+
+        VkWriteDescriptorSet m_HI_Z_descriptors[ce_framesInFlight * 2]{};
+
+
+        VkDescriptorSet m_textureDescriptorSet{};
+        DescriptorPool m_textureDescriptorPool;
+
+
+        VkDescriptorImageInfo m_colorTargetDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorImageInfo m_depthTargetDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorImageInfo m_HI_Z_descInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_viewDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_surfaceDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_drawCmdDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_transformDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_LODDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_drawCmdCounterDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_drawVisDescInfo[ce_framesInFlight]{};
+
+        VkDescriptorBufferInfo m_vtxDescInfo{};
+
+        VkDescriptorBufferInfo m_matDescInfo{};
+
 
         DescriptorSetLayout m_pushDescriptorLayout;
-        
-        DescriptorSetLayout m_depthPyramidDescriptorLayout;
+
+        DescriptorSetLayout m_HI_Z_descriptorSetLayout;
 
         DescriptorSetLayout m_textureDescriptorSetlayout;
 
-        DescriptorPool m_textureDescriptorPool;
-        VkDescriptorSet m_textureDescriptorSet;
+        DescriptorSetLayout m_backgroundSetLayout;
 
-        DescriptorSetLayout m_backgroundImageSetLayout;
+        DescriptorSetLayout m_presentSetlayout;
 
-        DescriptorSetLayout m_generatePresentationImageSetLayout;
+
+        VkDeviceAddress m_opaqueRenderAddr;
+
+        VkDeviceAddress m_transRenderAddr;
+
+        VkDeviceAddress m_clusterGroupAddr[ce_framesInFlight];
+
+        VkDeviceAddress m_clusterCounterAddr[ce_framesInFlight];
+
+        VkDeviceAddress m_transClusterGroupAddr[ce_framesInFlight];
+
+        VkDeviceAddress m_transClusterCounterAddr[ce_framesInFlight];
     };
 
     struct RWResources
@@ -100,10 +150,42 @@ namespace BlitzenVulkan
         BlitVk_UBUFFER<uint32_t> m_transClusterDispatchCounterCopy;
 
         BlitVk_SSBO m_drawVisBuffer;
+
+        BlitVk_2DIMAGE_SAMP m_colorTarget;
+
+        BlitVk_2DIMAGE_SAMP m_depthTarget;
+
+        HI_Z_MAP m_HI_Z_MAP;
     };
 
     struct ROResources
     {
+        TextureData m_textures[BlitzenCore::Ce_MaxTextureCount];
+        uint32_t m_textureCount;
 
+        ImageSampler m_textureSampler;
+
+        BlitVk_SSBO m_vtxBuffer;
+
+        BlitVk_SSBO m_idxBuffer;
+
+        BlitVk_SSBO m_renderBuffer;
+
+        BlitVk_SSBO m_transRenderBuffer;
+
+        BlitVk_SSBO m_surfaceBuffer;
+
+        BlitVk_SSBO m_LODBuffer;
+
+        BlitVk_SSBO m_matBuffer;
+
+        BlitVk_SSBO m_clusterBuffer;
+
+        BlitVk_SSBO m_clusterIdxBuffer;
+
+        BlitVk_SSBO m_blas;
+        BlitCL::DynamicArray<AccelerationStructure> m_blasData;
+        BlitVk_SSBO m_tlas;
+        AccelerationStructure m_tlasData;
     };
 }

@@ -31,7 +31,9 @@ namespace BlitCL
             m_pBlock{ BlitzenCore::BlitAlloc<T>(DArrayAlloc, m_capacity) }
         {
             for (size_t i = 0; i < initialSize; ++i)
+            {
                 BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
+            }
         }
 
         // Allocates memory for initialSize elements. Copies the data to every element up to m_size
@@ -41,7 +43,9 @@ namespace BlitCL
             m_pBlock{ BlitzenCore::BlitAlloc<T>(DArrayAlloc, m_capacity) }
         {
             for (size_t i = 0; i < initialSize; ++i)
+            {
                 BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
+            }
         }
 
         DynamicArray(DynamicArray<T>& array)

@@ -38,36 +38,6 @@ namespace BlitzenVulkan
         }
     }
 
-    void AllocatedImage::CleanupResources(VmaAllocator allocator, VkDevice device)
-    {
-        vmaDestroyImage(allocator, image, allocation);
-        vkDestroyImageView(device, imageView, nullptr);
-    }
-
-    AllocatedImage::~AllocatedImage()
-    {
-        if (image != VK_NULL_HANDLE)
-        {
-            auto vma = S_GET_VULKAN_MEMORY()->allocator;
-            vmaDestroyImage(vma, image, allocation);
-        }
-
-        if (imageView != VK_NULL_HANDLE)
-        {
-            auto vdv = S_GET_VULKAN_MEMORY()->device;
-            vkDestroyImageView(vdv, imageView, nullptr);
-        }
-    }
-
-    AllocatedBuffer::~AllocatedBuffer()
-    {
-        if (bufferHandle != VK_NULL_HANDLE)
-        {
-            auto vma = S_GET_VULKAN_MEMORY()->allocator;
-            vmaDestroyBuffer(vma, bufferHandle, allocation);
-        }
-    }
-
     Buffer::~Buffer()
     {
         if (m_handle != VK_NULL_HANDLE)
@@ -176,6 +146,15 @@ namespace BlitzenVulkan
         }
     }
 
+    HI_Z_MAP::~HI_Z_MAP()
+    {
+        auto vdv = S_GET_VULKAN_MEMORY()->device;
+        for (uint32_t level = 0; level < m_levelCount; ++level)
+        {
+            vkDestroyImageView(vdv, m_levels[level], nullptr);
+        }
+    }
+
 
     // Acceleration structure is an extensions so it needs to load the destroy function as well
     static void DestroyAccelerationStructureKHR(VkInstance instance, VkDevice device, VkAccelerationStructureKHR as, const VkAllocationCallbacks* pAllocator)
@@ -186,6 +165,7 @@ namespace BlitzenVulkan
             func(device, as, pAllocator);
         }
     }
+
     AccelerationStructure::~AccelerationStructure()
     {
         if (handle != VK_NULL_HANDLE)

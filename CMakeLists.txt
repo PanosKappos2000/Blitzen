@@ -89,6 +89,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenVulkan/vulkanContext.h"
                 "src/Renderer/BlitzenVulkan/vulkanRenderer.h"
                 "src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h"
+                "src/Renderer/BlitzenVulkan/vulkanRNDResources.h" 
+                "src/Renderer/BlitzenVulkan/vulkanRNDResources.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanCommands.h"
                 "src/Renderer/BlitzenVulkan/vulkanPipelines.h"
                 "src/Renderer/BlitzenVulkan/vulkanHandles.cpp"
@@ -135,8 +137,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h"
-)
+                "src/VendorCode/Cgltf/cgltf.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -155,12 +156,14 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_ASSERTIONS_ENABLED
                             BLIT_CONSOLE_LOGGER
 
+                            DASHER_USE_DEAR
+
                             BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
-                            BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
+                            #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
                             BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
-                            #BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
+                            BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
                             #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
                             #BLIT_DOUBLE_BUFFERING # Enables double buffering (DX12 ignores this, and activates it anyway)
@@ -170,7 +173,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Vulkan specific preprocessor macros
                             BLIT_VK_VALIDATION_LAYERS
-                            #BLIT_VK_SYNCHRONIZATION_VALIDATION
+                            BLIT_VK_SYNCHRONIZATION_VALIDATION
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)

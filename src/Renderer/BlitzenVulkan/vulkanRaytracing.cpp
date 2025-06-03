@@ -55,7 +55,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
-        BlitzenEngine::DrawContext& context, VulkanRenderer::StaticBuffers& staticBuffers)
+        BlitzenEngine::DrawContext& context, ROResources& readOnlies)
     {
         auto& surfaces = context.m_meshes.m_surfaces;
 		auto& primitiveVertexCounts = context.m_meshes.m_primitiveVertexCounts;
@@ -81,8 +81,8 @@ namespace BlitzenVulkan
         size_t totalScratchSize = 0;
 
         // Gets the address of the vertex buffer and then the index buffer
-        auto vertexBufferAddress = GetBufferAddress(device, staticBuffers.vertexBuffer.buffer.bufferHandle);
-        auto indexBufferAddress = GetBufferAddress(device, staticBuffers.indexBuffer.bufferHandle);
+        auto vertexBufferAddress = GetBufferAddress(device, readOnlies.m_vtxBuffer.m_buffer.m_handle);
+        auto indexBufferAddress = GetBufferAddress(device, readOnlies.m_idxBuffer.m_buffer.m_handle);
 
         for (size_t i = 0; i < surfaces.GetSize(); ++i)
         {
@@ -143,22 +143,22 @@ namespace BlitzenVulkan
             totalScratchSize = (totalScratchSize + sizeInfo.buildScratchSize + ce_alignment - 1) & ~(ce_alignment - 1);
         }
 
-        if (!CreateBuffer(vma, staticBuffers.blasBuffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        if (!CreateBuffer(vma, readOnlies.m_blas.m_buffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY, totalAccelerationSize, 0))
         {
             return 0;
         }
 
-        AllocatedBuffer stagingBuffer;
+        Buffer stagingBuffer;
         if (!CreateBuffer(vma, stagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY, totalScratchSize, 0))
         {
             return 0;
         }
 
-        VkDeviceAddress blasStagingBufferAddress = GetBufferAddress(device, stagingBuffer.bufferHandle);
+        VkDeviceAddress blasStagingBufferAddress = GetBufferAddress(device, stagingBuffer.m_handle);
 
-        staticBuffers.blasData.Resize(surfaces.GetSize());
+        readOnlies.m_blasData.Resize(surfaces.GetSize());
 
         // Need to empty-brace initialize every damned struct otherwise Vulkan breaks
         BlitCL::DynamicArray<VkAccelerationStructureBuildRangeInfoKHR> buildRanges(surfaces.GetSize(), {});
@@ -168,17 +168,18 @@ namespace BlitzenVulkan
         {
             VkAccelerationStructureCreateInfoKHR accelerationInfo{};
             accelerationInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-            accelerationInfo.buffer = staticBuffers.blasBuffer.bufferHandle;
+            accelerationInfo.buffer = readOnlies.m_blas.m_buffer.m_handle;
             accelerationInfo.offset = accelerationOffsets[i];
             accelerationInfo.size = accelerationSizes[i];
             accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-            if (CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &staticBuffers.blasData[i].handle) != VK_SUCCESS)
+            if (CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &readOnlies.m_blasData[i].handle) != VK_SUCCESS)
             {
+                BLIT_ERROR("Failed to create acceleration structure");
                 return 0;
             }
 
-            buildInfos[i].dstAccelerationStructure = staticBuffers.blasData[i].handle;
+            buildInfos[i].dstAccelerationStructure = readOnlies.m_blasData[i].handle;
             buildInfos[i].scratchData.deviceAddress = blasStagingBufferAddress + scratchOffsets[i];
 
             auto& buildRange = buildRanges[i];
@@ -196,7 +197,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue, 
-        VulkanRenderer::StaticBuffers& staticBuffers, BlitzenEngine::DrawContext& context)
+        ROResources& readOnlies, BlitzenEngine::DrawContext& context)
     {
         auto pDraws{ context.m_renders.m_renders }; 
         uint32_t drawCount{ context.m_renders.m_renderCount }; 
@@ -205,20 +206,21 @@ namespace BlitzenVulkan
         const auto& surfaceTransparencies{ context.m_meshes.m_bTransparencyList };
 
         // Retrieves the device address of each acceleration structure that was build earlier
-        BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ staticBuffers.blasData.GetSize() };
+        BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ readOnlies.m_blasData.GetSize() };
         for (size_t i = 0; i < blasAddresses.GetSize(); ++i)
         {
             VkAccelerationStructureDeviceAddressInfoKHR	addressInfo{};
             addressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-            addressInfo.accelerationStructure = staticBuffers.blasData[i].handle;
+            addressInfo.accelerationStructure = readOnlies.m_blasData[i].handle;
             blasAddresses[i] = GetAccelerationStructureDeviceAddressKHR(instance, device, &addressInfo);
         }
 
         // Creates an object buffer that will hold a VkAccelerationsStructureInstanceKHR for each object loaded
-        AllocatedBuffer objectBuffer;
+        Buffer objectBuffer;
         if (!CreateBuffer(vma, objectBuffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
             sizeof(VkAccelerationStructureInstanceKHR) * drawCount, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
+            BLIT_ERROR("Failed to create acceleration structure object buffer");
             return 0;
         }
 
@@ -251,7 +253,7 @@ namespace BlitzenVulkan
             instance.flags = /*surface.postPass*/ false ? VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR : 0;
             instance.accelerationStructureReference = blasAddresses[object.surfaceId];
 
-            auto pData = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(objectBuffer.allocationInfo.pMappedData) + i;
+            auto pData = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(objectBuffer.m_vmaInfo.pMappedData) + i;
             BlitzenCore::BlitMemCopy(pData, &instance, sizeof(VkAccelerationStructureInstanceKHR));
         }
 
@@ -259,7 +261,7 @@ namespace BlitzenVulkan
         geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
         geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
         geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-        geometry.geometry.instances.data.deviceAddress = GetBufferAddress(device, objectBuffer.bufferHandle);
+        geometry.geometry.instances.data.deviceAddress = GetBufferAddress(device, objectBuffer.m_handle);
 
         // Initial values for build info, more data will become available later in the function
         VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
@@ -278,33 +280,33 @@ namespace BlitzenVulkan
 
         // Creates the Tlas buffer based on the build size that was retrieved above
         // For raytracing, the below struct needs to be added to the pNext chain of the descriptor set layout
-        if (!SetupPushDescriptorBuffer<uint8_t>(vma, VMA_MEMORY_USAGE_GPU_ONLY, staticBuffers.tlasBuffer, sizeInfo.accelerationStructureSize, 
-            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR))
+        if (!CreateBuffer(vma, readOnlies.m_tlas.m_buffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, VMA_MEMORY_USAGE_GPU_ONLY, sizeInfo.accelerationStructureSize, 0))
         {
             BLIT_ERROR("Failed to create TLAS buffer");
             return 0;
         }
 
-        AllocatedBuffer stagingBuffer;
+        Buffer stagingBuffer;
         if (!CreateBuffer(vma, stagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY, sizeInfo.buildScratchSize, 0))
         {
+            BLIT_ERROR("Failed to create tals staging")
             return 0;
         }
 
         // Creates the accleration structure
         VkAccelerationStructureCreateInfoKHR accelerationInfo{};
         accelerationInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-        accelerationInfo.buffer = staticBuffers.tlasBuffer.buffer.bufferHandle;
+        accelerationInfo.buffer = readOnlies.m_tlas.m_buffer.m_handle;
         accelerationInfo.size = sizeInfo.accelerationStructureSize;
         accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-        if (CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &staticBuffers.tlasData.handle) != VK_SUCCESS)
+        if (CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &readOnlies.m_tlasData.handle) != VK_SUCCESS)
         {
             return 0;
         }
 
-        buildInfo.dstAccelerationStructure = staticBuffers.tlasData.handle;
-        buildInfo.scratchData.deviceAddress = GetBufferAddress(device, stagingBuffer.bufferHandle);
+        buildInfo.dstAccelerationStructure = readOnlies.m_tlasData.handle;
+        buildInfo.scratchData.deviceAddress = GetBufferAddress(device, stagingBuffer.m_handle);
 
         VkAccelerationStructureBuildRangeInfoKHR buildRange = {};
         buildRange.primitiveCount = drawCount;

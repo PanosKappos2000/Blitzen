@@ -7,11 +7,33 @@
 //#define RAYTRACING
 
 #ifdef RAYTRACING
+
 #extension GL_EXT_ray_query: require
 layout(set = 0, binding = 15) uniform accelerationStructureEXT tlas;
+
 #endif
 
 #include "../Headers/sharedBuffers.glsl"
+
+// Holds data that defines the material of a surface
+struct Material
+{
+    // Used to access each texture map
+    uint albedoTag;
+    uint normalTag;
+    uint specularTag;
+    uint emissiveTag;
+
+    uint materialId;
+    uint padding0;
+    uint padding1;
+    uint padding2;
+};
+
+layout (set = 0, binding = 6, std430) readonly buffer MaterialBuffer
+{
+    Material materials[];
+}materialBuffer;
 
 // Specialization constant. Its value changes for the post pass pipeline. This should theoritically allow for gpu compiler optimizations
 layout (constant_id = 0) const uint POST_PASS = 0;
