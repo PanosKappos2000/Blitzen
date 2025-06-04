@@ -3,7 +3,7 @@
 #if defined(_WIN32)
 
 #include "dx12Data.h"
-#include "Game/blitCamera.h"
+#include "Renderer/View/blitCamera.h"
 
 namespace BlitzenDX12
 {

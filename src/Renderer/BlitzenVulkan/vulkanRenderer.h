@@ -1,8 +1,7 @@
 #pragma once
 #include "vulkanContext.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
-#include "Game/blitCamera.h"
-#include "Game/blitObject.h"
+#include "Renderer/Interface/blitRendererInterface.h"
 
 namespace BlitzenVulkan
 {
@@ -72,22 +71,28 @@ namespace BlitzenVulkan
 
     public:
 
+        MemoryCrucialHandles m_memoryCrucials;
+
         // Vulkan API and memory crucials
         VkInstance m_instance;
-        VmaAllocator m_allocator;
+        VkPhysicalDevice m_physicalDevice;
         VkDevice m_device;
 
-        MemoryCrucialHandles m_memoryCrucials;
+        SurfaceKHR m_surface;
+        Swapchain m_swapchainValues;
+
+        VmaAllocator m_allocator;
+
+        VulkanStats m_stats;
+
+        Queue m_graphicsQueue;
+        Queue m_presentQueue;
+        Queue m_computeQueue;
+        Queue m_transferQueue;
 
     private:
 
         VkDebugUtilsMessengerEXT m_debugMessenger;
-
-        SurfaceKHR m_surface;
-
-        VkPhysicalDevice m_physicalDevice;
-
-        Swapchain m_swapchainValues;
 
         uint32_t m_drawWidth;
         uint32_t m_drawHeight;
@@ -108,14 +113,7 @@ namespace BlitzenVulkan
 
         // Frame tools index
         uint8_t m_currentFrame;
-
-        // Holds stats that give information about how the vulkanRenderer is operating
-        VulkanStats m_stats;
-
-        Queue m_graphicsQueue;
-        Queue m_presentQueue;
-        Queue m_computeQueue;
-        Queue m_transferQueue;
+        
     };
 
 

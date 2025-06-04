@@ -4,7 +4,7 @@
 namespace BlitzenEngine
 {
     
-    void UpdateDynamicObjects(RendererPtrType pRenderer, BlitzenCore::EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    void UpdateDynamicObjects(RendererPtrType pRenderer, EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext)
     {
         // WARING: DO NOT USE FOR EACH. NOT EVERYTHING IN THIS ARRAY IS INITIALIZED, ONLY THOSE UP TO CURRENT COUNT
         for (uint32_t i = 0; i < pEntityManager->m_dynamicEntityCount; ++i)
@@ -59,7 +59,7 @@ namespace BlitzenEngine
         return true;
     }
 
-    bool ManageGltf(const char* filepath, RenderingResources* pResources, BlitzenCore::EntityManager* pManager, RendererPtrType pRenderer)
+    bool ManageGltf(const char* filepath, RenderingResources* pResources, EntityManager* pManager, RendererPtrType pRenderer)
     {
         auto& textureContext{ pResources->m_textureManager };
         auto& meshContext{ pResources->m_meshContext };
@@ -128,7 +128,7 @@ namespace BlitzenEngine
         return true;
     }
 
-    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenCore::EntityManager* pManager)
+    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, EntityManager* pManager)
     {
         const uint32_t ObjectCount = BlitzenCore::Ce_MaxDynamicObjectCount;
         if (pManager->m_renderContainer.m_renderCount + ObjectCount > BlitzenCore::Ce_MaxRenderObjects)
@@ -143,7 +143,7 @@ namespace BlitzenEngine
             RandomizeTransform(transform, 100.f, 1.f);
 
             // Type info thing kept here just because
-            bool bObjectAdded{ pManager->template AddObject<BlitzenEngine::ClientTest>(meshes, transform, true, "kitten") };
+            bool bObjectAdded{ pManager->template AddObject<ClientTest>(meshes, transform, true, "kitten") };
             if (!bObjectAdded/*!pManager->template AddObject<BlitzenEngine::ClientTest>(meshes, transform, true, "kitten")*/)
             {
                 BLIT_ERROR("Failed to create dynamic object");
@@ -152,7 +152,7 @@ namespace BlitzenEngine
         }
     }
 
-    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, BlitzenCore::EntityManager* pManager)
+    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, RendererPtrType pRenderer, EntityManager* pManager)
     {
         LoadTestGeometry(pResources->m_meshContext);
 		CreateSingleRender(pManager->m_renderContainer, pResources->m_meshContext, BlitzenCore::Ce_DefaultMeshName, 5.f);

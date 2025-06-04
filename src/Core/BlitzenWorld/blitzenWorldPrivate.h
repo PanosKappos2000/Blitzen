@@ -8,7 +8,7 @@ namespace BlitzenWorld
         BlitzenCore::EngineState* pEngineState;
         BlitzenEngine::RendererPtrType pRenderer;
         BlitzenEngine::RenderingResources* pRenderingResources;
-        BlitzenCore::EntityManager* pEntityMangager;
+        BlitzenEngine::EntityManager* pEntityMangager;
 
         void* pBlitzenContext;
     };

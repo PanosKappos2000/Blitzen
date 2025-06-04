@@ -1,7 +1,7 @@
 #pragma once 
 
 #include "vulkanData.h"
-#include "Game/blitCamera.h"
+#include "Renderer/View/blitCamera.h"
 
 namespace BlitzenVulkan
 {

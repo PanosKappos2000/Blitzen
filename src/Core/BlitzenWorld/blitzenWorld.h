@@ -1,5 +1,5 @@
 #pragma once
-#include "Game/blitCamera.h"
+#include "Renderer/View/blitCamera.h"
 #include "Core/Events/blitTimeManager.h"
 #include "Renderer/Interface/blitRendererInterface.h"
 

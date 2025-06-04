@@ -5,7 +5,7 @@
 #include <windowsx.h>
 #include <WinUser.h>
 #include "Platform/blitPlatform.h"
-#include "Game/blitCamera.h"
+#include "Renderer/View/blitCamera.h"
 #include "Renderer/Interface/blitRenderer.h"
 #include "Core/Events/blitEvents.h"
 

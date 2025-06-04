@@ -1,5 +1,6 @@
 #include "Core/blitzenEngine.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include "Core/Dasher/Interface/dasherInterface.h"
 #include "Core/Events/blitEvents.h"
 #include "Platform/blitPlatformContext.h"
 #include "Platform/blitPlatform.h"
@@ -11,7 +12,7 @@
 
 using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
-using EntitySystemMemory = BlitCL::SmartPointer<BlitzenCore::EntityManager, BlitzenCore::AllocationType::Entity>;
+using EntitySystemMemory = BlitCL::SmartPointer<BlitzenEngine::EntityManager, BlitzenCore::AllocationType::Entity>;
 
 
 #if defined(BLIT_GDEV_EDT)
@@ -60,6 +61,9 @@ int main(int argc, char* argv[])
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
     BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
+
+    //BlitzenCore::Dasher dasher;
+    //dasher.m_apiData.Init(renderer.Data());
 
     BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager, &platform};
 

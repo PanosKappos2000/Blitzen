@@ -33,7 +33,15 @@ namespace BlitzenVulkan
         case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "VULKAN_RES_OUT_OF_DEVICE_MEMORY";
         case VK_ERROR_INITIALIZATION_FAILED: return "VULKAN_RES_INIT_FAILED";
         case VK_ERROR_DEVICE_LOST: return "VULKAN_RES_DEVICE_LOST";
-        case VK_RESULT_MAX_ENUM: default: return "VULKAN_RES_UNKNOWN";
+        case VK_ERROR_MEMORY_MAP_FAILED: return "VULKAN_RES_MEMORY_MAP_FAILED";
+        case VK_ERROR_LAYER_NOT_PRESENT: return "VULKAN_RES_LAYER_NOT_PRESENT";
+        case VK_ERROR_EXTENSION_NOT_PRESENT: return "VULKAN_RES_EXTENSION_NOT_PRESENT";
+        case VK_ERROR_FEATURE_NOT_PRESENT: return "VULKAN_RES_FEATURE_NOT_PRESENT";
+        case VK_ERROR_INCOMPATIBLE_DRIVER: return "VULKAN_RES_INCOMPATIBLE_DRIVER";
+        case VK_ERROR_TOO_MANY_OBJECTS: return "VULKAN_RES_TOO_MANY_OBJECTS";
+        case VK_ERROR_FORMAT_NOT_SUPPORTED: return "VULKAN_RES_FORMAT_NOT_SUPPORTED";
+        case VK_ERROR_FRAGMENTED_POOL: return "VULKAN_RES_FRAGMENTED_POOL";
+        case VK_RESULT_MAX_ENUM: case VK_ERROR_UNKNOWN: default: return "VULKAN_RES_UNKNOWN";
         }
     }
 
@@ -49,7 +57,7 @@ namespace BlitzenVulkan
     {
         if (res < 0)
         {
-            BLIT_ERROR(VK_TRANS_RES(res));
+            BLIT_ERROR("VKRESULT WITH: %s", VK_TRANS_RES(res));
             return 0;
         }
 

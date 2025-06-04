@@ -3,7 +3,7 @@
 #include "openglRenderer.h"
 #include "Platform/Filesystem/blitCFILE.h"
 #include <string>
-#include "Game/blitCamera.h"
+#include "Renderer/View/blitCamera.h"
 #include "Renderer/Interface/blitRenderer.h"
 
 namespace BlitzenGL

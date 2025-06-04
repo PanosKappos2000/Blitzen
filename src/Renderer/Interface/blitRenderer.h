@@ -1,6 +1,6 @@
 #pragma once
 #include "Renderer/Resources/Scene/blitScene.h"
-#include "Core/Entities/blitEntityManager.h"
+#include "Renderer/Entities/blitEntityManager.h"
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
 #include "Renderer/BlitzenDX12/dx12Renderer.h"
@@ -48,11 +48,11 @@ namespace BlitzenEngine
 
     bool RenderingResourcesInit(RenderingResources* pResources, RendererPtrType pRenderer);
 
-    bool ManageGltf(const char* filepath, RenderingResources* pResources, BlitzenCore::EntityManager* pManager, RendererPtrType pRenderer);
+    bool ManageGltf(const char* filepath, RenderingResources* pResources, EntityManager* pManager, RendererPtrType pRenderer);
 
-    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenCore::EntityManager* pManager);
+    void CreateDynamicObjectRendererTest(RenderContainer& renders, MeshResources& meshes, EntityManager* pManager);
 
-    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, BlitzenCore::EntityManager* pManager);
+    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, RendererPtrType pRenderer, EntityManager* pManager);
 
-    void UpdateDynamicObjects(RendererPtrType pRenderer, BlitzenCore::EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext);    
+    void UpdateDynamicObjects(RendererPtrType pRenderer, EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext);    
 }

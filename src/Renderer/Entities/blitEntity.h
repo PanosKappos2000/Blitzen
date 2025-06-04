@@ -6,10 +6,10 @@ namespace BlitzenEngine
 {
 #if !defined(LAMBDA_GAME_OBJECT_TEST)
 
-    class GameObject
+    class Entity
     {
     public:
-        GameObject(BlitzenEngine::MeshTransform* pTransform, uint32_t transformId, BlitzenEngine::Mesh* pMesh, bool isDynamic);
+        Entity(BlitzenEngine::MeshTransform* pTransform, uint32_t transformId, BlitzenEngine::Mesh* pMesh, bool isDynamic);
 
         inline bool IsDynamic() const { return m_bDynamic; }
 
@@ -20,7 +20,7 @@ namespace BlitzenEngine
 
         virtual void Update(BlitzenWorld::BlitzenWorldContext& context);
 
-        virtual ~GameObject() = default; 
+        virtual ~Entity() = default; 
 
     private:
 
@@ -34,7 +34,7 @@ namespace BlitzenEngine
 
 
     // Temporary functionality tester
-    class ClientTest : public GameObject
+    class ClientTest : public Entity
     {
     public:
 

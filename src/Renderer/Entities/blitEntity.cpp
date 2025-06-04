@@ -1,8 +1,8 @@
-#include "blitObject.h"
+#include "blitEntity.h"
 
 namespace BlitzenEngine
 {
-	GameObject::GameObject(MeshTransform* pTransform, uint32_t transformId, Mesh* pMesh, bool isDynamic) :
+	Entity::Entity(MeshTransform* pTransform, uint32_t transformId, Mesh* pMesh, bool isDynamic) :
 		m_pTransform{ pTransform }, m_transformId{transformId}, m_pMesh{pMesh}, m_bDynamic{isDynamic}
 	{
 		
@@ -11,7 +11,7 @@ namespace BlitzenEngine
 #if !defined(LAMBDA_GAME_OBJECT_TEST)
 
 	ClientTest::ClientTest(MeshTransform* pTransform, uint32_t transformId, Mesh* pMesh, bool isDynamic) :
-		GameObject{ pTransform, transformId, pMesh, isDynamic }
+		Entity{ pTransform, transformId, pMesh, isDynamic }
 	{
 
 	}
@@ -21,7 +21,7 @@ namespace BlitzenEngine
 		RotateObject(m_yaw, m_pitch, m_speed, GetTransform(), context);
 	}
 
-	void GameObject::Update(BlitzenWorld::BlitzenWorldContext& context)
+	void Entity::Update(BlitzenWorld::BlitzenWorldContext& context)
 	{
 		BLIT_WARN("Update function not implemented, if this is intended, change the bDynamic boolean to 0");
 	}

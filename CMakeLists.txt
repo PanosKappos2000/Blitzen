@@ -24,10 +24,13 @@ add_executable(BlitzenEngine
                 # WORLD (ALL SYSTEMS)
                 "src/Core/BlitzenWorld/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
-                # ENTITIES
-                "src/Core/Entities/blitEntityManager.h"
-                "src/Core/Entities/blitzenEntityManager.cpp"
-
+                # DASHER UI
+                "src/Core/Dasher/DearDasher/dearDasher.h"
+                "src/Core/Dasher/DearDasher/dearDasher.cpp"
+                "src/Core/Dasher/DearDasher/dearDasherVK.h"
+                "src/Core/Dasher/DearDasher/dearDasherVK.cpp"
+                "src/Core/Dasher/Interface/dasherInterface.h"
+                
 
                 # BLITZEN CONTAINER LIBRARY
                 "src/BlitCL/blitPfn.h"
@@ -84,6 +87,14 @@ add_executable(BlitzenEngine
                 "src/Renderer/Resources/RenderObject/blitzenRender.cpp"
                 "src/Renderer/Resources/Scene/blitScene.h"
                 "src/Renderer/Resources/Scene/blitzenScene.cpp"
+                # CAMERA
+                "src/Renderer/View/blitCamera.h"
+                "src/Renderer/View/blitzenCamera.cpp"
+                # ENTITIES
+                "src/Renderer/Entities/blitEntity.h"
+                "src/Renderer/Entities/blitEntity.cpp"
+                "src/Renderer/Entities/blitEntityManager.h"
+                "src/Renderer/Entities/blitzenEntityManager.cpp"
                 # VULKAN
                 "src/Renderer/BlitzenVulkan/vulkanData.h"
                 "src/Renderer/BlitzenVulkan/vulkanContext.h"
@@ -122,13 +133,6 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/dx12RendererSetup.cpp"
                 "src/Renderer/BlitzenDX12/dx12Draw.cpp"
 
-                # CLIENT(TODO: THESE ARE PROBABLY MORE FITTING INSIDE CORE OR RENDERER)
-                "src/Game/blitObject.h"
-                "src/Game/blitzenObject.cpp"
-                "src/Game/blitCamera.h"
-                "src/Game/blitzenCamera.cpp"
-                
-
                 "src/VendorCode/fast_obj.h"
                 "src/VendorCode/objparser.cpp"
                 "src/VendorCode/Meshoptimizer/indexgenerator.cpp"
@@ -148,6 +152,45 @@ target_include_directories(BlitzenEngine PUBLIC
             "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/include"
             "${PROJECT_SOURCE_DIR}/ExternalDependencies/Submodules/ImGui"
 )
+
+# IMGUI
+set(IMGUI_DIR "${PROJECT_SOURCE_DIR}/ExternalDependencies/Submodules/ImGui")
+
+target_sources(BlitzenEngine PUBLIC
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp  
+    ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_win32.cpp  
+)
+
+# LINKER
+IF(WIN32)
+    target_link_directories(BlitzenEngine PUBLIC
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib"
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/lib/Release/x64")
+
+    target_link_libraries(BlitzenEngine PUBLIC  
+                        vulkan-1
+
+                        D3d12
+                        DXGI
+                        D3DCompiler 
+                        #d3d12sdklayers.lib
+
+                        glew32s
+                        OpenGL32)
+ELSEIF(UNIX)
+    target_link_directories(BlitzenEngine PUBLIC
+                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixLib")
+
+    target_link_libraries(BlitzenEngine PUBLIC
+                        libvulkan.so.1
+                        X11.so
+                        xcb.so
+                        libX11-xcb.so)
+ENDIF(WIN32)
 
 target_compile_definitions(BlitzenEngine PUBLIC
 
@@ -180,33 +223,6 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
                             #DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
-
-# LINKER
-IF(WIN32)
-    target_link_directories(BlitzenEngine PUBLIC
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/Lib"
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Glew/lib/Release/x64")
-
-    target_link_libraries(BlitzenEngine PUBLIC  
-                        vulkan-1
-
-                        D3d12
-                        DXGI
-                        D3DCompiler 
-                        #d3d12sdklayers.lib
-
-                        glew32s
-                        OpenGL32)
-ELSEIF(UNIX)
-    target_link_directories(BlitzenEngine PUBLIC
-                        "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/UnixLib")
-
-    target_link_libraries(BlitzenEngine PUBLIC
-                        libvulkan.so.1
-                        X11.so
-                        xcb.so
-                        libX11-xcb.so)
-ENDIF(WIN32)
 
 
 

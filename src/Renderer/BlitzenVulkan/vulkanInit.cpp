@@ -1006,18 +1006,20 @@ namespace BlitzenVulkan
     {
         // Get the amount of available surface formats
         uint32_t surfaceFormatsCount = 0;
-        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, nullptr) != VK_SUCCESS)
+        VkResult surfaceFormatCountResult{ vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, nullptr) };
+        if (surfaceFormatCountResult != VK_SUCCESS)
         {
-            BLIT_ERROR("No surface formats (??)");
-            return 0;
+            BLIT_ERROR("Get physical device surface formats returned 0. This should not happen, and there might be something wrong with general initialization logic");
+            return VK_LOG_ERROR_MSG_AND_RETURN(surfaceFormatCountResult);
         }
 
         // Retrieves
         BlitCL::DynamicArray<VkSurfaceFormatKHR> surfaceFormats(static_cast<size_t>(surfaceFormatsCount));
-        if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, surfaceFormats.Data()) != VK_SUCCESS)
+        VkResult surfaceQueryResult{ vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceFormatsCount, surfaceFormats.Data()) };
+        if (surfaceQueryResult != VK_SUCCESS)
         {
-            BLIT_ERROR("Failed to retrieve surface formats");
-            return 0;
+            BLIT_ERROR("Failed to retrieve surface formats from physical device");
+            return VK_LOG_ERROR_MSG_AND_RETURN(surfaceQueryResult);
         }
 
         // Look for the desired image format
@@ -1031,71 +1033,85 @@ namespace BlitzenVulkan
                 info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
                 // Saves the format to init handles
                 swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
-                found = 1;
-                break;
+                return 1;
             }
         }
 
-        // If the desired format is not found (unlikely), assigns the first one that is supported and hopes for the best
-        // I could have the function fail but this is not important enough and this function can be called at run time, so...
-        if (!found)
+        // Checks other available formats
+        for (const auto& format : surfaceFormats)
         {
-            info.imageFormat = surfaceFormats[0].format;
-            info.imageColorSpace = surfaceFormats[0].colorSpace;
-            // Save the image format
-            swapchainFormat = info.imageFormat;
-        }
+            VkFormatProperties formatProps;
+            vkGetPhysicalDeviceFormatProperties(physicalDevice, format.format, &formatProps);
 
-        return 1;
+            // Color attachment support
+            if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+            {
+                info.imageFormat = format.format;
+                info.imageColorSpace = format.colorSpace;
+                swapchainFormat = format.format;
+                return 1;
+            }
+        }
+       
+        BLIT_ERROR("Failed to find suitable swapchain surface formats");
+        return 0;
     }
 
     static uint8_t FindSwapchainPresentMode(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info)
     {
         // Enumerate
         uint32_t presentModeCount = 0;
-        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr) != VK_SUCCESS)
+        VkResult presentModeCountResult{ vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr) };
+        if (presentModeCountResult != VK_SUCCESS)
         {
-            BLIT_ERROR("Failed to enumerate swapchain present modes (?)");
-            return 0;
+            BLIT_ERROR("Failed to enumerate swapchain present modes. This should not happen and indicates a problem with initialization logic");
+            return VK_LOG_ERROR_MSG_AND_RETURN(presentModeCountResult);
         }
 
         // Retrieve
-        BlitCL::DynamicArray<VkPresentModeKHR> presentModes(static_cast<size_t>(presentModeCount));
-        if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.Data()) != VK_SUCCESS)
+        BlitCL::DynamicArray<VkPresentModeKHR> presentModes{ size_t(presentModeCount) };
+        VkResult presentModeQueryResult{ vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.Data()) };
+        if (presentModeQueryResult != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to retrieve swapchain present modes");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(presentModeQueryResult);
         }
 
-        uint8_t found = 0;
         for (const auto& present : presentModes)
         {
             if (present == Ce_DesiredPresentMode)
             {
                 info.presentMode = Ce_DesiredPresentMode;
-                found = 1;
                 BLIT_INFO("Found desired present mode");
-                break;
+                return 1;
             }
         }
 
-        // If it was not found, sets it to this random smuck (this is supposed to be supported by everything and it's VSynced)
-        if (!found)
+        // If desired mode is not found, check if FIFO is supported
+        for (const auto& present : presentModes)
         {
-            BLIT_WARN("Desired presentation mode not found, using fallback");
-            info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+            if (present == VK_PRESENT_MODE_FIFO_KHR)
+            {
+                info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+                BLIT_WARN("Desired present mode not found, using FIFO mode as fallback.");
+                return 1;
+            }
         }
 
-        return 1;
+        BLIT_ERROR("Failed to find present mode for swapchain. This should not happen! There might be something wrong with vulkan init logic");
+        return 0;
     }
 
-    static uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info,
-        Swapchain& newSwapchain)
+    static uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, Swapchain& newSwapchain)
     {
         // Retrieves surface capabilities to properly configure some swapchain values
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-        if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities) != VK_SUCCESS)
-            return 0;
+        VkResult surfaceCapabilitiesRes{ vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities) };
+        if (surfaceCapabilitiesRes != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to retrieve surface capabilities");
+            return VK_LOG_ERROR_MSG_AND_RETURN(surfaceCapabilitiesRes);
+        }
 
         // Updates the swapchain extent to the current extent from the surface, if it is not a special value
         if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
@@ -1130,8 +1146,8 @@ namespace BlitzenVulkan
     }
 
     uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
-    uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
-    VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
+        uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
+        VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
     {
         VkSwapchainCreateInfoKHR swapchainInfo{};
         swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
