@@ -689,6 +689,13 @@ namespace BlitzenVulkan
 
         VkWriteDescriptorSet hizWrite{};
 
+        VkDescriptorImageInfo HI_Z_info{};
+        HI_Z_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        HI_Z_info.imageView = readWrites.m_HI_Z_MAP.m_levels[pyramidMip];
+        HI_Z_info.sampler = readWrites.m_depthTarget.m_samp.m_handle;
+
+        WriteImageDescriptorSets(hizWrite, &HI_Z_info, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, Ce_ColorTargetDescriptorBinding);
+
         VkWriteDescriptorSet colorAttachmentCopyWrite[2] =
         {
             hizWrite, swapchainImageWrite
@@ -704,7 +711,7 @@ namespace BlitzenVulkan
 
         // Dispatches copy shader
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentPso.handle);
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(levelWidth, 8), levelHeight / 8 + 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(swapchain.swapchainExtent.width, 8), swapchain.swapchainExtent.height / 8 + 1, 1);
 
         // Layout transition barrier
         VkImageMemoryBarrier2 presentImageBarrier{};
@@ -797,16 +804,50 @@ namespace BlitzenVulkan
 
         for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
-            auto rws{ readWrites[frame] };
-
+            auto& rws{ readWrites[frame] };
+        
+            // Destroys old color target
+            vmaDestroyImage(vma, rws.m_colorTarget.m_image.m_image.m_handle, rws.m_colorTarget.m_image.m_image.m_vmaAlloc);
+            vkDestroyImageView(device, rws.m_colorTarget.m_image.m_view.m_handle, nullptr);
+        
+            BLIT_ASSERT(Create2DImageResource(device, vma, rws.m_colorTarget.m_image, windowWidth, windowHeight, Ce_ColorTargetFormat, Ce_ColorTargetUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY));
+            
+            descriptorContext.m_colorTargetDescInfo[frame].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            descriptorContext.m_colorTargetDescInfo[frame].imageView = rws.m_colorTarget.m_image.m_view.m_handle;
+            descriptorContext.m_colorTargetDescInfo[frame].sampler = rws.m_colorTarget.m_samp.m_handle;
+            
+            WriteImageDescriptorSets(descriptorContext.m_colorTargetDescriptor[frame], &descriptorContext.m_colorTargetDescInfo[frame], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE,
+                Ce_ColorTargetDescriptorBinding);
+            
+            // Color attachment rendering info
+            CreateRenderingAttachmentInfo(pipelineContext.m_colorTargetInfo[frame], rws.m_colorTarget.m_image.m_view.m_handle, Ce_ColorTargetLayout,
+                VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, ce_WindowClearColor);
+            
+            // Destroys old depth target
+            vmaDestroyImage(vma, rws.m_depthTarget.m_image.m_image.m_handle, rws.m_depthTarget.m_image.m_image.m_vmaAlloc);
+            vkDestroyImageView(device, rws.m_depthTarget.m_image.m_view.m_handle, nullptr);
+            
+            BLIT_ASSERT(Create2DImageResource(device, vma, rws.m_depthTarget.m_image, windowWidth, windowHeight, Ce_DepthTargetFormat, Ce_DepthTargetUsage, 1, VMA_MEMORY_USAGE_GPU_ONLY));
+            
+            descriptorContext.m_depthTargetDescInfo[frame].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            descriptorContext.m_depthTargetDescInfo[frame].imageView = rws.m_depthTarget.m_image.m_view.m_handle;
+            descriptorContext.m_depthTargetDescInfo[frame].sampler = rws.m_depthTarget.m_samp.m_handle;
+            
+            WriteImageDescriptorSets(descriptorContext.m_HI_Z_descriptors[Ce_DepthTargetDescriptorID + frame * 2], &descriptorContext.m_depthTargetDescInfo[frame], 
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_NULL_HANDLE, Ce_DepthTargetDescriptorBinding);
+            
+            CreateRenderingAttachmentInfo(pipelineContext.m_depthTargetInfo[frame], rws.m_depthTarget.m_image.m_view.m_handle, Ce_DepthTargetLayout, VK_ATTACHMENT_LOAD_OP_LOAD,
+                VK_ATTACHMENT_STORE_OP_STORE, { 0, 0, 0, 0 }, { 0, 0 });
+            
             // Destroys old depth pyramid
-            rws.m_HI_Z_MAP.~HI_Z_MAP();
-
-            // Destroys old attachments
-            rws.m_colorTarget.m_image.m_image.~Image();
-            rws.m_depthTarget.m_image.m_image.~Image();
-
-            RenderingAttachmentsInit(device, vma, readOnlies, rws, descriptorContext, pipelineContext, windowWidth, windowHeight, frame);
+            for (uint32_t level = 0; level < rws.m_HI_Z_MAP.m_levelCount; ++level)
+            {
+                vkDestroyImageView(device, rws.m_HI_Z_MAP.m_levels[level], nullptr);
+            }
+            vmaDestroyImage(vma, rws.m_HI_Z_MAP.m_pyramid.m_image.m_handle, rws.m_HI_Z_MAP.m_pyramid.m_image.m_vmaAlloc);
+            vkDestroyImageView(device, rws.m_HI_Z_MAP.m_pyramid.m_view.m_handle, nullptr);
+            
+            BLIT_ASSERT(CreateHI_Z(device, vma, descriptorContext, rws.m_HI_Z_MAP, rws.m_colorTarget.m_image.m_width, rws.m_colorTarget.m_image.m_height, frame, rws.m_depthTarget.m_samp.m_handle));
         }
     }
 

@@ -177,7 +177,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
-                            DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
+                            #DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
                             #DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
 
