@@ -161,7 +161,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
-                            #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
+                            BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
                             BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
                             BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
                             #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now

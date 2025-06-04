@@ -431,6 +431,8 @@ namespace BlitzenVulkan
             &descriptorContext.m_pushDescriptorsCull[frame * Ce_CullDescriptorCount]);
         PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
             &descriptorContext.m_pushDescriptorsShared[frame * Ce_SharedDescriptorCount]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, Ce_PushDescriptorSetID, Ce_ClusterCullDescriptorCount,
+            descriptorContext.m_pushDescriptorsClusterCull);
 
         // Pipeline and push constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullPso.handle);
@@ -906,10 +908,12 @@ namespace BlitzenVulkan
             BeginCommandBuffer(fTools.computeCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 			// Generates cluster dispatch data and count for the opaque render objects
-            ClusterDispatch(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+            ClusterDispatch(fTools.computeCommandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-            // Generates cluster dispatch data and count for the transparent render objects
-            ClusterCullDispatchTrans(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+            if (context.m_renders.m_transparentRenderCount != 0)
+            {
+                ClusterCullDispatchTrans(fTools.computeCommandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+            }
 
             // Submits command buffer to generate cluster dispatch count
             VkSemaphoreSubmitInfo bufferUpdateWaitSemaphore{};
@@ -937,7 +941,11 @@ namespace BlitzenVulkan
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, 2, renderPassBarriers);
 
             auto dispatchCount{uint32_t( *reinterpret_cast<uint32_t*>(readWrites.m_clusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData)) };
-			auto transparentDispatchCount{ static_cast<uint32_t>(*reinterpret_cast<uint32_t*>(readWrites.m_transClusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData)) };
+            uint32_t transparentDispatchCount = 0;
+            if (context.m_renders.m_transparentRenderCount)
+            {
+                transparentDispatchCount =  uint32_t(*reinterpret_cast<uint32_t*>(readWrites.m_transClusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData));
+            }
 
             // Culls opaque render object clusters
             ClusterCull(fTools.commandBuffer, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, dispatchCount);

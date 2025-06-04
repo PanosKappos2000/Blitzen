@@ -230,12 +230,10 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_HI_Z_CullBinding = 3;
 
     // Cluster culling descriptors
-    constexpr uint32_t Ce_ClusterCullDescriptorCount = 2;
+    constexpr uint32_t Ce_ClusterCullDescriptorCount = 1;
 
-    constexpr uint32_t Ce_ClusterBufferDescriptorBinding = 11;
+    constexpr uint32_t Ce_ClusterBufferDescriptorBinding = 12;
     constexpr uint32_t Ce_ClusterBufferPushID = 0;
-
-    constexpr uint32_t Ce_ClusterGroupDataDescriptorBinding = 13;
 
     // Tlas 
     constexpr uint32_t Ce_TlasBufferBinding = 13;

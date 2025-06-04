@@ -241,7 +241,7 @@ namespace BlitzenVulkan
 
             if (BlitzenCore::Ce_BuildClusters)
             {
-                if (!CreateBuffer(vma, readWrites.m_clusterGroupDataBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
+                if (!CreateBuffer(vma, readWrites.m_clusterGroupDataBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
                     Ce_ClusterGroupBufferSize * sizeof(ClusterGroupData), 0))
                 {
                     BLIT_ERROR("Failed to create cluster group buffer");
@@ -249,7 +249,8 @@ namespace BlitzenVulkan
                 }
                 descriptorContext.m_clusterGroupAddr[frame] = GetBufferAddress(device, readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle);
 
-                if (!CreateBuffer(vma, readWrites.m_clusterDispatchCounterBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                if (!CreateBuffer(vma, readWrites.m_clusterDispatchCounterBuffer.m_buffer, 
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                     VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
                 {
                     BLIT_ERROR("Failed to create cluster dispatch counter");
@@ -265,7 +266,7 @@ namespace BlitzenVulkan
 
                 if (context.m_renders.m_transparentRenderCount != 0)
                 {
-                    if (!CreateBuffer(vma, readWrites.m_transClusterGroupDataBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
+                    if (!CreateBuffer(vma, readWrites.m_transClusterGroupDataBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
                         Ce_TransClusterGouprBufferSize * sizeof(ClusterGroupData), 0))
                     {
                         BLIT_ERROR("Failed to create transparent cluster group buffer");
@@ -273,7 +274,8 @@ namespace BlitzenVulkan
                     }
                     descriptorContext.m_transClusterGroupAddr[frame] = GetBufferAddress(device, readWrites.m_transClusterGroupDataBuffer.m_buffer.m_handle);
 
-                    if (!CreateBuffer(vma, readWrites.m_transClusterDispatchCounterBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    if (!CreateBuffer(vma, readWrites.m_transClusterDispatchCounterBuffer.m_buffer, 
+                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                         VMA_MEMORY_USAGE_CPU_TO_GPU, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
                     {
                         BLIT_ERROR("Failed to create cluster dispatch counter");
@@ -533,6 +535,12 @@ namespace BlitzenVulkan
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsDrawOcc[Ce_DrawVisBufferOccPushID + frame * Ce_DrawOcclusionDescriptorCount], &descriptorContext.m_drawVisDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_DrawVisBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
         }
+
+        descriptorContext.m_clusterBufferDescInfo.buffer = roResources.m_clusterBuffer.m_buffer.m_handle;
+        descriptorContext.m_clusterBufferDescInfo.offset = 0;
+        descriptorContext.m_clusterBufferDescInfo.range = drawContext.m_meshes.m_clusters.GetSize() * sizeof(BlitzenEngine::Cluster);
+        WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterBufferPushID], &descriptorContext.m_clusterBufferDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            Ce_ClusterBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
     }
 
     static uint8_t CreatePipelineLayouts(VkDevice device, PipelineContext& context, DescriptorContext& descriptorContext)
