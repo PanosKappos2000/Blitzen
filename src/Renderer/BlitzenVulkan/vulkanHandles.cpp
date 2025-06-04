@@ -17,7 +17,7 @@ namespace BlitzenVulkan
     {
         if (handle != VK_NULL_HANDLE)
         {
-            auto inst = S_GET_VULKAN_MEMORY()->instance;
+            VkInstance inst = S_GET_VULKAN_MEMORY()->instance;
 
             vkDestroySurfaceKHR(inst, handle, nullptr);
         }
@@ -25,16 +25,16 @@ namespace BlitzenVulkan
 
     Swapchain::~Swapchain()
     {
-        if (swapchainHandle != VK_NULL_HANDLE)
+        if (m_handle != VK_NULL_HANDLE)
         {
-            auto vdv = S_GET_VULKAN_MEMORY()->device;
+            VkDevice vdv = S_GET_VULKAN_MEMORY()->device;
 
-            for (auto view : swapchainImageViews)
+            for (uint32_t image = 0; image < m_imageCount; ++image)
             {
-                vkDestroyImageView(vdv, view, nullptr);
+                vkDestroyImageView(vdv, m_views[image], nullptr);
             }
 
-            vkDestroySwapchainKHR(vdv, swapchainHandle, nullptr);
+            vkDestroySwapchainKHR(vdv, m_handle, nullptr);
         }
     }
 

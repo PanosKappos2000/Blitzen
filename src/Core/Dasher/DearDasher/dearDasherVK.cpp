@@ -12,12 +12,15 @@ namespace BlitzenIMGUI
 		info.PipelineCache = VK_NULL_HANDLE;
 		info.Allocator = nullptr;
 
+		info.ApiVersion = BlitzenVulkan::Ce_VkApiVersion;
 		info.Instance = pRenderer->m_instance;
 		info.PhysicalDevice = pRenderer->m_physicalDevice;
 		info.Device = pRenderer->m_device; 
 
 		info.QueueFamily = pRenderer->m_graphicsQueue.index; 
 		info.Queue = pRenderer->m_graphicsQueue.handle;
+
+		info.UseDynamicRendering = true;
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 
@@ -34,7 +37,8 @@ namespace BlitzenIMGUI
 
 		info.DescriptorPool = m_descPool.handle;
 
-		info.MinImageCount = 2;
+		info.MinImageCount = pRenderer->m_swapchainValues.m_minImageCount;
+		info.ImageCount = BlitML::Max(BlitzenVulkan::ce_framesInFlight, info.MinImageCount);
 
 		if (!ImGui_ImplVulkan_Init(&info))
 		{

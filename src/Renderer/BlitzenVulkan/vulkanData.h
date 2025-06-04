@@ -157,6 +157,9 @@ namespace BlitzenVulkan
 
     constexpr VkImageUsageFlags Ce_SwapchainImageUsageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     constexpr uint32_t Ce_SwapchainDescriptorBinding = 0;
+    constexpr uint32_t Ce_MaxSwapchainImageCount = 16;
+    constexpr VkFormat Ce_DesiredSwapchainSurfaceFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    constexpr VkColorSpaceKHR Ce_DesiredSwapchainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
     // The format and usage flags that will be set for the color and depth attachments
     constexpr VkFormat Ce_ColorTargetFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -372,15 +375,17 @@ namespace BlitzenVulkan
 
     struct Swapchain
     {
-        VkSwapchainKHR swapchainHandle;
+        VkSwapchainKHR m_handle;
 
-        VkExtent2D swapchainExtent;
+        VkExtent2D m_extent;
 
-        VkFormat swapchainFormat;
+        VkFormat m_format;
 
-        BlitCL::DynamicArray<VkImage> swapchainImages;
+        VkImage m_images[Ce_MaxSwapchainImageCount];
+        VkImageView m_views[Ce_MaxSwapchainImageCount];
+        uint32_t m_imageCount{ 0 };
 
-        BlitCL::DynamicArray<VkImageView> swapchainImageViews;
+        uint32_t m_minImageCount{ 0 };
 
         ~Swapchain();
     };

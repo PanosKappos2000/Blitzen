@@ -24,7 +24,6 @@ int main(int argc, char* argv[])
 
     BlitzenWorld::BlitzenPrivateContext blitzenPrivateContext{};
     BlitzenWorld::BlitzenWorldContext blitzenWorldContext{};
-    // Private context points back to world context
 	blitzenPrivateContext.pBlitzenContext = &blitzenWorldContext;
 
     BlitzenCore::InitLogging();
@@ -54,16 +53,15 @@ int main(int argc, char* argv[])
     renderingResources.Make();
     blitzenPrivateContext.pRenderingResources = renderingResources.Data();
 
-    // Platform preferably created last and destroyed first
     BlitzenPlatform::PlatformContext platform{};
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenCore::Ce_BlitzenVersion, &platform, eventSystem.Data(), renderer.Data()));
+
+    //BlitzenCore::Dasher dasher;
+    //dasher.m_apiData.Init(renderer.Data());
 
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
     BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
-
-    //BlitzenCore::Dasher dasher;
-    //dasher.m_apiData.Init(renderer.Data());
 
     BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager, &platform};
 
@@ -117,7 +115,6 @@ int main(int argc, char* argv[])
         renderer->DrawWhileWaiting(float(coreClock.m_deltaTime));
     }
 
-    // Extra setup step needed by dx12
     if (engine.m_state == BlitzenCore::EngineState::RUNNING)
     {
         renderer->FinalSetup();

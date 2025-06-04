@@ -934,7 +934,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, nullptr, m_swapchainValues))
+        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, nullptr, m_swapchainValues, VK_NULL_HANDLE))
         {
             BLIT_ERROR("Failed to create Vulkan swapchain");
             return 0;
@@ -951,8 +951,8 @@ namespace BlitzenVulkan
         }
 
         // This will be referred to by rendering attachments and will be updated when the window is resized
-        m_drawWidth = m_swapchainValues.swapchainExtent.width;
-        m_drawHeight = m_swapchainValues.swapchainExtent.height;
+        m_drawWidth = m_swapchainValues.m_extent.width;
+        m_drawHeight = m_swapchainValues.m_extent.height;
 
         // Resource management
         m_stats.bResourceManagementReady = SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_memoryCrucials);
@@ -1022,17 +1022,15 @@ namespace BlitzenVulkan
             return VK_LOG_ERROR_MSG_AND_RETURN(surfaceQueryResult);
         }
 
-        // Look for the desired image format
-        uint8_t found = 0;
         for (const auto& formats : surfaceFormats)
         {
             // If the desired image format is found, assigns it to the swapchain info and breaks out of the loop
-            if (formats.format == VK_FORMAT_B8G8R8A8_UNORM && formats.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            if (formats.format == Ce_DesiredSwapchainSurfaceFormat && formats.colorSpace == Ce_DesiredSwapchainColorSpace)
             {
-                info.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-                info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                info.imageFormat = Ce_DesiredSwapchainSurfaceFormat;
+                info.imageColorSpace = Ce_DesiredSwapchainColorSpace;
                 // Saves the format to init handles
-                swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                swapchainFormat = Ce_DesiredSwapchainSurfaceFormat;
                 return 1;
             }
         }
@@ -1104,7 +1102,6 @@ namespace BlitzenVulkan
 
     static uint8_t FindSwapchainSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkSwapchainCreateInfoKHR& info, Swapchain& newSwapchain)
     {
-        // Retrieves surface capabilities to properly configure some swapchain values
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
         VkResult surfaceCapabilitiesRes{ vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities) };
         if (surfaceCapabilitiesRes != VK_SUCCESS)
@@ -1113,49 +1110,53 @@ namespace BlitzenVulkan
             return VK_LOG_ERROR_MSG_AND_RETURN(surfaceCapabilitiesRes);
         }
 
-        // Updates the swapchain extent to the current extent from the surface, if it is not a special value
         if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
         {
-            newSwapchain.swapchainExtent = surfaceCapabilities.currentExtent;
+            newSwapchain.m_extent = surfaceCapabilities.currentExtent;
         }
 
         // Gets the min extent and max extent allowed by the GPU,  to clamp the initial value
         VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
         VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
 
-        newSwapchain.swapchainExtent.width = BlitML::Clamp(newSwapchain.swapchainExtent.width, maxExtent.width, minExtent.width);
+        newSwapchain.m_extent.width = BlitML::Clamp(newSwapchain.m_extent.width, maxExtent.width, minExtent.width);
+        newSwapchain.m_extent.height = BlitML::Clamp(newSwapchain.m_extent.height, maxExtent.height, minExtent.height);
 
-        newSwapchain.swapchainExtent.height = BlitML::Clamp(newSwapchain.swapchainExtent.height, maxExtent.height, minExtent.height);
+        info.imageExtent = newSwapchain.m_extent;
 
-        // Swapchain extent fully checked and ready to pass to the swapchain info struct
-        info.imageExtent = newSwapchain.swapchainExtent;
-
-        uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
-        // Checks that image count does not supass max image count
-        if (surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.maxImageCount < imageCount)
+        uint32_t minImageCount = surfaceCapabilities.minImageCount;
+        if (surfaceCapabilities.maxImageCount > 0 && surfaceCapabilities.maxImageCount < minImageCount + 1)
         {
-            imageCount = surfaceCapabilities.maxImageCount;
+            minImageCount = surfaceCapabilities.maxImageCount;
         }
 
-        // Swapchain image count fully checked and ready to be pass to the swapchain info
-        info.minImageCount = imageCount;
+        if (minImageCount < ce_framesInFlight)
+        {
+            BLIT_ERROR("Swapchain does not support buffer count: %u", ce_framesInFlight);
+            return 0;
+        }
+
+        info.minImageCount = minImageCount;
+        newSwapchain.m_minImageCount = minImageCount;
 
         info.preTransform = surfaceCapabilities.currentTransform;
 
         return 1;
     }
 
-    uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice,
-        uint32_t windowWidth, uint32_t windowHeight, Queue graphicsQueue, Queue presentQueue, Queue computeQueue, 
-        VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain /*=VK_NULL_HANDLE*/)
+    uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, uint32_t windowWidth, uint32_t windowHeight, 
+        Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain)
     {
         VkSwapchainCreateInfoKHR swapchainInfo{};
+
         swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapchainInfo.pNext = nullptr;
         swapchainInfo.flags = 0;
+
         swapchainInfo.imageArrayLayers = 1;
         swapchainInfo.clipped = VK_TRUE;
         swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
         swapchainInfo.surface = surface;
         
         swapchainInfo.imageUsage = Ce_SwapchainImageUsageFlags;
@@ -1163,7 +1164,7 @@ namespace BlitzenVulkan
         swapchainInfo.oldSwapchain = oldSwapchain;
 
         // Finds the surface format, updates the swapchain info and swapchain struct if it succeeds
-        if (!FindSwapchainSurfaceFormat(physicalDevice, surface, swapchainInfo, newSwapchain.swapchainFormat))
+        if (!FindSwapchainSurfaceFormat(physicalDevice, surface, swapchainInfo, newSwapchain.m_format))
         {
             BLIT_ERROR("Failed to find swapchain surface format");
             return 0;
@@ -1177,7 +1178,7 @@ namespace BlitzenVulkan
         }
 
         // Sets the swapchain extent to the window's width and height
-        newSwapchain.swapchainExtent = {windowWidth, windowHeight};
+        newSwapchain.m_extent = {windowWidth, windowHeight};
 
         // Compare the current swapchain stats to the surface capabilities
         if (!FindSwapchainSurfaceCapabilities(physicalDevice, surface, swapchainInfo, newSwapchain))
@@ -1197,58 +1198,57 @@ namespace BlitzenVulkan
         else 
         {
             swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            swapchainInfo.queueFamilyIndexCount = 0;// Unnecessary if the indices are the same
-            swapchainInfo.pQueueFamilyIndices = queueFamilyIndices;// Some devices fail if I do not do this.
-            // But with queueFamilyIndexCount being 0, this should be fine
+            swapchainInfo.queueFamilyIndexCount = 0;
+            swapchainInfo.pQueueFamilyIndices = queueFamilyIndices;
         }
 
         // Create the swapchain
-        VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, nullptr, &newSwapchain.swapchainHandle);
+        VkResult swapchainResult = vkCreateSwapchainKHR(device, &swapchainInfo, nullptr, &newSwapchain.m_handle);
         if (swapchainResult != VK_SUCCESS)
         {
             BLIT_ERROR("Failed at swapchain creation");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(swapchainResult);
         }
 
         // Retrieve the swapchain image count
         uint32_t swapchainImageCount = 0;
-        VkResult imageResult = vkGetSwapchainImagesKHR(device, newSwapchain.swapchainHandle, &swapchainImageCount, nullptr);
-        if (imageResult != VK_SUCCESS)
+        VkResult imageCountRes = vkGetSwapchainImagesKHR(device, newSwapchain.m_handle, &swapchainImageCount, nullptr);
+        if (imageCountRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to enumerate swapchain images");
+            return VK_LOG_ERROR_MSG_AND_RETURN(imageCountRes);
+        }
+
+        if (swapchainImageCount > Ce_MaxSwapchainImageCount)
+        {
+            BLIT_ERROR("Swapchain Image count: %u bigger than max image count: %u", swapchainImageCount, Ce_MaxSwapchainImageCount);
             return 0;
         }
 
-        // Resize the swapchain images array and pass the swapchain images
-        newSwapchain.swapchainImages.Resize(swapchainImageCount);
-        imageResult = vkGetSwapchainImagesKHR(device, newSwapchain.swapchainHandle, &swapchainImageCount, newSwapchain.swapchainImages.Data());
-        if (imageResult != VK_SUCCESS)
+        newSwapchain.m_imageCount = swapchainImageCount;
+        VkResult imageQueryRes = vkGetSwapchainImagesKHR(device, newSwapchain.m_handle, &swapchainImageCount, newSwapchain.m_images);
+        if (imageQueryRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to retrieve swapchain images");
+            return VK_LOG_ERROR_MSG_AND_RETURN(imageCountRes);
+        }
+
+        if (newSwapchain.m_imageCount != swapchainImageCount)
+        {
+            BLIT_ERROR("Inconsistency with swapchain image count result");
             return 0;
         }
 
-        // Creates image views for the swapchain
-        if(newSwapchain.swapchainImageViews.GetSize() == 0)
+        for (uint32_t image = 0; image < newSwapchain.m_imageCount; image++)
         {
-            newSwapchain.swapchainImageViews.Resize(newSwapchain.swapchainImages.GetSize());
-            newSwapchain.swapchainImageViews.Fill(std::move(VK_NULL_HANDLE));
-        }
-        for(size_t i = 0; i < newSwapchain.swapchainImages.GetSize(); ++i)
-        {
-            auto& view = newSwapchain.swapchainImageViews[i];
-            if(view != VK_NULL_HANDLE)
+            if (!CreateImageView(device, newSwapchain.m_views[image], newSwapchain.m_images[image], newSwapchain.m_format, 0, 1))
             {
-                vkDestroyImageView(device, view, nullptr);
-            }
-            if (!CreateImageView(device, view, newSwapchain.swapchainImages[i], newSwapchain.swapchainFormat, 0, 1))
-            {
-                BLIT_ERROR("Failed to create swapchain image views");
+                BLIT_ERROR("Failed to create swapchain image view");
                 return 0;
             }
         }
         
-        // If the swapchain has been created and the images have been acquired, swapchain creation is succesful
+        // success
         return 1;
     }
 

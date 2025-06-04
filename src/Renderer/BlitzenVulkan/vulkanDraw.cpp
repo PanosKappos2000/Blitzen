@@ -681,7 +681,7 @@ namespace BlitzenVulkan
         VkWriteDescriptorSet swapchainImageWrite{};
         VkDescriptorImageInfo swapchainImageDescriptorInfo{};
         swapchainImageDescriptorInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        swapchainImageDescriptorInfo.imageView = swapchain.swapchainImageViews[swapchainIDX];
+        swapchainImageDescriptorInfo.imageView = swapchain.m_views[swapchainIDX];
 
         WriteImageDescriptorSets(swapchainImageWrite, &swapchainImageDescriptorInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, Ce_SwapchainDescriptorBinding);
 
@@ -707,17 +707,17 @@ namespace BlitzenVulkan
         // Extent push constant
         BlitML::vec2 presentImageExtentPcVal
         {
-            float(swapchain.swapchainExtent.width), float(swapchain.swapchainExtent.height)
+            float(swapchain.m_extent.width), float(swapchain.m_extent.height)
         };
         vkCmdPushConstants(cmdb, pipelineContext.m_presentLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(BlitML::vec2), &presentImageExtentPcVal);
 
         // Dispatches copy shader
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_presentPso.handle);
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(swapchain.swapchainExtent.width, 8), swapchain.swapchainExtent.height / 8 + 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(swapchain.m_extent.width, 8), swapchain.m_extent.height / 8 + 1, 1);
 
         // Layout transition barrier
         VkImageMemoryBarrier2 presentImageBarrier{};
-        ImageMemoryBarrier(swapchain.swapchainImages[swapchainIDX], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        ImageMemoryBarrier(swapchain.m_images[swapchainIDX], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
             VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
@@ -750,7 +750,7 @@ namespace BlitzenVulkan
 
         VkDescriptorImageInfo swapchainDescInfo{};
         swapchainDescInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-        swapchainDescInfo.imageView = swapchain.swapchainImageViews[swapchainIDX];
+        swapchainDescInfo.imageView = swapchain.m_views[swapchainIDX];
 
         VkWriteDescriptorSet swapchainImageWrite{};
         WriteImageDescriptorSets(swapchainImageWrite, &swapchainDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, 1, Ce_SwapchainDescriptorBinding);
@@ -768,7 +768,7 @@ namespace BlitzenVulkan
 
         // Layout transition barrier
         VkImageMemoryBarrier2 presentImageBarrier{};
-        ImageMemoryBarrier(swapchain.swapchainImages[swapchainIDX], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
+        ImageMemoryBarrier(swapchain.m_images[swapchainIDX], presentImageBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 
             VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
@@ -798,8 +798,14 @@ namespace BlitzenVulkan
     {
         vkDeviceWaitIdle(device);
 
+        for (uint32_t img = 0; img < swapchainData.m_imageCount; ++img)
+        {
+            vkDestroyImageView(device, swapchainData.m_views[img], nullptr);
+        }
+        swapchainData.m_imageCount = 0;
+
         // Creates new swapchain, after saving the old handle to destroy it
-        auto oldSwapchain = swapchainData.swapchainHandle;
+        auto oldSwapchain = swapchainData.m_handle;
         CreateSwapchain(device, surface, pdv, windowWidth, windowHeight, graphicsQueue, presentQueue, computeQueue, nullptr, swapchainData, oldSwapchain);
 
         vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
@@ -897,7 +903,7 @@ namespace BlitzenVulkan
 
         // Swapchain image, needed to present the color attachment results
         uint32_t swapchainIdx;
-        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
+        vkAcquireNextImageKHR(m_device, m_swapchainValues.m_handle, ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
 
         // Color attachment working layout depends on if there are any render objects
         auto colorAttachmentWorkingLayout = context.m_renders.m_renderCount ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
@@ -927,7 +933,7 @@ namespace BlitzenVulkan
             // Command recording begins again
             BeginCommandBuffer(fTools.commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
             
-            DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.swapchainExtent);
+            DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.m_extent);
 
             // Attachment barriers for layout transitions before rendering
             VkImageMemoryBarrier2 renderPassBarriers[2] {};
@@ -968,7 +974,7 @@ namespace BlitzenVulkan
             ImageMemoryBarrier(readWrites.m_colorTarget.m_image.m_image.m_handle, presentBarriers[0], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-            ImageMemoryBarrier(m_swapchainValues.swapchainImages[size_t(swapchainIdx)], presentBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
+            ImageMemoryBarrier(m_swapchainValues.m_images[size_t(swapchainIdx)], presentBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
             // Execute
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, BLIT_ARRAY_SIZE(presentBarriers), presentBarriers);
@@ -984,7 +990,7 @@ namespace BlitzenVulkan
             CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
             SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 2, waitSemaphores, 1, &signalSemaphore, fTools.inFlightFence.handle);
 
-            Present(m_device, m_graphicsQueue.handle, &m_swapchainValues.swapchainHandle, 1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
+            Present(m_device, m_graphicsQueue.handle, &m_swapchainValues.m_handle, 1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
         }
 
         else
@@ -993,7 +999,7 @@ namespace BlitzenVulkan
             BeginCommandBuffer(fTools.commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
             // The viewport and scissor are dynamic, so they should be set here
-            DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.swapchainExtent);
+            DefineViewportAndScissor(fTools.commandBuffer, m_swapchainValues.m_extent);
             // Attachment barriers for layout transitions before rendering
             VkImageMemoryBarrier2 renderPassBarriers[2] = {};
             ImageMemoryBarrier(readWrites.m_colorTarget.m_image.m_image.m_handle, renderPassBarriers[0], VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE,
@@ -1080,7 +1086,7 @@ namespace BlitzenVulkan
             ImageMemoryBarrier(readWrites.m_colorTarget.m_image.m_image.m_handle, presentBarriers[0], VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, colorAttachmentWorkingLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
-            ImageMemoryBarrier(m_swapchainValues.swapchainImages[size_t(swapchainIdx)], presentBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
+            ImageMemoryBarrier(m_swapchainValues.m_images[size_t(swapchainIdx)], presentBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_NONE,
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
             // Execute
             PipelineBarrier(fTools.commandBuffer, 0, nullptr, 0, nullptr, BLIT_ARRAY_SIZE(presentBarriers), presentBarriers);
@@ -1106,7 +1112,7 @@ namespace BlitzenVulkan
             CreateSemahoreSubmitInfo(signalSemaphore, fTools.readyToPresentSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
             SubmitCommandBuffer(m_graphicsQueue.handle, fTools.commandBuffer, 2, waitSemaphores, 1, &signalSemaphore, fTools.inFlightFence.handle);
 
-            Present(m_device, m_graphicsQueue.handle, &m_swapchainValues.swapchainHandle, 1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
+            Present(m_device, m_graphicsQueue.handle, &m_swapchainValues.m_handle, 1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
         }
 
         m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
@@ -1122,15 +1128,15 @@ namespace BlitzenVulkan
 
         // Swapchain image, needed to present the color attachment results
         uint32_t swapchainIdx;
-        vkAcquireNextImageKHR(m_device, m_swapchainValues.swapchainHandle, ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
-        auto swapchainImage{ m_swapchainValues.swapchainImages[swapchainIdx] };
-        auto swapchainImageView{ m_swapchainValues.swapchainImageViews[swapchainIdx] };
+        vkAcquireNextImageKHR(m_device, m_swapchainValues.m_handle, ce_swapchainImageTimeout, fTools.imageAcquiredSemaphore.handle, VK_NULL_HANDLE, &swapchainIdx);
+        auto swapchainImage{ m_swapchainValues.m_images[swapchainIdx] };
+        auto swapchainImageView{ m_swapchainValues.m_views[swapchainIdx] };
 
         // The command buffer recording begin here (stops when submit is called)
         BeginCommandBuffer(m_idleDrawCommandBuffer, 0);
 
         // The viewport and scissor are dynamic, so they should be set here
-        DefineViewportAndScissor(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent);
+        DefineViewportAndScissor(m_idleDrawCommandBuffer, m_swapchainValues.m_extent);
 
         // Attachment barriers for layout transitions before rendering
         VkImageMemoryBarrier2 colorAttachmentDefinitionBarrier{};
@@ -1142,7 +1148,7 @@ namespace BlitzenVulkan
         VkRenderingAttachmentInfo colorAttachmentInfo{};
         CreateRenderingAttachmentInfo(colorAttachmentInfo, swapchainImageView, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ATTACHMENT_LOAD_OP_CLEAR,
             VK_ATTACHMENT_STORE_OP_STORE, { 0.1f, 0.2f, 0.3f, 0 });
-        BeginRendering(m_idleDrawCommandBuffer, m_swapchainValues.swapchainExtent, { 0, 0 }, 1, &colorAttachmentInfo, nullptr, nullptr);
+        BeginRendering(m_idleDrawCommandBuffer, m_swapchainValues.m_extent, { 0, 0 }, 1, &colorAttachmentInfo, nullptr, nullptr);
 
         vkCmdBindPipeline(m_idleDrawCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines.m_trianglePso.handle);
 
@@ -1167,6 +1173,6 @@ namespace BlitzenVulkan
 
         SubmitCommandBuffer(m_graphicsQueue.handle, m_idleDrawCommandBuffer, 1, &waitSemaphores, 1, &signalSemaphore, fTools.inFlightFence.handle);
 
-        Present(m_device, m_graphicsQueue.handle, &m_swapchainValues.swapchainHandle, 1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
+        Present(m_device, m_graphicsQueue.handle, &m_swapchainValues.m_handle, 1, 1, &fTools.readyToPresentSemaphore.handle, &swapchainIdx);
     }
 }

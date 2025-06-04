@@ -121,8 +121,10 @@ namespace BlitzenVulkan
         if (res != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create image view");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(res);
         }
+
+        // success
         return 1;
     }
 
