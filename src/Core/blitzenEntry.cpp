@@ -56,8 +56,12 @@ int main(int argc, char* argv[])
     BlitzenPlatform::PlatformContext platform{};
     BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenCore::Ce_BlitzenVersion, &platform, eventSystem.Data(), renderer.Data()));
 
-    //BlitzenCore::Dasher dasher;
-    //dasher.m_apiData.Init(renderer.Data());
+#if defined(DASHER_JOIN)
+
+    BlitzenCore::Dasher dasher;
+    BLIT_ASSERT(dasher.m_apiData.Init(renderer.Data()));
+
+#endif
 
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 

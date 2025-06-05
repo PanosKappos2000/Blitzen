@@ -41,8 +41,6 @@ namespace BlitzenVulkan
         // When a dynamic object moves, it should call this function to update the staging buffer
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
-        inline VulkanStats GetStats() const { return m_stats; }
-
     public:
 
         // This struct holds any vulkan structure (buffers, sync structures etc), that need to have an instance for each frame in flight

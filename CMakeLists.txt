@@ -141,7 +141,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Core/Dasher/DearDasher/dearDasherVKData.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -199,6 +199,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_ASSERTIONS_ENABLED
                             BLIT_CONSOLE_LOGGER
 
+                            DASHER_JOIN
                             DASHER_USE_DEAR
 
                             BLIT_VK_FORCE # Forces Vulkan as the renderer backend

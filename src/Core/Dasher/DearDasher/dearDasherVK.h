@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dearDasherVKData.h"
 #include "Renderer/Interface/blitRenderer.h"
 
 namespace BlitzenIMGUI

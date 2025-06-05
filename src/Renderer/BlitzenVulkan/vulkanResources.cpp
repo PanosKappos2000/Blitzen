@@ -18,8 +18,9 @@ namespace BlitzenVulkan
         if (res != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create vma allocator");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(res);
         }
+
         return 1;
     }
 
@@ -42,7 +43,7 @@ namespace BlitzenVulkan
         if (res != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create buffer resource");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(res);
         }
 
         return 1;
@@ -87,7 +88,7 @@ namespace BlitzenVulkan
         if (res != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create image resource");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(res);
         }
 
         if (!CreateImageView(device, image.m_view.m_handle, image.m_image.m_handle, format, 0, mipLevels))

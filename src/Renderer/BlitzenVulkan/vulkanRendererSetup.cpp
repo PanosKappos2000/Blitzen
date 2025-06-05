@@ -46,12 +46,6 @@ namespace BlitzenVulkan
 
     uint8_t VulkanRenderer::UploadTexture(const char* filepath) 
     {
-        if (!m_stats.bResourceManagementReady)
-        {
-            BLIT_ERROR("Resource management is not initialized, cannot upload texture");
-            return 0;
-        }
-
         // Staging buffer
         Buffer stagingBuffer;
         if(!CreateBuffer(m_allocator, stagingBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, ce_textureStagingBufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
@@ -648,8 +642,6 @@ namespace BlitzenVulkan
 
     uint8_t VulkanRenderer::SetupForRendering(BlitzenEngine::DrawContext& context)
     {
-        BLIT_ASSERT(m_stats.bResourceManagementReady);
-
         if(!CreateDescriptorLayouts(m_device, m_descriptorContext, m_stats, m_readOnlies.m_textureCount))
         {
             BLIT_ERROR("Failed to create descriptor set layouts");

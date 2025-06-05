@@ -545,4 +545,20 @@ namespace BlitzenVulkan
 
         return 1;
     }
+
+    void CreatePipelineRenderingCreateInfoKHR(VkPipelineRenderingCreateInfoKHR& info, VkFormat* pColorFormats)
+    {
+        info = {};
+
+        info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+        info.pNext = nullptr;
+
+        pColorFormats[0] = Ce_ColorTargetFormat;
+        info.colorAttachmentCount = 1;
+        info.pColorAttachmentFormats = pColorFormats;
+
+        info.depthAttachmentFormat = Ce_DepthTargetFormat;
+
+        info.viewMask = 0;
+    }
 }

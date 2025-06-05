@@ -42,6 +42,28 @@ namespace BlitzenCore
         "1;30" 
     };
 
+    template<typename T>
+    bool BLIT_CHECK_SUCCESS(T code)
+    {
+        return code == T::SUCCESS;
+    }
+
+    template<typename T>
+    bool BLIT_CHECK_FAIL(T code)
+    {
+        return code < T::SUCCESS;
+    }
+
+    #if defined(DASHER_JOIN)
+
+    constexpr bool Ce_BlitEditorMode = 1;
+
+    #else
+
+    constexpr bool Ce_BlitEditorMode = 0;
+
+    #endif
+
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB

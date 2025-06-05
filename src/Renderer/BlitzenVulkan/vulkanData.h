@@ -67,26 +67,23 @@ namespace BlitzenVulkan
 
     constexpr uint32_t Ce_VkApiVersion = VK_API_VERSION_1_3;
 
-
-    constexpr uint32_t Ce_MaxRequestedInstanceExtensions = 3;
-
-    constexpr uint8_t Ce_SurfaceExtensionsRequired = 1;
-
-    constexpr uint8_t Ce_ValidationExtensionRequired = 0;
-    constexpr uint32_t Ce_ValidationExtensionElement = 2;
-
     #if defined(BLIT_VK_VALIDATION_LAYERS) && !defined(NDEBUG)
+
         constexpr uint8_t ce_bValidationLayersRequested = 1;
-        constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequested = 1;
+        constexpr uint8_t Ce_GPUPrintfRequested = 1;
+
         #if defined(BLIT_VK_SYNCHRONIZATION_VALIDATION)
-            constexpr uint8_t ce_bSynchronizationValidationRequested = 1;
+
+            constexpr uint8_t Ce_SyncValidationRequested = 1;
         #else
-            constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
+
+            constexpr uint8_t Ce_SyncValidationRequested = 0;
+
         #endif
     #else
         constexpr uint8_t ce_bValidationLayersRequested = 0;
-        constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequested = 0;
-        constexpr uint8_t ce_bSynchronizationValidationRequested = 0;
+        constexpr uint8_t Ce_GPUPrintfRequested = 0;
+        constexpr uint8_t Ce_SyncValidationRequested = 0;
     #endif
 
     // Platform specific expressions
@@ -102,38 +99,27 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_MaxValidationLayerCount = 2;
     constexpr const char* Ce_SyncValidationLayerName = "VK_LAYER_KHRONOS_synchronization2";
 
-
-	// Total extensions count
-    constexpr uint32_t Ce_MaxRequestedDeviceExtensions = 8;
-
-    constexpr uint32_t Ce_SwapchainExtnsionElement = 0;
-    constexpr uint8_t Ce_SwapchainExtensionRequested = 1;
-    constexpr uint8_t Ce_SwapchainExtensionRequired = 1;
-
-    constexpr uint32_t Ce_PushDescriptorExtensionElement = 1;
-    constexpr uint8_t Ce_IsPushDescriptorExtensionsRequested = 1;
-    constexpr uint8_t Ce_IsPushDescriptorExtensionsRequired = 1;
-
     #if defined(BLIT_RAYTRACING)
         constexpr uint8_t Ce_RayTracingRequested = 1;
     #else
         constexpr uint8_t Ce_RayTracingRequested = 0;
     #endif
-    constexpr uint8_t Ce_RayTracingRequired = 0;
 
-    constexpr uint32_t Ce_MeshShaderExtensionElement = 5;
     #if defined(BLIT_MESH_SHADERS)
         constexpr uint8_t Ce_MeshShadersRequested = 1;
     #else
         constexpr uint8_t Ce_MeshShadersRequested = 0;
     #endif
-        constexpr uint8_t Ce_MeshShadersRequired = 0;
 
-    constexpr uint32_t Ce_SyncValidationDeviceExtensionElement = 6;
-    constexpr uint8_t Ce_SyncValidationDeviceExtensionRequired = 0;
+    #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
 
-    constexpr uint32_t Ce_GPUPrintfDeviceExtensionElement = 7;
-    constexpr uint8_t Ce_GPUPrintfDeviceExtensionRequired = 0;
+        constexpr uint8_t Ce_DynamicRenderingExtensionRequested = 1;
+
+    #else
+
+        constexpr uint8_t Ce_DynamicRenderingExtensionRequested = 1;
+
+    #endif
 
     constexpr uint32_t Ce_MaxUniqueueDeviceQueueIndices = 4;
 
@@ -274,14 +260,8 @@ namespace BlitzenVulkan
 
         uint8_t bRayTracingSupported = 0;
 
-        uint32_t deviceExtensionCount = 0;
-        const char* deviceExtensionNames[Ce_MaxRequestedDeviceExtensions];
-
-        uint8_t bResourceManagementReady = 0;
-
-        uint8_t bObliqueNearPlaneClippingObjectsExist = 0;
-
-        uint8_t bTranspartentObjectsExist = 0;
+        BlitCL::DynamicArray<const char*> m_instExtensions;
+        BlitCL::DynamicArray<const char*> m_dvExtensions;
     };
 
 

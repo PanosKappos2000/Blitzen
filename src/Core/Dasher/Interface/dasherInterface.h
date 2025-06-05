@@ -9,9 +9,13 @@ namespace BlitzenCore
 
 	using Dasher = BlitzenIMGUI::DasherUI;
 
-#else
+#elif defined(DASHER_JOIN)
 
 	static_assert(true);
+
+#else
+
+	using Dasher = uint8_t;
 
 #endif
 }
