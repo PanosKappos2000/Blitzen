@@ -632,4 +632,14 @@ namespace BlitzenVulkan
         // execute
         PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 2, renderPassBarriers);
     }
+
+    void FirstColorPassBarriers(VkCommandBuffer cmdb, VkImage colorTarget)
+    {
+        // Attachment barriers for layout transitions before rendering
+        VkImageMemoryBarrier2 colorPassBarrier{};
+        ImageMemoryBarrier(colorTarget, colorPassBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS);
+        PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &colorPassBarrier);
+    }
 }

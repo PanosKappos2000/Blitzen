@@ -45,12 +45,19 @@ namespace BlitzenIMGUI
 		VkFormat formats[] { VK_FORMAT_UNDEFINED };
 		BlitzenVulkan::CreatePipelineRenderingCreateInfoKHR(info.PipelineRenderingCreateInfo, formats);
 		
-		pRenderer->LendRenderingInfos(m_pColorTargetInfo);
+		pRenderer->LendRenderingInfos(m_pColorTargetInfo, m_colorTargetHandle);
+
 		for (uint32_t frame = 0; frame < BlitzenVulkan::ce_framesInFlight; ++frame)
 		{
 			if (m_pColorTargetInfo[frame] == nullptr)
 			{
 				BLIT_ERROR("Failed to get color target info vk imgui editor");
+				return DEAR_DASHER_RETURN_CODE::VULKAN_COLOR_TARGET_NOT_FOUND;
+			}
+
+			if (m_colorTargetHandle[frame] == VK_NULL_HANDLE)
+			{
+				BLIT_ERROR("Failed to get color target for vk imgui editor");
 				return DEAR_DASHER_RETURN_CODE::VULKAN_COLOR_TARGET_NOT_FOUND;
 			}
 		}
@@ -90,6 +97,8 @@ namespace BlitzenIMGUI
 
 		ImGui::End();
 
+		BlitzenVulkan::FirstColorPassBarriers(cmd.m_uiGraphicsCmdBuffer, imguiVk.m_colorTargetHandle[imguiVk.m_pVulkan->m_currentFrame]);
+
 		BlitzenVulkan::BeginRendering(cmd.m_uiGraphicsCmdBuffer, VkExtent2D{ imguiVk.m_pVulkan->m_drawWidth, imguiVk.m_pVulkan->m_drawHeight },
 			{ 0, 0 }, 1, pColorTarget, nullptr, nullptr);
 
@@ -99,12 +108,17 @@ namespace BlitzenIMGUI
 
 		vkCmdEndRendering(cmd.m_uiGraphicsCmdBuffer);
 
-		//imguiVk.m_pVulkan->CopyTargetToSwapchain(cmd.m_uiGraphicsCmdBuffer);
+		imguiVk.m_pVulkan->CopyTargetToSwapchain(cmd.m_uiGraphicsCmdBuffer);
 
 		VkSemaphoreSubmitInfo waitSubmitInfo{};
 		BlitzenVulkan::CreateSemahoreSubmitInfo(waitSubmitInfo, cmd.m_dasherRenderSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
 
 		BlitzenVulkan::SubmitCommandBuffer(imguiVk.m_pVulkan->m_graphicsQueue.handle, cmd.m_uiGraphicsCmdBuffer, 0, nullptr, 1, &waitSubmitInfo, cmd.m_uiFence.handle);
+	}
+
+	void ImguiUpdateEditorWindow(BlitzenIMGUI::ImguiVK& imguiVk)
+	{
+		imguiVk.m_pVulkan->LendRenderingInfos(imguiVk.m_pColorTargetInfo, imguiVk.m_colorTargetHandle);
 	}
 
 	ImguiVK::~ImguiVK()

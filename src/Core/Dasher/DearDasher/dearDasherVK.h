@@ -14,7 +14,7 @@ namespace BlitzenIMGUI
 		BlitzenVulkan::DescriptorPool m_descPool{};
 
 		VkRenderingAttachmentInfo* m_pColorTargetInfo[BlitzenVulkan::ce_framesInFlight]{ nullptr };
-		VkRenderingAttachmentInfo* m_pDepthTargetInfo[BlitzenVulkan::ce_framesInFlight]{ nullptr };
+		VkImage m_colorTargetHandle[BlitzenVulkan::ce_framesInFlight]{ VK_NULL_HANDLE };
 
 		BlitzenVulkan::VulkanRenderer* m_pVulkan{ nullptr };
 

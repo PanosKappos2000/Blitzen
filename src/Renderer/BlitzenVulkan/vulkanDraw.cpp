@@ -800,19 +800,15 @@ namespace BlitzenVulkan
     }
 
 
-    void VulkanRenderer::Update(const BlitzenEngine::DrawContext& context)
+    BlitML::vec2 VulkanRenderer::UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle)
     {
-        if (context.m_camera.transformData.bWindowResize)
-        {
-            m_drawWidth = (uint32_t)context.m_camera.transformData.windowWidth;
-            m_drawHeight = (uint32_t)context.m_camera.transformData.windowHeight;
+        m_drawWidth = windowWidth;
+        m_drawHeight = windowHeight;
 
-            RecreateSwapchain(m_device, m_instance, m_swapchain, m_surface.handle, m_physicalDevice, m_allocator, m_pipelines, m_readOnlies, m_readWrites, m_descriptorContext, 
-                m_drawWidth, m_drawHeight, m_currentFrame, m_graphicsQueue, m_presentQueue, m_computeQueue);
+        RecreateSwapchain(m_device, m_instance, m_swapchain, m_surface.handle, m_physicalDevice, m_allocator, m_pipelines, m_readOnlies, m_readWrites, m_descriptorContext, 
+            m_drawWidth, m_drawHeight, m_currentFrame, m_graphicsQueue, m_presentQueue, m_computeQueue);
 
-            context.m_camera.viewData.pyramidWidth = float(m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_width);
-            context.m_camera.viewData.pyramidHeight = float(m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_height);
-        }
+        return BlitML::vec2{ float(m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_width), float(m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_height) };
     }
 
     void VulkanRenderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)

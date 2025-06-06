@@ -51,6 +51,47 @@ namespace BlitzenCore
 
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
 
+
+    constexpr const char* Ce_BlitzenVersion = "Blitzen Engine";
+    constexpr uint32_t Ce_BlitzenMajor = 0;
+    constexpr const char* Ce_HostedApp = "Blitzen Game";
+    constexpr uint32_t Ce_HostedAppVersion = 1;
+
+
+    constexpr uint16_t Ce_KeyCallbackCount = 256;
+    constexpr uint32_t Ce_EditorEventQueueSize = 10;
+
+
+    constexpr size_t Ce_LinearAllocatorBlockSize = UINT32_MAX;
+
+    enum class AllocationType : uint8_t
+    {
+        DynamicArray = 0,
+        Hashmap = 1,
+        Queue = 2,
+        Bst = 3,
+        String = 4,
+        Engine = 5,
+        Renderer = 6,
+        Entity = 7,
+        EntityNode = 8,
+        Scene = 9,
+        SmartPointer = 10,
+        LinearAlloc = 11,
+
+        MaxTypes = 12
+    };
+
+    enum class AllocationAction : uint8_t
+    {
+        ALLOC = 0,
+        FREE = 1,
+        FREE_ALL = 2,
+
+        MAX_ACTIONS
+    };
+
+
     // Camera initial settings
     constexpr float Ce_InitialCameraX = 20.f;
     constexpr float Ce_initialCameraY = 70.f;
@@ -128,45 +169,7 @@ namespace BlitzenCore
     #else
         constexpr bool Ce_HLSL = 0;
     #endif
-    
 
-    constexpr const char* Ce_BlitzenVersion = "Blitzen Engine";
-    constexpr uint32_t Ce_BlitzenMajor = 0;
-    constexpr const char* Ce_HostedApp = "Blitzen Game";
-    constexpr uint32_t Ce_HostedAppVersion = 1;
-
-    constexpr size_t Ce_LinearAllocatorBlockSize = UINT32_MAX;
-
-    constexpr uint16_t Ce_KeyCallbackCount = 256;
-
-    constexpr uint32_t Ce_WorldContextSystemsCount = 5;
-
-    enum class AllocationType : uint8_t
-    {
-        DynamicArray = 0,
-        Hashmap = 1,
-        Queue = 2,
-        Bst = 3,
-        String = 4,
-        Engine = 5,
-        Renderer = 6,
-        Entity = 7,
-        EntityNode = 8,
-        Scene = 9,
-        SmartPointer = 10,
-        LinearAlloc = 11,
-
-        MaxTypes = 12
-    };
-
-    enum class AllocationAction : uint8_t
-    {
-        ALLOC = 0,
-        FREE = 1,
-        FREE_ALL = 2,
-
-        MAX_ACTIONS
-    };
 
     void ShutdownLogging(size_t totalAllocated, size_t* typeAllocations);
 

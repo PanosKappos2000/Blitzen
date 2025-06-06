@@ -44,8 +44,13 @@ namespace BlitzenCore
         case BlitEventType::WindowUpdate:
         {
             auto callback = m_eventCallbacks[uint32_t(event)];
-            return callback(m_privateContext, event);
-            break;
+            if (!callback(m_privateContext, event))
+            {
+                BLIT_ERROR("Failure to update window");
+                return false;
+            }
+
+            return true;
         }
         case BlitEventType::RendererTransformUpdate:
         {
@@ -160,7 +165,22 @@ namespace BlitzenCore
         pContext->mouseMoveCallback = callback;
     }
 
+    void EventSystem::UpdateInput(double deltaTime, EditorEventContext* pEditorEvents)
+    {
+        BlitzenCore::BlitMemCopy(m_previousKeyboard, m_currentKeyboard, sizeof(m_currentKeyboard));
 
+#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
+
+        if (pEditorEvents != nullptr)
+        {
+            // TODO: Update logic
+        }
+#endif
+    }
+
+
+
+    /*************************************                         {DEFAULT CALLBACKS SET BY}                            ************************************************/
     static uint8_t OnEvent(BlitzenWorld::BlitzenPrivateContext& context, BlitzenCore::BlitEventType eventType)
     {
         if (eventType == BlitzenCore::BlitEventType::EngineShutdown)
@@ -334,6 +354,13 @@ namespace BlitzenCore
         }
 
         BlitzenEngine::UpdateProjection(camera, camera.transformData.windowWidth, camera.transformData.windowHeight);
+
+        BlitML::vec2 hizExtent{ context.pRenderer->UpdateWindow((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight, context.pPlatform) };
+
+        context.pDasher->UpdateWindowSize();
+
+        camera.viewData.pyramidWidth = hizExtent.x;
+        camera.viewData.pyramidHeight = hizExtent.y;
 
         return 1;
     }

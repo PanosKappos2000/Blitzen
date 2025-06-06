@@ -54,7 +54,7 @@ namespace BlitzenPlatform
         return hwnd;
     }
 
-    static bool DasherPlatformInit(BlitzenIMGUI::DasherUI* pDasher, HWND hwnd)
+    static bool DasherPlatformInit(BlitzenIMGUI::DasherEditor* pDasher, HWND hwnd)
     {
         if (!ImGui_ImplWin32_Init(hwnd))
         {

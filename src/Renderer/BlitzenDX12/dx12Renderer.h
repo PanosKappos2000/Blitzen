@@ -31,7 +31,7 @@ namespace BlitzenDX12
     
         void DrawWhileWaiting(float deltaTime);
         
-        void Update(const BlitzenEngine::DrawContext& context);
+        BlitML::vec2 UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle);
 
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 

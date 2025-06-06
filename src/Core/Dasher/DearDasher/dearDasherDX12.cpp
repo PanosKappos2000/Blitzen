@@ -13,7 +13,12 @@ namespace BlitzenIMGUI
 		return DEAR_DASHER_RETURN_CODE::SUCCESS;
 	}
 
-	void ImguiDrawEditor(BlitzenIMGUI::ImguiDX12& imguiDX, ImGuiIO& io, float deltaTime)
+	void ImguiDrawEditor(ImguiDX12& imguiDX, ImGuiIO& io, float deltaTime)
+	{
+
+	}
+
+	void ImguiUpdateEditorWindow(ImguiDX12& imguiDX)
 	{
 
 	}

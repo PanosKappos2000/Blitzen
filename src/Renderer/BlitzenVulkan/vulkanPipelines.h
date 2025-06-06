@@ -80,4 +80,6 @@ namespace BlitzenVulkan
         VkRenderingAttachmentInfo* pDepthAttachment, VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1);
 
     void FirstRenderPassBarriers(VkCommandBuffer cmdb, VkImage colorTarget, VkImage depthTarget);
+
+    void FirstColorPassBarriers(VkCommandBuffer cmdb, VkImage colorTarget);
 }

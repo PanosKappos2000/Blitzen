@@ -2,13 +2,13 @@
 
 namespace BlitzenIMGUI
 {
-	DasherUI::DasherUI()
+	DasherEditor::DasherEditor()
 	{
 		ImGui::CreateContext();
 		m_io = ImGui::GetIO();
 	}
 
-	bool DasherUI::Init(BlitzenEngine::RendererPtrType pRenderer)
+	bool DasherEditor::Init(BlitzenEngine::RendererPtrType pRenderer)
 	{
 		auto initRes{ m_apiData.Init(pRenderer) };
 		if (BlitzenCore::BLIT_CHECK_FAIL(initRes))
@@ -20,8 +20,13 @@ namespace BlitzenIMGUI
 		return true;
 	}
 
-	void DasherUI::Draw(float deltaTime)
+	void DasherEditor::Draw(float deltaTime)
 	{
 		ImguiDrawEditor(m_apiData, m_io, deltaTime);
+	}
+
+	void DasherEditor::UpdateWindowSize()
+	{
+		ImguiUpdateEditorWindow(m_apiData);
 	}
 }

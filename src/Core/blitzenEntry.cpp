@@ -54,8 +54,10 @@ int main(int argc, char* argv[])
     blitzenPrivateContext.pRenderingResources = renderingResources.Data();
 
     BlitzenCore::Dasher dasher;
+    blitzenPrivateContext.pDasher = &dasher;
 
     BlitzenPlatform::PlatformContext platform{};
+    blitzenPrivateContext.pPlatform = &platform;
 
     BlitzenPlatform::PlatformArgs platformArgs{&platform, eventSystem.Data(), renderer.Data(), &dasher};
 
@@ -130,7 +132,6 @@ int main(int argc, char* argv[])
 
             BlitzenEngine::UpdateDynamicObjects(renderer.Data(), entityManager.Data(), blitzenWorldContext);
 
-            renderer->Update(drawContext);
             renderer->DrawFrame(drawContext);
 
 #if defined(DASHER_JOIN)
@@ -169,9 +170,6 @@ int main(int argc, char* argv[])
             break;
         }
         }
-
-        // Reset window resize, TODO: Why is this here??????
-        mainCamera.transformData.bWindowResize = false;
 
         eventSystem->UpdateInput(coreClock.m_deltaTime);
     }

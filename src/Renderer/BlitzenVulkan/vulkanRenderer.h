@@ -27,7 +27,7 @@ namespace BlitzenVulkan
 
         void DrawWhileWaiting(float deltaTime);
 
-        void Update(const BlitzenEngine::DrawContext& context);
+        BlitML::vec2 VulkanRenderer::UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle);
 
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
@@ -37,7 +37,7 @@ namespace BlitzenVulkan
 
         void Present(uint8_t loading = 0);
 
-        void LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo);
+        void LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo, VkImage* pColorTarget);
 
     public:
 

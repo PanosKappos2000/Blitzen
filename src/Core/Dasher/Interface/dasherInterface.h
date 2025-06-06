@@ -7,7 +7,7 @@ namespace BlitzenCore
 {
 #if defined(DASHER_USE_DEAR)
 
-	using Dasher = BlitzenIMGUI::DasherUI;
+	using Dasher = BlitzenIMGUI::DasherEditor;
 
 #elif defined(DASHER_JOIN)
 

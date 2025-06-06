@@ -4,6 +4,7 @@
 #include "blitKeys.h"
 #include "Core/BlitzenWorld/blitzenWorld.h"
 #include "Core/BlitzenWorld/blitzenWorldPrivate.h"
+#include "blitEditorEvents.h"
 
 namespace BlitzenCore
 {
@@ -45,10 +46,7 @@ namespace BlitzenCore
 
         inline ~EventSystem() {}
 
-        inline void UpdateInput(double deltaTime) 
-        {
-            BlitzenCore::BlitMemCopy(m_previousKeyboard, m_currentKeyboard, sizeof(m_currentKeyboard));
-        }
+        void UpdateInput(double deltaTime, EditorEventContext* pEditor = nullptr);
 
         void InputProcessKey(BlitKey key, bool bPressed);
 
@@ -105,7 +103,6 @@ namespace BlitzenCore
 
     // Adds a new RegisteredEvent to the eventState event types array
     void RegisterEvent(EventSystem* pContext, BlitEventType type, EventCallback eventCallback);
-
 
     void RegisterDefaultEvents(EventSystem* pEvents);
 }

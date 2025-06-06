@@ -30,14 +30,16 @@ namespace BlitzenIMGUI
 
 #endif
 
-	class DasherUI
+	class DasherEditor
 	{
 	public:
-		DasherUI();
+		DasherEditor();
 
 		bool Init(BlitzenEngine::RendererPtrType pRenderer);
 
 		void Draw(float deltaTime);
+
+		void UpdateWindowSize();
 	
 	private:
 
@@ -49,6 +51,10 @@ namespace BlitzenIMGUI
 	void ImguiDrawEditor(BlitzenIMGUI::ImguiVK& imguiVk, ImGuiIO& io, float deltaTime);
 
 	void ImguiDrawEditor(BlitzenIMGUI::ImguiDX12& imguiDX, ImGuiIO& io, float deltaTime);
+
+	void ImguiUpdateEditorWindow(BlitzenIMGUI::ImguiVK& imguiVk);
+
+	void ImguiUpdateEditorWindow(BlitzenIMGUI::ImguiDX12& imageDX);
 }
 
 namespace BlitzenPlatform

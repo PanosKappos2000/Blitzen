@@ -1372,11 +1372,12 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void VulkanRenderer::LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo)
+    void VulkanRenderer::LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo, VkImage* pColorTarget)
     {
         for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
             ppColorInfo[frame] = &m_pipelines.m_colorTargetInfo[frame];
+            pColorTarget[frame] = m_readWrites[frame].m_colorTarget.m_image.m_image.m_handle;
         }
     }
 

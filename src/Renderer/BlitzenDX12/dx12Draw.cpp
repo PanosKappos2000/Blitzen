@@ -29,7 +29,7 @@ namespace BlitzenDX12
 		PlaceFence(cmdContext.m_copyFence.m_value, commandQueue, cmdContext.m_copyFence.m_dx12Handle.Get(), cmdContext.m_copyFence.m_event);
 	}
 
-	static void RecreateSwapchain(BlitzenEngine::DrawContext& context, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
+	static void RecreateSwapchain(HWND hwnd, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
 		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets, 
 		DescriptorContext& descriptorContext, CmdContext* pCmd)
 	{
@@ -44,7 +44,6 @@ namespace BlitzenDX12
 		}
 
 		pSwapchain->ReleaseAndGetAddressOf();
-		HWND hwnd = context.m_pPlatform->m_hwnd;
 		BLIT_ASSERT(CreateSwapchain(factory, queue, newWidth, newHeight, hwnd, pSwapchain));
 		
 		// Automatically releases when trying to create. Creates 
@@ -751,9 +750,30 @@ namespace BlitzenDX12
 		commandList->ExecuteIndirect(pipelineContext.m_opaqueDrawInstCmdSign.Get(), Ce_IndirectDrawCmdBufferSize, rwResources.m_drawCmdBuffer.buffer.Get(), 0, rwResources.m_drawCmdCounterBuffer.buffer.Get(), 0);
 	}
 
-	void Dx12Renderer::Update(const BlitzenEngine::DrawContext& context)
+	BlitML::vec2 Dx12Renderer::UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle)
 	{
+		auto& rwResources = m_rwResources[m_currentFrame];
 
+		m_swapchainWidth = windowWidth;
+		m_swapchainHeight = windowHeight;
+
+		HWND hwnd{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pHandle)->m_hwnd };
+		RecreateSwapchain(hwnd, m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain,
+			m_swapchainBackBuffers, m_depthBuffers, m_descriptorContext, m_cmdContext);
+
+		if (CE_DX12OCCLUSION)
+		{
+			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			{
+				CreateDepthPyramidResource(m_device.Get(), m_rwResources[i].m_HI_Z, m_swapchainWidth, m_swapchainHeight);
+			}
+
+			RecreateDepthPyramidDescriptors(m_device.Get(), m_rwResources, m_descriptorContext, m_swapchainWidth, m_swapchainHeight);
+
+			RecreateDepthTargetDescriptor(m_device.Get(), m_depthBuffers, m_descriptorContext);
+		}
+
+		return BlitML::vec2{ float(rwResources.m_HI_Z.width), float(rwResources.m_HI_Z.height) };
 	}
 
 	void Dx12Renderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
@@ -769,31 +789,6 @@ namespace BlitzenDX12
 
 		// LAST FRAME FENCE
 		PlaceFence(cmdContext.m_frameFence.m_value, m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
-
-		// Render and Depth target resource recreation in case of window resize
-		if (context.m_camera.transformData.bWindowResize)
-		{
-			m_swapchainWidth = (UINT)context.m_camera.transformData.windowWidth;
-			m_swapchainHeight = (UINT)context.m_camera.transformData.windowHeight;
-
-			RecreateSwapchain(context, m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain, 
-				m_swapchainBackBuffers, m_depthBuffers, m_descriptorContext, m_cmdContext);
-
-			if (CE_DX12OCCLUSION)
-			{
-				for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-				{
-					CreateDepthPyramidResource(m_device.Get(), m_rwResources[i].m_HI_Z, m_swapchainWidth, m_swapchainHeight);
-				}
-
-				RecreateDepthPyramidDescriptors(m_device.Get(), m_rwResources, m_descriptorContext, m_swapchainWidth, m_swapchainHeight);
-
-				RecreateDepthTargetDescriptor(m_device.Get(), m_depthBuffers, m_descriptorContext);
-			}
-
-			context.m_camera.viewData.pyramidWidth = float(rwResources.m_HI_Z.width);
-			context.m_camera.viewData.pyramidHeight = float(rwResources.m_HI_Z.height);
-		}
 
 		// DYNAMIC BUFFERS UPDATE
 		UpdateBuffers(cmdContext, rwResources, &context.m_camera, m_transferCommandQueue.Get());
@@ -958,10 +953,10 @@ namespace BlitzenDX12
 		D3D12_RESOURCE_BARRIER transformCopyBarrier{};
 		CreateResourcesTransitionBarrier(transformCopyBarrier, rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
 		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &transformCopyBarrier);
-
-		// Depth pyramid debugging
+		
 #if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)
 
+		// Depth pyramid debugging
 		CopyDepthPyramidToSwapchain(frameTools.mainGraphicsCommandList.Get(), m_swapchainBackBuffers[swapchainIndex].Get(), varBuffers.depthPyramid.pyramid.Get(), 
 			varBuffers.depthPyramid.width, varBuffers.depthPyramid.height, nullptr, m_commandQueue.Get(), m_swapchain.Get(), context.pCamera->transformData.debugPyramidLevel, 
 			m_swapchainWidth, m_swapchainHeight);
