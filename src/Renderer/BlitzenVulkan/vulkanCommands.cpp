@@ -97,6 +97,13 @@ namespace BlitzenVulkan
             return VK_LOG_ERROR_MSG_AND_RETURN(frameFenceRes);
         }
 
+        VkResult uiFenceRes{ vkCreateFence(device, &fenceInfo, nullptr, &m_uiFence.handle) };
+        if (uiFenceRes != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create ui fence");
+            return 0;
+        }
+
         // CLUSTER DISPATCH FENCE
         VkFenceCreateInfo notSignaledFenceInfo{};
         notSignaledFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -129,6 +136,14 @@ namespace BlitzenVulkan
             return VK_LOG_ERROR_MSG_AND_RETURN(renderSemaphoreRes);
         }
 
+        // EDITOR SEMAPHORE
+        VkResult dasherRenderSemaphoreResult{ vkCreateSemaphore(device, &semaphoresInfo, nullptr, &m_dasherRenderSemaphore.handle) };
+        if (dasherRenderSemaphoreResult != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create editor render semahore");
+            return VK_LOG_ERROR_MSG_AND_RETURN(dasherRenderSemaphoreResult);
+        }
+
         // BUFFER COPY SEMAPHORE
         VkResult bufferCopySemaphoreRes{ vkCreateSemaphore(device, &semaphoresInfo, nullptr, &m_bufferUpdateSemaphore.handle) };
         if (bufferCopySemaphoreRes != VK_SUCCESS)
@@ -159,7 +174,7 @@ namespace BlitzenVulkan
         commandBufferInfo.pInheritanceInfo = nullptr;
         commandBufferInfo.flags = usageFlags;
         
-        VK_CHECK(vkBeginCommandBuffer(commandBuffer, &commandBufferInfo));
+        VK_CHECK_MSG(vkBeginCommandBuffer(commandBuffer, &commandBufferInfo));
     }
 
     void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer,

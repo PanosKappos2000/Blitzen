@@ -53,15 +53,13 @@ int main(int argc, char* argv[])
     renderingResources.Make();
     blitzenPrivateContext.pRenderingResources = renderingResources.Data();
 
-    BlitzenPlatform::PlatformContext platform{};
-    BLIT_ASSERT(BlitzenPlatform::PlatformStartup(BlitzenCore::Ce_BlitzenVersion, &platform, eventSystem.Data(), renderer.Data()));
-
-#if defined(DASHER_JOIN)
-
     BlitzenCore::Dasher dasher;
-    BLIT_ASSERT(dasher.Init(renderer.Data()));
 
-#endif
+    BlitzenPlatform::PlatformContext platform{};
+
+    BlitzenPlatform::PlatformArgs platformArgs{&platform, eventSystem.Data(), renderer.Data(), &dasher};
+
+    BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
 
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
@@ -100,7 +98,7 @@ int main(int argc, char* argv[])
 
             loadingDone = true;
             loadingDoneConditional.notify_one();
-            engine.m_state = BlitzenCore::EngineState::RUNNING;
+            engine.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
         }
     };
 
@@ -114,39 +112,62 @@ int main(int argc, char* argv[])
 
     #endif
 
-    // Placeholder loop, waiting to load
-    while (engine.m_state == BlitzenCore::EngineState::LOADING)
+    // LOOP
+    while(engine.m_state != BlitzenCore::EngineState::SHUTDOWN)
     {
-        BlitzenCore::UpdateWorldClock(coreClock);
-
-        BlitzenPlatform::DispatchEvents(&platform);
-        eventSystem->UpdateInput(0.f);
-        renderer->DrawWhileWaiting(float(coreClock.m_deltaTime));
-    }
-
-    if (engine.m_state == BlitzenCore::EngineState::RUNNING)
-    {
-        renderer->FinalSetup();
-    }
-
-    // MAIN LOOP
-    while(engine.m_state == BlitzenCore::EngineState::RUNNING || engine.m_state == BlitzenCore::EngineState::SUSPENDED)
-    {
-        if(!BlitzenPlatform::DispatchEvents(&platform))
+        if (!BlitzenPlatform::DispatchEvents(&platform))
         {
             engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
         }
 
-        if(engine.m_state != BlitzenCore::EngineState::SUSPENDED)
+        switch (engine.m_state)
+        {
+        case BlitzenCore::EngineState::RUNNING:
         {
             BlitzenCore::UpdateWorldClock(coreClock);
 
             BlitzenEngine::UpdateCamera(mainCamera, float(coreClock.m_deltaTime));
 
-			BlitzenEngine::UpdateDynamicObjects(renderer.Data(), entityManager.Data(), blitzenWorldContext);
-            
+            BlitzenEngine::UpdateDynamicObjects(renderer.Data(), entityManager.Data(), blitzenWorldContext);
+
             renderer->Update(drawContext);
             renderer->DrawFrame(drawContext);
+
+#if defined(DASHER_JOIN)
+
+            dasher.Draw((float)coreClock.m_deltaTime);
+
+#endif
+            renderer->Present();
+
+            break;
+        }
+        case BlitzenCore::EngineState::LOADING:
+        {
+            BlitzenCore::UpdateWorldClock(coreClock);
+
+            renderer->DrawWhileWaiting(float(coreClock.m_deltaTime));
+
+            break;
+        }
+        case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
+        {
+            renderer->FinalSetup();
+
+            engine.m_state = BlitzenCore::EngineState::RUNNING;
+
+            break;
+        }
+        case BlitzenCore::EngineState::SUSPENDED:
+        {
+            break;
+        }
+        case BlitzenCore::EngineState::MAX_STATES:
+        default:
+        {
+            engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
+            break;
+        }
         }
 
         // Reset window resize, TODO: Why is this here??????

@@ -22,9 +22,9 @@ namespace BlitzenPlatform
         // Key translation
         BlitzenCore::BlitKey TranslateKeycode(uint32_t xKeycode);
 
-        bool PlatformStartup(const char* appName, void* pPlatform, void* pEvents, void* pRenderer)
+        bool SystemStartup(PlatformArgs& args)
         {
-            auto P_HANDLE{reinterpret_cast<PlatformContext*>(pPlatform)};
+            auto P_HANDLE{reinterpret_cast<PlatformContext*>(args.m_pPlatform)};
             P_HANDLE->m_pEvents = pEvents;
 
             // DISPLAY, KEY REPEATS OFF
@@ -94,8 +94,8 @@ namespace BlitzenPlatform
                 return false;
             }
 
-            auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
-            if (!pBackendRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, P_HANDLE))
+            auto pRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(args.m_pRenderer);
+            if (!pRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, P_HANDLE))
             {
                 BLIT_FATAL("Failed to initialize rendering API");
                 return false;

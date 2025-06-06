@@ -75,4 +75,9 @@ namespace BlitzenVulkan
     uint8_t CreateIdleDrawHandles(VkDevice device, PipelineContext& context, VkDescriptorSetLayout& setLayout, uint32_t queueIndex);
 
     void CreatePipelineRenderingCreateInfoKHR(VkPipelineRenderingCreateInfoKHR& info, VkFormat* pColorFormats);
+
+    void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments,
+        VkRenderingAttachmentInfo* pDepthAttachment, VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1);
+
+    void FirstRenderPassBarriers(VkCommandBuffer cmdb, VkImage colorTarget, VkImage depthTarget);
 }

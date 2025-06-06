@@ -22,23 +22,6 @@ namespace BlitzenIMGUI
 
 	void DasherUI::Draw(float deltaTime)
 	{
-		m_apiData.StartFrame();
-		ImGui::NewFrame();
-
-		m_io.DeltaTime = deltaTime;
-
-		// Create a basic window with a button
-		ImGui::Begin("Test Window");
-
-		ImGui::Text("Hello, Blitzen!");
-
-		if (ImGui::Button("Click Me"))
-		{
-			// Button pressed logic here
-		}
-
-		ImGui::End();
-
-		ImGui::Render();
+		ImguiDrawEditor(m_apiData, m_io, deltaTime);
 	}
 }

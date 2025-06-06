@@ -3,7 +3,18 @@
 
 namespace BlitzenPlatform
 {
-    bool PlatformStartup(const char* appName, void* pPlatform, void* pEvents, void* pRenderer);
+    struct PlatformArgs
+    {
+        void* m_pPlatform{ nullptr };
+
+        void* m_pEvents{ nullptr };
+
+        void* m_pRenderer{ nullptr };
+
+        void* m_pEditor{ nullptr };
+    };
+
+    bool SystemStartup(PlatformArgs& args);
 
     bool DispatchEvents(void* pPlatform);
 

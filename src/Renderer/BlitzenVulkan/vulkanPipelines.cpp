@@ -1,5 +1,6 @@
 #include "vulkanRenderer.h"
 #include "vulkanPipelines.h"
+#include "vulkanResourceFunctions.h"
 
 namespace BlitzenVulkan
 {
@@ -594,5 +595,41 @@ namespace BlitzenVulkan
         info.depthAttachmentFormat = Ce_DepthTargetFormat;
 
         info.viewMask = 0;
+    }
+
+    void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments, 
+        VkRenderingAttachmentInfo* pDepthAttachment, VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask /*= 0*/, uint32_t layerCount /*= 1*/)
+    {
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        renderingInfo.flags = 0;
+        renderingInfo.pNext = nullptr;
+
+        renderingInfo.viewMask = viewMask;
+        renderingInfo.layerCount = layerCount;
+
+        renderingInfo.renderArea.offset = renderAreaOffset;
+        renderingInfo.renderArea.extent = renderAreaExtent;
+
+        renderingInfo.colorAttachmentCount = colorAttachmentCount;
+        renderingInfo.pColorAttachments = pColorAttachments;
+        renderingInfo.pDepthAttachment = pDepthAttachment;
+        renderingInfo.pStencilAttachment = pStencilAttachment;
+
+        vkCmdBeginRendering(commandBuffer, &renderingInfo);
+    }
+
+    void FirstRenderPassBarriers(VkCommandBuffer cmdb, VkImage colorTarget, VkImage depthTarget)
+    {
+        // Attachment barriers for layout transitions before rendering
+        VkImageMemoryBarrier2 renderPassBarriers[2]{};
+        ImageMemoryBarrier(colorTarget, renderPassBarriers[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT,
+            0, VK_REMAINING_MIP_LEVELS);
+        ImageMemoryBarrier(depthTarget, renderPassBarriers[1], VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
+        // execute
+        PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 2, renderPassBarriers);
     }
 }

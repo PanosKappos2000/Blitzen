@@ -8,6 +8,8 @@
 #include "Renderer/View/blitCamera.h"
 #include "Renderer/Interface/blitRenderer.h"
 #include "Core/Events/blitEvents.h"
+#include "backends/imgui_impl_win32.h"
+#include "Core/Dasher/Interface/dasherInterface.h"
 
 namespace BlitzenPlatform
 {
@@ -52,12 +54,22 @@ namespace BlitzenPlatform
         return hwnd;
     }
 
-    bool PlatformStartup(const char* appName, void* pPlatform, void* pEvents, void* pRenderer)
+    static bool DasherPlatformInit(BlitzenIMGUI::DasherUI* pDasher, HWND hwnd)
     {
-		auto platform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pPlatform) };
+        if (!ImGui_ImplWin32_Init(hwnd))
+        {
+            BLIT_ERROR("Failed to initialize imgui win32 impl");
+            return 0;
+        }
+        return true;
+    }
+
+    bool SystemStartup(PlatformArgs& args)
+    {
+		auto pPlatform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(args.m_pPlatform) };
 
         HINSTANCE hInstance = GetModuleHandleA(nullptr);
-        HWND hwnd = CreateStandardWindow(hInstance, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, appName);
+        HWND hwnd = CreateStandardWindow(hInstance, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, BlitzenCore::Ce_BlitzenVersion);
         if (!hwnd)
         {
             BLIT_FATAL("Window creation failed");
@@ -65,21 +77,39 @@ namespace BlitzenPlatform
         }
 
         // UPDATES
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pEvents));
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(args.m_pEvents));
         ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
         
         // SAVE
-        platform->m_hinstance = hInstance;
-        platform->m_hwnd = hwnd;
+        pPlatform->m_hinstance = hInstance;
+        pPlatform->m_hwnd = hwnd;
         
         // BACKEND RENDERING API INIT
-		auto pBackendRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(pRenderer);
-        if (!pBackendRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, platform))
+		auto pRenderer = reinterpret_cast<BlitzenEngine::RendererPtrType>(args.m_pRenderer);
+        if (!pRenderer->Init(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, pPlatform))
         {
             BLIT_FATAL("Failed to initialize rendering API");
             return false;
         }
+
+#if defined(DASHER_JOIN)
+
+        auto dasher = reinterpret_cast<BlitzenCore::Dasher*>(args.m_pEditor);
+
+        if (!dasher->Init(pRenderer))
+        {
+            BLIT_FATAL("Failed to initialize Dasher Editor");
+            return false;
+        }
+
+        if (!DasherPlatformInit(dasher, hwnd))
+        {
+            BLIT_FATAL("Failed to initialize Dasher Editor");
+            return false;
+        }
+
+#endif
 
         // Success
         return true;
@@ -227,6 +257,11 @@ namespace BlitzenPlatform
             } 
         }
         return DefWindowProcA(hwnd, msg, w_param, l_param); 
+    }
+
+    void DearDasherUpdate()
+    {
+        ImGui_ImplWin32_NewFrame();
     }
 
     static void PlatformShutdown(PlatformContext* P_HANDLE)

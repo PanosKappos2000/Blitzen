@@ -29,11 +29,23 @@ namespace BlitzenVulkan
 
         void Update(const BlitzenEngine::DrawContext& context);
 
-        void DrawFrame(BlitzenEngine::DrawContext& context);
-
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
+        void DrawFrame(BlitzenEngine::DrawContext& context);
+
+        void CopyTargetToSwapchain(VkCommandBuffer commandBuffer);
+
+        void Present(uint8_t loading = 0);
+
+        void LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo);
+
     public:
+
+        uint8_t m_currentFrame{ 0 };
+        uint32_t m_swapchainIDX{ 0 };
+
+        uint32_t m_drawWidth;
+        uint32_t m_drawHeight;
 
         MemoryCrucialHandles m_memoryCrucials;
 
@@ -60,9 +72,6 @@ namespace BlitzenVulkan
 
         VkDebugUtilsMessengerEXT m_debugMessenger;
 
-        uint32_t m_drawWidth;
-        uint32_t m_drawHeight;
-
         ROResources m_readOnlies;
 
         RWResources m_readWrites[ce_framesInFlight];
@@ -70,9 +79,6 @@ namespace BlitzenVulkan
         DescriptorContext m_descriptorContext;
 
         PipelineContext m_pipelines;
-
-        // Frame tools index
-        uint8_t m_currentFrame;
     };
 
 

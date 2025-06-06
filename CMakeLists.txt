@@ -31,6 +31,8 @@ add_executable(BlitzenEngine
                 "src/Core/Dasher/DearDasher/dearDasherVK.h"
                 "src/Core/Dasher/DearDasher/dearDasherVK.cpp"
                 "src/Core/Dasher/Interface/dasherInterface.h"
+                "src/Core/Dasher/DearDasher/dearDasherDX12.h" 
+                "src/Core/Dasher/DearDasher/dearDasherDX12.cpp"
                 
 
                 # BLITZEN CONTAINER LIBRARY
@@ -142,7 +144,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h")
+                "src/VendorCode/Cgltf/cgltf.h" )
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -203,7 +205,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             DASHER_JOIN
                             DASHER_USE_DEAR
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
@@ -223,7 +225,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
                             #DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
-                            #DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
+                            DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
 
 

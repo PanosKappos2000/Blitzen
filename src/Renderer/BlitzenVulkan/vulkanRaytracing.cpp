@@ -8,8 +8,7 @@ namespace BlitzenVulkan
         const VkAccelerationStructureCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator,
         VkAccelerationStructureKHR* pAccelerationStructure)
     {
-        auto func = (PFN_vkCreateAccelerationStructureKHR)vkGetInstanceProcAddr(
-            instance, "vkCreateAccelerationStructureKHR");
+        auto func = (PFN_vkCreateAccelerationStructureKHR)vkGetInstanceProcAddr(instance, "vkCreateAccelerationStructureKHR");
         if (func != nullptr)
         {
             return func(device, pCreateInfo, pAllocator, pAccelerationStructure);
@@ -21,8 +20,7 @@ namespace BlitzenVulkan
     static void BuildAccelerationStructureKHR(VkInstance instance, VkCommandBuffer commandBuffer, uint32_t infoCount,
         const VkAccelerationStructureBuildGeometryInfoKHR* buildInfos, const VkAccelerationStructureBuildRangeInfoKHR* const* ppRangeInfos)
     {
-        auto func = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetInstanceProcAddr(
-            instance, "vkCmdBuildAccelerationStructuresKHR");
+        auto func = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetInstanceProcAddr(instance, "vkCmdBuildAccelerationStructuresKHR");
         if (func != nullptr)
         {
             func(commandBuffer, infoCount, buildInfos, ppRangeInfos);
@@ -33,19 +31,16 @@ namespace BlitzenVulkan
         VkAccelerationStructureBuildTypeKHR buildType, const VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo,
         const uint32_t* pMaxPrimitiveCounts, VkAccelerationStructureBuildSizesInfoKHR* pBuildSizes)
     {
-        auto func = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetInstanceProcAddr(
-            instance, "vkGetAccelerationStructureBuildSizesKHR");
+        auto func = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetInstanceProcAddr(instance, "vkGetAccelerationStructureBuildSizesKHR");
         if (func != nullptr)
         {
             func(device, buildType, pBuildInfo, pMaxPrimitiveCounts, pBuildSizes);
         }
     }
 
-    static VkDeviceAddress GetAccelerationStructureDeviceAddressKHR(VkInstance instance, VkDevice device,
-        const VkAccelerationStructureDeviceAddressInfoKHR* pInfo)
+    static VkDeviceAddress GetAccelerationStructureDeviceAddressKHR(VkInstance instance, VkDevice device, const VkAccelerationStructureDeviceAddressInfoKHR* pInfo)
     {
-        auto func = (PFN_vkGetAccelerationStructureDeviceAddressKHR)vkGetInstanceProcAddr(
-            instance, "vkGetAccelerationStructureDeviceAddressKHR");
+        auto func = (PFN_vkGetAccelerationStructureDeviceAddressKHR)vkGetInstanceProcAddr(instance, "vkGetAccelerationStructureDeviceAddressKHR");
         if (func != nullptr)
         {
             return func(device, pInfo);
@@ -54,8 +49,7 @@ namespace BlitzenVulkan
         return (VkDeviceAddress)VK_NULL_HANDLE;
     }
 
-    uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue,
-        BlitzenEngine::DrawContext& context, ROResources& readOnlies)
+    uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue, BlitzenEngine::DrawContext& context, ROResources& readOnlies)
     {
         auto& surfaces = context.m_meshes.m_surfaces;
 		auto& primitiveVertexCounts = context.m_meshes.m_primitiveVertexCounts;
@@ -75,7 +69,7 @@ namespace BlitzenVulkan
         BlitCL::DynamicArray<size_t> accelerationSizes(surfaces.GetSize());
         BlitCL::DynamicArray<size_t> scratchOffsets(surfaces.GetSize());
 
-        const size_t ce_alignment = 256; // required by spec for acceleration structures
+        const size_t AS_ALIGNMENT = 256; // required by spec for acceleration structures
 
         size_t totalAccelerationSize = 0;
         size_t totalScratchSize = 0;
@@ -102,8 +96,7 @@ namespace BlitzenVulkan
             // Passing vertex data
             geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
             // Gets the precise address of the vertex buffer for the current surface (needs to be incremented by the vertex offset)
-            geometry.geometry.triangles.vertexData.deviceAddress =
-                static_cast<VkDeviceAddress>(vertexBufferAddress + surface.vertexOffset * sizeof(BlitzenEngine::Vertex));
+            geometry.geometry.triangles.vertexData.deviceAddress = VkDeviceAddress(vertexBufferAddress + surface.vertexOffset * sizeof(BlitzenEngine::Vertex));
             geometry.geometry.triangles.vertexStride = sizeof(BlitzenEngine::Vertex);
             // Primitive vertex count (at the moment), is an array created for this one, optinal line of code
             geometry.geometry.triangles.maxVertex = primitiveVertexCounts[i];
@@ -111,17 +104,14 @@ namespace BlitzenVulkan
             // Passing index data
             geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
             // Precise address of the index buffer
-            geometry.geometry.triangles.indexData.deviceAddress =
-                static_cast<VkDeviceAddress>(indexBufferAddress + lods[surface.lodOffset].firstIndex * sizeof(uint32_t));
+            geometry.geometry.triangles.indexData.deviceAddress = VkDeviceAddress(indexBufferAddress + lods[surface.lodOffset].firstIndex * sizeof(uint32_t));
 
 
             // Build info for the acceleration structu. Takes the geometry struct from above and some other configs
             buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
             buildInfo.pNext = nullptr;
-            buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;// Bottom level since the as is for geometries
-            buildInfo.flags =
-                VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR |
-                VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+            buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+            buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
             buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
             buildInfo.geometryCount = 1;
             buildInfo.pGeometries = &geometry;
@@ -131,21 +121,20 @@ namespace BlitzenVulkan
 
             VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
             sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-            GetAccelerationStructureBuildSizesKHR(instance, device,
-                VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &primitiveCounts[i], &sizeInfo);
+            GetAccelerationStructureBuildSizesKHR(instance, device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &primitiveCounts[i], &sizeInfo);
 
             accelerationOffsets[i] = totalAccelerationSize;
             accelerationSizes[i] = sizeInfo.accelerationStructureSize;
             scratchOffsets[i] = totalScratchSize;
 
-            totalAccelerationSize = (totalAccelerationSize + sizeInfo.accelerationStructureSize +
-                ce_alignment - 1) & ~(ce_alignment - 1);
-            totalScratchSize = (totalScratchSize + sizeInfo.buildScratchSize + ce_alignment - 1) & ~(ce_alignment - 1);
+            totalAccelerationSize = (totalAccelerationSize + sizeInfo.accelerationStructureSize + AS_ALIGNMENT - 1) & ~(AS_ALIGNMENT - 1);
+            totalScratchSize = (totalScratchSize + sizeInfo.buildScratchSize + AS_ALIGNMENT - 1) & ~(AS_ALIGNMENT - 1);
         }
 
         if (!CreateBuffer(vma, readOnlies.m_blas.m_buffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY, totalAccelerationSize, 0))
         {
+            BLIT_ERROR("Failed to create blas buffer");
             return 0;
         }
 
@@ -153,6 +142,7 @@ namespace BlitzenVulkan
         if (!CreateBuffer(vma, stagingBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY, totalScratchSize, 0))
         {
+            BLIT_ERROR("Failed to create blas staging buffer");
             return 0;
         }
 
@@ -173,10 +163,11 @@ namespace BlitzenVulkan
             accelerationInfo.size = accelerationSizes[i];
             accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-            if (CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &readOnlies.m_blasData[i].handle) != VK_SUCCESS)
+            VkResult accelerationStructureRes{ CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &readOnlies.m_blasData[i].handle) };
+            if (accelerationStructureRes != VK_SUCCESS)
             {
-                BLIT_ERROR("Failed to create acceleration structure");
-                return 0;
+                BLIT_ERROR("Failed to create acceleration structure for blas. Surface index: %u", i);
+                return VK_LOG_ERROR_MSG_AND_RETURN(accelerationStructureRes);
             }
 
             buildInfos[i].dstAccelerationStructure = readOnlies.m_blasData[i].handle;
@@ -189,8 +180,8 @@ namespace BlitzenVulkan
 
         auto commandBuffer = cmdContext.m_transferCmdB;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-        BuildAccelerationStructureKHR(instance, commandBuffer, static_cast<uint32_t>(surfaces.GetSize()), buildInfos.Data(), buildRangePtrs.Data());
-        SubmitCommandBuffer(queue, commandBuffer);
+        BuildAccelerationStructureKHR(instance, commandBuffer, uint32_t(surfaces.GetSize()), buildInfos.Data(), buildRangePtrs.Data());
+        SubmitCommandBuffer(queue, commandBuffer, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
         vkQueueWaitIdle(queue);
 
         return 1;
@@ -316,7 +307,7 @@ namespace BlitzenVulkan
         auto commandBuffer = cmdContext.m_transferCmdB;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         BuildAccelerationStructureKHR(instance, commandBuffer, 1, &buildInfo, &pBuildRange);
-        SubmitCommandBuffer(queue, commandBuffer);
+        SubmitCommandBuffer(queue, commandBuffer, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
         vkQueueWaitIdle(queue);
 
         return 1;

@@ -173,7 +173,7 @@ namespace BlitzenVulkan
         // execute
         PipelineBarrier(commandBuffer, 0, nullptr, 0, nullptr, 1, &transitionBarrier);
 
-        SubmitCommandBuffer(queue, commandBuffer);
+        SubmitCommandBuffer(queue, commandBuffer, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
         vkQueueWaitIdle(queue);
 
         return 1;

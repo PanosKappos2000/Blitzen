@@ -300,7 +300,7 @@ namespace BlitzenVulkan
 
             vkCmdFillBuffer(commandBuffer, readWrites.m_drawVisBuffer.m_buffer.m_handle, 0, context.m_renders.m_renderCount * sizeof(uint32_t), 0);
 
-            SubmitCommandBuffer(queue, commandBuffer);
+            SubmitCommandBuffer(queue, commandBuffer, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
             vkQueueWaitIdle(queue);
         }
 
@@ -440,7 +440,7 @@ namespace BlitzenVulkan
         }
 
         // Submit the commands and wait for the queue to finish
-        SubmitCommandBuffer(queue, cmdContext.m_transferCmdB);
+        SubmitCommandBuffer(queue, cmdContext.m_transferCmdB, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
         vkQueueWaitIdle(queue);
 
         // Raytracing
@@ -700,6 +700,6 @@ namespace BlitzenVulkan
 
     void VulkanRenderer::FinalSetup()
     {
-        // I could throw a vkDeviceWaitIdle here for safety
+        vkDeviceWaitIdle(m_device);
     }
 }

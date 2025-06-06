@@ -22,10 +22,12 @@ namespace BlitzenVulkan
 
         SyncFence m_preClusterFence;
         SyncFence m_frameFence;
+        SyncFence m_uiFence;
 
         Semaphore m_swapchainSemaphore;
         Semaphore m_bufferUpdateSemaphore;
         Semaphore m_renderSemaphore;
+        Semaphore m_dasherRenderSemaphore;
 
         Semaphore m_clusterSemaphore;
 

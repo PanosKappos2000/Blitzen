@@ -32,12 +32,20 @@ namespace BlitzenDX12
         void DrawWhileWaiting(float deltaTime);
         
         void Update(const BlitzenEngine::DrawContext& context);
-    
-        void DrawFrame(BlitzenEngine::DrawContext& context);
-    
+
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
+        void DrawFrame(BlitzenEngine::DrawContext& context);
+
+        void Present();
+
     public:
+
+        Dx12Stats m_stats;
+
+        uint32_t m_currentFrame{ 0 };
+
+        UINT m_swapchainIDX;
 
         DX12WRAPPER<IDXGIFactory6> m_factory;
 
@@ -48,25 +56,22 @@ namespace BlitzenDX12
 
         DX12WRAPPER<IDXGIAdapter4> m_chosenAdapter;
 
-        Dx12Stats m_stats;
-
-    private:
-
         DX12WRAPPER<IDXGISwapChain3> m_swapchain;
-		UINT m_swapchainWidth;
-		UINT m_swapchainHeight;
-        
-        DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
-
-        DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];
-
-        uint32_t m_currentFrame{ 0 };
+        UINT m_swapchainWidth;
+        UINT m_swapchainHeight;
 
         CmdContext m_cmdContext[ce_framesInFlight];
 
         DX12WRAPPER<ID3D12CommandQueue> m_commandQueue;
 
         DX12WRAPPER<ID3D12CommandQueue> m_transferCommandQueue;
+
+    private:
+
+        
+        DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
+
+        DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];
 
         ReadWriteResources m_rwResources[ce_framesInFlight];
         

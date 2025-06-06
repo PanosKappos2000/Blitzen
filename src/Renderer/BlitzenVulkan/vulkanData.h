@@ -553,7 +553,7 @@ namespace BlitzenVulkan
 
 #define VK_CHECK(expr)              BLIT_ASSERT(expr == VK_SUCCESS)
 
-#define VK_CHECK_MSG(expr)               VK_RES_MSG_ASSRT(expr)
+#define VK_CHECK_MSG(expr)               BlitzenVulkan::VK_RES_MSG_ASSRT(expr)
 
 #endif
 

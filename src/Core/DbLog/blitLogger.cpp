@@ -7,7 +7,7 @@ namespace BlitzenCore
 {
     bool InitLogging()
     {
-        BlitLog(BlitzenCore::LogLevel::Info, "%s Booting", BlitzenCore::Ce_BlitzenVersion);
+        BlitLog(BlitzenCore::LogLevel::INFO, "%s Booting", BlitzenCore::Ce_BlitzenVersion);
         return true;
     }
 
@@ -17,7 +17,7 @@ namespace BlitzenCore
         if (totalAllocated)
         {
             #if defined(BLIT_REIN_SANT_ENG)
-            BlitLog(BlitzenCore::LogLevel::Warn, 
+            BlitLog(BlitzenCore::LogLevel::WARN, 
                 "There is still unfreed memory--\n \
                 Total: %i \n \
                 Unfreed Dynamic Array memory: %i \n \

@@ -7,17 +7,32 @@
 
 namespace BlitzenPlatform
 {
-    void PlatformConsoleWrite(const char* message, uint8_t color)
+    static constexpr const char* GetLoggerColor(BlitzenCore::LoggerLevel level)
     {
-        printf("\033[%sm%s\033[0m", BlitzenCore::CE_UNIX_CONSOLE_LOGGER_COLORS[color], message);
+        switch (level)
+        {
+        case BlitzenCore::LogLevel::FATAL: return "0;41";
+        case BlitzenCore::LogLevel::ERR: return "1;31";
+        case BlitzenCore::LogLevel::INFO: return "1;33";
+        case BlitzenCore::LogLevel::WARN: return "1;32";
+        case BlitzenCore::LogLevel::DEBUG: return "1;34";
+        case BlitzenCore::LogLevel::TRACE: return "1;30";
+        case BlitzenCore::LogLevel::SUCCESS: default: return "1;31";
+        }
+            
     }
 
-    void PlatformConsoleError(const char* message, uint8_t color)
+    void PlatformConsoleWrite(const char* message, BlitzenCore::LoggerLevel level)
     {
-        printf("\033[%sm%s\033[0m", BlitzenCore::CE_UNIX_CONSOLE_LOGGER_COLORS[color], message);
+        printf("\033[%sm%s\033[0m", GetLoggerColor[level], message);
     }
 
-    void PlatformLoggerFileWrite(const char* message, uint8_t color)
+    void PlatformConsoleError(const char* message, BlitzenCore::LoggerLevel level)
+    {
+        printf("\033[%sm%s\033[0m", GetLoggerColor[level], message);
+    }
+
+    void PlatformLoggerFileWrite(const char* message, BlitzenCore::LoggerLevel level)
     {
         static MEMORY_MAPPED_FILE_SCOPE s_scopedFile;
 
@@ -28,7 +43,7 @@ namespace BlitzenPlatform
             {
                 const char* mmfErrorString{ GET_BLIT_MMF_RES_ERROR_STR(mmfResult) };
                 PlatformConsoleError(mmfErrorString, (uint8_t)BlitzenCore::LogLevel::Error);
-                PlatformConsoleWrite(message, color);
+                PlatformConsoleWrite(message, level);
                 return;
             }
         }
@@ -36,9 +51,9 @@ namespace BlitzenPlatform
         WriteMemoryMappedFile(s_scopedFile, s_scopedFile.m_endOffset, strlen(message), const_cast<char*>(message));
     }
 
-	void PlatformLoggerFileError(const char* message, uint8_t color)
+	void PlatformLoggerFileError(const char* message, BlitzenCore::LoggerLevel level)
     {
-        PlatformLoggerFileWrite(message, color);
+        PlatformLoggerFileWrite(message, level);
     } 
 }
 

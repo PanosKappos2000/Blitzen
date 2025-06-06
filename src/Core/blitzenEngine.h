@@ -12,34 +12,17 @@ namespace BlitzenCore
     constexpr uint32_t Ce_InitialWindowHeight = 720;
     constexpr float Ce_DefaultWindowBackgroundColor[4] = { 0.f, 0.2f, 0.4f, 1.f };
 
-    constexpr const char* CE_LOGGER_LEVELS[6] =
+    enum class LogLevel : int8_t
     {
-        "{FATAL}: ",
-        "{ERROR}: ",
-        "{Info}: ",
-        "{Warning}: ",
-        "{Debug}: ",
-        "{Trace}: "
-    };
+        FATAL = -20,
+        ERR = -10,
 
-    constexpr uint8_t CE_PLATFORM_CONSOLE_LOGGER_COLORS[6] = 
-    { 
-        64, 
-        4, 
-        6, 
-        2, 
-        1, 
-        8 
-    };
+        INFO = 1,
+        WARN = 2,
+        DEBUG = 3,
+        TRACE = 4,
 
-    constexpr const char* CE_UNIX_CONSOLE_LOGGER_COLORS[6] = 
-    { 
-        "0;41", 
-        "1;31", 
-        "1;33", 
-        "1;32", 
-        "1;34", 
-        "1;30" 
+        SUCCESS = 0
     };
 
     template<typename T>
@@ -215,6 +198,7 @@ namespace BlitzenCore
         LOADING = 2,
         SHUTDOWN = 3,
         SHUTDOWN_AFTER_LOAD = 5,
+        SETUP_AFTER_LOAD = 6,
 
         MAX_STATES
     };

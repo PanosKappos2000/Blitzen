@@ -10,9 +10,8 @@ namespace BlitzenVulkan
     void CreateSemahoreSubmitInfo(VkSemaphoreSubmitInfo& semaphoreInfo, VkSemaphore semaphore, VkPipelineStageFlags2 stage);
 
     // Ends command buffer and submits it. Synchronization structures can also be specified
-    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount = 0,
-        VkSemaphoreSubmitInfo* pWaitInfo = nullptr, uint32_t signalSemaphoreCount = 0,
-        VkSemaphoreSubmitInfo* signalSemaphore = nullptr, VkFence fence = VK_NULL_HANDLE);
+    void SubmitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer, uint32_t waitSemaphoreCount, VkSemaphoreSubmitInfo* pWaitInfo, uint32_t signalSemaphoreCount,
+        VkSemaphoreSubmitInfo* signalSemaphore, VkFence fence);
 
     void CreateCommandPoolInfo(VkCommandPoolCreateInfo& cmdPoolInfo, uint32_t queueIndex, void* pNext,
         VkCommandPoolCreateFlags flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
