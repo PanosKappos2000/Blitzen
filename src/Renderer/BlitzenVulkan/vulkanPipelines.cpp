@@ -98,10 +98,11 @@ namespace BlitzenVulkan
         shaderModuleInfo.codeSize = uint32_t(filesize);
         shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(bytes.Data());
 
-        if (vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule) != VK_SUCCESS)
+        VkResult shaderModuleRes{ vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule) };
+        if (shaderModuleRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create shader module");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(shaderModuleRes);
         }
 
         //Adds a new shader stage based on that shader module
@@ -313,6 +314,7 @@ namespace BlitzenVulkan
         if (res != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create descriptor set layout");
+            VK_LOG_ERROR_MSG_AND_RETURN(res);
             return VK_NULL_HANDLE;
         }
 
@@ -523,7 +525,6 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        // mesh pipeline has additional task shader
         pipelineInfo.stageCount = 2;
         pipelineInfo.pStages = shaderStages;
 
@@ -535,11 +536,44 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        //Create the graphics pipeline
+        // PIPELINE
         pipelineInfo.layout = pipelineContext.m_triangleLayout.handle;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipelineContext.m_trianglePso.handle) != VK_SUCCESS)
+        VkResult m_pipelineRes{ vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipelineContext.m_trianglePso.handle) };
+        if (m_pipelineRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create idle draw pipeline");
+            return VK_LOG_ERROR_MSG_AND_RETURN(m_pipelineRes);
+        }
+
+        return 1;
+    }
+
+    uint8_t CreateIdleDrawHandles(VkDevice device, PipelineContext& pipelineContext, VkDescriptorSetLayout& setLayout, uint32_t queueIndex)
+    {
+        VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        setLayout = CreateDescriptorSetLayout(device, 1, &backgroundImageLayoutBinding, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        if (setLayout == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create descriptor layout for idle draw");
+            return 0;
+        }
+
+        // Creates the layout for the background compute shader
+        VkPushConstantRange backgroundImageShaderPushConstant{};
+        CreatePushConstantRange(backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BackgroundShaderPushConstant));
+        if (!CreatePipelineLayout(device, &pipelineContext.m_backgroundLayout.handle, 1, &setLayout, 1, &backgroundImageShaderPushConstant))
+        {
+            BLIT_ERROR("Failed to create background image pipeline layout");
+            return 0;
+        }
+
+        // Create the background shader in case the renderer has not objects
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/background.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", pipelineContext.m_backgroundLayout.handle,
+            &pipelineContext.m_backgroundPso.handle))
+        {
+            BLIT_ERROR("Failed to create background.comp shader program");
             return 0;
         }
 

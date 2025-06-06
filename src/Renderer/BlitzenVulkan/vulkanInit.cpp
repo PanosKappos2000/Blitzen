@@ -1054,7 +1054,8 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, nullptr, m_swapchainValues, VK_NULL_HANDLE))
+        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
+            nullptr, m_swapchain, VK_NULL_HANDLE))
         {
             BLIT_ERROR("Failed to create Vulkan swapchain");
             return 0;
@@ -1063,7 +1064,7 @@ namespace BlitzenVulkan
         // Commands
         for (size_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
-            if (!m_frameToolsList[frame].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
+            if (!m_commandsContext[frame].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
             {
                 BLIT_ERROR("Failed to create frame tools");
                 return 0;
@@ -1071,8 +1072,8 @@ namespace BlitzenVulkan
         }
 
         // This will be referred to by rendering attachments and will be updated when the window is resized
-        m_drawWidth = m_swapchainValues.m_extent.width;
-        m_drawHeight = m_swapchainValues.m_extent.height;
+        m_drawWidth = m_swapchain.m_extent.width;
+        m_drawHeight = m_swapchain.m_extent.height;
 
         // Resource management
         if (!SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_memoryCrucials))
@@ -1097,7 +1098,7 @@ namespace BlitzenVulkan
             }
         }
 
-		if (!CreateIdleDrawHandles(m_device, m_pipelines, m_descriptorContext.m_backgroundSetLayout.handle, m_graphicsQueue.index, m_idleCommandBufferPool.handle, m_idleDrawCommandBuffer))
+		if (!CreateIdleDrawHandles(m_device, m_pipelines, m_descriptorContext.m_backgroundSetLayout.handle, m_graphicsQueue.index))
 		{
             BLIT_ERROR("Failed to create idle draw handles");
 		    return 0;
@@ -1368,54 +1369,6 @@ namespace BlitzenVulkan
         }
         
         // success
-        return 1;
-    }
-
-    uint8_t CreateIdleDrawHandles(VkDevice device, PipelineContext& pipelineContext, VkDescriptorSetLayout& setLayout, 
-        uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer)
-    {
-        VkDescriptorSetLayoutBinding backgroundImageLayoutBinding{};
-        CreateDescriptorSetLayoutBinding(backgroundImageLayoutBinding, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-
-        setLayout = CreateDescriptorSetLayout(device, 1, &backgroundImageLayoutBinding, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-        if (setLayout == VK_NULL_HANDLE)
-        {
-            return 0;
-        }
-
-        // Creates the layout for the background compute shader
-        VkPushConstantRange backgroundImageShaderPushConstant{};
-        CreatePushConstantRange(backgroundImageShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BackgroundShaderPushConstant));
-        if (!CreatePipelineLayout(device, &pipelineContext.m_backgroundLayout.handle, 1, &setLayout, 1, &backgroundImageShaderPushConstant))
-        {
-            BLIT_ERROR("Failed to create background image pipeline layout");
-            return 0;
-        }
-
-        // Create the background shader in case the renderer has not objects
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/background.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", pipelineContext.m_backgroundLayout.handle, 
-            &pipelineContext.m_backgroundPso.handle))
-        {
-            BLIT_ERROR("Failed to create background.comp shader program");
-            return 0;
-        }
-
-        VkCommandPoolCreateInfo idleCommandPoolInfo{};
-        CreateCommandPoolInfo(idleCommandPoolInfo, queueIndex, nullptr);
-        if (vkCreateCommandPool(device, &idleCommandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
-        {
-            BLIT_ERROR("Failed to create idle draw command buffer pool");
-            return 0;
-        }
-
-        VkCommandBufferAllocateInfo idleCommandBufferInfo{};
-        CreateCmdbInfo(idleCommandBufferInfo, commandPool);
-        if (vkAllocateCommandBuffers(device, &idleCommandBufferInfo, &commandBuffer) != VK_SUCCESS)
-        {
-            BLIT_ERROR("Failed to allocate idle draw command buffer");
-            return 0;
-        }
-
         return 1;
     }
 

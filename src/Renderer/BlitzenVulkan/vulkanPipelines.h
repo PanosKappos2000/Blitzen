@@ -72,7 +72,7 @@ namespace BlitzenVulkan
     uint8_t CreateLoadingTrianglePipeline(VkDevice device, PipelineContext& pipelineContext);
 
     // Initalizes structure needed to call the DrawWhileWaiting function
-    uint8_t CreateIdleDrawHandles(VkDevice device, PipelineContext& context, VkDescriptorSetLayout& setLayout, uint32_t queueIndex, VkCommandPool& commandPool, VkCommandBuffer& commandBuffer);
+    uint8_t CreateIdleDrawHandles(VkDevice device, PipelineContext& context, VkDescriptorSetLayout& setLayout, uint32_t queueIndex);
 
     void CreatePipelineRenderingCreateInfoKHR(VkPipelineRenderingCreateInfoKHR& info, VkFormat* pColorFormats);
 }

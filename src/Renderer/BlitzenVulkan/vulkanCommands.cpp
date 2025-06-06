@@ -3,106 +3,146 @@
 
 namespace BlitzenVulkan
 {
-    uint8_t VulkanRenderer::FrameTools::Init(VkDevice device, Queue graphicsQueue, Queue transferQueue, Queue computeQueue)
+    uint8_t CommandContext::Init(VkDevice device, Queue graphicsQueue, Queue transferQueue, Queue computeQueue)
     {
-        // Main command buffer
+        // MAIN GRAPHICS POOL
         VkCommandPoolCreateInfo mainCommandPoolInfo {};
         CreateCommandPoolInfo(mainCommandPoolInfo, graphicsQueue.index, nullptr);
-        if (vkCreateCommandPool(device, &mainCommandPoolInfo, nullptr, &mainCommandPool.handle) != VK_SUCCESS)
+        VkResult graphicsCmdPoolRes{ vkCreateCommandPool(device, &mainCommandPoolInfo, nullptr, &m_mainGraphicsCmdPool.handle) };
+        if (graphicsCmdPoolRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create command pool for main command buffer");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(graphicsCmdPoolRes);
         }
 
+        // MAIN GRAPHICS CMDB
         VkCommandBufferAllocateInfo mainCommandBufferInfo{};
-        CreateCmdbInfo(mainCommandBufferInfo, mainCommandPool.handle);
-        if (vkAllocateCommandBuffers(device, &mainCommandBufferInfo, &commandBuffer) != VK_SUCCESS)
+        CreateCmdbInfo(mainCommandBufferInfo, m_mainGraphicsCmdPool.handle);
+        VkResult mainGraphicsCmdBResult{ vkAllocateCommandBuffers(device, &mainCommandBufferInfo, &m_mainGraphicsCmdB) };
+        if (mainGraphicsCmdBResult != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create main command buffer");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(mainGraphicsCmdBResult);
         }
 
-        // Dedicated transfer command buffer
+        // TRANSFER POOL
 		VkCommandPoolCreateInfo dedicatedCommandPoolsInfo{};
         CreateCommandPoolInfo(dedicatedCommandPoolsInfo, transferQueue.index, nullptr);
-        if (vkCreateCommandPool(device, &dedicatedCommandPoolsInfo, nullptr, &transferCommandPool.handle) != VK_SUCCESS)
+        VkResult transferPoolRes{ vkCreateCommandPool(device, &dedicatedCommandPoolsInfo, nullptr, &m_transferCmdPool.handle) };
+        if (transferPoolRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create dedicated transfer command buffer pool");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(transferPoolRes);
         }
 
+        // TRANSFER CMDB
         VkCommandBufferAllocateInfo dedicatedCmbInfo{};
-        CreateCmdbInfo(dedicatedCmbInfo, transferCommandPool.handle);
-        if (vkAllocateCommandBuffers(device, &dedicatedCmbInfo, &transferCommandBuffer) != VK_SUCCESS)
+        CreateCmdbInfo(dedicatedCmbInfo, m_transferCmdPool.handle);
+        VkResult transferCmdBRes{ vkAllocateCommandBuffers(device, &dedicatedCmbInfo, &m_transferCmdB) };
+        if (transferCmdBRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create dedicated transfer command buffer");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(transferCmdBRes);
         }
 
-        if (BlitzenCore::Ce_BuildClusters)
+        // COMPUTE POOL
+        VkCommandPoolCreateInfo computeCommandPoolInfo{};
+        CreateCommandPoolInfo(computeCommandPoolInfo, computeQueue.index, nullptr);
+        VkResult computePoolRes{ vkCreateCommandPool(device, &computeCommandPoolInfo, nullptr, &m_computeCmdPool.handle) };
+        if (computePoolRes != VK_SUCCESS)
         {
-            // Dedicated compute command buffer
-            VkCommandPoolCreateInfo computeCommandPoolInfo{};
-            CreateCommandPoolInfo(computeCommandPoolInfo, computeQueue.index, nullptr);
-            if (vkCreateCommandPool(device, &computeCommandPoolInfo, nullptr, &computeCommandPool.handle) != VK_SUCCESS)
-            {
-                BLIT_ERROR("Failed to create compute dedicated command buffer pool");
-                return 0;
-            }
-
-            VkCommandBufferAllocateInfo computeDedicateCmbInfo{};
-            CreateCmdbInfo(computeDedicateCmbInfo, computeCommandPool.handle);
-            if (vkAllocateCommandBuffers(device, &computeDedicateCmbInfo, &computeCommandBuffer) != VK_SUCCESS)
-            {
-                BLIT_ERROR("Failed to create compute dedicated command buffer");
-                return 0;
-            }
+            BLIT_ERROR("Failed to create compute dedicated command buffer pool");
+            return VK_LOG_ERROR_MSG_AND_RETURN(computePoolRes);
         }
 
+        // COMPUTE CMDB
+        VkCommandBufferAllocateInfo computeDedicateCmbInfo{};
+        CreateCmdbInfo(computeDedicateCmbInfo, m_computeCmdPool.handle);
+        VkResult computeCmdBRes{ vkAllocateCommandBuffers(device, &computeDedicateCmbInfo, &m_computeCmdB) };
+        if (computeCmdBRes != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create compute dedicated command buffer");
+            return VK_LOG_ERROR_MSG_AND_RETURN(computeCmdBRes);
+        }
+
+        // UI GRAPHICS POOL
+        VkCommandPoolCreateInfo uiGraphicsPoolInfo{};
+        CreateCommandPoolInfo(uiGraphicsPoolInfo, graphicsQueue.index, nullptr);
+        VkResult uiPoolRes{ vkCreateCommandPool(device, &uiGraphicsPoolInfo, nullptr, &m_uiGraphicsCmdPool.handle) };
+        if (uiPoolRes != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create ui graphics command pool");
+            return VK_LOG_ERROR_MSG_AND_RETURN(uiPoolRes);
+        }
+
+        // UI GRAPHICS CMDB
+        VkCommandBufferAllocateInfo uiGraphicsCmdBInfo{};
+        CreateCmdbInfo(uiGraphicsCmdBInfo, m_uiGraphicsCmdPool.handle);
+        VkResult uiCmdbRes{ vkAllocateCommandBuffers(device, &uiGraphicsCmdBInfo, &m_uiGraphicsCmdBuffer) };
+        if (uiCmdbRes != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create ui graphics command buffer");
+            return VK_LOG_ERROR_MSG_AND_RETURN(uiCmdbRes);
+        }
+
+        // FRAME FENCE
         VkFenceCreateInfo fenceInfo{};
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         fenceInfo.pNext = nullptr;
-        if (vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence.handle) != VK_SUCCESS)
+        VkResult frameFenceRes{ vkCreateFence(device, &fenceInfo, nullptr, &m_frameFence.handle) };
+        if (frameFenceRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create fence");
-            return 0;
-        }
-        if (BlitzenCore::Ce_BuildClusters)
-        {
-            VkFenceCreateInfo notSignaledFenceInfo{};
-            notSignaledFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            if (vkCreateFence(device, &notSignaledFenceInfo, nullptr, &preCulsterCullingFence.handle) != VK_SUCCESS)
-            {
-                BLIT_ERROR("Failed to create pre culster culling fence");
-                return 0;
-            }
+            return VK_LOG_ERROR_MSG_AND_RETURN(frameFenceRes);
         }
 
+        // CLUSTER DISPATCH FENCE
+        VkFenceCreateInfo notSignaledFenceInfo{};
+        notSignaledFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        VkResult clusterFenceRes{ vkCreateFence(device, &notSignaledFenceInfo, nullptr, &m_preClusterFence.handle) };
+        if (clusterFenceRes != VK_SUCCESS)
+        {
+            BLIT_ERROR("Failed to create pre culster culling fence");
+            return VK_LOG_ERROR_MSG_AND_RETURN(clusterFenceRes);
+        }
+
+        
         VkSemaphoreCreateInfo semaphoresInfo{};
         semaphoresInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         semaphoresInfo.flags = 0;
         semaphoresInfo.pNext = nullptr;
-        if (vkCreateSemaphore(device, &semaphoresInfo, nullptr, &imageAcquiredSemaphore.handle) != VK_SUCCESS)
+
+        // SWAPCHAIN IMAGE SEMAPHORE
+        VkResult swapchainSeamphoreRes{ vkCreateSemaphore(device, &semaphoresInfo, nullptr, &m_swapchainSemaphore.handle) };
+        if (swapchainSeamphoreRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create semaphore for swapchain image acquire");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(swapchainSeamphoreRes);
         }
-        if (vkCreateSemaphore(device, &semaphoresInfo, nullptr, &readyToPresentSemaphore.handle) != VK_SUCCESS)
+
+        // RENDER SEMAPHORE
+        VkResult renderSemaphoreRes{ vkCreateSemaphore(device, &semaphoresInfo, nullptr, &m_renderSemaphore.handle) };
+        if (renderSemaphoreRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create semaphore for presentation");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(renderSemaphoreRes);
         }
-        if (vkCreateSemaphore(device, &semaphoresInfo, nullptr, &buffersReadySemaphore.handle) != VK_SUCCESS)
+
+        // BUFFER COPY SEMAPHORE
+        VkResult bufferCopySemaphoreRes{ vkCreateSemaphore(device, &semaphoresInfo, nullptr, &m_bufferUpdateSemaphore.handle) };
+        if (bufferCopySemaphoreRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create semaphore for var buffer data copy");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(bufferCopySemaphoreRes);
         }
-        if (BlitzenCore::Ce_BuildClusters && 
-            vkCreateSemaphore(device, &semaphoresInfo, nullptr, &preClusterCullingDoneSemaphore.handle) != VK_SUCCESS)
+
+        // CLUSTER SEMAPHORE
+        VkResult clusterSemaphoreRes{ vkCreateSemaphore(device, &semaphoresInfo, nullptr, &m_clusterSemaphore.handle) };
+        if (clusterSemaphoreRes != VK_SUCCESS)
         {
             BLIT_ERROR("Failed to create semaphore for pre cluster culling");
-            return 0;
+            return VK_LOG_ERROR_MSG_AND_RETURN(clusterSemaphoreRes);
         }
 
         // Success

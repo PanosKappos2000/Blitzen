@@ -54,7 +54,7 @@ namespace BlitzenVulkan
         return (VkDeviceAddress)VK_NULL_HANDLE;
     }
 
-    uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue,
+    uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue,
         BlitzenEngine::DrawContext& context, ROResources& readOnlies)
     {
         auto& surfaces = context.m_meshes.m_surfaces;
@@ -187,7 +187,7 @@ namespace BlitzenVulkan
             buildRangePtrs[i] = &buildRanges[i];
         }
 
-        auto commandBuffer = frameTools.transferCommandBuffer;
+        auto commandBuffer = cmdContext.m_transferCmdB;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         BuildAccelerationStructureKHR(instance, commandBuffer, static_cast<uint32_t>(surfaces.GetSize()), buildInfos.Data(), buildRangePtrs.Data());
         SubmitCommandBuffer(queue, commandBuffer);
@@ -196,7 +196,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue, 
+    uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue,
         ROResources& readOnlies, BlitzenEngine::DrawContext& context)
     {
         auto pDraws{ context.m_renders.m_renders }; 
@@ -278,8 +278,6 @@ namespace BlitzenVulkan
         // Gets the acceleration structure build sizes
         GetAccelerationStructureBuildSizesKHR(instance, device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &drawCount, &sizeInfo);
 
-        // Creates the Tlas buffer based on the build size that was retrieved above
-        // For raytracing, the below struct needs to be added to the pNext chain of the descriptor set layout
         if (!CreateBuffer(vma, readOnlies.m_tlas.m_buffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, VMA_MEMORY_USAGE_GPU_ONLY, sizeInfo.accelerationStructureSize, 0))
         {
             BLIT_ERROR("Failed to create TLAS buffer");
@@ -300,9 +298,12 @@ namespace BlitzenVulkan
         accelerationInfo.buffer = readOnlies.m_tlas.m_buffer.m_handle;
         accelerationInfo.size = sizeInfo.accelerationStructureSize;
         accelerationInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-        if (CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &readOnlies.m_tlasData.handle) != VK_SUCCESS)
+
+        VkResult accelerationStructureRes{ CreateAccelerationStructureKHR(instance, device, &accelerationInfo, nullptr, &readOnlies.m_tlasData.handle) };
+        if (accelerationStructureRes != VK_SUCCESS)
         {
-            return 0;
+            BLIT_ERROR("Acceleration structure creation for tlas failed");
+            return VK_LOG_ERROR_MSG_AND_RETURN(accelerationStructureRes);
         }
 
         buildInfo.dstAccelerationStructure = readOnlies.m_tlasData.handle;
@@ -312,7 +313,7 @@ namespace BlitzenVulkan
         buildRange.primitiveCount = drawCount;
         const VkAccelerationStructureBuildRangeInfoKHR* pBuildRange = &buildRange;
 
-        auto commandBuffer = frameTools.transferCommandBuffer;
+        auto commandBuffer = cmdContext.m_transferCmdB;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
         BuildAccelerationStructureKHR(instance, commandBuffer, 1, &buildInfo, &pBuildRange);
         SubmitCommandBuffer(queue, commandBuffer);

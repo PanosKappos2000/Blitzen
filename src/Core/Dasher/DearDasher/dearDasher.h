@@ -13,10 +13,14 @@ namespace BlitzenIMGUI
 	public:
 		DasherUI();
 
-		IMGUI_API_CONTEXT m_apiData;
+		bool Init(BlitzenEngine::RendererPtrType pRenderer);
+
+		void Draw(float deltaTime);
 	
 	private:
 
 		ImGuiIO m_io;
+
+		IMGUI_API_CONTEXT m_apiData;
 	};
 }

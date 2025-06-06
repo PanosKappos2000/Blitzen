@@ -17,8 +17,10 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        uint32_t blockSize = (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
-        auto imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+        uint32_t blockSize = (vulkanImageFormat == VK_FORMAT_BC1_RGBA_UNORM_BLOCK || vulkanImageFormat == VK_FORMAT_BC4_SNORM_BLOCK || 
+            vulkanImageFormat == VK_FORMAT_BC4_UNORM_BLOCK) ? 8 : 16;
+
+        size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
         if (imageSize == 0)
         {
             BLIT_ERROR("Texture data size result is 0, cannot load texture");
@@ -53,18 +55,20 @@ namespace BlitzenVulkan
             BLIT_ERROR("Failed to create staging buffer for texture data copy");
             return 0;
         }
+
         void* pData{ stagingBuffer.m_vmaInfo.pMappedData };
 
-        // Initializes necessary data for DDS texture
 		BlitzenEngine::DDS_HEADER header{};
 		BlitzenEngine::DDS_HEADER_DXT10 header10{};
         BlitzenPlatform::C_FILE_SCOPE scopedFILE{};
         VkFormat format = VK_FORMAT_UNDEFINED;
+
         if(!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, scopedFILE))
         {
             BLIT_ERROR("Failed to open texture file");
             return 0;
         }
+
 		if (!LoadDDSImageData(header, header10, scopedFILE, format, pData))
 		{
             BLIT_ERROR("Failed to load texture data");
@@ -72,14 +76,13 @@ namespace BlitzenVulkan
 		}
 
         // Creates the texture image for Vulkan by copying the data from the staging buffer
-        if(!Create2DTexture(stagingBuffer, m_device, m_allocator, m_readOnlies.m_textures[m_readOnlies.m_textureCount].image, {header.dwWidth, header.dwHeight}, format, VK_IMAGE_USAGE_SAMPLED_BIT, 
-            m_frameToolsList[0].transferCommandBuffer, m_transferQueue.handle, header.dwMipMapCount))
+        if(!Create2DTexture(stagingBuffer, m_device, m_allocator, m_readOnlies.m_textures[m_readOnlies.m_textureCount].image, {header.dwWidth, header.dwHeight}, 
+            format, VK_IMAGE_USAGE_SAMPLED_BIT, m_commandsContext[0].m_transferCmdB, m_transferQueue.handle, header.dwMipMapCount))
         {
             BLIT_ERROR("Failed to load Vulkan texture image");
             return 0;
         }
         
-        // Add the global sampler at the element in the array that was just porcessed
         m_readOnlies.m_textures[m_readOnlies.m_textureCount].sampler = m_readOnlies.m_textureSampler.m_handle;
         m_readOnlies.m_textureCount++;
         return 1;
@@ -184,8 +187,8 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    static uint8_t CreateReadWriteBuffers(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue, BlitzenEngine::DrawContext& context, RWResources* readWritesArray, 
-        DescriptorContext& descriptorContext)
+    static uint8_t CreateReadWriteBuffers(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue, BlitzenEngine::DrawContext& context, 
+        RWResources* readWritesArray, DescriptorContext& descriptorContext)
     {
         const auto& transforms{ context.m_renders.m_transforms };
         size_t transformDynamicDataSize{ context.m_renders.m_dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform)};
@@ -304,7 +307,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    static uint8_t CreateReadOnlyBuffers(VkInstance instance, VkDevice device, VmaAllocator vma, VulkanRenderer::FrameTools& frameTools, VkQueue queue, ROResources& readOnlies, 
+    static uint8_t CreateReadOnlyBuffers(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue, ROResources& readOnlies, 
         BlitzenEngine::DrawContext& context, VulkanStats& stats, DescriptorContext& descriptorContext)
     {
         // Additional RT flags for geometry
@@ -410,45 +413,46 @@ namespace BlitzenVulkan
             }
         }
 
-        BeginCommandBuffer(frameTools.transferCommandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        BeginCommandBuffer(cmdContext.m_transferCmdB, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-        CopyBufferToBuffer(frameTools.transferCommandBuffer, vtxStaging.m_handle, readOnlies.m_vtxBuffer.m_buffer.m_handle, vertexBufferSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, vtxStaging.m_handle, readOnlies.m_vtxBuffer.m_buffer.m_handle, vertexBufferSize, 0, 0);
 
-        CopyBufferToBuffer(frameTools.transferCommandBuffer, idxStaging.m_handle, readOnlies.m_idxBuffer.m_buffer.m_handle, indexBufferSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, idxStaging.m_handle, readOnlies.m_idxBuffer.m_buffer.m_handle, indexBufferSize, 0, 0);
 
-        CopyBufferToBuffer(frameTools.transferCommandBuffer, renderStaging.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, renderBufferSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, renderStaging.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, renderBufferSize, 0, 0);
 
         if (transRenderObjectSize != 0)
         {
-            CopyBufferToBuffer(frameTools.transferCommandBuffer, transRenderStaging.m_handle, readOnlies.m_transRenderBuffer.m_buffer.m_handle, transRenderObjectSize, 0, 0);
+            CopyBufferToBuffer(cmdContext.m_transferCmdB, transRenderStaging.m_handle, readOnlies.m_transRenderBuffer.m_buffer.m_handle, transRenderObjectSize, 0, 0);
         }
 
-        CopyBufferToBuffer(frameTools.transferCommandBuffer, surfaceStaging.m_handle, readOnlies.m_surfaceBuffer.m_buffer.m_handle, surfaceBufferSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, surfaceStaging.m_handle, readOnlies.m_surfaceBuffer.m_buffer.m_handle, surfaceBufferSize, 0, 0);
 
-        CopyBufferToBuffer(frameTools.transferCommandBuffer, LODstaging.m_handle, readOnlies.m_LODBuffer.m_buffer.m_handle, lodBufferSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, LODstaging.m_handle, readOnlies.m_LODBuffer.m_buffer.m_handle, lodBufferSize, 0, 0);
 
-        CopyBufferToBuffer(frameTools.transferCommandBuffer, matStaging.m_handle, readOnlies.m_matBuffer.m_buffer.m_handle, materialBufferSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, matStaging.m_handle, readOnlies.m_matBuffer.m_buffer.m_handle, materialBufferSize, 0, 0);
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            CopyBufferToBuffer(frameTools.transferCommandBuffer, clusterStagingBuffer.m_handle, readOnlies.m_clusterBuffer.m_buffer.m_handle, clusterBufferSize, 0, 0);
+            CopyBufferToBuffer(cmdContext.m_transferCmdB, clusterStagingBuffer.m_handle, readOnlies.m_clusterBuffer.m_buffer.m_handle, clusterBufferSize, 0, 0);
 
-            CopyBufferToBuffer(frameTools.transferCommandBuffer, clusterIndexStagingBuffer.m_handle, readOnlies.m_clusterIdxBuffer.m_buffer.m_handle, clusterIndexBufferSize, 0, 0);
+            CopyBufferToBuffer(cmdContext.m_transferCmdB, clusterIndexStagingBuffer.m_handle, readOnlies.m_clusterIdxBuffer.m_buffer.m_handle, clusterIndexBufferSize, 0, 0);
         }
 
         // Submit the commands and wait for the queue to finish
-        SubmitCommandBuffer(queue, frameTools.transferCommandBuffer);
+        SubmitCommandBuffer(queue, cmdContext.m_transferCmdB);
         vkQueueWaitIdle(queue);
 
         // Raytracing
         if (stats.bRayTracingSupported)
         {
-            if (!BuildBlas(instance, device, vma, frameTools, queue, context, readOnlies))
+            if (!BuildBlas(instance, device, vma, cmdContext, queue, context, readOnlies))
             {
                 BLIT_ERROR("Failed to build blas for RT");
                 return 0;
             }
-            if (!BuildTlas(instance, device, vma, frameTools, queue, readOnlies, context))
+
+            if (!BuildTlas(instance, device, vma, cmdContext, queue, readOnlies, context))
             {
                 BLIT_ERROR("Failed to build tlas for RT");
                 return 0;
@@ -654,13 +658,13 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (!CreateReadOnlyBuffers(m_instance, m_device, m_allocator, m_frameToolsList[0], m_transferQueue.handle, m_readOnlies, context, m_stats, m_descriptorContext))
+        if (!CreateReadOnlyBuffers(m_instance, m_device, m_allocator, m_commandsContext[0], m_transferQueue.handle, m_readOnlies, context, m_stats, m_descriptorContext))
         {
             BLIT_ERROR("Failed to create read only buffers");
             return 0;
         }
 
-        if(!CreateReadWriteBuffers(m_device, m_allocator, m_frameToolsList[0].transferCommandBuffer, m_transferQueue.handle, context, m_readWrites, m_descriptorContext))
+        if(!CreateReadWriteBuffers(m_device, m_allocator, m_commandsContext[0].m_transferCmdB, m_transferQueue.handle, context, m_readWrites, m_descriptorContext))
         {
             BLIT_ERROR("Failed to create read write buffers");
             return 0;

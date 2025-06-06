@@ -6,7 +6,7 @@
 
 namespace BlitzenIMGUI
 {
-	bool ImguiVK::Init(BlitzenVulkan::VulkanRenderer* pRenderer)
+	DEAR_DASHER_RETURN_CODE ImguiVK::Init(BlitzenVulkan::VulkanRenderer* pRenderer)
 	{
 		ImGui_ImplVulkan_InitInfo info {};
 
@@ -31,12 +31,12 @@ namespace BlitzenIMGUI
 		if (m_descPool.handle == VK_NULL_HANDLE)
 		{
 			BLIT_ERROR("Failed to create imguiVK descriptor pool");
-			return LOG_IMGUI_ERROR_MSG_AND_RETURN(DEAR_DASHER_VK_RETURN_CODE::VULKAN_HANDLE_CREATION_FAILED);
+			return DEAR_DASHER_RETURN_CODE::VULKAN_HANDLE_CREATION_FAILED;
 		}
 
 		info.DescriptorPool = m_descPool.handle;
 
-		info.MinImageCount = pRenderer->m_swapchainValues.m_minImageCount;
+		info.MinImageCount = pRenderer->m_swapchain.m_minImageCount;
 		info.ImageCount = BlitML::Max(BlitzenVulkan::ce_framesInFlight, info.MinImageCount);
 
 		info.UseDynamicRendering = true;
@@ -46,9 +46,20 @@ namespace BlitzenIMGUI
 		if (!ImGui_ImplVulkan_Init(&info))
 		{
 			BLIT_ERROR("Failed to initialize vk imgui ui");
-			return LOG_IMGUI_ERROR_MSG_AND_RETURN(DEAR_DASHER_VK_RETURN_CODE::IMGUI_HANDLE_CREATION_FAILED);
+			return DEAR_DASHER_RETURN_CODE::IMGUI_HANDLE_CREATION_FAILED;
 		}
 
-		return true;
+		return DEAR_DASHER_RETURN_CODE::SUCCESS;
+	}
+
+	void ImguiVK::StartFrame()
+	{
+		ImGui_ImplVulkan_NewFrame();
+	}
+
+	void SubmitFrame()
+	{
+		//ImGui_ImplVulkan_RenderDrawData(ImGui::DrawData(), commandBuffer);
+		//BlitzenVulkan::SubmitCommandBuffer();
 	}
 }

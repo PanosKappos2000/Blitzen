@@ -25,6 +25,7 @@ add_executable(BlitzenEngine
                 "src/Core/BlitzenWorld/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 # DASHER UI
+                "src/Core/Dasher/DearDasher/dearDasherData.h"
                 "src/Core/Dasher/DearDasher/dearDasher.h"
                 "src/Core/Dasher/DearDasher/dearDasher.cpp"
                 "src/Core/Dasher/DearDasher/dearDasherVK.h"
@@ -141,7 +142,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Core/Dasher/DearDasher/dearDasherVKData.h")
+                "src/VendorCode/Cgltf/cgltf.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -205,7 +206,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
-                            BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
+                            #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
                             BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
                             BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
                             #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now

@@ -47,10 +47,7 @@ namespace BlitzenVulkan
 
     inline void VK_RES_MSG_ASSRT(VkResult res)
     {
-        if (res != VK_SUCCESS)
-        {
-            BLIT_ASSERT_MESSAGE(res == VK_SUCCESS, VK_TRANS_RES(res))
-        }
+        BLIT_ASSERT_MESSAGE(res == VK_SUCCESS, VK_TRANS_RES(res));
     }
 
     inline uint8_t VK_LOG_ERROR_MSG_AND_RETURN(VkResult res)

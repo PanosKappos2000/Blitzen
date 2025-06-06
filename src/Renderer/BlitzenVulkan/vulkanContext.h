@@ -5,6 +5,33 @@
 
 namespace BlitzenVulkan
 {
+
+    struct CommandContext
+    {
+        CommandPool m_mainGraphicsCmdPool;
+        VkCommandBuffer m_mainGraphicsCmdB;
+
+        CommandPool m_transferCmdPool;
+        VkCommandBuffer m_transferCmdB;
+
+        CommandPool m_computeCmdPool;
+        VkCommandBuffer m_computeCmdB;
+
+        CommandPool m_uiGraphicsCmdPool;
+        VkCommandBuffer m_uiGraphicsCmdBuffer;
+
+        SyncFence m_preClusterFence;
+        SyncFence m_frameFence;
+
+        Semaphore m_swapchainSemaphore;
+        Semaphore m_bufferUpdateSemaphore;
+        Semaphore m_renderSemaphore;
+
+        Semaphore m_clusterSemaphore;
+
+        uint8_t Init(VkDevice device, Queue graphicsQueue, Queue transferQueue, Queue computeQueue);
+    };
+
 	struct PipelineContext
 	{
         PipelineLayout m_hiZLayout;

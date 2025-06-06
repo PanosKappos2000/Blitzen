@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
 #if defined(DASHER_JOIN)
 
     BlitzenCore::Dasher dasher;
-    BLIT_ASSERT(dasher.m_apiData.Init(renderer.Data()));
+    BLIT_ASSERT(dasher.Init(renderer.Data()));
 
 #endif
 
@@ -75,9 +75,10 @@ int main(int argc, char* argv[])
     std::condition_variable loadingDoneConditional;
     std::atomic<bool> loadingDone(false);
     std::thread loadingThread
-    {   [&]() 
+    {   
+        [&]() 
         {
-             std::lock_guard<std::mutex> lock(mtx);
+            std::lock_guard<std::mutex> lock(mtx);
 
             if (!BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entityManager.Data()))
             {
@@ -104,9 +105,13 @@ int main(int argc, char* argv[])
     };
 
     #if(_WIN32)
+
         loadingThread.detach();
+
     #else
+
         loadingThread.join();
+
     #endif
 
     // Placeholder loop, waiting to load
@@ -154,7 +159,9 @@ int main(int argc, char* argv[])
     std::unique_lock<std::mutex> lock(mtx);
     loadingDoneConditional.wait(lock, [&] { return loadingDone.load(); });
 }
+
 #else
+
 // this was supposed to test my string but I have forgotten about it
 int main()
 {
@@ -225,6 +232,7 @@ int main()
 
     //BLIT_ASSERT(false)
 }
+
 #endif
 
 
