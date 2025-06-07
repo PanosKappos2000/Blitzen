@@ -420,11 +420,11 @@ namespace BlitzenVulkan
         result.bufferRowLength = bufferRowLength;
     }
 
-    VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets)
+    VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets, VkDescriptorPoolCreateFlags flags /*=0*/)
     {
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.flags = 0;
+        poolInfo.flags = flags;
         poolInfo.pNext = nullptr;
 
         poolInfo.maxSets = maxSets;

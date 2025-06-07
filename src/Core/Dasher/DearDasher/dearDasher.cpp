@@ -20,6 +20,75 @@ namespace BlitzenIMGUI
 		return true;
 	}
 
+	static void ImguiStartBar(uint32_t windowWidth, uint32_t windowHeight, DasherEditor* pEditor)
+	{
+		// HORIZONTAL TOP BAR
+		ImGui::SetNextWindowSize(ImVec2((float)windowWidth, (float)windowHeight / 20));
+		ImGui::SetNextWindowPos(ImVec2(0, 0));
+
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.f, 0.3f, 1.0f)); // Apply background color
+
+		ImGui::Begin("Top Bar", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize);
+
+		// Set the button style: yellow text, dark blue border (border color)
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.1f, 1.0f)); // Darker blue button background
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.7f, 1.0f)); // Lighter blue on hover
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.f, 0.f, 0.f, 1.0f)); // Even darker blue on click
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Bright yellow text color
+
+		// Set button font size and padding
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 10.0f)); // Padding inside the button
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 0.0f)); // No spacing between items
+
+		// CENTER
+		ImGui::SetCursorPosX(((float)windowWidth - (ImGui::CalcTextSize("START").x + ImGui::GetStyle().FramePadding.x * 2.0f * BlitML::Sin(float(windowHeight)))) * 0.5f);
+
+		uint32_t eventCount = pEditor->m_eventContext.m_currentID;
+
+		if (ImGui::Button("START"))
+		{
+			// TODO
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("FREEZE FRUSTUM"))
+		{
+			if (eventCount < BlitzenCore::Ce_EditorButtonEventTypeCount)
+			{
+				pEditor->m_eventContext.m_events[eventCount].m_type = BlitzenCore::EditorEventType::BUTTON_CLICK;
+				pEditor->m_eventContext.m_events[eventCount].m_eventTypeID = BlitzenCore::Ce_FreezeFrustumButtonID;
+				eventCount++;
+			}
+		}
+
+		// Pop the styles after the button to reset them
+		ImGui::PopStyleVar(2); // Pop the style variables we set for the button
+		ImGui::PopStyleColor(4); // Pop the style colors we set for the button
+
+		ImGui::PopStyleColor(); // Pop the top bar background color
+
+		ImGui::End();
+	}
+
+	static void ImguiSideBar(uint32_t windowWidth, uint32_t windowHeight)
+	{
+		// Set the side bar size and position (10% of window width, full height)
+		auto sideBarSize = ImVec2((float)windowWidth / 10, (float)windowHeight);
+		ImGui::SetNextWindowSize(sideBarSize); // 10% of width, full height
+		ImGui::SetNextWindowPos(ImVec2((float)windowWidth - sideBarSize.x, (float)windowHeight / 20)); // Position just below the top bar
+
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.f, 0.f, 0.2f, 1.0f)); // Apply the color for the window background
+
+		ImGui::Begin("Side Bar", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize);
+
+		ImGui::Text("Sidebar content can go here");
+
+		ImGui::End();
+
+		ImGui::PopStyleColor();
+	}
+
 	void DasherEditor::Draw(float deltaTime)
 	{
 #if defined(BLIT_VK_FORCE)
@@ -33,40 +102,9 @@ namespace BlitzenIMGUI
 
 		m_io.DeltaTime = deltaTime;
 
-		// HORIZONTAL TOP BAR
-		ImGui::SetNextWindowSize(ImVec2((float)m_windowWidth, 30)); 
-		ImGui::SetNextWindowPos(ImVec2(0, 0));
-		ImGui::Begin("Top Bar", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize);
+		ImguiStartBar(m_windowWidth, m_windowHeight, this);
 
-		// CENTER
-		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - (ImGui::CalcTextSize("START").x + ImGui::GetStyle().FramePadding.x * 2.0f)) * 0.5f); 
-
-		if (ImGui::Button("START"))
-		{
-			// TODO
-		}
-
-		//ImGui::SameLine(); More
-
-		ImGui::End(); // Close the top bar window
-
-		ImGui::Begin("DearDasher Test");
-
-		ImGui::Text("DearDasher");
-
-		uint32_t eventCount = m_eventContext.m_currentID;
-
-		if (ImGui::Button("Freeze Frustum"))
-		{
-			if (eventCount < BlitzenCore::Ce_EditorButtonEventTypeCount)
-			{
-				m_eventContext.m_events[eventCount].m_type = BlitzenCore::EditorEventType::BUTTON_CLICK;
-				m_eventContext.m_events[eventCount].m_eventTypeID = BlitzenCore::Ce_FreezeFrustumButtonID;
-				eventCount++;
-			}
-		}
-
-		ImGui::End();
+		ImguiSideBar(m_windowWidth, m_windowHeight);
 
 		ImguiBeginRenderPass(m_apiData);
 

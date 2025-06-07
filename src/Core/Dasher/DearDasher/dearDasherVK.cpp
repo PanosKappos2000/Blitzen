@@ -29,7 +29,7 @@ namespace BlitzenIMGUI
 		poolSize.descriptorCount = 100;
 		poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-		m_descPool.handle = BlitzenVulkan::CreateDescriptorPool(info.Device, 1, &poolSize, 1);
+		m_descPool.handle = BlitzenVulkan::CreateDescriptorPool(info.Device, 1, &poolSize, 1, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
 		if (m_descPool.handle == VK_NULL_HANDLE)
 		{
 			BLIT_ERROR("Failed to create imguiVK descriptor pool");
@@ -126,6 +126,6 @@ namespace BlitzenIMGUI
 	{
 		vkDeviceWaitIdle(m_pVulkan->m_device);
 
-		//ImGui_ImplVulkan_InvalidateDeviceObjects();
+		ImGui_ImplVulkan_Shutdown();
 	}
 }

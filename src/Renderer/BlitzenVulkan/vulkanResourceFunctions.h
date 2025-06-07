@@ -44,7 +44,8 @@ namespace BlitzenVulkan
         VkDeviceSize bufferOffset, uint32_t bufferImageHeight, uint32_t bufferRowLength);
 
     // Creates a descriptor pool for descriptor sets whose memory should be managed by one and are not push descriptors (managed by command buffer)
-    VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets);
+    VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t poolSizeCount, VkDescriptorPoolSize* pPoolSizes, uint32_t maxSets, 
+        VkDescriptorPoolCreateFlags flags = 0);
 
     // Allocates one or more descriptor sets whose memory will be managed by a descriptor pool
     uint8_t AllocateDescriptorSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout* pLayouts, 
