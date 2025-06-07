@@ -29,16 +29,13 @@ void main()
 
     if (visible)
     {
-        uint lodOffset = surfaceBuffer.surfaces[obj.surfaceId].lodOffset;
-        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
-        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, lodOffset, lodCount);
-        lodIndex += lodOffset;
-        Lod lod = lodBuffer.levels[lodIndex];
+        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
 
-        uint dispatchIndex = atomicAdd(pushConstant.clusterCountBuffer.count, lod.clusterCount);
-        for(uint i = 0; i < lod.clusterCount; ++i)
+        uint clusterCount = ssbo_LODs.data[lodIndex].clusterCount;
+        uint dispatchIndex = atomicAdd(pushConstant.clusterCountBuffer.count, clusterCount);
+        for(uint i = 0; i < clusterCount; ++i)
         {
-            pushConstant.clusterDispatchBuffer.data[i + dispatchIndex].clusterId = lod.clusterOffset + i;
+            pushConstant.clusterDispatchBuffer.data[i + dispatchIndex].clusterId = ssbo_LODs.data[lodIndex].clusterOffset + i;
             pushConstant.clusterDispatchBuffer.data[i + dispatchIndex].lodIndex = lodIndex;
             pushConstant.clusterDispatchBuffer.data[i + dispatchIndex].objectId = objectIndex;
         }

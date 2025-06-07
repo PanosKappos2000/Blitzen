@@ -1,3 +1,9 @@
+// This function is used in every vertex shader invocation to give the object its orientation
+vec3 RotateQuat(vec3 v, vec4 quat)
+{
+	return v + 2.0 * cross(quat.xyz, cross(quat.xyz, v) + quat.w * v);
+}
+
 bool ProjectSphere(vec3 c, float r, float znear, float P00, float P11, out vec4 aabb)
 {
 	if (c.z < r + znear)

@@ -92,6 +92,8 @@ namespace BlitzenIMGUI
 		auto& cmd = imguiVk.m_pVulkan->m_commandsContext[imguiVk.m_pVulkan->m_currentFrame];
 		auto pColorTarget{ imguiVk.m_pColorTargetInfo[imguiVk.m_pVulkan->m_currentFrame] };
 
+		pColorTarget->loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+
 		BlitzenVulkan::FirstColorPassBarriers(cmd.m_uiGraphicsCmdBuffer, imguiVk.m_colorTargetHandle[imguiVk.m_pVulkan->m_currentFrame]);
 
 		BlitzenVulkan::BeginRendering(cmd.m_uiGraphicsCmdBuffer, VkExtent2D{ imguiVk.m_pVulkan->m_drawWidth, imguiVk.m_pVulkan->m_drawHeight },

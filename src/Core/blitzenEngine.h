@@ -143,35 +143,65 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxONPC_Objects = 100;
     constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;
 
-    #if defined(BLIT_DYNAMIC_OBJECT_TEST)
-        constexpr uint8_t Ce_LoadDynamicObjectTest = 1;
-    #else
-        constexpr uint8_t Ce_LoadDynamicObjectTest = 0;
-    #endif
+#if defined(BLIT_DYNAMIC_OBJECT_TEST)
 
-    #ifdef BLITZEN_CLUSTER_CULLING
-        constexpr uint8_t Ce_BuildClusters = 1;
-    #else
-        constexpr uint8_t Ce_BuildClusters = 0;
-    #endif
+    constexpr uint8_t Ce_LoadDynamicObjectTest = 1;
 
-    #ifdef BLITZEN_DRAW_INSTANCED_CULLING
-        constexpr uint8_t Ce_InstanceCulling = 1;
-    #else
-        constexpr uint8_t Ce_InstanceCulling = 0;
-    #endif
+#else
 
-    #if defined(BLIT_DEPTH_PYRAMID_TEST)
-        constexpr uint32_t Ce_DepthPyramidDebug = 1;
-    #else
-        constexpr uint32_t Ce_DepthPyramidDebug = 0;
-    #endif
+    constexpr uint8_t Ce_LoadDynamicObjectTest = 0;
 
-    #if defined(_WIN32) && !defined(BLIT_VK_FORCE) && !defined(BLIT_GL_LEGACY_OVERRIDE)
-        constexpr bool Ce_HLSL = 1;// Row major?
-    #else
-        constexpr bool Ce_HLSL = 0;
-    #endif
+#endif
+
+#if defined(BLITZEN_CLUSTER_CULLING)
+
+    constexpr uint8_t Ce_BuildClusters = 1;
+
+#else
+        
+    constexpr uint8_t Ce_BuildClusters = 0;
+
+#endif
+
+#if defined(BLITZEN_DRAW_TEMPORAL_OCCLUSION)
+
+    constexpr uint8_t Ce_DrawTemporalOcclusion = 1;
+
+#else
+
+    constexpr uint8_t Ce_DrawTemporalOcclusion = 0;
+
+#endif
+
+#ifdef BLITZEN_DRAW_INSTANCED_CULLING
+        
+    constexpr uint8_t Ce_InstanceCulling = 1;
+    
+#else
+    
+    constexpr uint8_t Ce_InstanceCulling = 0;
+    
+#endif
+
+#if defined(BLIT_DEPTH_PYRAMID_TEST)
+
+    constexpr uint32_t Ce_DepthPyramidDebug = 1;
+
+#else
+    
+    constexpr uint32_t Ce_DepthPyramidDebug = 0;
+
+#endif
+
+#if defined(BLIT_DEPTH_PYRAMID_TEST) || defined(BLITZEN_DRAW_TEMPORAL_OCCLUSION) || defined(BLITZEN_CUSTER_CULLING)
+
+    constexpr uint8_t Ce_Build_HI_Z = 1;
+
+#else
+
+    constexpr uint8_t Ce_Build_HI_Z = 0;
+
+#endif
 
 
     void ShutdownLogging(size_t totalAllocated, size_t* typeAllocations);

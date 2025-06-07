@@ -43,14 +43,15 @@ void main()
     }*/
 
     uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
-    // Get the selected LOD
-    Lod currentLod = lodBuffer.levels[data.lodIndex];
-    // The object index is needed to know which element to access in the per object data buffer
-    indirectDrawBuffer.draws[drawID].objectId = data.objectId;
-    // Setup the indirect draw commands based on the selected LODs and the vertex offset of the current surface
-    indirectDrawBuffer.draws[drawID].indexCount = clusterBuffer.clusters[data.clusterId].triangleCount * 3;
-    indirectDrawBuffer.draws[drawID].instanceCount = 1;
-    indirectDrawBuffer.draws[drawID].firstIndex = clusterBuffer.clusters[data.clusterId].dataOffset;
-    indirectDrawBuffer.draws[drawID].vertexOffset =  0;
-    indirectDrawBuffer.draws[drawID].firstInstance = 0;
+
+    rwssbo_DrawCmd.data[drawID].objectId = data.objectId;
+
+    // Vertices
+    rwssbo_DrawCmd.data[drawID].indexCount = clusterBuffer.clusters[data.clusterId].triangleCount * 3;
+    rwssbo_DrawCmd.data[drawID].firstIndex = clusterBuffer.clusters[data.clusterId].dataOffset;
+    rwssbo_DrawCmd.data[drawID].vertexOffset =  0;
+
+    // Instances
+    rwssbo_DrawCmd.data[drawID].instanceCount = 1;
+    rwssbo_DrawCmd.data[drawID].firstInstance = 0;
 }

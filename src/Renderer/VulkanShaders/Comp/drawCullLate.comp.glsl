@@ -2,11 +2,12 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
 
+#define DOUBLE_PASS
 #define COMPUTE_PIPELINE
+
 #include "../Headers/sharedBuffers.glsl"
 #include "../Headers/cullBuffers.glsl"
 #include "../Headers/math.glsl"
-#define CULL  true
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -40,27 +41,26 @@ void main()
 		}
 	}
 
-    // Prepares draw commands if the object passed frustum and occlusion AND was not visible last frame OR is transparent
-    // Transparent objects are only processed by this culling shader so last frame visibility is irrelevant
-    if(visible && visibilityBuffer.visibilities[objectIndex] == 0)
+    if(visible && rwssbo_DrawVis.data[objectIndex] == 0)
     {
-        uint lodOffset = surfaceBuffer.surfaces[obj.surfaceId].lodOffset;
-        uint lodCount = surfaceBuffer.surfaces[obj.surfaceId].lodCount;
-        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, lodOffset, lodCount);
-        lodIndex += lodOffset;
-        Lod currentLod = lodBuffer.levels[lodIndex];
+        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
 
         // Increments draw count
         uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
-        // Passes draw commands and object id
-        indirectDrawBuffer.draws[drawID].objectId = objectIndex;
-        indirectDrawBuffer.draws[drawID].indexCount = currentLod.indexCount;
-        indirectDrawBuffer.draws[drawID].instanceCount = 1;
-        indirectDrawBuffer.draws[drawID].firstIndex = currentLod.firstIndex;
-        indirectDrawBuffer.draws[drawID].vertexOffset = 0;
-        indirectDrawBuffer.draws[drawID].firstInstance = 0;
+
+        // object id
+        rwssbo_DrawCmd.data[drawID].objectId = objectIndex;
+
+        // vertices
+        rwssbo_DrawCmd.data[drawID].indexCount = ssbo_LODs.data[lodIndex].indexCount;
+        rwssbo_DrawCmd.data[drawID].firstIndex = ssbo_LODs.data[lodIndex].firstIndex;
+        rwssbo_DrawCmd.data[drawID].vertexOffset = 0;
+        
+        // instances
+        rwssbo_DrawCmd.data[drawID].instanceCount = 1;
+        rwssbo_DrawCmd.data[drawID].firstInstance = 0;
     }
 
     // Save the current frame visibility for this object
-    visibilityBuffer.visibilities[objectIndex] = visible ? 1 : 0;
+    rwssbo_DrawVis.data[objectIndex] = visible ? 1 : 0;
 }

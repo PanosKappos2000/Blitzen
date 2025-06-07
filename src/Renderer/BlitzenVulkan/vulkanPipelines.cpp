@@ -333,16 +333,14 @@ namespace BlitzenVulkan
     uint8_t CreateComputeShaders(VkDevice device, PipelineContext& context)
     {
 
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/drawCullFirst.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            context.m_drawCullLayout.handle, &context.m_drawCullFirstPso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/drawCullFirst.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_drawCullFirstPso.handle))
         {
             BLIT_ERROR("Failed to create drawCullFirst.comp shader program");
             return 0;
         }
 
         // Late culling shader compute pipeline
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/drawCullLate.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            context.m_drawCullLayout.handle, &context.m_drawCullLatePso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/drawCullLate.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_drawCullLatePso.handle))
         {
             BLIT_ERROR("Failed to create drawCullLate.comp shader program");
             return 0;
@@ -355,8 +353,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/transCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", 
-            context.m_drawCullLayout.handle, &context.m_transDrawCullPso.handle))
+        if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/transCull.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, &context.m_transDrawCullPso.handle))
         {
             BLIT_ERROR("Failed to create transCull.comp shader program");
             return 0;
@@ -367,6 +364,16 @@ namespace BlitzenVulkan
         {
             BLIT_ERROR("Failed to create present.comp shader program");
             return 0;
+        }
+
+        if (BlitzenCore::Ce_DrawTemporalOcclusion)
+        {
+            if (!CreateComputeShaderProgram(device, "VulkanShaders/Comp/drawTemporalOcc.comp.glsl.spv", VK_SHADER_STAGE_COMPUTE_BIT, "main", context.m_drawCullLayout.handle, 
+                &context.m_drawTemporalOccPso.handle))
+            {
+                BLIT_ERROR("Failed to create drawTemporalOcc.comp shader program");
+                return 0;
+            }
         }
 
         if (BlitzenCore::Ce_BuildClusters)

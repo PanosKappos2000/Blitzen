@@ -4,6 +4,7 @@
 //#extension GL_EXT_debug_printf : enable
 
 #define GRAPHICS_PIPELINE 
+#include "../Headers/vtxBuffers.glsl"
 #include "../Headers/sharedBuffers.glsl"
 #include "../Headers/math.glsl"
 
@@ -24,8 +25,8 @@ layout(push_constant) uniform Constants
 #ifndef MESH_TEST
 void main()
 {
-    Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
-    RenderObject object = rodvpc.renderObjects.objects[indirectDrawBuffer.draws[gl_DrawIDARB].objectId];
+    Vertex vertex = ssbo_Vertex.data[gl_VertexIndex];
+    RenderObject object = rodvpc.renderObjects.objects[rwssbo_DrawCmd.data[gl_DrawIDARB].objectId];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
 
     //debugPrintfEXT("%u", object.meshInstanceId);
@@ -52,7 +53,7 @@ void main()
 #else
 void main()
 {
-    Vertex vertex = vertexBuffer.vertices[gl_VertexIndex];
+    Vertex vertex = ssbo_Vertex.vertices[gl_VertexIndex];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
 
     vec3 modelPosition = RotateQuat(vertex.position, transform.orientation) * transform.scale + transform.pos;

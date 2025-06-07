@@ -46,6 +46,8 @@ namespace BlitzenVulkan
         PipelineObject m_drawCullLatePso;
         PipelineObject m_transDrawCullPso;
 
+        // Temporal occlusion mode
+        PipelineObject m_drawTemporalOccPso;
 
         // CLUSTER MODE
         PipelineLayout m_clusterCullLayout;
