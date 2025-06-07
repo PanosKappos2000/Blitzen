@@ -4,6 +4,7 @@
 #include "Imgui.h"
 #include "dearDasherVK.h"
 #include "dearDasherDX12.h"
+#include "Core/Events/blitEditorEvents.h"
 
 namespace BlitzenIMGUI
 {
@@ -39,22 +40,46 @@ namespace BlitzenIMGUI
 
 		void Draw(float deltaTime);
 
-		void UpdateWindowSize();
+		void UpdateWindowSize(uint32_t width, uint32_t height);
+
+		BlitzenCore::EditorEventContext m_eventContext;
+
+		inline void SetWindow(uint32_t width, uint32_t height)
+		{
+			m_windowWidth = width;
+			m_windowHeight = height;
+		}
 	
 	private:
 
 		ImGuiIO m_io;
 
 		IMGUI_API_CONTEXT m_apiData;
+
+		uint32_t m_windowWidth;
+
+		uint32_t m_windowHeight;
 	};
 
-	void ImguiDrawEditor(BlitzenIMGUI::ImguiVK& imguiVk, ImGuiIO& io, float deltaTime);
+	void ImguiStartRecording(ImguiVK& imguiVk);
 
-	void ImguiDrawEditor(BlitzenIMGUI::ImguiDX12& imguiDX, ImGuiIO& io, float deltaTime);
+	void ImguiStartRecording(ImguiDX12& imguiDX);
 
-	void ImguiUpdateEditorWindow(BlitzenIMGUI::ImguiVK& imguiVk);
+	void ImguiBeginRenderPass(ImguiVK& imguiVk);
 
-	void ImguiUpdateEditorWindow(BlitzenIMGUI::ImguiDX12& imageDX);
+	void ImguiBeginRenderPass(ImguiDX12& imguiDX);
+
+	void ImguiDrawEditor(ImguiVK& imguiVk, ImGuiIO& io, float deltaTime);
+
+	void ImguiDrawEditor(ImguiDX12& imguiDX, ImGuiIO& io, float deltaTime);
+
+	void ImguiSubmitEditorRender(ImguiVK& imguiVk);
+
+	void ImguiSubmitEditorRender(ImguiDX12& imageDX);
+
+	void ImguiUpdateEditorWindow(ImguiVK& imguiVk);
+
+	void ImguiUpdateEditorWindow(ImguiDX12& imageDX);
 }
 
 namespace BlitzenPlatform

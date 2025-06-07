@@ -18,6 +18,21 @@ namespace BlitzenIMGUI
 
 	}
 
+	void ImguiStartRecording(ImguiDX12& imguiDX)
+	{
+
+	}
+
+	void ImguiBeginRenderPass(ImguiDX12& imguiDX)
+	{
+
+	}
+
+	void ImguiSubmitEditorRender(ImguiDX12& imageDX)
+	{
+
+	}
+
 	void ImguiUpdateEditorWindow(ImguiDX12& imguiDX)
 	{
 

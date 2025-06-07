@@ -7,7 +7,7 @@ namespace BlitzenCore
 {
     bool InitLogging()
     {
-        BlitLog(BlitzenCore::LogLevel::INFO, "%s Booting", BlitzenCore::Ce_BlitzenVersion);
+        BlitLog(BlitzenCore::LogLevel::INFO, "%s Booting", BlitzenCore::CE_BLITZEN);
         return true;
     }
 

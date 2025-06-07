@@ -65,6 +65,12 @@ int main(int argc, char* argv[])
 
     BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
 
+#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
+    
+    BlitzenCore::AssignEditorCallbacks(eventSystem.Data());
+
+#endif
+
     BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
 
     BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager, &platform};
@@ -171,7 +177,15 @@ int main(int argc, char* argv[])
         }
         }
 
+#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
+
+        eventSystem->UpdateInput(coreClock.m_deltaTime, &dasher.m_eventContext);
+
+#else
+
         eventSystem->UpdateInput(coreClock.m_deltaTime);
+
+#endif
     }
 
 

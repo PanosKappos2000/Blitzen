@@ -642,4 +642,25 @@ namespace BlitzenVulkan
             0, VK_REMAINING_MIP_LEVELS);
         PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &colorPassBarrier);
     }
+
+    void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent)
+    {
+        VkViewport viewport{};
+        viewport.x = 0;
+        viewport.y = float(extent.height); // Start from full height (flips y axis)
+        viewport.width = float(extent.width);
+        viewport.height = -(float(extent.height));// Move a negative amount of full height (flips y axis)
+        viewport.minDepth = 0.f;
+        viewport.maxDepth = 1.f;
+
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.extent.width = extent.width;
+        scissor.extent.height = extent.height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    }
 }

@@ -28,14 +28,14 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
     
-    if (visible)
+    /*if (visible)
     {
         float4 aabb = float4(0.f, 0.f, 0.f, 0.f);
         if(ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
         {
             visible = OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear);
         }
-    }
+    }*/
     
     if(visible)
     {

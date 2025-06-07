@@ -11,6 +11,12 @@
 #include "backends/imgui_impl_win32.h"
 #include "Core/Dasher/Interface/dasherInterface.h"
 
+#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
+    
+    extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+#endif
+
 namespace BlitzenPlatform
 {
     // EVENT CALLBACK
@@ -69,7 +75,7 @@ namespace BlitzenPlatform
 		auto pPlatform{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(args.m_pPlatform) };
 
         HINSTANCE hInstance = GetModuleHandleA(nullptr);
-        HWND hwnd = CreateStandardWindow(hInstance, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, BlitzenCore::Ce_BlitzenVersion);
+        HWND hwnd = CreateStandardWindow(hInstance, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, BlitzenCore::CE_BLITZEN);
         if (!hwnd)
         {
             BLIT_FATAL("Window creation failed");
@@ -95,19 +101,21 @@ namespace BlitzenPlatform
 
 #if defined(DASHER_JOIN)
 
-        auto dasher = reinterpret_cast<BlitzenCore::Dasher*>(args.m_pEditor);
+        auto pDasher = reinterpret_cast<BlitzenCore::Dasher*>(args.m_pEditor);
 
-        if (!dasher->Init(pRenderer))
+        if (!pDasher->Init(pRenderer))
         {
             BLIT_FATAL("Failed to initialize Dasher Editor");
             return false;
         }
 
-        if (!DasherPlatformInit(dasher, hwnd))
+        if (!DasherPlatformInit(pDasher, hwnd))
         {
             BLIT_FATAL("Failed to initialize Dasher Editor");
             return false;
         }
+
+        pDasher->SetWindow(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight);
 
 #endif
 
@@ -134,9 +142,15 @@ namespace BlitzenPlatform
     }
 
     // CALLBACK
-    LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM w_param, LPARAM l_param)
+    LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM wparam, LPARAM lparam)
     {
         auto pEventSystem = reinterpret_cast<BlitzenCore::EventSystem*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
+#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
+
+        ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
+
+#endif
 
         switch(msg)
         {
@@ -188,7 +202,7 @@ namespace BlitzenPlatform
                 // press or release
                 bool bPressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
 
-                auto key = BlitzenCore::BlitKey(w_param);
+                auto key = BlitzenCore::BlitKey(wparam);
 
                 pEventSystem->InputProcessKey(key, bPressed);
 
@@ -198,8 +212,8 @@ namespace BlitzenPlatform
             case WM_MOUSEMOVE: 
             {
                 
-                int32_t mouseX = GET_X_LPARAM(l_param);
-                int32_t mouseY = GET_Y_LPARAM(l_param);
+                int32_t mouseX = GET_X_LPARAM(lparam);
+                int32_t mouseY = GET_Y_LPARAM(lparam);
 
                 pEventSystem->InputProcessMouseMove(mouseX, mouseY);
 
@@ -207,7 +221,7 @@ namespace BlitzenPlatform
             } 
             case WM_MOUSEWHEEL: 
             {
-                int32_t zDelta = GET_WHEEL_DELTA_WPARAM(w_param);
+                int32_t zDelta = GET_WHEEL_DELTA_WPARAM(wparam);
                 if (zDelta != 0) 
                 {
                     // Flatten the input to an OS-independent (-1, 1)
@@ -253,10 +267,11 @@ namespace BlitzenPlatform
                 {
                     pEventSystem->InputProcessButton(button, bPressed);
                 }
+
                 break;
             } 
         }
-        return DefWindowProcA(hwnd, msg, w_param, l_param); 
+        return DefWindowProcA(hwnd, msg, wparam, lparam); 
     }
 
     void DearDasherUpdate()

@@ -102,8 +102,8 @@ namespace BlitzenCore
 
     void EventSystem::InputProcessButton(MouseButton button, bool bPressed)
     {
-        auto idx = static_cast<uint8_t>(button);
-        // If the state changed, fire callback.
+        auto idx = uint8_t(button);
+
         if (m_currentMouse.buttons[idx] != bPressed)
         {
             m_currentMouse.buttons[idx] = bPressed;
@@ -173,7 +173,25 @@ namespace BlitzenCore
 
         if (pEditorEvents != nullptr)
         {
-            // TODO: Update logic
+            auto& editorEvent{ pEditorEvents->m_events[pEditorEvents->m_currentID] };
+
+            switch (editorEvent.m_type)
+            {
+            case EditorEventType::BUTTON_CLICK:
+            {
+                m_editorButtonCallbacks[editorEvent.m_eventTypeID](m_privateContext);
+
+                editorEvent.m_type = EditorEventType::NO_EVENT;
+
+                pEditorEvents->m_currentID = (pEditorEvents->m_currentID + 1) % Ce_EditorButtonEventTypeCount;
+
+                break;
+            }
+            default:
+            {
+                break;
+            }
+            }
         }
 #endif
     }
@@ -357,7 +375,9 @@ namespace BlitzenCore
 
         BlitML::vec2 hizExtent{ context.pRenderer->UpdateWindow((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight, context.pPlatform) };
 
-        context.pDasher->UpdateWindowSize();
+#if defined(DASHER_JOIN)
+        context.pDasher->UpdateWindowSize((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight);
+#endif
 
         camera.viewData.pyramidWidth = hizExtent.x;
         camera.viewData.pyramidHeight = hizExtent.y;
@@ -418,5 +438,21 @@ namespace BlitzenCore
         BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback);
 
         BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(pEvents, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest);
+    }
+
+
+
+    /***********************************                        EDITOR EVENTS                    **************************************************************/
+    static void EditorFreezeFrustum(BlitzenWorld::BlitzenPrivateContext& context)
+    {
+        auto pBlitzenContext{ reinterpret_cast<BlitzenWorld::BlitzenWorldContext*>(context.pBlitzenContext) };
+        auto& camera{ pBlitzenContext->pCameraContainer->GetMainCamera() };
+
+        camera.transformData.bFreezeFrustum = !camera.transformData.bFreezeFrustum;
+    }
+
+    void AssignEditorCallbacks(EventSystem* pContext)
+    {
+        pContext->m_editorButtonCallbacks[Ce_FreezeFrustumButtonID] = EditorFreezeFrustum;
     }
 }

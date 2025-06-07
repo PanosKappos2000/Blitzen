@@ -267,7 +267,7 @@ namespace BlitzenVulkan
         }
 
         const char* appName{ BlitzenCore::Ce_HostedApp };
-        const char* engineName{ BlitzenCore::Ce_BlitzenVersion };
+        const char* engineName{ BlitzenCore::CE_BLITZEN };
         VkApplicationInfo applicationInfo{};
         CreateApplicationInfo(applicationInfo, nullptr, appName, VK_MAKE_VERSION(BlitzenCore::Ce_HostedAppVersion, 0, 0), engineName, VK_MAKE_VERSION(BlitzenCore::Ce_BlitzenMajor, 0, 0));
 

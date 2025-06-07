@@ -73,6 +73,11 @@ namespace BlitzenIMGUI
 
 	void ImguiDrawEditor(BlitzenIMGUI::ImguiVK& imguiVk, ImGuiIO& io, float deltaTime)
 	{
+		ImGui_ImplVulkan_NewFrame();
+	}
+
+	void ImguiStartRecording(ImguiVK& imguiVk)
+	{
 		auto& cmd = imguiVk.m_pVulkan->m_commandsContext[imguiVk.m_pVulkan->m_currentFrame];
 		auto pColorTarget{ imguiVk.m_pColorTargetInfo[imguiVk.m_pVulkan->m_currentFrame] };
 
@@ -80,29 +85,23 @@ namespace BlitzenIMGUI
 		VK_CHECK_MSG(vkResetFences(imguiVk.m_pVulkan->m_device, 1, &cmd.m_uiFence.handle));
 
 		BlitzenVulkan::BeginCommandBuffer(cmd.m_uiGraphicsCmdBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	}
 
-		BlitzenPlatform::DearDasherUpdate();
-		ImGui_ImplVulkan_NewFrame();
-		ImGui::NewFrame();
-
-		io.DeltaTime = deltaTime;
-		ImGui::Begin("DearDasher Test");
-
-		ImGui::Text("DearDasher");
-
-		if (ImGui::Button("Click Me"))
-		{
-			// Button pressed logic here
-		}
-
-		ImGui::End();
+	void ImguiBeginRenderPass(ImguiVK& imguiVk)
+	{
+		auto& cmd = imguiVk.m_pVulkan->m_commandsContext[imguiVk.m_pVulkan->m_currentFrame];
+		auto pColorTarget{ imguiVk.m_pColorTargetInfo[imguiVk.m_pVulkan->m_currentFrame] };
 
 		BlitzenVulkan::FirstColorPassBarriers(cmd.m_uiGraphicsCmdBuffer, imguiVk.m_colorTargetHandle[imguiVk.m_pVulkan->m_currentFrame]);
 
 		BlitzenVulkan::BeginRendering(cmd.m_uiGraphicsCmdBuffer, VkExtent2D{ imguiVk.m_pVulkan->m_drawWidth, imguiVk.m_pVulkan->m_drawHeight },
 			{ 0, 0 }, 1, pColorTarget, nullptr, nullptr);
+	}
 
-		ImGui::Render();
+	void ImguiSubmitEditorRender(ImguiVK& imguiVk)
+	{
+		auto& cmd = imguiVk.m_pVulkan->m_commandsContext[imguiVk.m_pVulkan->m_currentFrame];
+		auto pColorTarget{ imguiVk.m_pColorTargetInfo[imguiVk.m_pVulkan->m_currentFrame] };
 
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd.m_uiGraphicsCmdBuffer);
 
@@ -116,7 +115,7 @@ namespace BlitzenIMGUI
 		BlitzenVulkan::SubmitCommandBuffer(imguiVk.m_pVulkan->m_graphicsQueue.handle, cmd.m_uiGraphicsCmdBuffer, 0, nullptr, 1, &waitSubmitInfo, cmd.m_uiFence.handle);
 	}
 
-	void ImguiUpdateEditorWindow(BlitzenIMGUI::ImguiVK& imguiVk)
+	void ImguiUpdateEditorWindow(ImguiVK& imguiVk)
 	{
 		imguiVk.m_pVulkan->LendRenderingInfos(imguiVk.m_pColorTargetInfo, imguiVk.m_colorTargetHandle);
 	}

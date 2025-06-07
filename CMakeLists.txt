@@ -21,6 +21,7 @@ add_executable(BlitzenEngine
                 "src/Core/Events/blitzenEvents.cpp"
                 "src/Core/Events/blitTimeManager.h"
                 "src/Core/Events/blitzenTimeManager.cpp"
+                "src/Core/Events/blitEditorEvents.h"
                 # WORLD (ALL SYSTEMS)
                 "src/Core/BlitzenWorld/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
@@ -144,7 +145,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h"  "src/Core/Events/blitEditorEvents.h")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/BlitzenDX12/dx12RuntimeHepers.cpp" "src/Renderer/BlitzenVulkan/vulkanRuntimeHelpers.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -205,7 +206,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             DASHER_JOIN
                             DASHER_USE_DEAR
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode

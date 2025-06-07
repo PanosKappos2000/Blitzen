@@ -30,6 +30,8 @@ namespace BlitzenCore
     using MouseMoveCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&, int16_t, int16_t, int16_t, int16_t>;
     using MouseWheelCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&, int8_t>;
 
+    using EditorCallback = BlitCL::Pfn<void, BlitzenWorld::BlitzenPrivateContext&>;
+
     // Mouse buttons and mouse position
     struct MouseState
     {
@@ -77,6 +79,8 @@ namespace BlitzenCore
 
         MouseState m_currentMouse;
         MouseState m_previousMouse;
+
+        EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BlitzenWorld::BlitzenPrivateContext&) {} };
     };
 
     // Passes the logic to be called when a speicific key is pressed
@@ -105,4 +109,6 @@ namespace BlitzenCore
     void RegisterEvent(EventSystem* pContext, BlitEventType type, EventCallback eventCallback);
 
     void RegisterDefaultEvents(EventSystem* pEvents);
+
+    void AssignEditorCallbacks(EventSystem* pContext);
 }

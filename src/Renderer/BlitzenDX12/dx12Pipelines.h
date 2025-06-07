@@ -44,6 +44,12 @@ namespace BlitzenDX12
     // Main drawing pipeline creation
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx);
 
+    void DefineViewportAndScissor(ID3D12GraphicsCommandList* commandList, float width, float height);
+
+    void ClearWindow(ID3D12GraphicsCommandList* cmdList, float swapchainWidth, float swapchainHeight, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, UINT swapchainIndex);
+
+    void BeginRenderPass(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, UINT swapchainIndex, uint8_t isFirstPass);
+
     class ShaderIncludeHandler : public ID3DInclude 
     {
     public:

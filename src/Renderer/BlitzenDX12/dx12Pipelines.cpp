@@ -2,6 +2,7 @@
 
 #include "dx12Pipelines.h"
 #include "dx12Renderer.h"
+#include "dx12Resources.h"
 
 // Temporary
 #include <fstream>
@@ -375,6 +376,78 @@ namespace BlitzenDX12
         }
 
         return 1;
+    }
+
+    void DefineViewportAndScissor(ID3D12GraphicsCommandList* commandList, float width, float height)
+    {
+        D3D12_VIEWPORT viewport = {};
+
+        viewport.TopLeftX = 0;
+        viewport.TopLeftY = 0;
+
+        viewport.Width = width;
+        viewport.Height = height;
+
+        viewport.MinDepth = 0.0f;
+        viewport.MaxDepth = 1.0f;
+
+        D3D12_RECT scissorRect = { 0, 0, LONG(width), LONG(height) };
+
+        commandList->RSSetViewports(1, &viewport);
+        commandList->RSSetScissorRects(1, &scissorRect);
+    }
+
+    void ClearWindow(ID3D12GraphicsCommandList* cmdList, float swapchainWidth, float swapchainHeight, ID3D12Resource* swapchainBackBuffer,
+        DescriptorContext& descriptorContext, UINT swapchainIndex)
+    {
+        DefineViewportAndScissor(cmdList, swapchainWidth, swapchainHeight);
+
+        // Render target barrier
+        D3D12_RESOURCE_BARRIER renderTargetBarrier{};
+        CreateResourcesTransitionBarrier(renderTargetBarrier, swapchainBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmdList->ResourceBarrier(1, &renderTargetBarrier);
+
+        cmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIndex], FALSE, &descriptorContext.m_depthTargetDSVHandle[swapchainIndex]);
+
+        cmdList->ClearRenderTargetView(descriptorContext.m_swapchainRtvHandle[swapchainIndex], BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
+        cmdList->ClearDepthStencilView(descriptorContext.m_depthTargetDSVHandle[swapchainIndex], D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
+    }
+
+    void BeginRenderPass(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, UINT swapchainIndex, uint8_t isFirstPass)
+    {
+        // Render target bind
+        cmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIndex], FALSE, &descriptorContext.m_depthTargetDSVHandle[swapchainIndex]);
+
+        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthTargetDesc{};
+        D3D12_RENDER_PASS_RENDER_TARGET_DESC renderTargetDesc{};
+        depthTargetDesc.cpuDescriptor = descriptorContext.m_depthTargetDSVHandle[swapchainIndex];
+        renderTargetDesc.cpuDescriptor = descriptorContext.m_swapchainRtvHandle[swapchainIndex];
+        if (isFirstPass)
+        {
+            depthTargetDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+            depthTargetDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = Ce_ClearDepth;
+            depthTargetDesc.DepthBeginningAccess.Clear.ClearValue.Format = Ce_DepthTargetFormat;
+            depthTargetDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+            renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[0] = BlitzenCore::Ce_DefaultWindowBackgroundColor[0];
+            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[1] = BlitzenCore::Ce_DefaultWindowBackgroundColor[1];
+            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[2] = BlitzenCore::Ce_DefaultWindowBackgroundColor[2];
+            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[3] = BlitzenCore::Ce_DefaultWindowBackgroundColor[3];
+            renderTargetDesc.BeginningAccess.Clear.ClearValue.Format = Ce_SwapchainFormat;
+            renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        }
+        else
+        {
+            depthTargetDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+            depthTargetDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+            renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+            renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        }
+
+        // Begin render pass
+        cmdList->BeginRenderPass(1, &renderTargetDesc, &depthTargetDesc, D3D12_RENDER_PASS_FLAG_NONE);
     }
 }
 

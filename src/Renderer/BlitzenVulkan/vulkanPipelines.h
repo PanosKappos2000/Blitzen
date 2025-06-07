@@ -79,7 +79,11 @@ namespace BlitzenVulkan
     void BeginRendering(VkCommandBuffer commandBuffer, VkExtent2D renderAreaExtent, VkOffset2D renderAreaOffset, uint32_t colorAttachmentCount, VkRenderingAttachmentInfo* pColorAttachments,
         VkRenderingAttachmentInfo* pDepthAttachment, VkRenderingAttachmentInfo* pStencilAttachment, uint32_t viewMask = 0, uint32_t layerCount = 1);
 
+    void DefineViewportAndScissor(VkCommandBuffer commandBuffer, VkExtent2D extent);
+
+    // Places barrier on render targets for the first render pass
     void FirstRenderPassBarriers(VkCommandBuffer cmdb, VkImage colorTarget, VkImage depthTarget);
 
+    // Place barrier on color target for the first render pass
     void FirstColorPassBarriers(VkCommandBuffer cmdb, VkImage colorTarget);
 }

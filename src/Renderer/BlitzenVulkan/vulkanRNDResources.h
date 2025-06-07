@@ -135,4 +135,15 @@ namespace BlitzenVulkan
 
         return 1;
     }
+
+    // Call vkCmdPushDescriptorSetKHR extension function (This can be removed if I upgrade to Vulkan 1.4)
+    inline void PushDescriptors(VkInstance instance, VkCommandBuffer commandBuffer, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t set,
+        uint32_t descriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites)
+    {
+        auto func = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(instance, "vkCmdPushDescriptorSetKHR");
+        if (func != nullptr)
+        {
+            func(commandBuffer, bindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+        }
+    }
 }

@@ -5,6 +5,11 @@
 
 namespace BlitzenCore
 {
+    constexpr const char* CE_BLITZEN = "Blitzen.v0";
+    constexpr uint32_t Ce_BlitzenMajor = 0;
+    constexpr const char* Ce_HostedApp = "Blitzen Client";
+    constexpr uint32_t Ce_HostedAppVersion = 1;
+
     // Window constants
     constexpr uint32_t Ce_WindowStartingX = 100;
     constexpr uint32_t Ce_WindowStartingY = 100;
@@ -52,15 +57,13 @@ namespace BlitzenCore
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
 
 
-    constexpr const char* Ce_BlitzenVersion = "Blitzen Engine";
-    constexpr uint32_t Ce_BlitzenMajor = 0;
-    constexpr const char* Ce_HostedApp = "Blitzen Game";
-    constexpr uint32_t Ce_HostedAppVersion = 1;
-
-
     constexpr uint16_t Ce_KeyCallbackCount = 256;
+
     constexpr uint32_t Ce_EditorEventQueueSize = 10;
 
+    constexpr uint32_t Ce_EditorButtonEventTypeCount = 5;
+
+    constexpr uint32_t Ce_FreezeFrustumButtonID = 0;
 
     constexpr size_t Ce_LinearAllocatorBlockSize = UINT32_MAX;
 
