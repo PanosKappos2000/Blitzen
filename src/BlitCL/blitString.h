@@ -109,17 +109,35 @@ namespace BlitCL
 			}
 		}
 
-        inline char operator [] (size_t idx) const { return m_data[idx]; }
+        inline char operator [] (size_t idx) const 
+        { 
+            return m_data[idx]; 
+        }
 
-        inline const char* GetClassic() const { return m_data; }
+        inline const char* GetClassic() const 
+        { 
+            return m_data; 
+        }
 
-        inline char* Data() { return m_data; }
+        inline char* Data() 
+        { 
+            return m_data; 
+        }
 
-        inline char** GetDataPointer() { return &m_data; }
+        inline char** GetDataPointer() 
+        { 
+            return &m_data; 
+        }
 
-        inline size_t GetSize() const { return m_size; }
+        inline size_t GetSize() const 
+        { 
+            return m_size; 
+        }
 
-		inline size_t GetCapacity() const { return m_capacity; }
+		inline size_t GetCapacity() const 
+        { 
+            return m_capacity; 
+        }
 
 		inline void Resize(size_t size)
 		{
@@ -127,6 +145,7 @@ namespace BlitCL
 			{
 				IncreaseCapacity(size);
 			}
+
 			m_size = size;
 		}
 
@@ -142,12 +161,20 @@ namespace BlitCL
             m_size = newSize;
         }
 
+        inline void Truncate(int64_t index)
+        {
+            snprintf(m_data + index, 1, "\0");
+            m_size = index;
+        }
+
         inline int64_t FindLastOf(char c)
         {
-            for (int64_t i = m_size; i >= 0; --i)
+            for (int64_t i = m_size - 1; i >= 0; --i)
             {
                 if (m_data[i] == c)
+                {
                     return i;
+                }
             }
 
             return -1;
@@ -167,11 +194,15 @@ namespace BlitCL
         inline void CopyString(const char* str)
         {
             size_t size = strlen(str);
+
             if(size >= m_capacity)
             {
                 IncreaseCapacity(size);
             }
+
             snprintf(m_data, size + 1, "%s", str);
+
+            m_size = size;
         }
 
         inline String Substring(size_t start, size_t size)
@@ -194,10 +225,11 @@ namespace BlitCL
 
     private:
 
+        // Why am I not freeing the lost memory
         void IncreaseCapacity(size_t newSize)
         {
-            auto previousCapacity = m_capacity;
-            const char* previousData = m_data;
+            size_t previousCapacity = m_capacity;
+            char* previousData = m_data;
             m_capacity = newSize * ce_blitStringCapacityMultiplier + 1;
 
             m_data = BlitzenCore::BlitAlloc<char>(StrAlloc, m_capacity);
@@ -205,6 +237,8 @@ namespace BlitCL
             {
                 snprintf(m_data, m_size + 1, "%s", previousData);
             }
+
+            BlitzenCore::BlitFree<char>(StrAlloc, previousData, previousCapacity);
         }
 
     private:

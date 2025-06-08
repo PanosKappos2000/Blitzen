@@ -5,6 +5,7 @@
 #include "dearDasherVK.h"
 #include "dearDasherDX12.h"
 #include "Core/Events/blitEditorEvents.h"
+#include "Core/Dasher/Interface/dasherState.h"
 
 namespace BlitzenIMGUI
 {
@@ -43,6 +44,8 @@ namespace BlitzenIMGUI
 		void UpdateWindowSize(uint32_t width, uint32_t height);
 
 		BlitzenCore::EditorEventContext m_eventContext;
+
+		BlitzenCore::DASHER_STATE m_state{ BlitzenCore::DASHER_STATE::DASHER_EDITOR_FULL_BLIT_RENDERER_IDLE };
 
 		inline void SetWindow(uint32_t width, uint32_t height)
 		{

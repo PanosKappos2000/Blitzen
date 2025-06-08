@@ -28,8 +28,6 @@ namespace BlitzenEngine
 
 	void CreateSingleRender(RenderContainer& context, MeshResources& meshes, const char* meshName, float scale);
 
-	void LoadGeometryStressTest(RenderContainer& renders, MeshResources& meshContext, float transformMultiplier);
-
 	void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);
 
 	void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderContainer& renders, MeshResources& meshContext, float randomTransformMultiplier, float scale);

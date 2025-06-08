@@ -124,48 +124,6 @@ namespace BlitzenEngine
 		CreateRenderObjectFromMesh(renders, meshContext, meshId, transform, false);
     }
 
-    void LoadGeometryStressTest(RenderContainer& renders, MeshResources& meshContext, float transformMultiplier)
-    {
-        // Don't load the stress test if ray tracing is on
-#if defined(BLIT_VK_RAYTRACING)// The name of this macro should change
-        return;
-#endif
-
-        constexpr uint32_t bunnyCount = 2'500'000;
-        constexpr uint32_t kittenCount = 1'500'000;
-        constexpr uint32_t maleCount = 90'000;
-        constexpr uint32_t dragonCount = 10'000;
-        constexpr uint32_t totalCount = bunnyCount + kittenCount + maleCount + dragonCount;
-
-        BLIT_WARN("Loading Renderer Stress test with %i objects", totalCount);
-
-        uint32_t start = renders.m_renderCount;
-
-        // Bunnies
-        for (uint32_t i = start; i < start + bunnyCount; ++i)
-        {
-            CreateRenderObjectWithRandomTransform(0, renders, meshContext, transformMultiplier, 5.f);
-        }
-        start += bunnyCount;
-        // Kittens
-        for (uint32_t i = start; i < start + kittenCount; ++i)
-        {
-            CreateRenderObjectWithRandomTransform(2, renders, meshContext, transformMultiplier, 1.f);
-        }
-        // Standford dragons
-        start += kittenCount;
-        for (uint32_t i = start; i < start + dragonCount; ++i)
-        {
-            CreateRenderObjectWithRandomTransform(1, renders, meshContext, transformMultiplier, 0.5f);
-        }
-        // Humans
-        start += dragonCount;
-        for (uint32_t i = start; i < start + maleCount; ++i)
-        {
-            CreateRenderObjectWithRandomTransform(3, renders, meshContext, transformMultiplier, 0.2f);
-        }
-    }
-
     // Creates a scene for oblique Near-Plane clipping testing. Pretty lackluster for the time being
     void CreateObliqueNearPlaneClippingTestObject(RenderContainer& renders, MeshResources& meshContext)
     {

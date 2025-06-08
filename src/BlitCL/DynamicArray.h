@@ -73,7 +73,7 @@ namespace BlitCL
             }
         }
 
-
+        // ITERATORS
         using Iterator = DynamicArrayIterator<T>;
         inline Iterator begin() const { return Iterator(m_pBlock); }
         inline Iterator end() const { return Iterator(m_pBlock + m_size); }
@@ -81,14 +81,19 @@ namespace BlitCL
         inline Iterator cend() const { return Iterator(m_pBlock + m_size); }
 
         inline size_t GetSize() const { return m_size; }
+
         inline T& operator [] (size_t index) const{ return m_pBlock[index]; }
+
         inline T& At(size_t index) const 
         { 
             BLIT_ASSERT(index < m_size); 
             return m_pBlock[index]; 
         }
+
         inline T& Front() { return m_pBlock[0]; }
+
         inline T& Back() { return m_pBlock[m_size - 1]; }
+
         inline T* Data() const { return m_pBlock; }
 
 
@@ -127,6 +132,16 @@ namespace BlitCL
             }
 
             m_pBlock[m_size++] = newElement;
+        }
+
+        void EmplaceEmtpy()
+        {
+            if (m_size >= m_capacity)
+            {
+                RearrangeCapacity(m_size + 1);
+            }
+
+            BlitzenCore::BlitMemSet<T>(&m_pBlock[m_size++], 0, 1);
         }
 
         void AppendArray(DynamicArray<T>& array)

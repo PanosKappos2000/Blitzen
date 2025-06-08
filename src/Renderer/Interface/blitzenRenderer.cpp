@@ -59,7 +59,7 @@ namespace BlitzenEngine
         return true;
     }
 
-    bool ManageGltf(const char* filepath, RenderingResources* pResources, EntityManager* pManager, RendererPtrType pRenderer)
+    bool ManageGltf(const char* filepath, RenderingResources* pResources, EntityManager* pManager, RendererPtrType pRenderer, SceneContext* pScene)
     {
         auto& textureContext{ pResources->m_textureManager };
         auto& meshContext{ pResources->m_meshContext };
@@ -71,7 +71,25 @@ namespace BlitzenEngine
             return false;
         }
 
-        CgltfScope cgltfScope{ nullptr };
+        if (pScene)
+        {
+            pScene->m_name.CopyString(filepath);
+            int64_t truncationIndex = pScene->m_name.FindLastOf('.');
+
+            if (truncationIndex == -1)
+            {
+                BLIT_INFO("Gltf name truncation failed");
+            }
+            else
+            {
+                pScene->m_name.Truncate(truncationIndex);
+            }
+        }
+
+        CgltfScope cgltfScope;
+        cgltfScope.pData = nullptr;
+        cgltfScope.m_pScene = pScene;
+
         if(!LoadGltfFile(filepath, cgltfScope))
 		{
 			BLIT_ERROR("Failed to load GLTF file");
@@ -79,7 +97,7 @@ namespace BlitzenEngine
 		}
 
         // Texture count saved for materials
-        auto previousTextureCount = textureContext.m_textureCount;
+        uint32_t previousTextureCount = textureContext.m_textureCount;
 
         // Textures (special care because they are directly managed by the renderer backend)
         BLIT_INFO("Loading textures for GLTF");
@@ -128,8 +146,68 @@ namespace BlitzenEngine
         return true;
     }
 
-    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, EntityManager* pManager)
+    void LoadGeometryStressTest(RenderContainer& renders, MeshResources& meshContext, float transformMultiplier, SceneContext* pScene)
     {
+        constexpr uint32_t bunnyCount = 2'500'000;
+        constexpr uint32_t kittenCount = 1'500'000;
+        constexpr uint32_t maleCount = 90'000;
+        constexpr uint32_t dragonCount = 10'000;
+        constexpr uint32_t totalCount = bunnyCount + kittenCount + maleCount + dragonCount;
+
+        BLIT_WARN("Loading Renderer Stress test with %i objects", totalCount);
+
+        pScene->m_name.CopyString("RendererStressTestScene");
+
+        for (uint32_t i = 0; i < BlitzenCore::Ce_EngineDefaultMeshesCount; ++i)
+        {
+            pScene->m_meshNames.EmplaceEmtpy();
+        }
+
+        pScene->m_meshNames[0].CopyString(BlitzenCore::Ce_DefaultMeshName);
+        pScene->m_meshNames[1].CopyString(BlitzenCore::Ce_DefaultKittenMeshName);
+        pScene->m_meshNames[2].CopyString(BlitzenCore::Ce_DefaultDragonMeshName);
+        pScene->m_meshNames[3].CopyString(BlitzenCore::Ce_DefaultHumanMeshname);
+
+        pScene->m_renderOffset = renders.m_renderCount;
+        pScene->m_renderCount += bunnyCount + kittenCount + maleCount + dragonCount;
+
+        uint32_t start = renders.m_renderCount;
+
+        // Bunnies
+        for (uint32_t i = start; i < start + bunnyCount; ++i)
+        {
+            CreateRenderObjectWithRandomTransform(meshContext.m_meshMap[BlitzenCore::Ce_DefaultMeshName].meshId, renders, meshContext, transformMultiplier, 5.f);
+        }
+        start += bunnyCount;
+
+        // Kittens
+        for (uint32_t i = start; i < start + kittenCount; ++i)
+        {
+            CreateRenderObjectWithRandomTransform(meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName].meshId, renders, meshContext, transformMultiplier, 1.f);
+        }
+        start += kittenCount;
+
+        // Standford dragons
+        for (uint32_t i = start; i < start + dragonCount; ++i)
+        {
+            CreateRenderObjectWithRandomTransform(meshContext.m_meshMap[BlitzenCore::Ce_DefaultDragonMeshName].meshId, renders, meshContext, transformMultiplier, 0.5f);
+        }
+        start += dragonCount;
+        
+        // Humans
+        for (uint32_t i = start; i < start + maleCount; ++i)
+        {
+            CreateRenderObjectWithRandomTransform(meshContext.m_meshMap[BlitzenCore::Ce_DefaultHumanMeshname].meshId, renders, meshContext, transformMultiplier, 0.2f);
+        }
+    }
+
+    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, EntityManager* pManager, SceneContext* pScene)
+    {
+        pScene->m_name.CopyString("SpinningEntityTestScene");
+
+        pScene->m_meshNames.EmplaceEmtpy();
+        pScene->m_meshNames[0].CopyString(BlitzenCore::Ce_DefaultKittenMeshName);
+
         const uint32_t ObjectCount = BlitzenCore::Ce_MaxDynamicObjectCount;
         if (pManager->m_renderContainer.m_renderCount + ObjectCount > BlitzenCore::Ce_MaxRenderObjects)
         {
@@ -143,7 +221,7 @@ namespace BlitzenEngine
             RandomizeTransform(transform, 100.f, 1.f);
 
             // Type info thing kept here just because
-            bool bObjectAdded{ pManager->template AddObject<ClientTest>(meshes, transform, true, "kitten") };
+            bool bObjectAdded{ pManager->template AddObject<ClientTest>(meshes, transform, true, BlitzenCore::Ce_DefaultKittenMeshName) };
             if (!bObjectAdded/*!pManager->template AddObject<BlitzenEngine::ClientTest>(meshes, transform, true, "kitten")*/)
             {
                 BLIT_ERROR("Failed to create dynamic object");
@@ -152,14 +230,15 @@ namespace BlitzenEngine
         }
     }
 
-    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, RendererPtrType pRenderer, EntityManager* pManager)
+    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, WORLD_blit* pWORLD, EntityManager* pManager)
     {
         LoadTestGeometry(pResources->m_meshContext);
 		CreateSingleRender(pManager->m_renderContainer, pResources->m_meshContext, BlitzenCore::Ce_DefaultMeshName, 5.f);
 
         if constexpr (BlitzenCore::Ce_LoadDynamicObjectTest)
         {
-            CreateDynamicObjectRendererTest(pManager->m_renderContainer, pResources->m_meshContext, pManager);
+            pWORLD->m_scenes.EmplaceEmtpy();
+            CreateDynamicObjectRendererTest(pManager->m_renderContainer, pResources->m_meshContext, pManager, &pWORLD->m_scenes.Back());
         }
 
         if (argc > 1)
@@ -167,12 +246,14 @@ namespace BlitzenEngine
             // Special argument. Loads heavy scene to stress test the culling algorithms
             if (strcmp(argv[1], "RenderingStressTest") == 0)
             {
-                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 3'000.f);
+                pWORLD->m_scenes.EmplaceEmtpy();
+                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 3'000.f, &pWORLD->m_scenes.Back());
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    if (!ManageGltf(argv[i], pResources, pManager, pRenderer))
+                    pWORLD->m_scenes.EmplaceEmtpy();
+                    if (!ManageGltf(argv[i], pResources, pManager, pWORLD->P_RENDERER.Data(), &pWORLD->m_scenes.Back()))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;
@@ -182,12 +263,14 @@ namespace BlitzenEngine
 
             else if (strcmp(argv[1], "InstancingStressTest") == 0)
             {
-                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 2'000.f);
+                pWORLD->m_scenes.EmplaceEmtpy();
+                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 2'000.f, &pWORLD->m_scenes.Back());
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    if (!ManageGltf(argv[i], pResources, pManager, pRenderer))
+                    pWORLD->m_scenes.EmplaceEmtpy();
+                    if (!ManageGltf(argv[i], pResources, pManager, pWORLD->P_RENDERER.Data(), &pWORLD->m_scenes.Back()))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;
@@ -197,12 +280,14 @@ namespace BlitzenEngine
 
             else if (strcmp(argv[1], "ClusterStressTest") == 0)
             {
-                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 1'500.f);
+                pWORLD->m_scenes.EmplaceEmtpy();
+                LoadGeometryStressTest(pManager->m_renderContainer, pResources->m_meshContext, 1'500.f, &pWORLD->m_scenes.Back());
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    if (!ManageGltf(argv[i], pResources, pManager, pRenderer))
+                    pWORLD->m_scenes.EmplaceEmtpy();
+                    if (!ManageGltf(argv[i], pResources, pManager, pWORLD->P_RENDERER.Data(), &pWORLD->m_scenes.Back()))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;
@@ -213,12 +298,14 @@ namespace BlitzenEngine
             // Special argument. Test oblique near-plane clipping technique. Not working yet.
             else if (strcmp(argv[1], "OnpcReflectionTest") == 0)
             {
+                pWORLD->m_scenes.EmplaceEmtpy();
                 CreateObliqueNearPlaneClippingTestObject(pManager->m_renderContainer, pResources->m_meshContext);
 
                 // The following arguments are used as gltf filepaths
                 for (int32_t i = 2; i < argc; ++i)
                 {
-                    if (!ManageGltf(argv[i], pResources, pManager, pRenderer))
+                    pWORLD->m_scenes.EmplaceEmtpy();
+                    if (!ManageGltf(argv[i], pResources, pManager, pWORLD->P_RENDERER.Data(), &pWORLD->m_scenes.Back()))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;
@@ -227,9 +314,10 @@ namespace BlitzenEngine
             }
             else
             {
+                pWORLD->m_scenes.EmplaceEmtpy();
                 for (int32_t i = 1; i < argc; ++i)
                 {
-                    if (!ManageGltf(argv[i], pResources, pManager, pRenderer))
+                    if (!ManageGltf(argv[i], pResources, pManager, pWORLD->P_RENDERER.Data(), &pWORLD->m_scenes.Back()))
                     {
                         BLIT_ERROR("Failed to load gltf scene from file: %s", argv[i]);
                         return false;

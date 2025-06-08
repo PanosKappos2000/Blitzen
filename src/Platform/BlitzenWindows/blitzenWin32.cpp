@@ -119,6 +119,16 @@ namespace BlitzenPlatform
 
 #endif
 
+        auto pEvents{ reinterpret_cast<BlitzenCore::EventSystem*>(args.m_pEvents) };
+
+        BlitzenCore::RegisterDefaultEvents(pEvents);
+
+#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
+
+        BlitzenCore::AssignEditorCallbacks(pEvents);
+
+#endif
+
         // Success
         return true;
     }

@@ -4,23 +4,17 @@
 #include "Core/Events/blitEvents.h"
 #include "Platform/blitPlatformContext.h"
 #include "Platform/blitPlatform.h"
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <atomic>
-#include <iostream>
 
 using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
-using EntitySystemMemory = BlitCL::SmartPointer<BlitzenEngine::EntityManager, BlitzenCore::AllocationType::Entity>;
 
 
 #if defined(BLIT_GDEV_EDT)
 int main(int argc, char* argv[])
 {
     /* ENGINE SYSTEMS INITIALIZATION */
-    BlitzenCore::Engine engine;
-    engine.m_state = BlitzenCore::EngineState::LOADING;
+    BlitzenCore::Engine blitzenEngine;
+    blitzenEngine.m_state = BlitzenCore::EngineState::LOADING;
 
     BlitzenWorld::BlitzenPrivateContext blitzenPrivateContext{};
     BlitzenWorld::BlitzenWorldContext blitzenWorldContext{};
@@ -28,140 +22,96 @@ int main(int argc, char* argv[])
 
     BlitzenCore::InitLogging();
 
-    blitzenPrivateContext.pEngineState = &engine.m_state;
+    blitzenPrivateContext.pEngineState = &blitzenEngine.m_state;
 
-    BlitzenEngine::CameraContainer cameraSystem;
-    auto& mainCamera = cameraSystem.GetMainCamera();
+    BlitzenEngine::CameraContainer blitzenCameraSystem;
+    auto& mainCamera = blitzenCameraSystem.GetMainCamera();
     BlitzenEngine::SetupCamera(mainCamera);
-    blitzenWorldContext.pCameraContainer = &cameraSystem;
+    blitzenWorldContext.pCameraContainer = &blitzenCameraSystem;
 
-    BlitzenCore::WorldTimeManager coreClock;
-    blitzenWorldContext.pCoreClock = &coreClock;
+    BlitzenCore::WorldTimeManager blitzenClock;
+    blitzenWorldContext.pCoreClock = &blitzenClock;
 
-    BlitzenEngine::Renderer renderer;
-    renderer.Make();
-    blitzenPrivateContext.pRenderer = renderer.Data();
-
-    EntitySystemMemory entityManager;
-    entityManager.Make();
-	blitzenPrivateContext.pEntityMangager = entityManager.Data();
-    
-    EventSystemMemory eventSystem;
-    eventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
+    BlitzenEngine::EntitySystemMemory blitzenEntityManager;
+    blitzenEntityManager.Make();
+    blitzenPrivateContext.pEntityMangager = blitzenEntityManager.Data();
 
     RndResourcesMemory renderingResources;
     renderingResources.Make();
     blitzenPrivateContext.pRenderingResources = renderingResources.Data();
 
-    BlitzenCore::Dasher dasher;
-    blitzenPrivateContext.pDasher = &dasher;
-
     BlitzenPlatform::PlatformContext platform{};
     blitzenPrivateContext.pPlatform = &platform;
 
-    BlitzenPlatform::PlatformArgs platformArgs{&platform, eventSystem.Data(), renderer.Data(), &dasher};
+    BlitzenEngine::WORLD_blit WORLD{ mainCamera, renderingResources->m_meshContext, blitzenEntityManager->m_renderContainer, renderingResources->m_textureManager, &platform };
+    WORLD.P_RENDERER.Make();
+    blitzenPrivateContext.pWORLD = &WORLD;
+    
+    EventSystemMemory blitzenEventSystem;
+    blitzenEventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
 
+    BlitzenCore::Dasher dasher;
+    blitzenPrivateContext.pDasher = &dasher;
+
+    BlitzenPlatform::PlatformArgs platformArgs{&platform, blitzenEventSystem.Data(), WORLD.P_RENDERER.Data(), &dasher};
     BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
 
-    BlitzenCore::RegisterDefaultEvents(eventSystem.Data());
-
-#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
-    
-    BlitzenCore::AssignEditorCallbacks(eventSystem.Data());
-
-#endif
-
-    BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), renderer.Data()));
-
-    BlitzenEngine::DrawContext drawContext{ mainCamera, renderingResources->m_meshContext, entityManager->m_renderContainer, renderingResources->m_textureManager, &platform};
-
+    BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), WORLD.P_RENDERER.Data()));
 
     // LOADING RESOURCES
-    std::mutex mtx;
-    std::condition_variable loadingDoneConditional;
-    std::atomic<bool> loadingDone(false);
     std::thread loadingThread
-    {   
-        [&]() 
+    {
+        [&]()
         {
-            std::lock_guard<std::mutex> lock(mtx);
-
-            if (!BlitzenEngine::CreateSceneFromArguments(argc, argv, renderingResources.Data(), renderer.Data(), entityManager.Data()))
-            {
-                BLIT_FATAL("Failed to allocate resource for requested scene, Blitzen shutting down");
-                loadingDone = true;
-                loadingDoneConditional.notify_one();
-                engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
-                return;
-            }
-
-            if (!renderer->SetupForRendering(drawContext))
-            {
-                BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
-                loadingDone = true;
-                loadingDoneConditional.notify_one();
-                engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
-                return;
-            }
-
-            loadingDone = true;
-            loadingDoneConditional.notify_one();
-            engine.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
+            BlitzenWorld::LoadingLoop(argc, argv, blitzenPrivateContext, WORLD.m_drawContext);
         }
     };
-
     #if(_WIN32)
-
         loadingThread.detach();
-
     #else
-
         loadingThread.join();
-
     #endif
 
     // LOOP
-    while(engine.m_state != BlitzenCore::EngineState::SHUTDOWN)
+    while(blitzenEngine.m_state != BlitzenCore::EngineState::SHUTDOWN)
     {
         if (!BlitzenPlatform::DispatchEvents(&platform))
         {
-            engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
+            blitzenEngine.m_state = BlitzenCore::EngineState::SHUTDOWN;
         }
 
-        switch (engine.m_state)
+        switch (blitzenEngine.m_state)
         {
         case BlitzenCore::EngineState::RUNNING:
         {
-            BlitzenCore::UpdateWorldClock(coreClock);
+            BlitzenCore::UpdateWorldClock(blitzenClock);
 
-            BlitzenEngine::UpdateCamera(mainCamera, float(coreClock.m_deltaTime));
+            BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
 
-            BlitzenEngine::UpdateDynamicObjects(renderer.Data(), entityManager.Data(), blitzenWorldContext);
+            BlitzenEngine::UpdateDynamicObjects(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), blitzenWorldContext);
 
-            renderer->DrawFrame(drawContext);
+            WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
 
 #if defined(DASHER_JOIN)
-
-            dasher.Draw((float)coreClock.m_deltaTime);
-
+            dasher.Draw((float)blitzenClock.m_deltaTime);
 #endif
-            renderer->Present();
+            WORLD.P_RENDERER.Data()->Present();
 
             break;
         }
         case BlitzenCore::EngineState::LOADING:
         {
-            BlitzenCore::UpdateWorldClock(coreClock);
+            BlitzenCore::UpdateWorldClock(blitzenClock);
 
-            renderer->DrawWhileWaiting(float(coreClock.m_deltaTime));
+            WORLD.P_RENDERER.Data()->DrawWhileWaiting(float(blitzenClock.m_deltaTime));
 
             break;
         }
         case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
         {
-            renderer->FinalSetup();
+            WORLD.P_RENDERER.Data()->FinalSetup();
 
-            engine.m_state = BlitzenCore::EngineState::RUNNING;
+            blitzenEngine.m_state = BlitzenCore::EngineState::RUNNING;
 
             break;
         }
@@ -172,25 +122,18 @@ int main(int argc, char* argv[])
         case BlitzenCore::EngineState::MAX_STATES:
         default:
         {
-            engine.m_state = BlitzenCore::EngineState::SHUTDOWN;
+            blitzenEngine.m_state = BlitzenCore::EngineState::SHUTDOWN;
             break;
         }
         }
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
-
-        eventSystem->UpdateInput(coreClock.m_deltaTime, &dasher.m_eventContext);
-
+        // Using IMGUI for the editor requires some extra care for event handling
+        blitzenEventSystem->UpdateInput(blitzenClock.m_deltaTime, &dasher.m_eventContext);
 #else
-
         eventSystem->UpdateInput(coreClock.m_deltaTime);
-
 #endif
     }
-
-
-    std::unique_lock<std::mutex> lock(mtx);
-    loadingDoneConditional.wait(lock, [&] { return loadingDone.load(); });
 }
 
 #else

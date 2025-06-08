@@ -52,6 +52,14 @@ namespace BlitzenCore
 
             return true;
         }
+        case BlitEventType::BringBackEditor:
+        {
+            return true;
+        }
+        case BlitEventType::BringDasherRuntimeDebugWindow:
+        {
+            return true;
+        }
         case BlitEventType::RendererTransformUpdate:
         {
             //BlitzenEngine::UpdateRendererTransform(m_privateContext.pRenderer, m_blitzenContext.rendererTransformUpdate);
@@ -199,12 +207,15 @@ namespace BlitzenCore
 
 
     /*************************************                         {DEFAULT CALLBACKS SET BY}                            ************************************************/
-    static uint8_t OnEvent(BlitzenWorld::BlitzenPrivateContext& context, BlitzenCore::BlitEventType eventType)
+    static uint8_t OnShutdown(BlitzenWorld::BlitzenPrivateContext& context, BlitzenCore::BlitEventType eventType)
     {
         if (eventType == BlitzenCore::BlitEventType::EngineShutdown)
         {
             BLIT_WARN("Engine shutdown event encountered!");
             auto pBlitState{ context.pEngineState };
+
+            while (*context.pEngineState == BlitzenCore::EngineState::LOADING);// Wait
+
             *pBlitState = BlitzenCore::EngineState::SHUTDOWN;
 
             return 1;
@@ -347,6 +358,16 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
+    static BlitEventType BringBackEditorOnF10(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    {
+        return BlitEventType::BringBackEditor;
+    }
+
+    static BlitEventType BringDasherRuntimeDebugWindowOnF9(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    {
+        return BlitEventType::BringDasherRuntimeDebugWindow;
+    }
+
     static uint8_t ResizeEventCallback(BlitzenWorld::BlitzenPrivateContext& context, BlitzenCore::BlitEventType eventType)
     {
         auto& camera{ reinterpret_cast<BlitzenWorld::BlitzenWorldContext*>(context.pBlitzenContext)->pCameraContainer->GetMainCamera()};
@@ -373,7 +394,7 @@ namespace BlitzenCore
 
         BlitzenEngine::UpdateProjection(camera, camera.transformData.windowWidth, camera.transformData.windowHeight);
 
-        BlitML::vec2 hizExtent{ context.pRenderer->UpdateWindow((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight, context.pPlatform) };
+        BlitML::vec2 hizExtent{ context.pWORLD->P_RENDERER->UpdateWindow((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight, context.pPlatform) };
 
 #if defined(DASHER_JOIN)
         context.pDasher->UpdateWindowSize((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight);
@@ -415,7 +436,7 @@ namespace BlitzenCore
 
     void RegisterDefaultEvents(EventSystem* pEvents)
     {
-        BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::EngineShutdown, OnEvent);
+        BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::EngineShutdown, OnShutdown);
 
         BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::WindowUpdate, ResizeEventCallback);
 
@@ -438,11 +459,15 @@ namespace BlitzenCore
         BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback);
 
         BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(pEvents, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest);
+
+        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F9, BringDasherRuntimeDebugWindowOnF9);
+
+        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10);
     }
 
 
 
-    /***********************************                        EDITOR EVENTS                    **************************************************************/
+    /***********************************                        EDITOR EVENTS                    *******************************************************/
     static void EditorFreezeFrustum(BlitzenWorld::BlitzenPrivateContext& context)
     {
         auto pBlitzenContext{ reinterpret_cast<BlitzenWorld::BlitzenWorldContext*>(context.pBlitzenContext) };
@@ -451,8 +476,22 @@ namespace BlitzenCore
         camera.transformData.bFreezeFrustum = !camera.transformData.bFreezeFrustum;
     }
 
+    static void EditorEndSceneStart(BlitzenWorld::BlitzenPrivateContext& context)
+    {
+#if defined(DASHER_JOIN)
+        context.pDasher->m_state = DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN;
+
+        if (*context.pEngineState == EngineState::RUNNING)
+        {
+            *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+        }
+#endif
+    }
+
     void AssignEditorCallbacks(EventSystem* pContext)
     {
         pContext->m_editorButtonCallbacks[Ce_FreezeFrustumButtonID] = EditorFreezeFrustum;
+
+        pContext->m_editorButtonCallbacks[Ce_SceneStartButtonID] = EditorEndSceneStart;
     }
 }

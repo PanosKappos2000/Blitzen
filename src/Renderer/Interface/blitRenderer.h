@@ -46,13 +46,30 @@ namespace BlitzenEngine
 
     #endif
 
+    struct WORLD_blit
+    {
+        BlitCL::DynamicArray<SceneContext> m_scenes;
+
+        Renderer P_RENDERER;
+
+        DrawContext m_drawContext;
+
+        inline WORLD_blit(Camera& camera, MeshResources& meshes, RenderContainer& renders, TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
+            :m_drawContext{ camera, meshes, renders, textureManager, pPlatform }
+        {
+
+        }
+    };
+
     bool RenderingResourcesInit(RenderingResources* pResources, RendererPtrType pRenderer);
 
-    bool ManageGltf(const char* filepath, RenderingResources* pResources, EntityManager* pManager, RendererPtrType pRenderer);
+    bool ManageGltf(const char* filepath, RenderingResources* pResources, EntityManager* pManager, RendererPtrType pRenderer, SceneContext* pScene = nullptr);
 
-    void CreateDynamicObjectRendererTest(RenderContainer& renders, MeshResources& meshes, EntityManager* pManager);
+    void CreateDynamicObjectRendererTest(RenderContainer& renders, MeshResources& meshes, EntityManager* pManager, SceneContext* pScene = nullptr);
 
-    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, RendererPtrType pRenderer, EntityManager* pManager);
+    void LoadGeometryStressTest(RenderContainer& renders, MeshResources& meshContext, float transformMultiplier, SceneContext* pScene = nullptr);
+
+    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, WORLD_blit* pWORLD, EntityManager* pManager);
 
     void UpdateDynamicObjects(RendererPtrType pRenderer, EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext);    
 }

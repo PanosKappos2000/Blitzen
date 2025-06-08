@@ -101,6 +101,39 @@ namespace BlitzenPlatform
                 return false;
             }
 
+#if defined(DASHER_JOIN)
+
+            auto pDasher = reinterpret_cast<BlitzenCore::Dasher*>(args.m_pEditor);
+
+            if (!pDasher->Init(pRenderer))
+            {
+                BLIT_FATAL("Failed to initialize Dasher Editor");
+                return false;
+            }
+
+            if (!DasherPlatformInit(pDasher, hwnd))
+            {
+                BLIT_FATAL("Failed to initialize Dasher Editor");
+                return false;
+            }
+
+            pDasher->SetWindow(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight);
+
+#endif
+
+            auto pEvents{ reinterpret_cast<BlitzenCore::EventSystem*>(args.m_pEvents) };
+
+            BlitzenCore::RegisterDefaultEvents(pEvents);
+
+#if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
+
+            BlitzenCore::AssignEditorCallbacks(pEvents);
+
+#endif
+
+            // Success
+            return true;
+
             // success
             return true;
         }

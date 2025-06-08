@@ -64,6 +64,7 @@ namespace BlitzenCore
     constexpr uint32_t Ce_EditorButtonEventTypeCount = 5;
 
     constexpr uint32_t Ce_FreezeFrustumButtonID = 0;
+    constexpr uint32_t Ce_SceneStartButtonID = 1;
 
     constexpr size_t Ce_LinearAllocatorBlockSize = UINT32_MAX;
 
@@ -122,7 +123,12 @@ namespace BlitzenCore
 
 
     constexpr uint32_t Ce_MaxMeshCount = 10'000;
+    constexpr uint32_t Ce_EngineDefaultMeshesCount = 4;
     constexpr const char* Ce_DefaultMeshName = "bunny";
+    constexpr const char* Ce_DefaultDragonMeshName = "Stanford Dragon";
+    constexpr const char* Ce_DefaultHumanMeshname = "Base Human";
+    constexpr const char* Ce_DefaultKittenMeshName = "Kitten";
+    constexpr const char* Ce_MeshDoNotAddToTable = "BLIT_DO_NOT_ADD_TO_MESH_TABLE";
 
     constexpr uint32_t Ce_MaxMeshPrimitivesCount = 10'000;
 
@@ -230,11 +236,14 @@ namespace BlitzenCore
     enum class EngineState : uint8_t
     {
         RUNNING = 0,
-        SUSPENDED = 1,
-        LOADING = 2,
-        SHUTDOWN = 3,
-        SHUTDOWN_AFTER_LOAD = 5,
-        SETUP_AFTER_LOAD = 6,
+        RUNNING_EDITOR_NO_START = 5,
+
+        SUSPENDED = 20,
+        LOADING = 21,
+        SETUP_AFTER_LOAD = 22,
+
+        SHUTDOWN = 127,
+        SHUTDOWN_AFTER_LOAD = 128,
 
         MAX_STATES
     };

@@ -192,6 +192,8 @@ namespace BlitzenEngine
 
     void LoadGltfNodes(RenderContainer& renders, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
+        cgltfScope.m_pScene->m_renderOffset = renders.m_renderCount;
+
         for (size_t i = 0; i < cgltfScope.pData->nodes_count; ++i)
         {
             auto node = &cgltfScope.pData->nodes[i];
@@ -203,11 +205,11 @@ namespace BlitzenEngine
                 float matrix[16];
                 cgltf_node_transform_world(node, matrix);
 
-                // Switch gltf transform to Blitzen's transform
                 float translation[3];
                 float rotation[4];
                 float scale[3];
                 BlitML::decomposeTransform(translation, rotation, scale, matrix);
+
                 MeshTransform transform;
                 transform.pos = BlitML::vec3(translation[0], translation[1], translation[2]);
                 transform.scale = BlitML::Max(scale[0], BlitML::Max(scale[1], scale[2]));
@@ -221,6 +223,17 @@ namespace BlitzenEngine
                 renders.m_transforms[renders.m_staticTransformOffset++] = transform;
 				renders.m_transformCount++;
                 renders.m_staticTransformCount++;
+
+                if (cgltfScope.m_pScene)
+                {
+                    cgltfScope.m_pScene->m_meshNames.EmplaceEmtpy();
+                    cgltfScope.m_pScene->m_meshNames.Back().CopyString( cgltfScope.m_pScene->m_name.GetClassic() );
+                    cgltfScope.m_pScene->m_meshNames.Back().Append(std::to_string(i).data());
+;
+                    cgltfScope.m_pScene->m_renderCount += node->mesh->primitives_count;
+                }
+
+                meshContext.AddMesh(surfaceOffset, (uint32_t)surfaceIndices.GetSize(), cgltfScope.m_pScene ? cgltfScope.m_pScene->m_meshNames.Back().GetClassic() : BlitzenCore::Ce_MeshDoNotAddToTable);
 
                 // Adds mesh primitives as render objects
                 bool bPrimitivesLoaded = true;

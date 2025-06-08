@@ -4,10 +4,35 @@
 
 namespace BlitzenEngine
 {
+    struct SceneContext
+    {
+        BlitCL::String m_name{ "" };
+
+        BlitCL::DynamicArray<BlitCL::String> m_meshNames;
+
+        BlitCL::DynamicArray<BlitCL::String> m_materialNames;
+
+        BlitCL::DynamicArray<BlitCL::String> m_textureNames;
+
+        uint32_t m_renderOffset;
+        uint32_t m_renderCount{ 0 };
+
+        uint32_t m_transparentRenderOffset;
+        uint32_t m_transparentRenderCount{ 0 };
+
+        inline const char* DBLOG() const
+        {
+            return m_name.GetClassic();
+        }
+    };
+
     // Automatic free struct
     struct CgltfScope
     {
+        SceneContext* m_pScene{ nullptr };
+
         cgltf_data* pData;
+
         ~CgltfScope();
     };
 

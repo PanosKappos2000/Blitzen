@@ -16,6 +16,10 @@ namespace BlitzenCore
 
         WindowUpdate = 2,
 
+        BringBackEditor = 3,
+
+        BringDasherRuntimeDebugWindow = 4,
+
         MaxTypes = 8
     };
 

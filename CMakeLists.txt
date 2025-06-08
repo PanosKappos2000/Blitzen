@@ -25,6 +25,7 @@ add_executable(BlitzenEngine
                 # WORLD (ALL SYSTEMS)
                 "src/Core/BlitzenWorld/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
+                "src/Core/BlitzenWorld/blitzenWorldPrivate.cpp"
                 # DASHER UI
                 "src/Core/Dasher/DearDasher/dearDasherData.h"
                 "src/Core/Dasher/DearDasher/dearDasher.h"
@@ -45,6 +46,7 @@ add_executable(BlitzenEngine
                 "src/BlitCL/blitArray.h"
                 "src/BlitCL/blitHashMap.h"
                 "src/BlitCL/blitArrayIterator.h"
+                "src/BlitCL/blitclDebug.h"
 
                 # BLITZEN MATH LIBRARY
                 "src/BlitzenMathLibrary/blitML.h"
@@ -115,6 +117,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenVulkan/vulkanRaytracing.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanRendererSetup.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanCommands.cpp"
+                "src/Renderer/BlitzenVulkan/vulkanRuntimeHelpers.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanDraw.cpp"
                 # GL
                 "src/Renderer/BlitzenGL/openglData.h"
@@ -135,6 +138,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/dx12RNDResources.cpp"
                 "src/Renderer/BlitzenDX12/dx12Init.cpp"
                 "src/Renderer/BlitzenDX12/dx12RendererSetup.cpp"
+                "src/Renderer/BlitzenDX12/dx12RuntimeHepers.cpp"
                 "src/Renderer/BlitzenDX12/dx12Draw.cpp"
 
                 "src/VendorCode/fast_obj.h"
@@ -145,7 +149,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/BlitzenDX12/dx12RuntimeHepers.cpp" "src/Renderer/BlitzenVulkan/vulkanRuntimeHelpers.cpp")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Core/Dasher/Interface/dasherState.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

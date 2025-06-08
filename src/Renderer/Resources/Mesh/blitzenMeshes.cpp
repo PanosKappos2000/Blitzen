@@ -430,8 +430,8 @@ namespace BlitzenEngine
 
     void LoadTestGeometry(MeshResources& context)
     {
-        LoadMeshFromObj(context, "Assets/Meshes/dragon.obj", "dragon");
-        LoadMeshFromObj(context, "Assets/Meshes/kitten.obj", "kitten");
-        LoadMeshFromObj(context, "Assets/Meshes/FinalBaseMesh.obj", "human");
+        LoadMeshFromObj(context, "Assets/Meshes/dragon.obj", BlitzenCore::Ce_DefaultDragonMeshName);
+        LoadMeshFromObj(context, "Assets/Meshes/kitten.obj", BlitzenCore::Ce_DefaultKittenMeshName);
+        LoadMeshFromObj(context, "Assets/Meshes/FinalBaseMesh.obj", BlitzenCore::Ce_DefaultHumanMeshname);
     }
 }

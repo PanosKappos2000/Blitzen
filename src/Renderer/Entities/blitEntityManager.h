@@ -52,4 +52,5 @@ namespace BlitzenEngine
         }
     };
     
+    using EntitySystemMemory = BlitCL::SmartPointer<BlitzenEngine::EntityManager, BlitzenCore::AllocationType::Entity>;
 }
