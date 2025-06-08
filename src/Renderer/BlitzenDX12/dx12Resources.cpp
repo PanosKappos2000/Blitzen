@@ -20,7 +20,7 @@ namespace BlitzenDX12
 			srvHeapDescriptorCount += Ce_DrawCullInstSRVsRangeCount * ce_framesInFlight;// This include the descriptor used by the graphics pipeline in instanced mode
         }
 
-		if (CE_DX12OCCLUSION)
+		if (BlitzenCore::Ce_OcclusionCulling)
 		{
             srvHeapDescriptorCount += Ce_DrawVisUavDescriptorCount * ce_framesInFlight;
 		}

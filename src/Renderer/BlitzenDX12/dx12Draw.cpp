@@ -598,7 +598,7 @@ namespace BlitzenDX12
 			cmdContext.m_graphicsCmdList->EndRenderPass();
 		}
 
-		else if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+		else if constexpr (BlitzenCore::Ce_DrawTemporalOcclusion)
 		{
 			// Culling with Occlusion using previous frame depth pyramid
 			DrawOccTemporalPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_renders.m_renderCount, m_currentFrame);
@@ -630,7 +630,7 @@ namespace BlitzenDX12
 			-OCCLUDER COPIED TO HI-Z MAP
 			-HI-Z MAP USED FOR SECOND CULLING PASS WHICH PERFORMS OCCLUSION CULLING
 		*/
-		else if constexpr (CE_DX12OCCLUSION)
+		else if constexpr (BlitzenCore::Ce_OcclusionCulling)
 		{
 			// 1. FRUSTUM CULLING AND LOD SELECTION. COMMANDS CREATED FOR VISIBLE OBJECTS BASED ON THE SELECTED LOD
 			// ONLY OBJECTS THAT WERE TAGGED AS VISIBLE LAST FRAME ARE CHECKED

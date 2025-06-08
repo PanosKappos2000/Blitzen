@@ -318,7 +318,7 @@ namespace BlitzenDX12
 		}
 
 		// DRAW OCC ADDITIONAL
-		if constexpr (CE_DX12OCCLUSION)
+		if constexpr (BlitzenCore::Ce_OcclusionCulling)
 		{
 			// Additional Draw visibility srv 
 			D3D12_DESCRIPTOR_RANGE drawVisibilityBufferRange{};
@@ -500,7 +500,7 @@ namespace BlitzenDX12
 			}
 		}
 
-		if constexpr (CE_DX12OCCLUSION)
+		if constexpr (BlitzenCore::Ce_OcclusionCulling)
 		{
 			if (!CreateComputeShaderProgram(device, context.m_drawOccFirstRoot.Get(), context.m_drawOccFirstPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccFirst.cs.hlsl.bin"))
 			{
@@ -515,7 +515,7 @@ namespace BlitzenDX12
 			}
 		}
 
-		if constexpr (CE_DX12TEMPORAL_OCCLUSION)
+		if constexpr (BlitzenCore::Ce_DrawTemporalOcclusion)
 		{
 			if (!CreateComputeShaderProgram(device, context.m_drawOccLateRoot.Get(), context.m_drawOccTemporalPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccTemporal.cs.hlsl.bin"))
 			{
@@ -632,7 +632,7 @@ namespace BlitzenDX12
 			UINT64 visibilityBufferSize{ 0 };
 
 			// DRAW OCC MODE
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
 				BlitCL::DynamicArray<uint32_t> zeroData{ context.m_renders.m_renderCount, 0 };
 				
@@ -713,7 +713,7 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(copyDestBarriers[0], rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 			// DRAW OCC MODE VIS BUFFER (normally not needed for temporal occlusion)
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferDestBarrier, rwResources.m_drawVisBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -738,7 +738,7 @@ namespace BlitzenDX12
 
 			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferSourceBarrier, drawVisibilityStaging.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -756,7 +756,7 @@ namespace BlitzenDX12
 			cmdContext.m_copyCmdList->ResourceBarrier(UINT(copySourceBarriers.GetSize()), copySourceBarriers.Data());
 
 			// visibilities zeroed
-			if constexpr (CE_DX12OCCLUSION)
+			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
 				cmdContext.m_copyCmdList->CopyResource(rwResources.m_drawVisBuffer.buffer.Get(), drawVisibilityStaging.Get());
 			}
@@ -1062,7 +1062,7 @@ namespace BlitzenDX12
 		}
 
 		// VISIBILITY BUFFER FOR OCCLUSION (non-temporal)
-		if constexpr (CE_DX12OCCLUSION)
+		if constexpr (BlitzenCore::Ce_OcclusionCulling)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
@@ -1261,7 +1261,7 @@ namespace BlitzenDX12
 			}
 		}
 
-		if constexpr (CE_DX12OCCLUSION)
+		if constexpr (BlitzenCore::Ce_OcclusionCulling)
 		{
 			
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)

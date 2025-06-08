@@ -230,7 +230,7 @@ namespace BlitzenEngine
                     cgltfScope.m_pScene->m_meshNames.Back().CopyString( cgltfScope.m_pScene->m_name.GetClassic() );
                     cgltfScope.m_pScene->m_meshNames.Back().Append(std::to_string(i).data());
 ;
-                    cgltfScope.m_pScene->m_renderCount += node->mesh->primitives_count;
+                    cgltfScope.m_pScene->m_renderCount += (uint32_t)node->mesh->primitives_count;
                 }
 
                 meshContext.AddMesh(surfaceOffset, (uint32_t)surfaceIndices.GetSize(), cgltfScope.m_pScene ? cgltfScope.m_pScene->m_meshNames.Back().GetClassic() : BlitzenCore::Ce_MeshDoNotAddToTable);

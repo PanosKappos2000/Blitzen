@@ -140,6 +140,8 @@ namespace BlitzenVulkan
         // Execute
         PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullBarriers), cullBarriers, 1, &HI_Z_barrier);
 
+        descriptorContext.m_HI_Z_descInfo[frame].imageView = readWrites.m_HI_Z_MAP.m_pyramid.m_view.m_handle;
+
         // Descriptors
         PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount, 
             &descriptorContext.m_pushDescriptorsCull[frame * Ce_CullDescriptorCount]);

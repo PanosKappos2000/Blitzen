@@ -160,7 +160,7 @@ namespace BlitzenDX12
 		RecreateSwapchain(hwnd, m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain,
 			m_swapchainBackBuffers, m_depthBuffers, m_descriptorContext, m_cmdContext);
 
-		if (CE_DX12OCCLUSION)
+		if constexpr (BlitzenCore::Ce_OcclusionCulling)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{

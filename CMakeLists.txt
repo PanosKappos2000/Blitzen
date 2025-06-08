@@ -214,8 +214,8 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
-                            BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
-                            BLITZEN_DRAW_TEMPORAL_OCCLUSION
+                            #BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
+                            #BLITZEN_DRAW_TEMPORAL_OCCLUSION
                             BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
                             #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
@@ -231,7 +231,6 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             # Dx12 specific preprocessor macros
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
                             #DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
-                            DX12_TEMPORAL_DRAW_OCCLUSION # Activates temporal occlusion culling
                             )
 
 

@@ -179,7 +179,7 @@ namespace BlitzenCore
 
 #endif
 
-#ifdef BLITZEN_DRAW_INSTANCED_CULLING
+#if defined(BLITZEN_DRAW_INSTANCED_CULLING)
         
     constexpr uint8_t Ce_InstanceCulling = 1;
     
@@ -201,10 +201,12 @@ namespace BlitzenCore
 
 #if defined(BLIT_DEPTH_PYRAMID_TEST) || defined(BLITZEN_DRAW_TEMPORAL_OCCLUSION) || defined(BLITZEN_CUSTER_CULLING)
 
+    constexpr uint8_t Ce_OcclusionCulling = 1;
     constexpr uint8_t Ce_Build_HI_Z = 1;
 
 #else
 
+    constexpr uint8_t Ce_OcclusionCulling = 0;
     constexpr uint8_t Ce_Build_HI_Z = 0;
 
 #endif

@@ -236,9 +236,8 @@ namespace BlitCL
             if (m_size != 0)
             {
                 snprintf(m_data, m_size + 1, "%s", previousData);
+                BlitzenCore::BlitFree<char>(StrAlloc, previousData, previousCapacity);
             }
-
-            BlitzenCore::BlitFree<char>(StrAlloc, previousData, previousCapacity);
         }
 
     private:
