@@ -220,6 +220,9 @@ namespace BlitzenDX12
 
         // Transparent
         DX12WRAPPER<ID3D12PipelineState> m_transparentDrawPso;
+
+        D3D12_RENDER_PASS_RENDER_TARGET_DESC m_renderTargetPassDesc[ce_framesInFlight]{};
+        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC m_depthTargetPassDesc[ce_framesInFlight]{};
 	};
 
     struct CmdContext

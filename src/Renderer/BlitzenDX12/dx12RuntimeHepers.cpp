@@ -1,6 +1,7 @@
 #if defined(_WIN32)
 
 #include "dx12Renderer.h"
+#include "dx12Pipelines.h"
 #include "dx12RNDResources.h"
 	
 namespace BlitzenDX12
@@ -149,6 +150,7 @@ namespace BlitzenDX12
 			offset++;
 		}
 	}
+
 	BlitML::vec2 Dx12Renderer::UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle)
 	{
 		auto& rwResources = m_rwResources[m_currentFrame];
@@ -160,7 +162,9 @@ namespace BlitzenDX12
 		RecreateSwapchain(hwnd, m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain,
 			m_swapchainBackBuffers, m_depthBuffers, m_descriptorContext, m_cmdContext);
 
-		if constexpr (BlitzenCore::Ce_OcclusionCulling)
+		CreateOMSTargetDescs(m_pipelineContext.m_renderTargetPassDesc, m_pipelineContext.m_depthTargetPassDesc, m_descriptorContext.m_swapchainRtvHandle, m_descriptorContext.m_depthTargetDSVHandle);
+
+		if constexpr (BlitzenCore::Ce_Build_HI_Z)
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
@@ -175,7 +179,7 @@ namespace BlitzenDX12
 		return BlitML::vec2{ float(rwResources.m_HI_Z.width), float(rwResources.m_HI_Z.height) };
 	}
 
-	void Dx12Renderer::Present()
+	void Dx12Renderer::Present(UINT placeholderCount)
 	{
 		m_swapchain->Present(1, 0);
 

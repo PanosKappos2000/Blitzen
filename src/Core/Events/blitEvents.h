@@ -1,40 +1,16 @@
 #pragma once
-#include "Core/blitMemory.h"
-#include "BlitCL/blitPfn.h"
 #include "blitKeys.h"
-#include "Core/BlitzenWorld/blitzenWorld.h"
+#include "blitController.h"
 #include "Core/BlitzenWorld/blitzenWorldPrivate.h"
 #include "blitEditorEvents.h"
 
 namespace BlitzenCore
 {
-    enum class BlitEventType : uint8_t
-    {
-        EngineShutdown = 0,
-
-        RendererTransformUpdate = 1,
-
-        WindowUpdate = 2,
-
-        BringBackEditor = 3,
-
-        BringDasherRuntimeDebugWindow = 4,
-
-        MaxTypes = 8
-    };
-
+    // Standard events
     using EventCallback = BlitCL::Pfn<uint8_t, BlitzenWorld::BlitzenPrivateContext&, BlitEventType>;
 
-    using KeyPressCallback = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&>;
-    using KeyReleaseCallback = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&>;
-
-    using MouseButtonPressCallback = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&, int16_t, int16_t>;
-    using MouseButtonReleaseCallback = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&, int16_t, int16_t>;
-
-    using MouseMoveCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&, int16_t, int16_t, int16_t, int16_t>;
-    using MouseWheelCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::BlitzenWorldContext&, int8_t>;
-
-    using EditorCallback = BlitCL::Pfn<void, BlitzenWorld::BlitzenPrivateContext&>;
+    // Editor events take full context and return controller id
+    using EditorCallback = BlitCL::Pfn<uint32_t, BlitzenWorld::BlitzenPrivateContext&>;
 
     // Mouse buttons and mouse position
     struct MouseState
@@ -67,47 +43,41 @@ namespace BlitzenCore
         BlitzenWorld::BlitzenPrivateContext& m_privateContext;
         BlitzenWorld::BlitzenWorldContext& m_blitzenContext;
 
-        EventCallback m_eventCallbacks[uint8_t(BlitEventType::MaxTypes)];
+        EventCallback m_eventCallbacks[uint8_t(BlitEventType::MaxTypes)]{};
 
-        KeyPressCallback keyPressCallbacks[Ce_KeyCallbackCount];
-        KeyReleaseCallback keyReleaseCallbacks[Ce_KeyCallbackCount];
+        Controller m_controllers[Ce_MaxControllerCount];
+        uint32_t m_activeControllerIDX{ Ce_InitialControllerID };
 
-        MouseMoveCallbackType mouseMoveCallback;
-        MouseWheelCallbackType mouseWheelCallback;
-
-        MouseButtonReleaseCallback mouseReleaseCallbacks[3];
-        MouseButtonPressCallback mousePressCallbacks[3];
+        EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BlitzenWorld::BlitzenPrivateContext&)->uint32_t {return Ce_InitialControllerID; } };
 
         bool m_currentKeyboard[Ce_KeyCallbackCount];
         bool m_previousKeyboard[Ce_KeyCallbackCount];
 
         MouseState m_currentMouse;
         MouseState m_previousMouse;
-
-        EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BlitzenWorld::BlitzenPrivateContext&) {} };
     };
 
     // Passes the logic to be called when a speicific key is pressed
-    void RegisterKeyPressCallback(EventSystem* pContext, BlitKey key, KeyPressCallback callback);
+    void RegisterKeyPressCallback(EventSystem* pContext, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX);
 
     // Passes the logic to be called when a specific key is released
-    void RegisterKeyReleaseCallback(EventSystem* pContext, BlitKey key, KeyReleaseCallback callback);
+    void RegisterKeyReleaseCallback(EventSystem* pContext, BlitKey key, KeyReleaseCallback callback, uint32_t cotrollerIDX);
 
     // Passes logic for both key press and release
-    void RegisterKeyPressAndReleaseCallback(EventSystem* pContext, BlitKey key, KeyPressCallback press, KeyReleaseCallback release);
+    void RegisterKeyPressAndReleaseCallback(EventSystem* pContext, BlitKey key, KeyPressCallback press, KeyReleaseCallback release, uint32_t controllerIDX);
 
     // Passed logic to be called when one of the mouse buttons is pressed
-    void RegisterMouseButtonPressCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback callback);
+    void RegisterMouseButtonPressCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback callback, uint32_t cotrollerIDX);
 
     // Initializes the release function pointer for the given key
-    void RegisterMouseButtonReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonReleaseCallback callback);
+    void RegisterMouseButtonReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonReleaseCallback callback, uint32_t cotrollerIDX);
 
     // Initializes both the release and press function pointers for the given key
-    void RegisterMouseButtonPressAndReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release);
+    void RegisterMouseButtonPressAndReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release, uint32_t controllerIDX);
 
-    void RegisterMouseWheelCallback(EventSystem* pContext, MouseWheelCallbackType callback);
+    void RegisterMouseWheelCallback(EventSystem* pContext, MouseWheelCallbackType callback, uint32_t cotrollerIDX);
 
-    void RegisterMouseMoveCallback(EventSystem* pContext, MouseMoveCallbackType callback);
+    void RegisterMouseMoveCallback(EventSystem* pContext, MouseMoveCallbackType callback, uint32_t cotrollerIDX);
 
     // Adds a new RegisteredEvent to the eventState event types array
     void RegisterEvent(EventSystem* pContext, BlitEventType type, EventCallback eventCallback);

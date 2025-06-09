@@ -41,39 +41,39 @@ namespace BlitzenDX12
     void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
         UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace /*=0*/)
     {
-		range = {};
+        range = {};
 
-		range.BaseShaderRegister = baseShaderRegister;
-		range.RegisterSpace = registerSpace;
-		range.NumDescriptors = numDescriptors;
-		range.RangeType = rangeType;
+        range.BaseShaderRegister = baseShaderRegister;
+        range.RegisterSpace = registerSpace;
+        range.NumDescriptors = numDescriptors;
+        range.RangeType = rangeType;
 
-		range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     }
 
-    void CreateRootParameterPushConstants(D3D12_ROOT_PARAMETER& rootParameter, UINT shaderRegister, UINT registerSpace, 
+    void CreateRootParameterPushConstants(D3D12_ROOT_PARAMETER& rootParameter, UINT shaderRegister, UINT registerSpace,
         UINT num32BitValues, D3D12_SHADER_VISIBILITY shaderVisibility)
     {
         rootParameter = {};
 
-		rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		rootParameter.Constants.ShaderRegister = shaderRegister;
+        rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        rootParameter.Constants.ShaderRegister = shaderRegister;
         rootParameter.Constants.RegisterSpace = registerSpace;
-		rootParameter.Constants.Num32BitValues = num32BitValues;
+        rootParameter.Constants.Num32BitValues = num32BitValues;
 
-		rootParameter.ShaderVisibility = shaderVisibility;
+        rootParameter.ShaderVisibility = shaderVisibility;
     }
 
-    void CreateRootParameterDescriptorTable(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges, 
+    void CreateRootParameterDescriptorTable(D3D12_ROOT_PARAMETER& rootParameter, D3D12_DESCRIPTOR_RANGE* pRanges, UINT numRanges,
         D3D12_SHADER_VISIBILITY shaderVisibility)
     {
         rootParameter = {};
 
-		rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParameter.DescriptorTable.NumDescriptorRanges = numRanges;
-		rootParameter.DescriptorTable.pDescriptorRanges = pRanges;
+        rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        rootParameter.DescriptorTable.NumDescriptorRanges = numRanges;
+        rootParameter.DescriptorTable.pDescriptorRanges = pRanges;
 
-		rootParameter.ShaderVisibility = shaderVisibility;
+        rootParameter.ShaderVisibility = shaderVisibility;
     }
 
     void CreateRootParameterCBV(D3D12_ROOT_PARAMETER& rootParameter, UINT baseRegister, UINT registerSpace, D3D12_SHADER_VISIBILITY shaderVisibility)
@@ -110,9 +110,9 @@ namespace BlitzenDX12
     }
 
 
-    uint8_t CreateRootSignature(ID3D12Device* device, ID3D12RootSignature** ppRootSignature, 
+    uint8_t CreateRootSignature(ID3D12Device* device, ID3D12RootSignature** ppRootSignature,
         UINT numParameters, D3D12_ROOT_PARAMETER* pParameters,
-        D3D12_ROOT_SIGNATURE_FLAGS flags /*=D3D12_ROOT_SIGNATURE_FLAG_NONE*/, 
+        D3D12_ROOT_SIGNATURE_FLAGS flags /*=D3D12_ROOT_SIGNATURE_FLAG_NONE*/,
         D3D_ROOT_SIGNATURE_VERSION rootSignatureVersion /*=D3D_ROOT_SIGNATURE_VERSION::D3D_ROOT_SIGNATURE_VERSION_1*/)
     {
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
@@ -128,7 +128,7 @@ namespace BlitzenDX12
         if (FAILED(serializeRes))
         {
             BLIT_ERROR("Failed to serialize root signature");
-            
+
             if (errorBlob)
             {
                 OutputDebugStringA((char*)errorBlob->GetBufferPointer());
@@ -156,7 +156,7 @@ namespace BlitzenDX12
         {
             BLIT_ERROR("Failed to compile shader program");
 
-            if (errorBlob) 
+            if (errorBlob)
             {
                 OutputDebugStringA((char*)errorBlob->GetBufferPointer());
             }
@@ -190,7 +190,7 @@ namespace BlitzenDX12
 
     void CreateDefaultPsoDescription(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
     {
-		psoDesc = {};
+        psoDesc = {};
         psoDesc.InputLayout = {};
 
         psoDesc.RasterizerState = {};
@@ -228,7 +228,7 @@ namespace BlitzenDX12
         psoDesc.DepthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
         psoDesc.DepthStencilState.BackFace = psoDesc.DepthStencilState.FrontFace;
 
-        
+
         psoDesc.NumRenderTargets = 1;
         psoDesc.RTVFormats[0] = Ce_SwapchainFormat;
         psoDesc.SampleDesc.Count = 1;
@@ -241,7 +241,7 @@ namespace BlitzenDX12
         D3D12_ROOT_PARAMETER rootParameters[1] = {};
         CreateRootParameterPushConstants(rootParameters[0], 0, 0, 3, D3D12_SHADER_VISIBILITY_VERTEX);
 
-        if (!CreateRootSignature(device, rootSignature.ReleaseAndGetAddressOf(), 0, nullptr, 
+        if (!CreateRootSignature(device, rootSignature.ReleaseAndGetAddressOf(), 0, nullptr,
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT))
         {
             BLIT_ERROR("Failed to create triangle root signature");
@@ -286,10 +286,10 @@ namespace BlitzenDX12
         size_t vsSize{ 0 };
 
         vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDraw.vs.hlsl.bin", vsBytes);
-        if(!vsSize)
+        if (!vsSize)
         {
-			BLIT_ERROR("Failed to create main opaque vertex shader");
-			return 0;
+            BLIT_ERROR("Failed to create main opaque vertex shader");
+            return 0;
         }
 
         D3D12_SHADER_BYTECODE vsCode{};
@@ -298,9 +298,9 @@ namespace BlitzenDX12
 
         BlitCL::String psBytes;
         size_t psSize{ GetShaderBytes(device, "HlslShaders/PS/opaqueDraw.ps.hlsl.bin", psBytes) };
-        if(!psSize)
+        if (!psSize)
         {
-			BLIT_ERROR("Failed to create main opaque pixel shader");
+            BLIT_ERROR("Failed to create main opaque pixel shader");
             return 0;
         }
         D3D12_SHADER_BYTECODE psCode{};
@@ -308,7 +308,7 @@ namespace BlitzenDX12
         psCode.pShaderBytecode = psBytes.Data();
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-		CreateDefaultPsoDescription(psoDesc);
+        CreateDefaultPsoDescription(psoDesc);
         psoDesc.pRootSignature = ctx.m_opaqueDrawRoot.Get();
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;
@@ -317,34 +317,34 @@ namespace BlitzenDX12
         HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawPso.ReleaseAndGetAddressOf()));
         if (FAILED(psoResult))
         {
-			BLIT_ERROR("Failed to create opaque draw pipeline state object");
+            BLIT_ERROR("Failed to create opaque draw pipeline state object");
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
         }
 
         if constexpr (BlitzenCore::Ce_InstanceCulling)
         {
-			vsBytes.Clear();
+            vsBytes.Clear();
             vsSize = 0;
 
             vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDrawInst.vs.hlsl.bin", vsBytes);
             if (vsSize == 0)
             {
-				BLIT_ERROR("Failed to create opaque instanced vertex shader");
+                BLIT_ERROR("Failed to create opaque instanced vertex shader");
                 return 0;
             }
 
-			vsCode.BytecodeLength = vsSize;
-			vsCode.pShaderBytecode = vsBytes.Data();
+            vsCode.BytecodeLength = vsSize;
+            vsCode.pShaderBytecode = vsBytes.Data();
 
-			psoDesc.VS = vsCode;
-			psoDesc.pRootSignature = ctx.m_opaqueDrawInstRoot.Get();
+            psoDesc.VS = vsCode;
+            psoDesc.pRootSignature = ctx.m_opaqueDrawInstRoot.Get();
 
-			HRESULT psoInstResult{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawInstPso.ReleaseAndGetAddressOf())) };
-			if (FAILED(psoInstResult))
-			{
-				BLIT_ERROR("Failed to create opaque draw instanced pipeline state object");
-				return LOG_ERROR_MESSAGE_AND_RETURN(psoInstResult);
-			}
+            HRESULT psoInstResult{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawInstPso.ReleaseAndGetAddressOf())) };
+            if (FAILED(psoInstResult))
+            {
+                BLIT_ERROR("Failed to create opaque draw instanced pipeline state object");
+                return LOG_ERROR_MESSAGE_AND_RETURN(psoInstResult);
+            }
         }
 
         return 1;
@@ -376,6 +376,36 @@ namespace BlitzenDX12
         }
 
         return 1;
+    }
+
+    void CreateOMSTargetDescs(D3D12_RENDER_PASS_RENDER_TARGET_DESC* renderTargetDesc, D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* depthTargetDesc, 
+        D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetHandle, D3D12_CPU_DESCRIPTOR_HANDLE* depthTargetHandle)
+    {
+        for (UINT frame = 0; frame < ce_framesInFlight; ++frame)
+        {
+            // DEPTH TARGET
+            depthTargetDesc[frame] = {};
+            depthTargetDesc[frame].cpuDescriptor = depthTargetHandle[frame];
+
+            depthTargetDesc[frame].DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = Ce_ClearDepth;
+
+            depthTargetDesc[frame].DepthBeginningAccess.Clear.ClearValue.Format = Ce_DepthTargetFormat;
+
+            depthTargetDesc[frame].DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+            // RENDER TARGET
+            renderTargetDesc[frame] = {};
+            renderTargetDesc[frame].cpuDescriptor = renderTargetHandle[frame];
+
+            renderTargetDesc[frame].BeginningAccess.Clear.ClearValue.Color[0] = BlitzenCore::Ce_DefaultWindowBackgroundColor[0];
+            renderTargetDesc[frame].BeginningAccess.Clear.ClearValue.Color[1] = BlitzenCore::Ce_DefaultWindowBackgroundColor[1];
+            renderTargetDesc[frame].BeginningAccess.Clear.ClearValue.Color[2] = BlitzenCore::Ce_DefaultWindowBackgroundColor[2];
+            renderTargetDesc[frame].BeginningAccess.Clear.ClearValue.Color[3] = BlitzenCore::Ce_DefaultWindowBackgroundColor[3];
+
+            renderTargetDesc[frame].BeginningAccess.Clear.ClearValue.Format = Ce_SwapchainFormat;
+
+            renderTargetDesc[frame].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        }
     }
 
     void DefineViewportAndScissor(ID3D12GraphicsCommandList* commandList, float width, float height)
@@ -413,41 +443,26 @@ namespace BlitzenDX12
         cmdList->ClearDepthStencilView(descriptorContext.m_depthTargetDSVHandle[swapchainIndex], D3D12_CLEAR_FLAG_DEPTH, Ce_ClearDepth, 0, 0, nullptr);
     }
 
-    void BeginRenderPass(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, UINT swapchainIndex, uint8_t isFirstPass)
+    void BeginRenderPassClear(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, UINT swapchainIndex)
     {
-        // Render target bind
         cmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIndex], FALSE, &descriptorContext.m_depthTargetDSVHandle[swapchainIndex]);
 
-        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthTargetDesc{};
-        D3D12_RENDER_PASS_RENDER_TARGET_DESC renderTargetDesc{};
-        depthTargetDesc.cpuDescriptor = descriptorContext.m_depthTargetDSVHandle[swapchainIndex];
-        renderTargetDesc.cpuDescriptor = descriptorContext.m_swapchainRtvHandle[swapchainIndex];
-        if (isFirstPass)
-        {
-            depthTargetDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-            depthTargetDesc.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth = Ce_ClearDepth;
-            depthTargetDesc.DepthBeginningAccess.Clear.ClearValue.Format = Ce_DepthTargetFormat;
-            depthTargetDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        pipelineContext.m_depthTargetPassDesc[swapchainIndex].DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+            
+        pipelineContext.m_renderTargetPassDesc[swapchainIndex].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
 
-            renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[0] = BlitzenCore::Ce_DefaultWindowBackgroundColor[0];
-            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[1] = BlitzenCore::Ce_DefaultWindowBackgroundColor[1];
-            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[2] = BlitzenCore::Ce_DefaultWindowBackgroundColor[2];
-            renderTargetDesc.BeginningAccess.Clear.ClearValue.Color[3] = BlitzenCore::Ce_DefaultWindowBackgroundColor[3];
-            renderTargetDesc.BeginningAccess.Clear.ClearValue.Format = Ce_SwapchainFormat;
-            renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-        }
-        else
-        {
-            depthTargetDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
-            depthTargetDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        cmdList->BeginRenderPass(1, &pipelineContext.m_renderTargetPassDesc[swapchainIndex], &pipelineContext.m_depthTargetPassDesc[swapchainIndex], D3D12_RENDER_PASS_FLAG_NONE);
+    }
 
-            renderTargetDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
-            renderTargetDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-        }
+    void BeginRenderPassPreserve(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, UINT swapchainIndex)
+    {
+        cmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIndex], FALSE, &descriptorContext.m_depthTargetDSVHandle[swapchainIndex]);
 
-        // Begin render pass
-        cmdList->BeginRenderPass(1, &renderTargetDesc, &depthTargetDesc, D3D12_RENDER_PASS_FLAG_NONE);
+        pipelineContext.m_depthTargetPassDesc[swapchainIndex].DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+
+        pipelineContext.m_renderTargetPassDesc[swapchainIndex].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+
+        cmdList->BeginRenderPass(1, &pipelineContext.m_renderTargetPassDesc[swapchainIndex], &pipelineContext.m_depthTargetPassDesc[swapchainIndex], D3D12_RENDER_PASS_FLAG_NONE);
     }
 }
 

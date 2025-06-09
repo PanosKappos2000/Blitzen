@@ -138,6 +138,8 @@ namespace BlitzenVulkan
     constexpr VkPresentModeKHR Ce_DesiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 #endif
 
+    constexpr uint32_t Ce_PresentWaitMaxCount = 2;
+
     constexpr VkImageUsageFlags Ce_SwapchainImageUsageFlags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     constexpr uint32_t Ce_SwapchainDescriptorBinding = 0;
     constexpr uint32_t Ce_MaxSwapchainImageCount = 16;

@@ -295,6 +295,68 @@ namespace BlitzenVulkan
         PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(graphicsBarrier), graphicsBarrier, 0, nullptr);
     }
 
+    static void DrawTemporalOccTrans(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
+    {
+        // Count reset barrier
+        VkBufferMemoryBarrier2 resetBarrier{};
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, resetBarrier, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+            VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // Execute 
+        PipelineBarrier(cmdb, 0, nullptr, 1, &resetBarrier, 0, nullptr);
+
+        // Reset
+        vkCmdFillBuffer(cmdb, readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
+
+        // Barrier waits for count reset, last frame draw commands read and visibility buffer write
+        VkBufferMemoryBarrier2 cullingBarriers[2]{};
+        // Count reset barrier
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, cullingBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+        // Commands read barrier
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, cullingBarriers[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+
+        // Additional image memory barrier for depth pyramid
+        VkImageMemoryBarrier2 HI_Z_barrier{};
+        ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, HI_Z_barrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+
+        // execute
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers, 1, &HI_Z_barrier);
+
+        descriptorContext.m_HI_Z_descInfo[frame].imageView = readWrites.m_HI_Z_MAP.m_pyramid.m_view.m_handle;
+
+        // Descriptors
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_CullDescriptorCount,
+            &descriptorContext.m_pushDescriptorsCull[Ce_CullDescriptorCount * frame]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, Ce_SharedDescriptorCount,
+            &descriptorContext.m_pushDescriptorsShared[Ce_SharedDescriptorCount * frame]);
+        PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLayout.handle, Ce_PushDescriptorSetID, 1,
+            &descriptorContext.m_HI_Z_cullDescriptor[frame]);
+
+        // Pipeline and descriptors
+        vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawTemporalOccPso.handle);
+        DrawCullShaderPushConstant pushConstant{ descriptorContext.m_transRenderAddr, drawContext.m_renders.m_transparentRenderCount};
+        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
+
+        // Dispatch
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_renders.m_transparentRenderCount, 64), 1, 1);
+
+        // Barrier blocks graphics command and count read
+        VkBufferMemoryBarrier2 graphicsBarrier[2]{};
+        // Count
+        BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, graphicsBarrier[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, 0, VK_WHOLE_SIZE);
+        // Commands
+        BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, graphicsBarrier[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
+            VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
+        // Execute
+        PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(graphicsBarrier), graphicsBarrier, 0, nullptr);
+    }
+
     static void ClusterDispatch(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
         RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
@@ -539,15 +601,23 @@ namespace BlitzenVulkan
         }*/
     }
 
-    static void DrawOpaque(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
-        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, 
-        VkExtent2D drawExtent, uint8_t latePass)
+    static void RenderPassClear(VkCommandBuffer cmdb, PipelineContext& pipelineContext, uint32_t frame, VkExtent2D drawExtent)
     {
-        // Render pass begin
-        pipelineContext.m_colorTargetInfo[frame].loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
-        pipelineContext.m_depthTargetInfo[frame].loadOp = latePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR;
-        BeginRendering(cmdb, drawExtent, {0, 0}, 1, &pipelineContext.m_colorTargetInfo[frame], &pipelineContext.m_depthTargetInfo[frame], nullptr);
+        pipelineContext.m_colorTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        pipelineContext.m_depthTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        BeginRendering(cmdb, drawExtent, { 0, 0 }, 1, &pipelineContext.m_colorTargetInfo[frame], &pipelineContext.m_depthTargetInfo[frame], nullptr);
+    }
 
+    static void RenderPassStore(VkCommandBuffer cmdb, PipelineContext& pipelineContext, uint32_t frame, VkExtent2D drawExtent)
+    {
+        pipelineContext.m_colorTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        pipelineContext.m_depthTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        BeginRendering(cmdb, drawExtent, { 0, 0 }, 1, &pipelineContext.m_colorTargetInfo[frame], &pipelineContext.m_depthTargetInfo[frame], nullptr);
+    }
+
+    static void DrawOpaque(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
+    {
         // Descriptors
         PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_PushDescriptorSetID, Ce_GraphicsDescriptorCount,
             descriptorContext.m_pushDescriptorsGraphics);
@@ -565,9 +635,6 @@ namespace BlitzenVulkan
         vkCmdBindIndexBuffer(cmdb, readOnlies.m_idxBuffer.m_buffer.m_handle, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexedIndirectCount(cmdb, readWrites.m_drawCmdBuffer.m_buffer.m_handle, offsetof(IndirectDrawData, drawIndirect),
             readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, Ce_DrawCmdElementCount, sizeof(IndirectDrawData));
-
-        // End pass
-        vkCmdEndRendering(cmdb);
     }
 
     static void DrawOpaqueRT()
@@ -585,14 +652,8 @@ namespace BlitzenVulkan
     }
 
     static void DrawTransparents(VkCommandBuffer cmdb, VkInstance instance, PipelineContext& pipelineContext, ROResources& readOnlies,
-        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame, 
-        VkExtent2D drawExtent)
+        RWResources& readWrites, DescriptorContext& descriptorContext, BlitzenEngine::DrawContext& drawContext, uint32_t frame)
     {
-        // Render pass begin
-        pipelineContext.m_colorTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        pipelineContext.m_colorTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        BeginRendering(cmdb, drawExtent, { 0, 0 }, 1, &pipelineContext.m_colorTargetInfo[frame], &pipelineContext.m_depthTargetInfo[frame], nullptr);
-
         // Descriptors
         PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawLayout.handle, Ce_PushDescriptorSetID, Ce_GraphicsDescriptorCount,
             descriptorContext.m_pushDescriptorsGraphics);
@@ -610,9 +671,6 @@ namespace BlitzenVulkan
         vkCmdBindIndexBuffer(cmdb, readOnlies.m_idxBuffer.m_buffer.m_handle, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexedIndirectCount(cmdb, readWrites.m_drawCmdBuffer.m_buffer.m_handle, offsetof(IndirectDrawData, drawIndirect),
             readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, Ce_DrawCmdElementCount, sizeof(IndirectDrawData));
-
-        // End pass
-        vkCmdEndRendering(cmdb);
     }
 
     static void DrawTransRT()
@@ -829,16 +887,22 @@ namespace BlitzenVulkan
 
             FirstRenderPassBarriers(cmd.m_mainGraphicsCmdB, readWrites.m_colorTarget.m_image.m_image.m_handle, readWrites.m_depthTarget.m_image.m_image.m_handle);
 
-            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame,
-                { m_drawWidth, m_drawHeight }, 0);
+            RenderPassClear(cmd.m_mainGraphicsCmdB, m_pipelines, m_currentFrame, VkExtent2D{ m_drawWidth, m_drawHeight });
+
+            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+
+            vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
             if (context.m_renders.m_transparentRenderCount != 0)
             {
                 ClusterCullTransparent(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame],
                     m_descriptorContext, context, m_currentFrame, transparentDispatchCount);
 
-                DrawTransparents(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame,
-                    { m_drawWidth, m_drawHeight });
+                RenderPassStore(cmd.m_mainGraphicsCmdB, m_pipelines, m_currentFrame, VkExtent2D{ m_drawWidth, m_drawHeight });
+
+                DrawTransparents(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+
+                vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
             }
 
             // Copies the color attachment to the swapchain image
@@ -864,9 +928,25 @@ namespace BlitzenVulkan
 
             GenerateHiZ(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
+            /*if (context.m_renders.m_transparentRenderCount != 0)
+            {
+                DrawTemporalOccTrans(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+
+                RenderPassStore(cmd.m_mainGraphicsCmdB, m_pipelines, m_currentFrame, VkExtent2D{ m_drawWidth, m_drawHeight });
+
+                DrawTransparents(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame,
+                    { m_drawWidth, m_drawHeight });
+
+                vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
+            }*/
+
             DrawTemporalOcclusionPass(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame, { m_drawWidth, m_drawHeight }, 0);
+            RenderPassClear(cmd.m_mainGraphicsCmdB, m_pipelines, m_currentFrame, VkExtent2D{ m_drawWidth, m_drawHeight });
+
+            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+
+            vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
             // COPIES COLOR TARGET TO SWAPCHAIN
             if constexpr (BlitzenCore::Ce_DepthPyramidDebug)
@@ -897,33 +977,36 @@ namespace BlitzenVulkan
 
             uint8_t latePass{ 0 };
 
-            // First culling pass
+            // CULLING NO OCCLUDERS
             DrawCullFirstPass(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
             FirstRenderPassBarriers(cmd.m_mainGraphicsCmdB, readWrites.m_colorTarget.m_image.m_image.m_handle, readWrites.m_depthTarget.m_image.m_image.m_handle);
 
-            // First draw pass
-            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame,
-                { m_drawWidth, m_drawHeight }, latePass);
+            // FIRST RENDER PASS(OCCLUDER GEN)
+            RenderPassClear(cmd.m_mainGraphicsCmdB, m_pipelines, m_currentFrame, VkExtent2D{ m_drawWidth, m_drawHeight });
+            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+            vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
-            latePass = 1;
-
-            // Depth pyramid generation
+            // HI_Z FOR OCCLUSION, AFTER PASS
             GenerateHiZ(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-            // Second culling pass 
+            // CULLING WITH OCCLUDERS 
             DrawCullOcclusionPass(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-            // Second draw pass
-            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame,
-                {m_drawWidth, m_drawHeight}, latePass);
+            // SECOND RENDER PASS(OCCLUSION CULLED SCENE)
+            RenderPassStore(cmd.m_mainGraphicsCmdB, m_pipelines, m_currentFrame, VkExtent2D{ m_drawWidth, m_drawHeight });
+            DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+            vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
             if (context.m_renders.m_transparentRenderCount != 0)
             {
+                // TRANSPARENT CULLING (takes advantage of already generated scene)
                 DrawCullTrans(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-                DrawTransparents(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame,
-                    {m_drawWidth, m_drawHeight});
+                // THIRD RENDER PASS(transparent objects)
+                RenderPassStore(cmd.m_mainGraphicsCmdB, m_pipelines, m_currentFrame, VkExtent2D{ m_drawWidth, m_drawHeight });
+                DrawTransparents(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
+                vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
             }
 
             // COPIES COLOR TARGET TO SWAPCHAIN

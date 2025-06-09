@@ -44,11 +44,16 @@ namespace BlitzenDX12
     // Main drawing pipeline creation
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx);
 
+    void CreateOMSTargetDescs(D3D12_RENDER_PASS_RENDER_TARGET_DESC* renderTargetDesc, D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* depthTargetDesc,
+        D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetHandle, D3D12_CPU_DESCRIPTOR_HANDLE* depthTargetHandle);
+
     void DefineViewportAndScissor(ID3D12GraphicsCommandList* commandList, float width, float height);
 
     void ClearWindow(ID3D12GraphicsCommandList* cmdList, float swapchainWidth, float swapchainHeight, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, UINT swapchainIndex);
 
-    void BeginRenderPass(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, UINT swapchainIndex, uint8_t isFirstPass);
+    void BeginRenderPassClear(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, UINT swapchainIndex);
+
+    void BeginRenderPassPreserve(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, UINT swapchainIndex);
 
     class ShaderIncludeHandler : public ID3DInclude 
     {

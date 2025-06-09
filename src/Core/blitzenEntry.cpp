@@ -99,6 +99,20 @@ int main(int argc, char* argv[])
 
             break;
         }
+        case BlitzenCore::EngineState::RUNNING_EDITOR_NO_START:
+        {
+            BlitzenCore::UpdateWorldClock(blitzenClock);
+
+            BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
+
+            BlitzenEngine::UpdateDynamicObjects(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), blitzenWorldContext);
+
+            WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
+
+            WORLD.P_RENDERER.Data()->Present(1);
+
+            break;
+        }
         case BlitzenCore::EngineState::LOADING:
         {
             BlitzenCore::UpdateWorldClock(blitzenClock);
@@ -131,7 +145,7 @@ int main(int argc, char* argv[])
         // Using IMGUI for the editor requires some extra care for event handling
         blitzenEventSystem->UpdateInput(blitzenClock.m_deltaTime, &dasher.m_eventContext);
 #else
-        eventSystem->UpdateInput(coreClock.m_deltaTime);
+        blitzenEventSystem->UpdateInput(blitzenClock.m_deltaTime);
 #endif
     }
 }

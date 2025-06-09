@@ -10,21 +10,10 @@ namespace BlitzenCore
             m_eventCallbacks[i] = [](BlitzenWorld::BlitzenPrivateContext&, BlitEventType type)->uint8_t {return false; };
         }
 
-        for (uint32_t i = 0; i < Ce_KeyCallbackCount; ++i)
+        for (auto& controller : m_controllers)
         {
-            keyPressCallbacks[i] = [](BlitzenWorld::BlitzenWorldContext&)->BlitEventType { return BlitEventType::MaxTypes; };
-            keyReleaseCallbacks[i] = [](BlitzenWorld::BlitzenWorldContext&)->BlitEventType { return BlitEventType::MaxTypes; };
+            InitControllerPFNs(controller);
         }
-
-        for (uint32_t i = 0; i < uint8_t(MouseButton::MaxButtons); i++)
-        {
-            mousePressCallbacks[i] = [](BlitzenWorld::BlitzenWorldContext&, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
-            mouseReleaseCallbacks[i] = [](BlitzenWorld::BlitzenWorldContext&, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
-        }
-
-        mouseMoveCallback = [](BlitzenWorld::BlitzenWorldContext&, int16_t, int16_t, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
-
-        mouseWheelCallback = [](BlitzenWorld::BlitzenWorldContext&, int8_t)->BlitEventType { return BlitEventType::MaxTypes; };
     }
 
     void RegisterEvent(EventSystem* pContext, BlitEventType type, EventCallback eventCallback)
@@ -54,11 +43,33 @@ namespace BlitzenCore
         }
         case BlitEventType::BringBackEditor:
         {
-            return true;
+#if defined(DASHER_JOIN)
+            if (m_privateContext.pDasher->m_state == DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN && *m_privateContext.pEngineState == EngineState::RUNNING_EDITOR_NO_START)
+            {
+                m_privateContext.pDasher->m_state = DASHER_STATE::DASHER_EDITOR_FULL_BLIT_RENDERER_IDLE;
+                *m_privateContext.pEngineState = EngineState::RUNNING;
+                m_activeControllerIDX = Ce_EditorControllerID;
+
+                return true;
+            }
+#endif
+
+            return false;
         }
         case BlitEventType::BringDasherRuntimeDebugWindow:
         {
-            return true;
+#if defined(DASHER_JOIN)
+            if (m_privateContext.pDasher->m_state == DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN && *m_privateContext.pEngineState == EngineState::RUNNING_EDITOR_NO_START)
+            {
+                m_privateContext.pDasher->m_state = DASHER_STATE::DASHER_EDITOR_DEBUG_RENDERER;
+                *m_privateContext.pEngineState = EngineState::RUNNING;
+                m_activeControllerIDX = Ce_EditorControllerID;
+
+                return true;
+            }
+#endif
+
+            return false;
         }
         case BlitEventType::RendererTransformUpdate:
         {
@@ -84,11 +95,11 @@ namespace BlitzenCore
             m_currentKeyboard[idx] = bPressed;
             if (bPressed)
             {
-                event = keyPressCallbacks[idx](m_blitzenContext);
+                event = m_controllers[m_activeControllerIDX].m_keyPressPFNs[idx](m_blitzenContext);
             }
             else
             {
-                event = keyReleaseCallbacks[idx](m_blitzenContext);
+                event = m_controllers[m_activeControllerIDX].m_keyReleasePFNs[idx](m_blitzenContext);
             }
 
             FireEvent(event);
@@ -104,7 +115,7 @@ namespace BlitzenCore
             m_currentMouse.x = x;
             m_currentMouse.y = y;
 
-            mouseMoveCallback(m_blitzenContext, m_currentMouse.x, m_currentMouse.y, m_previousMouse.x, m_previousMouse.y);
+            m_controllers[m_activeControllerIDX].m_mouseMovePFNs(m_blitzenContext, m_currentMouse.x, m_currentMouse.y, m_previousMouse.x, m_previousMouse.y);
         }
     }
 
@@ -117,60 +128,60 @@ namespace BlitzenCore
             m_currentMouse.buttons[idx] = bPressed;
             if (bPressed)
             {
-                mousePressCallbacks[idx](m_blitzenContext, m_currentMouse.x, m_currentMouse.y);
+                m_controllers[m_activeControllerIDX].m_mousePressPFNs[idx](m_blitzenContext, m_currentMouse.x, m_currentMouse.y);
             }
             else
             {
-                mouseReleaseCallbacks[idx](m_blitzenContext, m_currentMouse.x, m_currentMouse.y);
+                m_controllers[m_activeControllerIDX].m_mouseReleasePFNs[idx](m_blitzenContext, m_currentMouse.x, m_currentMouse.y);
             }
         }
     }
 
     void EventSystem::InputProcessMouseWheel(int8_t zDelta)
     {
-        mouseWheelCallback(m_blitzenContext, zDelta);
+        m_controllers[m_activeControllerIDX].m_mouseWheelPFNs(m_blitzenContext, zDelta);
     }
 
-    void RegisterKeyPressCallback(EventSystem* pContext, BlitKey key, KeyPressCallback callback)
+    void RegisterKeyPressCallback(EventSystem* pContext, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX)
     {
-        pContext->keyPressCallbacks[size_t(key)] = callback;
+        pContext->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = callback;
     }
 
-    void RegisterKeyReleaseCallback(EventSystem* pContext, BlitKey key, KeyReleaseCallback callback)
+    void RegisterKeyReleaseCallback(EventSystem* pContext, BlitKey key, KeyReleaseCallback callback, uint32_t controllerIDX)
     {
-        pContext->keyReleaseCallbacks[size_t(key)] = callback;
+        pContext->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = callback;
     }
 
-    void RegisterKeyPressAndReleaseCallback(EventSystem* pContext, BlitKey key, KeyPressCallback press, KeyReleaseCallback release)
+    void RegisterKeyPressAndReleaseCallback(EventSystem* pContext, BlitKey key, KeyPressCallback press, KeyReleaseCallback release, uint32_t controllerIDX)
     {
-        pContext->keyPressCallbacks[size_t(key)] = press;
-        pContext->keyReleaseCallbacks[size_t(key)] = release;
+        pContext->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = press;
+        pContext->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = release;
     }
 
-    void RegisterMouseButtonPressCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback callback)
+    void RegisterMouseButtonPressCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback callback, uint32_t controllerIDX)
     {
-        pContext->mousePressCallbacks[uint8_t(button)] = callback;
+        pContext->m_controllers[controllerIDX].m_mousePressPFNs[uint8_t(button)] = callback;
     }
 
-    void RegisterMouseButtonReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonReleaseCallback callback)
+    void RegisterMouseButtonReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonReleaseCallback callback, uint32_t controllerIDX)
     {
-        pContext->mouseReleaseCallbacks[uint8_t(button)] = callback;
+        pContext->m_controllers[controllerIDX].m_mouseReleasePFNs[uint8_t(button)] = callback;
     }
 
-    void RegisterMouseButtonPressAndReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release)
+    void RegisterMouseButtonPressAndReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release, uint32_t controllerIDX)
     {
-        pContext->mousePressCallbacks[uint8_t(button)] = press;
-        pContext->mouseReleaseCallbacks[uint8_t(button)] = release;
+        pContext->m_controllers[controllerIDX].m_mousePressPFNs[uint8_t(button)] = press;
+        pContext->m_controllers[controllerIDX].m_mouseReleasePFNs[uint8_t(button)] = release;
     }
 
-    void RegisterMouseWheelCallback(EventSystem* pContext, MouseWheelCallbackType callback)
+    void RegisterMouseWheelCallback(EventSystem* pContext, MouseWheelCallbackType callback, uint32_t controllerIDX)
     {
-        pContext->mouseWheelCallback = callback;
+        pContext->m_controllers[controllerIDX].m_mouseWheelPFNs = callback;
     }
 
-    void RegisterMouseMoveCallback(EventSystem* pContext, MouseMoveCallbackType callback)
+    void RegisterMouseMoveCallback(EventSystem* pContext, MouseMoveCallbackType callback, uint32_t controllerIDX)
     {
-        pContext->mouseMoveCallback = callback;
+        pContext->m_controllers[controllerIDX].m_mouseMovePFNs = callback;
     }
 
     void EventSystem::UpdateInput(double deltaTime, EditorEventContext* pEditorEvents)
@@ -187,7 +198,9 @@ namespace BlitzenCore
             {
             case EditorEventType::BUTTON_CLICK:
             {
-                m_editorButtonCallbacks[editorEvent.m_eventTypeID](m_privateContext);
+                m_activeControllerIDX = m_editorButtonCallbacks[editorEvent.m_eventTypeID](m_privateContext);
+
+                BLIT_ASSERT_MESSAGE(m_activeControllerIDX < Ce_MaxControllerCount, "Editor callback returned a controller index, which is bigger than the max count");
 
                 editorEvent.m_type = EditorEventType::NO_EVENT;
 
@@ -440,58 +453,114 @@ namespace BlitzenCore
 
         BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::WindowUpdate, ResizeEventCallback);
 
-        BlitzenCore::RegisterMouseMoveCallback(pEvents, OnMouseMove);
+        BlitzenCore::RegisterMouseMoveCallback(pEvents, OnMouseMove, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressCallback(pEvents, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback);
+        BlitzenCore::RegisterKeyPressCallback(pEvents, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback, BlitzenCore::Ce_EditorControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__W, MoveDefaultCameraForwardOnWKeyPressCallback, StopMovingCameraForwardOnWKeyReleaseCallback);
+        BlitzenCore::RegisterKeyPressCallback(pEvents, BlitzenCore::BlitKey::__ESCAPE, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__S, MoveDefaultCameraBackwardOnSKeyPressCallback, StopMovingCameraBackwardOnSKeyReleaseCallback);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__W, MoveDefaultCameraForwardOnWKeyPressCallback, StopMovingCameraForwardOnWKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__A, MoveDefaultCameraLeftOnAKeyPressCallback, StopMovingCameraLeftOnAKeyReleaseCallback);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__S, MoveDefaultCameraBackwardOnSKeyPressCallback, StopMovingCameraBackwardOnSKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__D, MoveDefaultCameraRightOnDKeyPressCallback, StopMovingCameraRightOnDReleaseCallback);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__A, MoveDefaultCameraLeftOnAKeyPressCallback, StopMovingCameraLeftOnAKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__D, MoveDefaultCameraRightOnDKeyPressCallback, StopMovingCameraRightOnDReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback);
+        BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(pEvents, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback);
+        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F8, BringDasherRuntimeDebugWindowOnF9, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(pEvents, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest);
+        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F9, BringDasherRuntimeDebugWindowOnF9);
+#if !defined(BLIT_VK_FORCE)
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10);
+        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+
+        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+
+        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+
+#endif
     }
 
 
 
     /***********************************                        EDITOR EVENTS                    *******************************************************/
-    static void EditorFreezeFrustum(BlitzenWorld::BlitzenPrivateContext& context)
+    static uint32_t EditorFreezeFrustum(BlitzenWorld::BlitzenPrivateContext& context)
     {
+#if defined(DASHER_JOIN)
+
+        if (*context.pEngineState != EngineState::RUNNING)
+        {
+            return BlitzenCore::Ce_EditorControllerID;
+        }
+
         auto pBlitzenContext{ reinterpret_cast<BlitzenWorld::BlitzenWorldContext*>(context.pBlitzenContext) };
         auto& camera{ pBlitzenContext->pCameraContainer->GetMainCamera() };
 
         camera.transformData.bFreezeFrustum = !camera.transformData.bFreezeFrustum;
+
+        *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+
+        context.pDasher->m_state = DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN;
+        
+        return BlitzenCore::Ce_EngineDefaultGameControllerID;
+
+#else
+        BLIT_ERROR("This should not be called when the editor is inactive");
+        return 0;
+#endif
     }
 
-    static void EditorEndSceneStart(BlitzenWorld::BlitzenPrivateContext& context)
+    static uint32_t EditorEndSceneStart(BlitzenWorld::BlitzenPrivateContext& context)
     {
 #if defined(DASHER_JOIN)
+
+        if (*context.pEngineState != EngineState::RUNNING)
+        {
+            return BlitzenCore::Ce_EditorControllerID;
+        }
+
+        *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+
         context.pDasher->m_state = DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN;
 
-        if (*context.pEngineState == EngineState::RUNNING)
+        return BlitzenCore::Ce_EngineDefaultGameControllerID;
+
+#else
+        BLIT_ERROR("This should not be called when the editor is inactive");
+        return 0;
+#endif
+    }
+
+    static uint32_t EditorDebugWindowClose(BlitzenWorld::BlitzenPrivateContext& context)
+    {
+#if defined(DASHER_JOIN)
+
+        if (*context.pEngineState != EngineState::RUNNING)
         {
-            *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+            return BlitzenCore::Ce_EditorControllerID;
         }
+        
+        *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+
+        context.pDasher->m_state = DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN;
+
+        return BlitzenCore::Ce_EngineDefaultGameControllerID;
+
+#else
+        BLIT_ERROR("This should not be called when the editor is inactive");
+        return 0;
 #endif
     }
 
     void AssignEditorCallbacks(EventSystem* pContext)
     {
-        pContext->m_editorButtonCallbacks[Ce_FreezeFrustumButtonID] = EditorFreezeFrustum;
+        pContext->m_editorButtonCallbacks[Ce_ImguiFreezeFrustumButtonID] = EditorFreezeFrustum;
 
-        pContext->m_editorButtonCallbacks[Ce_SceneStartButtonID] = EditorEndSceneStart;
+        pContext->m_editorButtonCallbacks[Ce_ImguiSceneStartButtonID] = EditorEndSceneStart;
+
+        pContext->m_editorButtonCallbacks[Ce_ImguiDebugWindowCloseID] = EditorDebugWindowClose;
     }
 }

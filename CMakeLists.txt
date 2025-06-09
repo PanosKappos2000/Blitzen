@@ -149,7 +149,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Core/Dasher/Interface/dasherState.h")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Core/Dasher/Interface/dasherState.h" "src/Core/Events/blitController.h" "src/Core/Events/blitEventType.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

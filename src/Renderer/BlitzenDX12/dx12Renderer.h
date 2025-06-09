@@ -37,7 +37,7 @@ namespace BlitzenDX12
 
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
-        void Present();
+        void Present(UINT placeHolderCount = 1);
 
     public:
 

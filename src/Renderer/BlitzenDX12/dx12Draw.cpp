@@ -546,6 +546,31 @@ namespace BlitzenDX12
 			rwResources.m_drawCmdCounterBuffer.buffer.Get(), 0);
 	}
 
+	static void DrawIntancedDrive()
+	{
+
+	}
+
+	static void ClusterDrive()
+	{
+
+	}
+
+	static void TemporalOcclusionDrive()
+	{
+
+	}
+
+	static void DoublePassOcclusionDrive()
+	{
+
+	}
+
+	static void FrustumOnlyDrive()
+	{
+
+	}
+
 	void Dx12Renderer::DrawFrame(BlitzenEngine::DrawContext& context)
 	{
 		auto& cmdContext = m_cmdContext[m_currentFrame];
@@ -588,9 +613,7 @@ namespace BlitzenDX12
 			// Viewport and scissor
 			DefineViewportAndScissor(cmdContext.m_graphicsCmdList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
-			// One pass
-			const uint8_t singlePass = 1;
-			BeginRenderPass(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_swapchainIDX, singlePass);
+			BeginRenderPassClear(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_pipelineContext, m_swapchainIDX);
 
 			DrawIndirect(cmdContext.m_graphicsCmdList.Get(), m_pipelineContext, m_descriptorContext, m_roResources, rwResources, m_currentFrame);
 
@@ -611,9 +634,7 @@ namespace BlitzenDX12
 			// Viewport and scissor
 			DefineViewportAndScissor(cmdContext.m_graphicsCmdList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
-			// One pass
-			const uint8_t singlePass = 1;
-			BeginRenderPass(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_swapchainIDX, singlePass);
+			BeginRenderPassClear(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_pipelineContext, m_swapchainIDX);
 
 			DrawIndirect(cmdContext.m_graphicsCmdList.Get(), m_pipelineContext, m_descriptorContext, m_roResources, rwResources, m_currentFrame);
 
@@ -642,14 +663,11 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(renderTargetBarrier, m_swapchainBackBuffers[m_swapchainIDX].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			cmdContext.m_graphicsCmdList->ResourceBarrier(1, &renderTargetBarrier);
 
-			// First pass
-			uint8_t firstPass = 1;
-
 			// Viewport and scissor
 			DefineViewportAndScissor(cmdContext.m_graphicsCmdList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight);
 
 			// 2. BEGINS RENDERING. For the first pass the render target and depth target are cleared and stored for the second pass
-			BeginRenderPass(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_swapchainIDX, firstPass);
+			BeginRenderPassClear(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_pipelineContext, m_swapchainIDX);
 
 			// 3. TAKES THE COMMNANDS FROM THE DRAW CULL SHADER AND DRAWS THE SCENE. THIS ALSO CREATES THE OCCLUDERS
 			// Shaders used: opaqueDraw.vs.hlsl + opaqueDraw.ps.hlsl
@@ -657,7 +675,6 @@ namespace BlitzenDX12
 
 			// Ends pass
 			cmdContext.m_graphicsCmdList->EndRenderPass();
-			firstPass = 0;
 
 			// 4. DEPTH TARGET IS COPIED TO A HI-Z MAP
 			GenerateHI_Z_MAP(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_currentFrame, m_swapchainIDX, m_pipelineContext, rwResources,
@@ -669,7 +686,7 @@ namespace BlitzenDX12
 			DrawOccLatePass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_renders.m_renderCount, m_currentFrame);
 			
 			// 7. BEGINS SECOND RENDER PASS. RENDER TARGET AND DEPTH TARGET ARE NOT CLEARED, BUT LOADED
-			BeginRenderPass(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_swapchainIDX, firstPass);
+			BeginRenderPassPreserve(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_pipelineContext, m_swapchainIDX);
 			
 			// 8. DRAWS FOR THE SECOND PASS. SAME THING AS STEP 3
 			DrawIndirect(cmdContext.m_graphicsCmdList.Get(), m_pipelineContext, m_descriptorContext, m_roResources, rwResources, m_currentFrame);

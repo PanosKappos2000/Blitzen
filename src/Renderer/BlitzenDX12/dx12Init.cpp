@@ -161,6 +161,8 @@ namespace BlitzenDX12
             return 0;
         }
 
+        CreateOMSTargetDescs(m_pipelineContext.m_renderTargetPassDesc, m_pipelineContext.m_depthTargetPassDesc, m_descriptorContext.m_swapchainRtvHandle, m_descriptorContext.m_depthTargetDSVHandle);
+
 		if (!CreateTriangleGraphicsPipeline(m_device.Get(), m_pipelineContext.m_triangleRoot, m_pipelineContext.m_trianglePso.ReleaseAndGetAddressOf()))
 		{
 			BLIT_ERROR("Failed to create triangle graphics pipeline");

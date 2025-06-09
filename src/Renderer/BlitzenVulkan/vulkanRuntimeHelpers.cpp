@@ -52,7 +52,7 @@ namespace BlitzenVulkan
         PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
 
-    void VulkanRenderer::Present(uint8_t isLoading)
+    void VulkanRenderer::Present(uint32_t waitCount)
     {
         auto& cmd = m_commandsContext[m_currentFrame];
 
@@ -66,16 +66,9 @@ namespace BlitzenVulkan
 #if defined(DASHER_JOIN)
 
         VkSemaphore waitSemaphores[2]{ cmd.m_renderSemaphore.handle, cmd.m_dasherRenderSemaphore.handle };
-        if (isLoading)
-        {
-            info.waitSemaphoreCount = 1;
-            info.pWaitSemaphores = waitSemaphores;
-        }
-        else
-        {
-            info.waitSemaphoreCount = BLIT_ARRAY_SIZE(waitSemaphores);
-            info.pWaitSemaphores = waitSemaphores;
-        }
+        info.waitSemaphoreCount = waitCount;
+        info.pWaitSemaphores = waitSemaphores;
+
 #else
 
         info.waitSemaphoreCount = 1;

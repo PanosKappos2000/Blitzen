@@ -42,29 +42,36 @@ namespace BlitzenCore
         return code < T::SUCCESS;
     }
 
-    #if defined(DASHER_JOIN)
+#if !defined(BLIT_VK_FORCE)
 
-    constexpr bool Ce_BlitEditorMode = 1;
+#undef DASHER_JOIN
 
-    #else
-
-    constexpr bool Ce_BlitEditorMode = 0;
-
-    #endif
+#endif
 
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
 
+    constexpr uint32_t Ce_MaxControllerCount = 5;
+
+    constexpr uint32_t Ce_EditorControllerID = 0;
+    constexpr uint32_t Ce_EngineDefaultGameControllerID = 1;
+
+#if defined(DASHER_JOIN)
+    constexpr uint32_t Ce_InitialControllerID = Ce_EditorControllerID;
+#else
+    constexpr uint32_t Ce_InitialControllerID = Ce_EngineDefaultGameControllerID;
+#endif
 
     constexpr uint16_t Ce_KeyCallbackCount = 256;
+    constexpr uint16_t Ce_MouseButtonPFNCount = 3;
 
     constexpr uint32_t Ce_EditorEventQueueSize = 10;
-
     constexpr uint32_t Ce_EditorButtonEventTypeCount = 5;
 
-    constexpr uint32_t Ce_FreezeFrustumButtonID = 0;
-    constexpr uint32_t Ce_SceneStartButtonID = 1;
+    constexpr uint32_t Ce_ImguiFreezeFrustumButtonID = 0;
+    constexpr uint32_t Ce_ImguiSceneStartButtonID = 1;
+    constexpr uint32_t Ce_ImguiDebugWindowCloseID = 2;
 
     constexpr size_t Ce_LinearAllocatorBlockSize = UINT32_MAX;
 
@@ -199,7 +206,7 @@ namespace BlitzenCore
 
 #endif
 
-#if defined(BLIT_DEPTH_PYRAMID_TEST) || defined(BLITZEN_DRAW_TEMPORAL_OCCLUSION) || defined(BLITZEN_CUSTER_CULLING)
+#if defined(BLIT_DEPTH_PYRAMID_TEST) || defined(BLITZEN_DRAW_TEMPORAL_OCCLUSION) || defined(BLITZEN_CLUSTER_CULLING)
 
     constexpr uint8_t Ce_OcclusionCulling = 1;
     constexpr uint8_t Ce_Build_HI_Z = 1;
@@ -249,6 +256,18 @@ namespace BlitzenCore
 
         MAX_STATES
     };
+
+#if defined(DASHER_JOIN)
+
+    constexpr bool Ce_BlitEditorMode = 1;
+    constexpr EngineState Ce_InitialEngineRunningState = EngineState::RUNNING;
+
+#else
+
+    constexpr bool Ce_BlitEditorMode = 0;
+    constexpr EngineState Ce_InitialEngineRunningState = EngineState::RUNNING_EDITOR_NO_START;
+
+#endif
 
     class Engine
     {

@@ -35,7 +35,7 @@ namespace BlitzenVulkan
 
         void CopyTargetToSwapchain(VkCommandBuffer commandBuffer);
 
-        void Present(uint8_t loading = 0);
+        void Present(uint32_t waitCount = Ce_PresentWaitMaxCount);
 
         void LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo, VkImage* pColorTarget);
 
