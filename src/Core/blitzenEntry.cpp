@@ -1,6 +1,3 @@
-#include "Core/blitzenEngine.h"
-#include "Renderer/Interface/blitRenderer.h"
-#include "Core/Dasher/Interface/dasherInterface.h"
 #include "Core/Events/blitEvents.h"
 #include "Platform/blitPlatformContext.h"
 #include "Platform/blitPlatform.h"
@@ -88,7 +85,7 @@ int main(int argc, char* argv[])
 
             BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
 
-            BlitzenEngine::UpdateDynamicObjects(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), blitzenWorldContext);
+            BlitzenEngine::UpdateEntityComponents(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), float(blitzenClock.m_deltaTime));
 
             WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
 
@@ -105,7 +102,7 @@ int main(int argc, char* argv[])
 
             BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
 
-            BlitzenEngine::UpdateDynamicObjects(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), blitzenWorldContext);
+            BlitzenEngine::UpdateEntityComponents(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), float(blitzenClock.m_deltaTime));
 
             WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
 

@@ -154,7 +154,12 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxRenderObjects = 5'000'000;
     constexpr uint32_t Ce_MaxTransparentRenderObjects = 100'000;
     constexpr uint32_t Ce_MaxONPC_Objects = 100;
+
     constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;
+
+    constexpr uint32_t Ce_MaxWorldCollisionGridCount = 100'000;
+    constexpr uint32_t Ce_MaxCollisionsInGrid = 50;
+    constexpr uint32_t Ce_CollisionGridDynamicOffset = 40;
 
 #if defined(BLIT_DYNAMIC_OBJECT_TEST)
 

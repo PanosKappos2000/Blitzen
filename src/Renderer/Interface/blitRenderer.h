@@ -1,6 +1,6 @@
 #pragma once
 #include "Renderer/Resources/Scene/blitScene.h"
-#include "Renderer/Entities/blitEntityManager.h"
+#include "Renderer/Entities/Interface/blitEntityManager.h"
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
 #include "Renderer/BlitzenDX12/dx12Renderer.h"
@@ -62,14 +62,4 @@ namespace BlitzenEngine
     };
 
     bool RenderingResourcesInit(RenderingResources* pResources, RendererPtrType pRenderer);
-
-    bool ManageGltf(const char* filepath, RenderingResources* pResources, EntityManager* pManager, RendererPtrType pRenderer, SceneContext* pScene = nullptr);
-
-    void CreateDynamicObjectRendererTest(RenderContainer& renders, MeshResources& meshes, EntityManager* pManager, SceneContext* pScene = nullptr);
-
-    void LoadGeometryStressTest(RenderContainer& renders, MeshResources& meshContext, float transformMultiplier, SceneContext* pScene = nullptr);
-
-    bool CreateSceneFromArguments(int argc, char** argv, RenderingResources* pResources, WORLD_blit* pWORLD, EntityManager* pManager);
-
-    void UpdateDynamicObjects(RendererPtrType pRenderer, EntityManager* pEntityManager, BlitzenWorld::BlitzenWorldContext& blitzenContext);    
 }

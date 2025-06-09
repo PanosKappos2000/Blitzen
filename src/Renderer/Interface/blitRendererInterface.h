@@ -6,14 +6,6 @@
 
 namespace BlitzenEngine
 {
-    enum class RendererEvent : uint8_t
-    {
-        RENDERER_TRANSFORM_UPDATE = 0,
-        RENDERER_WINDOW_RESIZE = 1,
-
-        MAX_RENDERER_EVENTS
-    };
-
     struct DrawContext
     {
         Camera& m_camera;

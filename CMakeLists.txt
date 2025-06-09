@@ -17,6 +17,8 @@ add_executable(BlitzenEngine
                 "src/Core/DbLog/blitAssert.h"
                 # EVENTS
                 "src/Core/Events/blitKeys.h"
+                "src/Core/Events/blitEventType.h"
+                "src/Core/Events/blitController.h"
                 "src/Core/Events/blitEvents.h"
                 "src/Core/Events/blitzenEvents.cpp"
                 "src/Core/Events/blitTimeManager.h"
@@ -27,12 +29,13 @@ add_executable(BlitzenEngine
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.cpp"
                 # DASHER UI
+                "src/Core/Dasher/Interface/dasherState.h"
+                "src/Core/Dasher/Interface/dasherInterface.h"
                 "src/Core/Dasher/DearDasher/dearDasherData.h"
                 "src/Core/Dasher/DearDasher/dearDasher.h"
                 "src/Core/Dasher/DearDasher/dearDasher.cpp"
                 "src/Core/Dasher/DearDasher/dearDasherVK.h"
                 "src/Core/Dasher/DearDasher/dearDasherVK.cpp"
-                "src/Core/Dasher/Interface/dasherInterface.h"
                 "src/Core/Dasher/DearDasher/dearDasherDX12.h" 
                 "src/Core/Dasher/DearDasher/dearDasherDX12.cpp"
                 
@@ -97,10 +100,13 @@ add_executable(BlitzenEngine
                 "src/Renderer/View/blitCamera.h"
                 "src/Renderer/View/blitzenCamera.cpp"
                 # ENTITIES
-                "src/Renderer/Entities/blitEntity.h"
-                "src/Renderer/Entities/blitEntity.cpp"
-                "src/Renderer/Entities/blitEntityManager.h"
-                "src/Renderer/Entities/blitzenEntityManager.cpp"
+                "src/Renderer/Entities/Interface/blitEntity.h"
+                "src/Renderer/Entities/Interface/blitEntityInterface.h"
+                "src/Renderer/Entities/Interface/blitEntityManager.h"
+                "src/Renderer/Entities/Interface/blitEntityInterface.cpp"
+                "src/Renderer/Entities/Collision/blitCollision.h"
+                # LIGHTING
+                "src/Renderer/Lighting/blitDirectionalLight.h"
                 # VULKAN
                 "src/Renderer/BlitzenVulkan/vulkanData.h"
                 "src/Renderer/BlitzenVulkan/vulkanContext.h"
@@ -149,7 +155,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Core/Dasher/Interface/dasherState.h" "src/Core/Events/blitController.h" "src/Core/Events/blitEventType.h")
+                "src/VendorCode/Cgltf/cgltf.h"  "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -210,12 +216,12 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             DASHER_JOIN
                             DASHER_USE_DEAR
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
                             #BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
-                            #BLITZEN_DRAW_TEMPORAL_OCCLUSION
+                            BLITZEN_DRAW_TEMPORAL_OCCLUSION
                             BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
                             #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
