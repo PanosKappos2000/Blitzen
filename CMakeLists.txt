@@ -27,7 +27,7 @@ add_executable(BlitzenEngine
                 # WORLD (ALL SYSTEMS)
                 "src/Core/BlitzenWorld/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
-                "src/Core/BlitzenWorld/blitzenWorldPrivate.cpp"
+                "src/Core/BlitzenWorld/blitzenWorldLoad.cpp"
                 # DASHER UI
                 "src/Core/Dasher/Interface/dasherState.h"
                 "src/Core/Dasher/Interface/dasherInterface.h"
@@ -100,7 +100,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/View/blitCamera.h"
                 "src/Renderer/View/blitzenCamera.cpp"
                 # ENTITIES
-                "src/Renderer/Entities/Interface/blitEntity.h"
+                
                 "src/Renderer/Entities/Interface/blitEntityInterface.h"
                 "src/Renderer/Entities/Interface/blitEntityManager.h"
                 "src/Renderer/Entities/Interface/blitEntityInterface.cpp"
@@ -155,7 +155,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h"  "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.h")
+                "src/VendorCode/Cgltf/cgltf.h"  "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.h" "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.cpp" "src/Renderer/Entities/Physics/blitGravity.h" "src/Core/BlitzenWorld/blitzenWorldUpdate.cpp" "src/Renderer/Resources/Mesh/blitMeshPrimitive.h" "src/Renderer/BlitzenVulkan/Cull/vkCull.h" "src/Renderer/BlitzenVulkan/Cull/vkCull.cpp" "src/Core/BlitzenWorld/blitzenWorldRender.cpp" "src/BlitCL/blitStack.h"  "src/Core/BlitzenWorld/blitzenWorldWV.cpp" "src/Renderer/BlitzenDX12/Update/dx12Update.h" "src/Renderer/BlitzenDX12/Update/dx12Update.cpp" "src/Renderer/BlitzenDX12/Init/dx12Init.h" "src/Core/BlitzenWorld/blitzenWorld.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

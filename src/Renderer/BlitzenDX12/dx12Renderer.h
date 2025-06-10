@@ -33,7 +33,7 @@ namespace BlitzenDX12
         
         BlitML::vec2 UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle);
 
-        void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
+        void UpdateTransforms(BlitzenEngine::DynamicTransform** pDynamicTransformArr, uint32_t transformCount, BlitzenEngine::MeshTransform* transforms);
 
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
@@ -65,10 +65,7 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12CommandQueue> m_commandQueue;
 
         DX12WRAPPER<ID3D12CommandQueue> m_transferCommandQueue;
-
-    private:
-
-        
+    
         DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
 
         DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];

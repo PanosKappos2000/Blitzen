@@ -68,8 +68,6 @@ namespace BlitzenVulkan
 
         CommandContext m_commandsContext[ce_framesInFlight];
 
-    private:
-
         VkDebugUtilsMessengerEXT m_debugMessenger;
 
         ROResources m_readOnlies;

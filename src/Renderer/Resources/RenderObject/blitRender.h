@@ -3,6 +3,27 @@
 
 namespace BlitzenEngine
 {
+	enum RENDER_OBJECT_RES : int8_t
+	{
+
+	};
+
+	enum RENDER_OBJECT_TYPE : uint8_t
+	{
+		OPAQUE = 0,
+		OPAQUE_DYNAMIC = 1, 
+
+		TRANSPARENT = 2,
+		TRANSPARENT_DYNAMIC = 3
+	};
+
+	struct RENDER_OBJECT_CREATE_CONTEXT
+	{
+		RENDER_OBJECT_TYPE m_type;
+		MeshTransform* pTransform{ nullptr };
+		PrimitiveSurface* pSurface{ nullptr };
+	};
+
 	struct RenderContainer
 	{
 		MeshTransform m_transforms[BlitzenCore::Ce_MaxRenderObjects ];
@@ -17,8 +38,7 @@ namespace BlitzenEngine
 		BlitzenEngine::RenderObject m_transparentRenders[BlitzenCore::Ce_MaxTransparentRenderObjects];
 		uint32_t m_transparentRenderCount{ 0 };
 
-		BlitzenEngine::RenderObject m_onpcRenders[BlitzenCore::Ce_MaxONPC_Objects];
-		uint32_t m_onpcRenderCount{ 0 };
+		RENDER_OBJECT_RES CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context);
 	};
 
 	// Takes a mesh id and adds a render object based on that ID and a transform

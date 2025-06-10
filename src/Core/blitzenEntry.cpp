@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     blitzenWorldContext.pCameraContainer = &blitzenCameraSystem;
 
     BlitzenCore::WorldTimeManager blitzenClock;
-    blitzenWorldContext.pCoreClock = &blitzenClock;
+    blitzenPrivateContext.pClock = &blitzenClock;
 
     BlitzenEngine::EntitySystemMemory blitzenEntityManager;
     blitzenEntityManager.Make();

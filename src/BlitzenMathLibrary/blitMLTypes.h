@@ -52,19 +52,28 @@ namespace BlitML
         inline vec3(const vec3& copy) : x{copy.x}, y{copy.y}, z{copy.z} {}
     };
 
-    inline vec3 operator + (const vec3& v1, const vec3& v2) { return vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z); }
+    using float3 = vec3;
+    using fRotation = vec3;
 
-    inline vec3 operator - (const vec3& v1, const vec3& v2){ return vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z); }
+    inline bool operator == (const vec3& first, const vec3& second) { return (first.x == second.x) && (first.y == second.y) && (first.z == second.z); }
+    inline bool operator != (const vec3& first, const vec3& second) {return (first.x != second.x) || (first.y != second.y) || (first.z != second.z) }
 
-    inline vec3 operator * (const vec3& v1, const vec3& v2) { return vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z); }
+    inline vec3 operator + (const vec3& first, const vec3& second) { return vec3(first.x + second.x, first.y + second.y, first.z + second.z); }
+    inline vec3 operator + (const vec3& vec, float scalar) { return vec3{ vec.x + scalar, vec.y + scalar, vec.z + scalar }; }
+    inline vec3 operator += (const vec3& first, const vec3& second) { return vec3{ first.x + second.x, first.y + second.y, first.z + second.z }; }
+    inline vec3 operator += (const vec3& vec, float scalar) { return vec3{ vec.x + scalar, vec.y + scalar, vec.z + scalar }; }
+    inline void GetIncrement(vec3& dst, vec3& src, vec3& increment){ dst = src + increment; }
+    inline void GetIncrement(vec3& dst, vec3& src, float increment) { dst = src + increment; }
 
+    inline vec3 operator - (const vec3& first, const vec3& second){ return vec3(first.x - second.x, first.y - second.y, first.z - second.z); }
+    inline vec3 operator - (const vec3& vec, float scalar) { return vec3(vec.x - scalar, vec.y - scalar, vec.z - scalar); }
+
+    inline vec3 operator * (const vec3& first, const vec3& second) { return vec3(first.x * second.x, first.y * second.y, first.z * second.z); }
     inline vec3 operator *(const vec3& vec, float scalar) { return vec3(vec.x * scalar, vec.y * scalar, vec.z * scalar); }
+    inline vec3 operator *= (const vec3& v, float scalar) { return vec3{ v.x * scalar, v.y * scalar, v.z * scalar }; }
 
     inline vec3 operator /(const vec3& vec, float scalar) { return vec3(vec.x / scalar, vec.y / scalar, vec.z / scalar); }
-
     inline vec3 operator / (const vec3& v1, const vec3& v2) { return vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z); }
-
-    inline vec3 operator *= (const vec3& v, float scalar) { return vec3{ v.x * scalar, v.y * scalar, v.z * scalar }; }
 
     union vec4 
     {
@@ -94,7 +103,9 @@ namespace BlitML
         inline vec4(float first, float second, float third, float fourth) : x{first}, y{second}, z{third}, w{fourth} {}
         inline vec4(const vec2& partial , float third, float fourth) : x{partial.x}, y{partial.y}, z{third}, w{fourth} {}
         inline vec4(const vec3& partial, float fourth = 0.f) : x{partial.x}, y{partial.y}, z{partial.z}, w{fourth} {}
-        inline vec4(const vec4& copy) : x{copy.x}, y{copy.y}, z{copy.z}, w{copy.w} {}  
+        inline vec4(const vec4& copy) : x{copy.x}, y{copy.y}, z{copy.z}, w{copy.w} {} 
+
+        inline vec3 xyz() const { return vec3(x, y, z); }
     };
 
     inline vec4 operator + (const vec4& v1, const vec4 v2) { return vec4(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w); }

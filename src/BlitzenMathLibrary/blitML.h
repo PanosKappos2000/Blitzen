@@ -30,7 +30,6 @@ namespace BlitML
     constexpr float ce_degreesToRadiansMultiplier = blit_pi / 180.f;
     constexpr float ce_radiansToDegreesMultiplier = 180.f / blit_pi;
 
-    
     /* ------------------------------------------
         General math functions
     ------------------------------------------ */
@@ -154,15 +153,18 @@ namespace BlitML
         return vec4(vec.x / len, vec.y / len, vec.z / len, vec.w / len);
     }
 
-    inline float Distance(const vec2& v1, const vec2& v2){
+    inline float Distance(const vec2& v1, const vec2& v2)
+    {
         vec2 d(v1 - v2);
         return Length(d);
     }
-    inline float Distance(const vec3& v1, const vec3& v2){
+    inline float Distance(const vec3& v1, const vec3& v2)
+    {
         vec3 d(v1 - v2);
         return Length(d);
     }
-    inline float Distance(const vec4& v1, const vec4& v2){
+    inline float Distance(const vec4& v1, const vec4& v2)
+    {
         vec4 d(v1 - v2);
         return Length(d);
     }
@@ -495,9 +497,13 @@ namespace BlitML
         Quaternion operations
     ---------------------------*/
 
-    inline float QuatNormal(const quat& q){ return Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w); }
+    inline float QuatNormal(const quat& q)
+    { 
+        return Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w); 
+    }
 
-    inline quat NormalizeQuat(const quat& q) {
+    inline quat NormalizeQuat(const quat& q) 
+    {
         float normal = QuatNormal(q);
         return quat(q.x / normal, q.y / normal , q.z / normal, q.w / normal);
     }
@@ -509,14 +515,19 @@ namespace BlitML
     inline quat MulitplyQuat(const quat& q1, const quat& q2) 
     {
         quat res;
+
         res.x = q1.x * q2.w + q1.y * q2.z - q1.z * q2.y + q1.w * q2.x;
         res.y = -q1.x * q2.z + q1.y * q2.w + q1.z * q2.x + q1.w * q2.y;
         res.z = q1.x * q1.y - q1.y * q2.x + q1.z * q2.w + q1.w * q2.z;
         res.w = -q1.x * q2.x -q1.y * q2.y -q1.z * q2.z + q1.w * q2.w;
+
         return res;
     }
 
-    inline float QuatDot(const quat& q1, const quat& q2) { return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w; }
+    inline float QuatDot(const quat& q1, const quat& q2) 
+    { 
+        return q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w; 
+    }
 
     inline mat4 QuatToMat4(const quat& q) 
     {
@@ -538,36 +549,52 @@ namespace BlitML
     {
         mat4 res;
         float* f = res.data;
+
         f[0] = (q.x * q.x) - (q.y * q.y) - (q.z * q.z) + (q.w * q.w);
         f[1] = 2.0f * ((q.x * q.y) + (q.z * q.w));
         f[2] = 2.0f * ((q.x * q.z) - (q.y * q.w));
         f[3] = center.x - center.x * f[0] - center.y * f[1] - center.z * f[2];
+
         f[4] = 2.0f * ((q.x * q.y) - (q.z * q.w));
         f[5] = -(q.x * q.x) + (q.y * q.y) - (q.z * q.z) + (q.w * q.w);
         f[6] = 2.0f * ((q.y * q.z) + (q.x * q.w));
         f[7] = center.y - center.x * f[4] - center.y * f[5] - center.z * f[6];
+
         f[8] = 2.0f * ((q.x * q.z) + (q.y * q.w));
         f[9] = 2.0f * ((q.y * q.z) - (q.x * q.w));
         f[10] = -(q.x * q.x) - (q.y * q.y) + (q.z * q.z) + (q.w * q.w);
         f[11] = center.z - center.x * f[8] - center.y * f[9] - center.z * f[10];
+
         f[12] = 0.0f;
         f[13] = 0.0f;
         f[14] = 0.0f;
         f[15] = 1.0f;
+
         return res;
     }
 
     inline quat QuatFromAngleAxis(const vec3& axis, float angle, uint8_t normalize) 
     {
-        const float half_angle = 0.5f * angle;
-        float s = Sin(half_angle);
-        float c = Cos(half_angle);
+        const float HALF_ANGLE = 0.5f * angle;
+
+        float s = Sin(HALF_ANGLE);
+        float c = Cos(HALF_ANGLE);
+
         quat q = quat(s * axis.x, s * axis.y, s * axis.z, c);
-        if (normalize) 
-        {
-            return NormalizeQuat(q);
-        }
+
         return q;
+    }
+
+    inline quat NormalizedQuatFromAngleAxis(const vec3& axis, float angle)
+    {
+        const float HALF_ANGLE = 0.5f * angle;
+
+        float s = Sin(HALF_ANGLE);
+        float c = Cos(HALF_ANGLE);
+
+        quat q = quat(s * axis.x, s * axis.y, s * axis.z, c);
+
+        return NormalizeQuat(q);
     }
 
     // Spherical linear interpolation
@@ -579,27 +606,30 @@ namespace BlitML
         // Normalize to avoid undefined behavior.
         quat v0 = NormalizeQuat(q_0);
         quat v1 = NormalizeQuat(q_1);
+
         // Compute the cosine of the angle between the two vectors.
         float dot = QuatDot(v0, v1);
-        // If the dot product is negative, slerp won't take
-        // the shorter path. Note that v1 and -v1 are equivalent when
-        // the negation is applied to all four components. Fix by
-        // reversing one quaternion.
-        if (dot < 0.0f) {
+        // If the dot product is negative, slerp won't take the shorter path. 
+        // Note that v1 and -v1 are equivalent when the negation is applied to all four components. 
+        // Fixed by reversing one quaternion.
+        if (dot < 0.0f) 
+        {
             v1.x = -v1.x;
             v1.y = -v1.y;
             v1.z = -v1.z;
             v1.w = -v1.w;
             dot = -dot;
         }
+
         const float DOT_THRESHOLD = 0.9995f;
-        if (dot > DOT_THRESHOLD) {
-            // If the inputs are too close for comfort, linearly interpolate
-            // and normalize the result.
+        if (dot > DOT_THRESHOLD) 
+        {
+            // If the inputs are too close for comfort, linearly interpolates and normalizes the result.
             res = quat( v0.x + ((v1.x - v0.x) * percentage), v0.y + ((v1.y - v0.y) * percentage), v0.z + ((v1.z - v0.z) * percentage),
             v0.w + ((v1.w - v0.w) * percentage));
             return NormalizeQuat(res);
         }
+
         // Since dot is in range [0, DOT_THRESHOLD], acos is safe
         float theta_0 = Acos(dot);          // theta_0 = angle between input vectors
         float theta = theta_0 * percentage;  // theta = angle between v0 and result
@@ -608,6 +638,11 @@ namespace BlitML
         float s0 = Cos(theta) - dot * sin_theta / sin_theta_0;  // == sin(theta_0 - theta) / sin(theta_0)
         float s1 = sin_theta / sin_theta_0;
         return quat((v0.x * s0) + (v1.x * s1), (v0.y * s0) + (v1.y * s1), (v0.z * s0) + (v1.z * s1), (v0.w * s0) + (v1.w * s1));
+    }
+
+    inline vec3 RotateQuat(const vec3& vec, const quat& qt)
+    {
+        return vec + 2.f * Cross(qt.xyz(), Cross(qt.xyz(), vec) + qt.w * vec);
     }
 
     // Could make these constexpr functions, but there might be some functionality with the field of view in the future that does not allow them to be

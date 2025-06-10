@@ -14,6 +14,7 @@ namespace BlitzenEngine
         // Mesh has one or more surfaces / Primitives
         BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;
         BlitCL::DynamicArray<IsPrimitiveTransparent> m_bTransparencyList;
+        BlitCL::DynamicArray<uint32_t> m_surfaceVertexOffset;// TODO: Remove the vertex offset from the surface and use this for cpu operations
 
 		// Surface has one ore more LODs (up to Ce_MaxLodCount)
         BlitCL::DynamicArray<LodData> m_LODs;

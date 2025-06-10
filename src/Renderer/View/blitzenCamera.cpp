@@ -3,8 +3,7 @@
 
 namespace BlitzenEngine
 {
-    static void CreateRotationMatrixFromPitchAndYawQuaternion(const BlitML::quat& pitchOrientation, const BlitML::quat& yawOrientation,
-        BlitML::mat4& rotationMatrix)
+    static void CreateRotationMatrixFromPitchAndYawQuaternion(const BlitML::quat& pitchOrientation, const BlitML::quat& yawOrientation, BlitML::mat4& rotationMatrix)
     {
         auto yawRot = BlitML::QuatToMat4(yawOrientation);
         auto pitchRot = BlitML::QuatToMat4(pitchOrientation);

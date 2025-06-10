@@ -42,6 +42,8 @@ namespace BlitzenCore
         return code < T::SUCCESS;
     }
 
+    using BIG_BOOL = uint16_t;
+
 #if !defined(BLIT_VK_FORCE)
 
 #undef DASHER_JOIN
@@ -160,6 +162,8 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxWorldCollisionGridCount = 100'000;
     constexpr uint32_t Ce_MaxCollisionsInGrid = 50;
     constexpr uint32_t Ce_CollisionGridDynamicOffset = 40;
+
+    constexpr uint32_t Ce_MaxWorldVariableCount = 1'000;
 
 #if defined(BLIT_DYNAMIC_OBJECT_TEST)
 

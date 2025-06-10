@@ -178,11 +178,24 @@ namespace BlitzenWorld
         }
     }
 
-    static BlitzenEngine::ENTITY_UPDATE_RES RotatingKittenPfn(BlitzenEngine::Entity* pEntity, float deltaTime)
+    struct WVRotatingKitten
     {
-        BlitzenEngine::RotateEntity(pEntity, deltaTime);
+        BlitzenEngine::DynamicTransform* m_pTransform;
+        uint32_t m_wvId{ BlitzenCore::Ce_MaxWorldVariableCount };
 
-        return BlitzenEngine::ENTITY_UPDATE_RES::UPDATE_RENDERER_TRANSFORM;
+        inline void Start(WV_CREATE_CONTEXT& context)
+        {
+            m_pTransform = context.m_pDynamicTransform
+        }
+    };
+
+    static void RotatingKittenPfn(void* data, float deltaTime)
+    {
+        auto pKitten{ reinterpret_cast<WVRotatingKitten*>(data) };
+
+        BlitML::fRotation rotation{ 0.f, 0.1f, 0.f };
+
+        BlitzenEngine::RotateEntity(pKitten->m_pTransform, rotation, BlitML::float3{ 0.f }, deltaTime, )
     }
 
     void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenEngine::EntityManager* pManager, BlitzenEngine::SceneContext* pScene)
@@ -201,15 +214,14 @@ namespace BlitzenWorld
 
         for (size_t i = 0; i < ObjectCount; ++i)
         {
-            BlitzenEngine::BLIT_ENTITY_CREATE_CONTEXT createContext{};
+            WV_CREATE_CONTEXT createContext{};
 
             createContext.m_updatePfn = RotatingKittenPfn;
             createContext.m_rotationSpeed = 0.1f;
 
-            RandomizeTransform(createContext.initialTransform, 100.f, 1.f);
+            BlitzenEngine::RandomizeTransform(createContext.initialTransform, 100.f, 1.f);
 
-            auto res{ AddEntityToWorld(pManager, meshes, BlitzenCore::Ce_DefaultKittenMeshName, 
-                BlitzenEngine::ENTITY_CREATE_GAME_LOGIC_UPDATE | BlitzenEngine::ENTITY_CREATE_DYNAMIC_ORIENTATION, createContext) };
+            AddWorldVariable<WVRotatingKitten>(context)
 
             if (BlitzenCore::BLIT_CHECK_FAIL(res))
             {

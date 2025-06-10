@@ -46,6 +46,12 @@ namespace BlitzenEngine
         uint8_t padding1;
     };
 
+    struct BoundingSphere
+    {
+        BlitML::vec3
+    };
+    static_assert(sizeof(BoundingSphere) % 16 == 0)
+
     struct HCluster
     {
         // Bounding sphere
@@ -105,7 +111,8 @@ namespace BlitzenEngine
     {
         // Bounding sphere
         BlitML::vec3 center;     
-        float radius;            
+        float radius;
+        // uint32_t boundingSphereID;
 
         uint32_t materialId;
 
@@ -156,5 +163,6 @@ namespace BlitzenEngine
     {
         uint32_t transformId;
         uint32_t surfaceId;
+        // uint32_t staticBoundingSphere;
     };
 }

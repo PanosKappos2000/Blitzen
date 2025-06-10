@@ -2,40 +2,7 @@
 
 namespace BlitzenEngine
 {
-    void UpdateGameLogic(RendererPtrType pRenderer, DynamicUpdateEntity* dynamicEntities, uint32_t dynamicEntityCount, float deltaTime)
-    {
-        for (uint32_t dynamic = 0; dynamic < dynamicEntityCount; ++dynamic)
-        {
-            auto& update{ dynamicEntities[dynamic] };
-
-            switch (update.m_pfnUpdate(update.pEntity, deltaTime))
-            {
-            case ENTITY_UPDATE_RES::UPDATE_RENDERER_TRANSFORM:
-            {
-                pRenderer->UpdateObjectTransform(update.pEntity->m_transformId, update.pEntity->m_pTransform);
-                break;
-            }
-            case ENTITY_UPDATE_RES::NO_FURTHER_UPDATES: default:
-            {
-                break;
-            }
-            }
-        }
-    }
-
-    void UpdateEntityComponents(RendererPtrType pRenderer, EntityManager* pManager, float deltaTime)
-    {
-        // Update Game Logic
-        UpdateGameLogic(pRenderer, pManager->m_dynamicEntities, pManager->m_dynamicCount, deltaTime);
-
-        // Transform bounding spheres for dynamic objects (compute shader?)
-
-        // Call Previous Frame Collision Events 
-
-        // Repurpose Collision Grid (possibly multithreaded, maybe could be checked every other frame?)
-
-        // Check Collisions (depend on game logic and collision grid, maybe could be checked every other frame?)
-    }
+    
 
     ENTITY_CREATE_RES AddEntityToWorld(EntityManager* pManager, MeshResources& meshes, const char* meshName, ENTITY_CREATION_FLAGS ecf, BLIT_ENTITY_CREATE_CONTEXT& context)
     {
@@ -87,17 +54,27 @@ namespace BlitzenEngine
         return ENTITY_CREATE_RES::SUCCESS;
     }
 
-    void RotateEntity(Entity* pEntity, float deltaTime)
+    void AddMovingEntitiesToManager(EntityManager* pManager, uint32_t idx)
     {
-        pEntity->m_pDynamicRotation->m_yaw += pEntity->m_pDynamicRotation->m_speed * deltaTime;
-        pEntity->m_pDynamicRotation->m_pitch += pEntity->m_pDynamicRotation->m_speed * deltaTime;
+        BLIT_ASSERT_MESSAGE(!pManager->m_movingEntities.IsFull(), "Exceeded moving entity count");
 
-        BlitML::vec3 yAxis(0.f, -1.f, 0.f);
-        BlitML::quat yawOrientation = BlitML::QuatFromAngleAxis(yAxis, pEntity->m_pDynamicRotation->m_yaw, 0);
+        auto pNewcomer{ &pManager->m_dynamicTransforms[idx] };
 
-        BlitML::vec3 xAxis(1.f, 0.f, 0.f);
-        BlitML::quat pitchOrientation = BlitML::QuatFromAngleAxis(xAxis, pEntity->m_pDynamicRotation->m_pitch, 0);
+        // NOTE: I could just make sure that available spots are always full when this is empty
+        if (pManager->m_availableMovingSpots.IsEmpty())
+        {
+            pManager->m_movingEntities.Add(pNewcomer);
+        }
 
-        pEntity->m_pTransform->orientation = yawOrientation + pitchOrientation;
+        uint32_t idx = pManager->m_availableMovingSpots.Pop();
+        pManager->m_movingEntities[idx] = pNewcomer;
+    }
+
+    void RemoveMovingEntitiesFromManager(EntityManager* pManager, uint32_t idx)
+    {
+        BLIT_ASSERT_MESSAGE(pManager->m_movingEntities.Count() > idx, "Tried to remove moving entity out of array bounds");
+
+        pManager->m_movingEntities[idx]->m_isMoving = false;
+        pManager->m_availableMovingSpots.Add(idx);
     }
 }

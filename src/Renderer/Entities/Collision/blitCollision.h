@@ -4,9 +4,26 @@
 
 namespace BlitzenEngine
 {
+	using BLITZEN_COLLISION_FLAGS = uint64_t;
+
+	using COLLISION_PFN = BlitCL::Pfn<void, void*, BLITZEN_COLLISION_FLAGS, void*, BLITZEN_COLLISION_FLAGS>;
+
 	struct Collision
 	{
-		BlitML::mat4 m_boundingSphere;// Supposedly, this will already be transformed for the current frame
+		BoundingSphere* m_pSphere;
+
+		void* pWVDATA{ nullptr };
+
+		BLITZEN_COLLISION_FLAGS m_flags;
+
+		COLLISION_PFN BEHAVIOUR_blitpfn;
+	};
+
+	struct CollisionEvent
+	{
+		Collision* pSender{ nullptr };
+
+		Collision* pReceiver{ nullptr };
 	};
 
 	enum class COLLISION_GRID_RES : int8_t
