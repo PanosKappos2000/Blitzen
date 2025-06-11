@@ -56,7 +56,7 @@ namespace BlitML
     using fRotation = vec3;
 
     inline bool operator == (const vec3& first, const vec3& second) { return (first.x == second.x) && (first.y == second.y) && (first.z == second.z); }
-    inline bool operator != (const vec3& first, const vec3& second) {return (first.x != second.x) || (first.y != second.y) || (first.z != second.z) }
+    inline bool operator != (const vec3& first, const vec3& second) { return (first.x != second.x) || (first.y != second.y) || (first.z != second.z); }
 
     inline vec3 operator + (const vec3& first, const vec3& second) { return vec3(first.x + second.x, first.y + second.y, first.z + second.z); }
     inline vec3 operator + (const vec3& vec, float scalar) { return vec3{ vec.x + scalar, vec.y + scalar, vec.z + scalar }; }

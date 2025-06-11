@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Renderer/Resources/renderingResourcesTypes.h"
 
 namespace BlitzenEngine
@@ -21,6 +20,8 @@ namespace BlitzenEngine
 		bool m_isBlock{ false };
 		bool m_isMoving{ false };
 	};
+
+	void CreateDynamicTransform();
 
 	void RotateEntity(DynamicTransform* pTransform, BlitML::fRotation& rotation, BlitML::float3& velocity, float deltaTime, uint32_t worldVariableID);
 }

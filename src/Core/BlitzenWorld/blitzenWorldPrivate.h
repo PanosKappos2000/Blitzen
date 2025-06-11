@@ -1,5 +1,4 @@
 #pragma once
-#include "Renderer/Interface/blitRenderer.h"
 #include "Core/Dasher/Interface/dasherInterface.h"
 #include "blitzenWorld.h"
 #include "Renderer/Entities/Interface/blitEntityInterface.h"
@@ -14,14 +13,13 @@ namespace BlitzenWorld
     {
         // SYSTEMS
         BlitzenCore::EngineState* pEngineState{ nullptr };
-        BlitzenEngine::WORLD_blit* pWORLD{ nullptr };
         BlitzenEngine::RenderingResources* pRenderingResources{ nullptr };
         BlitzenEngine::EntityManager* pEntityMangager{ nullptr };
         BlitzenPlatform::PlatformContext* pPlatform{ nullptr };
         BlitzenCore::Dasher* pDasher{ nullptr };
         BlitzenCore::WorldTimeManager* pClock;
 
-        BlitzenWorldContext* pBlitzenContext;
+        WORLD_blit* pWORLD{ nullptr };
     };
 
     void LoadingLoop(int argc, char** argv, BlitzenPrivateContext& context, BlitzenEngine::DrawContext& drawContext);
@@ -35,11 +33,11 @@ namespace BlitzenWorld
     bool ManageGltf(const char* filepath, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::EntityManager* pManager, BlitzenEngine::RendererPtrType pRenderer, 
         BlitzenEngine::SceneContext* pScene = nullptr);
 
-    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenEngine::EntityManager* pManager, BlitzenEngine::SceneContext* pScene = nullptr);
+    void AllocateWorldVariables(BlitzenEngine::WV_CREATE_CONTEXT* worldVarArray, uint32_t contextCount, WORLD_blit* pWORLD);
 
     void LoadGeometryStressTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshContext, float transformMultiplier, BlitzenEngine::SceneContext* pScene = nullptr);
 
-    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::WORLD_blit* pWORLD, BlitzenEngine::EntityManager* pManager);
+    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, WORLD_blit* pWORLD, BlitzenEngine::EntityManager* pManager);
 
     void S_WORLD_UPDATE_RECEIVER_SEND_TRANSFORM(BlitzenEngine::DynamicTransform* pTransform, uint32_t wvID);
 }

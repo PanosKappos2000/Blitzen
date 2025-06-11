@@ -1,11 +1,8 @@
 #pragma once
-#include "Renderer/Resources/Scene/blitScene.h"
-#include "Renderer/Entities/Interface/blitEntityManager.h"
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
 #include "Renderer/BlitzenDX12/dx12Renderer.h"
-#include <typeinfo>
-#include <cstring>
+#include "Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
 
 namespace BlitzenEngine
 {
@@ -45,21 +42,27 @@ namespace BlitzenEngine
         static_assert(true);
 
     #endif
-
-    struct WORLD_blit
+    
+    enum class BLIT_CULL_TYPE : uint8_t
     {
-        BlitCL::DynamicArray<SceneContext> m_scenes;
-
-        Renderer P_RENDERER;
-
-        DrawContext m_drawContext;
-
-        inline WORLD_blit(Camera& camera, MeshResources& meshes, RenderContainer& renders, TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
-            :m_drawContext{ camera, meshes, renders, textureManager, pPlatform }
-        {
-
-        }
+        NO_CULL,
+        DRAW_CULL_DEFAULT,
+        DRAW_CULL_INSTANCED,
+        DRAW_CULL_TEMPORAL_OCCLUSION,
+        CLUSTER_CULL_DEFAULT
     };
+    
+    void Init(RendererPtrType pContext);
+
+    void BarRenderFrame(RendererPtrType pContext);
+
+    void HI_Z_MAP_Gen(RendererPtrType pContext);
+
+    void DispatchCullingShaders(RendererPtrType pContext, uint32_t workCount, uint32_t workOffset, BLIT_CULL_TYPE cullingFlags, RENDER_OBJECT_TYPE objectType);
+
+    void UpdateRendererTransforms(RendererPtrType pContext, BlitzenCore::ARRAY_OF_POINTERS<DynamicTransform> pDynamicTransformArr, uint32_t dynamicTransformCount, MeshTransform* transformArr);
+
+    void RenderObjects(RendererPtrType pContext, uint32_t renderOffset, RENDER_OBJECT_TYPE objectType, DrawContext& drawContext);
 
     bool RenderingResourcesInit(RenderingResources* pResources, RendererPtrType pRenderer);
 }

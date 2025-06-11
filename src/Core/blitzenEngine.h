@@ -44,6 +44,9 @@ namespace BlitzenCore
 
     using BIG_BOOL = uint16_t;
 
+    template<typename PTR>
+    using ARRAY_OF_POINTERS = PTR**;
+
 #if !defined(BLIT_VK_FORCE)
 
 #undef DASHER_JOIN
@@ -91,8 +94,9 @@ namespace BlitzenCore
         Scene = 9,
         SmartPointer = 10,
         LinearAlloc = 11,
+        WV = 12,
 
-        MaxTypes = 12
+        MaxTypes = 100
     };
 
     enum class AllocationAction : uint8_t
@@ -158,6 +162,8 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxONPC_Objects = 100;
 
     constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;
+
+    constexpr uint32_t Ce_MaxMovingObjectCount = 5'000;
 
     constexpr uint32_t Ce_MaxWorldCollisionGridCount = 100'000;
     constexpr uint32_t Ce_MaxCollisionsInGrid = 50;

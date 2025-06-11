@@ -6,6 +6,7 @@
 #include "Renderer/Interface/blitRendererInterface.h"
 #include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
+#include "Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Platform/blitPlatformContext.h"
 

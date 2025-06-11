@@ -1,39 +1,15 @@
 #pragma once
 #include "Renderer/View/blitCamera.h"
 #include "Core/Events/blitTimeManager.h"
+#include "Renderer/Interface/blitRenderer.h"
 #include "Renderer/Entities/Interface/blitEntityManager.h"
+#include "Renderer/Resources/Scene/blitScene.h"
 #include "BlitCL/blitPfn.h"
+#include "Renderer/Entities/Residents/blitWV.h"
 
 namespace BlitzenWorld
 {
-    using WORLD_VARIABLE_CREATE_FLAGS = uint32_t;
-    constexpr WORLD_VARIABLE_CREATE_FLAGS WV_TICKING_BIT = 0x5;
-    constexpr WORLD_VARIABLE_CREATE_FLAGS WV_DYNAMIC_TRANSFORM_BIT = 0xA;
-
-    struct WV_CREATE_CONTEXT
-    {
-        void* m_DATA{ nullptr };
-        size_t m_dataSize{ 0 };
-        uint32_t m_resId{ 0 };
-
-        WORLD_VARIABLE_CREATE_FLAGS m_flags{ 0 };
-
-        WVTICK_blitpfn m_PFNTICK{};
-
-        BlitzenEngine::Mesh* m_pMesh{ nullptr };
-        BlitzenEngine::MeshTransform* m_pInitialTransform{ nullptr };
-
-        BlitzenEngine::DynamicTransform* m_pDynamicTranform{ nullptr };
-    };
-
     using WVTICK_blitpfn = BlitCL::Pfn<void, void*, float>;
-
-    struct WorldVariable
-    {
-        void* pWVDATA{ nullptr };
-
-        WVTICK_blitpfn PFNTICK{};
-    };
 
     enum class WorldUpdateState : uint8_t
     {
@@ -62,41 +38,23 @@ namespace BlitzenWorld
         WorldUpdateState m_state{ WorldUpdateState::WAITING };
     };
 
-    struct BlitzenWorldContext
+    struct WORLD_blit
     {
-        BlitzenEngine::CameraContainer* pCameraContainer;
+        BlitCL::DynamicArray<BlitzenEngine::SceneContext> m_scenes{};
+        BlitzenEngine::CameraContainer* pCameraContainer{ nullptr };
+        BlitzenEngine::WVHOST m_worldVariableHost;
+        BlitCL::BlitStack<BlitzenWorldUpdate, BlitzenCore::Ce_MaxWorldVariableCount> worldUpdates{};
 
-        WorldVariable WVs[BlitzenCore::Ce_MaxWorldVariableCount];
-        uint32_t wvCount{ 0 };
+        BlitzenEngine::Renderer P_RENDERER;
+        BlitzenEngine::DrawContext m_drawContext;
 
-        BlitzenWorldUpdate worldUpdates[BlitzenCore::Ce_MaxWorldVariableCount];
-        uint32_t worldUpdateCount = 0;
-        
         float deltaTime;
+
+        inline WORLD_blit(BlitzenEngine::Camera& camera, BlitzenEngine::MeshResources& meshes, BlitzenEngine::RenderContainer& renders, 
+            BlitzenEngine::TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
+            :m_drawContext{ camera, meshes, renders, textureManager, pPlatform }
+        {
+
+        }
     };
-
-    template<class WVDATA>
-    void AddWorldVariable(BlitzenWorldContext& WORLD, WV_CREATE_CONTEXT& context)
-    {
-        BLIT_ASSERT_MESSAGE(WORLD.wvCount < BlitzenCore::Ce_MaxWorldVariableCount, "Exceeded allowed world variable count");
-        BLIT_ASSERT_MESSAGE(context.m_dataSize != 0, "Can create world variable with data size 0");
-
-        WORLD.worldUpdateCount++;
-        auto& WV{ WORLD.WVs[WORLD.wvCount++] };
-
-        WV.pWVDATA = BlitzenCore::BlitAlloc<uint8_t>(BlitzenCore::AllocationType::Entity, sizeof(WVDATA);
-
-        if (context.flags & WV_TICKING_BIT)
-        {
-            BLIT_ASSERT_MESSAGE(context.m_PFNTICK.IsFunctional(), "Passed ticking flag without ticking behaviour function pointer");
-            WV.PFNTICK = context.m_PFNTICK;
-        }
-
-        if (context.flags & WV_RENDER_BIT)
-        {
-            BlitzenEngine::CreateRenderObjectFromMesh()
-        }
-
-        reinterpret_cast<WVDATA*>(WV.pWVDATA)->Start(context);
-    }
 }

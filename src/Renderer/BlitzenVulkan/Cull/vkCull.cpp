@@ -1,10 +1,10 @@
 #pragma once
 
-#include "vkCull.h"
+#include "Renderer/Interface/blitRenderer.h"
 
 namespace BlitzenVulkan
 {
-	void DispatchCullingShaders(VulkanRenderer* pContext, uint32_t workCount, uint32_t workOffset, BLIT_VK_CULLING_FLAGS cullingFlags, BLIT_VK_CULLED_OBJECT_TYPE objectType)
+	void DispatchCullingShaders(RendererPtrType pContext, uint32_t workCount, uint32_t workOffset, BlitzenEngine::BLIT_CULL_TYPE cullingFlags, BlitzenEngine::RENDER_OBJECT_TYPE objectType)
 	{
 		// just cull bruh, cmon now
 		BLIT_ASSERT(!(cullingFlags & BLIT_VK_CULL_NOTHING));

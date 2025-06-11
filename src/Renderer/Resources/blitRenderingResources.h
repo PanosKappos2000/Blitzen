@@ -2,8 +2,6 @@
 #include "Mesh/blitMeshes.h"
 #include "Textures/blitTextures.h"
 
-
-
 namespace BlitzenEngine
 {
     // Rendering resources container

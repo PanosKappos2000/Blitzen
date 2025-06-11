@@ -28,6 +28,8 @@ add_executable(BlitzenEngine
                 "src/Core/BlitzenWorld/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 "src/Core/BlitzenWorld/blitzenWorldLoad.cpp"
+                "src/Core/BlitzenWorld/blitzenWorldUpdate.cpp"
+                "src/Core/BlitzenWorld/blitzenWorld.cpp"
                 # DASHER UI
                 "src/Core/Dasher/Interface/dasherState.h"
                 "src/Core/Dasher/Interface/dasherInterface.h"
@@ -50,6 +52,7 @@ add_executable(BlitzenEngine
                 "src/BlitCL/blitHashMap.h"
                 "src/BlitCL/blitArrayIterator.h"
                 "src/BlitCL/blitclDebug.h"
+                "src/BlitCL/blitLinearAllocator.h"
 
                 # BLITZEN MATH LIBRARY
                 "src/BlitzenMathLibrary/blitML.h"
@@ -92,21 +95,35 @@ add_executable(BlitzenEngine
                 "src/Renderer/Resources/Textures/blitzenTextures.cpp"
                 "src/Renderer/Resources/Mesh/blitMeshes.h"
                 "src/Renderer/Resources/Mesh/blitzenMeshes.cpp"
-                "src/Renderer/Resources/RenderObject/blitRender.h"
-                "src/Renderer/Resources/RenderObject/blitzenRender.cpp"
                 "src/Renderer/Resources/Scene/blitScene.h"
                 "src/Renderer/Resources/Scene/blitzenScene.cpp"
+                "src/Renderer/Resources/Mesh/blitMeshPrimitive.h"
+                "src/Core/BlitzenWorld/blitzenWorldRender.cpp"
+
                 # CAMERA
                 "src/Renderer/View/blitCamera.h"
                 "src/Renderer/View/blitzenCamera.cpp"
+
                 # ENTITIES
-                
+                "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
+                "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.cpp"
                 "src/Renderer/Entities/Interface/blitEntityInterface.h"
                 "src/Renderer/Entities/Interface/blitEntityManager.h"
                 "src/Renderer/Entities/Interface/blitEntityInterface.cpp"
                 "src/Renderer/Entities/Collision/blitCollision.h"
+                "src/Renderer/Entities/Physics/blitGravity.h"
+                "src/Renderer/Entities/Residents/blitWV.h"
+                "src/Renderer/Entities/Residents/blitResident.h"
+                "src/Renderer/Entities/Residents/blitResidentManager.h"
+                "src/Renderer/Entities/Residents/RenderObject/blitRender.h"
+                "src/Renderer/Entities/Residents/RenderObject/blitzenRender.cpp"
+                "src/Renderer/Entities/Residents/blitResident.cpp"
+                "src/Renderer/Entities/Residents/blitWV.cpp"
+                "src/Renderer/Entities/Residents/RenderObject/worldTransform.h"
+
                 # LIGHTING
                 "src/Renderer/Lighting/blitDirectionalLight.h"
+
                 # VULKAN
                 "src/Renderer/BlitzenVulkan/vulkanData.h"
                 "src/Renderer/BlitzenVulkan/vulkanContext.h"
@@ -125,11 +142,14 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenVulkan/vulkanCommands.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanRuntimeHelpers.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanDraw.cpp"
+                "src/Renderer/BlitzenVulkan/Cull/vkCull.cpp"
+
                 # GL
                 "src/Renderer/BlitzenGL/openglData.h"
                 "src/Renderer/BlitzenGL/openglRenderer.h"
                 "src/Renderer/BlitzenGL/openglResources.cpp"
                 "src/Renderer/BlitzenGL/openglRenderer.cpp"
+
                 # DX12
                 "src/Renderer/BlitzenDX12/dx12Data.h"
                 "src/Renderer/BlitzenDX12/dx12Context.h"
@@ -146,6 +166,10 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/dx12RendererSetup.cpp"
                 "src/Renderer/BlitzenDX12/dx12RuntimeHepers.cpp"
                 "src/Renderer/BlitzenDX12/dx12Draw.cpp"
+                "src/Renderer/BlitzenDX12/Update/dx12Update.h"
+                "src/Renderer/BlitzenDX12/Update/dx12Update.cpp"
+                "src/Renderer/BlitzenDX12/Init/dx12Init.h"
+                "src/Renderer/BlitzenDX12/Cull/dx12Cull.cpp"
 
                 "src/VendorCode/fast_obj.h"
                 "src/VendorCode/objparser.cpp"
@@ -155,7 +179,12 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h"  "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.h" "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.cpp" "src/Renderer/Entities/Physics/blitGravity.h" "src/Core/BlitzenWorld/blitzenWorldUpdate.cpp" "src/Renderer/Resources/Mesh/blitMeshPrimitive.h" "src/Renderer/BlitzenVulkan/Cull/vkCull.h" "src/Renderer/BlitzenVulkan/Cull/vkCull.cpp" "src/Core/BlitzenWorld/blitzenWorldRender.cpp" "src/BlitCL/blitStack.h"  "src/Core/BlitzenWorld/blitzenWorldWV.cpp" "src/Renderer/BlitzenDX12/Update/dx12Update.h" "src/Renderer/BlitzenDX12/Update/dx12Update.cpp" "src/Renderer/BlitzenDX12/Init/dx12Init.h" "src/Core/BlitzenWorld/blitzenWorld.cpp")
+                "src/VendorCode/Cgltf/cgltf.h"                   
+                
+                
+                
+                "src/Client/WVRotatingKitten.h"   
+                "src/Client/ClientWV/wvData.h" )
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

@@ -9,8 +9,6 @@ namespace BlitzenWorld
         {
             if (*context.pEngineState == BlitzenCore::EngineState::LOADING)
             {
-                std::lock_guard<std::mutex> lock(context.m_resourceLoadingMutex);
-
                 if (!CreateSceneFromArguments(argc, argv, context.pRenderingResources, context.pWORLD, context.pEntityMangager))
                 {
                     BLIT_FATAL("Failed to allocate resource for requested scene, Blitzen shutting down");
@@ -198,39 +196,17 @@ namespace BlitzenWorld
         BlitzenEngine::RotateEntity(pKitten->m_pTransform, rotation, BlitML::float3{ 0.f }, deltaTime, )
     }
 
-    void CreateDynamicObjectRendererTest(BlitzenEngine::RenderContainer& renders, BlitzenEngine::MeshResources& meshes, BlitzenEngine::EntityManager* pManager, BlitzenEngine::SceneContext* pScene)
+    void CreateDynamicObjectRendererTest(BlitzenEngine::WV_CREATE_CONTEXT* worldVarArray, uint32_t contextCount, WORLD_blit* pWORLD)
     {
-        pScene->m_name.CopyString("SpinningEntityTestScene");
+        pWORLD->m_worldVariableHost.ALLOC(worldVarArray, contextCount);
 
-        pScene->m_meshNames.EmplaceEmtpy();
-        pScene->m_meshNames[0].CopyString(BlitzenCore::Ce_DefaultKittenMeshName);
-
-        const uint32_t ObjectCount = BlitzenCore::Ce_MaxDynamicObjectCount;
-        if (pManager->m_renderContainer.m_renderCount + ObjectCount > BlitzenCore::Ce_MaxRenderObjects)
+        for (uint32_t type = 0; type < contextCount; type++)
         {
-            BLIT_ERROR("Could not add dynamic object renderer test, object count exceeds limit");
-            return;
-        }
 
-        for (size_t i = 0; i < ObjectCount; ++i)
-        {
-            WV_CREATE_CONTEXT createContext{};
-
-            createContext.m_updatePfn = RotatingKittenPfn;
-            createContext.m_rotationSpeed = 0.1f;
-
-            BlitzenEngine::RandomizeTransform(createContext.initialTransform, 100.f, 1.f);
-
-            AddWorldVariable<WVRotatingKitten>(context)
-
-            if (BlitzenCore::BLIT_CHECK_FAIL(res))
-            {
-                BLIT_ASSERT(BlitzenEngine::LOG_ENTITY_CREATION_ERROR_MSG_AND_RETURN(res));
-            }
         }
     }
 
-    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::WORLD_blit* pWORLD, BlitzenEngine::EntityManager* pManager)
+    bool CreateSceneFromArguments(int argc, char** argv, BlitzenEngine::RenderingResources* pResources, WORLD_blit* pWORLD, BlitzenEngine::EntityManager* pManager)
     {
         LoadTestGeometry(pResources->m_meshContext);
         CreateSingleRender(pManager->m_renderContainer, pResources->m_meshContext, BlitzenCore::Ce_DefaultMeshName, 5.f);

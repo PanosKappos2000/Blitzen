@@ -48,9 +48,10 @@ namespace BlitzenEngine
 
     struct BoundingSphere
     {
-        BlitML::vec3
+        BlitML::vec3 m_center;
+        float m_radius;
     };
-    static_assert(sizeof(BoundingSphere) % 16 == 0)
+    static_assert(sizeof(BoundingSphere) % 16 == 0);
 
     struct HCluster
     {

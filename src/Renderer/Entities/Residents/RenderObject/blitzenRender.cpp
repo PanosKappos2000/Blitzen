@@ -1,7 +1,33 @@
 #include "blitRender.h"
+#include "worldTransform.h"
 
 namespace BlitzenEngine
 {
+    RENDER_OBJECT_RES RenderContainer::CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context)
+    {
+        if (m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
+        {
+            BLIT_ERROR("Exceeded render object limit");
+            return RENDER_OBJECT_RES::MAX_COUNT_EXCEEDED;
+        } 
+
+        // TODO: check flags
+        // Create opaque dynamic
+        // Create opaque normal
+        // Create
+
+        auto& newcomer{ m_renders[m_renderCount++] };
+        newcomer.surfaceId = context.m_primitiveID;
+        newcomer.transformId = context.m_primitiveID;
+
+        return RENDER_OBJECT_RES::SUCCESS;
+    }
+
+    uint32_t WorldTransformContainer::CreateTransform(WorldTransformType type)
+    {
+        if
+    }
+
     bool CreateRenderObject(RenderContainer& context, MeshResources& meshes, uint32_t transformId, uint32_t surfaceId)
     {
         // Create opaque render object
