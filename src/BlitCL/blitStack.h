@@ -44,12 +44,12 @@ namespace BlitCL
 			return MAX_COUNT;
 		}
 
-		DATA* Get() const
+		DATA* Get()
 		{
 			return m_data;
 		}
 
-		DATA& operator [](uint32_t idx) const
+		DATA& operator [](uint32_t idx)
 		{
 			return m_data[idx];
 		}
@@ -60,34 +60,45 @@ namespace BlitCL
 	};
 
 	template<class DATA, uint32_t MAX_COUNT>
-	class BLIT_S_ALLOC
+	class StaticAllocator
 	{
-		BLIT_S_ALLOC(uint32_t count = 0) : m_stack{ count }
+		StaticAllocator()
 		{
-
-		}
-
-		uint32_t ADD(DATA& newcomer)
-		{
-			BLIT_ASSERT_MESSAGE(!m_stack.IsFull(), "Exceeded stack allocator count");
-
-			auto pNewcomer{ &pManager->m_dynamicTransforms[idx] };
-
-			if (m_idxs.IsEmpty())
+			uint32_t idx = MAX_COUNT - 1;
+			for (auto& data : m_idxs)
 			{
-				m_stack.Add(newcomer);
+				data = idx--;
 			}
-
-			uint32_t idx = m_idxs.Pop;
-			pManager->m_movingEntities[idx] = pNewcomer;
 		}
 
-		uint32_t Count() const
+		uint32_t Add(DATA& newcomer)
 		{
-			return m_count;
+			uint32_t idx = m_idxs.Pop();
+			m_data[idx] = newcomer;
 		}
 
-		uint32_t Size() const
+		uint32_t Copy(DATA* ptr)
+		{
+			uint32_t idx = m_idxs.Pop();
+			BlitzenCore::BlitMemCopy<DATA>(&m_data[idx], ptr, sizeof(DATA));
+		}
+
+		DATA* GetNext()
+		{
+
+		}
+
+		void Remove(uint32_t idx)
+		{
+			
+		}
+
+		uint32_t GetCount() const
+		{
+			return m_data.m_count();
+		}
+
+		uint32_t GetSize() const
 		{
 			return MAX_COUNT;
 		}
@@ -104,7 +115,9 @@ namespace BlitCL
 
 
 	private:
-		BlitStack<uint32_t, MAX_COUNT> m_idxs[MAX_COUNT];
-		BlitStack<DATA, MAX_COUNT> m_stack;
+		DATA m_data[MAX_COUNT];
+		uint32_t m_count{ 0 };
+
+		BlitStack<uint32_t, MAX_COUNT> m_idxs;
 	};
 }

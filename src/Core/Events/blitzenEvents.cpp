@@ -2,8 +2,8 @@
 
 namespace BlitzenCore
 {
-    EventSystem::EventSystem( BlitzenWorld::BlitzenWorldContext& blitzenContext, BlitzenWorld::BlitzenPrivateContext& privateContext) :
-        m_blitzenContext{ blitzenContext }, m_privateContext{ privateContext }
+    EventSystem::EventSystem(BlitzenWorld::WORLD_blit& WORLD, BlitzenWorld::BlitzenPrivateContext& systemContext) :
+        m_worldContext{ WORLD }, m_systemContext{ systemContext }
     {
         for (uint32_t i = 0; i < uint8_t(BlitEventType::MaxTypes); ++i)
         {
@@ -28,12 +28,12 @@ namespace BlitzenCore
         case BlitEventType::EngineShutdown:
         {
             auto callback = m_eventCallbacks[uint32_t(event)];
-            return callback(m_privateContext, event);
+            return callback(m_systemContext, event);
         }
         case BlitEventType::WindowUpdate:
         {
             auto callback = m_eventCallbacks[uint32_t(event)];
-            if (!callback(m_privateContext, event))
+            if (!callback(m_systemContext, event))
             {
                 BLIT_ERROR("Failure to update window");
                 return false;
@@ -95,11 +95,11 @@ namespace BlitzenCore
             m_currentKeyboard[idx] = bPressed;
             if (bPressed)
             {
-                event = m_controllers[m_activeControllerIDX].m_keyPressPFNs[idx](m_blitzenContext);
+                event = m_controllers[m_activeControllerIDX].m_keyPressPFNs[idx](m_worldContext);
             }
             else
             {
-                event = m_controllers[m_activeControllerIDX].m_keyReleasePFNs[idx](m_blitzenContext);
+                event = m_controllers[m_activeControllerIDX].m_keyReleasePFNs[idx](m_worldContext);
             }
 
             FireEvent(event);
@@ -115,7 +115,7 @@ namespace BlitzenCore
             m_currentMouse.x = x;
             m_currentMouse.y = y;
 
-            m_controllers[m_activeControllerIDX].m_mouseMovePFNs(m_blitzenContext, m_currentMouse.x, m_currentMouse.y, m_previousMouse.x, m_previousMouse.y);
+            m_controllers[m_activeControllerIDX].m_mouseMovePFNs(m_worldContext, m_currentMouse.x, m_currentMouse.y, m_previousMouse.x, m_previousMouse.y);
         }
     }
 
@@ -128,18 +128,18 @@ namespace BlitzenCore
             m_currentMouse.buttons[idx] = bPressed;
             if (bPressed)
             {
-                m_controllers[m_activeControllerIDX].m_mousePressPFNs[idx](m_blitzenContext, m_currentMouse.x, m_currentMouse.y);
+                m_controllers[m_activeControllerIDX].m_mousePressPFNs[idx](m_worldContext, m_currentMouse.x, m_currentMouse.y);
             }
             else
             {
-                m_controllers[m_activeControllerIDX].m_mouseReleasePFNs[idx](m_blitzenContext, m_currentMouse.x, m_currentMouse.y);
+                m_controllers[m_activeControllerIDX].m_mouseReleasePFNs[idx](m_worldContext, m_currentMouse.x, m_currentMouse.y);
             }
         }
     }
 
     void EventSystem::InputProcessMouseWheel(int8_t zDelta)
     {
-        m_controllers[m_activeControllerIDX].m_mouseWheelPFNs(m_blitzenContext, zDelta);
+        m_controllers[m_activeControllerIDX].m_mouseWheelPFNs(m_worldContext, zDelta);
     }
 
     void RegisterKeyPressCallback(EventSystem* pContext, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX)
@@ -237,12 +237,12 @@ namespace BlitzenCore
         return 0;
     }
 
-    static BlitEventType CloseOnEscapeKeyPressCallback(BlitzenWorld::BlitzenWorldContext& context)
+    static BlitEventType CloseOnEscapeKeyPressCallback(BlitzenWorld::WORLD_blit& context)
     {
 		return BlitEventType::EngineShutdown;
     }
 
-    static BlitEventType MoveDefaultCameraForwardOnWKeyPressCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType MoveDefaultCameraForwardOnWKeyPressCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -252,7 +252,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraForwardOnWKeyReleaseCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType StopMovingCameraForwardOnWKeyReleaseCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -265,7 +265,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType MoveDefaultCameraBackwardOnSKeyPressCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType MoveDefaultCameraBackwardOnSKeyPressCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -275,7 +275,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraBackwardOnSKeyReleaseCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType StopMovingCameraBackwardOnSKeyReleaseCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -288,7 +288,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType MoveDefaultCameraLeftOnAKeyPressCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType MoveDefaultCameraLeftOnAKeyPressCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -298,7 +298,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraLeftOnAKeyReleaseCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType StopMovingCameraLeftOnAKeyReleaseCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -311,7 +311,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType MoveDefaultCameraRightOnDKeyPressCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType MoveDefaultCameraRightOnDKeyPressCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -321,7 +321,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraRightOnDReleaseCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType StopMovingCameraRightOnDReleaseCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -334,7 +334,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType FreezeFrustumOnF1KeyPressCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType FreezeFrustumOnF1KeyPressCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -343,7 +343,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType ChangePyramidLevelOnF3ReleaseCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType ChangePyramidLevelOnF3ReleaseCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -359,7 +359,7 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType DecreasePyramidLevelOnF4ReleaseCallback(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType DecreasePyramidLevelOnF4ReleaseCallback(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
@@ -371,19 +371,19 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType BringBackEditorOnF10(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType BringBackEditorOnF10(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         return BlitEventType::BringBackEditor;
     }
 
-    static BlitEventType BringDasherRuntimeDebugWindowOnF9(BlitzenWorld::BlitzenWorldContext& blitzenContext)
+    static BlitEventType BringDasherRuntimeDebugWindowOnF9(BlitzenWorld::WORLD_blit& blitzenContext)
     {
         return BlitEventType::BringDasherRuntimeDebugWindow;
     }
 
     static uint8_t ResizeEventCallback(BlitzenWorld::BlitzenPrivateContext& context, BlitzenCore::BlitEventType eventType)
     {
-        auto& camera{ reinterpret_cast<BlitzenWorld::BlitzenWorldContext*>(context.pBlitzenContext)->pCameraContainer->GetMainCamera()};
+        auto& camera{ reinterpret_cast<BlitzenWorld::WORLD_blit*>(context.pWORLD)->pCameraContainer->GetMainCamera()};
         auto pBlitState{ context.pEngineState };
 
         if (*pBlitState == BlitzenCore::EngineState::LOADING)
@@ -419,11 +419,11 @@ namespace BlitzenCore
         return 1;
     }
 
-    static BlitEventType OnMouseMove(BlitzenWorld::BlitzenWorldContext& blitzenContext, int16_t currentX, int16_t currentY, int16_t previousX, int16_t previousY)
+    static BlitEventType OnMouseMove(BlitzenWorld::WORLD_blit& blitzenContext, int16_t currentX, int16_t currentY, int16_t previousX, int16_t previousY)
     {
         auto& camera{ blitzenContext.pCameraContainer->GetMainCamera() };
 
-        auto deltaTime = float(blitzenContext.pCoreClock->m_deltaTime);
+        auto deltaTime = float(blitzenContext.deltaTime);
 
         auto xMovement = float(currentX - previousX);
         auto yMovement = float(currentY - previousY);
@@ -433,14 +433,14 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType OnMouseButtonClickTest(BlitzenWorld::BlitzenWorldContext& blitzenContext, int16_t mouseX, int16_t mouseY)
+    static BlitEventType OnMouseButtonClickTest(BlitzenWorld::WORLD_blit& blitzenContext, int16_t mouseX, int16_t mouseY)
     {
         BLIT_INFO("Mouse button clicked at %d, %d", mouseX, mouseY);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType OnMouseButtonReleaseTest(BlitzenWorld::BlitzenWorldContext& blitzenContext, int16_t mouseX, int16_t mouseY)
+    static BlitEventType OnMouseButtonReleaseTest(BlitzenWorld::WORLD_blit& blitzenContext, int16_t mouseX, int16_t mouseY)
     {
         BLIT_INFO("Mouse button released at %d, %d", mouseX, mouseY);
 

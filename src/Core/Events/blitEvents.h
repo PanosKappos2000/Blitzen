@@ -24,7 +24,7 @@ namespace BlitzenCore
     {
     public:
         
-        EventSystem(BlitzenWorld::BlitzenWorldContext& blitzenContext, BlitzenWorld::BlitzenPrivateContext& privateContext);
+        EventSystem(BlitzenWorld::WORLD_blit& WORLD, BlitzenWorld::BlitzenPrivateContext& systemContext);
 
         inline ~EventSystem() {}
 
@@ -40,8 +40,8 @@ namespace BlitzenCore
 
         bool FireEvent(BlitEventType type);
 
-        BlitzenWorld::BlitzenPrivateContext& m_privateContext;
-        BlitzenWorld::BlitzenWorldContext& m_blitzenContext;
+        BlitzenWorld::BlitzenPrivateContext& m_systemContext;
+        BlitzenWorld::WORLD_blit& m_worldContext;
 
         EventCallback m_eventCallbacks[uint8_t(BlitEventType::MaxTypes)]{};
 
@@ -85,4 +85,6 @@ namespace BlitzenCore
     void RegisterDefaultEvents(EventSystem* pEvents);
 
     void AssignEditorCallbacks(EventSystem* pContext);
+
+    using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
 }

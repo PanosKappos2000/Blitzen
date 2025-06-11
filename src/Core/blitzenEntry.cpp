@@ -2,7 +2,7 @@
 #include "Platform/blitPlatformContext.h"
 #include "Platform/blitPlatform.h"
 
-using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
+
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
 
 
@@ -14,8 +14,6 @@ int main(int argc, char* argv[])
     blitzenEngine.m_state = BlitzenCore::EngineState::LOADING;
 
     BlitzenWorld::BlitzenPrivateContext blitzenPrivateContext{};
-    BlitzenWorld::BlitzenWorldContext blitzenWorldContext{};
-	blitzenPrivateContext.pBlitzenContext = &blitzenWorldContext;
 
     BlitzenCore::InitLogging();
 
@@ -24,7 +22,6 @@ int main(int argc, char* argv[])
     BlitzenEngine::CameraContainer blitzenCameraSystem;
     auto& mainCamera = blitzenCameraSystem.GetMainCamera();
     BlitzenEngine::SetupCamera(mainCamera);
-    blitzenWorldContext.pCameraContainer = &blitzenCameraSystem;
 
     BlitzenCore::WorldTimeManager blitzenClock;
     blitzenPrivateContext.pClock = &blitzenClock;
@@ -40,7 +37,10 @@ int main(int argc, char* argv[])
     BlitzenPlatform::PlatformContext platform{};
     blitzenPrivateContext.pPlatform = &platform;
 
-    BlitzenEngine::WORLD_blit WORLD{ mainCamera, renderingResources->m_meshContext, blitzenEntityManager->m_renderContainer, renderingResources->m_textureManager, &platform };
+    BlitzenWorld::WORLD_blit WORLD{ mainCamera, renderingResources->m_meshContext, blitzenEntityManager->m_renderContainer, renderingResources->m_textureManager, &platform };
+    blitzenPrivateContext.pWORLD = &WORLD;
+    WORLD.pCameraContainer = &blitzenCameraSystem;
+
     WORLD.P_RENDERER.Make();
     blitzenPrivateContext.pWORLD = &WORLD;
     

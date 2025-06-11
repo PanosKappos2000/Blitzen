@@ -1,7 +1,7 @@
 #pragma once
 #include "BlitCL/blitSmartPointer.h"
 #include "BlitCL/blitStack.h"
-#include "Renderer/Resources/RenderObject/blitRender.h"
+#include "Renderer/Entities/Residents/RenderObject/blitRender.h"
 #include "Renderer/Entities/Collision/blitCollision.h"
 #include "Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
 

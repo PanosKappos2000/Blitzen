@@ -25,7 +25,7 @@ namespace BlitzenEngine
 
     uint32_t WorldTransformContainer::CreateTransform(WorldTransformType type)
     {
-        if
+        if(m_transformCount >= )
     }
 
     bool CreateRenderObject(RenderContainer& context, MeshResources& meshes, uint32_t transformId, uint32_t surfaceId)
