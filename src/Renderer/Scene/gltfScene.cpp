@@ -1,4 +1,4 @@
-#include "blitScene.h"
+#include "gltfScene.h"
 
 namespace BlitzenEngine
 {
@@ -8,7 +8,92 @@ namespace BlitzenEngine
         {
             cgltf_free(pData);
         }
-	}
+    }
+
+    SCENE_CREATE_RES ManageGltf(const char* filepath, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::WORLD_RESIDENTS* pWorldResidents, BlitzenEngine::RendererPtrType pRenderer, 
+        BlitzenEngine::SceneContext* pScene)
+    {
+        auto& textureContext{ pResources->m_textureManager };
+        auto& meshContext{ pResources->m_meshContext };
+
+        if (pScene)
+        {
+            pScene->m_name.CopyString(filepath);
+            int64_t truncationIndex = pScene->m_name.FindLastOf('.');
+
+            if (truncationIndex == -1)
+            {
+                BLIT_INFO("Gltf name truncation failed");
+            }
+            else
+            {
+                pScene->m_name.Truncate(truncationIndex);
+            }
+        }
+
+        BlitzenEngine::CgltfScope cgltfScope;
+        cgltfScope.pData = nullptr;
+        cgltfScope.m_pScene = pScene;
+
+        if (!LoadGltfFile(filepath, cgltfScope))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_GLTF_FILE;
+        }
+
+        // Texture count saved for materials
+        uint32_t previousTextureCount = textureContext.m_textureCount;
+
+        // Textures (special care because they are directly managed by the renderer backend)
+        BLIT_INFO("Loading textures for GLTF");
+        for (size_t i = 0; i < cgltfScope.pData->textures_count; ++i)
+        {
+            // Change to dds texture
+            auto pTexture = &cgltfScope.pData->textures[i];
+            std::string ddsFilepath{ "" };
+            if (!BlitzenEngine::ModifyTextureFilepath(pTexture, filepath, ddsFilepath))
+            {
+                return SCENE_CREATE_RES::FAILED_TO_MODIFY_TEXTURE_FILEPATH_TO_DDS;
+            }
+
+            // Give to renderer
+            if (!pRenderer->UploadTexture(ddsFilepath.c_str()))
+            {
+                return SCENE_CREATE_RES::FAILED_TO_LOAD_TEXTURE_TO_GPU;
+            }
+
+            // Update textures (might want to return if this fails)
+            if (!textureContext.AddTexture(ddsFilepath.c_str()))
+            {
+                return SCENE_CREATE_RES::FAILED_TO_ADD_TEXTURE_TO_SYSTEM;
+            }
+        }
+
+        // Material count saved for meshes
+        auto previousMaterialCount = textureContext.m_materialCount;
+
+        // Materials
+        BLIT_INFO("Loading materials for GLTF");
+        LoadGltfMaterials(textureContext, cgltfScope, previousTextureCount);
+
+        // Given to mesh loading to hold surface offsets for nodes
+        BlitCL::DynamicArray<uint32_t> surfaceIndices(cgltfScope.pData->meshes_count);
+
+        // Meshes
+        BLIT_INFO("Loading meshes for GLTF");
+        if (!LoadGltfMeshes(meshContext, textureContext, cgltfScope, previousMaterialCount, surfaceIndices))
+        {
+            return SCENE_CREATE_RES::MESH_LOADING_FAILED;
+        }
+
+        BLIT_INFO("Loading scene nodes");
+        if (!LoadGltfNodes(pWorldResidents, meshContext, cgltfScope, surfaceIndices))
+        {
+            return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
+        }
+
+        // success
+        return SCENE_CREATE_RES::SUCCESS;
+    }
 
     bool LoadGltfFile(const char* path, CgltfScope& cgltf)
     {
@@ -19,14 +104,14 @@ namespace BlitzenEngine
         auto res = cgltf_parse_file(&options, path, &cgltf.pData);
         if (res != cgltf_result_success)
         {
-			BLIT_ERROR("Failed to parse gltf file: %s", path);
+            BLIT_ERROR("Failed to parse gltf file: %s", path);
             return false;
         }
 
         res = cgltf_load_buffers(&options, cgltf.pData, path);
         if (res != cgltf_result_success)
         {
-			BLIT_ERROR("Failed to load gltf buffers: %s", path);
+            BLIT_ERROR("Failed to load gltf buffers: %s", path);
             return false;
         }
 
@@ -34,7 +119,7 @@ namespace BlitzenEngine
         res = cgltf_validate(cgltf.pData);
         if (res != cgltf_result_success)
         {
-			BLIT_ERROR("Failed to validate gltf file: %s", path);
+            BLIT_ERROR("Failed to validate gltf file: %s", path);
             return false;
         }
 
@@ -42,9 +127,9 @@ namespace BlitzenEngine
         return true;
     }
 
-	bool ModifyTextureFilepath(cgltf_texture* pTexture, const char* fullPath, std::string& texturePath)
-	{
-        
+    bool ModifyTextureFilepath(cgltf_texture* pTexture, const char* fullPath, std::string& texturePath)
+    {
+
         if (!pTexture->image)
         {
             BLIT_ERROR("No image resource found in gltf texture");
@@ -80,9 +165,9 @@ namespace BlitzenEngine
 
         texturePath = ipath + uri;
         return true;
-	}
+    }
 
-    void LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
     {
         for (size_t i = 0; i < cgltfScope.pData->meshes_count; ++i)
         {
@@ -90,20 +175,23 @@ namespace BlitzenEngine
 
             auto firstSurface = uint32_t(meshContext.m_surfaces.GetSize());
 
-            if (!meshContext.AddMesh(firstSurface, uint32_t(gltfMesh.primitives_count)))
+            uint32_t meshIdx = meshContext.AddMesh(firstSurface, uint32_t(gltfMesh.primitives_count));
+            if (meshIdx == BlitzenCore::Ce_MaxMeshCount)
             {
                 BLIT_ERROR("Failed to add gltf mesh number: (%u)", i);
-                break;
+                return false;
             }
 
             // Saves surface indices for nodes
-            surfaceIndices[i] = firstSurface;
+            surfaceIndices[i] = meshIdx;
 
             LoadGltfMeshPrimitives(meshContext, textureContext, cgltfScope, gltfMesh, previousMaterialCount);
         }
+
+        return true;
     }
 
-    void LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount)
+    bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount)
     {
         for (size_t j = 0; j < gltfMesh.primitives_count; ++j)
         {
@@ -113,7 +201,7 @@ namespace BlitzenEngine
             if (prim.type != cgltf_primitive_type_triangles || !prim.indices)
             {
                 BLIT_ERROR("Blitzen supports only primitives with cgltf_primitive_type_triangles flags set and with indices");
-                continue;
+                return false;
             }
 
             size_t vertexCount = prim.attributes[0].data->count;
@@ -123,7 +211,11 @@ namespace BlitzenEngine
             // Vertex positions
             if (const cgltf_accessor* pos = cgltf_find_accessor(&prim, cgltf_attribute_type_position, 0))
             {
-                BLIT_ASSERT(cgltf_num_components(pos->type) == 3);
+                if (cgltf_num_components(pos->type) != 3)
+                {
+                    BLIT_ERROR("Found gltf pos component with count not equal to 3");
+                    return false;
+                }
 
                 cgltf_accessor_unpack_floats(pos, scratch.Data(), vertexCount * 3);
                 for (size_t j = 0; j < vertexCount; ++j)
@@ -135,7 +227,11 @@ namespace BlitzenEngine
             // Vertex normals
             if (const cgltf_accessor* nrm = cgltf_find_accessor(&prim, cgltf_attribute_type_normal, 0))
             {
-                BLIT_ASSERT(cgltf_num_components(nrm->type) == 3);
+                if (cgltf_num_components(nrm->type) != 3)
+                {
+                    BLIT_ERROR("Found gltf normal component with count not equal to 3");
+                    return false;
+                }
 
                 cgltf_accessor_unpack_floats(nrm, scratch.Data(), vertexCount * 3);
                 for (size_t j = 0; j < vertexCount; ++j)
@@ -149,7 +245,11 @@ namespace BlitzenEngine
             // Vertex tangents
             if (const cgltf_accessor* tang = cgltf_find_accessor(&prim, cgltf_attribute_type_tangent, 0))
             {
-                BLIT_ASSERT(cgltf_num_components(tang->type) == 4)
+                if (cgltf_num_components(tang->type) != 4)
+                {
+                    BLIT_ERROR("Found gltf tangent component with count not equal to 4");
+                    return false;
+                }
 
                     cgltf_accessor_unpack_floats(tang, scratch.Data(), vertexCount * 4);
                 for (size_t j = 0; j < vertexCount; ++j)
@@ -163,7 +263,12 @@ namespace BlitzenEngine
 
             if (const cgltf_accessor* tex = cgltf_find_accessor(&prim, cgltf_attribute_type_texcoord, 0))
             {
-                BLIT_ASSERT(cgltf_num_components(tex->type) == 2);
+                if (cgltf_num_components(tex->type) != 2)
+                {
+                    BLIT_ERROR("Found gltf tex coord component with count not equal to 2");
+                    return false;
+                }
+
                 cgltf_accessor_unpack_floats(tex, scratch.Data(), vertexCount * 2);
                 for (size_t j = 0; j < vertexCount; ++j)
                 {
@@ -184,16 +289,14 @@ namespace BlitzenEngine
 
                 if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
                 {
-                    meshContext.m_bTransparencyList[meshContext.m_surfaces.GetSize() - 1].isTransparent = true;
+                    meshContext.m_bTransparencyList[meshContext.m_surfaces.GetSize() - 1] = BlitzenCore::BB_TRUE;
                 }
             }
         }
     }
 
-    void LoadGltfNodes(RenderContainer& renders, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& meshIndices)
     {
-        cgltfScope.m_pScene->m_renderOffset = renders.m_renderCount;
-
         for (size_t i = 0; i < cgltfScope.pData->nodes_count; ++i)
         {
             auto node = &cgltfScope.pData->nodes[i];
@@ -218,41 +321,32 @@ namespace BlitzenEngine
                 // TODO: better warnings for non-uniform or negative scale
 
                 // Gets id from surface indices
-                uint32_t surfaceOffset = surfaceIndices[cgltf_mesh_index(cgltfScope.pData, node->mesh)];
-                uint32_t transformId = renders.m_staticTransformOffset;
-                renders.m_transforms[renders.m_staticTransformOffset++] = transform;
-				renders.m_transformCount++;
-                renders.m_staticTransformCount++;
+                uint32_t meshIdx = meshIndices[cgltf_mesh_index(cgltfScope.pData, node->mesh)];
+                
+                RESIDENT_CREATE_CONTEXT nodeContext{};
+                nodeContext.m_flags = 0;
+                nodeContext.m_pResource = &meshContext.m_meshes[meshIdx];
+                nodeContext.p_mTransform = &transform;
+
+                auto res{ pResidents->AddResident(nodeContext) };
+
+                if (BlitzenCore::BLIT_CHECK_FAIL(res))
+                {
+                    return LOG_RESIDENT_ERROR_MSG_AND_RETURN(res);
+                }
 
                 if (cgltfScope.m_pScene)
                 {
                     cgltfScope.m_pScene->m_meshNames.EmplaceEmtpy();
-                    cgltfScope.m_pScene->m_meshNames.Back().CopyString( cgltfScope.m_pScene->m_name.GetClassic() );
+                    cgltfScope.m_pScene->m_meshNames.Back().CopyString(cgltfScope.m_pScene->m_name.GetClassic());
                     cgltfScope.m_pScene->m_meshNames.Back().Append(std::to_string(i).data());
-;
+                    ;
                     cgltfScope.m_pScene->m_renderCount += (uint32_t)node->mesh->primitives_count;
                 }
-
-                meshContext.AddMesh(surfaceOffset, (uint32_t)surfaceIndices.GetSize(), cgltfScope.m_pScene ? cgltfScope.m_pScene->m_meshNames.Back().GetClassic() : BlitzenCore::Ce_MeshDoNotAddToTable);
-
-                // Adds mesh primitives as render objects
-                bool bPrimitivesLoaded = true;
-                for (size_t primitiveId = 0; primitiveId < node->mesh->primitives_count; ++primitiveId)
-                {
-                    if(!CreateRenderObject(renders, meshContext, transformId, surfaceOffset + uint32_t(primitiveId)))
-					{
-						BLIT_ERROR("Failed to create render object for gltf node: %u", surfaceOffset + uint32_t(primitiveId));
-                        bPrimitivesLoaded = false;
-					}
-                }
-
-                // Checks if primitives were loaded successfully
-                if (!bPrimitivesLoaded)
-                {
-					BLIT_ERROR("Stopped adding gltf nodes at: %u", i);
-                    break;
-                }
             }
+
+            // success
+            return true;
         }
     }
 
@@ -262,25 +356,25 @@ namespace BlitzenEngine
         {
             auto& cgltfMaterial = cgltfScope.pData->materials[i];
 
-            uint32_t albedoId = 
+            uint32_t albedoId =
                 cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture))
                 : cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture))
                 : 0;
 
             uint32_t normalId = cgltfMaterial.normal_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.normal_texture.texture)) : 0;
 
-            uint32_t specularId = 
+            uint32_t specularId =
                 cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture))
                 : 0;
 
             uint32_t emissiveId = cgltfMaterial.emissive_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.emissive_texture.texture))
                 : 0;
 
-            if(!textureContext.AddMaterial(albedoId, normalId, specularId, emissiveId))
-			{
-				BLIT_ERROR("Failed to add GLTF material number: (%u)", i);
-				break;
-			}
+            if (!textureContext.AddMaterial(albedoId, normalId, specularId, emissiveId))
+            {
+                BLIT_ERROR("Failed to add GLTF material number: (%u)", i);
+                break;
+            }
         }
     }
 }

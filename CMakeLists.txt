@@ -88,15 +88,15 @@ add_executable(BlitzenEngine
                 "src/Renderer/Interface/blitRenderer.h"
                 "src/Renderer/Interface/blitzenRenderer.cpp"
                 "src/Renderer/Interface/blitRendererInterface.h"
-                "src/Renderer/Resources/renderingResourcesTypes.h"
+                "src/Renderer/Resources/blitShaderResources.h"
                 "src/Renderer/Resources/blitRenderingResources.h"
                 "src/Renderer/Resources/blitzenRenderingResources.cpp"
                 "src/Renderer/Resources/Textures/blitTextures.h"
                 "src/Renderer/Resources/Textures/blitzenTextures.cpp"
                 "src/Renderer/Resources/Mesh/blitMeshes.h"
                 "src/Renderer/Resources/Mesh/blitzenMeshes.cpp"
-                "src/Renderer/Resources/Scene/blitScene.h"
-                "src/Renderer/Resources/Scene/blitzenScene.cpp"
+                "src/Renderer/Scene/blitScene.h"
+                "src/Renderer/Scene/blitScene.cpp"
                 "src/Renderer/Resources/Mesh/blitMeshPrimitive.h"
                 "src/Core/BlitzenWorld/blitzenWorldRender.cpp"
 
@@ -107,11 +107,15 @@ add_executable(BlitzenEngine
                 # ENTITIES
                 "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
                 "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.cpp"
-                "src/Renderer/Entities/Interface/blitEntityInterface.h"
-                "src/Renderer/Entities/Interface/blitEntityManager.h"
-                "src/Renderer/Entities/Interface/blitEntityInterface.cpp"
-                "src/Renderer/Entities/Collision/blitCollision.h"
+                
+                "src/Renderer/Entities/Interface/blitComponents.h"
+                "src/Renderer/Entities/Interface/blitComponents.cpp"
                 "src/Renderer/Entities/Physics/blitGravity.h"
+                
+
+                # RESIDENTS
+                "src/Renderer/Entities/Residents/Collision/blitCollision.h"
+                "src/Renderer/Entities/Residents/Collision/blitCollisionManager.h"
                 "src/Renderer/Entities/Residents/blitWV.h"
                 "src/Renderer/Entities/Residents/blitResident.h"
                 "src/Renderer/Entities/Residents/blitResidentManager.h"
@@ -184,7 +188,7 @@ add_executable(BlitzenEngine
                 
                 
                 "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h" )
+                "src/Client/ClientWV/wvData.h"   "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.h" "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.cpp" "src/Renderer/Scene/gltfScene.h" "src/Renderer/Scene/gltfScene.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

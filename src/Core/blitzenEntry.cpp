@@ -44,8 +44,8 @@ int main(int argc, char* argv[])
     WORLD.P_RENDERER.Make();
     blitzenPrivateContext.pWORLD = &WORLD;
     
-    EventSystemMemory blitzenEventSystem;
-    blitzenEventSystem.Make(std::ref(blitzenWorldContext), std::ref(blitzenPrivateContext));
+    BlitzenCore::EventSystemMemory blitzenEventSystem;
+    blitzenEventSystem.Make(std::ref(WORLD), std::ref(blitzenPrivateContext));
 
     BlitzenCore::Dasher dasher;
     blitzenPrivateContext.pDasher = &dasher;
@@ -85,8 +85,6 @@ int main(int argc, char* argv[])
 
             BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
 
-            BlitzenEngine::UpdateEntityComponents(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), float(blitzenClock.m_deltaTime));
-
             WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
 
 #if defined(DASHER_JOIN)
@@ -101,8 +99,6 @@ int main(int argc, char* argv[])
             BlitzenCore::UpdateWorldClock(blitzenClock);
 
             BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
-
-            BlitzenEngine::UpdateEntityComponents(WORLD.P_RENDERER.Data(), blitzenEntityManager.Data(), float(blitzenClock.m_deltaTime));
 
             WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
 

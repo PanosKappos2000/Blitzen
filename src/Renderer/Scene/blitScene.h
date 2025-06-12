@@ -1,0 +1,88 @@
+#pragma once
+#include "Renderer/Entities/Residents/blitResidentManager.h"
+#include "Renderer/Resources/blitRenderingResources.h"
+#include "Renderer/Interface/blitRenderer.h"
+
+namespace BlitzenEngine
+{
+    enum class SceneType
+    {
+        RendererStressTest = 0,
+        MovingResidentTest = 1,
+        GltfSceneTest = 2
+    };
+
+    struct SCENE_CREATE_CONTEXT
+    {
+        SceneType m_type;
+        const char* m_name;
+
+        RendererPtrType pRenderer{ nullptr };
+        WORLD_RESIDENTS* pResidents;
+        RenderingResources* pResources{ nullptr };
+    };
+
+    enum class SCENE_CREATE_RES : int32_t
+    {
+        SUCCESS = 0,
+
+        UNKNOWN = -1,
+        NON_DDS_TEXTURE_FOUND = -2,
+        FAILED_TO_LOAD_TEXTURE = -3,
+        FAILED_TO_LOAD_GLTF_FILE = -4,
+        FAILED_TO_MODIFY_TEXTURE_FILEPATH_TO_DDS = -5,
+        FAILED_TO_LOAD_TEXTURE_TO_GPU = -6,
+        FAILED_TO_ADD_TEXTURE_TO_SYSTEM = -7,
+        MESH_LOADING_FAILED = -8,
+
+        SCENE_RESIDENTS_FAILURE = -2000
+    };
+
+    const char* GET_SCENE_CREATE_RES_STRING(SCENE_CREATE_RES res)
+    {
+        switch (res)
+        {
+        case SCENE_CREATE_RES::NON_DDS_TEXTURE_FOUND: return "NON_DDS_TEXTURE_FOUND";
+        case SCENE_CREATE_RES::UNKNOWN: default: return "UNKNOW RES";
+        case SCENE_CREATE_RES::SUCCESS: return "SUCCESS";
+        case SCENE_CREATE_RES::FAILED_TO_LOAD_TEXTURE: return "FAILED_TO_LOAD_TEXTURE";
+        case SCENE_CREATE_RES::FAILED_TO_LOAD_GLTF_FILE: return "FAILED_TO_LOAD_GLTF_FILE";
+        case SCENE_CREATE_RES::FAILED_TO_MODIFY_TEXTURE_FILEPATH_TO_DDS: return "FAILED_TO_MODIFY_TEXTURE_FILEPATH_TO_DDS";
+        case SCENE_CREATE_RES::FAILED_TO_LOAD_TEXTURE_TO_GPU: return "FAILED_TO_LOAD_TEXTURE_TO_GPU";
+        case SCENE_CREATE_RES::FAILED_TO_ADD_TEXTURE_TO_SYSTEM: return "FAILED_TO_ADD_TEXTURE_TO_SYSTEM";
+        case SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE: return "SCENE_RESIDENTS_FAILURE";
+        case SCENE_CREATE_RES::MESH_LOADING_FAILED: return "MESH_LOADING_FAILED";
+        }
+    }
+
+    struct SceneContext
+    {
+        BlitCL::String m_name{ "" };
+
+        BlitCL::DynamicArray<BlitCL::String> m_meshNames;
+
+        BlitCL::DynamicArray<BlitCL::String> m_materialNames;
+
+        BlitCL::DynamicArray<BlitCL::String> m_textureNames;
+
+        uint32_t m_renderOffset;
+        uint32_t m_renderCount{ 0 };
+
+        uint32_t m_transparentRenderOffset;
+        uint32_t m_transparentRenderCount{ 0 };
+
+        inline const char* DBLOG() const
+        {
+            return m_name.GetClassic();
+        }
+    };
+
+    struct SceneContainer
+    {
+        bool empty = true;
+    };
+
+    SCENE_CREATE_RES CreateScene(SceneContext* pScene, SCENE_CREATE_CONTEXT& scene);
+
+    SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier, BlitzenEngine::SceneContext* pScene);
+}

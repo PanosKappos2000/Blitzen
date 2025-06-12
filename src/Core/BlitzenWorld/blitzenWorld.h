@@ -1,16 +1,11 @@
 #pragma once
-#include "Renderer/View/blitCamera.h"
 #include "Core/Events/blitTimeManager.h"
 #include "Renderer/Interface/blitRenderer.h"
-#include "Renderer/Entities/Interface/blitEntityManager.h"
-#include "Renderer/Resources/Scene/blitScene.h"
 #include "BlitCL/blitPfn.h"
-#include "Renderer/Entities/Residents/blitWV.h"
+#include "Renderer/Entities/Residents/blitResidentManager.h"
 
 namespace BlitzenWorld
 {
-    using WVTICK_blitpfn = BlitCL::Pfn<void, void*, float>;
-
     enum class WorldUpdateState : uint8_t
     {
         PREPARING = 0,
@@ -38,15 +33,21 @@ namespace BlitzenWorld
         WorldUpdateState m_state{ WorldUpdateState::WAITING };
     };
 
+    // WORLD variable. Represent the idea of world interaction
     struct WORLD_blit
     {
+        // Scene resources
         BlitCL::DynamicArray<BlitzenEngine::SceneContext> m_scenes{};
-        BlitzenEngine::CameraContainer* pCameraContainer{ nullptr };
-        BlitzenEngine::WVHOST m_worldVariableHost;
-        BlitCL::BlitStack<BlitzenWorldUpdate, BlitzenCore::Ce_MaxWorldVariableCount> worldUpdates{};
 
+        // Camera should be component. Does not belong here. The container is also a dumb idea. The need for an extra camera should just give rise to a new system
+        BlitzenEngine::CameraContainer* pCameraContainer{ nullptr };
+
+        // This will be moved to a renderer manager.
         BlitzenEngine::Renderer P_RENDERER;
         BlitzenEngine::DrawContext m_drawContext;
+
+        // World residents
+        BlitzenEngine::WORLD_RESIDENTS m_residents;
 
         float deltaTime;
 

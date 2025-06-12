@@ -6,7 +6,7 @@ namespace BlitzenWorld
 {
 	static void UpdateWVs(BlitzenPrivateContext& context, float deltaTime)
 	{
-		for (uint32_t var = 0; var < context.pBlitzenContext->wvCount; ++var)
+		for (uint32_t var = 0; var < context.pEntityMangager->m_pTickingWorldVariables; ++var)
 		{
 			context.pBlitzenContext->WVs[var].PFNTICK(context.pBlitzenContext->WVs[var].pWVDATA, context.pClock->m_deltaTime);
 		}

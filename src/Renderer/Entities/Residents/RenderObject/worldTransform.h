@@ -1,11 +1,12 @@
 #pragma once
 
-#include "Renderer/Resources/renderingResourcesTypes.h"
-#include "BlitCL/blitStack.h"
+#include "Renderer/Resources/blitShaderResources.h"
 
 namespace BlitzenEngine
 {
 	constexpr uint32_t CE_DYNAMIC_TRANSFORM_OFFSET = 0;
+	constexpr uint32_t CE_STATIC_TRANSFORM_OFFSET = BlitzenCore::Ce_MaxWorldMovingResidentCount;
+	constexpr uint32_t CE_MAX_STATIC_TRANSFORM_COUNT = BlitzenCore::Ce_MaxWorldTransformCount - BlitzenCore::Ce_MaxWorldMovingResidentCount;
 
 	enum class WorldTransformType: uint8_t
 	{
@@ -13,18 +14,24 @@ namespace BlitzenEngine
 		STATIC = 1
 	};
 
-	class WorldTransformContainer
+	struct TRANSFORM_CREATE_CONTEXT
 	{
-		BlitCL::BlitStack<MeshTransform, BlitzenCore::Ce_MaxRenderObjects> m_transform;
+		WorldTransformType m_type{ WorldTransformType::STATIC };
+		MeshTransform* m_pTransform{ nullptr };
+		float m_scale{ 0.f };
+		float m_randomTransformMultiplier{0.f}
+	};
 
+	struct WorldTransformContainer
+	{
+		MeshTransform m_transforms[BlitzenCore::Ce_MaxWorldTransformCount];
 		uint32_t m_transformCount{ 0 };
-
-		uint32_t m_dynamicTransformOffset{ CE_DYNAMIC_TRANSFORM_OFFSET };
-		uint32_t m_staticTransformOffset{ BlitzenCore::Ce_MaxMovingObjectCount };
-
 		uint32_t m_dynamicTransformCount{ 0 };
 		uint32_t m_staticTransformCount{ 0 };
 
-		uint32_t CreateTransform(WorldTransformType type);
+		// Creates transform and returns its index in the transform list
+		uint32_t CreateTransform(const TRANSFORM_CREATE_CONTEXT& transform);
 	};
+
+	void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);
 }

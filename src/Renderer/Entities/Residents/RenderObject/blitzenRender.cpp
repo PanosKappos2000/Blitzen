@@ -1,14 +1,15 @@
 #include "blitRender.h"
 #include "worldTransform.h"
+#include "Renderer/Resources/blitRenderingResources.h"
 
 namespace BlitzenEngine
 {
-    RENDER_OBJECT_RES RenderContainer::CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context)
+    uint32_t RenderContainer::CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context)
     {
-        if (m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
+        if (m_renderCount >= BlitzenCore::Ce_MaxRenderObjectCount)
         {
             BLIT_ERROR("Exceeded render object limit");
-            return RENDER_OBJECT_RES::MAX_COUNT_EXCEEDED;
+            return BlitzenCore::Ce_MaxRenderObjectCount;
         } 
 
         // TODO: check flags
@@ -16,120 +17,89 @@ namespace BlitzenEngine
         // Create opaque normal
         // Create
 
-        auto& newcomer{ m_renders[m_renderCount++] };
+        if (context.m_type == RENDER_OBJECT_TYPE::OPAQUE_STATIC)
+        {
+            BLIT_ERROR("Transparent object are momentarily out of commission");
+            return BlitzenCore::Ce_MaxRenderObjectCount;
+        }
+
+        auto& newcomer{ m_renders[m_renderCount] };
         newcomer.surfaceId = context.m_primitiveID;
         newcomer.transformId = context.m_primitiveID;
 
-        return RENDER_OBJECT_RES::SUCCESS;
+        return m_renderCount++;
     }
 
-    uint32_t WorldTransformContainer::CreateTransform(WorldTransformType type)
+    uint32_t WorldTransformContainer::CreateTransform(const TRANSFORM_CREATE_CONTEXT& context)
     {
-        if(m_transformCount >= )
-    }
-
-    bool CreateRenderObject(RenderContainer& context, MeshResources& meshes, uint32_t transformId, uint32_t surfaceId)
-    {
-        // Create opaque render object
-        if (!meshes.m_bTransparencyList[surfaceId].isTransparent)
+        if (m_transformCount >= BlitzenCore::Ce_MaxWorldTransformCount)
         {
-            if (context.m_renderCount >= BlitzenCore::Ce_MaxRenderObjects)
+            BLIT_ERROR("Exceeded max world transform count");
+            return BlitzenCore::Ce_MaxWorldTransformCount;
+        }
+
+        // DYNAMIC TRANSFORMS
+        if (context.m_type == WorldTransformType::DYNAMIC)
+        {
+            if (m_dynamicTransformCount >= BlitzenCore::Ce_MaxWorldMovingResidentCount)
             {
-                BLIT_ERROR("Max render object count reached");
-                return false;
+                BLIT_ERROR("Exeeded max dynamic transform count");
+                return BlitzenCore::Ce_MaxWorldTransformCount;
             }
 
-            auto& render = context.m_renders[context.m_renderCount];
-            render.surfaceId = surfaceId;
-            render.transformId = transformId;
+            auto& newcomer = m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_dynamicTransformCount];
 
-            context.m_renderCount++;
+            if (context.m_pTransform != nullptr)
+            {
+                BlitzenCore::BlitMemCopy<MeshTransform>(&newcomer, context.m_pTransform, 1);
+            }
+            else
+            {
+                if (context.m_scale == 0 || context.m_randomTransformMultiplier == 0)
+                {
+                    BLIT_ERROR("Did not provide for transform creation");
+                    return BlitzenCore::Ce_MaxWorldTransformCount;
+                }
+
+                RandomizeTransform(newcomer, context.m_randomTransformMultiplier, context.m_scale);
+            }
+            
+            m_transformCount++;
+            return CE_DYNAMIC_TRANSFORM_OFFSET + m_dynamicTransformCount++;
         }
 
-        // Create transparent render object
-        else
+        // STATIC TRANSFORMS
+        else if (context.m_type == WorldTransformType::STATIC)
         {
-            if (context.m_transparentRenderCount >= BlitzenCore::Ce_MaxTransparentRenderObjects)
+            if (m_staticTransformCount >= CE_MAX_STATIC_TRANSFORM_COUNT)
             {
-                BLIT_ERROR("Max transparent object count reached");
-                return false;
+                BLIT_ERROR("Exceeded max static transform count");
+                return BlitzenCore::Ce_MaxWorldTransformCount;
             }
 
-            auto& render = context.m_transparentRenders[context.m_transparentRenderCount];
-            render.surfaceId = surfaceId;
-            render.transformId = transformId;
+            auto& newcomer = m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount];
 
-            context.m_transparentRenderCount++;
-        }
-
-        return true;
-    }
-
-    uint32_t CreateRenderObjectFromMesh(RenderContainer& context, MeshResources& meshes, uint32_t meshId, const BlitzenEngine::MeshTransform& transform, bool isDynamic)
-    {
-        auto& mesh = meshes.m_meshes[meshId];
-        if (context.m_renderCount + mesh.surfaceCount >= BlitzenCore::Ce_MaxRenderObjects)
-        {
-            BLIT_ERROR("Adding renderer objects from mesh will exceed the render object count");
-            return BlitzenCore::Ce_MaxRenderObjects;
-        }
-
-        uint32_t transformId{ BlitzenCore::Ce_MaxRenderObjects };
-
-        // Add to dynamic transforms
-        if (isDynamic)
-        {
-            if (context.m_dynamicTransformCount >= BlitzenCore::Ce_MaxDynamicObjectCount)
+            if (context.m_pTransform != nullptr)
             {
-                BLIT_ERROR("Max dynamic mesh instance count reached");
-                return BlitzenCore::Ce_MaxRenderObjects;
+                BlitzenCore::BlitMemCopy<MeshTransform>(&newcomer, context.m_pTransform, 1);
             }
-            transformId = context.m_dynamicTransformCount;
-            context.m_transforms[context.m_dynamicTransformCount++] = transform;
-            context.m_transformCount++;
-        }
-        // Add to regular transforms
-        else
-        {
-			if (context.m_staticTransformOffset >= BlitzenCore::Ce_MaxRenderObjects)
-			{
-				BLIT_ERROR("Max static mesh instance count reached");
-				return BlitzenCore::Ce_MaxRenderObjects;
-			}
-            transformId = context.m_staticTransformOffset;
-			context.m_transforms[context.m_staticTransformOffset++] = transform;
-            context.m_staticTransformCount++;
-            context.m_transformCount++;
-        }
-
-        if (transformId == BlitzenCore::Ce_MaxRenderObjects)
-        {
-            BLIT_ERROR("Something went wrong when creating the render object");
-            return transformId;
-        }
-
-        // Create render object for every surface in the mesh
-        for (auto i = mesh.firstSurface; i < mesh.firstSurface + mesh.surfaceCount; ++i)
-        {
-            if (!CreateRenderObject(context, meshes, transformId, i))
+            else
             {
-                BLIT_ERROR("Something went wrong when creating the render object");
-                return BlitzenCore::Ce_MaxRenderObjects;
+                if (context.m_scale == 0 || context.m_randomTransformMultiplier == 0)
+                {
+                    BLIT_ERROR("Did not provide for transform creation");
+                    return BlitzenCore::Ce_MaxWorldTransformCount;
+                }
+
+                RandomizeTransform(newcomer, context.m_randomTransformMultiplier, context.m_scale);
             }
+
+            m_transformCount++;
+            return CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount++;
         }
 
-        return transformId;
-    }
-
-    void CreateSingleRender(RenderContainer& context, MeshResources& meshes, const char* meshName, float scale)
-    {
-        MeshTransform transform;
-
-        transform.pos = BlitML::vec3(BlitzenCore::Ce_InitialCameraX, BlitzenCore::Ce_initialCameraY, BlitzenCore::Ce_initialCameraZ);
-        transform.scale = scale;
-        transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
-
-        CreateRenderObjectFromMesh(context, meshes, meshes.m_meshMap[meshName].meshId, transform, false);
+        BLIT_ERROR("Unexpected transform type");
+        return BlitzenCore::Ce_MaxWorldTransformCount;
     }
 
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)
@@ -139,34 +109,5 @@ namespace BlitzenEngine
         transform.scale = scale;
 
         transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3((float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1), BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), 0);
-    }
-
-    void CreateRenderObjectWithRandomTransform(uint32_t meshId, RenderContainer& renders, MeshResources& meshContext, float randomTransformMultiplier, float scale)
-    {
-        // Creates a new transform, radomizes and creates render object based on it
-        BlitzenEngine::MeshTransform transform;
-        RandomizeTransform(transform, randomTransformMultiplier, scale);
-
-		CreateRenderObjectFromMesh(renders, meshContext, meshId, transform, false);
-    }
-
-    // Creates a scene for oblique Near-Plane clipping testing. Pretty lackluster for the time being
-    void CreateObliqueNearPlaneClippingTestObject(RenderContainer& renders, MeshResources& meshContext)
-    {
-        MeshTransform transform;
-        transform.pos = BlitML::vec3(30.f, 50.f, 50.f);
-        transform.scale = 2.f;
-        transform.orientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0), 0, 0);
-        
-		CreateRenderObjectFromMesh(renders, meshContext, meshContext.m_meshMap["kitten"].meshId, transform, false);
-
-        const uint32_t nonReflectiveDrawCount = 1000;
-        const uint32_t start = renders.m_renderCount;
-
-        uint32_t meshId = meshContext.m_meshMap["kitten"].meshId;
-        for (size_t i = start; i < start + nonReflectiveDrawCount; ++i)
-        {
-            CreateRenderObjectWithRandomTransform(meshId, renders, meshContext, 100.f, 1.f);
-        }
     }
 }

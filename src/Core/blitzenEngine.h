@@ -17,9 +17,11 @@ namespace BlitzenCore
     constexpr uint32_t Ce_InitialWindowHeight = 720;
     constexpr float Ce_DefaultWindowBackgroundColor[4] = { 0.f, 0.2f, 0.4f, 1.f };
 
+    constexpr int32_t CE_BLITZEN_FATAL = -1000;
+
     enum class LogLevel : int8_t
     {
-        FATAL = -20,
+        FATAL = -100,
         ERR = -10,
 
         INFO = 1,
@@ -42,7 +44,17 @@ namespace BlitzenCore
         return code < T::SUCCESS;
     }
 
+    template<typename T>
+    bool BLIT_CHECK_FATAL(T code)
+    {
+        return code < CE_BLITZEN_FATAL;
+    }
+
+    bool LOG_ERROR_MSG_AND_RETURN(const char* system, const char* msg);
+
     using BIG_BOOL = uint16_t;
+    constexpr BIG_BOOL BB_TRUE = 1;
+    constexpr BIG_BOOL BB_FALSE = 0;
 
     template<typename PTR>
     using ARRAY_OF_POINTERS = PTR**;
@@ -52,6 +64,20 @@ namespace BlitzenCore
 #undef DASHER_JOIN
 
 #endif
+
+    /********************************************************************************************************************************************************
+    * SECTION: BLITZEN ENGINE SYSTEM CONSTANTS                                                                                                              *
+    *********************************************************************************************************************************************************/
+    constexpr const char* CE_LOGGER_SYSTEM_NAME = "blit_logger";
+    constexpr const char* CE_MEMORY_SYSTEM_NAME = "blit_mem";
+    constexpr const char* CE_PLATFORM_SYSTEM_NAME = "blit_platform";
+    constexpr const char* CE_WORLD_SYSTEM_NAME = "WORLD";
+    constexpr const char* CE_SCENE_SYSTEM_NAME = "SceneManager";
+    constexpr const char* CE_RESIDENT_SYSTEM_NAME = "WORLD_RESIDENTS";
+    constexpr const char* CE_WORLD_VARIABLE_SYSTEM_NAME = "WorldVariables";
+    constexpr const char* CE_VULKAN_SYSTEM_NAME = "BlitzenVulkan";
+    constexpr const char* CE_DX12_SYSTEM_NAME = "BlitzenDX12";
+    constexpr const char* CE_RENDERER_SYSTEM_NAME = "blit_renderer";
 
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
@@ -157,19 +183,32 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxTrianglesPerCluster = 124;
     constexpr float Ce_ClusterConeWeight = 0.25f;
 
-    constexpr uint32_t Ce_MaxRenderObjects = 5'000'000;
-    constexpr uint32_t Ce_MaxTransparentRenderObjects = 100'000;
-    constexpr uint32_t Ce_MaxONPC_Objects = 100;
+    /********************************************************************************************************************************************************
+    * SECTION: WORLD RESIDENT CONSTANTS                                                                                                                     *
+    *********************************************************************************************************************************************************/
+    constexpr uint32_t Ce_MaxWorldResidentCount = 5'000'000;
 
-    constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;
+    constexpr uint32_t Ce_MaxRenderObjectCount = 5'000'000;
+    static_assert(Ce_MaxRenderObjectCount == Ce_MaxWorldResidentCount, "There should be as many render objects spots available as there are world residents");
 
-    constexpr uint32_t Ce_MaxMovingObjectCount = 5'000;
+    constexpr uint32_t Ce_MaxTransparentRenderObjects = 100'000;// TODO: Remove, irrelevant
 
-    constexpr uint32_t Ce_MaxWorldCollisionGridCount = 100'000;
-    constexpr uint32_t Ce_MaxCollisionsInGrid = 50;
-    constexpr uint32_t Ce_CollisionGridDynamicOffset = 40;
+    constexpr uint32_t Ce_MaxWorldTransformCount = Ce_MaxRenderObjectCount;
+    static_assert(Ce_MaxWorldTransformCount == Ce_MaxRenderObjectCount, "There should be as many world transform spots available as there are render objects");
+
+    constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;// TODO: Replace this with the below
+
+    constexpr uint32_t Ce_MaxWorldMovingResidentCount = 5'000;
+    
+    // Temporary, for stabilizing collision first
+    constexpr uint32_t Ce_MaxWorldCollisionCount = 1'000;
+    constexpr uint32_t Ce_MaxWorldCollisionGridCount = 100;
+    constexpr uint32_t Ce_MaxCollisionsPerGrid = 50;
 
     constexpr uint32_t Ce_MaxWorldVariableCount = 1'000;
+
+    constexpr uint32_t Ce_MaxTickingWorldVariables = 1'000;
+    static_assert(Ce_MaxWorldVariableCount >= Ce_MaxTickingWorldVariables, "The should be at least as many world variables as there are ticking world variables");
 
 #if defined(BLIT_DYNAMIC_OBJECT_TEST)
 
@@ -284,6 +323,9 @@ namespace BlitzenCore
 
 #endif
 
+    /********************************************************************************************************************************************************
+    * SECTION: ENGINE STATE MANAGER AND ALLOCATION LOGGER                                                                                                   *
+    *********************************************************************************************************************************************************/
     class Engine
     {
     public:
@@ -298,9 +340,9 @@ namespace BlitzenCore
     };
 }
 
-
-
-
+/********************************************************************************************************************************************************
+* SECTION: CONTAINER LIBRARY CONSTANTS                                                                                                                  *
+*********************************************************************************************************************************************************/
 namespace BlitCL
 {
     // Hashmap

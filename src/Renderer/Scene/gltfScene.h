@@ -1,0 +1,33 @@
+#pragma once
+#include "blitScene.h"
+#include "BlitCL/BlitString.h"
+#include "Cgltf/cgltf.h"
+#include <string>
+
+namespace BlitzenEngine
+{
+    // Automatic free struct
+    struct CgltfScope
+    {
+        SceneContext* m_pScene{ nullptr };
+
+        cgltf_data* pData;
+
+        ~CgltfScope();
+    };
+
+    SCENE_CREATE_RES ManageGltf(const char* filepath, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::WORLD_RESIDENTS* pWorldResidents, BlitzenEngine::RendererPtrType pRenderer,
+        BlitzenEngine::SceneContext* pScene);
+
+	bool LoadGltfFile(const char* path, CgltfScope& cgltf);
+
+    bool ModifyTextureFilepath(cgltf_texture* pTexture, const char* fullPath, std::string& texturePath);
+
+    void LoadGltfMaterials(TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousTextureCount);
+
+    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices);
+
+    bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount);
+
+    bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& meshIndices);
+}

@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderer/Resources//renderingResourcesTypes.h"
+#include "Renderer/Resources/blitShaderResources.h"
 #include "BlitCL/DynamicArray.h"
 #include "BlitCL/blitHashMap.h"
 
@@ -13,7 +13,7 @@ namespace BlitzenEngine
 
         // Mesh has one or more surfaces / Primitives
         BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;
-        BlitCL::DynamicArray<IsPrimitiveTransparent> m_bTransparencyList;
+        BlitCL::DynamicArray<BlitzenCore::BIG_BOOL> m_bTransparencyList;
         BlitCL::DynamicArray<uint32_t> m_surfaceVertexOffset;// TODO: Remove the vertex offset from the surface and use this for cpu operations
 
 		// Surface has one ore more LODs (up to Ce_MaxLodCount)
@@ -22,7 +22,7 @@ namespace BlitzenEngine
 
         // Lod has one or more clusters (if they are generated)
         BlitCL::DynamicArray<Cluster> m_clusters;
-        HCluster m_hlslClusters[BlitzenCore::Ce_MaxRenderObjects];// temp count
+        HCluster m_hlslClusters[BlitzenCore::Ce_MaxRenderObjectCount];// temp count
         uint32_t m_hlslClusterCount{ 0 };
         // Index buffer for cluster modes
         BlitCL::DynamicArray<uint32_t> m_clusterIndices;
@@ -35,7 +35,7 @@ namespace BlitzenEngine
 
         BlitCL::DynamicArray<uint32_t> m_primitiveVertexCounts;
 
-        bool AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName = "BLIT_DO_NOT_ADD_TO_MESH_TABLE");
+        uint32_t AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName = "BLIT_DO_NOT_ADD_TO_MESH_TABLE");
     };
 
     bool LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName);

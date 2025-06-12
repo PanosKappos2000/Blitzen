@@ -188,7 +188,7 @@ namespace BlitzenPlatform
                 uint32_t width = rect.right - rect.left;
                 uint32_t height = rect.bottom - rect.top;
 
-                auto& camera{ pEventSystem->m_blitzenContext.pCameraContainer->GetMainCamera()};
+                auto& camera{ pEventSystem->m_worldContext.pCameraContainer->GetMainCamera()};
 
                 auto oldWidth = camera.transformData.windowWidth;
                 auto oldHeight = camera.transformData.windowHeight;

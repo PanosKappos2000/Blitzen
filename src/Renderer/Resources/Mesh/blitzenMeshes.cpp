@@ -10,12 +10,12 @@
 
 namespace BlitzenEngine
 {
-    bool MeshResources::AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName /*="BLIT_DO_NOT_ADD_TO_MESH_TABLE"*/)
+    uint32_t MeshResources::AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName /*="BLIT_DO_NOT_ADD_TO_MESH_TABLE"*/)
     {
         if (m_meshCount >= BlitzenCore::Ce_MaxMeshCount)
         {
 			BLIT_ERROR("Max mesh count: ( %i ) reached!", BlitzenCore::Ce_MaxMeshCount);
-            return false;
+            return BlitzenCore::Ce_MaxMeshCount;
         }
 
         auto& mesh = m_meshes[m_meshCount];
@@ -24,14 +24,12 @@ namespace BlitzenEngine
         mesh.surfaceCount = surfaceCount;
         mesh.meshId = uint32_t(m_meshCount);
 
-        m_meshCount++;
-
 		if (meshName != "BLIT_DO_NOT_ADD_TO_MESH_TABLE")
 		{
 			m_meshMap.Insert(meshName, mesh);
 		}
 
-        return true;
+        return m_meshCount++;
     }
 
     bool LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName)

@@ -1,7 +1,6 @@
 #pragma once
 #include "Core/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
-#include <string>
 
 namespace BlitzenEngine
 {
@@ -24,6 +23,13 @@ namespace BlitzenEngine
     };
     static_assert(sizeof(HlslVtx) % 16 == 0);
 
+    struct BoundingSphere
+    {
+        BlitML::vec3 m_center;
+        float m_radius;
+    };
+    static_assert(sizeof(BoundingSphere) % 16 == 0);
+
     struct alignas(16) Cluster
     {
         // Bounding sphere
@@ -45,13 +51,6 @@ namespace BlitzenEngine
         uint8_t padding0;
         uint8_t padding1;
     };
-
-    struct BoundingSphere
-    {
-        BlitML::vec3 m_center;
-        float m_radius;
-    };
-    static_assert(sizeof(BoundingSphere) % 16 == 0);
 
     struct HCluster
     {
@@ -108,43 +107,6 @@ namespace BlitzenEngine
         uint32_t instanceCount{ 0 };
     };
 
-    struct alignas(16) PrimitiveSurface
-    {
-        // Bounding sphere
-        BlitML::vec3 center;     
-        float radius;
-        // uint32_t boundingSphereID;
-
-        uint32_t materialId;
-
-        uint32_t lodOffset;
-        uint32_t lodCount{ 0 };
-
-        uint32_t vertexOffset; // Not used in the shaders but can hold the offset when loading
-    };
-
-    struct IsPrimitiveTransparent
-    {
-        bool isTransparent;
-    };
-
-    // Each mesh has a different transform. Passed to the GPU. Accessed through render object
-    struct alignas(16) MeshTransform
-    {
-        BlitML::vec3 pos;
-        float scale;
-        BlitML::quat orientation;
-    };
-
-    // A mesh is a collection of one or more primitives.
-    struct Mesh
-    {
-        uint32_t firstSurface;
-        uint32_t surfaceCount = 0;
-
-        uint32_t meshId;
-    };
-
     struct alignas(16) Material
     {
         uint32_t albedoTag;
@@ -159,11 +121,53 @@ namespace BlitzenEngine
     };
     static_assert(sizeof(Material) % 16 == 0);
 
+    struct alignas(16) PrimitiveSurface
+    {
+        // Bounding sphere
+        BlitML::vec3 center;     
+        float radius;
+        // uint32_t boundingSphereID; TODO: Change the sphere to be a seperate component, unchanging for 
+
+        uint32_t materialId;
+
+        uint32_t lodOffset;
+        uint32_t lodCount{ 0 };
+
+        uint32_t vertexOffset; // Not used in the shaders but can hold the offset when loading
+    };
+
+    struct alignas(16) MeshTransform
+    {
+        BlitML::vec3 pos;
+        float scale;
+        BlitML::quat orientation;
+    };
+
+    // Not a shader resource but refers to one
+    struct Mesh
+    {
+        uint32_t firstSurface;
+        uint32_t surfaceCount = 0;
+
+        uint32_t meshId;
+    };
+
     // Per render object Data. Passed to the GPU
     struct RenderObject
     {
         uint32_t transformId;
         uint32_t surfaceId;
-        // uint32_t staticBoundingSphere;
+        // uint32_t staticBoundingSphere; TODO: If a render object has a bounding sphere, it could carry it
+    };
+
+
+    struct Velocity
+    {
+        BlitML::vec3 m_velocity;
+    };
+
+    struct Rotation
+    {
+        BlitML::fRotation m_rotation;
     };
 }

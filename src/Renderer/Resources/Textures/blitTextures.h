@@ -3,7 +3,7 @@
 #include "blitDDS.h"
 #include "Platform/Filesystem/blitCFILE.h"
 #include "BlitCL/blitHashMap.h"
-#include "Renderer/Resources/renderingResourcesTypes.h"
+#include "Renderer/Resources/blitShaderResources.h"
 
 namespace BlitzenEngine
 {

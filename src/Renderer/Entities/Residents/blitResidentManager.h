@@ -7,21 +7,31 @@
 
 namespace BlitzenEngine
 {
-	using RESIDENT_CREATE_FLAGS = int64_t;
+	using RESIDENT_CREATE_CONTEXT_FLAGS = int64_t;
+	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_MOVING = 0x5;
+	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_COLLISION = 0xA;
 
 	enum RESIDENT_CREATE_RES : int8_t
 	{
 		SUCCESS = 0,
 
+		RENDER_OBJECT_CREATION_FAILED = -1,
+		WORLD_TRANSFORM_CREATION_FAILED = -2,
+		RESIDENT_CREATION_FAILED = -3,
+		NO_WORLD_TRANSFORM_CONTEXT_GIVEN = -4,
+
 		UNKNOWN = -10
 	};
 
-	inline const char* RETURN_RESIDENT_CREATE_RES_STRING(RESIDENT_CREATE_RES res)
+	inline const char* GET_RESIDENT_CREATE_RES_STRING(RESIDENT_CREATE_RES res)
 	{
 		switch (res)
 		{
-		case RESIDENT_CREATE_RES::SUCCESS: return "RESIDENT_CREATE_RES->SUCCESS";
-		default: case RESIDENT_CREATE_RES::UNKNOWN: return "RESIDENT_CREATE_RES->UNKNOWN";
+		case RESIDENT_CREATE_RES::SUCCESS: return "SUCCESS";
+		case RENDER_OBJECT_CREATION_FAILED: return "RENDER_OBJECT_CREATION_FAILED";
+		case WORLD_TRANSFORM_CREATION_FAILED: return "WORLD_TRANSFORM_CREATION_FAILED";
+		case RESIDENT_CREATION_FAILED: return "RESIDENT_CREATION_FAILED";
+		default: case RESIDENT_CREATE_RES::UNKNOWN: return "UNKNOWN";
 		}
 	}
 
@@ -29,7 +39,7 @@ namespace BlitzenEngine
 	{
 		if (BlitzenCore::BLIT_CHECK_FAIL(res))
 		{
-			BLIT_ERROR(RETURN_RESIDENT_CREATE_RES_STRING(res));
+			BLIT_ERROR(GET_RESIDENT_CREATE_RES_STRING(res));
 			return false;
 		}
 
@@ -39,23 +49,23 @@ namespace BlitzenEngine
 
 	struct RESIDENT_CREATE_CONTEXT
 	{
-		RESIDENT_CREATE_FLAGS m_flags;
-
-		Mesh* m_pResource;
-		BlitzenEngine::MeshTransform* p_mTransform{ nullptr };
+		RESIDENT_CREATE_CONTEXT_FLAGS m_flags;
+		Mesh* m_pResource{ nullptr };
+		TRANSFORM_CREATE_CONTEXT m_transformInfo{};
 	};
 
 	struct WORLD_RESIDENTS
 	{
-		BlitCL::BlitStack<WV, BlitzenCore::Ce_MaxWorldVariableCount> m_worldVariableAccessors;
+		WV m_worldVariableAccessors[BlitzenCore::Ce_MaxWorldVariableCount];
 		WVHOST m_worldVariableHost;
 
-		Resident m_resident;
+		Resident m_residents[BlitzenCore::Ce_MaxWorldResidentCount];
+		uint32_t m_residentCount{ 0 };
 
 		RenderContainer m_renders;
 
-		WorldTransformContainer m_transform;
+		WorldTransformContainer m_transforms;
 
-		RESIDENT_CREATE_RES CreateResident(RESIDENT_CREATE_CONTEXT ctx);
+		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 	};
 }
