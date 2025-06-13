@@ -190,8 +190,12 @@ namespace BlitzenVulkan
     static uint8_t CreateReadWriteBuffers(VkDevice device, VmaAllocator vma, VkCommandBuffer commandBuffer, VkQueue queue, BlitzenEngine::DrawContext& context, 
         RWResources* readWritesArray, DescriptorContext& descriptorContext)
     {
-        const auto& transforms{ context.m_renders.m_transforms };
-        size_t transformDynamicDataSize{ context.m_renders.m_dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform)};
+        VK_CPU_DATA_BUFFER_SIZE_INFO transformBufferSizeInfo{};
+        transformBufferSizeInfo.m_fullSSBOSize = BlitzenCore::Ce_MaxWorldTransformCount;
+        transformBufferSizeInfo.m_dynamicDataSize = context.m_pResidents->m_transforms.m_dynamicTransformCount;
+        transformBufferSizeInfo.m_dynamicDataOffset = BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET;
+        transformBufferSizeInfo.m_staticDataSize = context.m_pResidents->m_transforms.m_staticTransformCount;
+        transformBufferSizeInfo.m_staticDataOffset = BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET;
 
         for (size_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
@@ -206,9 +210,8 @@ namespace BlitzenVulkan
 
             // Transform buffer is also dynamic
             Buffer transformStagingBufferTemp;
-            auto transformBufferSize{CreateCPU_DATA_SSBO(vma, device, context.m_renders.m_transforms, readWrites.m_transformBuffer,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, transformStagingBufferTemp, context.m_renders.m_staticTransformCount, 
-                context.m_renders.m_dynamicTransformCount, BlitzenCore::Ce_MaxDynamicObjectCount)};
+            auto transformBufferSize{CreateCPU_DATA_SSBO(vma, device, context.m_pResidents->m_transforms.m_transforms, readWrites.m_transformBuffer,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, transformStagingBufferTemp, transformBufferSizeInfo)};
             if (transformBufferSize == 0)
             {
                 BLIT_ERROR("Failed to create transform buffer");
@@ -230,7 +233,7 @@ namespace BlitzenVulkan
             }
 
             if (!CreateBuffer(vma, readWrites.m_drawVisBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
-                context.m_renders.m_renderCount * sizeof(uint32_t), 0))
+                context.m_pResidents->m_renders.m_renderCount * sizeof(uint32_t), 0))
             {
                 BLIT_ERROR("Failed to create draw visibility buffer");
                 return 0;
@@ -261,7 +264,7 @@ namespace BlitzenVulkan
                     return 0;
                 }
 
-                if (context.m_renders.m_transparentRenderCount != 0)
+                if (context.m_pResidents->m_renders.m_transparentRenderCount != 0)
                 {
                     if (!CreateBuffer(vma, readWrites.m_transClusterGroupDataBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_GPU_ONLY,
                         Ce_TransClusterGouprBufferSize * sizeof(ClusterGroupData), 0))
@@ -293,12 +296,12 @@ namespace BlitzenVulkan
             BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
             CopyBufferToBuffer(commandBuffer, transformStagingBufferTemp.m_handle, readWrites.m_transformBuffer.m_buffer.m_handle, 
-                context.m_renders.m_staticTransformCount * sizeof(BlitzenEngine::MeshTransform), 0, BlitzenCore::Ce_MaxDynamicObjectCount * sizeof(BlitzenEngine::MeshTransform));
+                transformBufferSizeInfo.m_staticDataSize * sizeof(BlitzenEngine::MeshTransform), 0, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform));
 
             CopyBufferToBuffer(commandBuffer, readWrites.m_transformBuffer.m_staging.m_handle, readWrites.m_transformBuffer.m_buffer.m_handle, 
-                readWrites.m_transformBuffer.m_copyDataSize, 0, 0);
+                readWrites.m_transformBuffer.m_copyDataSize, 0, BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform));
 
-            vkCmdFillBuffer(commandBuffer, readWrites.m_drawVisBuffer.m_buffer.m_handle, 0, context.m_renders.m_renderCount * sizeof(uint32_t), 0);
+            vkCmdFillBuffer(commandBuffer, readWrites.m_drawVisBuffer.m_buffer.m_handle, 0, context.m_pResidents->m_renders.m_renderCount * sizeof(uint32_t), 0);
 
             SubmitCommandBuffer(queue, commandBuffer, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
             vkQueueWaitIdle(queue);
@@ -336,8 +339,8 @@ namespace BlitzenVulkan
 
         // Opaque render buffer
         Buffer renderStaging;
-        VkDeviceSize renderBufferSize{ CreateSSBO(vma, device, context.m_renders.m_renders, readOnlies.m_renderBuffer, renderStaging,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, context.m_renders.m_renderCount)};
+        VkDeviceSize renderBufferSize{ CreateSSBO(vma, device, context.m_pResidents->m_renders.m_renders, readOnlies.m_renderBuffer, renderStaging,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, context.m_pResidents->m_renders.m_renderCount)};
         if (renderBufferSize == 0)
         {
             BLIT_ERROR("Failed to create render object buffer");
@@ -345,19 +348,6 @@ namespace BlitzenVulkan
         }
         // Address for push constant
         descriptorContext.m_opaqueRenderAddr= GetBufferAddress(device, readOnlies.m_renderBuffer.m_buffer.m_handle);
-
-        // Transparent render buffer
-        Buffer transRenderStaging;
-        VkDeviceSize transRenderObjectSize{ CreateSSBO(vma, device, context.m_renders.m_transparentRenders, readOnlies.m_transRenderBuffer, transRenderStaging, 
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, context.m_renders.m_transparentRenderCount)};
-        if (transRenderObjectSize == 0)
-        {
-            BLIT_INFO("No transparent objects");
-        }
-        else
-        {
-            descriptorContext.m_transRenderAddr = GetBufferAddress(device, readOnlies.m_transRenderBuffer.m_buffer.m_handle);
-        }
 
         // Surface buffer
         Buffer surfaceStaging;
@@ -420,11 +410,6 @@ namespace BlitzenVulkan
         CopyBufferToBuffer(cmdContext.m_transferCmdB, idxStaging.m_handle, readOnlies.m_idxBuffer.m_buffer.m_handle, indexBufferSize, 0, 0);
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, renderStaging.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, renderBufferSize, 0, 0);
-
-        if (transRenderObjectSize != 0)
-        {
-            CopyBufferToBuffer(cmdContext.m_transferCmdB, transRenderStaging.m_handle, readOnlies.m_transRenderBuffer.m_buffer.m_handle, transRenderObjectSize, 0, 0);
-        }
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, surfaceStaging.m_handle, readOnlies.m_surfaceBuffer.m_buffer.m_handle, surfaceBufferSize, 0, 0);
 
@@ -495,7 +480,7 @@ namespace BlitzenVulkan
 
             descriptorContext.m_transformDescInfo[frame].buffer = rw.m_transformBuffer.m_buffer.m_handle;
             descriptorContext.m_transformDescInfo[frame].offset = 0;
-            descriptorContext.m_transformDescInfo[frame].range = (drawContext.m_renders.m_staticTransformCount + BlitzenCore::Ce_MaxDynamicObjectCount) * sizeof(BlitzenEngine::MeshTransform);
+            descriptorContext.m_transformDescInfo[frame].range = (drawContext.m_pResidents->m_transforms.m_staticTransformCount + BlitzenCore::Ce_MaxDynamicObjectCount) * sizeof(BlitzenEngine::MeshTransform);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_TransformBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_transformDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_TransformBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 

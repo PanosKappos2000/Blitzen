@@ -190,9 +190,9 @@ namespace BlitzenVulkan
     uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue,
         ROResources& readOnlies, BlitzenEngine::DrawContext& context)
     {
-        auto pDraws{ context.m_renders.m_renders }; 
-        uint32_t drawCount{ context.m_renders.m_renderCount }; 
-        auto pTransforms{ context.m_renders.m_transforms };
+        auto pDraws{ context.m_pResidents->m_renders.m_renders }; 
+        uint32_t drawCount{ context.m_pResidents->m_renders.m_renderCount }; 
+        auto pTransforms{ context.m_pResidents->m_transforms.m_transforms };
         auto pSurfaces{ context.m_meshes.m_surfaces };
         const auto& surfaceTransparencies{ context.m_meshes.m_bTransparencyList };
 

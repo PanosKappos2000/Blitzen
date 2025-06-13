@@ -4,6 +4,7 @@
 #include "blitWv.h"
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
+#include "BlitCL/blitSmartPointer.h"
 
 namespace BlitzenEngine
 {
@@ -68,4 +69,6 @@ namespace BlitzenEngine
 
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 	};
+
+	using WorldResidentsSystemMemory = BlitCL::SmartPointer<WORLD_RESIDENTS, BlitzenCore::AllocationType::Entity>;
 }

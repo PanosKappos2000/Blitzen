@@ -6,11 +6,7 @@
 	
 namespace BlitzenDX12
 {
-	void Dx12Renderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
-	{
-		auto pData = m_rwResources[m_currentFrame].m_transformBuffer.pData;
-		BlitzenCore::BlitMemCopy(reinterpret_cast<BlitzenEngine::MeshTransform*>(pData) + transformId, pTransform, sizeof(BlitzenEngine::MeshTransform));
-	}
+	
 
 	static void RecreateSwapchain(HWND hwnd, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
 		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets,

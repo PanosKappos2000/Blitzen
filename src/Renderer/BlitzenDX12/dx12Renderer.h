@@ -6,7 +6,6 @@
 #include "Renderer/Interface/blitRendererInterface.h"
 #include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
-#include "Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Platform/blitPlatformContext.h"
 
@@ -34,7 +33,7 @@ namespace BlitzenDX12
         
         BlitML::vec2 UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle);
 
-        void UpdateTransforms(BlitzenEngine::DynamicTransform** pDynamicTransformArr, uint32_t transformCount, BlitzenEngine::MeshTransform* transforms);
+        void UpdateTransforms(BlitzenEngine::MeshTransform* pTransform, uint32_t transformCount, BlitzenEngine::MeshTransform* transforms);
 
         void DrawFrame(BlitzenEngine::DrawContext& context);
 

@@ -2,7 +2,6 @@
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
 #include "Renderer/BlitzenDX12/dx12Renderer.h"
-#include "Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
 
 namespace BlitzenEngine
 {
@@ -60,7 +59,7 @@ namespace BlitzenEngine
 
     void DispatchCullingShaders(RendererPtrType pContext, uint32_t workCount, uint32_t workOffset, BLIT_CULL_TYPE cullingFlags, RENDER_OBJECT_TYPE objectType);
 
-    void UpdateRendererTransforms(RendererPtrType pContext, BlitzenCore::ARRAY_OF_POINTERS<DynamicTransform> pDynamicTransformArr, uint32_t dynamicTransformCount, MeshTransform* transformArr);
+    //void UpdateRendererTransforms(RendererPtrType pContext, BlitzenCore::ARRAY_OF_POINTERS<DynamicTransform> pDynamicTransformArr, uint32_t dynamicTransformCount, MeshTransform* transformArr);
 
     void RenderObjects(RendererPtrType pContext, uint32_t renderOffset, RENDER_OBJECT_TYPE objectType, DrawContext& drawContext);
 

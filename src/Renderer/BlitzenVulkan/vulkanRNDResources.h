@@ -47,17 +47,38 @@ namespace BlitzenVulkan
         return bufferSize;
     }
 
+    struct VK_CPU_DATA_BUFFER_SIZE_INFO
+    {
+        uint32_t m_fullSSBOSize{ 0 };
+        uint32_t m_dynamicDataSize{ 0 };
+        uint32_t m_dynamicDataOffset{ 0 };
+        uint32_t m_staticDataSize{ 0 };
+        uint32_t m_staticDataOffset{ 0 };
+    };
+
     template<class DATA>
     VkDeviceSize CreateCPU_DATA_SSBO(VmaAllocator vma, VkDevice device, DATA* pData, BlitVk_CPU_DATA_SSBO<DATA>& ssbo, VkBufferUsageFlags usage, Buffer& tempStaging,
-        size_t tempStagingElementCount, size_t persistentStagingElementCount, size_t tempStagingOffset)
+        VK_CPU_DATA_BUFFER_SIZE_INFO& sizeInfo)
     {
-        if (persistentStagingElementCount + tempStagingOffset == 0)
+        if (sizeInfo.m_fullSSBOSize == 0)
         {
-            BLIT_ERROR("Passed element count 0 to SSBO creation");
+            BLIT_ERROR("Tried to create CPU_DATA_SSBO with element count 0 for the full SSBO size");
             return 0;
         }
 
-        VkDeviceSize bufferSize{ sizeof(DATA) * (tempStagingOffset + tempStagingElementCount) };
+        if (sizeInfo.m_staticDataSize == 0)
+        {
+            BLIT_ERROR("Tried to create CPU_DATA_SSBO with element count 0 for the static data size. Some static data is expected for a CPU_DATA_SSBO to be created");
+            return 0;
+        }
+
+        if (sizeInfo.m_dynamicDataSize == 0)
+        {
+            BLIT_ERROR("No dynamic data found for CPU_DATA_SSBO. Temporarily passing element count 1");
+            sizeInfo.m_dynamicDataSize = 1;
+        }
+
+        VkDeviceSize bufferSize{ sizeof(DATA) * sizeInfo.m_fullSSBOSize };
 
         if (!CreateBuffer(vma, ssbo.m_buffer, usage, VMA_MEMORY_USAGE_GPU_ONLY, bufferSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
@@ -65,15 +86,9 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        size_t tempStagingSize{ sizeof(DATA) * tempStagingElementCount };
+        size_t staticDataSize{ sizeof(DATA) * sizeInfo.m_staticDataSize };
 
-        if (tempStagingElementCount == 0)
-        {
-            BLIT_ERROR("Passed element count zero for temp staging buffer");
-            return 0;
-        }
-
-        if (!CreateBuffer(vma, tempStaging, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, tempStagingSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        if (!CreateBuffer(vma, tempStaging, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, staticDataSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             BLIT_ERROR("Failed to create initial staging buffer");
             return 0;
@@ -86,16 +101,9 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        // PERSISTENT CPU DATA
-        if (persistentStagingElementCount == 0)
-        {
-            BLIT_ERROR("Passed size 0 for persistent staging buffer, creating placeholder");
-            persistentStagingElementCount = 1;
-        }
+        size_t dynamicDataSize{ sizeof(DATA) * sizeInfo.m_dynamicDataSize };
 
-        size_t persistentStagingSize{ sizeof(DATA) * persistentStagingElementCount };
-
-        if (!CreateBuffer(vma, ssbo.m_staging, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, persistentStagingSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        if (!CreateBuffer(vma, ssbo.m_staging, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, dynamicDataSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             BLIT_ERROR("Failed to Create peristent staging buffer for CPU WRITE SSBO");
             return 0;
@@ -108,9 +116,9 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        ssbo.m_copyDataSize = persistentStagingSize;
-        BlitzenCore::BlitMemCopy(ssbo.m_pMapped, pData, ssbo.m_copyDataSize);
-        BlitzenCore::BlitMemCopy(pMappedTemp, pData + tempStagingOffset, tempStagingSize);
+        BlitzenCore::BlitMemCopy(ssbo.m_pMapped, pData + sizeInfo.m_dynamicDataOffset, dynamicDataSize);
+        BlitzenCore::BlitMemCopy(pMappedTemp, pData + sizeInfo.m_staticDataOffset, staticDataSize);
+        ssbo.m_copyDataSize = dynamicDataSize;
 
         // Success
         return bufferSize;

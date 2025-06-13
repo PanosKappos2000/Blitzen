@@ -3,6 +3,7 @@
 #include "Renderer/Interface/blitRenderer.h"
 #include "BlitCL/blitPfn.h"
 #include "Renderer/Entities/Residents/blitResidentManager.h"
+#include "Renderer/Scene/blitScene.h"
 
 namespace BlitzenWorld
 {
@@ -43,17 +44,16 @@ namespace BlitzenWorld
         BlitzenEngine::CameraContainer* pCameraContainer{ nullptr };
 
         // This will be moved to a renderer manager.
-        BlitzenEngine::Renderer P_RENDERER;
+        BlitzenEngine::Renderer P_RENDERER{};
         BlitzenEngine::DrawContext m_drawContext;
 
         // World residents
-        BlitzenEngine::WORLD_RESIDENTS m_residents;
+        BlitzenEngine::WorldResidentsSystemMemory P_RESIDENTS{};
 
         float deltaTime;
 
-        inline WORLD_blit(BlitzenEngine::Camera& camera, BlitzenEngine::MeshResources& meshes, BlitzenEngine::RenderContainer& renders, 
-            BlitzenEngine::TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
-            :m_drawContext{ camera, meshes, renders, textureManager, pPlatform }
+        inline WORLD_blit(BlitzenEngine::Camera& camera, BlitzenEngine::MeshResources& meshes, BlitzenEngine::TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
+            :m_drawContext{ camera, meshes, textureManager, pPlatform }
         {
 
         }

@@ -1,6 +1,4 @@
-#define CGLTF_IMPLEMENTATION
 #include "blitRenderer.h"
-#include "Renderer/Entities/Interface/blitEntityInterface.h"
 
 namespace BlitzenEngine
 {

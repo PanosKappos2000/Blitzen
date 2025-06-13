@@ -49,14 +49,14 @@ namespace BlitzenCore
         return BlitzenPlatform::PlatformMalloc(size , false);
     }
 
-    void MANUAL_FREE(AllocationType alloc, void* pBlock, size_t size)
+    inline void MANUAL_FREE(AllocationType alloc, void* pBlock, size_t size)
     {
         LogAllocation(alloc, size, AllocationAction::FREE);
 
         BlitzenPlatform::PlatformFree(pBlock, false);
     }
 
-    void MANUAL_COPY(void* pDst, void* pSrc, size_t size)
+    inline void MANUAL_COPY(void* pDst, void* pSrc, size_t size)
     {
         BlitzenPlatform::PlatformMemCopy(pDst, pSrc, size);
     }

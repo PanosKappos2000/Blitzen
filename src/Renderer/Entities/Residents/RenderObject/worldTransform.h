@@ -19,7 +19,7 @@ namespace BlitzenEngine
 		WorldTransformType m_type{ WorldTransformType::STATIC };
 		MeshTransform* m_pTransform{ nullptr };
 		float m_scale{ 0.f };
-		float m_randomTransformMultiplier{0.f}
+		float m_randomTransformMultiplier{ 0.f };
 	};
 
 	struct WorldTransformContainer

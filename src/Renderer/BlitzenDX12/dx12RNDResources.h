@@ -63,17 +63,36 @@ namespace BlitzenDX12
         return ssboSize;
     }
 
-    template<typename DATA>
-    UINT64 CreateCPUDataSSBO(ID3D12Device* device, CPU_WRITE_SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& tempStaging, size_t elementCount, DATA* data, UINT persistentStagingElementCount, 
-        UINT tempStagingElementCount, UINT tempStagingOffset)
+    struct CPU_DATA_SSBO_SIZE_INFO
     {
-        if (elementCount == 0)
+        UINT m_fullSSBOSize{ 0 };
+        UINT m_staticDataSize{ 0 };
+        UINT m_staticDataOffset{ 0 };
+        UINT m_dynamicDataSize{ 0 };
+        UINT m_dynamicDataOffset{ 0 };
+    };
+    template<typename DATA>
+    UINT64 CreateCPUDataSSBO(ID3D12Device* device, CPU_WRITE_SSBO& ssbo, DX12WRAPPER<ID3D12Resource>& tempStaging, DATA* data, CPU_DATA_SSBO_SIZE_INFO& sizeInfo)
+    {
+        if (sizeInfo.m_fullSSBOSize == 0)
         {
-            BLIT_ERROR("Passed element count 0 to SSBO creation");
+            BLIT_ERROR("Tried to create CPU_DATA_SSBO with element count 0 for the full SSBO size");
             return 0;
         }
 
-        UINT64 ssboSize{ sizeof(DATA) * elementCount };
+        if (sizeInfo.m_staticDataSize == 0)
+        {
+            BLIT_ERROR("Tried to create CPU_DATA_SSBO with element count 0 for the static data size. Some static data is expected for a CPU_DATA_SSBO to be created");
+            return 0;
+        }
+
+        if (sizeInfo.m_dynamicDataSize == 0)
+        {
+            BLIT_ERROR("No dynamic data found for CPU_DATA_SSBO. Temporarily passing element count 1");
+            sizeInfo.m_dynamicDataSize = 1;
+        }
+
+        UINT64 ssboSize{ sizeof(DATA) * sizeInfo.m_fullSSBOSize };
 
         if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), ssboSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT))
         {
@@ -81,15 +100,9 @@ namespace BlitzenDX12
             return 0;
         }
 
-        UINT64 tempStagingSize{ sizeof(DATA) * tempStagingElementCount };
+        UINT64 staticStagingSize{ sizeof(DATA) * sizeInfo.m_staticDataSize };
 
-        if (tempStagingElementCount == 0)
-        {
-            BLIT_ERROR("Passed element count zero for temp staging buffer");
-            return 0;
-        }
-
-        if (!CreateBuffer(device, tempStaging.ReleaseAndGetAddressOf(), tempStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+        if (!CreateBuffer(device, tempStaging.ReleaseAndGetAddressOf(), staticStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
         {
             BLIT_ERROR("Failed to create initial staging buffer");
             return 0;
@@ -103,16 +116,9 @@ namespace BlitzenDX12
             return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
         }
 
-        // PERSISTENT CPU DATA
-        if (persistentStagingElementCount == 0)
-        {
-            BLIT_ERROR("Passed size 0 for persistent staging buffer, creating placeholder");
-            persistentStagingElementCount = 1;
-        }
+        UINT64 dynamicStagingSize{ sizeof(DATA) * sizeInfo.m_dynamicDataSize };
 
-        UINT64 stagingSize{ sizeof(DATA) * persistentStagingElementCount };
-
-        if (!CreateBuffer(device, ssbo.staging.ReleaseAndGetAddressOf(), stagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
+        if (!CreateBuffer(device, ssbo.staging.ReleaseAndGetAddressOf(), dynamicStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
         {
             BLIT_ERROR("Failed to Create peristent staging buffer for CPU WRITE SSBO");
             return 0;
@@ -125,9 +131,11 @@ namespace BlitzenDX12
             return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
         }
 
-        ssbo.dataCopySize = stagingSize;
-        BlitzenCore::BlitMemCopy(ssbo.pData, data, ssbo.dataCopySize);
-        BlitzenCore::BlitMemCopy(pMappedData, data + tempStagingOffset, tempStagingSize);
+        BlitzenCore::BlitMemCopy(ssbo.pData, data + sizeInfo.m_staticDataOffset, dynamicStagingSize);
+        BlitzenCore::BlitMemCopy(pMappedData, data + sizeInfo.m_staticDataOffset, staticStagingSize);
+
+        // saves size
+        ssbo.dataCopySize = dynamicStagingSize;
 
         // Success
         return ssboSize;

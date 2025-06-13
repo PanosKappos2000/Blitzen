@@ -590,9 +590,15 @@ namespace BlitzenDX12
 	static uint8_t CreateRWResources(ID3D12Device* device, ID3D12CommandQueue* commandQueue, CmdContext& cmdContext, ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, 
 		uint32_t swapchainWidth, uint32_t swapchainHeight)
 	{
-		const auto& transforms{ context.m_renders.m_transforms };
 		const auto& lodData{ context.m_meshes.m_LODs };
 		const auto& lodInstanceList{ context.m_meshes.m_lodInstanceList };
+
+		CPU_DATA_SSBO_SIZE_INFO transformBufferSizeInfo{};
+		transformBufferSizeInfo.m_fullSSBOSize = BlitzenCore::Ce_MaxWorldTransformCount;
+		transformBufferSizeInfo.m_staticDataSize = context.m_pResidents->m_transforms.m_staticTransformCount;
+		transformBufferSizeInfo.m_staticDataOffset = BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET;
+		transformBufferSizeInfo.m_dynamicDataSize = context.m_pResidents->m_transforms.m_staticTransformCount;
+		transformBufferSizeInfo.m_dynamicDataOffset = BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET;
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -604,10 +610,8 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			UINT transformCount{ BlitzenCore::Ce_MaxDynamicObjectCount + context.m_renders.m_staticTransformCount };
 			DX12WRAPPER<ID3D12Resource> transformStaging;
-			if (!CreateCPUDataSSBO(device, rwResources.m_transformBuffer, transformStaging, transformCount, context.m_renders.m_transforms,
-				context.m_renders.m_dynamicTransformCount, context.m_renders.m_staticTransformCount, BlitzenCore::Ce_MaxDynamicObjectCount))
+			if (!CreateCPUDataSSBO(device, rwResources.m_transformBuffer, transformStaging, context.m_pResidents->m_transforms.m_transforms, transformBufferSizeInfo))
 			{
 				BLIT_ERROR("Failed to create transform buffer");
 				return 0;
@@ -634,10 +638,11 @@ namespace BlitzenDX12
 			// DRAW OCC MODE
 			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
-				BlitCL::DynamicArray<uint32_t> zeroData{ context.m_renders.m_renderCount, 0 };
+				BlitCL::DynamicArray<uint32_t> zeroData{ context.m_pResidents->m_renders.m_renderCount, 0 };
 				
 				// Normally only needed for non-temporal occlusion, but right now it gets created anyway, which is a bit of a waste
-				visibilityBufferSize = CreateSSBO(device, rwResources.m_drawVisBuffer, drawVisibilityStaging, context.m_renders.m_renderCount, zeroData.Data(), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+				visibilityBufferSize = CreateSSBO(device, rwResources.m_drawVisBuffer, drawVisibilityStaging, context.m_pResidents->m_renders.m_renderCount, zeroData.Data(), 
+					D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 				if (!visibilityBufferSize)
 				{
 					BLIT_ERROR("Failed to create draw visibility buffer for draw occlusion");
@@ -775,8 +780,8 @@ namespace BlitzenDX12
 
 			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), 0, rwResources.m_transformBuffer.staging.Get(), 0, rwResources.m_transformBuffer.dataCopySize);
 
-			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), BlitzenCore::Ce_MaxDynamicObjectCount * sizeof(BlitzenEngine::MeshTransform),
-				transformStaging.Get(), 0, context.m_renders.m_staticTransformCount * sizeof(BlitzenEngine::MeshTransform));
+			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform),
+				transformStaging.Get(), 0, context.m_pResidents->m_transforms.m_staticTransformCount * sizeof(BlitzenEngine::MeshTransform));
 
 			cmdContext.m_copyCmdList->Close();
 			ID3D12CommandList* commandLists[] = { cmdContext.m_copyCmdList.Get() };
@@ -820,7 +825,7 @@ namespace BlitzenDX12
 		}
 
 		DX12WRAPPER<ID3D12Resource> renderStagingBuffer{ nullptr };
-		UINT64 renderBufferSize{ CreateSSBO(device, roResources.m_renderBuffer, renderStagingBuffer, context.m_renders.m_renderCount, context.m_renders.m_renders) };
+		UINT64 renderBufferSize{ CreateSSBO(device, roResources.m_renderBuffer, renderStagingBuffer, context.m_pResidents->m_renders.m_renderCount, context.m_pResidents->m_renders.m_renders) };
 		if(!renderBufferSize)
 		{
 			BLIT_ERROR("Failed to create render buffer");
@@ -992,9 +997,7 @@ namespace BlitzenDX12
 		ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
 	{
 		const auto& vertices{ context.m_meshes.m_hlslVtxs };
-		const auto& transforms{ context.m_renders.m_transforms };
 		const auto& surfaces{ context.m_meshes.m_surfaces };
-		auto pRenders{ context.m_renders.m_renders };
 		const auto& lods{ context.m_meshes.m_LODs };
 
 		// DRAW DESCRIPTORS
@@ -1018,10 +1021,10 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
 
-			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.buffer.Get(), ctx, BlitzenCore::Ce_MaxDynamicObjectCount + context.m_renders.m_staticTransformCount, 
+			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.buffer.Get(), ctx, BlitzenCore::Ce_MaxDynamicObjectCount + context.m_pResidents->m_transforms.m_staticTransformCount, 
 				sizeof(BlitzenEngine::MeshTransform));
 
-			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_renders.m_renderCount, sizeof(BlitzenEngine::RenderObject));
+			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_renderCount, sizeof(BlitzenEngine::RenderObject));
 
 			CreateConstantBufferView(device, ctx, rwResources.m_viewBuffer.buffer.Get(), sizeof(BlitzenEngine::CameraViewData));
 		}
@@ -1072,7 +1075,7 @@ namespace BlitzenDX12
 				ctx.m_drawVisUANHandle[i] = ctx.m_viewHeapHandle;
 				ctx.m_drawVisUANHandle[i].ptr += ctx.m_drawVisUAVOffset[i] * ctx.m_viewHeapIncrement;
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawVisBuffer.buffer.Get(), nullptr, context.m_renders.m_renderCount, sizeof(uint32_t), 0);
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawVisBuffer.buffer.Get(), nullptr, context.m_pResidents->m_renders.m_renderCount, sizeof(uint32_t), 0);
 			}
 		}
 

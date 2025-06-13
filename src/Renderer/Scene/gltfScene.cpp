@@ -1,3 +1,4 @@
+#define CGLTF_IMPLEMENTATION
 #include "gltfScene.h"
 
 namespace BlitzenEngine
@@ -326,7 +327,7 @@ namespace BlitzenEngine
                 RESIDENT_CREATE_CONTEXT nodeContext{};
                 nodeContext.m_flags = 0;
                 nodeContext.m_pResource = &meshContext.m_meshes[meshIdx];
-                nodeContext.p_mTransform = &transform;
+                nodeContext.m_transformInfo.m_pTransform = &transform;
 
                 auto res{ pResidents->AddResident(nodeContext) };
 

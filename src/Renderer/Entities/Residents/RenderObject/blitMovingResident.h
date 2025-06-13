@@ -8,6 +8,8 @@ namespace BlitzenEngine
 	{
 		uint32_t m_renderObjectID;
 
+		BlitML::mat4 cpu_worldTransform;
+
 		bool isBlocked{ false };
 		bool isMoving{ false };
 	};

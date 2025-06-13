@@ -13,7 +13,8 @@ namespace BlitzenCore
 
     bool LOG_ERROR_MSG_AND_RETURN(const char* system, const char* msg)
     {
-        BLIT_ERROR("%s::MSG: %s", system, msg)
+        BLIT_ERROR("%s::MSG: %s", system, msg);
+        return false;
     }
 
     void ShutdownLogging(size_t totalAllocated, size_t* typeAllocations)

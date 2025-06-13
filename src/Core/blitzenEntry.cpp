@@ -26,9 +26,9 @@ int main(int argc, char* argv[])
     BlitzenCore::WorldTimeManager blitzenClock;
     blitzenPrivateContext.pClock = &blitzenClock;
 
-    BlitzenEngine::EntitySystemMemory blitzenEntityManager;
-    blitzenEntityManager.Make();
-    blitzenPrivateContext.pEntityMangager = blitzenEntityManager.Data();
+    BlitzenEngine::ComponentSystemMemory blitzenComponentSystem;
+    blitzenComponentSystem.Make();
+    blitzenPrivateContext.pComponents = blitzenComponentSystem.Data();
 
     RndResourcesMemory renderingResources;
     renderingResources.Make();
@@ -37,10 +37,10 @@ int main(int argc, char* argv[])
     BlitzenPlatform::PlatformContext platform{};
     blitzenPrivateContext.pPlatform = &platform;
 
-    BlitzenWorld::WORLD_blit WORLD{ mainCamera, renderingResources->m_meshContext, blitzenEntityManager->m_renderContainer, renderingResources->m_textureManager, &platform };
-    blitzenPrivateContext.pWORLD = &WORLD;
+    BlitzenWorld::WORLD_blit WORLD{ mainCamera, renderingResources->m_meshContext, renderingResources->m_textureManager, &platform };
     WORLD.pCameraContainer = &blitzenCameraSystem;
-
+    WORLD.P_RESIDENTS.Make();
+    WORLD.m_drawContext.m_pResidents = WORLD.P_RESIDENTS.Data();
     WORLD.P_RENDERER.Make();
     blitzenPrivateContext.pWORLD = &WORLD;
     

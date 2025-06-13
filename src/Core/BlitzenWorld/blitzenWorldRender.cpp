@@ -11,7 +11,7 @@ namespace BlitzenWorld
 			// TODO: Update view after waiting for camera
 
 			// TODO: Wait for update loop
-			for(uint32_t move = 0)
+			//for(uint32_t move = 0)
 		}
 	}
 }

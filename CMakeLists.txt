@@ -105,8 +105,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/View/blitzenCamera.cpp"
 
                 # ENTITIES
-                "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.h"
-                "src/Renderer/Entities/DynamicTransform/blitDynamicTransform.cpp"
+                
+                
                 
                 "src/Renderer/Entities/Interface/blitComponents.h"
                 "src/Renderer/Entities/Interface/blitComponents.cpp"
@@ -188,7 +188,7 @@ add_executable(BlitzenEngine
                 
                 
                 "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h"   "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.h" "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.cpp" "src/Renderer/Scene/gltfScene.h" "src/Renderer/Scene/gltfScene.cpp")
+                "src/Client/ClientWV/wvData.h"   "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.h" "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.cpp" "src/Renderer/Scene/gltfScene.h" "src/Renderer/Scene/gltfScene.cpp" "src/Renderer/Resources/Mesh/blitTriangle.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -245,6 +245,12 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_GDEV_EDT # Activates standard main
                             BLIT_ASSERTIONS_ENABLED
                             BLIT_CONSOLE_LOGGER
+
+                            # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
+                            RENDERER_STRESS_TEST
+                            MOVING_RESIDENT_TEST
+                            DEFAULT_GLTF_SCENE_TEST
+                            LOAD_CMD_ARG_GLTF_FILEPATHS
 
                             DASHER_JOIN
                             DASHER_USE_DEAR

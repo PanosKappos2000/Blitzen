@@ -7,6 +7,10 @@ namespace BlitzenEngine
 {
     struct MeshResources
     {
+        //MeshPrimitivesDataContainer
+        //PrimitiveContainer
+        //HLSL_PrimitiveContainer
+
         Mesh m_meshes[BlitzenCore::Ce_MaxMeshCount];
         BlitCL::HashMap<Mesh> m_meshMap;
         size_t m_meshCount = 0;

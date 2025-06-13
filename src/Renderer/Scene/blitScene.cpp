@@ -5,18 +5,33 @@ namespace BlitzenEngine
 {
     SCENE_CREATE_RES CreateScene(SceneContext* pScene, SCENE_CREATE_CONTEXT& sceneContext)
     {
+        if (!sceneContext.pRenderer)
+        {
+            return SCENE_CREATE_RES::INVALID_RENDERER_HANDLE;
+        }
+        if (!sceneContext.pResidents)
+        {
+            return SCENE_CREATE_RES::INVALID_WORLD_RESIDENTS_HANDLE;
+        }
+        if (!sceneContext.pResources)
+        {
+            return SCENE_CREATE_RES::INVALID_RENDERING_RESOURCES_HANDLE;
+        }
+
+        constexpr float RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER = 3'000.f;
+
         switch (sceneContext.m_type)
         {
         case SceneType::GltfSceneTest:
         {
             auto res{ ManageGltf(sceneContext.m_name, sceneContext.pResources, sceneContext.pResidents, sceneContext.pRenderer, pScene) };
-            BLIT_ASSERT(BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
+            BLIT_ASSERT_MESSAGE(BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
             return res;
         }
         case SceneType::RendererStressTest:
         {
-            auto res{ LoadGeometryStressTest(sceneContext.pResidents, sceneContext.pResources, , pScene) };
-            BLIT_ASSERT(BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
+            auto res{ LoadGeometryStressTest(sceneContext.pResidents, sceneContext.pResources, RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER, pScene) };
+            BLIT_ASSERT_MESSAGE(BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
             return res;
         }
         default:

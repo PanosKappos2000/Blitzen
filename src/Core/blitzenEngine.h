@@ -47,7 +47,7 @@ namespace BlitzenCore
     template<typename T>
     bool BLIT_CHECK_FATAL(T code)
     {
-        return code < CE_BLITZEN_FATAL;
+        return (uint32_t)code < CE_BLITZEN_FATAL;
     }
 
     bool LOG_ERROR_MSG_AND_RETURN(const char* system, const char* msg);

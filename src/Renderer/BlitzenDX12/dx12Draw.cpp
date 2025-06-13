@@ -323,10 +323,10 @@ namespace BlitzenDX12
 
 		// Pipelines and constants
 		commandList->SetPipelineState(pipelineContext.m_clusterCullDispatchPso.Get());
-		commandList->SetComputeRoot32BitConstant(Ce_ClusterCullDrawCountRootID, context.m_renders.m_renderCount, 0);
+		commandList->SetComputeRoot32BitConstant(Ce_ClusterCullDrawCountRootID, context.m_pResidents->m_renders.m_renderCount, 0);
 		
 		// CULL DRAWS
-		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(context.m_renders.m_renderCount, 64), 1, 1);
+		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(context.m_pResidents->m_renders.m_renderCount, 64), 1, 1);
 
 		// Sets y and z on cluster dispatch buffer (possibly unnecessary)
 		commandList->SetComputeRootDescriptorTable(Ce_ClusterCullAdditionalViewsRootID, descriptorContext.m_clusterDispatchAdditionalUAVsHandle[frame]);
@@ -415,7 +415,7 @@ namespace BlitzenDX12
 		BlitzenEngine::DrawContext& context, uint32_t frame)
 	{
 		size_t lodDataCount{ context.m_meshes.m_LODs.GetSize()};
-		uint32_t objCount{ context.m_renders.m_renderCount };
+		uint32_t objCount{ context.m_pResidents->m_renders.m_renderCount };
 
 		// Binds heap for compute
 		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get()};
@@ -624,7 +624,7 @@ namespace BlitzenDX12
 		else if constexpr (BlitzenCore::Ce_DrawTemporalOcclusion)
 		{
 			// Culling with Occlusion using previous frame depth pyramid
-			DrawOccTemporalPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_renders.m_renderCount, m_currentFrame);
+			DrawOccTemporalPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_pResidents->m_renders.m_renderCount, m_currentFrame);
 
 			// Render target barrier
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
@@ -656,7 +656,7 @@ namespace BlitzenDX12
 			// 1. FRUSTUM CULLING AND LOD SELECTION. COMMANDS CREATED FOR VISIBLE OBJECTS BASED ON THE SELECTED LOD
 			// ONLY OBJECTS THAT WERE TAGGED AS VISIBLE LAST FRAME ARE CHECKED
 			// Shaders used: drawCountReset.cs.hlsl + drawOccFirst.cs.hlsl
-			DrawOccFirstPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_renders.m_renderCount, m_currentFrame);
+			DrawOccFirstPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_pResidents->m_renders.m_renderCount, m_currentFrame);
 
 			// Render target barrier
 			D3D12_RESOURCE_BARRIER renderTargetBarrier{};
@@ -683,7 +683,7 @@ namespace BlitzenDX12
 			// 5. SECOND PASS DOES THE SAME AS THE OTHER PASS + OCCLUSION CULLING, OBJECTS THAT ARE NOW VISIBLE BUT WERE TAGGED AS NOT VISIBLE BEFORE GET DRAW COMMANDS
 			// 6. ALL OBJECTS THAT ARE VISIBLE GET TAGGED AS VISIBLE FOR THE NEXT FRAME
 			// Shaders used: drawCountReset.cs.hlsl + drawOccLate.cs.hlsl
-			DrawOccLatePass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_renders.m_renderCount, m_currentFrame);
+			DrawOccLatePass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_pResidents->m_renders.m_renderCount, m_currentFrame);
 			
 			// 7. BEGINS SECOND RENDER PASS. RENDER TARGET AND DEPTH TARGET ARE NOT CLEARED, BUT LOADED
 			BeginRenderPassPreserve(cmdContext.m_graphicsCmdList.Get(), m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_pipelineContext, m_swapchainIDX);
@@ -720,7 +720,7 @@ namespace BlitzenDX12
 		{
 			// 1. FRUSTUM CULLING AND LOD SELCTION. COMMANDS CREATED FOR VISIBLE OBJECTS BASED ON THE SELECTED LOD
 			// Shaders used: drawCountReset.cs.hlsl + drawCull.cs.hlsl
-			DrawCullPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_renders.m_renderCount, m_currentFrame);
+			DrawCullPass(cmdContext.m_graphicsCmdList.Get(), m_descriptorContext, m_pipelineContext, rwResources, context.m_pResidents->m_renders.m_renderCount, m_currentFrame);
 
 			// 2. BEGINS RENDERING
 			ClearWindow(cmdContext.m_graphicsCmdList.Get(), (float)m_swapchainWidth, (float)m_swapchainHeight, m_swapchainBackBuffers[m_swapchainIDX].Get(), m_descriptorContext, m_swapchainIDX);
