@@ -3,6 +3,8 @@
 
 namespace BlitzenEngine
 {
+	
+	constexpr uint32_t CE_MAX_INSTANCES_PER_LOD = 100'000;
 	constexpr uint32_t CE_MAX_LOD_COUNT = BlitzenCore::Ce_MaxMeshPrimitivesCount * BlitzenCore::Ce_MaxLodCountPerSurface;
 
 	struct MeshPrimitiveData

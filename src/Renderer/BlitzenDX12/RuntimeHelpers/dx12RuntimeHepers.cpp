@@ -1,13 +1,11 @@
 #if defined(_WIN32)
 
-#include "dx12Renderer.h"
-#include "dx12Pipelines.h"
-#include "dx12RNDResources.h"
+#include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
+#include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
+#include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 	
 namespace BlitzenDX12
 {
-	
-
 	static void RecreateSwapchain(HWND hwnd, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
 		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets,
 		DescriptorContext& descriptorContext, CmdContext* pCmd)

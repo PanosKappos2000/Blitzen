@@ -91,7 +91,7 @@ namespace BlitzenWorld
                 }
 #endif
 
-                if (!context.pWORLD->P_RENDERER->SetupForRendering(drawContext))
+                if (!BlitzenEngine::UploadResourcesToGPU(context.pWORLD->P_RENDERER.Data(), drawContext))
                 {
                     BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
                     

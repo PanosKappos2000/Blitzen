@@ -57,6 +57,8 @@ namespace BlitzenCore
     constexpr BIG_BOOL BB_TRUE = 1;
     constexpr BIG_BOOL BB_FALSE = 0;
 
+    using FAT_BOOL = uint32_t;
+
     template<typename PTR>
     using ARRAY_OF_POINTERS = PTR**;
 
@@ -150,7 +152,9 @@ namespace BlitzenCore
     constexpr uint8_t Ce_MainCameraId = 0;
 
 
-    // Renderer settings
+    /********************************************************************************************************************************************************
+    * SECTION: RENDERING RESOURCES CONSTANTS                                                                                                                *
+    *********************************************************************************************************************************************************/
     constexpr uint32_t DDSCAPS2_CUBEMAP = 0x200;
     constexpr uint32_t DDSCAPS2_VOLUME = 0x200000;
     constexpr uint32_t DDS_DIMENSION_TEXTURE2D = 3;
@@ -161,6 +165,9 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMaterialCount = 10'000;
 	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
+    constexpr uint32_t Ce_MaxWorldVertexCount = 10'000'000;
+    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = 10'000'000;
+    static_assert(Ce_MaxWorldVertexCount <= Ce_MaxWorldVertexIndicesCount);
 
     constexpr uint32_t Ce_MaxMeshCount = 10'000;
     constexpr uint32_t Ce_EngineDefaultMeshesCount = 4;
@@ -173,11 +180,9 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMeshPrimitivesCount = 10'000;
 
     constexpr uint8_t Ce_MaxLodCountPerSurface = 8;
-    constexpr uint32_t Ce_MaxLODs = Ce_MaxMeshPrimitivesCount * Ce_MaxLodCountPerSurface;
-    constexpr uint32_t Ce_MaxInstanceCountPerLOD = 100'000;
 
     // CE_MAX_CLUSTER_PER_SURFACE ?????
-    constexpr uint32_t Ce_MaxClusters = 1'000;
+    constexpr uint32_t Ce_MaxWorldClusterCount = 1'000'000;
     constexpr uint32_t Ce_MaxInstanceCountPerCluster = 100'000;
 
     constexpr uint32_t Ce_MaxVerticesPerCluster = 64;

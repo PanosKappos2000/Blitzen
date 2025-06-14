@@ -2,7 +2,7 @@
 
 #if defined(_WIN32)
 
-#include "dx12Context.h"
+#include "Renderer/BlitzenDX12/Context/dx12Context.h"
 
 namespace BlitzenDX12
 {

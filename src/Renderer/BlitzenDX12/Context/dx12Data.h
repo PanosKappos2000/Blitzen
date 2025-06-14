@@ -306,14 +306,22 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
     };
 
+    template<class DATA>
+    struct STAGING
+    {
+        DX12WRAPPER<ID3D12Resource> m_buffer{ nullptr };
+        DATA* m_pMapped{ nullptr };
+        SIZE_T m_dataSize{ 0 };
+    };
+
+    template<class DATA>
     struct CPU_WRITE_SSBO
     {
-        DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
-        SIZE_T heapOffset{};
+        SSBO m_ssbo{};
 
-        DX12WRAPPER<ID3D12Resource> staging{ nullptr };
-        void* pData{ nullptr };
-        size_t dataCopySize{ 0 };
+        STAGING<DATA> m_dynamicDataStaging{};
+
+        SIZE_T heapOffset{};
     };
 
     struct INDEX_BUFFER

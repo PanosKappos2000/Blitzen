@@ -1,8 +1,8 @@
 #if defined(_WIN32)
 
-#include "dx12Renderer.h"
-#include "dx12RNDResources.h"
-#include "dx12Pipelines.h"
+#include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
+#include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
+#include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
 
 namespace BlitzenDX12
 {
@@ -21,7 +21,8 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdAlloc->Reset();
 		cmdContext.m_copyCmdList->Reset(cmdContext.m_copyCmdAlloc.Get(), nullptr);
 		
-		cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), 0, rwResources.m_transformBuffer.staging.Get(), 0, rwResources.m_transformBuffer.dataCopySize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.m_ssbo.buffer.Get(), 0, rwResources.m_transformBuffer.m_dynamicDataStaging.m_buffer.Get(), 0, 
+			rwResources.m_transformBuffer.m_dynamicDataStaging.m_dataSize);
 		
 		cmdContext.m_copyCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmdContext.m_copyCmdList.Get() };
@@ -591,7 +592,7 @@ namespace BlitzenDX12
 
 		// Restores transform buffer for graphics
 		D3D12_RESOURCE_BARRIER transformAfterCopyBarrier{};
-		CreateResourcesTransitionBarrier(transformAfterCopyBarrier, rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		CreateResourcesTransitionBarrier(transformAfterCopyBarrier, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &transformAfterCopyBarrier);
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
@@ -732,7 +733,7 @@ namespace BlitzenDX12
 
 		// Prepares transform buffer for next frame data copy
 		D3D12_RESOURCE_BARRIER transformCopyBarrier{};
-		CreateResourcesTransitionBarrier(transformCopyBarrier, rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(transformCopyBarrier, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
 		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &transformCopyBarrier);
 		
 #if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)

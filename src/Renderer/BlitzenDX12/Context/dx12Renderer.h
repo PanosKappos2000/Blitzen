@@ -20,10 +20,6 @@ namespace BlitzenDX12
         Dx12Renderer operator = (const Dx12Renderer& dx) = delete;
 
         ~Dx12Renderer();
-    
-        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pContext);
-    
-        uint8_t SetupForRendering(BlitzenEngine::DrawContext& context);
 
         void FinalSetup();
     

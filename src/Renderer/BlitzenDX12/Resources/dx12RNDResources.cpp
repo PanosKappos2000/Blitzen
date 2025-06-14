@@ -107,7 +107,7 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	UINT64 CreateIndexBuffer(ID3D12Device* device, INDEX_BUFFER& idxBuffer, DX12WRAPPER<ID3D12Resource>& stagingBuffer, size_t elementCount, void* pData)
+	UINT64 CreateIndexBuffer(ID3D12Device* device, INDEX_BUFFER& idxBuffer, size_t elementCount)
 	{
 		if (elementCount == 0)
 		{
@@ -122,22 +122,6 @@ namespace BlitzenDX12
 			BLIT_ERROR("Failed to create index buffer resource");
 			return 0;
 		}
-
-		if (!CreateBuffer(device, stagingBuffer.ReleaseAndGetAddressOf(), idxBufferSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
-		{
-			BLIT_ERROR("Failed to create index staging buffer");
-			return 0;
-		}
-		
-		void* pMappedData{ nullptr };
-		HRESULT mappingRes{ stagingBuffer->Map(0, nullptr, &pMappedData) };
-		if (FAILED(mappingRes))
-		{
-			BLIT_ERROR("Failed to map pointer to index staging buffer");
-			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
-		}
-
-		BlitzenCore::BlitMemCopy(pMappedData, pData, idxBufferSize);
 
 		idxBuffer.m_view = {};
 		idxBuffer.m_view.BufferLocation = idxBuffer.m_buffer->GetGPUVirtualAddress();

@@ -158,20 +158,20 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenGL/openglRenderer.cpp"
 
                 # DX12
-                "src/Renderer/BlitzenDX12/dx12Data.h"
-                "src/Renderer/BlitzenDX12/dx12Context.h"
-                "src/Renderer/BlitzenDX12/dx12Renderer.h"
-                "src/Renderer/BlitzenDX12/dx12Commands.h" 
-                "src/Renderer/BlitzenDX12/dx12Commands.cpp"
-                "src/Renderer/BlitzenDX12/dx12Resources.h"
-                "src/Renderer/BlitzenDX12/dx12Resources.cpp"
-                "src/Renderer/BlitzenDX12/dx12Pipelines.h"
-                "src/Renderer/BlitzenDX12/dx12Pipelines.cpp"
-                "src/Renderer/BlitzenDX12/dx12RNDResources.h"
-                "src/Renderer/BlitzenDX12/dx12RNDResources.cpp"
-                "src/Renderer/BlitzenDX12/dx12Init.cpp"
-                "src/Renderer/BlitzenDX12/dx12RendererSetup.cpp"
-                "src/Renderer/BlitzenDX12/dx12RuntimeHepers.cpp"
+                "src/Renderer/BlitzenDX12/Context/dx12Data.h"
+                "src/Renderer/BlitzenDX12/Context/dx12Context.h"
+                "src/Renderer/BlitzenDX12/Context/dx12Renderer.h"
+                "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12Commands.h" 
+                "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12Commands.cpp"
+                "src/Renderer/BlitzenDX12/Resources/dx12Resources.h"
+                "src/Renderer/BlitzenDX12/Resources/dx12Resources.cpp"
+                "src/Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
+                "src/Renderer/BlitzenDX12/Resources/dx12Pipelines.cpp"
+                "src/Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
+                "src/Renderer/BlitzenDX12/Resources/dx12RNDResources.cpp"
+                
+                "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.cpp"
+                "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHepers.cpp"
                 "src/Renderer/BlitzenDX12/dx12Draw.cpp"
                 "src/Renderer/BlitzenDX12/Update/dx12Update.h"
                 "src/Renderer/BlitzenDX12/Update/dx12Update.cpp"
@@ -191,7 +191,7 @@ add_executable(BlitzenEngine
                 
                 
                 "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h")
+                "src/Client/ClientWV/wvData.h" "src/Renderer/BlitzenDX12/Init/dx12Init.cpp" "src/Renderer/BlitzenDX12/Context/dx12Renderer.cpp" "src/Renderer/BlitzenDX12/Init/dx12InitInterface.cpp" "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.h" "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

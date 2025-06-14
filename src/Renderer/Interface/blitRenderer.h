@@ -1,7 +1,7 @@
 #pragma once
 #include "Renderer/BlitzenVulkan/vulkanRenderer.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
-#include "Renderer/BlitzenDX12/dx12Renderer.h"
+#include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
 
 namespace BlitzenEngine
 {
@@ -51,7 +51,9 @@ namespace BlitzenEngine
         CLUSTER_CULL_DEFAULT
     };
     
-    void Init(RendererPtrType pContext);
+    uint8_t StartupRenderer(RendererPtrType pRenderer, uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pPlatform);
+
+    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
 
     void BarRenderFrame(RendererPtrType pContext);
 

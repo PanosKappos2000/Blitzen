@@ -2,6 +2,8 @@
 #include "Renderer/Resources/blitShaderResources.h"
 #include "BlitCL/DynamicArray.h"
 #include "BlitCL/blitHashMap.h"
+#include "blitMeshPrimitive.h"
+#include "blitTriangle.h"
 
 namespace BlitzenEngine
 {

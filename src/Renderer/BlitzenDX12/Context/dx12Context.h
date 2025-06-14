@@ -4,6 +4,7 @@
 
 #include "dx12Data.h"
 #include "Renderer/View/blitCamera.h"
+#include "Renderer/Resources/blitShaderResources.h"
 
 namespace BlitzenDX12
 {
@@ -33,7 +34,7 @@ namespace BlitzenDX12
 
     struct ReadWriteResources
     {
-        CPU_WRITE_SSBO m_transformBuffer;
+        CPU_WRITE_SSBO<BlitzenEngine::MeshTransform> m_transformBuffer;
 
         SSBO m_drawCmdBuffer;
 

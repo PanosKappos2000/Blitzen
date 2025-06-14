@@ -161,7 +161,7 @@ namespace BlitzenEngine
 
             // Instancing
             LodInstanceCounter lodInstanceCounter{};
-            lodInstanceCounter.instanceOffset = uint32_t(context.m_LODs.GetSize() * BlitzenCore::Ce_MaxInstanceCountPerLOD);
+            lodInstanceCounter.instanceOffset = uint32_t(context.m_LODs.GetSize() * BlitzenEngine::CE_MAX_INSTANCES_PER_LOD);
             context.m_lodInstanceList.PushBack(lodInstanceCounter);
 
             LodData lod{};
