@@ -219,7 +219,7 @@ namespace BlitzenDX12
 			auto& rwResources{ rwResourcesArr[frame] };
 
 			STAGING<BlitzenEngine::MeshTransform> staticTransformStaging;
-			if (!CreateCPU_WRITE_SSBO_Stagings(device, rwResources.m_transformBuffer.m_dynamicDataStaging, staticTransformStaging, drawContext.m_pResidents->m_transforms.m_transforms, 
+			if (!CreateCPU_WRITE_SSBO_Stagings(device, staticTransformStaging, rwResources.m_transformBuffer.m_dynamicDataStaging, drawContext.m_pResidents->m_transforms.m_transforms,
 				transformBufferSizeInfo))
 			{
 				BLIT_ERROR("%s: Failed to create transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);

@@ -38,8 +38,7 @@ namespace BlitzenDX12
         return S_OK;
     }
 
-    void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
-        UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace /*=0*/)
+    void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType, UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace /*=0*/)
     {
         range = {};
 
