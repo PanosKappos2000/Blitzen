@@ -14,7 +14,7 @@ namespace BlitzenEngine
 
 	struct RENDER_OBJECT_CREATE_CONTEXT
 	{
-		RENDER_OBJECT_TYPE m_type;
+		RENDER_OBJECT_TYPE m_type{RENDER_OBJECT_TYPE::OPAQUE_STATIC};
 		uint32_t m_transformID { 0 };
 		uint32_t m_primitiveID { 0 };
 	};

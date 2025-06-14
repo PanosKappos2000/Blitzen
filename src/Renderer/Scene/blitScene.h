@@ -25,6 +25,7 @@ namespace BlitzenEngine
     enum class SCENE_CREATE_RES : int32_t
     {
         SUCCESS = 0,
+        FATAL = BlitzenCore::CE_BLITZEN_FATAL,
 
         UNKNOWN = -1,
         NON_DDS_TEXTURE_FOUND = -2,

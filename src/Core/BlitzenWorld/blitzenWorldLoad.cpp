@@ -7,6 +7,8 @@ namespace BlitzenWorld
 {
     void LoadingLoop(int argc, char** argv, BlitzenPrivateContext& context, BlitzenEngine::DrawContext& drawContext)
     {
+        BLIT_ASSERT(BlitzenEngine::RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data()));
+
         while (true)
         {
             if (*context.pEngineState == BlitzenCore::EngineState::LOADING)
@@ -100,8 +102,6 @@ namespace BlitzenWorld
                 *context.pEngineState = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
 
                 BlitCL::LogContainerData(context.pWORLD->m_scenes, "Scene");
-
-                return;
             }
         }
     }

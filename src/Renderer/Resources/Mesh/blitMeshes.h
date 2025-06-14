@@ -13,7 +13,7 @@ namespace BlitzenEngine
 
         Mesh m_meshes[BlitzenCore::Ce_MaxMeshCount];
         BlitCL::HashMap<Mesh> m_meshMap;
-        size_t m_meshCount = 0;
+        uint32_t m_meshCount = 0;
 
         // Mesh has one or more surfaces / Primitives
         BlitCL::DynamicArray<PrimitiveSurface> m_surfaces;

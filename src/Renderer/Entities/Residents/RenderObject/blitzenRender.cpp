@@ -17,7 +17,7 @@ namespace BlitzenEngine
         // Create opaque normal
         // Create
 
-        if (context.m_type == RENDER_OBJECT_TYPE::OPAQUE_STATIC)
+        if (context.m_type == RENDER_OBJECT_TYPE::TRANSPARENT_STATIC)
         {
             BLIT_ERROR("Transparent object are momentarily out of commission");
             return BlitzenCore::Ce_MaxRenderObjectCount;
@@ -25,7 +25,7 @@ namespace BlitzenEngine
 
         auto& newcomer{ m_renders[m_renderCount] };
         newcomer.surfaceId = context.m_primitiveID;
-        newcomer.transformId = context.m_primitiveID;
+        newcomer.transformId = context.m_transformID;
 
         return m_renderCount++;
     }

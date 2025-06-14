@@ -6,28 +6,65 @@ namespace BlitzenWorld
 {
 	static void UpdateWVs(BlitzenPrivateContext& context, float deltaTime)
 	{
-		for (uint32_t var = 0; var < context.pEntityMangager->m_pTickingWorldVariables; ++var)
-		{
-			context.pBlitzenContext->WVs[var].PFNTICK(context.pBlitzenContext->WVs[var].pWVDATA, context.pClock->m_deltaTime);
-		}
+		
 	}
 
 	void WorldLoop(BlitzenPrivateContext& context)
 	{
-		if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
-		{
-			*context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
-		}
-
 		BlitzenCore::UpdateWorldClock(*context.pClock);
-		context.pBlitzenContext->deltaTime = context.pClock->m_deltaTime;
+		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
 
-		// TODO: Does NOT belong here
-		BlitzenEngine::UpdateCamera(context.pBlitzenContext->pCameraContainer->GetMainCamera(), context.pClock->m_deltaTime);
-
-		while (*context.pEngineState != BlitzenCore::EngineState::SHUTDOWN)
+		switch (*context.pEngineState)
 		{
-			UpdateWVs(context, context.pClock->m_deltaTime);
+		case BlitzenCore::EngineState::LOADING:
+		{
+			break;
+		}
+		case BlitzenCore::EngineState::RUNNING_EDITOR_NO_START:
+		{
+			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
+			{
+				*context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
+			}
+
+			// TODO: Does NOT belong here
+			BlitzenEngine::UpdateCamera(context.pWORLD->pCameraContainer->GetMainCamera(), context.pWORLD->deltaTime);
+
+			/*while (*context.pEngineState != BlitzenCore::EngineState::SHUTDOWN)
+			{
+				UpdateWVs(context, context.pClock->m_deltaTime);
+			}*/
+			break;
+		}
+		case BlitzenCore::EngineState::RUNNING:
+		{
+			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
+			{
+				*context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
+			}
+
+			// TODO: Does NOT belong here
+			BlitzenEngine::UpdateCamera(context.pWORLD->pCameraContainer->GetMainCamera(), context.pWORLD->deltaTime);
+
+			break;
+		}
+		case BlitzenCore::EngineState::SUSPENDED:
+		{
+			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
+			{
+				*context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
+			}
+
+			break;
+		}
+		case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
+		{
+			context.pWORLD->P_RENDERER->FinalSetup();
+
+			*context.pEngineState = BlitzenCore::EngineState::RUNNING;
+
+			break;
+		}
 		}
 	}
 }

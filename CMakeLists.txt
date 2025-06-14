@@ -30,6 +30,7 @@ add_executable(BlitzenEngine
                 "src/Core/BlitzenWorld/blitzenWorldLoad.cpp"
                 "src/Core/BlitzenWorld/blitzenWorldUpdate.cpp"
                 "src/Core/BlitzenWorld/blitzenWorld.cpp"
+                "src/Core/blitzenWorld/blitzenVariableUpdate.cpp"
                 # DASHER UI
                 "src/Core/Dasher/Interface/dasherState.h"
                 "src/Core/Dasher/Interface/dasherInterface.h"
@@ -99,15 +100,15 @@ add_executable(BlitzenEngine
                 "src/Renderer/Scene/blitScene.cpp"
                 "src/Renderer/Resources/Mesh/blitMeshPrimitive.h"
                 "src/Core/BlitzenWorld/blitzenWorldRender.cpp"
+                "src/Renderer/Scene/gltfScene.h"
+                "src/Renderer/Scene/gltfScene.cpp"
+                "src/Renderer/Resources/Mesh/blitTriangle.h"
 
                 # CAMERA
                 "src/Renderer/View/blitCamera.h"
                 "src/Renderer/View/blitzenCamera.cpp"
 
                 # ENTITIES
-                
-                
-                
                 "src/Renderer/Entities/Interface/blitComponents.h"
                 "src/Renderer/Entities/Interface/blitComponents.cpp"
                 "src/Renderer/Entities/Physics/blitGravity.h"
@@ -124,6 +125,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Residents/blitResident.cpp"
                 "src/Renderer/Entities/Residents/blitWV.cpp"
                 "src/Renderer/Entities/Residents/RenderObject/worldTransform.h"
+                "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.h"
+                "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.cpp" 
 
                 # LIGHTING
                 "src/Renderer/Lighting/blitDirectionalLight.h"
@@ -188,7 +191,7 @@ add_executable(BlitzenEngine
                 
                 
                 "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h"   "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.h" "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.cpp" "src/Renderer/Scene/gltfScene.h" "src/Renderer/Scene/gltfScene.cpp" "src/Renderer/Resources/Mesh/blitTriangle.h")
+                "src/Client/ClientWV/wvData.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -248,9 +251,9 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
                             RENDERER_STRESS_TEST
-                            MOVING_RESIDENT_TEST
-                            DEFAULT_GLTF_SCENE_TEST
-                            LOAD_CMD_ARG_GLTF_FILEPATHS
+                            #MOVING_RESIDENT_TEST
+                            #DEFAULT_GLTF_SCENE_TEST
+                            #LOAD_CMD_ARG_GLTF_FILEPATHS
 
                             DASHER_JOIN
                             DASHER_USE_DEAR

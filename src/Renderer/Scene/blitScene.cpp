@@ -25,13 +25,13 @@ namespace BlitzenEngine
         case SceneType::GltfSceneTest:
         {
             auto res{ ManageGltf(sceneContext.m_name, sceneContext.pResources, sceneContext.pResidents, sceneContext.pRenderer, pScene) };
-            BLIT_ASSERT_MESSAGE(BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
+            BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
             return res;
         }
         case SceneType::RendererStressTest:
         {
             auto res{ LoadGeometryStressTest(sceneContext.pResidents, sceneContext.pResources, RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER, pScene) };
-            BLIT_ASSERT_MESSAGE(BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
+            BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading renderer stress test scene");
             return res;
         }
         default:
@@ -147,5 +147,7 @@ namespace BlitzenEngine
                 return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
             }
         }
+
+        return SCENE_CREATE_RES::SUCCESS;
     }
 }

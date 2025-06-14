@@ -17,7 +17,8 @@ namespace BlitzenCore
     constexpr uint32_t Ce_InitialWindowHeight = 720;
     constexpr float Ce_DefaultWindowBackgroundColor[4] = { 0.f, 0.2f, 0.4f, 1.f };
 
-    constexpr int32_t CE_BLITZEN_FATAL = -1000;
+    constexpr int64_t CE_BLITZEN_FATAL = -1000;
+    constexpr int64_t CE_BLITZEN_SUCCESS = 0;
 
     enum class LogLevel : int8_t
     {
@@ -47,7 +48,7 @@ namespace BlitzenCore
     template<typename T>
     bool BLIT_CHECK_FATAL(T code)
     {
-        return (uint32_t)code < CE_BLITZEN_FATAL;
+        return code < T::FATAL;
     }
 
     bool LOG_ERROR_MSG_AND_RETURN(const char* system, const char* msg);

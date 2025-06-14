@@ -294,6 +294,8 @@ namespace BlitzenEngine
                 }
             }
         }
+
+        return true;
     }
 
     bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& meshIndices)
@@ -345,10 +347,10 @@ namespace BlitzenEngine
                     cgltfScope.m_pScene->m_renderCount += (uint32_t)node->mesh->primitives_count;
                 }
             }
-
-            // success
-            return true;
         }
+
+        // success
+        return true;
     }
 
     void LoadGltfMaterials(TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousTextureCount)

@@ -597,7 +597,7 @@ namespace BlitzenDX12
 		transformBufferSizeInfo.m_fullSSBOSize = BlitzenCore::Ce_MaxWorldTransformCount;
 		transformBufferSizeInfo.m_staticDataSize = context.m_pResidents->m_transforms.m_staticTransformCount;
 		transformBufferSizeInfo.m_staticDataOffset = BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET;
-		transformBufferSizeInfo.m_dynamicDataSize = context.m_pResidents->m_transforms.m_staticTransformCount;
+		transformBufferSizeInfo.m_dynamicDataSize = context.m_pResidents->m_transforms.m_dynamicTransformCount;
 		transformBufferSizeInfo.m_dynamicDataOffset = BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET;
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)

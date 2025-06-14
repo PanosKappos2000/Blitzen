@@ -53,8 +53,6 @@ int main(int argc, char* argv[])
     BlitzenPlatform::PlatformArgs platformArgs{&platform, blitzenEventSystem.Data(), WORLD.P_RENDERER.Data(), &dasher};
     BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
 
-    BLIT_ASSERT(RenderingResourcesInit(renderingResources.Data(), WORLD.P_RENDERER.Data()));
-
     // LOADING RESOURCES
     std::thread loadingThread
     {
@@ -72,67 +70,11 @@ int main(int argc, char* argv[])
     // LOOP
     while(blitzenEngine.m_state != BlitzenCore::EngineState::SHUTDOWN)
     {
-        if (!BlitzenPlatform::DispatchEvents(&platform))
-        {
-            blitzenEngine.m_state = BlitzenCore::EngineState::SHUTDOWN;
-        }
+        BlitzenWorld::WorldLoop(blitzenPrivateContext);
 
-        switch (blitzenEngine.m_state)
-        {
-        case BlitzenCore::EngineState::RUNNING:
-        {
-            BlitzenCore::UpdateWorldClock(blitzenClock);
+        BlitzenWorld::UpdateLoop(blitzenPrivateContext);
 
-            BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
-
-            WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
-
-#if defined(DASHER_JOIN)
-            dasher.Draw((float)blitzenClock.m_deltaTime);
-#endif
-            WORLD.P_RENDERER.Data()->Present();
-
-            break;
-        }
-        case BlitzenCore::EngineState::RUNNING_EDITOR_NO_START:
-        {
-            BlitzenCore::UpdateWorldClock(blitzenClock);
-
-            BlitzenEngine::UpdateCamera(mainCamera, float(blitzenClock.m_deltaTime));
-
-            WORLD.P_RENDERER.Data()->DrawFrame(WORLD.m_drawContext);
-
-            WORLD.P_RENDERER.Data()->Present(1);
-
-            break;
-        }
-        case BlitzenCore::EngineState::LOADING:
-        {
-            BlitzenCore::UpdateWorldClock(blitzenClock);
-
-            WORLD.P_RENDERER.Data()->DrawWhileWaiting(float(blitzenClock.m_deltaTime));
-
-            break;
-        }
-        case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
-        {
-            WORLD.P_RENDERER.Data()->FinalSetup();
-
-            blitzenEngine.m_state = BlitzenCore::EngineState::RUNNING;
-
-            break;
-        }
-        case BlitzenCore::EngineState::SUSPENDED:
-        {
-            break;
-        }
-        case BlitzenCore::EngineState::MAX_STATES:
-        default:
-        {
-            blitzenEngine.m_state = BlitzenCore::EngineState::SHUTDOWN;
-            break;
-        }
-        }
+        BlitzenWorld::RenderLoop(blitzenPrivateContext);
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
         // Using IMGUI for the editor requires some extra care for event handling

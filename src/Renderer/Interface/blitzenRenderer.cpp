@@ -25,7 +25,25 @@ namespace BlitzenEngine
 
         if (!LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenCore::Ce_DefaultMeshName))
         {
-			BLIT_ERROR("Rendering resources failed");
+			BLIT_ERROR("Failed to load default bunny mesh");
+            return false;
+        }
+
+        if (!LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenCore::Ce_DefaultKittenMeshName))
+        {
+            BLIT_ERROR("Failed to load default kitten mesh");
+            return false;
+        }
+
+        if (!LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/dragon.obj", BlitzenCore::Ce_DefaultDragonMeshName))
+        {
+            BLIT_ERROR("Failed to load default dragon mesh");
+            return false;
+        }
+
+        if (!LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/FinalBaseMesh.obj", BlitzenCore::Ce_DefaultHumanMeshname))
+        {
+            BLIT_ERROR("Failed to load default human mesh");
             return false;
         }
 

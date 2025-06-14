@@ -11,6 +11,7 @@ namespace BlitzenEngine
 		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
 		{
 			RENDER_OBJECT_CREATE_CONTEXT renderContext{};
+			renderContext.m_type = RENDER_OBJECT_TYPE::OPAQUE_STATIC;
 			renderContext.m_primitiveID = prim + ctx.m_pResource->firstSurface;
 			renderContext.m_transformID = m_transforms.CreateTransform(ctx.m_transformInfo);
 
@@ -44,7 +45,7 @@ namespace BlitzenEngine
 
 	Resident CreateResident(RenderObject* pRender, uint32_t renderCount)
 	{
-		BLIT_ASSERT(pRender != nullptr, "Passed null render object");
+		BLIT_ASSERT_MESSAGE(pRender != nullptr, "Passed null render object");
 
 		Resident res{};
 		res.m_pRender = pRender;

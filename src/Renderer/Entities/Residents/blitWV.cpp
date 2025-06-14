@@ -71,7 +71,11 @@ namespace BlitzenEngine
 
 	void WVGROUP::ADD(WV* pWV)
 	{
-		BLIT_ASSERT_MESSAGE(m_instanceCount < S_WORLD_VARIABLE_CONTEXT_ARRAY[m_type].m_maxInstances, "Exceeded maximum instance count for world variable with flag: %u", m_type);
+		if (m_instanceCount >= S_WORLD_VARIABLE_CONTEXT_ARRAY[m_type].m_maxInstances)
+		{
+			BLIT_ERROR("Exceeded maximum instance count for world variable with flag: %u", m_type);
+			BLIT_ASSERT(true);
+		}
 
 		pWV->m_handle = &reinterpret_cast<uint8_t*>(m_pool)[m_size * m_instanceCount];
 		pWV->m_type = m_type;

@@ -38,7 +38,7 @@ namespace BlitzenEngine
         if (context.m_meshCount > BlitzenCore::Ce_MaxMeshCount)
         {
             BLIT_ERROR("Max mesh count: ( %i ) reached!", BlitzenCore::Ce_MaxMeshCount);
-            return 0;
+            return false;
         }
 
         BLIT_INFO("Loading obj model form file: %s", filename);
@@ -49,7 +49,8 @@ namespace BlitzenEngine
         ObjFile file;
         if (!objParseFile(file, filename))
         {
-            return 0;
+            BLIT_ERROR("Failed to parse obj file");
+            return false;
         }
 
         size_t indexCount = file.f_size / 3;
@@ -98,9 +99,14 @@ namespace BlitzenEngine
         BLIT_INFO("Creating surface");
         GenerateSurface(context, vertices, indices);
 
-        context.AddMesh(previousSurfaceCount, uint32_t(context.m_surfaces.GetSize() - previousSurfaceCount), meshName);
+        uint32_t meshId = context.AddMesh(previousSurfaceCount, uint32_t(context.m_surfaces.GetSize() - previousSurfaceCount), meshName);
+        if (meshId == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("Add mesh returned max mesh count");
+            return false;
+        }
 
-        return 1;
+        return true;
     }
 
     void GenerateSurface(MeshResources& context, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
