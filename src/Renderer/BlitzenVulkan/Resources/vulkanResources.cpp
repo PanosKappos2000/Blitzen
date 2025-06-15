@@ -1,5 +1,5 @@
-#include "vulkanRenderer.h"
-#include "vulkanCommands.h"
+#include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
+#include "Renderer/BlitzenVulkan/RuntimeHelpers/vulkanCommands.h"
 #include "vulkanPipelines.h"
 #include "vulkanResourceFunctions.h"
 

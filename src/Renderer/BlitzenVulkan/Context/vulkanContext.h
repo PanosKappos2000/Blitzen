@@ -62,7 +62,6 @@ namespace BlitzenVulkan
         PipelineObject m_opaqueDrawPso;
         PipelineObject m_tranparentDrawPso;
         
-
         // Present
         PipelineObject m_presentPso;
         PipelineLayout m_presentLayout;
@@ -137,6 +136,8 @@ namespace BlitzenVulkan
 
         VkDescriptorBufferInfo m_clusterBufferDescInfo{};
 
+        VkDescriptorBufferInfo m_renderBufferDescInfo[ce_framesInFlight]{};
+
 
         DescriptorSetLayout m_pushDescriptorLayout;
 
@@ -147,19 +148,6 @@ namespace BlitzenVulkan
         DescriptorSetLayout m_backgroundSetLayout;
 
         DescriptorSetLayout m_presentSetlayout;
-
-
-        VkDeviceAddress m_opaqueRenderAddr;
-
-        VkDeviceAddress m_transRenderAddr;
-
-        VkDeviceAddress m_clusterGroupAddr[ce_framesInFlight];
-
-        VkDeviceAddress m_clusterCounterAddr[ce_framesInFlight];
-
-        VkDeviceAddress m_transClusterGroupAddr[ce_framesInFlight];
-
-        VkDeviceAddress m_transClusterCounterAddr[ce_framesInFlight];
     };
 
     struct RWResources

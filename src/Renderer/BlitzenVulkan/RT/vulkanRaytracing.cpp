@@ -1,6 +1,6 @@
-#include "vulkanResourceFunctions.h"
-#include "vulkanCommands.h"
-#include "vulkanRenderer.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
+#include "Renderer/BlitzenVulkan/RuntimeHelpers/vulkanCommands.h"
+#include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
 
 namespace BlitzenVulkan
 {

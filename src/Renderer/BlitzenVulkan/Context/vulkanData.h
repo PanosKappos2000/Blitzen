@@ -6,6 +6,7 @@
 #include "BlitCL/blitArray.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Renderer/Resources/blitRenderingResources.h"
+#include "Renderer/Entities/Residents/RenderObject/blitRender.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed
 /*#define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -18,6 +19,8 @@
 
 namespace BlitzenVulkan
 {
+    constexpr const char* BLIT_VK_SYSTEM = BlitzenCore::CE_VULKAN_SYSTEM_NAME;
+
     // INCOMPLETE
     inline const char* VK_TRANS_RES(VkResult res)
     {
@@ -193,7 +196,7 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_TextureDescriptorsSetID = 1;
 
     // SHARED DESCRIPTORS
-    constexpr uint32_t Ce_SharedDescriptorCount = 4;
+    constexpr uint32_t Ce_SharedDescriptorCount = 5;
 
     constexpr uint32_t Ce_ViewDataBufferDescriptorBinding = 0;
     constexpr uint32_t Ce_ViewDataBufferSharedPushID = 0;
@@ -206,6 +209,9 @@ namespace BlitzenVulkan
 
     constexpr uint32_t Ce_DrawCmdBufferDescriptorBinding = 7;
     constexpr uint32_t Ce_DrawCmdBufferSharedPushID = 3;
+
+    constexpr uint32_t Ce_RenderBufferDescriptorBinding = 8;
+    constexpr uint32_t Ce_RenderBufferSharedPushID = 4;
 
     // CULL DESCRIPTORS
     constexpr uint32_t Ce_CullDescriptorCount = 2;
@@ -226,13 +232,19 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_HI_Z_CullBinding = 3;
 
     // Cluster culling descriptors
-    constexpr uint32_t Ce_ClusterCullDescriptorCount = 1;
+    constexpr uint32_t Ce_ClusterCullDescriptorCount = 3;
 
     constexpr uint32_t Ce_ClusterBufferDescriptorBinding = 12;
     constexpr uint32_t Ce_ClusterBufferPushID = 0;
 
+    constexpr uint32_t Ce_ClusterGroupDescriptorBinding = 11;
+    constexpr uint32_t Ce_ClusterGroupBufferPushID = 1;
+
+    constexpr uint32_t Ce_ClusterCounterDescriptorBinding = 13;
+    constexpr uint32_t Ce_ClusterCounterBufferPushID = 2;
+
     // Tlas 
-    constexpr uint32_t Ce_TlasBufferBinding = 13;
+    constexpr uint32_t Ce_TlasBufferBinding = 14;
 
     // HI_Z GENERATION DESCRIPTORS
     constexpr uint32_t Ce_HI_Z_DescriptorCount = 2;
@@ -240,13 +252,13 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_HI_Z_DstImageBinding = 0;
     constexpr uint32_t Ce_HI_Z_SrcImageBinding = 1;
 
-    constexpr uint32_t Ce_DefaultPushDescriptorBindingCount = 10;
+
+    constexpr uint32_t Ce_DefaultPushDescriptorBindingCount = 11;
 
     constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
 
     constexpr uint64_t ce_fenceTimeout = 1000000000;
     constexpr uint64_t ce_swapchainImageTimeout = ce_fenceTimeout;
-
 
 
     struct VulkanStats
@@ -427,15 +439,19 @@ namespace BlitzenVulkan
     };
 
     template<class DATA>
-    struct BlitVk_CPU_DATA_SSBO
+    struct BlitVk_STAGING
     {
         Buffer m_buffer;
+        DATA* m_pMapped;
+        VkDeviceSize m_dataSize;
+    };
 
-        Buffer m_staging;
+    template<class DATA>
+    struct BlitVk_CPU_DATA_SSBO
+    {
+        BlitVk_SSBO m_buffer;
 
-        DATA* m_pMapped{ nullptr };
-
-        size_t m_copyDataSize { 0 };
+        BlitVk_STAGING<DATA> m_staging;
     };
 
     template<class DATA>
@@ -483,6 +499,9 @@ namespace BlitzenVulkan
     /*
         Vulkan specific shader data structs
     */
+
+    constexpr uint32_t CE_RENDER_BUFFER_OPAQUE_OFFSET = 0;
+    constexpr uint32_t CE_RENDER_BUFFER_TRANS_OFFSET = BlitzenEngine::CE_MAX_WORLD_OPAQUE_RENDERS;
     
     struct IndirectDrawData
     {
@@ -509,31 +528,30 @@ namespace BlitzenVulkan
     static_assert(sizeof(ClusterGroupData) % 16 == 0, "Unexpected alignment for ClusterGroupData");
     constexpr uint32_t Ce_ClusterGroupBufferSize = 1'000'000;
     constexpr uint32_t Ce_TransClusterGouprBufferSize = 10'000;
+    constexpr uint32_t CE_CLUSTER_GROUP_OPAQUE_OFFSET = 0;
+    constexpr uint32_t CE_CLUSTER_GROUP_TRANS_OFFSET = Ce_ClusterGroupBufferSize;
+    constexpr uint32_t CE_CLUSTER_COUNT_OPAQUE_OFFSET = 0;
+    constexpr uint32_t CE_CLUSTER_COUNT_TRANS_OFFSET = 1;
 
 	struct alignas(16) ClusterCullShaderPushConstant
 	{
-        VkDeviceAddress renderObjectBufferAddress;
-        VkDeviceAddress clusterDispatchBufferAddress;
-        VkDeviceAddress clusterCountBufferAddress;
+        uint32_t clusterGroupOffset;
+        uint32_t clusterCounterOffset;
+        uint32_t drawOffset;
         uint32_t drawCount;
-        uint32_t padding0;
 	};
-    static_assert(sizeof(ClusterCullShaderPushConstant) == 32, "Unexpected size for ClusterCullShaderPushConstant");
+    static_assert(sizeof(ClusterCullShaderPushConstant) == 16, "Unexpected size for ClusterCullShaderPushConstant");
     static_assert(alignof(ClusterCullShaderPushConstant) == 16, "Unexpected alignment for ClusterCullShaderPushConstant");
 
     struct alignas(16) DrawCullShaderPushConstant
     {
-        VkDeviceAddress renderObjectBufferDeviceAddress;
+        uint32_t drawOffset;
         uint32_t drawCount;
         uint32_t padding0;
+        uint32_t padding1;
     };
     static_assert(sizeof(DrawCullShaderPushConstant) == 16, "Unexpected size for DrawCullShaderPushConstant");
     static_assert(alignof(DrawCullShaderPushConstant) == 16, "Unexpected alignment for DrawCullShaderPushConstant");
-
-    struct GlobalShaderDataPushConstant
-    {
-        VkDeviceAddress renderObjectBufferDeviceAddress;
-    };
 
     struct BackgroundShaderPushConstant
     {

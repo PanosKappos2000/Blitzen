@@ -1,13 +1,13 @@
-#include "vulkanRenderer.h"
-#include "vulkanResourceFunctions.h"
-#include "vulkanRNDResources.h"
-#include "vulkanPipelines.h"
+#include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanRNDResources.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanPipelines.h"
 
 namespace BlitzenVulkan
 {
     void VulkanRenderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
     {
-        auto pData = m_readWrites[m_currentFrame].m_transformBuffer.m_pMapped;
+        auto pData = m_readWrites[m_currentFrame].m_transformBuffer.m_staging.m_pMapped;
         BlitzenCore::BlitMemCopy(pData + transformId, pTransform, sizeof(BlitzenEngine::MeshTransform));
     }
 

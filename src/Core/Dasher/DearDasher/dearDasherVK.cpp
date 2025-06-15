@@ -1,8 +1,8 @@
 #include "dearDasher.h"
 #include "backends/imgui_impl_vulkan.h"
-#include "Renderer/BlitzenVulkan/vulkanResourceFunctions.h"
-#include "Renderer/BlitzenVulkan/vulkanPipelines.h"
-#include "Renderer/BlitzenVulkan/vulkanCommands.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanPipelines.h"
+#include "Renderer/BlitzenVulkan/RuntimeHelpers/vulkanCommands.h"
 
 namespace BlitzenIMGUI
 {

@@ -50,21 +50,21 @@ struct ClusterGroupData
 };
 
 #ifdef PRE_CLUSTER
-layout(buffer_reference, std430) writeonly buffer ClusterDispatchBuffer
+layout(set = 0, binding = 11, std430) writeonly buffer SSBO_CLUSTER_DISPATCH
 {
 	ClusterGroupData data[];
-};
+}rwssbo_cluster_group;
 #else
-layout(buffer_reference, std430) readonly buffer ClusterDispatchBuffer
+layout(set = 0, binding = 11, std430) readonly buffer SSBO_CLUSTER_DISPATCH
 {
 	ClusterGroupData data[];
-};
+}rwssbo_cluster_group;
 #endif
 
-layout(buffer_reference, std430) writeonly buffer ClusterCountBuffer
+layout(set = 0, binding = 13, std430) writeonly buffer RWSSBO_CLUSTER_COUNT
 {
-	uint count;
-};
+	uint data[];
+}rwssbo_cluster_count;
 
 // The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
 // Will be incremented when necessary by a compute shader
@@ -86,11 +86,10 @@ layout(set = 0, binding = 10, std430) buffer RWSSBO_DRAW_VIS
 
 layout (push_constant) uniform PushConstants
 {
-    RenderObjectBuffer renderObjectBuffer;
-    ClusterDispatchBuffer clusterDispatchBuffer;
-    ClusterCountBuffer clusterCountBuffer;
+    uint clusterGroupOffset;
+    uint clusterCountOffset;
+    uint drawOffset;
     uint drawCount;
-	uint padding0;
 }pushConstant;
 
 // Meshlet used in the mesh shader to draw a surface or mesh
@@ -114,18 +113,19 @@ struct Cluster
 };
 
 // The single buffer that holds all meshlet data in the scene
-layout(set = 0, binding = 12, std430) readonly buffer ClusterBuffer
+layout(set = 0, binding = 12, std430) readonly buffer SSBO_CLUSTER
 {
-    Cluster clusters[];
-}clusterBuffer;
+    Cluster data[];
+}ssbo_cluster;
 
 #else
 
 layout (push_constant) uniform CullingConstants
 {
-    RenderObjectBuffer renderObjectBuffer;
+    uint drawOffset;
     uint drawCount;
 	uint padding0;
+    uint padding1;
 }pushConstant;
 
 #endif

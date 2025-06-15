@@ -13,13 +13,13 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
     
-    uint objectIndex = gl_GlobalInvocationID.x;
+    uint objectIndex = gl_GlobalInvocationID.x + pushConstant.clusterGroupOffset;
     if(pushConstant.drawCount <= objectIndex)
     {
         return;
     }
-    ClusterGroupData data = pushConstant.clusterDispatchBuffer.data[objectIndex];
-    RenderObject obj = pushConstant.renderObjectBuffer.objects[data.objectId];
+    ClusterGroupData data = rwssbo_cluster_group.data[objectIndex];
+    RenderObject obj = ssbo_render.data[data.objectId];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
 
     // TEMP: Hardcoded camera position, replace later
@@ -47,8 +47,8 @@ void main()
     rwssbo_DrawCmd.data[drawID].objectId = data.objectId;
 
     // Vertices
-    rwssbo_DrawCmd.data[drawID].indexCount = clusterBuffer.clusters[data.clusterId].triangleCount * 3;
-    rwssbo_DrawCmd.data[drawID].firstIndex = clusterBuffer.clusters[data.clusterId].dataOffset;
+    rwssbo_DrawCmd.data[drawID].indexCount = ssbo_cluster.data[data.clusterId].triangleCount * 3;
+    rwssbo_DrawCmd.data[drawID].firstIndex = ssbo_cluster.data[data.clusterId].dataOffset;
     rwssbo_DrawCmd.data[drawID].vertexOffset =  0;
 
     // Instances

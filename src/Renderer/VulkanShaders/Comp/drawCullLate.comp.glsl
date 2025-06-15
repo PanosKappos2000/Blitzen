@@ -15,14 +15,14 @@ layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
 
 void main()
 {
-    uint objectIndex = gl_GlobalInvocationID.x;
+    uint objectIndex = gl_GlobalInvocationID.x + pushConstant.drawOffset;
 
     if(pushConstant.drawCount <= objectIndex)
     {
         return;
     }
 
-    RenderObject obj = pushConstant.renderObjectBuffer.objects[objectIndex];
+    RenderObject obj = ssbo_render.data[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
     
     // Frustum culling

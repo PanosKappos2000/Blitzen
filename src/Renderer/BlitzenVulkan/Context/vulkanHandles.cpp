@@ -155,7 +155,6 @@ namespace BlitzenVulkan
         }
     }
 
-
     // Acceleration structure is an extensions so it needs to load the destroy function as well
     static void DestroyAccelerationStructureKHR(VkInstance instance, VkDevice device, VkAccelerationStructureKHR as, const VkAllocationCallbacks* pAllocator)
     {

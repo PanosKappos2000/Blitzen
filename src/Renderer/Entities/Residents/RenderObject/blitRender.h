@@ -3,6 +3,17 @@
 
 namespace BlitzenEngine
 {
+	constexpr uint32_t CE_MAX_WORLD_OPAQUE_RENDERS = 4'500'000;
+	static_assert(CE_MAX_WORLD_OPAQUE_RENDERS < BlitzenCore::Ce_MaxRenderObjectCount);
+
+	constexpr uint32_t CE_MAX_WORLD_TRANSPARENT_RENDERS = 500'000;
+	static_assert(CE_MAX_WORLD_TRANSPARENT_RENDERS < BlitzenCore::Ce_MaxRenderObjectCount);
+
+	static_assert(CE_MAX_WORLD_TRANSPARENT_RENDERS + CE_MAX_WORLD_OPAQUE_RENDERS <= BlitzenCore::Ce_MaxRenderObjectCount);
+
+	constexpr uint32_t CE_OPAQUE_RENDER_OFFSET = 0;
+	constexpr uint32_t CE_TRANSPARENT_RENDER_OFFSET = CE_MAX_WORLD_OPAQUE_RENDERS;
+
 	enum RENDER_OBJECT_TYPE : uint8_t
 	{
 		OPAQUE_STATIC = 0,

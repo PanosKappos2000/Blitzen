@@ -17,16 +17,11 @@ layout(location = 2) out vec4 outTangent;
 layout(location = 3) out uint outMaterialTag;
 layout(location = 4) out vec3 outModel;
 
-layout(push_constant) uniform Constants
-{
-    RenderObjectBuffer renderObjects;
-}rodvpc;
-
 #ifndef MESH_TEST
 void main()
 {
     Vertex vertex = ssbo_Vertex.data[gl_VertexIndex];
-    RenderObject object = rodvpc.renderObjects.objects[rwssbo_DrawCmd.data[gl_DrawIDARB].objectId];
+    RenderObject object = ssbo_render.data[rwssbo_DrawCmd.data[gl_DrawIDARB].objectId];
     Transform transform = transformBuffer.instances[object.meshInstanceId];
 
     //debugPrintfEXT("%u", object.meshInstanceId);

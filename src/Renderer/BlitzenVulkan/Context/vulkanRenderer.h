@@ -15,12 +15,7 @@ namespace BlitzenVulkan
         VulkanRenderer(const VulkanRenderer& vk) = delete;
 
         ~VulkanRenderer();
-        
-        uint8_t Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatformHandle);
 
-        uint8_t SetupForRendering(BlitzenEngine::DrawContext& drawContext);
-
-        // Needed for dx12, not used here for now
         void FinalSetup();
 
         uint8_t UploadTexture(const char* filepath);
@@ -78,11 +73,7 @@ namespace BlitzenVulkan
 
         PipelineContext m_pipelines;
     };
-
-
-    // Creates the swapchain
-    uint8_t CreateSwapchain(VkDevice device, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, uint32_t windowWidth, uint32_t windowHeight, 
-        Queue graphicsQueue, Queue presentQueue, Queue computeQueue, VkAllocationCallbacks* pCustomAllocator, Swapchain& newSwapchain, VkSwapchainKHR oldSwapchain);
+    
 
     uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& commands, VkQueue queue, BlitzenEngine::DrawContext& context, 
         ROResources& readOnlies);

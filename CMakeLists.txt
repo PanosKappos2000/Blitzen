@@ -132,22 +132,22 @@ add_executable(BlitzenEngine
                 "src/Renderer/Lighting/blitDirectionalLight.h"
 
                 # VULKAN
-                "src/Renderer/BlitzenVulkan/vulkanData.h"
-                "src/Renderer/BlitzenVulkan/vulkanContext.h"
-                "src/Renderer/BlitzenVulkan/vulkanRenderer.h"
-                "src/Renderer/BlitzenVulkan/vulkanResourceFunctions.h"
-                "src/Renderer/BlitzenVulkan/vulkanRNDResources.h" 
-                "src/Renderer/BlitzenVulkan/vulkanRNDResources.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanCommands.h"
-                "src/Renderer/BlitzenVulkan/vulkanPipelines.h"
-                "src/Renderer/BlitzenVulkan/vulkanHandles.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanInit.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanResources.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanPipelines.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanRaytracing.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanRendererSetup.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanCommands.cpp"
-                "src/Renderer/BlitzenVulkan/vulkanRuntimeHelpers.cpp"
+                "src/Renderer/BlitzenVulkan/Context/vulkanData.h"
+                "src/Renderer/BlitzenVulkan/Context/vulkanContext.h"
+                "src/Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
+                "src/Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
+                "src/Renderer/BlitzenVulkan/Resources/vulkanRNDResources.h" 
+                "src/Renderer/BlitzenVulkan/Resources/vulkanRNDResources.cpp"
+                "src/Renderer/BlitzenVulkan/RuntimeHelpers/vulkanCommands.h"
+                "src/Renderer/BlitzenVulkan/Resources/vulkanPipelines.h"
+                "src/Renderer/BlitzenVulkan/Context/vulkanHandles.cpp"
+                "src/Renderer/BlitzenVulkan/Init/vkInit.cpp"
+                "src/Renderer/BlitzenVulkan/Resources/vulkanResources.cpp"
+                "src/Renderer/BlitzenVulkan/Resources/vulkanPipelines.cpp"
+                "src/Renderer/BlitzenVulkan/RT/vulkanRaytracing.cpp"
+                "src/Renderer/BlitzenVulkan/Resources/vkResourcesUpload.cpp"
+                "src/Renderer/BlitzenVulkan/RuntimeHelpers/vulkanCommands.cpp"
+                "src/Renderer/BlitzenVulkan/RuntimeHelpers/vulkanRuntimeHelpers.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanDraw.cpp"
                 "src/Renderer/BlitzenVulkan/Cull/vkCull.cpp"
 
@@ -191,7 +191,7 @@ add_executable(BlitzenEngine
                 
                 
                 "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h" "src/Renderer/BlitzenDX12/Init/dx12Init.cpp" "src/Renderer/BlitzenDX12/Context/dx12Renderer.cpp" "src/Renderer/BlitzenDX12/Init/dx12InitInterface.cpp" "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.h" "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp")
+                "src/Client/ClientWV/wvData.h" "src/Renderer/BlitzenDX12/Init/dx12Init.cpp" "src/Renderer/BlitzenDX12/Context/dx12Renderer.cpp" "src/Renderer/BlitzenDX12/Init/dx12InitInterface.cpp" "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.h" "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp" "src/Renderer/BlitzenVulkan/Init/vkInitInterface.cpp" "src/Renderer/BlitzenVulkan/Resources/vulkanResources.h" "src/Renderer/BlitzenVulkan/Resources/vkResourceUploadInterface.cpp" "src/Renderer/BlitzenVulkan/Resources/vkResourcesUpload.h" "src/Renderer/BlitzenVulkan/Init/vulkanInit.h" "src/Renderer/BlitzenVulkan/Context/vulkanRenderer.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

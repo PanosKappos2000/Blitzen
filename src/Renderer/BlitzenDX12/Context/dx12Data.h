@@ -17,6 +17,8 @@ namespace BlitzenDX12
     static_assert(sizeof(UINT) == sizeof(uint32_t));
     static_assert(sizeof(SIZE_T) == sizeof(size_t));
 
+    constexpr const char* BLIT_DX12_SYSTEM = BlitzenCore::CE_DX12_SYSTEM_NAME;
+
     #if !defined(NDEBUG)
         constexpr uint8_t ce_bDebugController = 1;
         #if defined(DX12_ENABLE_GPU_BASED_VALIDATION)

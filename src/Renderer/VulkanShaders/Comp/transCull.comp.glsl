@@ -13,13 +13,13 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
-    uint objectIndex = gl_GlobalInvocationID.x;
+    uint objectIndex = gl_GlobalInvocationID.x + pushConstant.drawOffset;
     if(pushConstant.drawCount <= objectIndex)
     {
         return;
     }
 
-    RenderObject obj = pushConstant.renderObjectBuffer.objects[objectIndex];
+    RenderObject obj = ssbo_render.data[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
     
     vec3 center;

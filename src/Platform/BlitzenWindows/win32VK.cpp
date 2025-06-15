@@ -1,7 +1,7 @@
 #if defined(_WIN32)
 
 #include "Platform/blitPlatformContext.h"
-#include "Renderer/BlitzenVulkan/vulkanData.h"
+#include "Renderer/BlitzenVulkan/Context/vulkanData.h"
 #include <vulkan/vulkan_win32.h>
 
 namespace BlitzenPlatform

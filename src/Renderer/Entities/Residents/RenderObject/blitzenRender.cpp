@@ -8,26 +8,56 @@ namespace BlitzenEngine
     {
         if (m_renderCount >= BlitzenCore::Ce_MaxRenderObjectCount)
         {
-            BLIT_ERROR("Exceeded render object limit");
+            BLIT_ERROR("%s: Exceeded max render object limit", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
             return BlitzenCore::Ce_MaxRenderObjectCount;
         } 
 
-        // TODO: check flags
-        // Create opaque dynamic
-        // Create opaque normal
-        // Create
-
-        if (context.m_type == RENDER_OBJECT_TYPE::TRANSPARENT_STATIC)
+        switch (context.m_type)
         {
-            BLIT_ERROR("Transparent object are momentarily out of commission");
+        case OPAQUE_STATIC:
+        case OPAQUE_DYNAMIC:
+        {
+            if (m_opaqueRenderCount > CE_MAX_WORLD_OPAQUE_RENDERS)
+            {
+                BLIT_ERROR("%s: Exceeded max opaque render object limit", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
+                return BlitzenCore::Ce_MaxRenderObjectCount;
+            }
+
+            auto& newcomer{ m_renders[m_opaqueRenderCount + CE_OPAQUE_RENDER_OFFSET] };
+
+            newcomer.surfaceId = context.m_primitiveID;
+            newcomer.transformId = context.m_transformID;
+
+            m_renderCount++;
+            return CE_OPAQUE_RENDER_OFFSET + m_opaqueRenderCount++;
+        }
+
+        case TRANSPARENT_DYNAMIC:
+        {
+            BLIT_ERROR("%s: No support for dynamic transparent renders for now", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
             return BlitzenCore::Ce_MaxRenderObjectCount;
         }
 
-        auto& newcomer{ m_renders[m_renderCount] };
-        newcomer.surfaceId = context.m_primitiveID;
-        newcomer.transformId = context.m_transformID;
+        case TRANSPARENT_STATIC:
+        {
+            if (m_transparentRenderCount > CE_MAX_WORLD_TRANSPARENT_RENDERS)
+            {
+                BLIT_ERROR("%s: Exceeded max transparent render object limit", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
+                return BlitzenCore::Ce_MaxRenderObjectCount;
+            }
 
-        return m_renderCount++;
+            auto& newcomer{ m_renders[m_transparentRenderCount + CE_MAX_WORLD_TRANSPARENT_RENDERS] };
+
+            newcomer.surfaceId = context.m_primitiveID;
+            newcomer.transformId = context.m_transformID;
+
+            m_renderCount++;
+            return CE_MAX_WORLD_TRANSPARENT_RENDERS + m_transparentRenderCount++;
+        }
+        }
+
+        BLIT_ERROR("%s: Unexpected render object creation path", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
+        return BlitzenCore::Ce_MaxRenderObjectCount;
     }
 
     uint32_t WorldTransformContainer::CreateTransform(const TRANSFORM_CREATE_CONTEXT& context)

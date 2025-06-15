@@ -52,10 +52,10 @@ struct RenderObject
     uint surfaceId;
 };
 
-layout(buffer_reference, std430) readonly buffer RenderObjectBuffer
+layout(set = 0, binding = 8, std430) readonly buffer SSBO_RENDER
 {
-    RenderObject objects[];
-};
+    RenderObject data[];
+}ssbo_render;
 
 struct Transform
 {

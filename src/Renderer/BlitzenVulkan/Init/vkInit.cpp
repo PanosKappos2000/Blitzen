@@ -1,15 +1,16 @@
-#include "vulkanRenderer.h"
-#include "vulkanCommands.h"
+#include "vulkanInit.h"
+#include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
+#include "Renderer/BlitzenVulkan/RuntimeHelpers/vulkanCommands.h"
 #include "Platform/blitPlatform.h"
-#include "vulkanResourceFunctions.h"
-#include "vulkanPipelines.h"
-#include "vulkanRNDResources.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanPipelines.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanRNDResources.h"
 #include <cstring> // For strcmp
 
 namespace BlitzenVulkan
 {
-    static void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion,
-        const char* engineName, uint32_t engineVersion, uint32_t apiVersion = VK_API_VERSION_1_3)
+    static void CreateApplicationInfo(VkApplicationInfo& appInfo, void* pNext, const char* appName, uint32_t appVersion, const char* engineName, uint32_t engineVersion, 
+        uint32_t apiVersion = VK_API_VERSION_1_3)
     {
         appInfo = {};
 
@@ -100,15 +101,6 @@ namespace BlitzenVulkan
         }
 
         return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-
-    static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-    {
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr)
-        {
-            func(instance, debugMessenger, pAllocator);
-        }
     }
 
     // Debug messenger callback function
@@ -250,7 +242,7 @@ namespace BlitzenVulkan
         return 0;
     }
 
-    static uint8_t CreateInstance(VkInstance& instance, VulkanStats& stats, VkDebugUtilsMessengerEXT* pDM = nullptr)
+    uint8_t CreateInstance(VkInstance& instance, VulkanStats& stats, VkDebugUtilsMessengerEXT* pDM /*= nullptr*/)
     {
         uint32_t apiVersion = 0;
         VkResult versionRes{ vkEnumerateInstanceVersion(&apiVersion) };
@@ -687,8 +679,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    static uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface,
-        Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, VulkanStats& stats)
+    uint8_t ValidatePhysicalDevice(VkPhysicalDevice pdv, VkInstance instance, VkSurfaceKHR surface, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, VulkanStats& stats)
     {
         // Features and properties
         VkPhysicalDeviceProperties props{};
@@ -742,8 +733,7 @@ namespace BlitzenVulkan
 
     }
 
-    static uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue, 
-        VulkanStats& stats)
+    uint8_t PickPhysicalDevice(VkPhysicalDevice& gpu, VkInstance instance, VkSurfaceKHR surface, Queue& graphicsQueue, Queue& computeQueue, Queue& presentQueue, Queue& transferQueue,  VulkanStats& stats)
     {
         // Retrieves the physical device count
         uint32_t physicalDeviceCount = 0;
@@ -917,7 +907,7 @@ namespace BlitzenVulkan
         ctx.rayQueryFeatures.pNext = &ctx.accelerationStructureFeatures;
     }
 
-    static void GetVulkanQueue(VkDevice device, Queue& queue, void* pNext, VkDeviceQueueCreateFlags flags, uint32_t queueIndex = 0)
+    void GetVulkanQueue(VkDevice device, Queue& queue, void* pNext, VkDeviceQueueCreateFlags flags, uint32_t queueIndex /*=0*/)
     {
         VkDeviceQueueInfo2 transferQueueInfo{};
         transferQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
@@ -929,7 +919,7 @@ namespace BlitzenVulkan
         vkGetDeviceQueue2(device, &transferQueueInfo, &queue.handle);
     }
 
-    static uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, Queue& presentQueue, Queue& computeQueue, Queue& transferQueue, VulkanStats& stats)
+    uint8_t CreateDevice(VkDevice& device, VkPhysicalDevice physicalDevice, Queue& graphicsQueue, Queue& presentQueue, Queue& computeQueue, Queue& transferQueue, VulkanStats& stats)
     {
         VkDeviceCreateInfo deviceInfo{};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1011,7 +1001,7 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    static uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma, MemoryCrucialHandles& memoryCrucials)
+    uint8_t SetupResourceManagement(VkDevice device, VkPhysicalDevice pdv, VkInstance instance, VmaAllocator& vma, MemoryCrucialHandles& memoryCrucials)
     {
         if (!CreateVmaAllocator(device, instance, pdv, vma, VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT))
         {
@@ -1022,101 +1012,6 @@ namespace BlitzenVulkan
         memoryCrucials.allocator = vma;
         memoryCrucials.device = device;
         memoryCrucials.instance = instance;
-
-        // Success
-        return 1;
-    }
-
-    uint8_t VulkanRenderer::Init(uint32_t windowWidth, uint32_t windowHeight, void* pPlatform)
-    {
-
-        if(!CreateInstance(m_instance, m_stats, &m_debugMessenger))
-        {
-            BLIT_ERROR("Failed to create vulkan instance");
-            return 0;
-        }
-
-        if(!BlitzenPlatform::CreateVulkanSurface(m_instance, m_surface.handle, nullptr, pPlatform))
-        {
-            BLIT_ERROR("Failed to create Vulkan window surface");
-            return 0;
-        }
-
-        if(!PickPhysicalDevice(m_physicalDevice, m_instance, m_surface.handle, m_graphicsQueue, m_computeQueue, m_presentQueue, m_transferQueue, m_stats))
-        {
-            BLIT_ERROR("Failed to pick suitable physical device");
-            return 0;
-        }
-
-        if(!CreateDevice(m_device, m_physicalDevice, m_graphicsQueue, m_presentQueue, m_computeQueue, m_transferQueue, m_stats))
-        {
-            BLIT_ERROR("Failed to pick suitable physical device");
-            return 0;
-        }
-
-        if(!CreateSwapchain(m_device, m_surface.handle, m_physicalDevice, windowWidth, windowHeight, m_graphicsQueue, m_presentQueue, m_computeQueue, 
-            nullptr, m_swapchain, VK_NULL_HANDLE))
-        {
-            BLIT_ERROR("Failed to create Vulkan swapchain");
-            return 0;
-        }
-
-        // Commands
-        for (size_t frame = 0; frame < ce_framesInFlight; ++frame)
-        {
-            if (!m_commandsContext[frame].Init(m_device, m_graphicsQueue, m_transferQueue, m_computeQueue))
-            {
-                BLIT_ERROR("Failed to create frame tools");
-                return 0;
-            }
-        }
-
-        // This will be referred to by rendering attachments and will be updated when the window is resized
-        m_drawWidth = m_swapchain.m_extent.width;
-        m_drawHeight = m_swapchain.m_extent.height;
-
-        // Resource management
-        if (!SetupResourceManagement(m_device, m_physicalDevice, m_instance, m_allocator, m_memoryCrucials))
-        {
-            BLIT_ERROR("Failed to initialize Vulkan resource management");
-            return 0;
-        }
-
-        auto pMemory{ InitMemoryCrucialHandles(&m_memoryCrucials) };
-        if (!pMemory)
-        {
-            BLIT_ERROR("Failed to save memory crucial handles");
-            return 0;
-        }
-
-        for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
-        {
-            if (!RenderingAttachmentsInit(m_device, m_allocator, m_readOnlies, m_readWrites[frame], m_descriptorContext, m_pipelines, m_drawWidth, m_drawHeight, frame))
-            {
-                BLIT_ERROR("Failed to create rendering attachments");
-                return 0;
-            }
-        }
-
-		if (!CreateIdleDrawHandles(m_device, m_pipelines, m_descriptorContext.m_backgroundSetLayout.handle, m_graphicsQueue.index))
-		{
-            BLIT_ERROR("Failed to create idle draw handles");
-		    return 0;
-		}
-
-        if (!CreateLoadingTrianglePipeline(m_device, m_pipelines))
-        {
-            BLIT_ERROR("Failed to create loading triangle pipeline");
-            return 0;
-        }
-
-        // Texture sampler. Global for all textures for now
-        m_readOnlies.m_textureSampler.m_handle = CreateSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-        if (m_readOnlies.m_textureSampler.m_handle == VK_NULL_HANDLE)
-        {
-            BLIT_ERROR("Failed to create texture sampler");
-            return 0;
-        }
 
         // Success
         return 1;
@@ -1372,24 +1267,303 @@ namespace BlitzenVulkan
         return 1;
     }
 
-    void VulkanRenderer::LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo, VkImage* pColorTarget)
+    static VkDescriptorSetLayout CreateGPUBufferPushDescriptorBindings(VkDevice device, BlitCL::DynamicArray<VkDescriptorSetLayoutBinding>& bindings, uint8_t bRaytracing, uint8_t bMeshShaders)
     {
-        for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
+        auto viewDataShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT :
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+
+        uint32_t bindingCount = 0;
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_ViewDataBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, viewDataShaderStageFlags);
+
+        auto vertexBufferShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT : VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_VertexBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vertexBufferShaderStageFlags);
+
+        auto surfaceBufferShaderStageFlags = bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT :
+            VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_SurfaceBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, surfaceBufferShaderStageFlags);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_HI_Z_CullBinding, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_LODBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_TransformBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_MatBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_DrawCmdBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_RenderBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_DrawCmdCounterDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_DrawVisBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        if (BlitzenCore::Ce_BuildClusters)
         {
-            ppColorInfo[frame] = &m_pipelines.m_colorTargetInfo[frame];
-            pColorTarget[frame] = m_readWrites[frame].m_colorTarget.m_image.m_image.m_handle;
+            auto clusterBufferShaderStageFlags{ bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT : VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT };
+            VkDescriptorSetLayoutBinding clusterBinding{};
+            CreateDescriptorSetLayoutBinding(clusterBinding, Ce_ClusterBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, clusterBufferShaderStageFlags);
+
+            bindings.PushBack(clusterBinding);
         }
+
+        if (bRaytracing)
+        {
+            VkDescriptorSetLayoutBinding tlasBinding{};
+            CreateDescriptorSetLayoutBinding(tlasBinding, Ce_TlasBufferBinding, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+            bindings.PushBack(tlasBinding);
+        }
+
+        return CreateDescriptorSetLayout(device, (uint32_t)bindings.GetSize(), bindings.Data(), VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
     }
 
-    // Few manual destructions remaining, mostly because of my laziness
-    VulkanRenderer::~VulkanRenderer()
+    uint8_t CreateDescriptorLayouts(VkDevice device, DescriptorContext& descriptorContext, VulkanStats& stats, uint32_t textureCount)
     {
-        // Wait for the device to finish its work before destroying resources
-        vkDeviceWaitIdle(m_device);
+        // The big GPU push descriptor set layout. Holds most buffers
+        BlitCL::DynamicArray<VkDescriptorSetLayoutBinding> pushDescriptorBindings{ Ce_DefaultPushDescriptorBindingCount, {} };
 
-        if (m_debugMessenger != VK_NULL_HANDLE)
+        descriptorContext.m_pushDescriptorLayout.handle = CreateGPUBufferPushDescriptorBindings(device, pushDescriptorBindings, stats.bRayTracingSupported, stats.meshShaderSupport);
+        if (descriptorContext.m_pushDescriptorLayout.handle == VK_NULL_HANDLE)
         {
-            DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
+            BLIT_ERROR("Failed to create GPU buffer push descriptor layout");
+            return 0;
         }
+
+        // Descriptor set layout for textures
+        VkDescriptorSetLayoutBinding texturesLayoutBinding{};
+        CreateDescriptorSetLayoutBinding(texturesLayoutBinding, Ce_TextureDescriptorsBinding, BlitzenCore::Ce_MaxTextureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorContext.m_textureDescriptorSetlayout.handle = CreateDescriptorSetLayout(device, 1, &texturesLayoutBinding);
+        if (descriptorContext.m_textureDescriptorSetlayout.handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create texture descriptor set layout");
+            return 0;
+        }
+
+        VkDescriptorSetLayoutBinding depthPyramidBindings[Ce_HI_Z_DescriptorCount]{};
+        CreateDescriptorSetLayoutBinding(depthPyramidBindings[0], Ce_HI_Z_DstImageBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(depthPyramidBindings[1], Ce_HI_Z_SrcImageBinding, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
+        descriptorContext.m_HI_Z_descriptorSetLayout.handle = CreateDescriptorSetLayout(device, Ce_HI_Z_DescriptorCount, depthPyramidBindings, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        if (descriptorContext.m_HI_Z_descriptorSetLayout.handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create depth pyramid descriptor set layout");
+            return 0;
+        }
+
+        VkDescriptorSetLayoutBinding presentGenerationBindings[2]{};
+        CreateDescriptorSetLayoutBinding(presentGenerationBindings[0], Ce_SwapchainDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+        CreateDescriptorSetLayoutBinding(presentGenerationBindings[1], Ce_ColorTargetDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+        descriptorContext.m_presentSetlayout.handle = CreateDescriptorSetLayout(device, 2, presentGenerationBindings, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+        if (descriptorContext.m_presentSetlayout.handle == VK_NULL_HANDLE)
+        {
+            BLIT_ERROR("Failed to create present image generation layout");
+            return 0;
+        }
+
+        // Success 
+        return 1;
+    }
+
+    uint8_t CreatePipelineLayouts(VkDevice device, PipelineContext& context, DescriptorContext& descriptorContext)
+    {
+        // OPAQUE GRAPHICS
+        VkDescriptorSetLayout opaqueDrawDescLayouts[2] = { descriptorContext.m_pushDescriptorLayout.handle, descriptorContext.m_textureDescriptorSetlayout.handle };
+
+        if (!CreatePipelineLayout(device, &context.m_opaqueDrawLayout.handle, BLIT_ARRAY_SIZE(opaqueDrawDescLayouts), opaqueDrawDescLayouts, 0, nullptr))
+        {
+            BLIT_ERROR("Failed to create main graphics pipeline layout");
+            return 0;
+        }
+
+        // CULLING SHADERS
+        VkPushConstantRange cullShaderPushConstant{};
+        CreatePushConstantRange(cullShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
+
+        if (!CreatePipelineLayout(device, &context.m_drawCullLayout.handle, 1, &descriptorContext.m_pushDescriptorLayout.handle, 1, &cullShaderPushConstant))
+        {
+            BLIT_ERROR("Failed to create culling pipeline layout");
+            return 0;
+        }
+
+        // CLUSTER CULLING SHADERS
+        if (BlitzenCore::Ce_BuildClusters)
+        {
+            VkPushConstantRange clusterCullPushConstant{};
+            CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ClusterCullShaderPushConstant));
+            if (!CreatePipelineLayout(device, &context.m_clusterCullLayout.handle, 1, &descriptorContext.m_pushDescriptorLayout.handle, 1, &clusterCullPushConstant))
+            {
+                BLIT_ERROR("Failed to create culling pipeline layout");
+                return 0;
+            }
+        }
+
+        // HI Z SHADER
+        VkPushConstantRange HI_Z_pushConstant{};
+        CreatePushConstantRange(HI_Z_pushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
+
+        if (!CreatePipelineLayout(device, &context.m_hiZLayout.handle, 1, &descriptorContext.m_HI_Z_descriptorSetLayout.handle, 1, &HI_Z_pushConstant))
+        {
+            BLIT_ERROR("Failed to create depth pyramid generation pipeline layout");
+            return 0;
+        }
+
+        // Generate present image compute shader layout
+        VkPushConstantRange presentPushConstant{};
+        CreatePushConstantRange(presentPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(BlitML::vec2));
+
+        if (!CreatePipelineLayout(device, &context.m_presentLayout.handle, 1, &descriptorContext.m_presentSetlayout.handle, 1, &presentPushConstant))
+        {
+            BLIT_ERROR("Failed to create presentation generation pipeline layout");
+            return 0;
+        }
+
+        // Success
+        return 1;
+    }
+
+    uint8_t CreateReadWriteBuffers(VkDevice device, VmaAllocator vma, RWResources* readWritesArray, DescriptorContext& descriptorContext)
+    {
+        for (size_t frame = 0; frame < ce_framesInFlight; ++frame)
+        {
+            auto& readWrites = readWritesArray[frame];
+
+            // Creates the uniform buffer for view data
+            if (!CreateUBUFFER(vma, device, readWrites.m_viewDataBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+            {
+                BLIT_ERROR("%s: Failed to create view data buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            // Transform buffer is also dynamic
+            Buffer transformStagingBufferTemp;
+            auto transformBufferSize{ CreateSSBO<BlitzenEngine::MeshTransform>(vma, device, readWrites.m_transformBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                BlitzenCore::Ce_MaxWorldTransformCount) };
+            if (transformBufferSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create transform buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            VkDeviceSize drawCmdBufferSize{ CreateSSBO<IndirectDrawData>(vma, device, readWrites.m_drawCmdBuffer,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, 
+                Ce_DrawCmdElementCount) };
+            if (drawCmdBufferSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create indirect draw cmd buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            VkDeviceSize drawCmdCounterSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_drawCmdCounterBuffer, 
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 1) };
+            if (drawCmdCounterSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create indirect draw cmd counter buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            VkDeviceSize visibilityBufferSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_drawVisBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                BlitzenCore::Ce_MaxRenderObjectCount) };
+            if (visibilityBufferSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create draw visibility buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            if (BlitzenCore::Ce_BuildClusters)
+            {
+                VkDeviceSize clusterGroupBufferSize{ CreateSSBO<ClusterGroupData>(vma, device, readWrites.m_clusterGroupDataBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, Ce_ClusterGroupBufferSize) };
+                if (clusterGroupBufferSize == 0)
+                {
+                    BLIT_ERROR("%s: Failed to create cluster group data buffer", BLIT_VK_SYSTEM);
+                    return 0;
+                }
+
+                VkDeviceSize clusterCounterBufferSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_clusterDispatchCounterBuffer,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 1) };
+                if (clusterCounterBufferSize == 0)
+                {
+                    BLIT_ERROR("%s: Failed to create cluster dispatch counter", BLIT_VK_SYSTEM);
+                    return 0;
+                }
+
+                if (!CreateBuffer(vma, readWrites.m_clusterDispatchCounterCopy.m_buffer, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_ONLY, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
+                {
+                    BLIT_ERROR("%s: Failed to create cluster counter copy", BLIT_VK_SYSTEM);
+                    return 0;
+                }
+            }
+        }
+
+        return 1;
+    }
+
+    uint8_t CreateReadOnlyBuffers(VkDevice device, VmaAllocator vma, ROResources& readOnlies, VulkanStats& stats)
+    {
+        // Additional RT flags for geometry
+        auto bRT{ stats.bRayTracingSupported };
+        uint32_t geometryRtFlags = bRT ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT : 0;
+
+        VkDeviceSize vertexBufferSize{ CreateSSBO<BlitzenEngine::Vertex>(vma, device, readOnlies.m_vtxBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags,
+            BlitzenCore::Ce_MaxWorldVertexCount)};
+        if (vertexBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create vertex buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        VkDeviceSize indexBufferSize{ CreateSSBO<uint32_t>(vma, device, readOnlies.m_idxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxWorldVertexIndicesCount) };
+        if (indexBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create index buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        VkDeviceSize renderBufferSize{ CreateSSBO<BlitzenEngine::RenderObject>(vma, device, readOnlies.m_renderBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, BlitzenCore::Ce_MaxRenderObjectCount) };
+        if (renderBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create render object buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+        
+        VkDeviceSize surfaceBufferSize{ CreateSSBO<BlitzenEngine::PrimitiveSurface>(vma, device, readOnlies.m_surfaceBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxMeshPrimitivesCount) };
+        if (surfaceBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create mesh primitives buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        VkDeviceSize lodBufferSize{ CreateSSBO<BlitzenEngine::LodData>(vma, device, readOnlies.m_LODBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenEngine::CE_MAX_LOD_COUNT)};
+        if (lodBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create LOD buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        VkDeviceSize materialBufferSize{ CreateSSBO<BlitzenEngine::Material>(vma, device, readOnlies.m_matBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxMaterialCount) };
+        if (materialBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create material buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        if (BlitzenCore::Ce_BuildClusters)
+        {
+            VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::Cluster>(vma, device,  readOnlies.m_clusterBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxWorldClusterCount);
+            if (clusterBufferSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create cluster buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            VkDeviceSize clusterIndexBufferSize = CreateSSBO<uint32_t>(vma, device, readOnlies.m_clusterIdxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxWorldVertexIndicesCount);
+            if (clusterIndexBufferSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create cluster indices buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+        }
+
+        // SUCCESS
+        return 1;
     }
 }
