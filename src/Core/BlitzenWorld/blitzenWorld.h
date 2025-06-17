@@ -1,12 +1,12 @@
 #pragma once
 #include "Core/Events/blitTimeManager.h"
-#include "Renderer/Interface/blitRenderer.h"
 #include "BlitCL/blitPfn.h"
-#include "Renderer/Entities/Residents/blitResidentManager.h"
 #include "Renderer/Scene/blitScene.h"
 
 namespace BlitzenWorld
 {
+    using WorldResidentsSystemMemory = BlitCL::SmartPointer<BlitzenEngine::WORLD_RESIDENTS, BlitzenCore::AllocationType::Entity>;
+
     enum class WorldUpdateState : uint8_t
     {
         PREPARING = 0,
@@ -38,7 +38,8 @@ namespace BlitzenWorld
     struct WORLD_blit
     {
         // Scene resources
-        BlitCL::DynamicArray<BlitzenEngine::SceneContext> m_scenes{};
+        BlitzenEngine::SceneContext m_scenes[10]{};
+        uint32_t m_sceneCount{ 0 };
 
         // Camera should be component. Does not belong here. The container is also a dumb idea. The need for an extra camera should just give rise to a new system
         BlitzenEngine::CameraContainer* pCameraContainer{ nullptr };
@@ -48,7 +49,7 @@ namespace BlitzenWorld
         BlitzenEngine::DrawContext m_drawContext;
 
         // World residents
-        BlitzenEngine::WorldResidentsSystemMemory P_RESIDENTS{};
+        WorldResidentsSystemMemory P_RESIDENTS{};
 
         float deltaTime;
 

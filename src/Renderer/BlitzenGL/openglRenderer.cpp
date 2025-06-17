@@ -1,10 +1,11 @@
 #if defined(_WIN32)
-
 #include "openglRenderer.h"
 #include "Platform/Filesystem/blitCFILE.h"
 #include <string>
 #include "Renderer/View/blitCamera.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include "BlitCL/blitDynamicArr.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenGL
 {
@@ -106,9 +107,8 @@ namespace BlitzenGL
         glGenVertexArrays(1, &m_vertexArray.handle);
         // Creates the vertex buffer as a storage buffer and passes it to binding t
         glGenBuffers(1, &m_vertexBuffer.handle);
-        const BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices = context.m_meshes.m_vertices;
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_vertexBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Vertex) * vertices.GetSize(), vertices.Data(), GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::Vertex) * context.m_meshes.m_triangles.m_vertexCount, context.m_meshes.m_triangles.m_vertices, GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_vertexBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
@@ -116,8 +116,7 @@ namespace BlitzenGL
         // Creates the index buffer and pass the indices to it
         glGenBuffers(1, &m_indexBuffer.handle);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer.handle);
-        const BlitCL::DynamicArray<uint32_t>& indices = context.m_meshes.m_indices;
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.GetSize(), indices.Data(), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * context.m_meshes.m_triangles.m_vtxIdxCount, context.m_meshes.m_triangles.m_indices, GL_STATIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
         glGenBuffers(1, &m_indirectDrawBuffer.handle);
@@ -137,10 +136,10 @@ namespace BlitzenGL
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
         // Creates the primitive surface buffer as a storage buffer and passes it to binding 2
-        const auto& surfaces = context.m_meshes.m_surfaces;
         glGenBuffers(1, &m_surfaceBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_surfaceBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::PrimitiveSurface) * surfaces.GetSize(), surfaces.Data(), GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::PrimitiveSurface) * context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, 
+            context.m_meshes.m_meshPrimitives.m_meshPrimitives, GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_surfaceBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 

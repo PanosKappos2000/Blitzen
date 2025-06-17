@@ -1,7 +1,5 @@
-#pragma once
-
 #if defined(_WIN32)
-
+#pragma once
 #include "dx12Resources.h"
 #include "Renderer/BlitzenDX12/Context/dx12Context.h"
 
@@ -29,7 +27,6 @@ namespace BlitzenDX12
     {
         if (elementCount == 0)
         {
-            BLIT_ERROR("%s: Cannot create SSBO with element count 0", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 
@@ -37,7 +34,6 @@ namespace BlitzenDX12
 
         if (!CreateBuffer(device, ssbo.buffer.ReleaseAndGetAddressOf(), ssboSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_DEFAULT, ssboFlags))
         {
-            BLIT_ERROR("%s: Failed to create SSBO resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 
@@ -50,7 +46,6 @@ namespace BlitzenDX12
     {
         if (elementCount == 0)
         {
-            BLIT_ERROR("%s: Cannot create staging buffer with element count 0", BlitzenCore::CE_DX12_SYSTEM_NAME)
             return 0;
         }
 
@@ -58,7 +53,6 @@ namespace BlitzenDX12
 
         if (!CreateBuffer(device, staging.m_buffer.ReleaseAndGetAddressOf(), dataSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
         {
-            BLIT_ERROR("%s: Failed to create staging buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 
@@ -67,7 +61,6 @@ namespace BlitzenDX12
 
         if (FAILED(mappingRes))
         {
-            BLIT_ERROR("%s: Failed to map pointer to staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
         }
 
@@ -75,7 +68,6 @@ namespace BlitzenDX12
 
         if (!staging.m_pMapped)
         {
-            BLIT_ERROR("%s: Staging buffer mapped to nullptr", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 
@@ -99,19 +91,16 @@ namespace BlitzenDX12
     {
         if (sizeInfo.m_fullSSBOSize == 0)
         {
-            BLIT_ERROR("Tried to create CPU_DATA_SSBO with element count 0 for the full SSBO size");
             return 0;
         }
 
         if (sizeInfo.m_staticDataSize == 0)
         {
-            BLIT_ERROR("Tried to create CPU_DATA_SSBO with element count 0 for the static data size. Some static data is expected for a CPU_DATA_SSBO to be created");
             return 0;
         }
 
         if (sizeInfo.m_dynamicDataSize == 0)
         {
-            BLIT_ERROR("No dynamic data found for CPU_DATA_SSBO. Temporarily passing element count 1");
             sizeInfo.m_dynamicDataSize = 1;
         }
 
@@ -119,7 +108,6 @@ namespace BlitzenDX12
 
         if (!CreateBuffer(device, staticStaging.m_buffer.ReleaseAndGetAddressOf(), staticStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
         {
-            BLIT_ERROR("%s: Failed to create static staging buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 
@@ -128,7 +116,6 @@ namespace BlitzenDX12
 
         if (FAILED(staticMappingRes))
         {
-            BLIT_ERROR("%s: Failed to map static staging buffer pointer", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(staticMappingRes);
         }
 
@@ -136,7 +123,6 @@ namespace BlitzenDX12
 
         if (!staticStaging.m_pMapped)
         {
-            BLIT_ERROR("%s: Static staging buffer mapped pointer returned null", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
         
@@ -144,7 +130,6 @@ namespace BlitzenDX12
 
         if (!CreateBuffer(device, dynamicStaging.m_buffer.ReleaseAndGetAddressOf(), dynamicStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
         {
-            BLIT_ERROR("%s: Failed to map dynamic staging buffer pointer", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 
@@ -153,7 +138,6 @@ namespace BlitzenDX12
 
         if (FAILED(dynamicMappingRes))
         {
-            BLIT_ERROR("%s: Failed to map dynamic staging buffer pointer", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(dynamicMappingRes);
         }
 
@@ -161,7 +145,6 @@ namespace BlitzenDX12
 
         if (!dynamicStaging.m_pMapped)
         {
-            BLIT_ERROR("%s: Dynamic staging buffer mapped pointer returned null", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 

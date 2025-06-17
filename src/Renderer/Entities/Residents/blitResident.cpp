@@ -1,6 +1,6 @@
 #pragma once
-
 #include "blitResidentManager.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
@@ -11,7 +11,7 @@ namespace BlitzenEngine
 		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
 		{
 			RENDER_OBJECT_CREATE_CONTEXT renderContext{};
-			renderContext.m_type = RENDER_OBJECT_TYPE::OPAQUE_STATIC;
+			renderContext.m_type = ctx.m_renderTypes[prim];
 			renderContext.m_primitiveID = prim + ctx.m_pResource->firstSurface;
 			renderContext.m_transformID = m_transforms.CreateTransform(ctx.m_transformInfo);
 

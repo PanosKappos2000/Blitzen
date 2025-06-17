@@ -220,7 +220,7 @@ namespace BlitCL
         inline void ReplaceSubstring(size_t start, char* str)
         {
 			auto strSize = strlen(str);
-			BlitzenCore::BlitMemCopy<char>(m_data + start, str, strSize);
+			BlitzenCore::BlitMemCopy(m_data + start, str, strSize);
         }
 
     private:

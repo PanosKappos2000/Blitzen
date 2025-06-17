@@ -1,7 +1,7 @@
 #if defined(_WIN32)
-
 #include "dx12Resources.h"
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenDX12
 {

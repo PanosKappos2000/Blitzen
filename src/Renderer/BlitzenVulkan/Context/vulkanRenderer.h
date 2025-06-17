@@ -1,10 +1,24 @@
 #pragma once
 #include "vulkanContext.h"
-#include "Renderer/Resources/Textures/blitTextures.h"
 #include "Renderer/Interface/blitRendererInterface.h"
+#include "BlitCL/blitDynamicArr.h"
 
 namespace BlitzenVulkan
 {
+    struct VulkanStats
+    {
+        uint8_t hasDiscreteGPU = 0;
+
+        uint8_t meshShaderSupport = 0;
+
+        uint8_t bSynchronizationValidationSupported = 0;
+
+        uint8_t bRayTracingSupported = 0;
+
+        BlitCL::DynamicArray<const char*> m_instExtensions;
+        BlitCL::DynamicArray<const char*> m_dvExtensions;
+    };
+
     class VulkanRenderer
     {
 

@@ -1,8 +1,8 @@
 #if defined(_WIN32)
-
 #include "Platform/blitPlatformContext.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
 #include <GL/wglew.h>
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenPlatform
 {

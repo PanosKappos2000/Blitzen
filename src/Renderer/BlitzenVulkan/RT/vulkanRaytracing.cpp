@@ -1,6 +1,8 @@
 #include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
 #include "Renderer/BlitzenVulkan/RuntimeHelpers/vulkanCommands.h"
 #include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
+#include "BlitCL/blitDynamicArr.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenVulkan
 {
@@ -51,23 +53,21 @@ namespace BlitzenVulkan
 
     uint8_t BuildBlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue, BlitzenEngine::DrawContext& context, ROResources& readOnlies)
     {
-        auto& surfaces = context.m_meshes.m_surfaces;
-		auto& primitiveVertexCounts = context.m_meshes.m_primitiveVertexCounts;
-		auto& lods = context.m_meshes.m_LODs;
+        uint32_t meshPrimitiveCount{ context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount };
 
-        if (!surfaces.GetSize())
+        if (meshPrimitiveCount == 0)
         {
             BLIT_ERROR("Cannot create acceleration structure without any meshes");
             return 0;
         }
 
-        BlitCL::DynamicArray<uint32_t> primitiveCounts{ surfaces.GetSize() };
-        BlitCL::DynamicArray<VkAccelerationStructureGeometryKHR> geometries(surfaces.GetSize(), {});
-        BlitCL::DynamicArray<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos(surfaces.GetSize(), {});
+        BlitCL::DynamicArray<uint32_t> primitiveCounts{ meshPrimitiveCount };
+        BlitCL::DynamicArray<VkAccelerationStructureGeometryKHR> geometries(meshPrimitiveCount, {});
+        BlitCL::DynamicArray<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos(meshPrimitiveCount, {});
 
-        BlitCL::DynamicArray<size_t> accelerationOffsets(surfaces.GetSize());
-        BlitCL::DynamicArray<size_t> accelerationSizes(surfaces.GetSize());
-        BlitCL::DynamicArray<size_t> scratchOffsets(surfaces.GetSize());
+        BlitCL::DynamicArray<size_t> accelerationOffsets(meshPrimitiveCount);
+        BlitCL::DynamicArray<size_t> accelerationSizes(meshPrimitiveCount);
+        BlitCL::DynamicArray<size_t> scratchOffsets(meshPrimitiveCount);
 
         const size_t AS_ALIGNMENT = 256; // required by spec for acceleration structures
 
@@ -78,9 +78,9 @@ namespace BlitzenVulkan
         auto vertexBufferAddress = GetBufferAddress(device, readOnlies.m_vtxBuffer.m_buffer.m_handle);
         auto indexBufferAddress = GetBufferAddress(device, readOnlies.m_idxBuffer.m_buffer.m_handle);
 
-        for (size_t i = 0; i < surfaces.GetSize(); ++i)
+        for (size_t i = 0; i < meshPrimitiveCount; ++i)
         {
-            const auto& surface = surfaces[i];
+            const auto& surface = context.m_meshes.m_meshPrimitives.m_meshPrimitives[i];
             auto& geometry = geometries[i];
             auto& buildInfo = buildInfos[i];
 
@@ -96,15 +96,16 @@ namespace BlitzenVulkan
             // Passing vertex data
             geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
             // Gets the precise address of the vertex buffer for the current surface (needs to be incremented by the vertex offset)
-            geometry.geometry.triangles.vertexData.deviceAddress = VkDeviceAddress(vertexBufferAddress + surface.vertexOffset * sizeof(BlitzenEngine::Vertex));
+            geometry.geometry.triangles.vertexData.deviceAddress = 
+                VkDeviceAddress(vertexBufferAddress + context.m_meshes.m_meshPrimitives.m_meshPrimitiveData[i].m_primitiveVertexOffset * sizeof(BlitzenEngine::Vertex));
             geometry.geometry.triangles.vertexStride = sizeof(BlitzenEngine::Vertex);
             // Primitive vertex count (at the moment), is an array created for this one, optinal line of code
-            geometry.geometry.triangles.maxVertex = primitiveVertexCounts[i];
+            geometry.geometry.triangles.maxVertex = context.m_meshes.m_meshPrimitives.m_meshPrimitiveData[i].m_primitiveVertexCount;
 
             // Passing index data
             geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
             // Precise address of the index buffer
-            geometry.geometry.triangles.indexData.deviceAddress = VkDeviceAddress(indexBufferAddress + lods[surface.lodOffset].firstIndex * sizeof(uint32_t));
+            geometry.geometry.triangles.indexData.deviceAddress = VkDeviceAddress(indexBufferAddress + context.m_meshes.m_meshPrimitives.m_LODs[surface.lodOffset].firstIndex * sizeof(uint32_t));
 
 
             // Build info for the acceleration structu. Takes the geometry struct from above and some other configs
@@ -117,7 +118,7 @@ namespace BlitzenVulkan
             buildInfo.pGeometries = &geometry;
 
 
-            primitiveCounts[i] = lods[surface.lodOffset].indexCount / 3;
+            primitiveCounts[i] = context.m_meshes.m_meshPrimitives.m_LODs[surface.lodOffset].indexCount / 3;
 
             VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
             sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
@@ -148,13 +149,11 @@ namespace BlitzenVulkan
 
         VkDeviceAddress blasStagingBufferAddress = GetBufferAddress(device, stagingBuffer.m_handle);
 
-        readOnlies.m_blasData.Resize(surfaces.GetSize());
-
         // Need to empty-brace initialize every damned struct otherwise Vulkan breaks
-        BlitCL::DynamicArray<VkAccelerationStructureBuildRangeInfoKHR> buildRanges(surfaces.GetSize(), {});
-        BlitCL::DynamicArray<const VkAccelerationStructureBuildRangeInfoKHR*> buildRangePtrs(surfaces.GetSize());
+        BlitCL::DynamicArray<VkAccelerationStructureBuildRangeInfoKHR> buildRanges(meshPrimitiveCount, {});
+        BlitCL::DynamicArray<const VkAccelerationStructureBuildRangeInfoKHR*> buildRangePtrs(meshPrimitiveCount);
 
-        for (size_t i = 0; i < surfaces.GetSize(); ++i)
+        for (size_t i = 0; i < meshPrimitiveCount; ++i)
         {
             VkAccelerationStructureCreateInfoKHR accelerationInfo{};
             accelerationInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -180,24 +179,19 @@ namespace BlitzenVulkan
 
         auto commandBuffer = cmdContext.m_transferCmdB;
         BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-        BuildAccelerationStructureKHR(instance, commandBuffer, uint32_t(surfaces.GetSize()), buildInfos.Data(), buildRangePtrs.Data());
+        BuildAccelerationStructureKHR(instance, commandBuffer, meshPrimitiveCount, buildInfos.Data(), buildRangePtrs.Data());
         SubmitCommandBuffer(queue, commandBuffer, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
         vkQueueWaitIdle(queue);
 
         return 1;
     }
 
-    uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue,
-        ROResources& readOnlies, BlitzenEngine::DrawContext& context)
+    uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue, ROResources& readOnlies, BlitzenEngine::DrawContext& context)
     {
-        auto pDraws{ context.m_pResidents->m_renders.m_renders }; 
-        uint32_t drawCount{ context.m_pResidents->m_renders.m_renderCount }; 
-        auto pTransforms{ context.m_pResidents->m_transforms.m_transforms };
-        auto pSurfaces{ context.m_meshes.m_surfaces };
-        const auto& surfaceTransparencies{ context.m_meshes.m_bTransparencyList };
+        uint32_t renderCount{ context.m_pResidents->m_renders.m_renderCount };
 
         // Retrieves the device address of each acceleration structure that was build earlier
-        BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ readOnlies.m_blasData.GetSize() };
+        BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount };
         for (size_t i = 0; i < blasAddresses.GetSize(); ++i)
         {
             VkAccelerationStructureDeviceAddressInfoKHR	addressInfo{};
@@ -209,18 +203,18 @@ namespace BlitzenVulkan
         // Creates an object buffer that will hold a VkAccelerationsStructureInstanceKHR for each object loaded
         Buffer objectBuffer;
         if (!CreateBuffer(vma, objectBuffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU,
-            sizeof(VkAccelerationStructureInstanceKHR) * drawCount, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+            sizeof(VkAccelerationStructureInstanceKHR) * renderCount, VMA_ALLOCATION_CREATE_MAPPED_BIT))
         {
             BLIT_ERROR("Failed to create acceleration structure object buffer");
             return 0;
         }
 
         // Creates a VkAccelrationStructureInstanceKHR for each instance's transform and copies it to the object buffer
-        for (size_t i = 0; i < drawCount; ++i)
+        for (size_t i = 0; i < renderCount; ++i)
         {
-            const auto& object = pDraws[i];
-            const auto& transform = pTransforms[object.transformId];
-            const auto& surface = pSurfaces[object.surfaceId];
+            const auto& object = context.m_pResidents->m_renders.m_renders[i];
+            const auto& transform = context.m_pResidents->m_transforms.m_transforms[object.transformId];
+            const auto& surface = context.m_meshes.m_meshPrimitives.m_meshPrimitives[object.surfaceId];
 
             // Casts the orientation quat to a matrix
             auto orientationTranspose{ BlitML::Transpose(BlitML::QuatToMat4(transform.orientation)) };
@@ -267,7 +261,7 @@ namespace BlitzenVulkan
         VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
         sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
         // Gets the acceleration structure build sizes
-        GetAccelerationStructureBuildSizesKHR(instance, device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &drawCount, &sizeInfo);
+        GetAccelerationStructureBuildSizesKHR(instance, device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &renderCount, &sizeInfo);
 
         if (!CreateBuffer(vma, readOnlies.m_tlas.m_buffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, VMA_MEMORY_USAGE_GPU_ONLY, sizeInfo.accelerationStructureSize, 0))
         {
@@ -301,7 +295,7 @@ namespace BlitzenVulkan
         buildInfo.scratchData.deviceAddress = GetBufferAddress(device, stagingBuffer.m_handle);
 
         VkAccelerationStructureBuildRangeInfoKHR buildRange = {};
-        buildRange.primitiveCount = drawCount;
+        buildRange.primitiveCount = renderCount;
         const VkAccelerationStructureBuildRangeInfoKHR* pBuildRange = &buildRange;
 
         auto commandBuffer = cmdContext.m_transferCmdB;

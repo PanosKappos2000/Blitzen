@@ -20,7 +20,7 @@ namespace BlitzenIMGUI
 		MAX_ENUMS = 0
 	};
 
-	inline const char* TranslateErrorCode(DEAR_DASHER_RETURN_CODE res)
+	inline const char* DEAR_DASHER_ERROR_CODE_TO_STRING(DEAR_DASHER_RETURN_CODE res)
 	{
 		switch (res)
 		{
@@ -28,17 +28,5 @@ namespace BlitzenIMGUI
 		case DEAR_DASHER_RETURN_CODE::VULKAN_HANDLE_CREATION_FAILED: return "IMGUI_ERROR res with: VULKAN_HANDLE_CREATION_FAILED";
 		case DEAR_DASHER_RETURN_CODE::UNKNOWN_RETURN_CODE: case DEAR_DASHER_RETURN_CODE::MAX_ENUMS: default: return "IMGUI_ERROR res with: UNKNOWN_RETURN_CODE";
 		}
-	}
-
-	inline bool LOG_IMGUI_ERROR_MSG_AND_RETURN(DEAR_DASHER_RETURN_CODE res)
-	{
-		if (BlitzenCore::BLIT_CHECK_FAIL(res))
-		{
-			BLIT_ERROR(TranslateErrorCode(res));
-			return false;
-		}
-
-		BLIT_WARN("Provided IMGUI return code was not error");
-		return false;
 	}
 }

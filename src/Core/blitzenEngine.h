@@ -33,23 +33,13 @@ namespace BlitzenCore
         SUCCESS = 0
     };
 
-    template<typename T>
-    bool BLIT_CHECK_SUCCESS(T code)
-    {
-        return code == T::SUCCESS;
-    }
+    #define BLIT_ARRAY_SIZE(array)   sizeof(array) / sizeof(array[0])
 
-    template<typename T>
-    bool BLIT_CHECK_FAIL(T code)
-    {
-        return code < T::SUCCESS;
-    }
+    bool BLIT_CHECK_SUCCESS(int64_t code);
 
-    template<typename T>
-    bool BLIT_CHECK_FATAL(T code)
-    {
-        return code < T::FATAL;
-    }
+    bool BLIT_CHECK_FAIL(int64_t code);
+
+    bool BLIT_CHECK_FATAL(int64_t code);
 
     bool LOG_ERROR_MSG_AND_RETURN(const char* system, const char* msg);
 
@@ -61,6 +51,8 @@ namespace BlitzenCore
 
     template<typename PTR>
     using ARRAY_OF_POINTERS = PTR**;
+
+    constexpr size_t ARRAY_SIZE_PLACEHOLDER = 100;
 
 #if !defined(BLIT_VK_FORCE)
 
@@ -74,6 +66,8 @@ namespace BlitzenCore
     constexpr const char* CE_LOGGER_SYSTEM_NAME = "blit_logger";
     constexpr const char* CE_MEMORY_SYSTEM_NAME = "blit_mem";
     constexpr const char* CE_PLATFORM_SYSTEM_NAME = "blit_platform";
+    constexpr const char* CE_MESH_SYSTEM_NAME = "MeshResources";
+    constexpr const char* CE_RESOURCE_SYSTEM_NAME = "RenderingResourceSystem";
     constexpr const char* CE_WORLD_SYSTEM_NAME = "WORLD";
     constexpr const char* CE_SCENE_SYSTEM_NAME = "SceneManager";
     constexpr const char* CE_RESIDENT_SYSTEM_NAME = "WORLD_RESIDENTS";
@@ -81,6 +75,8 @@ namespace BlitzenCore
     constexpr const char* CE_VULKAN_SYSTEM_NAME = "BlitzenVulkan";
     constexpr const char* CE_DX12_SYSTEM_NAME = "BlitzenDX12";
     constexpr const char* CE_RENDERER_SYSTEM_NAME = "blit_renderer";
+    constexpr const char* CE_DASHER_EDITOR_SYSTEM_NAME = "dasher_editor";
+    constexpr const char* CE_DEAR_DASHER_EDITOR_SYSTEM_NAME = "dearDasher_editor";
 
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
@@ -124,6 +120,7 @@ namespace BlitzenCore
         SmartPointer = 10,
         LinearAlloc = 11,
         WV = 12,
+        TRIANGLE = 13,
 
         MaxTypes = 100
     };
@@ -165,8 +162,8 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMaterialCount = 10'000;
 	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
-    constexpr uint32_t Ce_MaxWorldVertexCount = 10'000'000;
-    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = 10'000'000;
+    constexpr uint32_t Ce_MaxWorldVertexCount = 3'000'000;
+    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = 3'000'000;
     static_assert(Ce_MaxWorldVertexCount <= Ce_MaxWorldVertexIndicesCount);
 
     constexpr uint32_t Ce_MaxMeshCount = 10'000;
@@ -180,14 +177,6 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMeshPrimitivesCount = 10'000;
 
     constexpr uint8_t Ce_MaxLodCountPerSurface = 8;
-
-    // CE_MAX_CLUSTER_PER_SURFACE ?????
-    constexpr uint32_t Ce_MaxWorldClusterCount = 1'000'000;
-    constexpr uint32_t Ce_MaxInstanceCountPerCluster = 100'000;
-
-    constexpr uint32_t Ce_MaxVerticesPerCluster = 64;
-    constexpr uint32_t Ce_MaxTrianglesPerCluster = 124;
-    constexpr float Ce_ClusterConeWeight = 0.25f;
 
     /********************************************************************************************************************************************************
     * SECTION: WORLD RESIDENT CONSTANTS                                                                                                                     *
@@ -281,27 +270,8 @@ namespace BlitzenCore
 
     void ShutdownLogging(size_t totalAllocated, size_t* typeAllocations);
 
-    inline void LogAllocation(AllocationType alloc, size_t size, AllocationAction action)
-    {
-        static size_t totalAllocated{ 0 };
-        static size_t typeAllocations[size_t(AllocationType::MaxTypes)]{ 0 };
-
-        if (action == AllocationAction::ALLOC)
-        {
-            totalAllocated += size;
-            typeAllocations[uint8_t(alloc)] += size;
-        }
-        else if (action == AllocationAction::FREE)
-        {
-            totalAllocated -= size;
-            typeAllocations[uint8_t(alloc)] -= size;
-        }
-        else if (action == AllocationAction::FREE_ALL)
-        {
-            ShutdownLogging(totalAllocated, typeAllocations);
-        }
-    }
-
+    void LogAllocation(AllocationType alloc, size_t size, AllocationAction action);
+    
     enum class EngineState : uint8_t
     {
         RUNNING = 0,
@@ -339,10 +309,7 @@ namespace BlitzenCore
         EngineState m_state{ EngineState::SHUTDOWN };
 
         // Defined in blitMemory.h
-        inline ~Engine()
-        {
-            LogAllocation(AllocationType::Engine, 0, AllocationAction::FREE_ALL);
-        }
+        ~Engine();
     };
 }
 

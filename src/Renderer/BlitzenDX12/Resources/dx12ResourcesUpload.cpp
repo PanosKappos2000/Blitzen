@@ -1,9 +1,10 @@
 #if defined(_WIN32)
-
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Resources.h"
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
+#include "BlitCL/blitDynamicArr.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenDX12
 {
@@ -226,8 +227,8 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			STAGING<uint32_t> drawVisibilityStaging{ };
 			// DRAW OCC MODE
+			STAGING<uint32_t> drawVisibilityStaging{};
 			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
 				BlitCL::DynamicArray<uint32_t> zeroData{ drawContext.m_pResidents->m_renders.m_renderCount, 0 };
@@ -240,11 +241,11 @@ namespace BlitzenDX12
 				}
 			}
 
-			STAGING<BlitzenEngine::LodInstanceCounter> lodInstStaging{ nullptr };
 			// DRAW CULL INST MODE
+			STAGING<BlitzenEngine::LodInstanceCounter> lodInstStaging{};
 			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
-				if (!CreateStaging(device, lodInstStaging, drawContext.m_meshes.m_lodInstanceList.GetSize(), drawContext.m_meshes.m_lodInstanceList.Data()))
+				if (!CreateStaging(device, lodInstStaging, drawContext.m_meshes.m_meshPrimitives.m_LODCount, drawContext.m_meshes.m_meshPrimitives.m_lodInstances))
 				{
 					BLIT_ERROR("%s: Failed to create lod instance counting staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 					return 0;
@@ -333,27 +334,21 @@ namespace BlitzenDX12
 			PlaceFence(cmdContext.m_copyFence.m_value, commandQueue, cmdContext.m_copyFence.m_dx12Handle.Get(), cmdContext.m_copyFence.m_event);
 		}
 
-		const auto& vertices{ drawContext.m_meshes.m_hlslVtxs };
-		const auto& indices{ BlitzenCore::Ce_BuildClusters ? drawContext.m_meshes.m_clusterIndices : drawContext.m_meshes.m_indices };
-		const auto& surfaces{ drawContext.m_meshes.m_surfaces };
-		const auto& lods{ drawContext.m_meshes.m_LODs };
-
 		STAGING<BlitzenEngine::HlslVtx> vertexStagingBuffer{ nullptr };
-		if (!CreateStaging(device, vertexStagingBuffer, vertices.GetSize(), vertices.Data()))
+		if (!CreateStaging(device, vertexStagingBuffer, drawContext.m_meshes.m_triangles.m_vertexCount, drawContext.m_meshes.HLSL_TRIANGLES.HLSL_VERTICES))
 		{
 			BLIT_ERROR("%s: Failed to create vertex staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		DX12WRAPPER<ID3D12Resource> indexStagingBuffer{ nullptr };
-		UINT64 idxBufferSize{ sizeof(uint32_t) * drawContext.m_meshes.m_indices.GetSize() };
-
+		UINT64 idxBufferSize{ sizeof(uint32_t) * drawContext.m_meshes.m_triangles.m_vtxIdxCount};
 		if (!CreateBuffer(device, indexStagingBuffer.ReleaseAndGetAddressOf(), idxBufferSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
 		{
 			BLIT_ERROR("%s: Failed to create index staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
-
+		// Manually done for index buffer, I do not remember the exact reason
 		void* pMappedData{ nullptr };
 		HRESULT mappingRes{ indexStagingBuffer->Map(0, nullptr, &pMappedData) };
 		if (FAILED(mappingRes))
@@ -361,11 +356,11 @@ namespace BlitzenDX12
 			BLIT_ERROR("%s: Failed to map pointer to index staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
 		}
-
-		BlitzenCore::BlitMemCopy(pMappedData, drawContext.m_meshes.m_indices.Data(), idxBufferSize);
+		// copy
+		BlitzenCore::BlitMemCopy(pMappedData, drawContext.m_meshes.m_triangles.m_indices, idxBufferSize);
 
 		STAGING<BlitzenEngine::PrimitiveSurface> surfaceStagingBuffer{ };
-		if (!CreateStaging(device, surfaceStagingBuffer, surfaces.GetSize(), surfaces.Data()))
+		if (!CreateStaging(device, surfaceStagingBuffer, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitives))
 		{
 			BLIT_ERROR("Failed to create surface buffer");
 			return 0;
@@ -379,7 +374,7 @@ namespace BlitzenDX12
 		}
 
 		STAGING<BlitzenEngine::LodData> lodStaging{ nullptr };
-		if (!CreateStaging(device, lodStaging, lods.GetSize(), lods.Data()))
+		if (!CreateStaging(device, lodStaging, drawContext.m_meshes.m_meshPrimitives.m_LODCount, drawContext.m_meshes.m_meshPrimitives.m_LODs))
 		{
 			BLIT_ERROR("%s: Failed to create LOD staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -395,7 +390,7 @@ namespace BlitzenDX12
 		STAGING<BlitzenEngine::HCluster> clusterStaging{ nullptr };
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			if (!CreateStaging(device, clusterStaging, drawContext.m_meshes.m_hlslClusterCount, drawContext.m_meshes.m_hlslClusters))
+			if (!CreateStaging(device, clusterStaging, drawContext.m_meshes.m_clusters.m_clusterCount, drawContext.m_meshes.m_clusters.HLSL_CLUSTERS))
 			{
 				BLIT_ERROR("%s: Failed to create cluster staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
@@ -489,10 +484,6 @@ namespace BlitzenDX12
 	void CreateResourceViews(ID3D12Device* device, DescriptorContext& ctx, CmdContext& cmdContext, ID3D12CommandQueue* queue, ReadOnlyResources& roResources, 
 		ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
 	{
-		const auto& vertices{ context.m_meshes.m_hlslVtxs };
-		const auto& surfaces{ context.m_meshes.m_surfaces };
-		const auto& lods{ context.m_meshes.m_LODs };
-
 		// DRAW DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -500,7 +491,7 @@ namespace BlitzenDX12
 			ctx.m_opaqueDrawViewsExclusiveHandle[i] = ctx.m_viewHeapHandle;
 			ctx.m_opaqueDrawViewsExclusiveHandle[i].ptr += ctx.m_opaqueDrawViewsExclusiveOffset[i] * ctx.m_viewHeapIncrement;
 
-			CreateBufferShaderResourceView(device, roResources.m_vtxBuffer.buffer.Get(), ctx, (UINT)vertices.GetSize(), sizeof(BlitzenEngine::Vertex));
+			CreateBufferShaderResourceView(device, roResources.m_vtxBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_vertexCount, sizeof(BlitzenEngine::Vertex));
 		}
 
 		// SHARED DESCRIPTORS
@@ -512,7 +503,7 @@ namespace BlitzenDX12
 
 			auto& rwResources = rwResourcesArray[i];
 
-			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, (UINT)surfaces.GetSize(), sizeof(BlitzenEngine::PrimitiveSurface));
+			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, sizeof(BlitzenEngine::PrimitiveSurface));
 
 			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), ctx, BlitzenCore::Ce_MaxDynamicObjectCount + context.m_pResidents->m_transforms.m_staticTransformCount, 
 				sizeof(BlitzenEngine::MeshTransform));
@@ -536,7 +527,7 @@ namespace BlitzenDX12
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawCmdCounterBuffer.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
-			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodData));	
+			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_LODCount, sizeof(BlitzenEngine::LodData));
 		}
 
 		// INSTANCING DESCRIPTORS
@@ -550,10 +541,10 @@ namespace BlitzenDX12
 				ctx.m_drawCullInstUAVsHandle[i] = ctx.m_viewHeapHandle;
 				ctx.m_drawCullInstUAVsHandle[i].ptr += ctx.m_drawCullInstUAVsOffset[i] * ctx.m_viewHeapIncrement;
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawInstBuffer.buffer.Get(), nullptr, UINT(lods.GetSize() * BlitzenEngine::CE_MAX_INSTANCES_PER_LOD), 
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawInstBuffer.buffer.Get(), nullptr, context.m_meshes.m_meshPrimitives.m_LODCount * BlitzenEngine::CE_MAX_INSTANCES_PER_LOD, 
 					sizeof(uint32_t), 0);
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instCounterBuffer.buffer.Get(), nullptr, (UINT)lods.GetSize(), sizeof(BlitzenEngine::LodInstanceCounter), 0);
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instCounterBuffer.buffer.Get(), nullptr, context.m_meshes.m_meshPrimitives.m_LODCount, sizeof(BlitzenEngine::LodInstanceCounter), 0);
 			}
 		}
 
@@ -595,7 +586,7 @@ namespace BlitzenDX12
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterGroupDataBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize, sizeof(ClusterGroupData), 0);
 
-				CreateBufferShaderResourceView(device, roResources.m_clusterBuffer.buffer.Get(), ctx, context.m_meshes.m_hlslClusterCount, sizeof(BlitzenEngine::HCluster));
+				CreateBufferShaderResourceView(device, roResources.m_clusterBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::HCluster));
 			}
 		}
 		

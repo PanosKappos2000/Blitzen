@@ -1,6 +1,8 @@
 #include "blitRender.h"
 #include "worldTransform.h"
 #include "Renderer/Resources/blitRenderingResources.h"
+#include "Core/DbLog/blitLogger.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenEngine
 {
@@ -81,7 +83,7 @@ namespace BlitzenEngine
 
             if (context.m_pTransform != nullptr)
             {
-                BlitzenCore::BlitMemCopy<MeshTransform>(&newcomer, context.m_pTransform, 1);
+                BlitzenCore::BlitMemCopy(&newcomer, context.m_pTransform, sizeof(MeshTransform));
             }
             else
             {
@@ -111,7 +113,7 @@ namespace BlitzenEngine
 
             if (context.m_pTransform != nullptr)
             {
-                BlitzenCore::BlitMemCopy<MeshTransform>(&newcomer, context.m_pTransform, 1);
+                BlitzenCore::BlitMemCopy(&newcomer, context.m_pTransform, sizeof(MeshTransform));
             }
             else
             {

@@ -1,9 +1,6 @@
-#pragma once
-
 #if defined(_WIN32)
-
+#pragma once
 #include "openglData.h"
-#include "BlitCL/DynamicArray.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
 #include "Renderer/Interface/blitRendererInterface.h"
 #include "Platform/blitPlatformContext.h"

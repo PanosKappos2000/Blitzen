@@ -1,10 +1,8 @@
 #pragma once
-
 #include "blitResident.h"
 #include "blitWv.h"
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
-#include "BlitCL/blitSmartPointer.h"
 
 namespace BlitzenEngine
 {
@@ -36,23 +34,12 @@ namespace BlitzenEngine
 		}
 	}
 
-	inline bool LOG_RESIDENT_ERROR_MSG_AND_RETURN(RESIDENT_CREATE_RES res)
-	{
-		if (BlitzenCore::BLIT_CHECK_FAIL(res))
-		{
-			BLIT_ERROR(GET_RESIDENT_CREATE_RES_STRING(res));
-			return false;
-		}
-
-		BLIT_WARN("No resident create error found");
-		return false;
-	}
-
 	struct RESIDENT_CREATE_CONTEXT
 	{
 		RESIDENT_CREATE_CONTEXT_FLAGS m_flags;
 		Mesh* m_pResource{ nullptr };
 		TRANSFORM_CREATE_CONTEXT m_transformInfo{};
+		RENDER_OBJECT_TYPE* m_renderTypes{};
 	};
 
 	struct WORLD_RESIDENTS
@@ -69,6 +56,4 @@ namespace BlitzenEngine
 
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 	};
-
-	using WorldResidentsSystemMemory = BlitCL::SmartPointer<WORLD_RESIDENTS, BlitzenCore::AllocationType::Entity>;
 }

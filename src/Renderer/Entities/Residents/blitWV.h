@@ -1,5 +1,5 @@
 #pragma once
-#include "BlitCL/DynamicArray.h"
+#include "Core/blitMemory.h"
 
 namespace BlitzenEngine
 {
@@ -51,20 +51,13 @@ namespace BlitzenEngine
 	class WVHOST
 	{
 	public:
-		inline void ALLOC(WVTYPEID flag)
-		{
-			m_groups.EmplaceEmtpy();
+		void ALLOC(WVTYPEID flag);
 
-			m_groups.Back().ALLOC(flag);
-		}
-
-		inline void ADD(WV* pWV)
-		{
-			m_groups[pWV->m_type].ADD(pWV);
-		}
+		void ADD(WV* pWV);
 
 	private:
-		BlitCL::DynamicArray<WVGROUP> m_groups;
+		WVGROUP m_groups[BlitzenCore::Ce_MaxWorldVariableCount]{};
+		uint32_t m_groupCount{ 0 };
 	};
 
 	void AllocateWorldVariables(uint32_t count, WVHOST* pHost);

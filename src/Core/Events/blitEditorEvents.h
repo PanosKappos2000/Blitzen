@@ -1,7 +1,5 @@
 #pragma once
-
 #include "Core/blitzenEngine.h"
-#include "BlitCL/DynamicArray.h"
 #include "BlitCL/blitPfn.h"
 
 namespace BlitzenCore

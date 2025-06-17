@@ -1,8 +1,8 @@
 #if defined(_WIN32)
-
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenDX12
 {
@@ -616,7 +616,7 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			if (CreateSSBO<BlitzenEngine::HCluster>(device, roResources.m_clusterBuffer, BlitzenCore::Ce_MaxWorldClusterCount) == 0)
+			if (CreateSSBO<BlitzenEngine::HCluster>(device, roResources.m_clusterBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)
 			{
 				BLIT_ERROR("%s: Failed to create cluster buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;

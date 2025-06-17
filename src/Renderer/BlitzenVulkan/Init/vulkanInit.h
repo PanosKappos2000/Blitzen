@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderer/BlitzenVulkan/Context/vulkanContext.h"
+#include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
 
 namespace BlitzenVulkan
 {

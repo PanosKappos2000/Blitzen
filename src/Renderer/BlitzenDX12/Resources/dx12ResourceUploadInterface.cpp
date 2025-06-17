@@ -1,7 +1,7 @@
 #if defined(_WIN32)
-
 #include "dx12ResourcesUpload.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {
@@ -13,10 +13,13 @@ namespace BlitzenEngine
 			return 0;
 		}
 
-		if (!BlitzenEngine::GenerateHLSLClusters(drawContext.m_meshes))
+		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			BLIT_ERROR("%s: Failed to generate HLSL clusters", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
+			if (!BlitzenEngine::GenerateHLSLClusters(drawContext.m_meshes))
+			{
+				BLIT_ERROR("%s: Failed to generate HLSL clusters", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
 		}
 
 		if (!BlitzenDX12::UploadResourcesToBuffers(pRenderer->m_device.Get(), drawContext, pRenderer->m_roResources, pRenderer->m_rwResources, pRenderer->m_cmdContext[0], 

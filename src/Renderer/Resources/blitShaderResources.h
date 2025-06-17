@@ -1,6 +1,6 @@
 #pragma once
 #include "Core/blitzenEngine.h"
-#include "BlitzenMathLibrary/blitML.h"
+#include "BlitzenMathLibrary/blitMLTypes.h"
 
 namespace BlitzenEngine
 {
@@ -133,7 +133,7 @@ namespace BlitzenEngine
         uint32_t lodOffset;
         uint32_t lodCount{ 0 };
 
-        uint32_t vertexOffset; // Not used in the shaders but can hold the offset when loading
+        uint32_t padding0; // Not used in the shaders but can hold the offset when loading
     };
 
     struct alignas(16) MeshTransform

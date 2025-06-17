@@ -1,12 +1,14 @@
 #include "blitMeshes.h"
-// Algorithms for building meshlets, loading LODs, optimizing vertex caches etc.
-// https://github.com/zeux/meshoptimizer
-#include "Meshoptimizer/meshoptimizer.h"
-// Used for loading .obj meshes
+#include "BlitCL/blitDynamicArr.h"
 // https://github.com/thisistherk/fast_obj
 #define FAST_OBJ_IMPLEMENTATION
 #include "fast_obj.h"
 #include "objparser.h"
+// Algorithms for building meshlets, loading LODs, optimizing vertex caches etc.
+// https://github.com/zeux/meshoptimizer
+#include "Meshoptimizer/meshoptimizer.h"
+#include "BlitzenMathLibrary/blitML.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {
@@ -14,7 +16,7 @@ namespace BlitzenEngine
     {
         if (m_meshCount >= BlitzenCore::Ce_MaxMeshCount)
         {
-			BLIT_ERROR("Max mesh count: ( %i ) reached!", BlitzenCore::Ce_MaxMeshCount);
+            BLIT_ERROR("%s: Max mesh count: ( %i ) reached!", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenCore::Ce_MaxMeshCount);
             return BlitzenCore::Ce_MaxMeshCount;
         }
 
@@ -32,34 +34,36 @@ namespace BlitzenEngine
         return m_meshCount++;
     }
 
-    bool LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName)
+    uint32_t LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName)
     {
         // The function should return if the engine will go over the max allowed mesh assets
-        if (context.m_meshCount > BlitzenCore::Ce_MaxMeshCount)
+        if (context.m_meshCount >= BlitzenCore::Ce_MaxMeshCount)
         {
-            BLIT_ERROR("Max mesh count: ( %i ) reached!", BlitzenCore::Ce_MaxMeshCount);
-            return false;
+            BLIT_ERROR("%s: Max mesh count: ( %i ) reached!", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenCore::Ce_MaxMeshCount);
+            return BlitzenCore::Ce_MaxMeshCount;
         }
 
-        BLIT_INFO("Loading obj model form file: %s", filename);
-
         // Get the current mesh and give it the size surface array as its first surface index
-        uint32_t previousSurfaceCount{ (uint32_t)context.m_surfaces.GetSize() };
+        uint32_t previousSurfaceCount{ context.m_meshPrimitives.m_meshPrimitivesCount };
 
         ObjFile file;
         if (!objParseFile(file, filename))
         {
-            BLIT_ERROR("Failed to parse obj file");
-            return false;
+            BLIT_ERROR("%s: Failed to parse obj file", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return BlitzenCore::Ce_MaxMeshCount;
         }
 
-        size_t indexCount = file.f_size / 3;
+        if (file.f_size * 3 > BlitzenCore::Ce_MaxWorldVertexIndicesCount)
+        {
+            BLIT_ERROR("%s: Obj model holds too many possible indices")
+            return BlitzenCore::Ce_MaxMeshCount;
+        }
 
-        BlitCL::DynamicArray<Vertex> triangleVertices(indexCount);
+        uint32_t indexCount = (uint32_t)file.f_size / 3;
 
-        BLIT_INFO("Loading vertices and indices");
+        BlitCL::DynamicArray<Vertex> triangleVertices{ indexCount };
 
-        for (size_t i = 0; i < indexCount; ++i)
+        for (uint32_t i = 0; i < indexCount; ++i)
         {
             auto& vtx = triangleVertices[i];
 
@@ -75,9 +79,10 @@ namespace BlitzenEngine
             float normalX = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 0];
             float normalY = vertexNormalIndex < 0 ? 0.f : file.vn[vertexNormalIndex * 3 + 1];
             float normalZ = vertexNormalIndex < 0 ? 1.f : file.vn[vertexNormalIndex * 3 + 2];
-            vtx.normalX = static_cast<uint8_t>(normalX * 127.f + 127.5f);
-            vtx.normalY = static_cast<uint8_t>(normalY * 127.f + 127.5f);
-            vtx.normalZ = static_cast<uint8_t>(normalZ * 127.f + 127.5f);
+
+            vtx.normalX = uint8_t(normalX * 127.f + 127.5f);
+            vtx.normalY = uint8_t(normalY * 127.f + 127.5f);
+            vtx.normalZ = uint8_t(normalZ * 127.f + 127.5f);
 
             vtx.tangentX = vtx.tangentY = vtx.tangentZ = 127;
             vtx.tangentW = 254;
@@ -94,305 +99,42 @@ namespace BlitzenEngine
         meshopt_remapVertexBuffer(vertices.Data(), triangleVertices.Data(), indexCount, sizeof(Vertex), remap.Data());
         meshopt_remapIndexBuffer(indices.Data(), 0, indexCount, remap.Data());
 
-        GenerateTangents(vertices, indices);
+        MESH_PRIMITIVE_CREATE_CONTEXT primitiveCreateCtx{};
+        primitiveCreateCtx.m_indexCount = (uint32_t)indices.GetSize();
+        primitiveCreateCtx.m_indices = indices.Data();
+        primitiveCreateCtx.m_vertexCount = (uint32_t)vertices.GetSize();
+        primitiveCreateCtx.m_vertices = vertices.Data();
+        auto meshPrimitiveGenRes{ context.m_meshPrimitives.GenerateSurface(context.m_triangles, context.m_clusters, primitiveCreateCtx) };
+        if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)meshPrimitiveGenRes))
+        {
+            BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_MESH_SYSTEM_NAME, MESH_PRIMITIVE_CREATE_RES_TO_STRING(meshPrimitiveGenRes));
+            return BlitzenCore::Ce_MaxMeshCount;
+        }
 
-        BLIT_INFO("Creating surface");
-        GenerateSurface(context, vertices, indices);
+        context.m_meshPrimitives.GenerateTangents(primitiveCreateCtx);
 
-        uint32_t meshId = context.AddMesh(previousSurfaceCount, uint32_t(context.m_surfaces.GetSize() - previousSurfaceCount), meshName);
+        uint32_t meshId = context.AddMesh(previousSurfaceCount, uint32_t(context.m_meshPrimitives.m_meshPrimitivesCount - previousSurfaceCount), meshName);
         if (meshId == BlitzenCore::Ce_MaxMeshCount)
         {
-            BLIT_ERROR("Add mesh returned max mesh count");
-            return false;
+            BLIT_ERROR("%s: Retrieved error count from AddMesh function", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return BlitzenCore::Ce_MaxMeshCount;
         }
 
-        return true;
-    }
-
-    void GenerateSurface(MeshResources& context, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
-    {
-        // Optimize vertices and indices using meshoptimizer
-        meshopt_optimizeVertexCache(surfaceIndices.Data(), surfaceIndices.Data(), surfaceIndices.GetSize(), surfaceVertices.GetSize());
-        meshopt_optimizeVertexFetch(surfaceVertices.Data(), surfaceIndices.Data(), surfaceIndices.GetSize(), surfaceVertices.Data(),
-            surfaceVertices.GetSize(), sizeof(Vertex));
-
-        PrimitiveSurface newSurface{};
-        newSurface.vertexOffset = uint32_t(context.m_vertices.GetSize());
-        context.m_vertices.AppendArray(surfaceVertices);
-
-        BLIT_INFO("Generating LODs");
-        GenerateLODs(context, newSurface, surfaceVertices, surfaceIndices);
-
-        BLIT_INFO("Generating bounding sphere");
-        GenerateBoundingSphere(newSurface, surfaceVertices, surfaceIndices);
-
-        // TODO: Add logic for material without relying on gltf
-        newSurface.materialId = 0;
-
-        // Adds the surface to the global surfaces array
-        context.m_surfaces.PushBack(newSurface);
-        context.m_primitiveVertexCounts.PushBack(uint32_t(context.m_vertices.GetSize()));
-
-        // Default, if a caller wants transparency, they should handle it
-        context.m_bTransparencyList.PushBack({ false });
-    }
-
-    void GenerateLODs(MeshResources& context, PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
-    {
-        // Automatic LOD generation helpers
-        BlitCL::DynamicArray<BlitML::vec3> normals{ surfaceVertices.GetSize() };
-        for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
-        {
-            auto& v = surfaceVertices[i];
-            normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f, v.normalY / 127.f - 1.f, v.normalZ / 127.f - 1.f);
-        }
-        float lodScale = meshopt_simplifyScale(&surfaceVertices[0].position.x, surfaceVertices.GetSize(), sizeof(Vertex));
-        float lodError = 0.f;
-        float normalWeights[3] = { 1.f, 1.f, 1.f };
-
-        // Pass the original loaded indices of the surface to the new lod indices
-        BlitCL::DynamicArray<uint32_t> lodIndices{ surfaceIndices };
-        BlitCL::DynamicArray<uint32_t> allLodIndices;
-
-        surface.lodOffset = static_cast<uint32_t>(context.m_LODs.GetSize());
-        while (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
-        {
-            surface.lodCount++;
-
-            // Instancing
-            LodInstanceCounter lodInstanceCounter{};
-            lodInstanceCounter.instanceOffset = uint32_t(context.m_LODs.GetSize() * BlitzenEngine::CE_MAX_INSTANCES_PER_LOD);
-            context.m_lodInstanceList.PushBack(lodInstanceCounter);
-
-            LodData lod{};
-            lod.firstIndex = static_cast<uint32_t>(context.m_indices.GetSize() + allLodIndices.GetSize());
-            lod.indexCount = static_cast<uint32_t>(lodIndices.GetSize());
-
-            // TODO: Might want to make LODs include one or the other, indices and clusters are not used together
-            lod.clusterOffset = static_cast<uint32_t>(context.m_clusters.GetSize());
-            lod.clusterCount = BlitzenCore::Ce_BuildClusters ? static_cast<uint32_t>(GenerateClusters(context, surfaceVertices, lodIndices, surface.vertexOffset)) : 0;
-
-            lod.error = lodError * lodScale;
-            context.m_LODs.PushBack(lod);
-
-            // Adds current lod indices
-            allLodIndices.AppendArray(lodIndices);
-
-            // Starts generating the next level of detail
-            if (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
-            {
-                auto nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
-                const float maxError = 1e-1f;
-                float nextError = 0.f;
-
-                // Gets the size of the next level of detail
-                auto nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &surfaceVertices[0].position.x,
-                    surfaceVertices.GetSize(), sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3), normalWeights, 3, nullptr, nextIndicesTarget, maxError,
-                    0, &nextError);
-
-                if (nextIndicesSize > lodIndices.GetSize())
-                {
-                    BLIT_ERROR("LOD generation failed");
-                    break;
-                }
-                // Reached the error bounds
-                if (nextIndicesSize == lodIndices.GetSize() || nextIndicesSize == 0)
-                {
-                    break;
-                }
-                // while I could keep this LOD, it's too close to the last one 
-                // (and it can't go below that due to constant error bound above)
-                if (nextIndicesSize >= size_t(double(lodIndices.GetSize()) * 0.95))
-                {
-                    break;
-                }
-
-                // Resize and optimize
-                lodIndices.Resize(nextIndicesSize);
-                meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), surfaceVertices.GetSize());
-
-                // since it starts from next lod accumulate the error
-                lodError = BlitML::Max(lodError, nextError);
-            }
-        }
-
-        if (surface.lodCount > BlitzenCore::Ce_MaxLodCountPerSurface)
-        {
-            BLIT_ERROR("A surface has loaded too many LODs");
-        }
-
-        // Adds vertex offset before appending all lods to the global indices array
-        auto vertexOffset = surface.vertexOffset;
-        for (auto& index : allLodIndices)
-        {
-            index += vertexOffset;
-        }
-        context.m_indices.AppendArray(allLodIndices);
-    }
-
-    size_t GenerateClusters(MeshResources& context, BlitCL::DynamicArray<Vertex>& inVertices, BlitCL::DynamicArray<uint32_t>& inIndices, uint32_t vertexOffset)
-    {
-        BlitCL::DynamicArray<meshopt_Meshlet> meshop_meshlets{ meshopt_buildMeshletsBound(inIndices.GetSize(), BlitzenCore::Ce_MaxVerticesPerCluster, 
-            BlitzenCore::Ce_MaxTrianglesPerCluster) };
-
-        BlitCL::DynamicArray<uint32_t> meshletVertices{ meshop_meshlets.GetSize() * BlitzenCore::Ce_MaxVerticesPerCluster };
-
-        BlitCL::DynamicArray<unsigned char> meshletTriangles{ meshop_meshlets.GetSize() * BlitzenCore::Ce_MaxTrianglesPerCluster * 3 };
-
-        meshop_meshlets.Resize(meshopt_buildMeshlets(meshop_meshlets.Data(), meshletVertices.Data(), meshletTriangles.Data(), inIndices.Data(), inIndices.GetSize(),
-            &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex), BlitzenCore::Ce_MaxVerticesPerCluster, BlitzenCore::Ce_MaxTrianglesPerCluster, 
-            BlitzenCore::Ce_ClusterConeWeight));
-
-
-        for (size_t i = 0; i < meshop_meshlets.GetSize(); ++i)
-        {
-            auto& meshlet = meshop_meshlets[i];
-
-            meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset], &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, meshlet.vertex_count);
-
-            #if defined(BLIT_MESH_SHADERS)
-
-            size_t dataOffset = m_clusterIndices.GetSize();
-            for(uint32_t i = 0; i < meshlet.vertex_count; ++i)
-            {
-                m_clusterIndices.PushBack(meshletVertices[meshlet.vertex_offset + i]);
-            }
-            uint32_t indexGroups = reinterpret_cast<uint32_t*>(&meshletTriangles[0] + meshlet.triangle_offset);
-            uint32_t indexGroupCount = meshlet.triangle_count * 3;
-            for(uint32_t i = 0; i < indexGroupCount; ++i)
-            {
-                m_clusterIndices.PushBack(indexGroups[size_t(i)]);
-            }
-
-            #else
-
-            size_t dataOffset = context.m_clusterIndices.GetSize();
-
-            const uint32_t* vertexLookup = &meshletVertices[meshlet.vertex_offset];
-            const unsigned char* triangles = &meshletTriangles[meshlet.triangle_offset];
-            for (uint32_t t = 0; t < meshlet.triangle_count; ++t)
-            {
-                // Each triangle has 3 indices into the local meshlet vertex array
-                for (uint32_t j = 0; j < 3; ++j)
-                {
-                    uint32_t localIndex = triangles[t * 3 + j];
-                    uint32_t globalIndex = vertexLookup[localIndex] + vertexOffset;
-
-                    context.m_clusterIndices.PushBack(globalIndex);
-                }
-            }
-
-            #endif
-
-            auto bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertex_offset], &meshletTriangles[meshlet.triangle_offset], meshlet.triangle_count, 
-                &inVertices[0].position.x, inVertices.GetSize(), sizeof(Vertex));
-
-            Cluster cluster{};
-            cluster.dataOffset = uint32_t(dataOffset);
-            cluster.triangleCount = meshlet.triangle_count;
-            cluster.vertexCount = meshlet.vertex_count;
-
-            cluster.center = BlitML::vec3(bounds.center[0], bounds.center[1], bounds.center[2]);
-            cluster.radius = bounds.radius;
-            cluster.coneAxisX = bounds.cone_axis_s8[0];
-            cluster.coneAxisY = bounds.cone_axis_s8[1];
-            cluster.coneAxisZ = bounds.cone_axis_s8[2];
-            cluster.coneCutoff = bounds.cone_cutoff_s8;
-
-            context.m_clusters.PushBack(cluster);
-        }
-
-        return meshop_meshlets.GetSize();
-    }
-
-    void GenerateBoundingSphere(PrimitiveSurface& surface, BlitCL::DynamicArray<Vertex>& surfaceVertices, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
-    {
-        BlitML::vec3 center{ 0.f };
-        for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
-        {
-            center = center + surfaceVertices[i].position;
-        }
-        center = center / static_cast<float>(surfaceVertices.GetSize());
-
-        // Bounding sphere radius
-        float radius = 0;
-        for (size_t i = 0; i < surfaceVertices.GetSize(); ++i)
-        {
-            const auto& pos = surfaceVertices[i].position;
-            radius = BlitML::Max(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
-        }
-        surface.center = center;
-        surface.radius = radius;
-    }
-
-
-    void GenerateTangents(BlitCL::DynamicArray<BlitzenEngine::Vertex>& vertices, BlitCL::DynamicArray<uint32_t>& indices)
-    {
-        for (size_t i = 0; i < indices.GetSize(); i += 3)
-        {
-            auto i0 = indices[i + 0];
-            auto i1 = indices[i + 1];
-            auto i2 = indices[i + 2];
-
-            auto edge1 = vertices[i1].position - vertices[i0].position;
-            auto edge2 = vertices[i2].position - vertices[i0].position;
-
-            auto deltaU1 = float(vertices[i1].uvX - vertices[i0].uvX);
-            auto deltaV1 = float(vertices[i1].uvY - vertices[i0].uvY);
-
-            auto deltaU2 = float(vertices[i2].uvX - vertices[i0].uvX);
-            auto deltaV2 = float(vertices[i2].uvY - vertices[i0].uvY);
-
-            float dividend = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
-
-            float fc = 1.0f / dividend;
-
-            BlitML::vec3 tangent
-            {
-                (fc * (deltaV2 * edge1.x - deltaV1 * edge2.x)),
-                (fc * (deltaV2 * edge1.y - deltaV1 * edge2.y)),
-                (fc * (deltaV2 * edge1.z - deltaV1 * edge2.z))
-            };
-
-            BlitML::Normalize(tangent);
-
-            float sx = deltaU1, sy = deltaU2;
-
-            float tx = deltaV1, ty = deltaV2;
-
-            float handedness = ((tx * sy - ty * sx) < 0.0f) ? -1.0f : 1.0f;
-
-            BlitML::vec4 t4{ tangent, handedness };
-
-            vertices[i0].tangentX = uint8_t(t4.x * 127.f + 127.5f);
-            vertices[i0].tangentY = uint8_t(t4.y * 127.f + 127.5f);
-            vertices[i0].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
-            vertices[i0].tangentW = uint8_t(t4.w * 127.f + 127.5f);
-
-            vertices[i1].tangentX = uint8_t(t4.x * 127.f + 127.5f);
-            vertices[i1].tangentY = uint8_t(t4.y * 127.f + 127.5f);
-            vertices[i1].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
-            vertices[i1].tangentW = uint8_t(t4.w * 127.f + 127.5f);
-
-            vertices[i2].tangentX = uint8_t(t4.x * 127.f + 127.5f);
-            vertices[i2].tangentY = uint8_t(t4.y * 127.f + 127.5f);
-            vertices[i2].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
-            vertices[i2].tangentW = uint8_t(t4.w * 127.f + 127.5f);
-        }
+        return meshId;
     }
 
     bool GenerateHlslVertices(MeshResources& context)
     {
-        if (context.m_hlslVtxs.GetSize())
+        if (!context.HLSL_TRIANGLES.HLSL_VERTICES)
         {
             BLIT_ERROR("hlslVtxs should be empty before generation");
             return false;
         }
 
-        for (size_t i = 0; i < context.m_vertices.GetSize(); ++i)
+        for (size_t vert = 0; vert < context.m_triangles.m_vertexCount; ++vert)
         {
-            const auto& classic = context.m_vertices[i];
-            HlslVtx hlsl{};
+            const auto& classic = context.m_triangles.m_vertices[vert];
+            auto& hlsl{context.HLSL_TRIANGLES.HLSL_VERTICES[vert]};
 
             hlsl.position = classic.position;
 
@@ -401,8 +143,6 @@ namespace BlitzenEngine
 
             hlsl.normals = classic.normalX << 24 | classic.normalY << 16 | classic.normalZ << 8 | classic.normalW;
             hlsl.tangents = classic.tangentX << 24 | classic.tangentY << 16 | classic.tangentZ << 8 | classic.tangentW;
-
-            context.m_hlslVtxs.PushBack(hlsl);
         }
 
         return true;
@@ -410,15 +150,16 @@ namespace BlitzenEngine
 
     bool GenerateHLSLClusters(MeshResources& context)
     {
-        if (context.m_hlslClusterCount != 0)
+        if (!context.m_clusters.HLSL_CLUSTERS)
         {
+            BLIT_ERROR("%s: Hlsl clusters were never allocated", BlitzenCore::CE_MESH_SYSTEM_NAME);
             return false;
         }
 
-        for (size_t i = 0; i < context.m_clusters.GetSize(); ++i)
+        for (uint32_t clst = 0; clst < context.m_clusters.m_clusterCount; ++clst)
         {
-            const auto& glslClusters{ context.m_clusters[i]};
-            auto& cluster{ context.m_hlslClusters[context.m_hlslClusterCount++] };
+            const auto& glslClusters{ context.m_clusters.m_clusters[clst]};
+            auto& cluster{ context.m_clusters.HLSL_CLUSTERS[clst]};
 
             cluster.center = glslClusters.center;
             cluster.radius = glslClusters.radius;
@@ -432,10 +173,5 @@ namespace BlitzenEngine
         return true;
     }
 
-    void LoadTestGeometry(MeshResources& context)
-    {
-        LoadMeshFromObj(context, "Assets/Meshes/dragon.obj", BlitzenCore::Ce_DefaultDragonMeshName);
-        LoadMeshFromObj(context, "Assets/Meshes/kitten.obj", BlitzenCore::Ce_DefaultKittenMeshName);
-        LoadMeshFromObj(context, "Assets/Meshes/FinalBaseMesh.obj", BlitzenCore::Ce_DefaultHumanMeshname);
-    }
+    
 }

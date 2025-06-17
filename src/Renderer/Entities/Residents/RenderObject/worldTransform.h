@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Renderer/Resources/blitShaderResources.h"
 
 namespace BlitzenEngine

@@ -1,5 +1,4 @@
 #if defined(_WIN32)
-
 #include "dx12Update.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Resources.h"
 

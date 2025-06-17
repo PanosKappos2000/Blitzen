@@ -2,6 +2,8 @@
 #include "BlitCL/blitclDebug.h"
 #include "Renderer/Scene/blitScene.h"
 #include "Renderer/Scene/gltfScene.h"
+#include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenWorld
 {
@@ -22,11 +24,10 @@ namespace BlitzenWorld
                 stressTestCtx.pResidents = context.pWORLD->P_RESIDENTS.Data();
                 stressTestCtx.pResources = context.pRenderingResources;
 
-                context.pWORLD->m_scenes.EmplaceEmtpy();
-                auto stressTestSceneRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes.Back(), stressTestCtx) };
+                auto stressTestSceneRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], stressTestCtx)};
 
-                BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL(stressTestSceneRes));
-                if (BlitzenCore::BLIT_CHECK_FAIL(stressTestSceneRes))
+                BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)stressTestSceneRes));
+                if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)stressTestSceneRes))
                 {
                     BLIT_ERROR("Failed to load renderer stress test scene. The engine will continue but there will be unexpected behaviour.");
                 }
@@ -100,8 +101,6 @@ namespace BlitzenWorld
                 }
 
                 *context.pEngineState = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
-
-                BlitCL::LogContainerData(context.pWORLD->m_scenes, "Scene");
             }
         }
     }

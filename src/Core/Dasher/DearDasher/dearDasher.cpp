@@ -11,10 +11,10 @@ namespace BlitzenIMGUI
 	bool DasherEditor::Init(BlitzenEngine::RendererPtrType pRenderer)
 	{
 		auto initRes{ m_apiData.Init(pRenderer) };
-		if (BlitzenCore::BLIT_CHECK_FAIL(initRes))
+		if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)initRes))
 		{
 			BLIT_ERROR("Failed to initialize imgui");
-			return LOG_IMGUI_ERROR_MSG_AND_RETURN(initRes);
+			return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_DEAR_DASHER_EDITOR_SYSTEM_NAME, DEAR_DASHER_ERROR_CODE_TO_STRING(initRes));
 		}
 
 		return true;

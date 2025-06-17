@@ -1,4 +1,5 @@
 #include "blitTextures.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {

@@ -14,5 +14,4 @@ namespace BlitzenEngine
 
         TextureManager m_textureManager;
     };
-    
 }

@@ -1,11 +1,8 @@
 #pragma once
 
 #if defined(_WIN32)
-
 #include "Renderer/BlitzenDX12/Context/dx12Context.h"
 #include <d3dcompiler.h>
-#include <string>
-#include "BlitCL/blitString.h"
 
 namespace BlitzenDX12
 {
@@ -29,9 +26,6 @@ namespace BlitzenDX12
     // Compiles a specified shader inside the shader blob parameter
     uint8_t CreateShaderProgram(const WCHAR* filepath, const char* target, const char* entryPoint, ID3DBlob** shaderBlob);
 
-    // Compiles a shader with shader model 6.6
-    size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes);
-
     // Compiles a compute shader and creates its pipeline state object
     uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const char* filename);
 
@@ -39,7 +33,7 @@ namespace BlitzenDX12
     void CreateDefaultPsoDescription(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc);
 
     // Creates a pipeline that draws a single static triangle
-	uint8_t CreateTriangleGraphicsPipeline(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12RootSignature>& rootSignature, ID3D12PipelineState** ppPso);
+	uint8_t CreateTriangleGraphicsPipeline(ID3D12Device* device, DX12WRAPPER<ID3D12RootSignature>& rootSignature, ID3D12PipelineState** ppPso);
 
     // Main drawing pipeline creation
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx);
@@ -53,22 +47,7 @@ namespace BlitzenDX12
 
     void BeginRenderPassClear(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, UINT swapchainIndex);
 
-    void BeginRenderPassPreserve(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, UINT swapchainIndex);
-
-    class ShaderIncludeHandler : public ID3DInclude 
-    {
-    public:
-
-        // Ref counting
-        inline STDMETHOD_(ULONG, AddRef)() { return 1; }
-        inline STDMETHOD_(ULONG, Release)() { return 1; }
-
-        STDMETHOD(Open)(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) override;
-
-        STDMETHOD(Close)(LPCVOID pData) override;
-    private:
-        std::string m_content;
-    };    
+    void BeginRenderPassPreserve(ID3D12GraphicsCommandList4* cmdList, ID3D12Resource* swapchainBackBuffer, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, UINT swapchainIndex);    
 }
 
 #endif

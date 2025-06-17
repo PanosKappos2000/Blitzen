@@ -1,5 +1,4 @@
 #pragma once 
-#include "blitzenContainerLibrary.h"
 
 namespace BlitCL
 {

@@ -2,9 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 #include "Core/blitzenEngine.h"
-#include "BlitCL/DynamicArray.h"
-#include "BlitCL/blitArray.h"
-#include "BlitzenMathLibrary/blitML.h"
+#include "BlitzenMathLibrary/blitMLTypes.h"
 #include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Entities/Residents/RenderObject/blitRender.h"
 
@@ -48,22 +46,9 @@ namespace BlitzenVulkan
         }
     }
 
-    inline void VK_RES_MSG_ASSRT(VkResult res)
-    {
-        BLIT_ASSERT_MESSAGE(res == VK_SUCCESS, VK_TRANS_RES(res));
-    }
+    void VK_RES_MSG_ASSRT(VkResult res);
 
-    inline uint8_t VK_LOG_ERROR_MSG_AND_RETURN(VkResult res)
-    {
-        if (res < 0)
-        {
-            BLIT_ERROR("VKRESULT WITH: %s", VK_TRANS_RES(res));
-            return 0;
-        }
-
-        BLIT_WARN("No error message found");
-        return 0;
-    }
+    uint8_t VK_LOG_ERROR_MSG_AND_RETURN(VkResult res);
 
     constexpr uint32_t Ce_VkApiVersion = VK_API_VERSION_1_3;
 
@@ -259,21 +244,6 @@ namespace BlitzenVulkan
 
     constexpr uint64_t ce_fenceTimeout = 1000000000;
     constexpr uint64_t ce_swapchainImageTimeout = ce_fenceTimeout;
-
-
-    struct VulkanStats
-    {
-        uint8_t hasDiscreteGPU = 0;
-
-        uint8_t meshShaderSupport = 0;
-
-        uint8_t bSynchronizationValidationSupported = 0;
-
-        uint8_t bRayTracingSupported = 0;
-
-        BlitCL::DynamicArray<const char*> m_instExtensions;
-        BlitCL::DynamicArray<const char*> m_dvExtensions;
-    };
 
 
 

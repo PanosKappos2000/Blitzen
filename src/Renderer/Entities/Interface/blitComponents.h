@@ -1,10 +1,8 @@
 #pragma once
-#include "BlitCL/blitSmartPointer.h"
 #include "BlitCL/blitPfn.h"
-#include "Renderer/Resources/blitRenderingResources.h"
-#include "Renderer/Entities/Residents/blitResidentManager.h"
 #include "Renderer/Entities/Residents/RenderObject/blitMovingResident.h"
 #include "Renderer/View/blitCamera.h"
+#include "Renderer/Entities/Residents/blitWV.h"
 
 
 namespace BlitzenEngine
@@ -31,6 +29,4 @@ namespace BlitzenEngine
 
         void AddMovingWorldVariable();
     };
-    
-    using ComponentSystemMemory = BlitCL::SmartPointer<BlitzenEngine::ComponentSystem, BlitzenCore::AllocationType::Entity>;
 }

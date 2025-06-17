@@ -5,6 +5,9 @@
 #include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
 #include "Renderer/BlitzenVulkan/Resources/vulkanPipelines.h"
 #include "Renderer/BlitzenVulkan/Resources/vulkanRNDResources.h"
+#include "BlitCL/blitDynamicArr.h"
+#include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 #include <cstring> // For strcmp
 
 namespace BlitzenVulkan
@@ -1548,7 +1551,7 @@ namespace BlitzenVulkan
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::Cluster>(vma, device,  readOnlies.m_clusterBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxWorldClusterCount);
+            VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::Cluster>(vma, device,  readOnlies.m_clusterBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT);
             if (clusterBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create cluster buffer", BLIT_VK_SYSTEM);

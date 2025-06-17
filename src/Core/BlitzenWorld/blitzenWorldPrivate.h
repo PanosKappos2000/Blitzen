@@ -2,10 +2,6 @@
 #include "Core/Dasher/Interface/dasherInterface.h"
 #include "blitzenWorld.h"
 #include "Renderer/Entities/Interface/blitComponents.h"
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <atomic>
 
 namespace BlitzenWorld
 {

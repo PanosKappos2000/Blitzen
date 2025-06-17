@@ -1,5 +1,6 @@
 #include "Renderer/Interface/blitRenderer.h"
 #include "vkResourcesUpload.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {

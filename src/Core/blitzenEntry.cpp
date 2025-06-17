@@ -1,10 +1,12 @@
 #include "Core/Events/blitEvents.h"
 #include "Platform/blitPlatformContext.h"
 #include "Platform/blitPlatform.h"
-
+#include "BlitCL/blitSmartPointer.h"
+#include "DbLog/blitAssert.h"
+#include <thread>
 
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
-
+using ComponentSystemMemory = BlitCL::SmartPointer<BlitzenEngine::ComponentSystem, BlitzenCore::AllocationType::Entity>;
 
 #if defined(BLIT_GDEV_EDT)
 int main(int argc, char* argv[])
@@ -26,7 +28,7 @@ int main(int argc, char* argv[])
     BlitzenCore::WorldTimeManager blitzenClock;
     blitzenPrivateContext.pClock = &blitzenClock;
 
-    BlitzenEngine::ComponentSystemMemory blitzenComponentSystem;
+    ComponentSystemMemory blitzenComponentSystem;
     blitzenComponentSystem.Make();
     blitzenPrivateContext.pComponents = blitzenComponentSystem.Data();
 

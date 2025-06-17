@@ -1,7 +1,5 @@
-#pragma once
-
 #if defined(_WIN32)
-
+#pragma once
 #include "Renderer/BlitzenDX12/Context/dx12Context.h"
 
 namespace BlitzenDX12

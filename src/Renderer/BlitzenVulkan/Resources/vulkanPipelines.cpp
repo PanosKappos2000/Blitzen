@@ -1,6 +1,7 @@
 #include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
 #include "vulkanPipelines.h"
 #include "vulkanResourceFunctions.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenVulkan
 {

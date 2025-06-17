@@ -2,8 +2,6 @@
 #include "Core/blitMemory.h"
 #include "blitArrayIterator.h"
 
-#define BLIT_ARRAY_SIZE(array)   sizeof(array) / sizeof(array[0])
-
 namespace BlitCL
 {
     template<class T, size_t SIZE>

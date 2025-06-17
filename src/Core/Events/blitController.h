@@ -1,6 +1,4 @@
 #pragma once
-
-#include "Core/blitzenEngine.h"
 #include "BlitCL/blitPfn.h"
 #include "blitEventType.h"
 #include "Core/BlitzenWorld/blitzenWorld.h"

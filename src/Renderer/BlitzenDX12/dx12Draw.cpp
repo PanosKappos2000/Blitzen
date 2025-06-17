@@ -1,5 +1,4 @@
 #if defined(_WIN32)
-
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
@@ -415,7 +414,7 @@ namespace BlitzenDX12
 	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources,
 		BlitzenEngine::DrawContext& context, uint32_t frame)
 	{
-		size_t lodDataCount{ context.m_meshes.m_LODs.GetSize()};
+		uint32_t lodDataCount{ context.m_meshes.m_meshPrimitives.m_LODCount };
 		uint32_t objCount{ context.m_pResidents->m_renders.m_renderCount };
 
 		// Binds heap for compute

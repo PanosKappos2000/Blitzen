@@ -1,4 +1,6 @@
 #include "vulkanRenderer.h"
+#include "Core/DbLog/blitAssert.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenVulkan
 {
@@ -30,5 +32,22 @@ namespace BlitzenVulkan
         {
             DestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
         }
+    }
+
+    void VK_RES_MSG_ASSRT(VkResult res)
+    {
+        BLIT_ASSERT_MESSAGE(res == VK_SUCCESS, VK_TRANS_RES(res));
+    }
+
+    uint8_t VK_LOG_ERROR_MSG_AND_RETURN(VkResult res)
+    {
+        if (res < 0)
+        {
+            BLIT_ERROR("VKRESULT WITH: %s", VK_TRANS_RES(res));
+            return 0;
+        }
+
+        BLIT_WARN("No error message found");
+        return 0;
     }
 }

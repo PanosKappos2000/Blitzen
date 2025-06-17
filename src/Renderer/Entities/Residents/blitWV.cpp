@@ -1,5 +1,7 @@
 #include "blitWV.h"
 #include "Client/ClientWV/wvData.h"
+#include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
@@ -49,6 +51,12 @@ namespace BlitzenEngine
 
 	void AllocateWorldVariables(uint32_t count, WVHOST* pHost)
 	{
+		if (count >= BlitzenCore::Ce_MaxWorldVariableCount)
+		{
+			BLIT_ERROR("%s: Max world variable count reached", BlitzenCore::CE_WORLD_VARIABLE_SYSTEM_NAME);
+			return;
+		}
+
 		for (WVTYPEID flag = 0; flag < count; ++flag)
 		{
 			pHost->ALLOC(flag);
@@ -85,5 +93,15 @@ namespace BlitzenEngine
 	WVGROUP::~WVGROUP()
 	{
 		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::WV, m_pool, m_size * S_WORLD_VARIABLE_CONTEXT_ARRAY[m_type].m_maxInstances);
+	}
+
+	void WVHOST::ALLOC(WVTYPEID flag)
+	{
+		m_groups[m_groupCount++].ALLOC(flag);
+	}
+
+	void WVHOST::ADD(WV* pWV)
+	{
+		m_groups[pWV->m_type].ADD(pWV);
 	}
 }

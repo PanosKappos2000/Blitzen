@@ -2,6 +2,7 @@
 #include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
+#include "BlitCL/blitSmartPointer.h"
 
 namespace BlitzenEngine
 {

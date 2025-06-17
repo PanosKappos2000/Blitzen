@@ -1,10 +1,10 @@
 #if defined(_WIN32)
-
 #include "dx12Init.h"
 #include "Renderer/Interface/blitRenderer.h"
 #include "Renderer/BlitzenDX12/RuntimeHelpers/dx12Commands.h"
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {

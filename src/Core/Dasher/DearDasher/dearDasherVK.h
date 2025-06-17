@@ -1,5 +1,4 @@
 #pragma once
-
 #include "dearDasherData.h"
 #include "Renderer/Interface/blitRenderer.h"
 

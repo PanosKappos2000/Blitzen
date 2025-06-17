@@ -1,5 +1,4 @@
 #pragma once 
-
 #include "vulkanData.h"
 #include "Renderer/View/blitCamera.h"
 
@@ -207,7 +206,7 @@ namespace BlitzenVulkan
         BlitVk_SSBO m_clusterIdxBuffer;
 
         BlitVk_SSBO m_blas;
-        BlitCL::DynamicArray<AccelerationStructure> m_blasData;
+        AccelerationStructure m_blasData[BlitzenCore::Ce_MaxMeshPrimitivesCount];
         BlitVk_SSBO m_tlas;
         AccelerationStructure m_tlasData;
     };

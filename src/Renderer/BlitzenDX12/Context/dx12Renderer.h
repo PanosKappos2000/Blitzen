@@ -1,12 +1,8 @@
 #pragma once
 
 #if defined(_WIN32)
-
 #include "dx12Context.h"
 #include "Renderer/Interface/blitRendererInterface.h"
-#include "Renderer/Resources/blitRenderingResources.h"
-#include "Renderer/Resources/Textures/blitTextures.h"
-#include "Core/DbLog/blitLogger.h"
 #include "Platform/blitPlatformContext.h"
 
 namespace BlitzenDX12

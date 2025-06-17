@@ -1,5 +1,7 @@
 #include "blitScene.h"
 #include "gltfScene.h"
+#include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
@@ -25,13 +27,13 @@ namespace BlitzenEngine
         case SceneType::GltfSceneTest:
         {
             auto res{ ManageGltf(sceneContext.m_name, sceneContext.pResources, sceneContext.pResidents, sceneContext.pRenderer, pScene) };
-            BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading gltf scene");
+            BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading gltf scene");
             return res;
         }
         case SceneType::RendererStressTest:
         {
             auto res{ LoadGeometryStressTest(sceneContext.pResidents, sceneContext.pResources, RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER, pScene) };
-            BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL(res), "Fatal error encountered while loading renderer stress test scene");
+            BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading renderer stress test scene");
             return res;
         }
         default:
@@ -56,20 +58,10 @@ namespace BlitzenEngine
 
         BLIT_WARN("Loading Renderer Stress test with %i objects", totalCount);
 
-        pScene->m_name.CopyString("RendererStressTestScene");
-
-        for (uint32_t i = 0; i < BlitzenCore::Ce_EngineDefaultMeshesCount; ++i)
-        {
-            pScene->m_meshNames.EmplaceEmtpy();
-        }
-
-        pScene->m_meshNames[0].CopyString(BlitzenCore::Ce_DefaultMeshName);
-        pScene->m_meshNames[1].CopyString(BlitzenCore::Ce_DefaultKittenMeshName);
-        pScene->m_meshNames[2].CopyString(BlitzenCore::Ce_DefaultDragonMeshName);
-        pScene->m_meshNames[3].CopyString(BlitzenCore::Ce_DefaultHumanMeshname);
-
-        pScene->m_renderOffset = pResidents->m_renders.m_renderCount;
-        pScene->m_renderCount += bunnyCount + kittenCount + maleCount + dragonCount;
+        pScene->m_meshRefArr[0] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultMeshName];
+        pScene->m_meshRefArr[1] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName];
+        pScene->m_meshRefArr[2] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultDragonMeshName];
+        pScene->m_meshRefArr[3] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultHumanMeshname];
 
         uint32_t start = pResidents->m_renders.m_renderCount;
 
@@ -81,6 +73,8 @@ namespace BlitzenEngine
             residentCtx.m_pResource = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultMeshName];
             residentCtx.m_transformInfo.m_randomTransformMultiplier = transformMultiplier;
             residentCtx.m_transformInfo.m_scale = BunnyScale;
+            RENDER_OBJECT_TYPE renderType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
+            residentCtx.m_renderTypes = &renderType;
 
             auto bunnyRes{ pResidents->AddResident(residentCtx) };
             if (BlitzenCore::BLIT_CHECK_FAIL(bunnyRes))
@@ -100,6 +94,8 @@ namespace BlitzenEngine
             residentCtx.m_pResource = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName];
             residentCtx.m_transformInfo.m_randomTransformMultiplier = transformMultiplier;
             residentCtx.m_transformInfo.m_scale = KittenScale;
+            RENDER_OBJECT_TYPE renderType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
+            residentCtx.m_renderTypes = &renderType;
 
             auto kittenRes{ pResidents->AddResident(residentCtx) };
             if (BlitzenCore::BLIT_CHECK_FAIL(kittenRes))
@@ -119,6 +115,8 @@ namespace BlitzenEngine
             residentCtx.m_pResource = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultDragonMeshName];
             residentCtx.m_transformInfo.m_randomTransformMultiplier = transformMultiplier;
             residentCtx.m_transformInfo.m_scale = DragonScale;
+            RENDER_OBJECT_TYPE renderType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
+            residentCtx.m_renderTypes = &renderType;
 
             auto dragonRes{ pResidents->AddResident(residentCtx) };
             if (BlitzenCore::BLIT_CHECK_FAIL(dragonRes))
@@ -138,6 +136,8 @@ namespace BlitzenEngine
             residentCtx.m_pResource = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultHumanMeshname];
             residentCtx.m_transformInfo.m_randomTransformMultiplier = transformMultiplier;
             residentCtx.m_transformInfo.m_scale = HumanScale;
+            RENDER_OBJECT_TYPE renderType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
+            residentCtx.m_renderTypes = &renderType;
 
             auto humanRes{ pResidents->AddResident(residentCtx) };
             if (BlitzenCore::BLIT_CHECK_FAIL(humanRes))

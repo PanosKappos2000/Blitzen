@@ -1,10 +1,9 @@
 #pragma once
 
 #if defined(_WIN32)
-
-#include "Core/DbLog/blitLogger.h"
 #define GLEW_STATIC
 #include <GL/glew.h>
+#include "Core/blitzenEngine.h"
 
 namespace BlitzenGL
 {

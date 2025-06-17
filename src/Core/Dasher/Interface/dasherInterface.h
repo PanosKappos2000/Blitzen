@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Core/blitzenEngine.h"
 #include "Core/Dasher/DearDasher/dearDasher.h"
 

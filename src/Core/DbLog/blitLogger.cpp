@@ -17,6 +17,47 @@ namespace BlitzenCore
         return false;
     }
 
+    bool BLIT_CHECK_SUCCESS(int64_t code)
+    {
+        return code == CE_BLITZEN_SUCCESS;
+    }
+
+    bool BLIT_CHECK_FAIL(int64_t code)
+    {
+        return code < CE_BLITZEN_SUCCESS;
+    }
+
+    bool BLIT_CHECK_FATAL(int64_t code)
+    {
+        return code < CE_BLITZEN_FATAL;
+    }
+
+    void LogAllocation(AllocationType alloc, size_t size, AllocationAction action)
+    {
+        static size_t totalAllocated{ 0 };
+        static size_t typeAllocations[size_t(AllocationType::MaxTypes)]{ 0 };
+
+        if (action == AllocationAction::ALLOC)
+        {
+            totalAllocated += size;
+            typeAllocations[uint8_t(alloc)] += size;
+        }
+        else if (action == AllocationAction::FREE)
+        {
+            totalAllocated -= size;
+            typeAllocations[uint8_t(alloc)] -= size;
+        }
+        else if (action == AllocationAction::FREE_ALL)
+        {
+            ShutdownLogging(totalAllocated, typeAllocations);
+        }
+    }
+
+    Engine::~Engine()
+    {
+        LogAllocation(AllocationType::Engine, 0, AllocationAction::FREE_ALL);
+    }
+
     void ShutdownLogging(size_t totalAllocated, size_t* typeAllocations)
     {
         // Warn the user of any memory leaks to look for

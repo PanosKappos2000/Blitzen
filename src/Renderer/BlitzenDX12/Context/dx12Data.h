@@ -1,7 +1,6 @@
-#pragma once
-
 #if defined(_WIN32)
 
+#pragma once
 #include <D3d12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
@@ -9,7 +8,6 @@
 #include <d3d12sdklayers.h>
 #include <comdef.h>
 #include "Core/blitzenEngine.h"
-#include "BlitCL/blitzenContainerLibrary.h"
 #include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenDX12
@@ -400,28 +398,10 @@ namespace BlitzenDX12
 
 
     // Useful helper to check for device removal before calling a function that uses it
-    inline uint8_t CheckForDeviceRemoval(ID3D12Device* device)
-    {
-        HRESULT removalReason = device->GetDeviceRemovedReason();
-
-        if (FAILED(removalReason))
-        {
-            _com_error err{ removalReason };
-            BLIT_FATAL("Device removal reason: %s", err.ErrorMessage());
-            return 0;
-        }
-
-        // Safe
-        return 1;
-    }
+    uint8_t CheckForDeviceRemoval(ID3D12Device* device);
 
     // If a dx12 functcion fails, it can calls this to log the result and return 0
-    inline uint8_t LOG_ERROR_MESSAGE_AND_RETURN(HRESULT res)
-    {
-        _com_error err{ res };
-        BLIT_ERROR("Dx12Error: %s", err.ErrorMessage());
-        return 0;
-    }
+    uint8_t LOG_ERROR_MESSAGE_AND_RETURN(HRESULT res);
 }
 
 #endif

@@ -4,13 +4,11 @@
 
 namespace BlitCL
 {
-	
-	template<size_t SIZE>
 	class BLIT_L_ALLOC
 	{
-		inline BLIT_ST_ALLOC() 
+		inline BLIT_L_ALLOC(size_t size) 
 		{
-			m_pData = BlitzenCore::BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, SIZE);
+			m_pData = BlitzenCore::BlitAlloc<uint8_t>(BlitzenCore::AllocationType::LinearAlloc, size);
 		}
 
 		template<class DATA>
@@ -28,7 +26,7 @@ namespace BlitCL
 
 		}
 
-		~BLIT_ST_ALLOC()
+		~BLIT_L_ALLOC()
 		{
 
 		}

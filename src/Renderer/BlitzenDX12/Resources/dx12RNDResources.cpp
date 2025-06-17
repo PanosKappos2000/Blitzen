@@ -1,5 +1,5 @@
 #if defined(_WIN32)
-
+#include "Core/DBLog/blitLogger.h"
 #include "dx12RNDResources.h"
 
 namespace BlitzenDX12

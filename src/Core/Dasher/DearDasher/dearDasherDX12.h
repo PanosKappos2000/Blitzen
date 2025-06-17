@@ -1,5 +1,4 @@
 #if defined(_WIN32)
-
 #pragma once
 #include "dearDasherData.h"
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"

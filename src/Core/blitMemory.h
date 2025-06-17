@@ -1,47 +1,14 @@
 #pragma once
 #include "Core/blitzenEngine.h"
 #include "Platform/blitPlatform.h"
-#if defined(BLIT_REIN_SANT_ENG)
-    #include "Core/DbLog/blitLogger.h"
-    #include "Core/DbLog/blitAssert.h"
-#else
-    #include <stdio.h>
-#endif
 #include <utility>
 #include <stdlib.h>
-
-    #if !defined(BLIT_REIN_SANT_ENG)
-    #include "BlitCL/platform.h"
-    #endif
+#if !defined(BLIT_REIN_SANT_ENG)
+#include "BlitCL/platform.h"
+#endif
 
 namespace BlitzenCore
 {
-    struct LinearAllocator
-    {
-        size_t m_totalAllocated{ 0 };
-        void* m_pBlock{ nullptr };
-        size_t m_blockSize{ Ce_LinearAllocatorBlockSize };
-
-        template<typename T>
-        T* Alloc(size_t size, AllocationType alloc)
-        {
-            auto allocSize = size * sizeof(T);
-            LogAllocation(alloc, size, AllocationAction::ALLOC);
-
-            if (m_totalAllocated + allocSize > m_blockSize)
-            {
-                BLIT_FATAL("Linear allocator depleted, memory not allocated");
-                return nullptr;
-            }
-
-            void* pBlock = reinterpret_cast<T*>(m_pBlock)[m_totalAllocated];
-            m_totalAllocated += allocSize;
-
-            return reinterpret_cast<T*>(pBlock);
-        }
-
-    };
-
     inline void* MANUAL_ALLOC(AllocationType alloc, size_t size)
     {
         LogAllocation(alloc, size, AllocationAction::ALLOC);
@@ -57,6 +24,11 @@ namespace BlitzenCore
     }
 
     inline void MANUAL_COPY(void* pDst, void* pSrc, size_t size)
+    {
+        BlitzenPlatform::PlatformMemCopy(pDst, pSrc, size);
+    }
+
+    inline void BlitMemCopy(void* pDst, void* pSrc, size_t size)
     {
         BlitzenPlatform::PlatformMemCopy(pDst, pSrc, size);
     }
@@ -137,13 +109,6 @@ namespace BlitzenCore
         LogAllocation(alloc, size * sizeof(T), AllocationAction::FREE);
 
         delete [] pToDestroy;
-    }
-
-    // The templates below are placeholders to add functionality later
-    template<typename T = void>
-    void BlitMemCopy(void* pDst, void* pSrc, size_t size)
-    {
-        BlitzenPlatform::PlatformMemCopy(pDst, pSrc, size);
     }
 
     // The templates below are placeholders to add functionality later

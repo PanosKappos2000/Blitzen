@@ -3,7 +3,9 @@
 #include "dx12Pipelines.h"
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
 #include "dx12Resources.h"
-
+#include <string>
+#include "BlitCL/blitString.h"
+#include "Core/DbLog/blitLogger.h"
 // Temporary
 #include <fstream>
 #include <sstream>
@@ -11,6 +13,21 @@
 
 namespace BlitzenDX12
 {
+    class ShaderIncludeHandler : public ID3DInclude
+    {
+    public:
+
+        // Ref counting
+        inline STDMETHOD_(ULONG, AddRef)() { return 1; }
+        inline STDMETHOD_(ULONG, Release)() { return 1; }
+
+        STDMETHOD(Open)(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) override;
+
+        STDMETHOD(Close)(LPCVOID pData) override;
+    private:
+        std::string m_content;
+    };
+
     // Create an instance of ShaderIncludeHandler
     inline ShaderIncludeHandler inl_shaderIncludeHandler;
 
@@ -36,6 +53,26 @@ namespace BlitzenDX12
     HRESULT ShaderIncludeHandler::Close(LPCVOID pData)
     {
         return S_OK;
+    }
+
+    static size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes)
+    {
+        BlitzenPlatform::C_FILE_SCOPE scopedFILE;
+
+        if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
+        {
+            BLIT_ERROR("Failed to open shader file");
+            return 0;
+        }
+
+        size_t filesize = 0;
+        if (!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
+        {
+            BLIT_ERROR("Failed to read shader file");
+            return 0;
+        }
+
+        return filesize;
     }
 
     void CreateDescriptorRange(D3D12_DESCRIPTOR_RANGE& range, D3D12_DESCRIPTOR_RANGE_TYPE rangeType, UINT numDescriptors, UINT baseShaderRegister, UINT registerSpace /*=0*/)
@@ -166,26 +203,7 @@ namespace BlitzenDX12
         // Success
         return 1;
     }
-
-    size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes)
-    {
-        BlitzenPlatform::C_FILE_SCOPE scopedFILE;
-
-        if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
-        {
-            BLIT_ERROR("Failed to open shader file");
-            return 0;
-        }
-
-        size_t filesize = 0;
-        if (!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
-        {
-            BLIT_ERROR("Failed to read shader file");
-            return 0;
-        }
-
-        return filesize;
-    }
+    
 
     void CreateDefaultPsoDescription(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
     {

@@ -1,5 +1,7 @@
 #define CGLTF_IMPLEMENTATION
 #include "gltfScene.h"
+#include "BlitCL/blitDynamicArr.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {
@@ -16,21 +18,6 @@ namespace BlitzenEngine
     {
         auto& textureContext{ pResources->m_textureManager };
         auto& meshContext{ pResources->m_meshContext };
-
-        if (pScene)
-        {
-            pScene->m_name.CopyString(filepath);
-            int64_t truncationIndex = pScene->m_name.FindLastOf('.');
-
-            if (truncationIndex == -1)
-            {
-                BLIT_INFO("Gltf name truncation failed");
-            }
-            else
-            {
-                pScene->m_name.Truncate(truncationIndex);
-            }
-        }
 
         BlitzenEngine::CgltfScope cgltfScope;
         cgltfScope.pData = nullptr;
@@ -77,11 +64,11 @@ namespace BlitzenEngine
         LoadGltfMaterials(textureContext, cgltfScope, previousTextureCount);
 
         // Given to mesh loading to hold surface offsets for nodes
-        BlitCL::DynamicArray<uint32_t> surfaceIndices(cgltfScope.pData->meshes_count);
+        BlitCL::DynamicArray<uint32_t> surfaceIndices{ cgltfScope.pData->meshes_count };
 
         // Meshes
         BLIT_INFO("Loading meshes for GLTF");
-        if (!LoadGltfMeshes(meshContext, textureContext, cgltfScope, previousMaterialCount, surfaceIndices))
+        if (!LoadGltfMeshes(meshContext, textureContext, cgltfScope, previousMaterialCount, surfaceIndices.Data()))
         {
             return SCENE_CREATE_RES::MESH_LOADING_FAILED;
         }
@@ -168,13 +155,13 @@ namespace BlitzenEngine
         return true;
     }
 
-    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, BlitCL::DynamicArray<uint32_t>& surfaceIndices)
+    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, uint32_t* surfaceIndices)
     {
         for (size_t i = 0; i < cgltfScope.pData->meshes_count; ++i)
         {
             const auto& gltfMesh = cgltfScope.pData->meshes[i];
 
-            auto firstSurface = uint32_t(meshContext.m_surfaces.GetSize());
+            auto firstSurface = uint32_t(meshContext.m_meshPrimitives.m_meshPrimitivesCount);
 
             uint32_t meshIdx = meshContext.AddMesh(firstSurface, uint32_t(gltfMesh.primitives_count));
             if (meshIdx == BlitzenCore::Ce_MaxMeshCount)
@@ -281,21 +268,70 @@ namespace BlitzenEngine
             BlitCL::DynamicArray<uint32_t> indices(prim.indices->count);
             cgltf_accessor_unpack_indices(prim.indices, indices.Data(), 4, indices.GetSize());
 
-            GenerateSurface(meshContext, vertices, indices);
-
-            // Get the material index and pass it to the surface if there is material index
+            // SURFACE GENERATION WITH LOADED INDICES
+            MESH_PRIMITIVE_CREATE_CONTEXT meshPrimitiveContext{};
+            meshPrimitiveContext.m_indexCount = uint32_t(indices.GetSize());
+            meshPrimitiveContext.m_indices = indices.Data();
+            meshPrimitiveContext.m_vertexCount = uint32_t(vertices.GetSize());
+            meshPrimitiveContext.m_vertices = vertices.Data();
             if (prim.material)
             {
-                meshContext.m_surfaces.Back().materialId = textureContext.m_materials[previousMaterialCount + cgltf_material_index(cgltfScope.pData, prim.material)].materialId;
-
-                if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
-                {
-                    meshContext.m_bTransparencyList[meshContext.m_surfaces.GetSize() - 1] = BlitzenCore::BB_TRUE;
-                }
+                meshPrimitiveContext.m_specialFlags = prim.material->alpha_mode != cgltf_alpha_mode_opaque ? MESH_PRIMITIVE_SPECIAL_TRANSPARENT : MESH_PRIMITIVE_SPECIAL_NONE;
+                meshPrimitiveContext.m_materialID = textureContext.m_materials[previousMaterialCount + cgltf_material_index(cgltfScope.pData, prim.material)].materialId;
+            }
+            auto meshPrimitiveRes{ meshContext.m_meshPrimitives.GenerateSurface(meshContext.m_triangles, meshContext.m_clusters, meshPrimitiveContext) };
+            if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(meshPrimitiveRes)))
+            {
+                return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_SCENE_SYSTEM_NAME, MESH_PRIMITIVE_CREATE_RES_TO_STRING(meshPrimitiveRes));
             }
         }
 
         return true;
+    }
+
+    static void DecomposeTransform(float translation[3], float rotation[4], float scale[3], const float* transform)
+    {
+        // I could be using my own matrix type but this function is copied from elsewhere and it would be a pain trying to convert it
+        // TODO: Try to implement this differently to fit the engine
+        float m[4][4] = {};
+        BlitzenCore::BlitMemCopy(m, (void*)transform, 16 * sizeof(float));
+
+        // Extract translation from last row
+        translation[0] = m[3][0];
+        translation[1] = m[3][1];
+        translation[2] = m[3][2];
+
+        // Compute determinant to determine handedness
+        float det =
+            m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
+            m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+            m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+        float sign = (det < 0.f) ? -1.f : 1.f;
+
+        // Recover scale from axis lengths
+        scale[0] = sqrtf(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2]) * sign;
+        scale[1] = sqrtf(m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2]) * sign;
+        scale[2] = sqrtf(m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]) * sign;
+
+        // Normalize axes to get a pure rotation matrix
+        float rsx = (scale[0] == 0.f) ? 0.f : 1.f / scale[0];
+        float rsy = (scale[1] == 0.f) ? 0.f : 1.f / scale[1];
+        float rsz = (scale[2] == 0.f) ? 0.f : 1.f / scale[2];
+        float r00 = m[0][0] * rsx, r10 = m[1][0] * rsy, r20 = m[2][0] * rsz;
+        float r01 = m[0][1] * rsx, r11 = m[1][1] * rsy, r21 = m[2][1] * rsz;
+        float r02 = m[0][2] * rsx, r12 = m[1][2] * rsy, r22 = m[2][2] * rsz;
+
+        // "branchless" version of Mike Day's matrix to quaternion conversion
+        int qc = r22 < 0 ? (r00 > r11 ? 0 : 1) : (r00 < -r11 ? 2 : 3);
+        float qs1 = qc & 2 ? -1.f : 1.f;
+        float qs2 = qc & 1 ? -1.f : 1.f;
+        float qs3 = (qc - 1) & 2 ? -1.f : 1.f;
+        float qt = 1.f - qs3 * r00 - qs2 * r11 - qs1 * r22;
+        float qs = 0.5f / sqrtf(qt);
+        rotation[qc ^ 0] = qs * qt;
+        rotation[qc ^ 1] = qs * (r01 + qs1 * r10);
+        rotation[qc ^ 2] = qs * (r20 + qs2 * r02);
+        rotation[qc ^ 3] = qs * (r12 + qs3 * r21);
     }
 
     bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& meshIndices)
@@ -314,7 +350,7 @@ namespace BlitzenEngine
                 float translation[3];
                 float rotation[4];
                 float scale[3];
-                BlitML::decomposeTransform(translation, rotation, scale, matrix);
+                DecomposeTransform(translation, rotation, scale, matrix);
 
                 MeshTransform transform;
                 transform.pos = BlitML::vec3(translation[0], translation[1], translation[2]);
@@ -331,20 +367,18 @@ namespace BlitzenEngine
                 nodeContext.m_pResource = &meshContext.m_meshes[meshIdx];
                 nodeContext.m_transformInfo.m_pTransform = &transform;
 
+                uint32_t surfaceOffset{ meshContext.m_meshes[meshIdx].firstSurface };
+                for (uint32_t prim = 0; prim < meshContext.m_meshes[meshIdx].surfaceCount; ++prim)
+                {
+                    nodeContext.m_renderTypes[prim] = &meshContext.m_meshPrimitives.m_meshPrimitiveData[prim + surfaceOffset].m_primitiveTransparencyFlags ? 
+                        RENDER_OBJECT_TYPE::TRANSPARENT_STATIC : RENDER_OBJECT_TYPE::OPAQUE_STATIC;
+                }
+
                 auto res{ pResidents->AddResident(nodeContext) };
 
                 if (BlitzenCore::BLIT_CHECK_FAIL(res))
                 {
-                    return LOG_RESIDENT_ERROR_MSG_AND_RETURN(res);
-                }
-
-                if (cgltfScope.m_pScene)
-                {
-                    cgltfScope.m_pScene->m_meshNames.EmplaceEmtpy();
-                    cgltfScope.m_pScene->m_meshNames.Back().CopyString(cgltfScope.m_pScene->m_name.GetClassic());
-                    cgltfScope.m_pScene->m_meshNames.Back().Append(std::to_string(i).data());
-                    ;
-                    cgltfScope.m_pScene->m_renderCount += (uint32_t)node->mesh->primitives_count;
+                    return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_SCENE_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(res));
                 }
             }
         }

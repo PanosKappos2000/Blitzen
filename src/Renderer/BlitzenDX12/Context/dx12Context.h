@@ -1,7 +1,6 @@
-#pragma once 
-
 #if defined(_WIN32)
 
+#pragma once 
 #include "dx12Data.h"
 #include "Renderer/View/blitCamera.h"
 #include "Renderer/Resources/blitShaderResources.h"

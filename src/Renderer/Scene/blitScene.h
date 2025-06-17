@@ -1,7 +1,7 @@
 #pragma once
 #include "Renderer/Entities/Residents/blitResidentManager.h"
-#include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include "Renderer/Resources/blitRenderingResources.h"
 
 namespace BlitzenEngine
 {
@@ -65,24 +65,11 @@ namespace BlitzenEngine
 
     struct SceneContext
     {
-        BlitCL::String m_name{ "" };
+        Mesh* m_meshRefArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{nullptr};
 
-        BlitCL::DynamicArray<BlitCL::String> m_meshNames;
+        RenderObject* m_renderRefArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{nullptr};
 
-        BlitCL::DynamicArray<BlitCL::String> m_materialNames;
-
-        BlitCL::DynamicArray<BlitCL::String> m_textureNames;
-
-        uint32_t m_renderOffset;
-        uint32_t m_renderCount{ 0 };
-
-        uint32_t m_transparentRenderOffset;
-        uint32_t m_transparentRenderCount{ 0 };
-
-        inline const char* DBLOG() const
-        {
-            return m_name.GetClassic();
-        }
+        RenderObject* m_transparentArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{ nullptr };
     };
 
     struct SceneContainer

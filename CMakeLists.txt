@@ -45,8 +45,7 @@ add_executable(BlitzenEngine
 
                 # BLITZEN CONTAINER LIBRARY
                 "src/BlitCL/blitPfn.h"
-                "src/BlitCL/blitzenContainerLibrary.h"
-                "src/BlitCL/DynamicArray.h"
+                "src/BlitCL/blitDynamicArr.h"
                 "src/BlitCL/blitString.h"
                 "src/BlitCL/blitSmartPointer.h"
                 "src/BlitCL/blitArray.h"
@@ -150,6 +149,12 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenVulkan/RuntimeHelpers/vulkanRuntimeHelpers.cpp"
                 "src/Renderer/BlitzenVulkan/vulkanDraw.cpp"
                 "src/Renderer/BlitzenVulkan/Cull/vkCull.cpp"
+                "src/Renderer/BlitzenVulkan/Init/vkInitInterface.cpp"
+                "src/Renderer/BlitzenVulkan/Resources/vulkanResources.h"
+                "src/Renderer/BlitzenVulkan/Resources/vkResourceUploadInterface.cpp"
+                "src/Renderer/BlitzenVulkan/Resources/vkResourcesUpload.h" 
+                "src/Renderer/BlitzenVulkan/Init/vulkanInit.h" 
+                "src/Renderer/BlitzenVulkan/Context/vulkanRenderer.cpp"
 
                 # GL
                 "src/Renderer/BlitzenGL/openglData.h"
@@ -169,7 +174,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/Resources/dx12Pipelines.cpp"
                 "src/Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
                 "src/Renderer/BlitzenDX12/Resources/dx12RNDResources.cpp"
-                
+                "src/Renderer/BlitzenDX12/Init/dx12Init.cpp"
                 "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.cpp"
                 "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHepers.cpp"
                 "src/Renderer/BlitzenDX12/dx12Draw.cpp"
@@ -177,7 +182,12 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/Update/dx12Update.cpp"
                 "src/Renderer/BlitzenDX12/Init/dx12Init.h"
                 "src/Renderer/BlitzenDX12/Cull/dx12Cull.cpp"
+                "src/Renderer/BlitzenDX12/Context/dx12Renderer.cpp"
+                "src/Renderer/BlitzenDX12/Init/dx12InitInterface.cpp"
+                "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.h"
+                "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp"
 
+                # vendor
                 "src/VendorCode/fast_obj.h"
                 "src/VendorCode/objparser.cpp"
                 "src/VendorCode/Meshoptimizer/indexgenerator.cpp"
@@ -191,7 +201,8 @@ add_executable(BlitzenEngine
                 
                 
                 "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h" "src/Renderer/BlitzenDX12/Init/dx12Init.cpp" "src/Renderer/BlitzenDX12/Context/dx12Renderer.cpp" "src/Renderer/BlitzenDX12/Init/dx12InitInterface.cpp" "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.h" "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp" "src/Renderer/BlitzenVulkan/Init/vkInitInterface.cpp" "src/Renderer/BlitzenVulkan/Resources/vulkanResources.h" "src/Renderer/BlitzenVulkan/Resources/vkResourceUploadInterface.cpp" "src/Renderer/BlitzenVulkan/Resources/vkResourcesUpload.h" "src/Renderer/BlitzenVulkan/Init/vulkanInit.h" "src/Renderer/BlitzenVulkan/Context/vulkanRenderer.cpp")
+                "src/Client/ClientWV/wvData.h"
+                 "src/Renderer/Resources/Mesh/blitClusters.h"  "src/Renderer/Resources/Mesh/blitMeshPrimitive.cpp" "src/Renderer/Resources/Mesh/blitTriangle.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
