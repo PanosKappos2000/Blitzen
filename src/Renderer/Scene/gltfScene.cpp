@@ -276,7 +276,10 @@ namespace BlitzenEngine
             meshPrimitiveContext.m_vertices = vertices.Data();
             if (prim.material)
             {
-                meshPrimitiveContext.m_specialFlags = prim.material->alpha_mode != cgltf_alpha_mode_opaque ? MESH_PRIMITIVE_SPECIAL_TRANSPARENT : MESH_PRIMITIVE_SPECIAL_NONE;
+                if (prim.material->alpha_mode != cgltf_alpha_mode_opaque)
+                {
+                    meshPrimitiveContext.m_specialFlags |= MESH_PRIMITIVE_SPECIAL_TRANSPARENT;
+                }
                 meshPrimitiveContext.m_materialID = textureContext.m_materials[previousMaterialCount + cgltf_material_index(cgltfScope.pData, prim.material)].materialId;
             }
             auto meshPrimitiveRes{ meshContext.m_meshPrimitives.GenerateSurface(meshContext.m_triangles, meshContext.m_clusters, meshPrimitiveContext) };
@@ -368,9 +371,11 @@ namespace BlitzenEngine
                 nodeContext.m_transformInfo.m_pTransform = &transform;
 
                 uint32_t surfaceOffset{ meshContext.m_meshes[meshIdx].firstSurface };
+                BlitCL::DynamicArray<RENDER_OBJECT_TYPE> renderTypes{ meshContext.m_meshes[meshIdx].surfaceCount };
+                nodeContext.m_renderTypes = renderTypes.Data();
                 for (uint32_t prim = 0; prim < meshContext.m_meshes[meshIdx].surfaceCount; ++prim)
                 {
-                    nodeContext.m_renderTypes[prim] = &meshContext.m_meshPrimitives.m_meshPrimitiveData[prim + surfaceOffset].m_primitiveTransparencyFlags ? 
+                    renderTypes[prim] = meshContext.m_meshPrimitives.m_meshPrimitiveData[prim + surfaceOffset].m_primitiveTransparencyFlags ?
                         RENDER_OBJECT_TYPE::TRANSPARENT_STATIC : RENDER_OBJECT_TYPE::OPAQUE_STATIC;
                 }
 

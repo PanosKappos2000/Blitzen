@@ -505,7 +505,7 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, sizeof(BlitzenEngine::PrimitiveSurface));
 
-			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), ctx, BlitzenCore::Ce_MaxDynamicObjectCount + context.m_pResidents->m_transforms.m_staticTransformCount, 
+			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), ctx, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, 
 				sizeof(BlitzenEngine::MeshTransform));
 
 			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_renderCount, sizeof(BlitzenEngine::RenderObject));

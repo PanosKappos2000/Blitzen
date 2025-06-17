@@ -79,11 +79,9 @@ namespace BlitzenEngine
                 return BlitzenCore::Ce_MaxWorldTransformCount;
             }
 
-            auto& newcomer = m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_dynamicTransformCount];
-
             if (context.m_pTransform != nullptr)
             {
-                BlitzenCore::BlitMemCopy(&newcomer, context.m_pTransform, sizeof(MeshTransform));
+                BlitzenCore::BlitMemCopy(&m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_pTransform, sizeof(MeshTransform));
             }
             else
             {
@@ -93,7 +91,7 @@ namespace BlitzenEngine
                     return BlitzenCore::Ce_MaxWorldTransformCount;
                 }
 
-                RandomizeTransform(newcomer, context.m_randomTransformMultiplier, context.m_scale);
+                RandomizeTransform(m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_randomTransformMultiplier, context.m_scale);
             }
             
             m_transformCount++;
@@ -109,11 +107,9 @@ namespace BlitzenEngine
                 return BlitzenCore::Ce_MaxWorldTransformCount;
             }
 
-            auto& newcomer = m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount];
-
             if (context.m_pTransform != nullptr)
             {
-                BlitzenCore::BlitMemCopy(&newcomer, context.m_pTransform, sizeof(MeshTransform));
+                BlitzenCore::BlitMemCopy(&m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_pTransform, sizeof(MeshTransform));
             }
             else
             {
@@ -123,7 +119,7 @@ namespace BlitzenEngine
                     return BlitzenCore::Ce_MaxWorldTransformCount;
                 }
 
-                RandomizeTransform(newcomer, context.m_randomTransformMultiplier, context.m_scale);
+                RandomizeTransform(m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_randomTransformMultiplier, context.m_scale);
             }
 
             m_transformCount++;

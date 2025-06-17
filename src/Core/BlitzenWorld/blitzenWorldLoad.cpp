@@ -56,17 +56,16 @@ namespace BlitzenWorld
 #if defined(DEFAULT_GLTF_SCENE_TEST)
 
                 BlitzenEngine::SCENE_CREATE_CONTEXT defaultGltfSceneCtx{};
-                defaultGltfSceneCtx.m_name = "Default Gltf Scene";
+                defaultGltfSceneCtx.m_name = BlitzenCore::Ce_PrimaryGltfTestScene;
                 defaultGltfSceneCtx.m_type = BlitzenEngine::SceneType::GltfSceneTest;
                 defaultGltfSceneCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
                 defaultGltfSceneCtx.pResidents = context.pWORLD->P_RESIDENTS.Data();
                 defaultGltfSceneCtx.pResources = context.pRenderingResources;
 
-                context.pWORLD->m_scenes.EmplaceEmtpy();
-                auto defaultGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes.Back(), defaultGltfSceneCtx) };
+                auto defaultGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], defaultGltfSceneCtx) };
 
-                BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL(defaultGltfRes));
-                if (BlitzenCore::BLIT_CHECK_FAIL(defaultGltfRes))
+                BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)defaultGltfRes));
+                if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)defaultGltfRes))
                 {
                     BLIT_ERROR("Failed to load default gltf scene. The engine will continue but there will be unexpected behaviour");
                 }
@@ -75,32 +74,35 @@ namespace BlitzenWorld
 
 #if defined(LOAD_CMD_ARG_GLTF_FILEPATHS)
 
-                BlitzenEngine::SCENE_CREATE_CONTEXT cmdArgGltfContext{};
-                cmdArgGltfContext.m_name = "CmdArg Gltf Scene";
-                cmdArgGltfContext.m_type = BlitzenEngine::SceneType::GltfSceneTest;
-                cmdArgGltfContext.pRenderer = context.pWORLD->P_RENDERER.Data();
-                cmdArgGltfContext.pResidents = context.pWORLD->P_RESIDENTS.Data();
-                cmdArgGltfContext.pResources = context.pRenderingResources;
-
-                context.pWORLD->m_scenes.EmplaceEmtpy();
-                auto cmdArgGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes.Back(), cmdArgGltfContext) };
-
-                BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL(cmdArgGltfRes));
-                if (BlitzenCore::BLIT_CHECK_FAIL(cmdArgGltfRes))
+                if (argc > 1)
                 {
-                    BLIT_ERROR("Failed to load default gltf scene. The engine will continue but there will be unexpected behaviour");
+                    BlitzenEngine::SCENE_CREATE_CONTEXT cmdArgGltfContext{};
+                    cmdArgGltfContext.m_name = argv[1];
+                    cmdArgGltfContext.m_type = BlitzenEngine::SceneType::GltfSceneTest;
+                    cmdArgGltfContext.pRenderer = context.pWORLD->P_RENDERER.Data();
+                    cmdArgGltfContext.pResidents = context.pWORLD->P_RESIDENTS.Data();
+                    cmdArgGltfContext.pResources = context.pRenderingResources;
+
+                    auto cmdArgGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], cmdArgGltfContext) };
+
+                    BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)cmdArgGltfRes));
+                    if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)cmdArgGltfRes))
+                    {
+                        BLIT_ERROR("Failed to load default gltf scene. The engine will continue but there will be unexpected behaviour");
+                    }
                 }
 #endif
 
                 if (!BlitzenEngine::UploadResourcesToGPU(context.pWORLD->P_RENDERER.Data(), drawContext))
                 {
                     BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
-                    
+
                     *context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
                     return;
                 }
 
                 *context.pEngineState = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
+                
             }
         }
     }

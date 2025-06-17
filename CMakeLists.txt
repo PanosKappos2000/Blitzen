@@ -102,6 +102,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/Scene/gltfScene.h"
                 "src/Renderer/Scene/gltfScene.cpp"
                 "src/Renderer/Resources/Mesh/blitTriangle.h"
+                "src/Renderer/Resources/Mesh/blitMeshPrimitive.cpp" 
+                "src/Renderer/Resources/Mesh/blitTriangle.cpp"
 
                 # CAMERA
                 "src/Renderer/View/blitCamera.h"
@@ -202,7 +204,7 @@ add_executable(BlitzenEngine
                 
                 "src/Client/WVRotatingKitten.h"   
                 "src/Client/ClientWV/wvData.h"
-                 "src/Renderer/Resources/Mesh/blitClusters.h"  "src/Renderer/Resources/Mesh/blitMeshPrimitive.cpp" "src/Renderer/Resources/Mesh/blitTriangle.cpp")
+                 "src/Renderer/Resources/Mesh/blitClusters.h"  )
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -264,7 +266,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             RENDERER_STRESS_TEST
                             #MOVING_RESIDENT_TEST
                             #DEFAULT_GLTF_SCENE_TEST
-                            #LOAD_CMD_ARG_GLTF_FILEPATHS
+                            LOAD_CMD_ARG_GLTF_FILEPATHS
 
                             DASHER_JOIN
                             DASHER_USE_DEAR

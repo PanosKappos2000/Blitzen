@@ -49,8 +49,8 @@ namespace BlitzenEngine
         meshopt_optimizeVertexFetch(context.m_vertices, context.m_indices, context.m_indexCount, context.m_vertices, context.m_vertexCount, sizeof(Vertex));
         
         // Adds vertex offset and vertex count
-        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexCount = primitives.m_vertexCount;
-        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset = context.m_vertexCount;
+        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset = primitives.m_vertexCount;
+        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexCount = context.m_vertexCount;
 
         // Vertices read to be added after optimize
         if (!primitives.AddVertices(context.m_vertices, context.m_vertexCount))
@@ -171,14 +171,14 @@ namespace BlitzenEngine
 
                 if (nextIndicesSize > lodIndices.GetSize())
                 {
-                    BLIT_ERROR("%s: Something went wrong with LOD generation: LOD algorithm size mismatch", BlitzenCore::CE_MESH_SYSTEM_NAME);
-                    return false;
+                    BLIT_WARN("%s: Something went wrong with LOD generation: LOD algorithm size mismatch", BlitzenCore::CE_MESH_SYSTEM_NAME);
+                    break;
                 }
                 // Reached the error bounds
                 if (nextIndicesSize == lodIndices.GetSize() || nextIndicesSize == 0)
                 {
-                    BLIT_ERROR("%s: Next LOD has hit error bounds", BlitzenCore::CE_MESH_SYSTEM_NAME);
-                    return false;
+                    BLIT_WARN("%s: Next LOD has hit error bounds", BlitzenCore::CE_MESH_SYSTEM_NAME);
+                    break;
                 }
                 
                 if (nextIndicesSize >= size_t(double(lodIndices.GetSize()) * 0.95))
@@ -202,11 +202,9 @@ namespace BlitzenEngine
             return false;
         }
 
-        // Adds vertex offset before appending all lods to the global indices array
-        uint32_t vertexOffset = m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexCount;
         for (uint32_t& index : allLodIndices)
         {
-            index += vertexOffset;
+            index += context.m_vertexOffset;
         }
 
         if (!context.m_pPrimitives->AddIndices(allLodIndices.Data(), uint32_t(allLodIndices.GetSize())))

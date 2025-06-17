@@ -148,6 +148,7 @@ namespace BlitzenCore
     constexpr uint8_t Ce_MaxCameraCount = 1;
     constexpr uint8_t Ce_MainCameraId = 0;
 
+    constexpr const char* Ce_PrimaryGltfTestScene = "../../GltfTestScenes/Scenes/Plaza/scene.gltf";
 
     /********************************************************************************************************************************************************
     * SECTION: RENDERING RESOURCES CONSTANTS                                                                                                                *
@@ -162,8 +163,8 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMaterialCount = 10'000;
 	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
-    constexpr uint32_t Ce_MaxWorldVertexCount = 3'000'000;
-    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = 3'000'000;
+    constexpr uint32_t Ce_MaxWorldVertexCount = 10'000'000;
+    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = 10'000'000;
     static_assert(Ce_MaxWorldVertexCount <= Ce_MaxWorldVertexIndicesCount);
 
     constexpr uint32_t Ce_MaxMeshCount = 10'000;
