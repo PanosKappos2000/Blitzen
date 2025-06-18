@@ -24,6 +24,8 @@ namespace BlitzenEngine
             return false;
         }
 
+        pResources->m_meshContext.m_triangles.ALLOC();
+
         uint32_t bunnyMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenCore::Ce_DefaultMeshName) };
         if (bunnyMeshId == BlitzenCore::Ce_MaxMeshCount)
         {
@@ -51,10 +53,6 @@ namespace BlitzenEngine
             BLIT_ERROR("Failed to load default human mesh");
             return false;
         }
-
-#if defined(_WIN32) && !defined(BLIT_VK_FORCE) && !defined(BLIT_GL_LEGACY_OVERRIDE)
-        pResources->m_meshContext.HLSL_TRIANGLES.ALLOC();
-#endif
 
         // Success
         return true;

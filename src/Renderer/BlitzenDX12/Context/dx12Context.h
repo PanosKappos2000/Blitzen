@@ -1,5 +1,4 @@
 #if defined(_WIN32)
-
 #pragma once 
 #include "dx12Data.h"
 #include "Renderer/View/blitCamera.h"
@@ -11,21 +10,24 @@ namespace BlitzenDX12
     {
         UINT BUFFER_COUNT{ 0 };
 
-        SSBO m_vtxBuffer;
+        SSBO m_vtxPosBuffer{};
+        SSBO m_vtxTexCoordBuffer{};
+        SSBO m_vtxNrmBuffer{};
+        SSBO m_vtxTangentBuffer{};
 
-        INDEX_BUFFER m_idxBuffer;
+        INDEX_BUFFER m_idxBuffer{};
 
-        INDEX_BUFFER m_clusterIdxBuffer;
+        INDEX_BUFFER m_clusterIdxBuffer{};
 
-        SSBO m_surfaceBuffer;
+        SSBO m_surfaceBuffer{};
 
-        SSBO m_LODBuffer;
+        SSBO m_LODBuffer{};
 
-        SSBO m_clusterBuffer;
+        SSBO m_clusterBuffer{};
 
-        SSBO m_matBuffer;
+        SSBO m_matBuffer{};
 
-        SSBO m_renderBuffer;
+        SSBO m_renderBuffer{};
 
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
@@ -105,8 +107,8 @@ namespace BlitzenDX12
         D3D12_GPU_DESCRIPTOR_HANDLE m_clusterDispatchAdditionalUAVsHandle[ce_framesInFlight];
 
         // View for material descriptor
-        SIZE_T m_materialSRVOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE m_materialSRVHandle;
+        SIZE_T m_opaqueDrawPSExclusiveViewsOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_opaqueDrawPSExclusiveViewsHandle;
 
         // Views for texture descriptor array start
         SIZE_T m_texDescriptorsSRVOffset;

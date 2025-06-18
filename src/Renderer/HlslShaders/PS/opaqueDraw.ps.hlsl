@@ -3,44 +3,21 @@ struct PSOutput
     float4 color : SV_TARGET;
 };
 
-struct Material
-{
-    uint albedoTag;
-    uint normalTag;
-    uint specularTag;
-    uint emissiveTag;
-
-    uint materialId;
-    uint padding0;
-    uint padding1;
-    uint padding2;
-};
-StructuredBuffer<Material> ssbo_MaterialBuffer : register(t5);
-
-SamplerState smp_textureSampler : register(s0);
-Texture2D<float4> tex_Textures[5000] : register(t8);
-
-
-struct VSOutput
-{
-    float4 position : SV_POSITION;
-    float2 uvMapping : TEXCOORD0;
-    uint materialId : TEXCOORD1;
-    float3 normal : NORMAL;
-    float4 tangent : TANGENT;
-};
+#include "../Headers/psBuffers.hlsl"
+#include "../Headers/hlslMath.hlsl"
 
 //#define NO_PS_TEST
 
 PSOutput main(VSOutput input)
 {
-    #ifdef NO_PS_TEST
+#ifdef NO_PS_TEST
     
     PSOutput output;
-    output.color = float4(1, 0, 0, 1);
+    output.color = float4(input.tangent.xyz, 1);
     return output;
     
-    #else
+#else
+    
     PSOutput output;
     Material mat = ssbo_MaterialBuffer[input.materialId];
     
@@ -48,19 +25,19 @@ PSOutput main(VSOutput input)
     if(mat.albedoTag != 0)
     {
         Texture2D<float4> albedo = tex_Textures[NonUniformResourceIndex(mat.albedoTag)];
-        albedoMap = albedo.Sample(smp_textureSampler, input.uvMapping);
+        albedoMap = albedo.Sample(smp_textureSampler, input.texCoord);
     }
     float3 normalMap = float3(0, 0, 1);
     if(mat.normalTag != 0)
     {
         Texture2D<float4> normal = tex_Textures[NonUniformResourceIndex(mat.normalTag)];
-        normalMap = normal.Sample(smp_textureSampler, input.uvMapping).rgb * 2 - 1;
+        normalMap = normal.Sample(smp_textureSampler, input.texCoord).rgb * 2 - 1;
     }
     float3 emissiveMap = float3(0.0, 0.0, 0.0);
     if(mat.emissiveTag != 0)
     {
         Texture2D<float4> emissive = tex_Textures[NonUniformResourceIndex(mat.emissiveTag)];
-        emissiveMap = emissive.Sample(smp_textureSampler, input.uvMapping).rgb;
+        emissiveMap = emissive.Sample(smp_textureSampler, input.texCoord).rgb;
     }
 
     float3 bitangent = cross(input.normal, input.tangent.xyz) * input.tangent.w;
@@ -72,5 +49,5 @@ PSOutput main(VSOutput input)
     output.color = float4(albedoMap.rgb * sqrt(ndotl + 0.05) + emissiveMap, albedoMap.a);
     return output;
     
-    #endif
+#endif
 }

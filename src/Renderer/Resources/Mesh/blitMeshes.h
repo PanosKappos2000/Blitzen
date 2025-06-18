@@ -15,7 +15,6 @@ namespace BlitzenEngine
 
         MeshPrimitivesContainer m_meshPrimitives{};
         PrimitiveContainer m_triangles{};
-        HLSL_PrimitiveContainer HLSL_TRIANGLES{};
         ClusterContainer m_clusters{};
 
         uint32_t AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName = "BLIT_DO_NOT_ADD_TO_MESH_TABLE");

@@ -163,8 +163,9 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMaterialCount = 10'000;
 	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
-    constexpr uint32_t Ce_MaxWorldVertexCount = 10'000'000;
-    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = 10'000'000;
+    constexpr uint32_t CE_TRIANGLE_VERTICES = 3;
+    constexpr uint32_t Ce_MaxWorldVertexCount = 30'000'000;
+    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = Ce_MaxWorldVertexCount * CE_TRIANGLE_VERTICES;
     static_assert(Ce_MaxWorldVertexCount <= Ce_MaxWorldVertexIndicesCount);
 
     constexpr uint32_t Ce_MaxMeshCount = 10'000;

@@ -88,7 +88,10 @@ namespace BlitzenDX12
     {
 		// Range for descriptor table for SRVs that are allocated in the exclusive region of the heap for this root
 		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[Ce_OpaqueDrawExclusiveSRVsRangeCount]{};
-		CreateDescriptorRange(opaqueSrvRanges[Ce_OpaqueDrawVtxSRVRangeId], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawVtxxSRVRegister);
+		CreateDescriptorRange(opaqueSrvRanges[Ce_OpaqueDrawVtxPosSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawVtxPosSRVRegister);
+		CreateDescriptorRange(opaqueSrvRanges[Ce_OpaqueDrawVtxNormalSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawVtxNormalSRVRegister);
+		CreateDescriptorRange(opaqueSrvRanges[Ce_OpaqueDrawVtxTangentSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawVtxTangentSRVRegister);
+		CreateDescriptorRange(opaqueSrvRanges[Ce_OpaqueDrawVtxTexCoordSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawVtxTexCoordSRVRegister);
 
 		// Ranges for descrtiptor table for SRVs that are allocated in the shared section of the heap
 		D3D12_DESCRIPTOR_RANGE sharedSrvRanges[Ce_SharedSRVsRangeCount]{};
@@ -102,8 +105,8 @@ namespace BlitzenDX12
 		CreateDescriptorRange(textureSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, Ce_OpaqueDrawTexSMPRegister);
 
 		// Range for material buffer (pixel shader only)
-		D3D12_DESCRIPTOR_RANGE materialSrvRange{};
-		CreateDescriptorRange(materialSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawMatSRVRegister);
+		D3D12_DESCRIPTOR_RANGE materialSrvRange[Ce_OpaqueDrawPSExclusiveSRVsRangeCount]{};
+		CreateDescriptorRange(materialSrvRange[Ce_OpaqueDrawPSMaterialSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_OpaqueDrawPSMaterialSRVRegister);
 
 		// Range for textures
 		D3D12_DESCRIPTOR_RANGE textureSrvsRange{};
@@ -115,7 +118,7 @@ namespace BlitzenDX12
 		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterPushConstants(opaqueDrawRootParams[Ce_OpaqueDrawObjIDRootID], Ce_OpaqueDrawObjIDConstantRegister, 0, Ce_OpaqueDrawObjIDConstant32BitCount, D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawTexSMPRootID], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawMatSRVRootID], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawMatSRVRootID], materialSrvRange, Ce_OpaqueDrawPSExclusiveSRVsRangeCount, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawTexSRVRootID], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
 		// OPAQUE DRAW ROOT
@@ -167,7 +170,7 @@ namespace BlitzenDX12
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
 			CreateRootParameterPushConstants(opaqueDrawInstRootParams[Ce_OpaqueDrawObjIDRootID], Ce_OpaqueDrawObjIDConstantRegister, 0, Ce_OpaqueDrawObjIDConstant32BitCount, D3D12_SHADER_VISIBILITY_VERTEX);
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstTexSMPRootID], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
-			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstMatSRVRootID], &materialSrvRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstMatSRVRootID], materialSrvRange, Ce_OpaqueDrawPSExclusiveSRVsRangeCount, D3D12_SHADER_VISIBILITY_PIXEL);
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstTexSRVRootID], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstInstSRVRootID], &instanceBufferRange, 1, D3D12_SHADER_VISIBILITY_VERTEX);
 
@@ -576,9 +579,27 @@ namespace BlitzenDX12
 
 	uint8_t CreateROResources(ID3D12Device* device, ReadOnlyResources& roResources)
 	{
-		if (CreateSSBO<BlitzenEngine::HlslVtx>(device, roResources.m_vtxBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		if (CreateSSBO<BlitzenEngine::VtxPos>(device, roResources.m_vtxPosBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
 		{
-			BLIT_ERROR("%s: Failed to create vertex buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_ERROR("%s: Failed to create vertex positions buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (CreateSSBO<BlitzenEngine::VtxNormals>(device, roResources.m_vtxNrmBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create vertex normals buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (CreateSSBO<BlitzenEngine::VtxTangents>(device, roResources.m_vtxTangentBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create vertex tangents buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (CreateSSBO<BlitzenEngine::VtxTexCoords>(device, roResources.m_vtxTexCoordBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create vertex tex coords buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 

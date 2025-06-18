@@ -51,7 +51,7 @@ namespace BlitzenWorld
         // World residents
         WorldResidentsSystemMemory P_RESIDENTS{};
 
-        float deltaTime;
+        float deltaTime{0.f};
 
         inline WORLD_blit(BlitzenEngine::Camera& camera, BlitzenEngine::MeshResources& meshes, BlitzenEngine::TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
             :m_drawContext{ camera, meshes, textureManager, pPlatform }

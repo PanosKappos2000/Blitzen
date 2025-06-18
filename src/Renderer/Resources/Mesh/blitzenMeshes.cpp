@@ -125,24 +125,14 @@ namespace BlitzenEngine
 
     bool GenerateHlslVertices(MeshResources& context)
     {
-        if (!context.HLSL_TRIANGLES.HLSL_VERTICES)
-        {
-            BLIT_ERROR("hlslVtxs should be empty before generation");
-            return false;
-        }
-
         for (size_t vert = 0; vert < context.m_triangles.m_vertexCount; ++vert)
         {
             const auto& classic = context.m_triangles.m_vertices[vert];
-            auto& hlsl{context.HLSL_TRIANGLES.HLSL_VERTICES[vert]};
 
-            hlsl.position = classic.position;
-
-            hlsl.mappingU = classic.uvX;
-            hlsl.mappingV = classic.uvY;
-
-            hlsl.normals = classic.normalX << 24 | classic.normalY << 16 | classic.normalZ << 8 | classic.normalW;
-            hlsl.tangents = classic.tangentX << 24 | classic.tangentY << 16 | classic.tangentZ << 8 | classic.tangentW;
+            context.m_triangles.m_vertexPositions[vert] = classic.position;
+            context.m_triangles.m_vertexUVs[vert] = VtxTexCoords{ classic.uvX, classic.uvY };
+            context.m_triangles.m_vertexNormals[vert] = VtxNormals{ classic.normalX / 127.5f - 1.0f, classic.normalY / 127.5f - 1.0f, classic.normalZ / 127.5f - 1.0f, classic.normalW / 127.5f - 1.0f };
+            context.m_triangles.m_vertexTangents[vert] = VtxTangents{ classic.tangentX / 127.5f - 1.0f, classic.tangentY / 127.5f - 1.0f, classic.tangentZ / 127.5f - 1.0f, classic.tangentW / 127.5f - 1.0f };
         }
 
         return true;

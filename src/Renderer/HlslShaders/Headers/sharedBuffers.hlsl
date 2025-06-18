@@ -22,14 +22,14 @@ struct Transform
     float scale;
     float4 orientation;
 };
-StructuredBuffer<Transform> ssbo_Transforms : register(t3);
+StructuredBuffer<Transform> ssbo_Transforms : register(t1);
 
 struct Render
 {
     uint transformId;
     uint surfaceId;
 };
-StructuredBuffer<Render> ssbo_Renders : register(t4);
+StructuredBuffer<Render> ssbo_Renders : register(t0);
 
 #ifdef DRAW_INSTANCING
 

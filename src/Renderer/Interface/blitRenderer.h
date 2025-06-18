@@ -56,6 +56,8 @@ namespace BlitzenEngine
 
     uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
 
+    void PrepareRendererForRuntime(RendererPtrType pRenderer);
+
     void BarRenderFrame(RendererPtrType pContext);
 
     void HI_Z_MAP_Gen(RendererPtrType pContext);

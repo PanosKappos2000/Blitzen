@@ -67,10 +67,10 @@ namespace BlitzenDX12
     constexpr UINT Ce_SurfaceSRVRegister = 2;
     constexpr UINT Ce_SurfaceSRVRangeID = 0;
      
-    constexpr UINT Ce_TransformSRVRegister = 3;
+    constexpr UINT Ce_TransformSRVRegister = 1;
     constexpr UINT Ce_TransformSRVRangeID = 1;
 
-    constexpr UINT Ce_RenderSRVRegister = 4;
+    constexpr UINT Ce_RenderSRVRegister = 0;
     constexpr UINT Ce_RenderSRVRangeID = 2;
 
     constexpr UINT Ce_ViewCBVRegister = 0;
@@ -200,15 +200,28 @@ namespace BlitzenDX12
 
     // DESCRIPTORS FOR OPAQUE DRAW :
     // exclusive range specific
-    constexpr UINT Ce_OpaqueDrawExclusiveSRVsRangeCount = 1;
-    constexpr UINT Ce_OpaqueDrawVtxxSRVRegister = 0;
-    constexpr UINT Ce_OpaqueDrawVtxSRVRangeId = 0;
+    constexpr UINT Ce_OpaqueDrawExclusiveSRVsRangeCount = 4;
+
+    constexpr UINT Ce_OpaqueDrawVtxPosSRVRegister = 3;
+    constexpr UINT Ce_OpaqueDrawVtxPosSRVRangeID = 0;
+
+    constexpr UINT Ce_OpaqueDrawVtxNormalSRVRegister = 4;
+    constexpr UINT Ce_OpaqueDrawVtxNormalSRVRangeID = 1;
+
+    constexpr UINT Ce_OpaqueDrawVtxTangentSRVRegister = 5;
+    constexpr UINT Ce_OpaqueDrawVtxTangentSRVRangeID = 2;
+
+    constexpr UINT Ce_OpaqueDrawVtxTexCoordSRVRegister = 6;
+    constexpr UINT Ce_OpaqueDrawVtxTexCoordSRVRangeID = 3;
+
+    // exclusive ps range 
+    constexpr UINT Ce_OpaqueDrawPSExclusiveSRVsRangeCount = 1;
+
+    constexpr UINT Ce_OpaqueDrawPSMaterialSRVRegister = 7;
+    constexpr UINT Ce_OpaqueDrawPSMaterialSRVRangeID = 0;
 
     // texture sampler
     constexpr UINT Ce_OpaqueDrawTexSMPRegister = 0;
-
-    // material buffer
-    constexpr UINT Ce_OpaqueDrawMatSRVRegister = 5;
 
     // object id root constant
     constexpr UINT Ce_OpaqueDrawObjIDConstantRegister = 1;
@@ -257,14 +270,18 @@ namespace BlitzenDX12
 
 
     /* SSBO data copy helpers */
-    constexpr UINT Ce_ConstDataSSBOCount = 6;
-    constexpr UINT Ce_VertexStagingBufferIndex = 0;
+    constexpr UINT Ce_ConstDataSSBOCount = 9;
+    constexpr UINT Ce_VtxPosStagingBufferIndex = 0;
     constexpr UINT Ce_IndexStagingBufferIndex = 1;
     constexpr UINT Ce_SurfaceStagingBufferIndex = 2;
     constexpr UINT Ce_RenderStagingBufferIndex = 3;
     constexpr UINT Ce_LodStagingIndex = 4;
     constexpr UINT Ce_MaterialStagingIndex = 5;
-    constexpr UINT Ce_ClusterStagingIndex = 6;
+    constexpr UINT Ce_VtxTangentsStagingBufferIndex = 6;
+    constexpr UINT Ce_VtxNrmStagingBufferIndex = 7;
+    constexpr UINT Ce_VtxTexCoordStagingBufferIndex = 8;
+    // optional, when clusters are requested
+    constexpr UINT Ce_ClusterStagingIndex = 9;
     
     constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
 

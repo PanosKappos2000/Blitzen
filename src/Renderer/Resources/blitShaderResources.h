@@ -4,6 +4,11 @@
 
 namespace BlitzenEngine
 {
+    using VtxPos = BlitML::vec3;
+    using VtxTexCoords = BlitML::vec2;
+    using VtxNormals = BlitML::vec4;
+    using VtxTangents = BlitML::vec4;
+
     struct alignas(16) Vertex
     {
         BlitML::vec3 position;
@@ -13,15 +18,6 @@ namespace BlitzenEngine
         uint32_t padding0;
     };
     static_assert(sizeof(Vertex) % 16 == 0);
-
-    struct alignas(16) HlslVtx
-    {
-        BlitML::vec3 position;
-        float mappingU, mappingV;
-        uint32_t normals, tangents;
-        uint32_t padding0;
-    };
-    static_assert(sizeof(HlslVtx) % 16 == 0);
 
     struct BoundingSphere
     {
@@ -133,7 +129,7 @@ namespace BlitzenEngine
         uint32_t lodOffset;
         uint32_t lodCount{ 0 };
 
-        uint32_t padding0; // Not used in the shaders but can hold the offset when loading
+        uint32_t padding0;
     };
 
     struct alignas(16) MeshTransform
@@ -159,7 +155,6 @@ namespace BlitzenEngine
         uint32_t surfaceId;
         // uint32_t staticBoundingSphere; TODO: If a render object has a bounding sphere, it could carry it
     };
-
 
     struct Velocity
     {

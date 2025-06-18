@@ -13,6 +13,7 @@ namespace BlitzenDX12
         }
 
 		UINT srvHeapDescriptorCount = (Ce_SharedSRVsRangeCount + Ce_DrawCullSRVsRangeCount + Ce_OpaqueDrawExclusiveSRVsRangeCount) * ce_framesInFlight;
+        srvHeapDescriptorCount += Ce_OpaqueDrawPSExclusiveSRVsRangeCount;
         srvHeapDescriptorCount += Ce_OpaqueDrawTexDescriptorCount;
 
         if (BlitzenCore::Ce_InstanceCulling)
