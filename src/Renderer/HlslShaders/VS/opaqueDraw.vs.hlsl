@@ -16,7 +16,7 @@ VSOutput main(uint vertexIndex : SV_VERTEXID)
     // Material index
     output.materialId = ssbo_Surfaces[obj.surfaceId].materialId;
     
-    // Vertex index
+    // Tex coords
     output.texCoord = ssbo_VtxTexCoords[vertexIndex];
 
     // Normal

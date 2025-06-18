@@ -19,8 +19,8 @@ VSOutput main(uint vertexIndex : SV_VERTEXID, uint instId : SV_INSTANCEID)
     // Material index
     output.materialId = ssbo_Surfaces[obj.surfaceId].materialId;
     
-    // Vertex index
-    output.vtxID = vertexIndex;
+    // Tex coords
+    output.texCoord = ssbo_VtxTexCoords[vertexIndex];
 
     // Normal
     output.normal = RotateQuat(ssbo_VtxNormals[vertexIndex].xyz, orientation);
