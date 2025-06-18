@@ -171,7 +171,7 @@ namespace BlitzenDX12
 	constexpr UINT Ce_DrawOccTemporalHI_Z_MapRootId = 3;
 
     // DESCRIPTOR FOR CLUSTER CULL:
-    constexpr UINT Ce_ClusterDispatchAdditionalViewsRangeCount = 4;
+    constexpr UINT Ce_ClusterDispatchAdditionalViewsRangeCount = 6;
 
     // Cluster dispatch command buffer
     constexpr UINT Ce_ClusterCullCmdUAVRegister = 5;
@@ -185,9 +185,15 @@ namespace BlitzenDX12
     constexpr UINT Ce_ClusterCullGroupDataUAVRegister = 7;
     constexpr UINT Ce_ClusterCullGroupDataUAVRangerID = 2;
 
-    // Cluster srv buffer
-    constexpr UINT Ce_ClusterCullClusterSRVRegister = 8;
-    constexpr UINT Ce_ClusterCullClustersSRVRangeID = 3;
+    // Cluster attributes(3)
+    constexpr UINT Ce_ClusterCullClusterVtxsSRVRegister = 8;
+    constexpr UINT Ce_ClusterCullClusterVtxsSRVRangeID = 3;
+
+    constexpr UINT Ce_ClusterCullClusterSpheresSRVRegister = 9;
+    constexpr UINT Ce_ClusterCullClusterSpheresSRVRangeID = 4;
+
+    constexpr UINT Ce_ClusterCullClusterConesSRVRegister = 10;
+    constexpr UINT Ce_ClusterCullClusterConesSRVRangeID = 5;
 
     // root param descriptor grouping
     constexpr UINT Ce_ClusterCullRootParameterCount = 5;
@@ -281,7 +287,9 @@ namespace BlitzenDX12
     constexpr UINT Ce_VtxNrmStagingBufferIndex = 7;
     constexpr UINT Ce_VtxTexCoordStagingBufferIndex = 8;
     // optional, when clusters are requested
-    constexpr UINT Ce_ClusterStagingIndex = 9;
+    constexpr UINT Ce_ClusterVtxsStagingIndex = 9;
+    constexpr UINT Ce_ClusterSpheresStagingIndex = 10;
+    constexpr UINT Ce_ClusterConesStagingIndex = 11;
     
     constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
 

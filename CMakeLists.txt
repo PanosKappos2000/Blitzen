@@ -25,11 +25,11 @@ add_executable(BlitzenEngine
                 "src/Core/Events/blitzenTimeManager.cpp"
                 "src/Core/Events/blitEditorEvents.h"
                 # WORLD (ALL SYSTEMS)
-                "src/Core/BlitzenWorld/blitzenWorld.h"
+                "src/Renderer/WORLD/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 "src/Core/BlitzenWorld/blitzenWorldLoad.cpp"
                 "src/Core/BlitzenWorld/blitzenWorldUpdate.cpp"
-                "src/Core/BlitzenWorld/blitzenWorld.cpp"
+                "src/Renderer/WORLD/blitzenWorld.cpp"
                 "src/Core/blitzenWorld/blitzenVariableUpdate.cpp"
                 # DASHER UI
                 "src/Core/Dasher/Interface/dasherState.h"
@@ -86,7 +86,7 @@ add_executable(BlitzenEngine
 
                 # ENGINE RENDERING 
                 "src/Renderer/Interface/blitRenderer.h"
-                "src/Renderer/Interface/blitzenRenderer.cpp"
+                
                 "src/Renderer/Interface/blitRendererInterface.h"
                 "src/Renderer/Resources/blitShaderResources.h"
                 "src/Renderer/Resources/blitRenderingResources.h"
@@ -204,7 +204,7 @@ add_executable(BlitzenEngine
                 
                 "src/Client/WVRotatingKitten.h"   
                 "src/Client/ClientWV/wvData.h"
-                 "src/Renderer/Resources/Mesh/blitClusters.h"  )
+                 "src/Renderer/Resources/Mesh/blitClusters.h"   )
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

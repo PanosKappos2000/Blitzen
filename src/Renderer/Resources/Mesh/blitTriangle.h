@@ -22,4 +22,5 @@ namespace BlitzenEngine
 		bool AddIndices(uint32_t* indices, uint32_t count);
 	};
 
+	bool GenerateHlslVertices(PrimitiveContainer& context);
 }

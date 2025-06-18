@@ -49,22 +49,32 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         uint clusterOffset = ssbo_LODs[lodId].clusterOffset;
         uint clusterCount = ssbo_LODs[lodId].clusterCount;
         
-        int i = clusterCount;
-        uint current = 0;
+        int currentClusterCount = clusterCount;
+        uint currentLoop = 0;
 
-        // Root constant data
-        while(i > 0)
+        // Splits the clusters of the visible render object into groups of 64
+        while (currentClusterCount > 0)
         {
-            uint dataId;
-            InterlockedAdd(rwssbo_ClusterDispatch[0].groupX, 1, dataId);
+            // Increments group count and gets current group(the final result will be used to dispatch the next shader)
+            uint groupID;
+            InterlockedAdd(rwssbo_ClusterDispatch[0].groupX, 1, groupID);
             
-            rwssbo_ClusterGroupData[dataId].objId = objId;
-            rwssbo_ClusterGroupData[dataId].clusterOffset = clusterOffset + current * 64;
-            rwssbo_ClusterGroupData[dataId].clusterCount = clusterCount + clusterOffset;
-            rwssbo_ClusterGroupData[dataId].visibleAny = 0;
+            // Render object ID, for access to transform data
+            rwssbo_ClusterGroupData[groupID].objId = objId;
             
-            i -= 64;
-            current++;
+            // The cluster offset is incremented by 64 for each group created for this render object
+            // Each individual cluster will be accessed using the thread ID
+            rwssbo_ClusterGroupData[groupID].clusterOffset = clusterOffset + currentLoop * 64;
+            
+            // Cluster count is not the cluster count of this group but the maxID that this group is allowed to access
+            rwssbo_ClusterGroupData[groupID].clusterCount = clusterCount + clusterOffset;
+            
+            // Total visibility for this group set to 0. If this remains 0 after cluster culling, this group will be skipped completely during batching
+            rwssbo_ClusterGroupData[groupID].visibleAny = 0;
+            
+            // Loops again if there were more than 64 clusters remaining during this loops
+            currentClusterCount -= 64;
+            currentLoop++;
         }
     }
 }

@@ -17,13 +17,15 @@ namespace BlitzenDX12
 
         INDEX_BUFFER m_idxBuffer{};
 
+        SSBO m_clusterVtxsBuffer{};
+        SSBO m_clusterSpheresBuffer{};
+        SSBO m_clusterConesBuffer{};
+
         INDEX_BUFFER m_clusterIdxBuffer{};
 
         SSBO m_surfaceBuffer{};
 
         SSBO m_LODBuffer{};
-
-        SSBO m_clusterBuffer{};
 
         SSBO m_matBuffer{};
 

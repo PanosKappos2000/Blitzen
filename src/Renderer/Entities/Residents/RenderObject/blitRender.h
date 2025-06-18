@@ -33,10 +33,12 @@ namespace BlitzenEngine
 	struct RenderContainer
 	{
 		BlitzenEngine::RenderObject m_renders[BlitzenCore::Ce_MaxRenderObjectCount];
-
 		uint32_t m_renderCount{ 0 };
 		uint32_t m_transparentRenderCount{ 0 };
 		uint32_t m_opaqueRenderCount{ 0 };
+
+		BlitzenEngine::ClusterRender* m_clusterRenders{nullptr};
+		uint32_t m_clusterRenderCount{ 0 };
 
 		uint32_t CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context);
 	};

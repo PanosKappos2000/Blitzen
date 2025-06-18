@@ -7,7 +7,7 @@ namespace BlitzenEngine
 {
 	uint8_t UploadResourcesToGPU(BlitzenDX12::Dx12Renderer* pRenderer, DrawContext& drawContext)
 	{
-		if (!BlitzenEngine::GenerateHlslVertices(drawContext.m_meshes))
+		if (!BlitzenEngine::GenerateHlslVertices(drawContext.m_meshes.m_triangles))
 		{
 			BLIT_ERROR("%s: Failed to generate HLSL vertices", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -15,7 +15,7 @@ namespace BlitzenEngine
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			if (!BlitzenEngine::GenerateHLSLClusters(drawContext.m_meshes))
+			if (!BlitzenEngine::GenerateHLSLClusters(drawContext.m_meshes.m_clusters))
 			{
 				BLIT_ERROR("%s: Failed to generate HLSL clusters", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;

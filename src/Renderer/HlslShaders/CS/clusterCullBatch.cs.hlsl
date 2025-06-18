@@ -27,7 +27,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
         {
             if(visible == 1)
             {
-                ssbo_DrawCmd[cmdId].indexCount += ssbo_Clusters[groupData.clusterOffset + i].idxCount;
+                ssbo_DrawCmd[cmdId].indexCount += ssbo_ClusterVertices[groupData.clusterOffset + i].idxCount;
             }
             else
             {
@@ -35,8 +35,8 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
                 
                 ssbo_DrawCmd[cmdId].objId = groupData.objId;
                 
-                ssbo_DrawCmd[cmdId].indexCount = ssbo_Clusters[groupData.clusterOffset + i].idxCount;
-                ssbo_DrawCmd[cmdId].indexOffset = ssbo_Clusters[groupData.clusterOffset + i].idxOffset;
+                ssbo_DrawCmd[cmdId].indexCount = ssbo_ClusterVertices[groupData.clusterOffset + i].idxCount;
+                ssbo_DrawCmd[cmdId].indexOffset = ssbo_ClusterVertices[groupData.clusterOffset + i].idxOffset;
                 ssbo_DrawCmd[cmdId].vertOffset = 0;
                 
                 ssbo_DrawCmd[cmdId].instCount = 1;

@@ -9,7 +9,7 @@ namespace BlitzenWorld
 {
     void LoadingLoop(int argc, char** argv, BlitzenPrivateContext& context, BlitzenEngine::DrawContext& drawContext)
     {
-        BLIT_ASSERT(BlitzenEngine::RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data()));
+        BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data()));
 
         while (true)
         {
@@ -21,7 +21,7 @@ namespace BlitzenWorld
                 stressTestCtx.m_name = "Renderer Stress Test Scene";
                 stressTestCtx.m_type = BlitzenEngine::SceneType::RendererStressTest;
                 stressTestCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-                stressTestCtx.pResidents = context.pWORLD->P_RESIDENTS.Data();
+                stressTestCtx.pResidents = &context.pWORLD->m_residents;
                 stressTestCtx.pResources = context.pRenderingResources;
 
                 auto stressTestSceneRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], stressTestCtx)};
@@ -39,7 +39,7 @@ namespace BlitzenWorld
                 movingResidentSceneCtx.m_name = "Moving Residents Test Scene";
                 movingResidentSceneCtx.m_type = BlitzenEngine::SceneType::MovingResidentTest;
                 movingResidentSceneCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-                movingResidentSceneCtx.pResidents = context.pWORLD->P_RESIDENTS.Data();
+                movingResidentSceneCtx.pResidents = &context.pWORLD->m_residents;
                 movingResidentSceneCtx.pResources = context.pRenderingResources;
 
                 context.pWORLD->m_scenes.EmplaceEmtpy();
@@ -59,7 +59,7 @@ namespace BlitzenWorld
                 defaultGltfSceneCtx.m_name = BlitzenCore::Ce_PrimaryGltfTestScene;
                 defaultGltfSceneCtx.m_type = BlitzenEngine::SceneType::GltfSceneTest;
                 defaultGltfSceneCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-                defaultGltfSceneCtx.pResidents = context.pWORLD->P_RESIDENTS.Data();
+                defaultGltfSceneCtx.pResidents = &context.pWORLD->m_residents;
                 defaultGltfSceneCtx.pResources = context.pRenderingResources;
 
                 auto defaultGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], defaultGltfSceneCtx) };
@@ -80,7 +80,7 @@ namespace BlitzenWorld
                     cmdArgGltfContext.m_name = argv[1];
                     cmdArgGltfContext.m_type = BlitzenEngine::SceneType::GltfSceneTest;
                     cmdArgGltfContext.pRenderer = context.pWORLD->P_RENDERER.Data();
-                    cmdArgGltfContext.pResidents = context.pWORLD->P_RESIDENTS.Data();
+                    cmdArgGltfContext.pResidents = &context.pWORLD->m_residents;
                     cmdArgGltfContext.pResources = context.pRenderingResources;
 
                     auto cmdArgGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], cmdArgGltfContext) };

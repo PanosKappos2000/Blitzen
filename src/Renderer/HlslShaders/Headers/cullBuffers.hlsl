@@ -21,22 +21,26 @@ struct ClusterGroupData
 };
 RWStructuredBuffer<ClusterGroupData> rwssbo_ClusterGroupData : register(u7);
 
-struct Cluster
+struct ClusterVertices
 {
-    // Bounding sphere
-    float3 center;
-    float radius;
-
-    // Packs data for backface culling
-    int coneAxisDataPack;
-
-    // Used to setup draw commands
     uint idxOffset;
     uint idxCount;
-
-    uint padding0;
 };
-StructuredBuffer<Cluster> ssbo_Clusters : register(t8);
+StructuredBuffer<ClusterVertices> ssbo_ClusterVertices : register(t8);
+
+struct ClusterSphere
+{
+    float3 center;
+    float radius;
+};
+StructuredBuffer<ClusterSphere> ssbo_ClusterSpheres : register(t9);
+
+struct ClusterCone
+{
+    float3 cone;
+    float coneCutoff;
+};
+StructuredBuffer<ClusterCone> ssbo_ClusterCones : register(t10);
 
 #endif
 

@@ -19,9 +19,13 @@ namespace BlitzenEngine
         uint32_t* m_clusterIndices{ nullptr };
         uint32_t m_clusterIndicesCount{ 0 };
 
-        HCluster* HLSL_CLUSTERS{ nullptr };
+        ClusterVertices* m_clusterVertices{ nullptr };
+        ClusterSphere* m_clusterSpheres{ nullptr };
+        ClusterCone* m_clusterCones{ nullptr };
 
-        void ALLOC_HLSL();
+        void ALLOC();
         ~ClusterContainer();
 	};
+
+    bool GenerateHLSLClusters(ClusterContainer& context);
 }

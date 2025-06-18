@@ -122,46 +122,4 @@ namespace BlitzenEngine
 
         return meshId;
     }
-
-    bool GenerateHlslVertices(MeshResources& context)
-    {
-        for (size_t vert = 0; vert < context.m_triangles.m_vertexCount; ++vert)
-        {
-            const auto& classic = context.m_triangles.m_vertices[vert];
-
-            context.m_triangles.m_vertexPositions[vert] = classic.position;
-            context.m_triangles.m_vertexUVs[vert] = VtxTexCoords{ classic.uvX, classic.uvY };
-            context.m_triangles.m_vertexNormals[vert] = VtxNormals{ classic.normalX / 127.5f - 1.0f, classic.normalY / 127.5f - 1.0f, classic.normalZ / 127.5f - 1.0f, classic.normalW / 127.5f - 1.0f };
-            context.m_triangles.m_vertexTangents[vert] = VtxTangents{ classic.tangentX / 127.5f - 1.0f, classic.tangentY / 127.5f - 1.0f, classic.tangentZ / 127.5f - 1.0f, classic.tangentW / 127.5f - 1.0f };
-        }
-
-        return true;
-    }
-
-    bool GenerateHLSLClusters(MeshResources& context)
-    {
-        if (!context.m_clusters.HLSL_CLUSTERS)
-        {
-            BLIT_ERROR("%s: Hlsl clusters were never allocated", BlitzenCore::CE_MESH_SYSTEM_NAME);
-            return false;
-        }
-
-        for (uint32_t clst = 0; clst < context.m_clusters.m_clusterCount; ++clst)
-        {
-            const auto& glslClusters{ context.m_clusters.m_clusters[clst]};
-            auto& cluster{ context.m_clusters.HLSL_CLUSTERS[clst]};
-
-            cluster.center = glslClusters.center;
-            cluster.radius = glslClusters.radius;
-
-            cluster.idxCount = glslClusters.triangleCount * 3;
-            cluster.idxOffset = glslClusters.dataOffset;
-
-            cluster.coneAxisDataPack = glslClusters.coneAxisX << 24 | glslClusters.coneAxisY << 16 | glslClusters.coneAxisZ << 8 | glslClusters.coneCutoff;
-        }
-
-        return true;
-    }
-
-    
 }

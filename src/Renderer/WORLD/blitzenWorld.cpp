@@ -1,17 +1,16 @@
-#include "blitRenderer.h"
+#include "blitzenWorld.h"
 #include "Core/DbLog/blitLogger.h"
 
-namespace BlitzenEngine
+namespace BlitzenWorld
 {
-
-    bool RenderingResourcesInit(RenderingResources* pResources, RendererPtrType pRenderer)
+    bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
-        if(!pRenderer->UploadTexture("Assets/Textures/base_baseColor.dds"))
-		{
-			BLIT_ERROR("Rendering resources failed");
-			return false;
-		}
-        
+        if (!pRenderer->UploadTexture("Assets/Textures/base_baseColor.dds"))
+        {
+            BLIT_ERROR("Rendering resources failed");
+            return false;
+        }
+
         // Does not return false by design, might change later.
         if (!pResources->m_textureManager.AddTexture(BlitzenCore::Ce_DefaultTextureName))
         {
@@ -20,16 +19,17 @@ namespace BlitzenEngine
 
         if (!pResources->m_textureManager.AddMaterial(0, 0, 0, 0, BlitzenCore::Ce_DefaultMaterialName))
         {
-			BLIT_ERROR("Rendering resources failed");
+            BLIT_ERROR("Rendering resources failed");
             return false;
         }
 
         pResources->m_meshContext.m_triangles.ALLOC();
+        pResources->m_meshContext.m_clusters.ALLOC();
 
         uint32_t bunnyMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenCore::Ce_DefaultMeshName) };
         if (bunnyMeshId == BlitzenCore::Ce_MaxMeshCount)
         {
-			BLIT_ERROR("Failed to load default bunny mesh");
+            BLIT_ERROR("Failed to load default bunny mesh");
             return false;
         }
 

@@ -22,8 +22,4 @@ namespace BlitzenEngine
 
     // Loads mesh from mesh obj. Returns its id or Ce_MaxMeshCount if error occurs
     uint32_t LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName);
-
-    bool GenerateHlslVertices(MeshResources& context);
-
-    bool GenerateHLSLClusters(MeshResources& context);
 }

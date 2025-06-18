@@ -267,13 +267,12 @@ namespace BlitzenDX12
 			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullCmdUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterCullCmdUAVRegister);
 			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullCounterUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterCullCounterUAVRegister);
 			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullGroupDataUAVRangerID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_ClusterCullGroupDataUAVRegister);
-			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullClustersSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_ClusterCullClusterSRVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullClusterVtxsSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_ClusterCullClusterVtxsSRVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullClusterSpheresSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_ClusterCullClusterSpheresSRVRegister);
+			CreateDescriptorRange(clusterDispatchAdditionalViewRanges[Ce_ClusterCullClusterConesSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_ClusterCullClusterConesSRVRegister);
 
 			D3D12_DESCRIPTOR_RANGE depthPyramidCullRange{};
 			CreateDescriptorRange(depthPyramidCullRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawOccLateHI_Z_MapSRVRegister);
-
-			D3D12_DESCRIPTOR_RANGE clusterSrvRange{};
-			CreateDescriptorRange(clusterSrvRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_ClusterCullClusterSRVRegister);
 
 			D3D12_ROOT_PARAMETER clusterCullRootParameters[Ce_ClusterCullRootParameterCount]{};
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
@@ -637,9 +636,21 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			if (CreateSSBO<BlitzenEngine::HCluster>(device, roResources.m_clusterBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)
+			if (CreateSSBO<BlitzenEngine::ClusterVertices>(device, roResources.m_clusterVtxsBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)
 			{
-				BLIT_ERROR("%s: Failed to create cluster buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				BLIT_ERROR("%s: Failed to create cluster vertices buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (CreateSSBO<BlitzenEngine::ClusterSphere>(device, roResources.m_clusterSpheresBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)
+			{
+				BLIT_ERROR("%s: Failed to create cluster spheres buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (CreateSSBO<BlitzenEngine::ClusterCone>(device, roResources.m_clusterConesBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)
+			{
+				BLIT_ERROR("%s: Failed to create cluster cones buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}

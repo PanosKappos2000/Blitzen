@@ -53,8 +53,8 @@ namespace BlitzenEngine
 
         constexpr float BunnyScale = 5.f;
         constexpr float KittenScale = 1.f;
-        constexpr float HumanScale = 0.1f;
-        constexpr float DragonScale = 0.2f;
+        constexpr float HumanScale = 0.2f;
+        constexpr float DragonScale = 0.5f;
 
         BLIT_WARN("Loading Renderer Stress test with %i objects", totalCount);
 

@@ -1,12 +1,9 @@
 #pragma once
-#include "Core/Events/blitTimeManager.h"
 #include "BlitCL/blitPfn.h"
 #include "Renderer/Scene/blitScene.h"
 
 namespace BlitzenWorld
 {
-    using WorldResidentsSystemMemory = BlitCL::SmartPointer<BlitzenEngine::WORLD_RESIDENTS, BlitzenCore::AllocationType::Entity>;
-
     enum class WorldUpdateState : uint8_t
     {
         PREPARING = 0,
@@ -49,7 +46,7 @@ namespace BlitzenWorld
         BlitzenEngine::DrawContext m_drawContext;
 
         // World residents
-        WorldResidentsSystemMemory P_RESIDENTS{};
+        BlitzenEngine::WORLD_RESIDENTS m_residents{};
 
         float deltaTime{0.f};
 
@@ -59,4 +56,6 @@ namespace BlitzenWorld
 
         }
     };
+
+    bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer);
 }

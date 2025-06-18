@@ -408,12 +408,26 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		STAGING<BlitzenEngine::HCluster> clusterStaging{ nullptr };
+		STAGING<BlitzenEngine::ClusterVertices> clusterVtxStaging{ nullptr };
+		STAGING<BlitzenEngine::ClusterSphere> clusterSpheresStaging{ nullptr };
+		STAGING<BlitzenEngine::ClusterCone> clusterConesStaging{ nullptr };
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			if (!CreateStaging(device, clusterStaging, drawContext.m_meshes.m_clusters.m_clusterCount, drawContext.m_meshes.m_clusters.HLSL_CLUSTERS))
+			if (!CreateStaging(device, clusterVtxStaging, drawContext.m_meshes.m_clusters.m_clusterCount, drawContext.m_meshes.m_clusters.m_clusterVertices))
 			{
-				BLIT_ERROR("%s: Failed to create cluster staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				BLIT_ERROR("%s: Failed to create cluster vertices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (!CreateStaging(device, clusterSpheresStaging, drawContext.m_meshes.m_clusters.m_clusterCount, drawContext.m_meshes.m_clusters.m_clusterSpheres))
+			{
+				BLIT_ERROR("%s: Failed to create cluster spheres staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (!CreateStaging(device, clusterConesStaging, drawContext.m_meshes.m_clusters.m_clusterCount, drawContext.m_meshes.m_clusters.m_clusterCones))
+			{
+				BLIT_ERROR("%s: Failed to create cluster cones staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
@@ -446,9 +460,19 @@ namespace BlitzenDX12
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_RESOURCE_BARRIER clusterBufferBarrier{};
-			CreateResourcesTransitionBarrier(clusterBufferBarrier, roResources.m_clusterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			CreateResourcesTransitionBarrier(clusterBufferBarrier, roResources.m_clusterVtxsBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 			copyDestBarriers.PushBack(clusterBufferBarrier);
+
+			D3D12_RESOURCE_BARRIER clusterSpheresBarrier{};
+			CreateResourcesTransitionBarrier(clusterSpheresBarrier, roResources.m_clusterSpheresBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
+			copyDestBarriers.PushBack(clusterSpheresBarrier);
+
+			D3D12_RESOURCE_BARRIER clusterConesBarrier{};
+			CreateResourcesTransitionBarrier(clusterConesBarrier, roResources.m_clusterConesBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			
+			copyDestBarriers.PushBack(clusterConesBarrier);
 		}
 
 		// execute
@@ -479,9 +503,19 @@ namespace BlitzenDX12
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_RESOURCE_BARRIER clusterStagingBarrier{};
-			CreateResourcesTransitionBarrier(clusterStagingBarrier, clusterStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			CreateResourcesTransitionBarrier(clusterStagingBarrier, clusterVtxStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 			copySourceBarriers.PushBack(clusterStagingBarrier);
+
+			D3D12_RESOURCE_BARRIER clusterSpheresStagingBarrier{};
+			CreateResourcesTransitionBarrier(clusterSpheresStagingBarrier, clusterSpheresStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+			copySourceBarriers.PushBack(clusterSpheresStagingBarrier);
+
+			D3D12_RESOURCE_BARRIER clusterConesStagingBarrier{};
+			CreateResourcesTransitionBarrier(clusterConesStagingBarrier, clusterConesStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+			copySourceBarriers.PushBack(clusterConesStagingBarrier);
 		}
 
 		if (copySourceBarriers.GetSize() != roResources.BUFFER_COUNT)
@@ -504,7 +538,9 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_matBuffer.buffer.Get(), 0, materialStaging.m_buffer.Get(), 0, materialStaging.m_dataSize);
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterBuffer.buffer.Get(), clusterStaging.m_buffer.Get());
+			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterVtxsBuffer.buffer.Get(), clusterVtxStaging.m_buffer.Get());
+			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterSpheresBuffer.buffer.Get(), clusterSpheresStaging.m_buffer.Get());
+			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterConesBuffer.buffer.Get(), clusterConesStaging.m_buffer.Get());
 		}
 
 		cmdContext.m_copyCmdList->Close();
@@ -628,7 +664,11 @@ namespace BlitzenDX12
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterGroupDataBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize, sizeof(ClusterGroupData), 0);
 
-				CreateBufferShaderResourceView(device, roResources.m_clusterBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::HCluster));
+				CreateBufferShaderResourceView(device, roResources.m_clusterVtxsBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::ClusterVertices));
+
+				CreateBufferShaderResourceView(device, roResources.m_clusterSpheresBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::ClusterSphere));
+
+				CreateBufferShaderResourceView(device, roResources.m_clusterConesBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::ClusterCone));
 			}
 		}
 		
@@ -681,7 +721,9 @@ namespace BlitzenDX12
 
 		if (BlitzenCore::Ce_BuildClusters)
 		{
-			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterStagingIndex], m_roResources.m_clusterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterVtxsStagingIndex], m_roResources.m_clusterVtxsBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterSpheresStagingIndex], m_roResources.m_clusterSpheresBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterConesStagingIndex], m_roResources.m_clusterConesBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 
 		// EXECUTE

@@ -8,24 +8,30 @@
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
 {
+    // General dispatch accesses group of clusters
     ClusterGroupData groupData = rwssbo_ClusterGroupData[dispatchGroupID.x];
 
+    // Individual clusters in group are accessed using the thread ID
     uint clusterId = groupData.clusterOffset + groupThreadID.x;
-    uint objId = groupData.objId;
     
+    // If this group has less than 64 clusters it is set from the cluster dispatch to quit early
     if (clusterId >= groupData.clusterCount)
     {
         return;
     }
     
+    uint objId = groupData.objId;
+    
     Render render = ssbo_Renders[objId];
     Transform transform = ssbo_Transforms[render.transformId];
-    Cluster cluster = ssbo_Clusters[clusterId];
+    ClusterSphere boundingSphere = ssbo_ClusterSpheres[clusterId];
     
-    float3 center = RotateQuat(cluster.center, transform.orientation) * transform.scale + transform.position;
+    // Bounding sphere transform
+    float3 center = RotateQuat(boundingSphere.center, transform.orientation) * transform.scale + transform.position;
     center = mul(viewMatrix, float4(center, 1)).xyz;
-    float radius = cluster.radius * transform.scale;
+    float radius = boundingSphere.radius * transform.scale;
     
+    // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
     
     /*if (visible)

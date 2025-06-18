@@ -4,6 +4,13 @@
 
 namespace BlitzenEngine
 {
+    struct Mesh
+    {
+        uint32_t firstSurface;
+        uint32_t surfaceCount{ 0 };
+        uint32_t meshId;
+    };
+
     using VtxPos = BlitML::vec3;
     using VtxTexCoords = BlitML::vec2;
     using VtxNormals = BlitML::vec4;
@@ -19,82 +26,50 @@ namespace BlitzenEngine
     };
     static_assert(sizeof(Vertex) % 16 == 0);
 
-    struct BoundingSphere
-    {
-        BlitML::vec3 m_center;
-        float m_radius;
-    };
-    static_assert(sizeof(BoundingSphere) % 16 == 0);
-
     struct alignas(16) Cluster
     {
-        // Bounding sphere
     	BlitML::vec3 center;
     	float radius;
-
-        // This is for backface culling
     	int8_t coneAxisX;
         int8_t coneAxisY;
         int8_t coneAxisZ;
     	int8_t coneCutoff;
-
-        // Offset into the cluster data buffer (index buffer for clusters)
     	uint32_t dataOffset;
-
-        // I am not sure why I have vertex count AND triangle count but whatever
     	uint8_t vertexCount;
     	uint8_t triangleCount;
         uint8_t padding0;
         uint8_t padding1;
     };
 
-    struct HCluster
+    struct ClusterVertices
     {
-        // Bounding sphere
-        BlitML::vec3 center;
-        float radius;
-
-        // Packs data for backface culling
-        int32_t coneAxisDataPack;
-
-        // Used to setup draw commands
         uint32_t idxOffset;
         uint32_t idxCount;
-
-        // Id for ClusterIntanceCounter
-        uint32_t instanceCounterId;
     };
-    static_assert(sizeof(HCluster) % 16 == 0);
-
-    struct ClusterInstanceCounter
+    
+    struct ClusterSphere
     {
-        uint32_t commandId;
-        uint32_t instanceCount{ 0 };
+        BlitML::vec3 center;
+        float radius;
+    };
+    
+    struct ClusterCone
+    {
+        BlitML::vec3 cone;
+        float coneCutoff;
     };
 
     struct alignas(16) LodData
     {
-        // Non cluster path, used to create draw commands
         uint32_t indexCount;
         uint32_t firstIndex;
-
-		// Cluster path, used to create draw commands
+        // Cluster path
         uint32_t clusterOffset;
         uint32_t clusterCount;
-
-        // Used for more accurate LOD selection
         float error;
-
-        // Padding
         uint32_t padding0;  
         uint32_t padding1;
         uint32_t padding2;
-
-        // TODO(maybe): Potential packed struct
-        // uint32_t dataOffset; CLUSTER OR INDEX
-        // uint32_t dataCount; CLUSTER OR INDEX
-        // float error;
-        // uint32_t padding0;
     };
 
     struct LodInstanceCounter
@@ -119,16 +94,13 @@ namespace BlitzenEngine
 
     struct alignas(16) PrimitiveSurface
     {
-        // Bounding sphere
+        // TODO: Should be owned by render instances, for static object optimizations
         BlitML::vec3 center;     
         float radius;
-        // uint32_t boundingSphereID; TODO: Change the sphere to be a seperate component, unchanging for 
-
+        /* THE ACTUAL MEMBERS AFTER THE CHANGE */
         uint32_t materialId;
-
         uint32_t lodOffset;
         uint32_t lodCount{ 0 };
-
         uint32_t padding0;
     };
 
@@ -139,22 +111,34 @@ namespace BlitzenEngine
         BlitML::quat orientation;
     };
 
-    // Not a shader resource but refers to one
-    struct Mesh
-    {
-        uint32_t firstSurface;
-        uint32_t surfaceCount = 0;
-
-        uint32_t meshId;
-    };
-
-    // Per render object Data. Passed to the GPU
     struct RenderObject
     {
         uint32_t transformId;
         uint32_t surfaceId;
-        // uint32_t staticBoundingSphere; TODO: If a render object has a bounding sphere, it could carry it
+        // uint32_t staticBoundingSphere; TODO: Own bounding sphere
     };
+
+    struct ClusterRenderGroup
+    {
+        uint32_t firstClusterRender;
+        uint32_t clusterRenderCount;
+    };
+
+    struct ClusterRender
+    {
+        uint32_t clusterID;// A per cluster instance sphere might be overkill on the memory
+        uint32_t renderID;
+        uint32_t boundingSphereID;
+    };
+
+    using ClusterConeAxis = BlitML::vec4;
+
+    struct BoundingSphere
+    {
+        BlitML::vec3 m_center;
+        float m_radius;
+    };
+    static_assert(sizeof(BoundingSphere) % 16 == 0);
 
     struct Velocity
     {

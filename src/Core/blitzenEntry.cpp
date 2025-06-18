@@ -7,6 +7,7 @@
 
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
 using ComponentSystemMemory = BlitCL::SmartPointer<BlitzenEngine::ComponentSystem, BlitzenCore::AllocationType::Entity>;
+using WorldSystemMemory = BlitCL::SmartPointer<BlitzenWorld::WORLD_blit, BlitzenCore::AllocationType::Entity>;
 
 #if defined(BLIT_GDEV_EDT)
 int main(int argc, char* argv[])
@@ -39,20 +40,20 @@ int main(int argc, char* argv[])
     BlitzenPlatform::PlatformContext platform{};
     blitzenPrivateContext.pPlatform = &platform;
 
-    BlitzenWorld::WORLD_blit WORLD{ mainCamera, renderingResources->m_meshContext, renderingResources->m_textureManager, &platform };
-    WORLD.pCameraContainer = &blitzenCameraSystem;
-    WORLD.P_RESIDENTS.Make();
-    WORLD.m_drawContext.m_pResidents = WORLD.P_RESIDENTS.Data();
-    WORLD.P_RENDERER.Make();
-    blitzenPrivateContext.pWORLD = &WORLD;
+    WorldSystemMemory WORLD;
+    WORLD.Make(mainCamera, renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);
+    WORLD->pCameraContainer = &blitzenCameraSystem;
+    WORLD->m_drawContext.m_pResidents = &WORLD->m_residents;
+    WORLD->P_RENDERER.Make();
+    blitzenPrivateContext.pWORLD = WORLD.Data();
     
     BlitzenCore::EventSystemMemory blitzenEventSystem;
-    blitzenEventSystem.Make(std::ref(WORLD), std::ref(blitzenPrivateContext));
+    blitzenEventSystem.Make(WORLD.Data(), std::ref(blitzenPrivateContext));
 
     BlitzenCore::Dasher dasher;
     blitzenPrivateContext.pDasher = &dasher;
 
-    BlitzenPlatform::PlatformArgs platformArgs{&platform, blitzenEventSystem.Data(), WORLD.P_RENDERER.Data(), &dasher};
+    BlitzenPlatform::PlatformArgs platformArgs{&platform, blitzenEventSystem.Data(), WORLD->P_RENDERER.Data(), &dasher};
     BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
 
     // LOADING RESOURCES
@@ -60,7 +61,7 @@ int main(int argc, char* argv[])
     {
         [&]()
         {
-            BlitzenWorld::LoadingLoop(argc, argv, blitzenPrivateContext, WORLD.m_drawContext);
+            BlitzenWorld::LoadingLoop(argc, argv, blitzenPrivateContext, WORLD->m_drawContext);
         }
     };
     #if(_WIN32)
