@@ -118,21 +118,6 @@ namespace BlitzenEngine
         // uint32_t staticBoundingSphere; TODO: Own bounding sphere
     };
 
-    struct ClusterRenderGroup
-    {
-        uint32_t firstClusterRender;
-        uint32_t clusterRenderCount;
-    };
-
-    struct ClusterRender
-    {
-        uint32_t clusterID;// A per cluster instance sphere might be overkill on the memory
-        uint32_t renderID;
-        uint32_t boundingSphereID;
-    };
-
-    using ClusterConeAxis = BlitML::vec4;
-
     struct BoundingSphere
     {
         BlitML::vec3 m_center;

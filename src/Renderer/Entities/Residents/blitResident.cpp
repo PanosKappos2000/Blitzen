@@ -10,7 +10,7 @@ namespace BlitzenEngine
 		RenderObject* pFirstRender{ nullptr };
 
 		uint32_t transformID{ m_transforms.CreateTransform(ctx.m_transformInfo) };
-		if (transformID == BlitzenCore::Ce_MaxWorldTransformCount)
+		if (transformID == BLIT_MAX_WORLD_TRANSFORM_COUNT)
 		{
 			return WORLD_TRANSFORM_CREATION_FAILED;
 		}
@@ -28,7 +28,7 @@ namespace BlitzenEngine
 
 			uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext);
 
-			if (renderObjectId == BlitzenCore::Ce_MaxRenderObjectCount)
+			if (renderObjectId == BLIT_MAX_WORLD_RENDERS)
 			{
 				return RENDER_OBJECT_CREATION_FAILED;
 			}

@@ -188,7 +188,7 @@ namespace BlitzenVulkan
 
     uint8_t BuildTlas(VkInstance instance, VkDevice device, VmaAllocator vma, CommandContext& cmdContext, VkQueue queue, ROResources& readOnlies, BlitzenEngine::DrawContext& context)
     {
-        uint32_t renderCount{ context.m_pResidents->m_renders.m_renderCount };
+        uint32_t renderCount{ context.m_pResidents->m_renders.RENDER_COUNT };
 
         // Retrieves the device address of each acceleration structure that was build earlier
         BlitCL::DynamicArray<VkDeviceAddress> blasAddresses{ context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount };

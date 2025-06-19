@@ -1,9 +1,10 @@
 #pragma once 
 #include "blitCollision.h"
+#include "Renderer/HlslShaders/Headers/cpuShared.h"
 
 namespace BlitzenEngine
 {
-	constexpr uint32_t CE_MAX_WORLD_BOUNDING_SPHERE_COUNT = BlitzenCore::Ce_MaxRenderObjectCount;
+	constexpr uint32_t CE_MAX_WORLD_BOUNDING_SPHERE_COUNT = BLIT_MAX_WORLD_RENDERS;
 
 	struct ColliderContainer
 	{

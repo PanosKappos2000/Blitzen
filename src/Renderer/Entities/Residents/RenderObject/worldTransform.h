@@ -1,11 +1,12 @@
 #pragma once
 #include "Renderer/Resources/blitShaderResources.h"
+#include "Renderer/HlslShaders/Headers/cpuShared.h"
 
 namespace BlitzenEngine
 {
 	constexpr uint32_t CE_DYNAMIC_TRANSFORM_OFFSET = 0;
 	constexpr uint32_t CE_STATIC_TRANSFORM_OFFSET = BlitzenCore::Ce_MaxWorldMovingResidentCount;
-	constexpr uint32_t CE_MAX_STATIC_TRANSFORM_COUNT = BlitzenCore::Ce_MaxWorldTransformCount - BlitzenCore::Ce_MaxWorldMovingResidentCount;
+	constexpr uint32_t CE_MAX_STATIC_TRANSFORM_COUNT = BLIT_MAX_WORLD_TRANSFORM_COUNT - BlitzenCore::Ce_MaxWorldMovingResidentCount;
 
 	enum class WorldTransformType: uint8_t
 	{
@@ -23,7 +24,7 @@ namespace BlitzenEngine
 
 	struct WorldTransformContainer
 	{
-		MeshTransform m_transforms[BlitzenCore::Ce_MaxWorldTransformCount];
+		MeshTransform m_transforms[BLIT_MAX_WORLD_TRANSFORM_COUNT];
 		uint32_t m_transformCount{ 0 };
 		uint32_t m_dynamicTransformCount{ 0 };
 		uint32_t m_staticTransformCount{ 0 };

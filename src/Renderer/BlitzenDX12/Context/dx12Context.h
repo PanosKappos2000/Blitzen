@@ -39,6 +39,8 @@ namespace BlitzenDX12
     {
         CPU_WRITE_SSBO<BlitzenEngine::MeshTransform> m_transformBuffer;
 
+        SSBO m_boundingSphereBuffer;
+
         SSBO m_drawCmdBuffer;
 
         SSBO m_drawCmdCounterBuffer;

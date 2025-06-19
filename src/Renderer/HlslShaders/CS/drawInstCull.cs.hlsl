@@ -3,6 +3,7 @@
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
+#include "../Headers/cpuShared.h"
 
 cbuffer ObjCountConstant: register (b1)
 {
@@ -12,9 +13,9 @@ cbuffer ObjCountConstant: register (b1)
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
 {
-    uint objId = dispatchThreadID.x;
+    uint objId = dispatchThreadID.x + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
     // Early return if it's out of bounds
-    if(objId >= objCount)
+    if (objId >= objCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET)
     {
         return;
     }

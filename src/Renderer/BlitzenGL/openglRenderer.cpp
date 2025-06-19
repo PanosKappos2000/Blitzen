@@ -121,7 +121,7 @@ namespace BlitzenGL
 
         glGenBuffers(1, &m_indirectDrawBuffer.handle);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_indirectDrawBuffer.handle);
-        glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawCmd) * context.m_pResidents->m_renders.m_renderCount, nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_DRAW_INDIRECT_BUFFER, sizeof(DrawCmd) * context.m_pResidents->m_renders.RENDER_COUNT, nullptr, GL_STATIC_DRAW);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
         // Binds the indirect draw buffer as an SSBO, so that it can be accessed by the culling shaders
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_indirectDrawBuffer.handle);
@@ -146,7 +146,7 @@ namespace BlitzenGL
         // Creates the render object buffer as a storage buffer and passes it to binding 3
         glGenBuffers(1, &m_renderObjectBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_renderObjectBuffer.handle);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::RenderObject) * context.m_pResidents->m_renders.m_renderCount, context.m_pResidents->m_renders.m_renders, GL_STATIC_READ);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BlitzenEngine::RenderObject) * context.m_pResidents->m_renders.RENDER_COUNT, context.m_pResidents->m_renders.m_renders, GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_renderObjectBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -197,7 +197,7 @@ namespace BlitzenGL
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_cullDataBuffer.handle);
         
         // Dispatches the compute shader to do GPU side culling and create the draw commands
-        glDispatchCompute(context.m_pResidents->m_renders.m_renderCount / 64 + 1, 1, 1);
+        glDispatchCompute(context.m_pResidents->m_renders.RENDER_COUNT / 64 + 1, 1, 1);
         glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
         // glClearDepth value needs to be set to 0 since the renderer is using reverse z
@@ -222,7 +222,7 @@ namespace BlitzenGL
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_viewDataBuffer.handle);
 
         // Draw the objects with indirect commands
-        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, context.m_pResidents->m_renders.m_renderCount, sizeof(DrawCmd));
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, context.m_pResidents->m_renders.RENDER_COUNT, sizeof(DrawCmd));
 
         // Swaps the framebuffer
 	    BlitzenPlatform::OpenglSwapBuffers(context.m_pPlatform);

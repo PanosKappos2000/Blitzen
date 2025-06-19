@@ -63,7 +63,7 @@ namespace BlitzenEngine
         pScene->m_meshRefArr[2] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultDragonMeshName];
         pScene->m_meshRefArr[3] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultHumanMeshname];
 
-        uint32_t start = pResidents->m_renders.m_renderCount;
+        uint32_t start = pResidents->m_renders.RENDER_COUNT;
 
         // Bunnies
         for (uint32_t i = start; i < start + bunnyCount; ++i)

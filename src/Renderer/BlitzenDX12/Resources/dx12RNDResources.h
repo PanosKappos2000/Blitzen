@@ -42,7 +42,7 @@ namespace BlitzenDX12
     }
 
     template<class DATA>
-    UINT8 CreateStaging(ID3D12Device* device, STAGING<DATA>& staging, size_t elementCount, DATA* pData)
+    UINT8 CreateStaging(ID3D12Device* device, STAGING<DATA>& staging, size_t elementCount, DATA* pData, UINT dataOffset = 0)
     {
         if (elementCount == 0)
         {
@@ -71,7 +71,7 @@ namespace BlitzenDX12
             return 0;
         }
 
-        BlitzenCore::BlitMemCopy(staging.m_pMapped, pData, dataSize);
+        BlitzenCore::BlitMemCopy(staging.m_pMapped, pData + dataOffset, dataSize);
 
         staging.m_dataSize = dataSize;
 

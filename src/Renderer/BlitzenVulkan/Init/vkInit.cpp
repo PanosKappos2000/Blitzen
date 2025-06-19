@@ -1441,7 +1441,7 @@ namespace BlitzenVulkan
             // Transform buffer is also dynamic
             Buffer transformStagingBufferTemp;
             auto transformBufferSize{ CreateSSBO<BlitzenEngine::MeshTransform>(vma, device, readWrites.m_transformBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                BlitzenCore::Ce_MaxWorldTransformCount) };
+                BLIT_MAX_WORLD_TRANSFORM_COUNT) };
             if (transformBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create transform buffer", BLIT_VK_SYSTEM);
@@ -1465,7 +1465,7 @@ namespace BlitzenVulkan
             }
 
             VkDeviceSize visibilityBufferSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_drawVisBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                BlitzenCore::Ce_MaxRenderObjectCount) };
+                BLIT_MAX_WORLD_RENDERS) };
             if (visibilityBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create draw visibility buffer", BLIT_VK_SYSTEM);
@@ -1521,7 +1521,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        VkDeviceSize renderBufferSize{ CreateSSBO<BlitzenEngine::RenderObject>(vma, device, readOnlies.m_renderBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, BlitzenCore::Ce_MaxRenderObjectCount) };
+        VkDeviceSize renderBufferSize{ CreateSSBO<BlitzenEngine::RenderObject>(vma, device, readOnlies.m_renderBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BLIT_MAX_WORLD_RENDERS) };
         if (renderBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create render object buffer", BLIT_VK_SYSTEM);

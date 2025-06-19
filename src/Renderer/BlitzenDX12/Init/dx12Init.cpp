@@ -496,7 +496,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateSSBO<BlitzenEngine::MeshTransform>(device, rwResources.m_transformBuffer.m_ssbo, BlitzenCore::Ce_MaxWorldTransformCount))
+			if (!CreateSSBO<BlitzenEngine::MeshTransform>(device, rwResources.m_transformBuffer.m_ssbo, BLIT_MAX_WORLD_TRANSFORM_COUNT))
 			{
 				BLIT_ERROR("%s: Failed to create transform buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
@@ -518,7 +518,7 @@ namespace BlitzenDX12
 			// DRAW OCC MODE
 			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
-				if (!CreateSSBO<uint32_t>(device, rwResources.m_drawVisBuffer, BlitzenCore::Ce_MaxRenderObjectCount, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+				if (!CreateSSBO<uint32_t>(device, rwResources.m_drawVisBuffer, BLIT_MAX_WORLD_RENDERS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 				{
 					BLIT_ERROR("%s: Failed to create draw visibility buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 					return 0;
@@ -615,7 +615,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (CreateSSBO<BlitzenEngine::RenderObject>(device, roResources.m_renderBuffer, BlitzenCore::Ce_MaxRenderObjectCount) == 0)
+		if (CreateSSBO<BlitzenEngine::RenderObject>(device, roResources.m_renderBuffer, BLIT_MAX_WORLD_RENDERS) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create render buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;

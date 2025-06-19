@@ -185,14 +185,6 @@ namespace BlitzenCore
     *********************************************************************************************************************************************************/
     constexpr uint32_t Ce_MaxWorldResidentCount = 5'000'000;
 
-    constexpr uint32_t Ce_MaxRenderObjectCount = 5'000'000;
-    static_assert(Ce_MaxRenderObjectCount == Ce_MaxWorldResidentCount, "There should be as many render objects spots available as there are world residents");
-
-    constexpr uint32_t Ce_MaxTransparentRenderObjects = 100'000;// TODO: Remove, irrelevant
-
-    constexpr uint32_t Ce_MaxWorldTransformCount = Ce_MaxRenderObjectCount;
-    static_assert(Ce_MaxWorldTransformCount == Ce_MaxRenderObjectCount, "There should be as many world transform spots available as there are render objects");
-
     constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;// TODO: Replace this with the below
 
     constexpr uint32_t Ce_MaxWorldMovingResidentCount = 5'000;

@@ -469,9 +469,6 @@ namespace BlitzenVulkan
     /*
         Vulkan specific shader data structs
     */
-
-    constexpr uint32_t CE_RENDER_BUFFER_OPAQUE_OFFSET = 0;
-    constexpr uint32_t CE_RENDER_BUFFER_TRANS_OFFSET = BlitzenEngine::CE_MAX_WORLD_OPAQUE_RENDERS;
     
     struct IndirectDrawData
     {

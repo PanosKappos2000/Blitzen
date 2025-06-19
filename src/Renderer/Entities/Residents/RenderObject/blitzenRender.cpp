@@ -8,66 +8,82 @@ namespace BlitzenEngine
 {
     uint32_t RenderContainer::CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context)
     {
-        if (m_renderCount >= BlitzenCore::Ce_MaxRenderObjectCount)
+        if (RENDER_COUNT >= BLIT_MAX_WORLD_RENDERS)
         {
             BLIT_ERROR("%s: Exceeded max render object limit", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-            return BlitzenCore::Ce_MaxRenderObjectCount;
+            return BLIT_MAX_WORLD_RENDERS;
         } 
 
         switch (context.m_type)
         {
         case OPAQUE_STATIC:
-        case OPAQUE_DYNAMIC:
         {
-            if (m_opaqueRenderCount > CE_MAX_WORLD_OPAQUE_RENDERS)
+            if (m_opaqueStaticCount > BLIT_MAX_WORLD_OPAQUE_STATIC_RENDERS)
             {
                 BLIT_ERROR("%s: Exceeded max opaque render object limit", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                return BlitzenCore::Ce_MaxRenderObjectCount;
+                return BLIT_MAX_WORLD_RENDERS;
             }
 
-            auto& newcomer{ m_renders[m_opaqueRenderCount + CE_OPAQUE_RENDER_OFFSET] };
+            auto& newcomer{ m_renders[m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET] };
 
             newcomer.surfaceId = context.m_primitiveID;
             newcomer.transformId = context.m_transformID;
 
-            m_renderCount++;
-            return CE_OPAQUE_RENDER_OFFSET + m_opaqueRenderCount++;
+            RENDER_COUNT++;
+            return BLIT_OPAQUE_STATIC_RENDER_OFFSET + m_opaqueStaticCount++;
+        }
+
+        case OPAQUE_DYNAMIC:
+        {
+            if (m_opaqueDynamicCount > BLIT_MAX_WORLD_OPAQUE_DYNAMIC_RENDERS)
+            {
+                BLIT_ERROR("%s: Max opaque dynamic render object reached", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
+                return BLIT_MAX_WORLD_RENDERS;
+            }
+
+            auto& newcomer{ m_renders[m_opaqueDynamicCount + BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET] };
+
+            newcomer.surfaceId = context.m_primitiveID;
+            newcomer.transformId = context.m_transformID;
+
+            RENDER_COUNT++;
+            return BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET + m_opaqueDynamicCount++;
         }
 
         case TRANSPARENT_DYNAMIC:
         {
             BLIT_ERROR("%s: No support for dynamic transparent renders for now", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-            return BlitzenCore::Ce_MaxRenderObjectCount;
+            return BLIT_MAX_WORLD_RENDERS;
         }
 
         case TRANSPARENT_STATIC:
         {
-            if (m_transparentRenderCount > CE_MAX_WORLD_TRANSPARENT_RENDERS)
+            if (m_transparentStaticCount > BLIT_MAX_WORLD_TRANSPARENT_RENDERS)
             {
                 BLIT_ERROR("%s: Exceeded max transparent render object limit", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                return BlitzenCore::Ce_MaxRenderObjectCount;
+                return BLIT_MAX_WORLD_RENDERS;
             }
 
-            auto& newcomer{ m_renders[m_transparentRenderCount + CE_MAX_WORLD_TRANSPARENT_RENDERS] };
+            auto& newcomer{ m_renders[m_transparentStaticCount + BLIT_TRANSPARENT_RENDER_OFFSET] };
 
             newcomer.surfaceId = context.m_primitiveID;
             newcomer.transformId = context.m_transformID;
 
-            m_renderCount++;
-            return CE_MAX_WORLD_TRANSPARENT_RENDERS + m_transparentRenderCount++;
+            RENDER_COUNT++;
+            return BLIT_TRANSPARENT_RENDER_OFFSET + m_transparentStaticCount++;
         }
         }
 
         BLIT_ERROR("%s: Unexpected render object creation path", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-        return BlitzenCore::Ce_MaxRenderObjectCount;
+        return BLIT_MAX_WORLD_RENDERS;
     }
 
     uint32_t WorldTransformContainer::CreateTransform(const TRANSFORM_CREATE_CONTEXT& context)
     {
-        if (m_transformCount >= BlitzenCore::Ce_MaxWorldTransformCount)
+        if (m_transformCount >= BLIT_MAX_WORLD_TRANSFORM_COUNT)
         {
             BLIT_ERROR("Exceeded max world transform count");
-            return BlitzenCore::Ce_MaxWorldTransformCount;
+            return BLIT_MAX_WORLD_TRANSFORM_COUNT;
         }
 
         // DYNAMIC TRANSFORMS
@@ -76,7 +92,7 @@ namespace BlitzenEngine
             if (m_dynamicTransformCount >= BlitzenCore::Ce_MaxWorldMovingResidentCount)
             {
                 BLIT_ERROR("Exeeded max dynamic transform count");
-                return BlitzenCore::Ce_MaxWorldTransformCount;
+                return BLIT_MAX_WORLD_TRANSFORM_COUNT;
             }
 
             if (context.m_pTransform != nullptr)
@@ -88,7 +104,7 @@ namespace BlitzenEngine
                 if (context.m_scale == 0 || context.m_randomTransformMultiplier == 0)
                 {
                     BLIT_ERROR("Did not provide for transform creation");
-                    return BlitzenCore::Ce_MaxWorldTransformCount;
+                    return BLIT_MAX_WORLD_TRANSFORM_COUNT;
                 }
 
                 RandomizeTransform(m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_randomTransformMultiplier, context.m_scale);
@@ -104,7 +120,7 @@ namespace BlitzenEngine
             if (m_staticTransformCount >= CE_MAX_STATIC_TRANSFORM_COUNT)
             {
                 BLIT_ERROR("Exceeded max static transform count");
-                return BlitzenCore::Ce_MaxWorldTransformCount;
+                return BLIT_MAX_WORLD_TRANSFORM_COUNT;
             }
 
             if (context.m_pTransform != nullptr)
@@ -116,7 +132,7 @@ namespace BlitzenEngine
                 if (context.m_scale == 0 || context.m_randomTransformMultiplier == 0)
                 {
                     BLIT_ERROR("Did not provide for transform creation");
-                    return BlitzenCore::Ce_MaxWorldTransformCount;
+                    return BLIT_MAX_WORLD_TRANSFORM_COUNT;
                 }
 
                 RandomizeTransform(m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_randomTransformMultiplier, context.m_scale);
@@ -127,7 +143,7 @@ namespace BlitzenEngine
         }
 
         BLIT_ERROR("Unexpected transform type");
-        return BlitzenCore::Ce_MaxWorldTransformCount;
+        return BLIT_MAX_WORLD_TRANSFORM_COUNT;
     }
 
     void RandomizeTransform(MeshTransform& transform, float multiplier, float scale)

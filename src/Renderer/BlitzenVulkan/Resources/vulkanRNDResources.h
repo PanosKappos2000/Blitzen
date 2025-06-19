@@ -39,6 +39,7 @@ namespace BlitzenVulkan
         BlitVk_STAGING<DATA> staging{};
         DATA* pData{ nullptr };
         uint32_t elementCount{ 0 };
+        uint32_t offset{ 0 };
     };
     template<class DATA>
     uint8_t CreateStaging(VmaAllocator allocator, VkDevice device, BUFFER_STAGING_CONTEXT<DATA>& context)
@@ -66,7 +67,7 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        BlitzenCore::BlitMemCopy(context.staging.m_pMapped, context.pData, context.staging.m_dataSize);
+        BlitzenCore::BlitMemCopy(context.staging.m_pMapped, context.pData + context.offset, context.staging.m_dataSize);
 
         return 1;
     }

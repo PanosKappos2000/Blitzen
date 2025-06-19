@@ -85,11 +85,11 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullFirstPso.handle);
-        DrawCullShaderPushConstant pushConstant{ CE_RENDER_BUFFER_OPAQUE_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueRenderCount};
+        DrawCullShaderPushConstant pushConstant{ BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount};
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueRenderCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueStaticCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
         VkBufferMemoryBarrier2 graphicsBarriers[2]{};
@@ -154,11 +154,11 @@ namespace BlitzenVulkan
 
         // Pipeline and push Constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLatePso.handle);
-        DrawCullShaderPushConstant pushConstant{ CE_RENDER_BUFFER_OPAQUE_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueRenderCount };
+        DrawCullShaderPushConstant pushConstant{ BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount };
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueRenderCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueStaticCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
         VkBufferMemoryBarrier2 graphicsBarriers[2] = {};
@@ -214,11 +214,11 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_transDrawCullPso.handle);
-        DrawCullShaderPushConstant pushConstant{ CE_RENDER_BUFFER_TRANS_OFFSET, drawContext.m_pResidents->m_renders.m_transparentRenderCount };
+        DrawCullShaderPushConstant pushConstant{ BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount };
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_transparentRenderCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_transparentStaticCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
         VkBufferMemoryBarrier2 waitForCullingShader[2]{};
@@ -276,11 +276,11 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawTemporalOccPso.handle);
-        DrawCullShaderPushConstant pushConstant{ CE_RENDER_BUFFER_OPAQUE_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueRenderCount };
+        DrawCullShaderPushConstant pushConstant{ BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount };
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueRenderCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueStaticCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
         VkBufferMemoryBarrier2 graphicsBarrier[2]{};
@@ -338,11 +338,11 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawTemporalOccPso.handle);
-        DrawCullShaderPushConstant pushConstant{ CE_RENDER_BUFFER_TRANS_OFFSET, drawContext.m_pResidents->m_renders.m_transparentRenderCount};
+        DrawCullShaderPushConstant pushConstant{ BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount };
         vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
 
         // Dispatch
-        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_transparentRenderCount, 64), 1, 1);
+        vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_transparentStaticCount, 64), 1, 1);
 
         // Barrier blocks graphics command and count read
         VkBufferMemoryBarrier2 graphicsBarrier[2]{};
@@ -393,11 +393,11 @@ namespace BlitzenVulkan
         ClusterCullShaderPushConstant pushConstant
         {
             CE_CLUSTER_GROUP_OPAQUE_OFFSET, CE_CLUSTER_COUNT_OPAQUE_OFFSET,
-            CE_RENDER_BUFFER_OPAQUE_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueRenderCount
+            BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount
         };
         vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         // Dispatch
-        vkCmdDispatch(cmdb, (drawContext.m_pResidents->m_renders.m_opaqueRenderCount / 64) + 1, 1, 1);
+        vkCmdDispatch(cmdb, (drawContext.m_pResidents->m_renders.m_opaqueStaticCount / 64) + 1, 1, 1);
 
         // Cluster dispatch read barrier
         VkBufferMemoryBarrier2 clusterCullBarrier{};
@@ -451,11 +451,11 @@ namespace BlitzenVulkan
         ClusterCullShaderPushConstant pushConstant
         {
             CE_CLUSTER_GROUP_TRANS_OFFSET, CE_CLUSTER_COUNT_TRANS_OFFSET,
-            CE_RENDER_BUFFER_TRANS_OFFSET, drawContext.m_pResidents->m_renders.m_transparentRenderCount
+            BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount
         };
         vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         // Dispatch
-        vkCmdDispatch(cmdb, (drawContext.m_pResidents->m_renders.m_transparentRenderCount / 64) + 1, 1, 1);
+        vkCmdDispatch(cmdb, (drawContext.m_pResidents->m_renders.m_transparentStaticCount / 64) + 1, 1, 1);
 
         // Cluster dispatch read barrier
         VkBufferMemoryBarrier2 clusterCullBarrier{};
@@ -511,7 +511,7 @@ namespace BlitzenVulkan
         ClusterCullShaderPushConstant pushConstant
         {
             CE_CLUSTER_GROUP_OPAQUE_OFFSET, CE_CLUSTER_COUNT_OPAQUE_OFFSET,
-            CE_RENDER_BUFFER_OPAQUE_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueRenderCount
+            BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount
         };
         vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         // Dispatch
@@ -565,7 +565,7 @@ namespace BlitzenVulkan
         ClusterCullShaderPushConstant pushConstant
         {
             CE_CLUSTER_GROUP_TRANS_OFFSET, CE_CLUSTER_COUNT_TRANS_OFFSET,
-            CE_RENDER_BUFFER_TRANS_OFFSET, drawContext.m_pResidents->m_renders.m_transparentRenderCount
+            BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount
         };
         vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
         // Dispatch
@@ -847,7 +847,7 @@ namespace BlitzenVulkan
             // Generates cluster dispatch data and count for the opaque render objects
             ClusterDispatch(cmd.m_computeCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
 
-            if (context.m_pResidents->m_renders.m_transparentRenderCount != 0)
+            if (context.m_pResidents->m_renders.m_transparentStaticCount != 0)
             {
                 ClusterCullDispatchTrans(cmd.m_computeCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
             }
@@ -871,7 +871,7 @@ namespace BlitzenVulkan
 
             uint32_t dispatchCount{ uint32_t(*reinterpret_cast<uint32_t*>(readWrites.m_clusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData)) };
             uint32_t transparentDispatchCount = 0;
-            if (context.m_pResidents->m_renders.m_transparentRenderCount)
+            if (context.m_pResidents->m_renders.m_transparentStaticCount)
             {
                 transparentDispatchCount = uint32_t(*reinterpret_cast<uint32_t*>(readWrites.m_transClusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData));
             }
@@ -887,7 +887,7 @@ namespace BlitzenVulkan
 
             vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
-            if (context.m_pResidents->m_renders.m_transparentRenderCount != 0)
+            if (context.m_pResidents->m_renders.m_transparentStaticCount != 0)
             {
                 ClusterCullTransparent(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame],
                     m_descriptorContext, context, m_currentFrame, transparentDispatchCount);
@@ -992,7 +992,7 @@ namespace BlitzenVulkan
             DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
             vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
-            if (context.m_pResidents->m_renders.m_transparentRenderCount != 0)
+            if (context.m_pResidents->m_renders.m_transparentStaticCount != 0)
             {
                 // TRANSPARENT CULLING (takes advantage of already generated scene)
                 DrawCullTrans(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
