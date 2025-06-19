@@ -1,6 +1,6 @@
 #pragma once
 #include "BlitCL/blitPfn.h"
-#include "Renderer/Entities/Residents/RenderObject/blitMovingResident.h"
+#include "Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
 #include "Renderer/View/blitCamera.h"
 #include "Renderer/Entities/Residents/blitWV.h"
 
@@ -18,7 +18,7 @@ namespace BlitzenEngine
     {
     public:
 
-        WV* m_pTickingWorldVariables[BlitzenCore::Ce_MaxTickingWorldVariables]{nullptr};
+        WVKEY* m_pTickingWorldVariables[BlitzenCore::Ce_MaxTickingWorldVariables]{nullptr};
         uint32_t tickingWorldVariableCount{ 0 };
         
         MovingResident m_movingResidents[BlitzenCore::Ce_MaxWorldMovingResidentCount]{};

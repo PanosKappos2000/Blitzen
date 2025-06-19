@@ -1,12 +1,12 @@
 #pragma once
 #include "blitResident.h"
-#include "blitWv.h"
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
 
 namespace BlitzenEngine
 {
 	using RESIDENT_CREATE_CONTEXT_FLAGS = int64_t;
+	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_BASIC = 0;
 	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_MOVING = 0x5;
 	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_COLLISION = 0xA;
 
@@ -36,16 +36,16 @@ namespace BlitzenEngine
 
 	struct RESIDENT_CREATE_CONTEXT
 	{
-		RESIDENT_CREATE_CONTEXT_FLAGS m_flags;
+		RESIDENT_CREATE_CONTEXT_FLAGS m_flags{ RESIDENT_CREATE_BASIC };
 		Mesh* m_pResource{ nullptr };
 		TRANSFORM_CREATE_CONTEXT m_transformInfo{};
-		RENDER_OBJECT_TYPE* m_renderTypes{};
+		RENDER_OBJECT_TYPE* m_renderTypes{nullptr};
 	};
 
 	struct WORLD_RESIDENTS
 	{
-		WV m_worldVariableAccessors[BlitzenCore::Ce_MaxWorldVariableCount];
-		WVHOST m_worldVariableHost;
+		WVKEY m_worldVariableAccessors[BlitzenCore::Ce_MaxWorldVariableCount]{};
+		uint32_t m_worldVariableCount{ 0 };
 
 		Resident m_residents[BlitzenCore::Ce_MaxWorldResidentCount];
 		uint32_t m_residentCount{ 0 };

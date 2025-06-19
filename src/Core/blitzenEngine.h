@@ -196,11 +196,6 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxDynamicObjectCount = 1'000;// TODO: Replace this with the below
 
     constexpr uint32_t Ce_MaxWorldMovingResidentCount = 5'000;
-    
-    // Temporary, for stabilizing collision first
-    constexpr uint32_t Ce_MaxWorldCollisionCount = 1'000;
-    constexpr uint32_t Ce_MaxWorldCollisionGridCount = 100;
-    constexpr uint32_t Ce_MaxCollisionsPerGrid = 50;
 
     constexpr uint32_t Ce_MaxWorldVariableCount = 1'000;
 

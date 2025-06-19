@@ -3,13 +3,47 @@ float3 RotateQuat(float3 v, float4 quat)
     return v + 2.0 * cross(quat.xyz, cross(quat.xyz, v) + quat.w * v);
 }
 
+float QuatNormal(float4 q)
+{
+    return sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+}
+
+float4 NormalizeQuat(float4 q)
+{
+    float normal = QuatNormal(q);
+    return float4(q.x / normal, q.y / normal, q.z / normal, q.w / normal);
+}
+
+float4 NormalizedQuatFromAngleAxis(float3 axis, float angle)
+{
+    const float HALF_ANGLE = 0.5f * angle;
+
+    float s = sin(HALF_ANGLE);
+    float c = cos(HALF_ANGLE);
+
+    float4 q = float4(s * axis.x, s * axis.y, s * axis.z, c);
+
+    return NormalizeQuat(q);
+}
+
+inline float4 MulitplyQuat(float4 q1, float4 q2)
+{
+    float4 res;
+
+    res.x = q1.x * q2.w + q1.y * q2.z - q1.z * q2.y + q1.w * q2.x;
+    res.y = -q1.x * q2.z + q1.y * q2.w + q1.z * q2.x + q1.w * q2.y;
+    res.z = q1.x * q1.y - q1.y * q2.x + q1.z * q2.w + q1.w * q2.z;
+    res.w = -q1.x * q2.x - q1.y * q2.y - q1.z * q2.z + q1.w * q2.w;
+
+    return res;
+}
+
 float3 ModelSphereToViewSphere(float3 center, float4x4 view, float4 orientation, float3 position, float scale)
 {
     float3 worldCenter = RotateQuat(center, orientation) * scale + position;
     return mul(view, float4(worldCenter, 1)).xyz;
 }
 
-// Frustum culling function
 bool FrustumCheck(float3 center, float radius, float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, float znear, float zfar)
 {
 	bool visible = true;

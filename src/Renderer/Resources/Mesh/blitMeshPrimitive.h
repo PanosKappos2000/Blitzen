@@ -75,6 +75,7 @@ namespace BlitzenEngine
 	{
 		MeshPrimitiveData m_meshPrimitiveData[BlitzenCore::Ce_MaxMeshPrimitivesCount];
 		PrimitiveSurface m_meshPrimitives[BlitzenCore::Ce_MaxMeshPrimitivesCount];
+		BoundingSphere m_boundingSpheres[BlitzenCore::Ce_MaxMeshPrimitivesCount];
 		uint32_t m_meshPrimitivesCount{ 0 };
 
 		LodData m_LODs[CE_MAX_LOD_COUNT]{};

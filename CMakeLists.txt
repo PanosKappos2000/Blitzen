@@ -94,7 +94,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/Resources/Textures/blitTextures.h"
                 "src/Renderer/Resources/Textures/blitzenTextures.cpp"
                 "src/Renderer/Resources/Mesh/blitMeshes.h"
-                "src/Renderer/Resources/Mesh/blitzenMeshes.cpp"
+                "src/Renderer/Resources/Mesh/blitMeshes.cpp"
                 "src/Renderer/Scene/blitScene.h"
                 "src/Renderer/Scene/blitScene.cpp"
                 "src/Renderer/Resources/Mesh/blitMeshPrimitive.h"
@@ -126,8 +126,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Residents/blitResident.cpp"
                 "src/Renderer/Entities/Residents/blitWV.cpp"
                 "src/Renderer/Entities/Residents/RenderObject/worldTransform.h"
-                "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.h"
-                "src/Renderer/Entities/Residents/RenderObject/blitMovingResident.cpp" 
+                "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
+                "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.cpp" 
 
                 # LIGHTING
                 "src/Renderer/Lighting/blitDirectionalLight.h"
@@ -204,7 +204,7 @@ add_executable(BlitzenEngine
                 
                 "src/Client/WVRotatingKitten.h"   
                 "src/Client/ClientWV/wvData.h"
-                 "src/Renderer/Resources/Mesh/blitClusters.h"   )
+                 "src/Renderer/Resources/Mesh/blitClusters.h"    "src/Renderer/Entities/Residents/Collision/blitCollision.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

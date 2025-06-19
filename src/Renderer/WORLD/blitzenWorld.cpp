@@ -54,6 +54,8 @@ namespace BlitzenWorld
             return false;
         }
 
+        BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
+
         // Success
         return true;
     }

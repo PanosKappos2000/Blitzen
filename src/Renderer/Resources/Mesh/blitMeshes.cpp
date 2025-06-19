@@ -9,9 +9,24 @@
 #include "Meshoptimizer/meshoptimizer.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
+    inline MeshResources* P_MESH_RESOURCES = nullptr;
+
+    void InitializeMeshResourcesPointer_STATIC_ACCESS(MeshResources* ptr)
+    {
+        BLIT_ASSERT_MESSAGE(P_MESH_RESOURCES == nullptr, "Attempted to reinitialize mesh resources singleton pointer");
+
+        P_MESH_RESOURCES = ptr;
+    }
+
+    BoundingSphere* GetBoundingSphereResources_STATIC_ACCESS(Mesh* pMesh)
+    {
+        return &P_MESH_RESOURCES->m_meshPrimitives.m_boundingSpheres[pMesh->firstSurface];
+    }
+
     uint32_t MeshResources::AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName /*="BLIT_DO_NOT_ADD_TO_MESH_TABLE"*/)
     {
         if (m_meshCount >= BlitzenCore::Ce_MaxMeshCount)

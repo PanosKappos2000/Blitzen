@@ -6,18 +6,18 @@
 namespace BlitzenEngine
 {
 	constexpr uint32_t WVTYPES = 1;
-	constexpr WVTYPEID WVRotatingKittenType = 0;
+	constexpr uint32_t WVRotatingKitten_ContextID = 0;
 
-	inline static WORLD_VARIABLE_CONTEXT S_WORLD_VARIABLE_CONTEXT_ARRAY[WVTYPES]
-	{
-		{1'000, sizeof(WVRotatingKitten)}
-	};
+	inline static WORLD_VARIABLE_CONTEXT* wvCtxArr{ nullptr };
+	/*{
+		{1'000, sizeof(WVRotatingKitten), 0}
+	};*/
 
-	void WorldVariableStart(WVHANDLE wv, WVTYPEID type)
+	void WorldVariableStart(WVHANDLE wv, WVTYPE type)
 	{
-		switch (type)
+		switch (type.id)
 		{
-		case WVRotatingKittenType:
+		case WVRotatingKitten_ContextID:
 		{
 			// reinterpret_cast<WVRotatingKitten*>(wv)->Create();
 			break;
@@ -25,11 +25,11 @@ namespace BlitzenEngine
 		}
 	}
 
-	void WorldVariableTick(WVHANDLE wv, WVTYPEID type)
+	void WorldVariableTick(WVHANDLE wv, WVTYPE type)
 	{
-		switch (type)
+		switch (type.id)
 		{
-		case WVRotatingKittenType:
+		case 0:
 		{
 			// reinterpret_cast<WVRotatingKitten*>(wv)->Tick();
 			break;
@@ -37,11 +37,11 @@ namespace BlitzenEngine
 		}
 	}
 
-	void WorldVariableCollision(WVHANDLE sender, WVTYPEID senderType, WVHANDLE receiver, WVTYPEID receiverID)
+	void WorldVariableCollision(WVHANDLE sender, WVTYPE senderType, WVHANDLE receiver, WVTYPE receiverID)
 	{
-		switch (senderType)
+		switch (senderType.id)
 		{
-		case WVRotatingKittenType:
+		case 0:
 		{
 			// reinterpret_cast<WVRotatingKitten*>(wv)->Collision(receiver, receiverID);
 			break;
@@ -49,59 +49,63 @@ namespace BlitzenEngine
 		}
 	}
 
-	void AllocateWorldVariables(uint32_t count, WVHOST* pHost)
+	void AllocateWorldVariables_STATIC_ACCESS(uint32_t count)
 	{
 		if (count >= BlitzenCore::Ce_MaxWorldVariableCount)
 		{
-			BLIT_ERROR("%s: Max world variable count reached", BlitzenCore::CE_WORLD_VARIABLE_SYSTEM_NAME);
+			BLIT_ERROR("%s: Too many world variables requested", BlitzenCore::CE_WORLD_VARIABLE_SYSTEM_NAME);
 			return;
 		}
 
-		for (WVTYPEID flag = 0; flag < count; ++flag)
+		for (uint32_t id = 0; id < count; ++id)
 		{
-			pHost->ALLOC(flag);
+			wvCtxArr[id].ALLOC();
 		}
 	}
 
-	void AddWorldVariable(WV* pwv, WVHOST* pHost)
+	void AddWorldVariable_STATIC_ACCESS(WVKEY* pwv)
 	{
-		pHost->ADD(pwv);
+		pwv->wv_inst.inst = wvCtxArr[pwv->wv_type.id].NEW();
 	}
 
-	void WVGROUP::ALLOC(WVTYPEID typeID)
+	WVHANDLE GetWorldVariable_STATIC_ACCESS(WVKEY pwv)
 	{
-		auto& context{ S_WORLD_VARIABLE_CONTEXT_ARRAY[typeID] };
-
-		m_pool = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::WV, context.m_size * context.m_maxInstances);
-		m_size = context.m_size;
-		m_type = typeID;
+		return wvCtxArr[pwv.wv_type.id].GET(pwv.wv_inst);
 	}
 
-	void WVGROUP::ADD(WV* pWV)
+	void WORLD_VARIABLE_CONTEXT::ALLOC()
 	{
-		if (m_instanceCount >= S_WORLD_VARIABLE_CONTEXT_ARRAY[m_type].m_maxInstances)
+		m_pPool = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::WV, m_typeSize * m_maxInstances);
+	}
+
+	uint32_t WORLD_VARIABLE_CONTEXT::NEW()
+	{
+		if (m_instanceCount >= m_maxInstances)
 		{
-			BLIT_ERROR("Exceeded maximum instance count for world variable with flag: %u", m_type);
+			BLIT_ERROR("Exceeded maximum instance count for world variable with flag: %u", m_wv_type.id);
 			BLIT_ASSERT(true);
 		}
 
-		pWV->m_handle = &reinterpret_cast<uint8_t*>(m_pool)[m_size * m_instanceCount];
-		pWV->m_type = m_type;
-		pWV->m_instance = m_instanceCount++;
+		return m_instanceCount++;
 	}
 
-	WVGROUP::~WVGROUP()
+	WVHANDLE WORLD_VARIABLE_CONTEXT::GET(WVINST wv_inst)
 	{
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::WV, m_pool, m_size * S_WORLD_VARIABLE_CONTEXT_ARRAY[m_type].m_maxInstances);
+		return &reinterpret_cast<uint8_t*>(m_pPool)[m_typeSize * wv_inst.inst];
 	}
 
-	void WVHOST::ALLOC(WVTYPEID flag)
+	WORLD_VARIABLE_CONTEXT::~WORLD_VARIABLE_CONTEXT()
 	{
-		m_groups[m_groupCount++].ALLOC(flag);
+		if (m_pPool)
+		{
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::WV, m_pPool, m_typeSize * m_maxInstances);
+		}
 	}
 
-	void WVHOST::ADD(WV* pWV)
+	void InitializeWorldVariableContextPtr_STATIC_ACCESS(WORLD_VARIABLE_CONTEXT* ptr)
 	{
-		m_groups[pWV->m_type].ADD(pWV);
+		BLIT_ASSERT_MESSAGE(wvCtxArr == nullptr, "Tried to reinitialize world variable context pointer");
+
+		wvCtxArr = ptr;
 	}
 }

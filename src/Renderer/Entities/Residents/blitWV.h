@@ -4,69 +4,61 @@
 namespace BlitzenEngine
 {
 	using WVHANDLE = void*;
-	using WVTYPEID = uint32_t;
-	using WVMAX = uint32_t;
-	using WVSPOTS = uint32_t*;
-	using WVSIZE = uint32_t;
-	using WVINST = uint32_t;
 
-	struct WORLD_VARIABLE_CONTEXT
+	struct WVTYPE
 	{
-		WVMAX m_maxInstances;
-		WVSIZE m_size;
+		uint32_t id;
+	};
+	
+	using WVSPOTS = uint32_t*;
+	
+	struct WVINST
+	{
+		uint32_t inst;
+	};
 
-		WORLD_VARIABLE_CONTEXT(WVMAX maxInstances, WVSIZE size) :m_maxInstances{ maxInstances }, m_size(size)
+	class WORLD_VARIABLE_CONTEXT
+	{
+	public:
+
+		uint32_t m_maxInstances;
+		uint32_t m_instanceCount;
+		uint32_t m_typeSize;
+		WVTYPE m_wv_type;
+		void* m_pPool;
+
+		WORLD_VARIABLE_CONTEXT(uint32_t maxInstances, uint32_t size, WVTYPE typeID)
+			:m_maxInstances{ maxInstances }, m_typeSize(size), m_wv_type{ typeID }, m_instanceCount{ 0 }, m_pPool{ nullptr }
 		{
 
 		}
+
+		void ALLOC();
+
+		uint32_t NEW();
+
+		WVHANDLE GET(WVINST wv_inst);
+
+		~WORLD_VARIABLE_CONTEXT();
 	};
 
-	struct WV
+	struct WVKEY
 	{
-		WVHANDLE m_handle;
-		WVTYPEID m_type;
-		WVINST m_instance;
+		WVTYPE wv_type;
+		WVINST wv_inst;
 	};
 
-	class WVGROUP
-	{
-	public:
-		void ALLOC(WVTYPEID typeID);
-		
-		void ADD(WV* pWV);
+	void InitializeWorldVariableContextPtr_STATIC_ACCESS(WORLD_VARIABLE_CONTEXT* ptr);
 
-		// void REMOVE
+	void AllocateWorldVariables_STATIC_ACCESS(uint32_t count);
 
-		~WVGROUP();
+	void AddWorldVariable_STATIC_ACCESS(WVKEY* pwv);
 
-	private:
-		WVHANDLE m_pool;
-		WVSIZE m_size;
-		WVSPOTS m_spots;
-		WVTYPEID m_type;
+	WVHANDLE GetWorldVariable_STATIC_ACCESS(WVKEY pwv);
 
-		uint32_t m_instanceCount{ 0 };
-	};
+	void WorldVariableStart(WVHANDLE handle, WVTYPE type);
 
-	class WVHOST
-	{
-	public:
-		void ALLOC(WVTYPEID flag);
+	void WorldVariableTick(WVHANDLE handle, WVTYPE type);
 
-		void ADD(WV* pWV);
-
-	private:
-		WVGROUP m_groups[BlitzenCore::Ce_MaxWorldVariableCount]{};
-		uint32_t m_groupCount{ 0 };
-	};
-
-	void AllocateWorldVariables(uint32_t count, WVHOST* pHost);
-
-	void AddWorldVariable(WV* pwv, WVHOST* pHost);
-
-	void WorldVariableStart(WVHANDLE handle, WVTYPEID type);
-
-	void WorldVariableTick(WVHANDLE handle, WVTYPEID type);
-
-	void WorldVariableCollision(WVHANDLE sender, WVTYPEID senderType, WVHANDLE receiver, WVTYPEID receiverType);
+	void WorldVariableCollision(WVHANDLE sender, WVTYPE senderType, WVHANDLE receiver, WVTYPE receiverType);
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "blitResidentManager.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Renderer/Resources/Mesh/blitMeshes.h"
 
 namespace BlitzenEngine
 {
@@ -8,17 +9,22 @@ namespace BlitzenEngine
 	{
 		RenderObject* pFirstRender{ nullptr };
 
+		uint32_t transformID{ m_transforms.CreateTransform(ctx.m_transformInfo) };
+		if (transformID == BlitzenCore::Ce_MaxWorldTransformCount)
+		{
+			return WORLD_TRANSFORM_CREATION_FAILED;
+		}
+
+		auto boundingSpheres{ GetBoundingSphereResources_STATIC_ACCESS(ctx.m_pResource) };
+
 		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
 		{
 			RENDER_OBJECT_CREATE_CONTEXT renderContext{};
 			renderContext.m_type = ctx.m_renderTypes[prim];
 			renderContext.m_primitiveID = prim + ctx.m_pResource->firstSurface;
-			renderContext.m_transformID = m_transforms.CreateTransform(ctx.m_transformInfo);
-
-			if (renderContext.m_transformID == BlitzenCore::Ce_MaxWorldTransformCount)
-			{
-				return WORLD_TRANSFORM_CREATION_FAILED;
-			}
+			renderContext.m_transformID = transformID;
+			
+			//m_colliders.AddRenderObjectBoundingSphere(&boundingSpheres[prim], &m_transforms[transformID]);
 
 			uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext);
 

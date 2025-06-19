@@ -139,15 +139,20 @@ namespace BlitML
         vec.w /= len;
     }
 
-    inline vec2 GetNormalized(const vec2& vec){
+    inline vec2 GetNormalized(const vec2& vec)
+    {
         float len = Length(vec);
         return vec2(vec.x / len, vec.y / len);
     }
-    inline vec3 GetNormalized(const vec3& vec){
+
+    inline vec3 GetNormalized(const vec3& vec)
+    {
         float len = Length(vec);
         return vec3(vec.x / len, vec.y / len, vec.z / len);
     }
-    inline vec4 GetNormalized(const vec4& vec){
+
+    inline vec4 GetNormalized(const vec4& vec)
+    {
         float len = Length(vec);
         return vec4(vec.x / len, vec.y / len, vec.z / len, vec.w / len);
     }
@@ -157,11 +162,13 @@ namespace BlitML
         vec2 d(v1 - v2);
         return Length(d);
     }
+
     inline float Distance(const vec3& v1, const vec3& v2)
     {
         vec3 d(v1 - v2);
         return Length(d);
     }
+
     inline float Distance(const vec4& v1, const vec4& v2)
     {
         vec4 d(v1 - v2);
@@ -218,7 +225,8 @@ namespace BlitML
         return f;
     }
 
-    inline vec3 Cross(const vec3& v1, const vec3& v2){
+    inline vec3 Cross(const vec3& v1, const vec3& v2)
+    {
         return vec3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
     }
 
@@ -393,6 +401,7 @@ namespace BlitML
         res.data[10] = c;
         return res;
     }
+
     inline mat4 Mat4EulerY(float radians) 
     {
         mat4 res;
@@ -404,6 +413,7 @@ namespace BlitML
         res.data[10] = c;
         return res;
     }
+
     inline mat4 Mat4EulerZ(float angle_radians) 
     {
         mat4 res;
@@ -415,6 +425,7 @@ namespace BlitML
         res.data[5] = c;
         return res;
     }
+
     inline mat4 Mat4EulerXYZ(float xRadians, float yRadians, float zRadians) 
     {
         mat4 rx = Mat4EulerX(xRadians);

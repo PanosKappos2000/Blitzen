@@ -1,12 +1,16 @@
 #pragma once
-
-#include "Renderer/Resources/renderingResourcesTypes.h"
+#include "Renderer/Resources/blitShaderResources.h"
+#include "BlitCL/blitPfn.h"
 
 namespace BlitzenEngine
 {
 	using BLITZEN_COLLISION_FLAGS = uint64_t;
 
 	using COLLISION_PFN = BlitCL::Pfn<void, void*, BLITZEN_COLLISION_FLAGS, void*, BLITZEN_COLLISION_FLAGS>;
+
+	constexpr uint32_t CE_MAX_COLLISION_EVENTS = 1'000;
+	constexpr uint32_t CE_MAX_COLLISIONS_IN_GRID = 100;
+	constexpr uint32_t CE_MAX_WORLD_COLLISION_GRIDS = 1'000'000;
 
 	struct Collision
 	{
@@ -39,9 +43,12 @@ namespace BlitzenEngine
 
 	struct CollisionGrid
 	{
-		Collision* m_staticCollisions[BlitzenCore::Ce_MaxCollisionsInGrid];
-		uint32_t m_staticCollisionCount{ 0 };
-		uint32_t m_dynamicCollisionCount{ 0 };
-		uint32_t m_dynamicCollisionOffset{ BlitzenCore::Ce_CollisionGridDynamicOffset };
+		uint32_t m_totalColliderCount{ 0 };
+		Collision* m_pStatics[CE_MAX_COLLISIONS_IN_GRID]{ nullptr };
+		uint32_t m_staticCount{ 0 };
+		Collision* m_pMoving[CE_MAX_COLLISIONS_IN_GRID]{ nullptr };
+		uint32_t m_dynamicCount{ 0 };
+
+		// Some sort of transform data as well I am guessing
 	};
 }
