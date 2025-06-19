@@ -48,6 +48,8 @@ namespace BlitzenWorld
         // World residents
         BlitzenEngine::WORLD_RESIDENTS m_residents{};
 
+        BlitzenEngine::WVHOST m_worldVariables{};
+
         float deltaTime{0.f};
 
         inline WORLD_blit(BlitzenEngine::Camera& camera, BlitzenEngine::MeshResources& meshes, BlitzenEngine::TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)

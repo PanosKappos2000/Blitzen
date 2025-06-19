@@ -1,0 +1,150 @@
+WorldVariable System — Design Draft (v0.1)
+==========================================
+
+This document captures the **initial design** and usage workflow for the
+WorldVariable (WV) system in Blitzen. The goal is to let game-code authors
+define arbitrary C++ POD structs **without inheritance** yet still give the
+engine a data-driven view of every instance for ticking, input, collision,
+etc., while keeping memory layout flat and cache-friendly.
+
+────────────────────────────────────────────────────────────────────────────
+1.  Overview
+────────────────────────────────────────────────────────────────────────────
+•  **Author freedom** – Designers/programmers declare plain structs (e.g.
+   `struct NPC { … };`) with no base classes.
+
+•  **Data-driven registration** – A `.blitwv` file tells the engine the
+   *meta-layout* of every WV type (size, max instances, type-id).  
+   ‣ For now this file is hand-authored; later it should be auto-generated.
+
+•  **Flat pools** – One contiguous pool per WV type (`max * sizeof(Type)`).
+   These reside in a single array owned by the **WORLD** system.
+
+•  **Static access helpers** – Inline “*_STATIC_ACCESS” wrappers expose
+   world-variable allocation and lookup without virtual overhead.
+
+•  **Ability dispatch** – Abilities (Tick, Input, Collision, …) are single
+   switch statements on `typeId`, casting the raw pointer back to the user
+   struct and calling its user-defined method.
+
+────────────────────────────────────────────────────────────────────────────
+2.  The `.blitwv` File (format Draft)
+────────────────────────────────────────────────────────────────────────────
+
+id : size , maxInstances
+
+•  `id`            – Ascending, unique `uint32_t` type index (0…N-1)
+•  `size`          – `sizeof(UserStruct)` in bytes
+•  `maxInstances`  – Hard cap for this type in the current project
+
+Example
+-------
+
+0 : 32, 4096 # NPC
+1 : 48, 512 # MovableCrate
+2 : 64, 1024 # Projectile
+
+
+────────────────────────────────────────────────────────────────────────────
+3.  Runtime Data Structures
+────────────────────────────────────────────────────────────────────────────
+```cpp
+struct WVDesc 
+{
+    uint32_t  typeId;
+    uint32_t  maxInstances;
+    uint32_t  size;          // bytes per instance
+    uint32_t  instCount;     // live instances so far
+    void*     poolPtr;       // base address of contiguous pool
+};
+WVDesc WVHost[MAX_WV_TYPES];     // built from .blitwv
+
+WVKEY – Handle passed around at runtime
+
+struct WVKEY 
+{
+    uint32_t typeId;
+    uint32_t instId;   // index inside that type’s pool
+};
+
+────────────────────────────────────────────────────────────────────────────
+4. Initialization Flow (CPU side)
+────────────────────────────────────────────────────────────────────────────
+
+LoadWVMetaData(".blitwv")              // parse file -> WVHost
+InitializeWorldVariableContextPtr_STATIC_ACCESS() WVHost_addr -> inlinePtr
+AllocateWorldVariables_STATIC_ACCESS(totalInstanceEstimate)
+
+AllocateWorldVariables_STATIC_ACCESS loops over inlinePtr, allocating
+desc.size * desc.maxInstances bytes for each type and filling poolPtr.
+
+────────────────────────────────────────────────────────────────────────────
+5. Instance Creation
+────────────────────────────────────────────────────────────────────────────
+
+WVKEY key;
+AddWorldVariable_STATIC_ACCESS(&key); // key.typeId already set to NPC id
+memcpy(GetWorldVariable_STATIC_ACCESS(key), &npcTemp, sizeof(NPC));
+
+AddWorldVariable_STATIC_ACCESS
+
+    Validates currCount < maxInstances; asserts otherwise.
+
+    Returns the current currCount via key.instId.
+
+    Increments currCount.
+
+Loop keys and calls:
+WorldVariableStart(dt,key)
+{
+    switch(key.type)
+    {
+        case NPCID:
+            CAST<NPCptr>(GetWorldVariable_STATIC_ACCESS(key))->Start(dt, key)
+    }
+}
+
+────────────────────────────────────────────────────────────────────────────
+6. Ability Dispatch Example (Tick Update)
+────────────────────────────────────────────────────────────────────────────
+
+void TickUpdate_World(float dt, WVKEY key) {
+    switch (key.typeId) {
+        case NPC_TYPE_ID: {
+            NPC* npc = static_cast<NPC*>(
+                GetWorldVariable_STATIC_ACCESS(key));
+            npc->Tick(dt);
+        } break;
+
+        case MovableCrate_TYPE_ID: {
+            MovableCrate* crate = static_cast<MovableCrate*>(
+                GetWorldVariable_STATIC_ACCESS(key));
+            crate->Tick(dt);
+        } break;
+        // …more types…
+    }
+}
+
+User structs opt-in simply by defining the expected method (Tick,
+OnInput, OnCollision, …).
+
+────────────────────────────────────────────────────────────────────────────
+7. Future Improvements / TODO
+────────────────────────────────────────────────────────────────────────────
+• Auto-generate .blitwv from annotated headers or build step.
+• Hot-loading or per-scene override of maxInstances.
+• GPU-side transform or culling data baked directly from these pools.
+• Thread-safe allocation path for streaming in new objects.
+• (Performance) Replace switch dispatch with jump-table per ability.
+• Optional compact handles (32-bit) if typeId ≤ 65535 and
+maxInstances ≤ 65535.
+
+────────────────────────────────────────────────────────────────────────────
+8. Summary
+────────────────────────────────────────────────────────────────────────────
+The WorldVariable system gives Blitzen a data-oriented ECS-like core
+without imposing inheritance on game structs. Its design keeps memory
+contiguous, minimizes per-frame CPU work for static entities, and keeps
+the ABI trivial for GPU migration in future. This draft documents the
+initial API surface and runtime flow; expect refinement as features such
+as collision, scripting, and streaming come online.

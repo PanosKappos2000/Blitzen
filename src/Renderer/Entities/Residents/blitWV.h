@@ -4,6 +4,7 @@
 namespace BlitzenEngine
 {
 	using WVHANDLE = void*;
+	constexpr uint32_t WVTYPES = 1;
 
 	struct WVTYPE
 	{
@@ -17,29 +18,19 @@ namespace BlitzenEngine
 		uint32_t inst;
 	};
 
-	class WORLD_VARIABLE_CONTEXT
+	class WVDESC
 	{
 	public:
 
-		uint32_t m_maxInstances;
-		uint32_t m_instanceCount;
-		uint32_t m_typeSize;
-		WVTYPE m_wv_type;
-		void* m_pPool;
+		uint32_t m_maxInstances{ 0 };
+		uint32_t m_instanceCount{ 0 };
+		uint32_t m_typeSize{ 0 };
+		WVTYPE m_wv_type{ 0 };
+		uint32_t m_offset{ 0 };
 
-		WORLD_VARIABLE_CONTEXT(uint32_t maxInstances, uint32_t size, WVTYPE typeID)
-			:m_maxInstances{ maxInstances }, m_typeSize(size), m_wv_type{ typeID }, m_instanceCount{ 0 }, m_pPool{ nullptr }
-		{
-
-		}
-
-		void ALLOC();
+		void OFFSET(uint32_t maxInstances, uint32_t size, WVTYPE typeID);
 
 		uint32_t NEW();
-
-		WVHANDLE GET(WVINST wv_inst);
-
-		~WORLD_VARIABLE_CONTEXT();
 	};
 
 	struct WVKEY
@@ -48,9 +39,20 @@ namespace BlitzenEngine
 		WVINST wv_inst;
 	};
 
-	void InitializeWorldVariableContextPtr_STATIC_ACCESS(WORLD_VARIABLE_CONTEXT* ptr);
+	class WVHOST
+	{
+	public:
 
-	void AllocateWorldVariables_STATIC_ACCESS(uint32_t count);
+		void* m_pPool{ nullptr };
+		WVDESC m_descs[WVTYPES];
+		uint32_t m_poolSize{ 0 };
+
+		~WVHOST();
+	};
+
+	void InitializeWorldVariableContextPtr_STATIC_ACCESS(WVHOST* ptr);
+
+	void AllocateWorldVariables_STATIC_ACCESS(uint32_t poolSize);
 
 	void AddWorldVariable_STATIC_ACCESS(WVKEY* pwv);
 

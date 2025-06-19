@@ -5,13 +5,9 @@
 
 namespace BlitzenEngine
 {
-	constexpr uint32_t WVTYPES = 1;
 	constexpr uint32_t WVRotatingKitten_ContextID = 0;
 
-	inline static WORLD_VARIABLE_CONTEXT* wvCtxArr{ nullptr };
-	/*{
-		{1'000, sizeof(WVRotatingKitten), 0}
-	};*/
+	inline static WVHOST* p_wv_host{ nullptr };
 
 	void WorldVariableStart(WVHANDLE wv, WVTYPE type)
 	{
@@ -49,36 +45,33 @@ namespace BlitzenEngine
 		}
 	}
 
-	void AllocateWorldVariables_STATIC_ACCESS(uint32_t count)
+	void AllocateWorldVariables_STATIC_ACCESS(uint32_t poolSize)
 	{
-		if (count >= BlitzenCore::Ce_MaxWorldVariableCount)
-		{
-			BLIT_ERROR("%s: Too many world variables requested", BlitzenCore::CE_WORLD_VARIABLE_SYSTEM_NAME);
-			return;
-		}
-
-		for (uint32_t id = 0; id < count; ++id)
-		{
-			wvCtxArr[id].ALLOC();
-		}
+		p_wv_host->m_pPool = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::WV, poolSize);
+		p_wv_host->m_poolSize = poolSize;
 	}
 
 	void AddWorldVariable_STATIC_ACCESS(WVKEY* pwv)
 	{
-		pwv->wv_inst.inst = wvCtxArr[pwv->wv_type.id].NEW();
+		pwv->wv_inst.inst = p_wv_host->m_descs[pwv->wv_type.id].NEW();
 	}
 
-	WVHANDLE GetWorldVariable_STATIC_ACCESS(WVKEY pwv)
+	WVHANDLE GetWorldVariable_STATIC_ACCESS(WVKEY key)
 	{
-		return wvCtxArr[pwv.wv_type.id].GET(pwv.wv_inst);
+		auto& desc{ p_wv_host->m_descs[key.wv_type.id] };
+		return &reinterpret_cast<uint8_t*>(p_wv_host->m_pPool)[desc.m_offset + key.wv_inst.inst * desc.m_typeSize] ;
 	}
 
-	void WORLD_VARIABLE_CONTEXT::ALLOC()
+	void WVDESC::OFFSET(uint32_t maxInstances, uint32_t size, WVTYPE typeID)
 	{
-		m_pPool = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::WV, m_typeSize * m_maxInstances);
+		m_maxInstances = maxInstances;
+		m_typeSize = size;
+		m_wv_type = typeID;
+		m_instanceCount = 0;
+		m_offset = size * maxInstances;
 	}
 
-	uint32_t WORLD_VARIABLE_CONTEXT::NEW()
+	uint32_t WVDESC::NEW()
 	{
 		if (m_instanceCount >= m_maxInstances)
 		{
@@ -89,23 +82,18 @@ namespace BlitzenEngine
 		return m_instanceCount++;
 	}
 
-	WVHANDLE WORLD_VARIABLE_CONTEXT::GET(WVINST wv_inst)
-	{
-		return &reinterpret_cast<uint8_t*>(m_pPool)[m_typeSize * wv_inst.inst];
-	}
-
-	WORLD_VARIABLE_CONTEXT::~WORLD_VARIABLE_CONTEXT()
+	WVHOST::~WVHOST()
 	{
 		if (m_pPool)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::WV, m_pPool, m_typeSize * m_maxInstances);
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::WV, m_pPool, m_poolSize);
 		}
 	}
 
-	void InitializeWorldVariableContextPtr_STATIC_ACCESS(WORLD_VARIABLE_CONTEXT* ptr)
+	void InitializeWorldVariableContextPtr_STATIC_ACCESS(WVHOST* ptr)
 	{
-		BLIT_ASSERT_MESSAGE(wvCtxArr == nullptr, "Tried to reinitialize world variable context pointer");
+		BLIT_ASSERT_MESSAGE(p_wv_host == nullptr, "Tried to reinitialize world variable context pointer");
 
-		wvCtxArr = ptr;
+		p_wv_host = ptr;
 	}
 }
