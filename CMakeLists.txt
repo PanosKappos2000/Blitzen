@@ -280,10 +280,10 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
                             #BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
-                            #BLITZEN_DRAW_TEMPORAL_OCCLUSION
+                            BLITZEN_DRAW_TEMPORAL_OCCLUSION
                             BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
                             #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now
-                            BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
+                            #BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens
                             #BLIT_DOUBLE_BUFFERING # Enables double buffering (DX12 ignores this, and activates it anyway)
                             #BLIT_RAYTRACING
                             #BLIT_MESH_SHADERS

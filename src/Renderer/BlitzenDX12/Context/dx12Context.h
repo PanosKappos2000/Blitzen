@@ -196,8 +196,6 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullDispatchPso;
 
-        DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdSetPso;
-
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullPso;
 
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullBatchCmdPso;

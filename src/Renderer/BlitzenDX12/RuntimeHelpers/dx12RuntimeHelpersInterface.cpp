@@ -125,7 +125,7 @@ namespace BlitzenEngine
 
 				D3D12_RESOURCE_BARRIER clusterDispatchBarrier{};
 				BlitzenDX12::CreateResourcesTransitionBarrier(clusterDispatchBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), 
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
 				rwBuffersFinal.PushBack(clusterDispatchBarrier);
 

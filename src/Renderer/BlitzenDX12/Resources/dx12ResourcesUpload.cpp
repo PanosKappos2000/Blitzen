@@ -247,6 +247,20 @@ namespace BlitzenDX12
 				
 			}
 
+			STAGING<ClusterDispatchCmd> clusterDispatchStaging{};
+			if constexpr (BlitzenCore::Ce_BuildClusters)
+			{
+				ClusterDispatchCmd yzOne{};
+				yzOne.command.ThreadGroupCountX = 0;
+				yzOne.command.ThreadGroupCountY = 1;
+				yzOne.command.ThreadGroupCountZ = 1;
+				if (!CreateStaging(device, clusterDispatchStaging, 1, &yzOne))
+				{
+					BLIT_ERROR("%s: Failed to create clustser dispatch staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+					return 0;
+				}
+			}
+
 			cmdContext.m_copyCmdAlloc->Reset();
 			cmdContext.m_copyCmdList->Reset(cmdContext.m_copyCmdAlloc.Get(), nullptr);
 
@@ -270,6 +284,14 @@ namespace BlitzenDX12
 				
 			}
 
+			if constexpr (BlitzenCore::Ce_BuildClusters)
+			{
+				D3D12_RESOURCE_BARRIER clusterDipatchBarrier{};
+				CreateResourcesTransitionBarrier(clusterDipatchBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
+				copyDestBarriers.PushBack(clusterDipatchBarrier);
+			}
+
 			// Execute
 			cmdContext.m_copyCmdList->ResourceBarrier((UINT)copyDestBarriers.GetSize(), copyDestBarriers.Data());
 
@@ -290,6 +312,12 @@ namespace BlitzenDX12
 				
 			}
 
+			if constexpr (BlitzenCore::Ce_BuildClusters)
+			{
+				D3D12_RESOURCE_BARRIER clusterDispatchStagingBarrier{};
+				CreateResourcesTransitionBarrier(clusterDispatchStagingBarrier, clusterDispatchStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			}
+
 			// Execute
 			cmdContext.m_copyCmdList->ResourceBarrier(UINT(copySourceBarriers.GetSize()), copySourceBarriers.Data());
 
@@ -299,10 +327,14 @@ namespace BlitzenDX12
 				cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_drawVisBuffer.buffer.Get(), 0,  drawVisibilityStaging.m_buffer.Get(), 0, drawVisibilityStaging.m_dataSize);
 			}
 
-			// instance counter
 			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
 				
+			}
+
+			if constexpr (BlitzenCore::Ce_BuildClusters)
+			{
+				cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_clusterDispatchBuffer.buffer.Get(), 0, clusterDispatchStaging.m_buffer.Get(), 0, clusterDispatchStaging.m_dataSize);
 			}
 
 			// Puts persistent transform staging in copy source state forever
@@ -353,7 +385,8 @@ namespace BlitzenDX12
 		}
 
 		DX12WRAPPER<ID3D12Resource> indexStagingBuffer{ nullptr };
-		UINT64 idxBufferSize{ sizeof(uint32_t) * drawContext.m_meshes.m_triangles.m_vtxIdxCount};
+		UINT idxElementCount = BlitzenCore::Ce_BuildClusters ? drawContext.m_meshes.m_clusters.m_clusterIndicesCount : drawContext.m_meshes.m_triangles.m_vtxIdxCount;
+		UINT64 idxBufferSize{ sizeof(uint32_t) * idxElementCount };
 		if (!CreateBuffer(device, indexStagingBuffer.ReleaseAndGetAddressOf(), idxBufferSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
 		{
 			BLIT_ERROR("%s: Failed to create index staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
@@ -368,7 +401,8 @@ namespace BlitzenDX12
 			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
 		}
 		// copy
-		BlitzenCore::BlitMemCopy(pMappedData, drawContext.m_meshes.m_triangles.m_indices, idxBufferSize);
+		void* pIdxCpuData = BlitzenCore::Ce_BuildClusters ? drawContext.m_meshes.m_clusters.m_clusterIndices : drawContext.m_meshes.m_triangles.m_indices;
+		BlitzenCore::BlitMemCopy(pMappedData, pIdxCpuData, idxBufferSize);
 
 		STAGING<BlitzenEngine::PrimitiveSurface> surfaceStagingBuffer{ };
 		if (!CreateStaging(device, surfaceStagingBuffer, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitives))

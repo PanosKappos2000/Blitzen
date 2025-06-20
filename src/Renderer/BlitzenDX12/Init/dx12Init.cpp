@@ -435,12 +435,6 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullCmdSetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullCmdSet.cs.hlsl.bin"))
-			{
-				BLIT_ERROR("Failed to create clusterCullCmdSet.cs shader program");
-				return 0;
-			}
-
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCull.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create clusterCull.cs shader program");

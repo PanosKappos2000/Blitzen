@@ -21,9 +21,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         return;
     }
     
-    uint objId = groupData.objId;
-    
-    Transform transform = ssbo_Transforms[ssbo_Renders[objId].transformId];
+    Transform transform = ssbo_Transforms[ssbo_Renders[groupData.objId].transformId];
     ClusterSphere boundingSphere = ssbo_ClusterSpheres[clusterId];
     
     // Bounding sphere transform
@@ -43,7 +41,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         }
     }*/
     
-    if(visible)
+    if (visible)
     {
         rwssbo_ClusterGroupData[dispatchGroupID.x].visibleAny = 1;
         rwb_ClusterVisibility[dispatchThreadID.x] = 1;

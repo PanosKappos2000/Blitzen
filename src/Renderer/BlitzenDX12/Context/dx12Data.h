@@ -401,7 +401,7 @@ namespace BlitzenDX12
         uint32_t padding1;
     };
     static_assert(sizeof(IndirectDrawCmd) % 16 == 0);
-    constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 1'000'000;
+    constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 500'000;
 
     struct ClusterGroupData
     {
@@ -411,7 +411,7 @@ namespace BlitzenDX12
         uint32_t visibleAny;
     };
     static_assert(sizeof(ClusterGroupData) % 16 == 0);
-    constexpr uint32_t Ce_ClusterGroupDataBufferSize = 5'000'000;
+    constexpr uint32_t Ce_ClusterGroupDataBufferSize = 1'000'000;
 
     struct ClusterDispatchCmd
     {
