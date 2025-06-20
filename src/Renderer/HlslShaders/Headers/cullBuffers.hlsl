@@ -1,48 +1,4 @@
-#ifdef CLUSTER_CULL
 
-struct ClusterDispatchCmd
-{
-    uint groupX;
-    uint groupY;
-    uint groupZ;
-
-    uint padding0;
-};
-RWStructuredBuffer<ClusterDispatchCmd> rwssbo_ClusterDispatch : register(u5);
-
-RWStructuredBuffer<uint> rwb_ClusterVisibility : register(u6);
-
-struct ClusterGroupData
-{
-    uint objId;
-    uint clusterOffset;
-    uint clusterCount;
-    uint visibleAny;
-};
-RWStructuredBuffer<ClusterGroupData> rwssbo_ClusterGroupData : register(u7);
-
-struct ClusterVertices
-{
-    uint idxOffset;
-    uint idxCount;
-};
-StructuredBuffer<ClusterVertices> ssbo_ClusterVertices : register(t8);
-
-struct ClusterSphere
-{
-    float3 center;
-    float radius;
-};
-StructuredBuffer<ClusterSphere> ssbo_ClusterSpheres : register(t9);
-
-struct ClusterCone
-{
-    float3 cone;
-    float coneCutoff;
-};
-StructuredBuffer<ClusterCone> ssbo_ClusterCones : register(t10);
-
-#endif
 
 struct DrawCmd
 {
@@ -100,17 +56,6 @@ uint LODSelection(float3 center, float radius, float scale, float lodTarget, uin
     return lodOffset + lodIndex;
 }
 
-#ifdef DRAW_INSTANCING
-
-struct InstanceCounter
-{
-    uint instanceOffset;
-    uint instanceCount;
-};
-RWStructuredBuffer<InstanceCounter> rwssbo_InstCounter : register (u2);
-
-#endif
-
 #ifdef DRAW_CULL_OCCLUSION
 
 RWStructuredBuffer<uint> rwssbo_DrawVisibilityBuffer : register (u5);
@@ -119,6 +64,6 @@ RWStructuredBuffer<uint> rwssbo_DrawVisibilityBuffer : register (u5);
 
 #ifdef HI_Z_MAP_OCCLUSION
 
-Texture2D<float4> tex_HiZMap : register (t10);
+Texture2D<float4> tex_HiZMap : register (t3);
 
 #endif

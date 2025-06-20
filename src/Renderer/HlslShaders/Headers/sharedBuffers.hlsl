@@ -31,12 +31,6 @@ struct Render
 };
 StructuredBuffer<Render> ssbo_Renders : register(t0);
 
-#ifdef DRAW_INSTANCING
-
-RWStructuredBuffer<uint> rwssbo_instIndices : register(u3);
-
-#endif
-
 cbuffer ViewData : register(b0)  
 {
     float4x4 viewMatrix;
@@ -59,3 +53,9 @@ cbuffer ViewData : register(b0)
 
     float lodTarget;
 };
+
+#ifdef DRAW_INSTANCING
+
+RWStructuredBuffer<uint> rwssbo_InstIdx : register(u3);
+
+#endif

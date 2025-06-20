@@ -242,14 +242,9 @@ namespace BlitzenDX12
 			}
 
 			// DRAW CULL INST MODE
-			STAGING<BlitzenEngine::LodInstanceCounter> lodInstStaging{};
 			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
-				if (!CreateStaging(device, lodInstStaging, drawContext.m_meshes.m_meshPrimitives.m_LODCount, drawContext.m_meshes.m_meshPrimitives.m_lodInstances))
-				{
-					BLIT_ERROR("%s: Failed to create lod instance counting staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-					return 0;
-				}
+				
 			}
 
 			cmdContext.m_copyCmdAlloc->Reset();
@@ -272,10 +267,7 @@ namespace BlitzenDX12
 			// DRAW CULL INST MODE (instance counter buffer)
 			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
-				D3D12_RESOURCE_BARRIER lodInstBufferDestBarrier{};
-				CreateResourcesTransitionBarrier(lodInstBufferDestBarrier, rwResources.m_instCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-
-				copyDestBarriers.PushBack(lodInstBufferDestBarrier);
+				
 			}
 
 			// Execute
@@ -295,9 +287,7 @@ namespace BlitzenDX12
 
 			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
-				D3D12_RESOURCE_BARRIER lodInstBufferSourceBarrier{};
-				CreateResourcesTransitionBarrier(lodInstBufferSourceBarrier, lodInstStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-				copySourceBarriers.PushBack(lodInstBufferSourceBarrier);
+				
 			}
 
 			// Execute
@@ -312,7 +302,7 @@ namespace BlitzenDX12
 			// instance counter
 			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
-				cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_instCounterBuffer.buffer.Get(), 0, lodInstStaging.m_buffer.Get(), 0, lodInstStaging.m_dataSize);
+				
 			}
 
 			// Puts persistent transform staging in copy source state forever
@@ -539,9 +529,9 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_matBuffer.buffer.Get(), 0, materialStaging.m_buffer.Get(), 0, materialStaging.m_dataSize);
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterVtxsBuffer.buffer.Get(), clusterVtxStaging.m_buffer.Get());
-			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterSpheresBuffer.buffer.Get(), clusterSpheresStaging.m_buffer.Get());
-			cmdContext.m_copyCmdList->CopyResource(roResources.m_clusterConesBuffer.buffer.Get(), clusterConesStaging.m_buffer.Get());
+			cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_clusterVtxsBuffer.buffer.Get(), 0, clusterVtxStaging.m_buffer.Get(), 0, clusterVtxStaging.m_dataSize);
+			cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_clusterSpheresBuffer.buffer.Get(), 0, clusterSpheresStaging.m_buffer.Get(), 0, clusterSpheresStaging.m_dataSize);
+			cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_clusterConesBuffer.buffer.Get(), 0, clusterConesStaging.m_buffer.Get(), 0, clusterConesStaging.m_dataSize);
 		}
 
 		cmdContext.m_copyCmdList->Close();
@@ -615,16 +605,7 @@ namespace BlitzenDX12
 		{
 			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 			{
-				auto& rwResources = rwResourcesArray[i];
-
-				ctx.m_drawCullInstUAVsOffset[i] = ctx.m_viewHeapCurrentOffset;
-				ctx.m_drawCullInstUAVsHandle[i] = ctx.m_viewHeapHandle;
-				ctx.m_drawCullInstUAVsHandle[i].ptr += ctx.m_drawCullInstUAVsOffset[i] * ctx.m_viewHeapIncrement;
-
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawInstBuffer.buffer.Get(), nullptr, context.m_meshes.m_meshPrimitives.m_LODCount * BlitzenEngine::CE_MAX_INSTANCES_PER_LOD, 
-					sizeof(uint32_t), 0);
-
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instCounterBuffer.buffer.Get(), nullptr, context.m_meshes.m_meshPrimitives.m_LODCount, sizeof(BlitzenEngine::LodInstanceCounter), 0);
+				
 			}
 		}
 
@@ -662,7 +643,7 @@ namespace BlitzenDX12
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchBuffer.buffer.Get(), nullptr, 1, sizeof(ClusterDispatchCmd), 0);
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterVisibilityBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize * 64, sizeof(uint32_t), 0);
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterVisibilityBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize * 64,  sizeof(BlitzenCore::FAT_BOOL), 0);
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterGroupDataBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize, sizeof(ClusterGroupData), 0);
 
@@ -691,155 +672,6 @@ namespace BlitzenDX12
 
 			CreateTexture2DShaderResourceView(device, tex2D.resource.Get(), ctx, tex2D.format, tex2D.mipLevels);
 		}
-	}
-
-	void Dx12Renderer::FinalSetup()
-	{
-		auto& cmdContext{ m_cmdContext[m_currentFrame] };
-
-		cmdContext.m_graphicsCmdAlloc->Reset();
-		cmdContext.m_graphicsCmdList->Reset(cmdContext.m_graphicsCmdAlloc.Get(), nullptr);
-
-		// READ ONLY BARRIERS
-		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> staticBufferBarriers{ m_roResources.BUFFER_COUNT, {} };
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_VtxPosStagingBufferIndex], m_roResources.m_vtxPosBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_VtxNrmStagingBufferIndex], m_roResources.m_vtxNrmBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_VtxTangentsStagingBufferIndex], m_roResources.m_vtxTangentBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_VtxTexCoordStagingBufferIndex], m_roResources.m_vtxTexCoordBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_IndexStagingBufferIndex], m_roResources.m_idxBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_SurfaceStagingBufferIndex], m_roResources.m_surfaceBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_RenderStagingBufferIndex], m_roResources.m_renderBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_LodStagingIndex], m_roResources.m_LODBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-		CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_MaterialStagingIndex], m_roResources.m_matBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-		if (BlitzenCore::Ce_BuildClusters)
-		{
-			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterVtxsStagingIndex], m_roResources.m_clusterVtxsBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterSpheresStagingIndex], m_roResources.m_clusterSpheresBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			CreateResourcesTransitionBarrier(staticBufferBarriers[Ce_ClusterConesStagingIndex], m_roResources.m_clusterConesBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		}
-
-		// EXECUTE
-		cmdContext.m_graphicsCmdList->ResourceBarrier(m_roResources.BUFFER_COUNT, staticBufferBarriers.Data());
-
-		// RW BUFFERS
-		uint32_t rwID{ 0 };
-		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> rwBuffersFinal{ Ce_VarBuffersCount };
-
-		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], m_rwResources[i].m_viewBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
-			rwID++;
-		}
-
-		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			// Starts off as indirect argument, because the first transition barrier will be expecting that
-			CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], m_rwResources[i].m_drawCmdBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-			rwID++;
-		}
-
-		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-		{
-			// Starts off as indirect argument, because the first transition barrier will be expecting that
-			CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], m_rwResources[i].m_drawCmdCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-			rwID++;
-		}
-
-		if constexpr (BlitzenCore::Ce_InstanceCulling)
-		{
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-			{
-				D3D12_RESOURCE_BARRIER drawInstBufferBarrier{};
-				CreateResourcesTransitionBarrier(drawInstBufferBarrier, m_rwResources[i].m_drawInstBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-				rwBuffersFinal.PushBack(drawInstBufferBarrier);
-			}
-
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-			{
-				D3D12_RESOURCE_BARRIER lodInstBufferBarrier{};
-				CreateResourcesTransitionBarrier(lodInstBufferBarrier, m_rwResources[i].m_instCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-				rwBuffersFinal.PushBack(lodInstBufferBarrier);
-			}
-		}
-
-		if constexpr (BlitzenCore::Ce_OcclusionCulling)
-		{
-			
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-			{
-				D3D12_RESOURCE_BARRIER drawVisibilityBarrier{};
-				CreateResourcesTransitionBarrier(drawVisibilityBarrier, m_rwResources[i].m_drawVisBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-				rwBuffersFinal.PushBack(drawVisibilityBarrier);
-			}
-		}
-
-		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
-		{
-			for (uint32_t f = 0; f < ce_framesInFlight; ++f)
-			{
-				for (uint32_t hi_z_mip = 0; hi_z_mip < m_rwResources[f].m_HI_Z.mipCount; ++hi_z_mip)
-				{
-					D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
-					CreateResourcesTransitionBarrier(depthPyramidBarrier, m_rwResources[f].m_HI_Z.pyramid.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, hi_z_mip);
-
-					rwBuffersFinal.PushBack(depthPyramidBarrier);
-				}
-			}
-		}
-
-		if constexpr (BlitzenCore::Ce_BuildClusters)
-		{
-			for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
-			{
-				auto& rwResources{ m_rwResources[frame] };
-
-				D3D12_RESOURCE_BARRIER clusterDispatchBarrier{};
-				CreateResourcesTransitionBarrier(clusterDispatchBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-
-				rwBuffersFinal.PushBack(clusterDispatchBarrier);
-
-				D3D12_RESOURCE_BARRIER clusterDispatchCounterBarrier{};
-				CreateResourcesTransitionBarrier(clusterDispatchCounterBarrier, rwResources.m_clusterVisibilityBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-				rwBuffersFinal.PushBack(clusterDispatchCounterBarrier);
-
-				D3D12_RESOURCE_BARRIER clusterGroupDataBarrier{};
-				CreateResourcesTransitionBarrier(clusterGroupDataBarrier, rwResources.m_clusterGroupDataBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-				rwBuffersFinal.PushBack(clusterGroupDataBarrier);
-			}
-		}
-
-		// EXECUTE
-		cmdContext.m_graphicsCmdList->ResourceBarrier((UINT)rwBuffersFinal.GetSize(), rwBuffersFinal.Data());
-
-		// TEXTURES
-		for (uint32_t i = 0; i < m_roResources.m_textureCount; ++i)
-		{
-			D3D12_RESOURCE_BARRIER textureFinalBarrier{};
-			CreateResourcesTransitionBarrier(textureFinalBarrier, m_roResources.m_drawTextures[i].resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-			cmdContext.m_graphicsCmdList->ResourceBarrier(1, &textureFinalBarrier);
-		}
-
-		cmdContext.m_graphicsCmdList->Close();
-		ID3D12CommandList* commandLists[] = { cmdContext.m_graphicsCmdList.Get() };
-		m_commandQueue->ExecuteCommandLists(1, commandLists);
-
-		PlaceFence(cmdContext.m_frameFence.m_value, m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
 	}
 }
 

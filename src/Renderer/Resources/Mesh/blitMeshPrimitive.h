@@ -79,7 +79,6 @@ namespace BlitzenEngine
 		uint32_t m_meshPrimitivesCount{ 0 };
 
 		LodData m_LODs[CE_MAX_LOD_COUNT]{};
-		LodInstanceCounter m_lodInstances[CE_MAX_LOD_COUNT]{};
 		uint32_t m_LODCount{ 0 };
 
 		SurfaceCreateRes GenerateSurface(PrimitiveContainer& primitives, ClusterContainer& clusters, MESH_PRIMITIVE_CREATE_CONTEXT& context);

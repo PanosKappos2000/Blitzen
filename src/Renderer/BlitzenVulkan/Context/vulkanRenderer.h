@@ -30,8 +30,6 @@ namespace BlitzenVulkan
 
         ~VulkanRenderer();
 
-        void FinalSetup();
-
         uint8_t UploadTexture(const char* filepath);
 
         void DrawWhileWaiting(float deltaTime);

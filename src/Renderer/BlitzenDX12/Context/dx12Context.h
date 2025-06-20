@@ -53,9 +53,8 @@ namespace BlitzenDX12
 
         SSBO m_drawVisBuffer;
 
-        SSBO m_drawInstBuffer;
-
-        SSBO m_instCounterBuffer;
+        SSBO m_instanceDrawCmdBuffers[10];
+        SSBO m_instanceIdxsBuffers[10];
 
         CBUFFER<BlitzenEngine::CameraViewData> m_viewBuffer;
 
@@ -169,10 +168,6 @@ namespace BlitzenDX12
         // Culling compute shader. Performs frumtum culling and LOD selection. Sets instance counter
         DX12WRAPPER<ID3D12RootSignature> m_drawCullInstRoot;
 		DX12WRAPPER<ID3D12PipelineState> m_drawCullInstPso;
-
-        // Command compute shader. Takes the instance count and sets indirect draw commands for each instance
-        // Uses draw cull inst root
-		DX12WRAPPER<ID3D12PipelineState> m_drawInstCmdPso;
 
 		// Culling compute shader. Performs frustum culling and LOD selection. Ignores objects that were tagged not visible last frame.
         DX12WRAPPER<ID3D12RootSignature> m_drawOccFirstRoot;

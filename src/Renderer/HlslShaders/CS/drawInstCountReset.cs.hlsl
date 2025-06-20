@@ -1,19 +1,10 @@
 #define DRAW_INSTANCING
 #include "../Headers/cullBuffers.hlsl"
+#include "../Headers/instCull.hlsl"
 
-cbuffer LodCount : register(b1)
+[numthreads(8, 1, 1)]
+void csMain(uint3 threadID : SV_GroupThreadID)
 {
-    uint lodCount;
-};
+    rwssbo_InstDrawCmd[threadID.x].instCount = 0;
 
-[numthreads(64, 1, 1)]
-void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    uint lodId = dispatchThreadID.x;
-    if(lodId >= lodCount)
-    {
-        return;
-    }
-    
-    rwssbo_InstCounter[lodId].instanceCount = 0;
 }

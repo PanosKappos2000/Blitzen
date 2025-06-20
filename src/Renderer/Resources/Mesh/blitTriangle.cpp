@@ -1,6 +1,7 @@
 #include "blitTriangle.h"
 #include "Core/blitMemory.h"
 #include "blitClusters.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {

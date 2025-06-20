@@ -2,6 +2,7 @@
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
+#include "../Headers/instCull.hlsl"
 #include "../Headers/hlslMath.hlsl"
 #include "../Headers/cpuShared.h"
 
@@ -13,9 +14,9 @@ cbuffer ObjCountConstant: register (b1)
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
 {
-    uint objId = dispatchThreadID.x + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
+    uint objId = dispatchThreadID.x;
     // Early return if it's out of bounds
-    if (objId >= objCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET)
+    if (objId >= objCount)
     {
         return;
     }
@@ -35,10 +36,15 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     if(visible)
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
+        
+        InterlockedAdd(rwssbo_InstDrawCmd[lodId].instCount, 1);
 
-        uint instanceId;
-        InterlockedAdd(rwssbo_InstCounter[lodId].instanceCount, 1, instanceId);
-
-        rwssbo_instIndices[rwssbo_InstCounter[lodId].instanceOffset + instanceId] = objId;
+        // Should set this stuff on load, there is 8 of them at best since this will only looks at one type of mesh.
+        //rwssbo_InstDrawCmd[lodId].indexCount = ssbo_LODs[lodId].indexCount;
+        //rwssbo_InstDrawCmd[cmdId].indexOffset = ssbo_LODs[lodId].indexOffset;
+        //ssbo_DrawCmd[cmdId].vertOffset = 0; // Already added to the index buffer
+        //
+        //ssbo_DrawCmd[cmdId].instCount = rwssbo_InstCounter[lodId].instanceCount;
+        //ssbo_DrawCmd[cmdId].insOffset = 0;
     }
 }

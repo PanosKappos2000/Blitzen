@@ -72,12 +72,6 @@ namespace BlitzenEngine
         uint32_t padding2;
     };
 
-    struct LodInstanceCounter
-    {
-        uint32_t instanceOffset;
-        uint32_t instanceCount{ 0 };
-    };
-
     struct alignas(16) Material
     {
         uint32_t albedoTag;

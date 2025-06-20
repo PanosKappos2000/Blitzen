@@ -2,6 +2,7 @@
 
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
+#include "../Headers/clusterCull.hlsl"
 
 [numthreads(1, 1, 1)]
 void csMain()

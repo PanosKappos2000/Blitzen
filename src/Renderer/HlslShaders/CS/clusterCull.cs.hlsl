@@ -3,6 +3,7 @@
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
+#include "../Headers/clusterCull.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
 [numthreads(64, 1, 1)]
@@ -22,8 +23,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     
     uint objId = groupData.objId;
     
-    Render render = ssbo_Renders[objId];
-    Transform transform = ssbo_Transforms[render.transformId];
+    Transform transform = ssbo_Transforms[ssbo_Renders[objId].transformId];
     ClusterSphere boundingSphere = ssbo_ClusterSpheres[clusterId];
     
     // Bounding sphere transform

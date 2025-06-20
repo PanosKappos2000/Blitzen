@@ -396,9 +396,4 @@ namespace BlitzenVulkan
 
         return 1;
     }
-
-    void VulkanRenderer::FinalSetup()
-    {
-        vkDeviceWaitIdle(m_device);
-    }
 }

@@ -42,7 +42,17 @@ namespace BlitzenEngine
         static_assert(true);
 
     #endif
+
+    uint8_t StartupRenderer(RendererPtrType pRenderer, uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pPlatform);
+
+    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
+
+    void PrepareRendererForRuntime(RendererPtrType pRenderer);
+
+    void BarRenderFrame(RendererPtrType pContext);
     
+    void GenerateHI_Z_MAP(RendererPtrType pContext);
+
     enum class BLIT_CULL_TYPE : uint8_t
     {
         NO_CULL,
@@ -51,18 +61,14 @@ namespace BlitzenEngine
         DRAW_CULL_TEMPORAL_OCCLUSION,
         CLUSTER_CULL_DEFAULT
     };
-    
-    uint8_t StartupRenderer(RendererPtrType pRenderer, uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pPlatform);
-
-    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
-
-    void PrepareRendererForRuntime(RendererPtrType pRenderer);
-
-    void BarRenderFrame(RendererPtrType pContext);
-
-    void HI_Z_MAP_Gen(RendererPtrType pContext);
-
-    void DispatchCullingShaders(RendererPtrType pContext, uint32_t workCount, uint32_t workOffset, BLIT_CULL_TYPE cullingFlags, RENDER_OBJECT_TYPE objectType);
+    struct CULL_CONTEXT
+    {
+        WORLD_RESIDENTS* m_pResidents{ nullptr };
+        BLIT_CULL_TYPE m_cullType{ BLIT_CULL_TYPE::NO_CULL };
+        RENDER_OBJECT_TYPE m_workType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
+        uint32_t m_workCount{ 0 };
+    };
+    void DispatchCullingShaders(RendererPtrType pContext, const CULL_CONTEXT& cullContext);
 
     //void UpdateRendererTransforms(RendererPtrType pContext, BlitzenCore::ARRAY_OF_POINTERS<DynamicTransform> pDynamicTransformArr, uint32_t dynamicTransformCount, MeshTransform* transformArr);
 

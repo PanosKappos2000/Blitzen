@@ -4,6 +4,8 @@
 
 namespace BlitzenEngine
 {
+	constexpr uint32_t CE_MAX_ALLOWED_INSTANCED_RESOURCES = 10;
+
 	enum RENDER_OBJECT_TYPE : uint8_t
 	{
 		OPAQUE_STATIC = 0,
@@ -31,5 +33,9 @@ namespace BlitzenEngine
 		uint32_t RENDER_COUNT{ 0 };
 
 		uint32_t CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context);
+
+		BlitzenEngine::RenderObject* m_instancedRenderArrays[CE_MAX_ALLOWED_INSTANCED_RESOURCES];
+
+		uint32_t CreateInstancedRenderObject(uint32_t* transformIDArr, uint32_t m_primitiveID, uint32_t count);
 	};
 }

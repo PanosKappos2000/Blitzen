@@ -149,7 +149,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_DrawOccLateDrawVisUAVRegister = 5;
 
     // HI_Z MAP For occlusion
-    constexpr UINT Ce_DrawOccLateHI_Z_MapSRVRegister = 10;
+    constexpr UINT Ce_DrawOccLateHI_Z_MapSRVRegister = 3;
 
 	// Root param descriptor grouping
 	constexpr UINT Ce_DrawOccLateRootParameterCount = 5;
@@ -408,7 +408,7 @@ namespace BlitzenDX12
         uint32_t objId;
         uint32_t clusterOffset;
         uint32_t clusterCount;
-        uint32_t padding0;
+        uint32_t visibleAny;
     };
     static_assert(sizeof(ClusterGroupData) % 16 == 0);
     constexpr uint32_t Ce_ClusterGroupDataBufferSize = 5'000'000;

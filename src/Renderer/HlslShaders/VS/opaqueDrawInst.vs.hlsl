@@ -7,8 +7,7 @@
 // The main vertex shader function
 VSOutput main(uint vertexIndex : SV_VERTEXID, uint instId : SV_INSTANCEID)
 {
-    uint renderId = rwssbo_instIndices[objId  + instId];
-    Render obj = ssbo_Renders[renderId];
+    Render obj = ssbo_Renders[rwssbo_InstIdx[instId]];
     float4 orientation = ssbo_Transforms[obj.transformId].orientation;
     VSOutput output;
 

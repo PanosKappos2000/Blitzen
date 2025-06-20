@@ -16,8 +16,6 @@ namespace BlitzenDX12
         Dx12Renderer operator = (const Dx12Renderer& dx) = delete;
 
         ~Dx12Renderer();
-
-        void FinalSetup();
     
         uint8_t UploadTexture(const char* filepath);
     

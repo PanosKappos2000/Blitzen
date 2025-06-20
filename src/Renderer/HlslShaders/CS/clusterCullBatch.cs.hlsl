@@ -2,6 +2,7 @@
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
+#include "../Headers/clusterCull.hlsl"
 
 
 [numthreads(64, 1, 1)]

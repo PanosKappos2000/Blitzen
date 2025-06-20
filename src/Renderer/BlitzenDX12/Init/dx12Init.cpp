@@ -414,12 +414,6 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateComputeShaderProgram(device, context.m_drawCullInstRoot.Get(), context.m_drawInstCmdPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawInstCmd.cs.hlsl.bin"))
-			{
-				BLIT_ERROR("Failed to create drawInstCull.cs shader program");
-				return 0;
-			}
-
 			if (!CreateComputeShaderProgram(device, context.m_drawCullInstRoot.Get(), context.m_drawInstCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawInstCountReset.cs.hlsl.bin"))
 			{
 				BLIT_ERROR("Failed to create drawInstCountReset.cs shader program");
@@ -537,17 +531,7 @@ namespace BlitzenDX12
 			// DRAW CULL INST MODE
 			if constexpr (BlitzenCore::Ce_InstanceCulling)
 			{
-				if (CreateSSBO<uint32_t>(device, rwResources.m_drawInstBuffer, BlitzenEngine::CE_MAX_LOD_COUNT * BlitzenEngine::CE_MAX_INSTANCES_PER_LOD, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-				{
-					BLIT_ERROR("%s: Failed to create LOD instance resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
-					return 0;
-				}
-
-				if (!CreateSSBO<BlitzenEngine::LodInstanceCounter>(device, rwResources.m_instCounterBuffer, BlitzenEngine::CE_MAX_LOD_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-				{
-					BLIT_ERROR("%s: Failed to create LOD instance resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
-					return 0;
-				}
+				// MIGHT NOT BE PRE ALLOCATING ANYTHING FOR INSTANCING MODE, BUT NOT SURE YET
 			}
 
 			// CLUSTER CULL MODE
@@ -565,7 +549,7 @@ namespace BlitzenDX12
 					return 0;
 				}
 
-				if (CreateSSBO< ClusterGroupData>(device, rwResources.m_clusterGroupDataBuffer, Ce_ClusterGroupDataBufferSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) == 0)
+				if (CreateSSBO<ClusterGroupData>(device, rwResources.m_clusterGroupDataBuffer, Ce_ClusterGroupDataBufferSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) == 0)
 				{
 					BLIT_ERROR("%s: Failed to create cluster group data buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 					return 0;

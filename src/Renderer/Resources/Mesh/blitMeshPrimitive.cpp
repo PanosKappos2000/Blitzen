@@ -125,10 +125,6 @@ namespace BlitzenEngine
 
             surface.lodCount++;
 
-            // Instancing
-            auto& lodInstanceCounter{ m_lodInstances[m_LODCount] };
-            lodInstanceCounter.instanceOffset = m_LODCount * BlitzenEngine::CE_MAX_INSTANCES_PER_LOD;
-
             auto& lod{m_LODs[m_LODCount++]};
             lod.firstIndex = context.m_pPrimitives->m_vtxIdxCount + (uint32_t)allLodIndices.GetSize();
             lod.indexCount = uint32_t(lodIndices.GetSize());

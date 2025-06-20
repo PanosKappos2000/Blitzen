@@ -127,7 +127,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Residents/blitWV.cpp"
                 "src/Renderer/Entities/Residents/RenderObject/worldTransform.h"
                 "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
-                "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.cpp" 
+                "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.cpp"
+                "src/Renderer/Entities/Residents/Collision/blitCollision.cpp"
 
                 # LIGHTING
                 "src/Renderer/Lighting/blitDirectionalLight.h"
@@ -157,6 +158,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenVulkan/Resources/vkResourcesUpload.h" 
                 "src/Renderer/BlitzenVulkan/Init/vulkanInit.h" 
                 "src/Renderer/BlitzenVulkan/Context/vulkanRenderer.cpp"
+                "src/Renderer/BlitzenVulkan/RuntimeHelpers/vkRuntimerHelpersInterface.cpp"
 
                 # GL
                 "src/Renderer/BlitzenGL/openglData.h"
@@ -188,6 +190,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/Init/dx12InitInterface.cpp"
                 "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.h"
                 "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp"
+                "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHelpersInterface.cpp"
 
                 # vendor
                 "src/VendorCode/fast_obj.h"
@@ -204,7 +207,8 @@ add_executable(BlitzenEngine
                 
                 "src/Client/WVRotatingKitten.h"   
                 "src/Client/ClientWV/wvData.h"
-                 "src/Renderer/Resources/Mesh/blitClusters.h"    "src/Renderer/Entities/Residents/Collision/blitCollision.cpp")
+                 "src/Renderer/Resources/Mesh/blitClusters.h"      
+                 )
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -274,9 +278,9 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
-                            #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
+                            BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
                             #BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
-                            BLITZEN_DRAW_TEMPORAL_OCCLUSION
+                            #BLITZEN_DRAW_TEMPORAL_OCCLUSION
                             BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)
                             #LAMBDA_GAME_OBJECT_TEST # This is out of commision for now
                             BLIT_DYNAMIC_OBJECT_TEST # Creates 1'000 rotating kittens

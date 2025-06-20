@@ -2,6 +2,7 @@
 #include "Renderer/BlitzenDX12/Context/dx12Renderer.h"
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenDX12
 {
@@ -414,6 +415,7 @@ namespace BlitzenDX12
 	static void DrawInstanceCullPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources,
 		BlitzenEngine::DrawContext& context, uint32_t frame)
 	{
+		BLIT_ASSERT_MESSAGE(true, "Instancing is Under Reconstruction");
 		uint32_t lodDataCount{ context.m_meshes.m_meshPrimitives.m_LODCount };
 		uint32_t objCount{ context.m_pResidents->m_renders.m_opaqueStaticCount };
 
@@ -426,7 +428,7 @@ namespace BlitzenDX12
 
 		// Blocks instance counter reset
 		D3D12_RESOURCE_BARRIER instCounterResetBarrier{};
-		CreateResourceUAVBarrier(instCounterResetBarrier, rwResources.m_instCounterBuffer.buffer.Get());
+		//CreateResourceUAVBarrier(instCounterResetBarrier, rwResources.m_instCmdBuffer.buffer.Get());
 		commandList->ResourceBarrier(1, &instCounterResetBarrier);
 
 		// Descriptors
@@ -443,14 +445,12 @@ namespace BlitzenDX12
 
 		// Culling barriers. Waits for draw and instance count reset, instance buffer and draw buffer read
 		D3D12_RESOURCE_BARRIER cullingBarriers[4]{};
-		// Draw commands barrier
-		CreateResourcesTransitionBarrier(cullingBarriers[0], rwResources.m_drawCmdBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		// Draw count barrier
 		CreateResourceUAVBarrier(cullingBarriers[1], rwResources.m_drawCmdCounterBuffer.buffer.Get());
 		// Instance Counter barrier
-		CreateResourceUAVBarrier(cullingBarriers[2], rwResources.m_instCounterBuffer.buffer.Get());
+		//CreateResourceUAVBarrier(cullingBarriers[2], rwResources.m_instCmdBuffer.buffer.Get());
 		// Instance barrier
-		CreateResourceUAVBarrier(cullingBarriers[3], rwResources.m_drawInstBuffer.buffer.Get());
+		//CreateResourceUAVBarrier(cullingBarriers[3], rwResources.m_drawInstBuffer.buffer.Get());
 		// execute
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
 
@@ -467,19 +467,6 @@ namespace BlitzenDX12
 		// CULL
 		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(objCount, 64), 1, 1);
 
-		// Blocks instancing until the instance counters are set
-		D3D12_RESOURCE_BARRIER instancingBarrier{};
-		CreateResourceUAVBarrier(instancingBarrier, rwResources.m_instCounterBuffer.buffer.Get());
-		commandList->ResourceBarrier(1, &instancingBarrier);
-
-		// Descriptors
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullExclusiveSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullInstAdditionalSRVsRootID, descriptorContext.m_drawCullInstUAVsHandle[frame]);
-
-		// Pipeline + Constants
-		commandList->SetPipelineState(pipelineContext.m_drawInstCmdPso.Get());
-		commandList->SetComputeRoot32BitConstant(Ce_DrawCullDrawCountConstantRootID, (UINT)lodDataCount, 0);
-
 		// Sets commands with instancing
 		commandList->Dispatch(BlitML::GetComputeShaderGroupSize((uint32_t)lodDataCount, 64), 1, 1);
 
@@ -490,7 +477,7 @@ namespace BlitzenDX12
 		// count write
 		CreateResourcesTransitionBarrier(graphicsBarriers[1], rwResources.m_drawCmdCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 		// inst write
-		CreateResourceUAVBarrier(graphicsBarriers[2], rwResources.m_drawInstBuffer.buffer.Get());
+		//CreateResourcesTransitionBarrier(instanceBuffer)
 		// execute
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 	}
