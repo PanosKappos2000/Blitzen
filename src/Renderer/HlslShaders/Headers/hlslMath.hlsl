@@ -113,7 +113,15 @@ bool OcclusionCheck(float4 aabb, Texture2D<float4> tex_HiZMap, uint pyramidWidth
 
 bool ClusterBackfaceCheck(float3 center, float radius, float3 coneAxis, float coneCutoff, float3 cameraPosition)
 {
-    return dot(center - cameraPosition, coneAxis) >= coneCutoff * length(center - cameraPosition) + radius;
+    // Calculate the direction from the camera to the cluster's center
+    float3 toCenter = center - cameraPosition;
+    toCenter = normalize(toCenter); // Normalize the direction vector
+    
+    // Computes the angle between the cone axis and the direction to the cluster
+    float angle = acos(dot(toCenter, coneAxis));
+    
+    // If the angle is smaller than the cutoff, the cluster is visible
+    return angle < coneCutoff;
 }
 
 float3 UnpackNormals(uint packed)

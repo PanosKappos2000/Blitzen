@@ -120,18 +120,23 @@ namespace BlitML
     inline float Length(const vec4& vec) { return Sqrt(LengthSquared(vec)); } 
     
 
-    inline void Normalize(vec2& vec) {
+    inline void Normalize(vec2& vec)
+    {
         float len = Length(vec);
         vec.x /= len;
         vec.y /= len;
     }
-    inline void Normalize(vec3& vec){
+
+    inline void Normalize(vec3& vec)
+    {
         float len = Length(vec);
         vec.x /= len;
         vec.y /= len;
         vec.z /= len;
     }
-    inline void Normalize(vec4& vec){
+
+    inline void Normalize(vec4& vec)
+    {
         float len = Length(vec);
         vec.x /= len;
         vec.y /= len;

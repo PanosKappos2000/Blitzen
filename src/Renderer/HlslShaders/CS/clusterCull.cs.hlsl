@@ -34,11 +34,11 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     float coneCutoff = ssbo_ClusterCones[clusterId].coneCutoff;
     
     // Backface culling
-    if (!ClusterBackfaceCheck(center, radius, coneAxis, coneCutoff, cameraPosition))
-    {
-        rwb_ClusterVisibility[dispatchThreadID.x] = 0;
-        return;
-    }
+    //if (ClusterBackfaceCheck(center, radius, coneAxis, coneCutoff, 0))
+    //{
+    //    rwb_ClusterVisibility[dispatchThreadID.x] = 0;
+    //    return;
+    //}
     
     // Frustum culling
     if (!FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar))

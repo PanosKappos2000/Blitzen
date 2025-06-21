@@ -2,6 +2,7 @@
 #include "Core/blitMemory.h"
 #include "blitClusters.h"
 #include "Core/DbLog/blitLogger.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenEngine
 {
@@ -104,6 +105,10 @@ namespace BlitzenEngine
 
 	bool GenerateHLSLClusters(ClusterContainer& context)
 	{
+		for(uint32_t clst = 0; clst < context.m_clusterCount; ++clst)
+		{
+			const auto& glslClusters{ context.m_clusters[clst] };
+		}
 		for (uint32_t clst = 0; clst < context.m_clusterCount; ++clst)
 		{
 			const auto& glslClusters{ context.m_clusters[clst] };
@@ -118,7 +123,7 @@ namespace BlitzenEngine
 
 			auto& clusterCone{ context.m_clusterCones[clst] };
 			clusterCone.cone = BlitML::vec3{ (float)glslClusters.coneAxisX / 127.f, (float)glslClusters.coneAxisY / 127.f, (float)glslClusters.coneAxisZ / 127.f };
-			clusterCone.cone = glslClusters.coneCutoff / 127.f;
+			clusterCone.coneCutoff = glslClusters.coneCutoff / 127.f;
 		}
 
 		return true;
