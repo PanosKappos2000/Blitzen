@@ -153,6 +153,15 @@ namespace BlitzenPlatform
             usleep((ms % 1000) * 1000);
             #endif
         }
+
+        void PutMouseInGameState(void* pPlatform)
+        {
+            auto ptrHandle{ reinterpret_cast<PlatformContext*>(pPlatform) };
+
+            XDefineCursor(ptrHandle->m_pDisplay, ptrHandle->m_window, ptrHandle->hiddenCursor);
+
+            XWarpPointer(ptrHandle->m_pDisplay, None, ptrHandle->m_window, 0, 0, 0, 0, 0, 0);
+        }
         
 
         /*

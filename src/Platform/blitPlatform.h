@@ -18,6 +18,8 @@ namespace BlitzenPlatform
 
     bool DispatchEvents(void* pPlatform);
 
+    void PutMouseInGameState(void* pPlatform);
+
     void BlitzenSleep(uint64_t ms);
 
     void* PlatformMalloc(size_t size, uint8_t aligned);

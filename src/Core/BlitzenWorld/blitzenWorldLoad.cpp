@@ -105,6 +105,8 @@ namespace BlitzenWorld
             }
 
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
+
+            BlitzenPlatform::PutMouseInGameState(context.pPlatform);
         }
     }
 }

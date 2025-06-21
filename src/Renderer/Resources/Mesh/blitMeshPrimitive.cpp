@@ -5,6 +5,7 @@
 #include "BlitCL/blitDynamicArr.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
@@ -99,7 +100,8 @@ namespace BlitzenEngine
             normals[i] = BlitML::vec3(v.normalX / 127.f - 1.f, v.normalY / 127.f - 1.f, v.normalZ / 127.f - 1.f);
         }
 
-        float lodScale = meshopt_simplifyScale(&context.m_pMeshPrimitiveInfo->m_vertices[0].position.x, context.m_pMeshPrimitiveInfo->m_vertexCount, sizeof(Vertex));
+        //float lodScale = meshopt_simplifyScale(&context.m_pMeshPrimitiveInfo->m_vertices[0].position.x, context.m_pMeshPrimitiveInfo->m_vertexCount, sizeof(Vertex));
+        float lodScale = BlitGenerator::GetLODDegradationScale(context.m_pMeshPrimitiveInfo->m_vertices, context.m_pMeshPrimitiveInfo->m_vertexCount);
 
         float lodError = 0.f;
 

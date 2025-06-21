@@ -90,6 +90,19 @@ namespace BlitzenPlatform
         // SAVE
         pPlatform->m_hinstance = hInstance;
         pPlatform->m_hwnd = hwnd;
+
+        // Example for Windows platform, where hwnd is the handle to the main window
+        RAWINPUTDEVICE rid[1];
+        rid[0].usUsagePage = 0x01;  
+        rid[0].usUsage = 0x02;      
+        rid[0].dwFlags = 0;
+        rid[0].hwndTarget = hwnd;   
+
+        if (RegisterRawInputDevices(rid, 1, sizeof(rid[0])) == FALSE)
+        {
+            MessageBox(hwnd, "Failed to register raw input device", "Error", MB_OK);
+            return false;
+        }
         
         // BACKEND RENDERING API INIT
         auto pRenderer{ reinterpret_cast<BlitzenEngine::RendererPtrType>(args.m_pRenderer) };
@@ -150,6 +163,32 @@ namespace BlitzenPlatform
 
         return true;
     }
+
+    void PutMouseInGameState(void* pPlatform)
+    {
+        auto ptrHandle{ reinterpret_cast<PlatformContext*>(pPlatform) };
+
+        while(ShowCursor(FALSE) >= 0);
+        UpdateWindow(ptrHandle->m_hwnd);
+
+        // Optionally lock the cursor within the window bounds
+        //ClipCursor(ptrHandle->);
+    }
+
+    struct BLITWIN32_SCOPED_RAWINPUT_BYTE
+    {
+        BYTE* m_lpb{ nullptr };
+
+        BLITWIN32_SCOPED_RAWINPUT_BYTE(UINT dwSize)
+        {
+            m_lpb = reinterpret_cast<BYTE*>(PlatformMalloc(dwSize, 0));
+        }
+
+        ~BLITWIN32_SCOPED_RAWINPUT_BYTE()
+        {
+            PlatformFree(m_lpb, false);
+        }
+    };
 
     // CALLBACK
     LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM wparam, LPARAM lparam)
@@ -219,14 +258,39 @@ namespace BlitzenPlatform
 
             case WM_MOUSEMOVE: 
             {
-                
                 int32_t mouseX = GET_X_LPARAM(lparam);
                 int32_t mouseY = GET_Y_LPARAM(lparam);
 
                 pEventSystem->InputProcessMouseMove(mouseX, mouseY);
 
                 break;
-            } 
+            }
+
+            case WM_INPUT:
+            {
+                //BLIT_INFO("RAW INPUT");
+                UINT dwSize{ 0 };
+                GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+
+                BLITWIN32_SCOPED_RAWINPUT_BYTE SCOPED_BYTE {dwSize};  // Allocate space for the raw input data
+                if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, SCOPED_BYTE.m_lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize)
+                {
+                    break;
+                }
+
+                RAWINPUT* raw = (RAWINPUT*)SCOPED_BYTE.m_lpb;
+
+                if (raw->header.dwType == RIM_TYPEMOUSE)
+                {
+                    // Extract relative movement
+                    int32_t mouseDX = raw->data.mouse.lLastX;  // Relative movement in X
+                    int32_t mouseDY = raw->data.mouse.lLastY;  // Relative movement in Y
+
+                    //pEventSystem->InputProcessMouseMove(mouseDX, mouseDY);  // Process the mouse movement
+                }
+
+                break;
+            }
             case WM_MOUSEWHEEL: 
             {
                 int32_t zDelta = GET_WHEEL_DELTA_WPARAM(wparam);
