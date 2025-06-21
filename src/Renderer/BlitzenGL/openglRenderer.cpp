@@ -178,12 +178,6 @@ namespace BlitzenGL
 
     void OpenglRenderer::DrawFrame(BlitzenEngine::DrawContext& context)
     {
-        // Update the viewport if the window has resized
-        if (context.m_camera.transformData.bWindowResize)
-        {
-            glViewport(0, 0, GLsizei(context.m_camera.transformData.windowWidth), GLsizei(context.m_camera.transformData.windowHeight));
-        }
-
         // Update the culling data buffer
         glBindBuffer(GL_UNIFORM_BUFFER, m_viewDataBuffer.handle);
         glBufferData(GL_UNIFORM_BUFFER, sizeof(BlitzenEngine::CameraViewData), &context.m_camera.viewData, GL_STATIC_READ);

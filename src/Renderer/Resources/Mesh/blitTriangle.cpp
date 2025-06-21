@@ -117,8 +117,8 @@ namespace BlitzenEngine
 			clusterVertices.idxOffset = glslClusters.dataOffset;
 
 			auto& clusterCone{ context.m_clusterCones[clst] };
-			clusterCone.cone = BlitML::vec3{ (float)glslClusters.coneAxisX, (float)glslClusters.coneAxisY, (float)glslClusters.coneAxisZ };
-			clusterCone.cone = glslClusters.coneCutoff;
+			clusterCone.cone = BlitML::vec3{ (float)glslClusters.coneAxisX / 127.f, (float)glslClusters.coneAxisY / 127.f, (float)glslClusters.coneAxisZ / 127.f };
+			clusterCone.cone = glslClusters.coneCutoff / 127.f;
 		}
 
 		return true;

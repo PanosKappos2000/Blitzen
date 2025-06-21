@@ -73,4 +73,6 @@ namespace BlitzenEngine
     //void UpdateRendererTransforms(RendererPtrType pContext, BlitzenCore::ARRAY_OF_POINTERS<DynamicTransform> pDynamicTransformArr, uint32_t dynamicTransformCount, MeshTransform* transformArr);
 
     void RenderObjects(RendererPtrType pContext, uint32_t renderOffset, RENDER_OBJECT_TYPE objectType, DrawContext& drawContext);
+
+    void UpdateRendererWindowData(RendererPtrType pRenderer, uint32_t newWidth, uint32_t newHeight);
 }

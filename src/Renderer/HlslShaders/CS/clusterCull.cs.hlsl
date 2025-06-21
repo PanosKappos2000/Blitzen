@@ -29,25 +29,36 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     center = mul(viewMatrix, float4(center, 1)).xyz;
     float radius = boundingSphere.radius * transform.scale;
     
-    // Frustum culling
-    bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);
+    float3 coneAxis = RotateQuat(ssbo_ClusterCones[clusterId].cone, transform.orientation);
+    coneAxis = mul(viewMatrix, float4(coneAxis, 1)).xyz;
+    float coneCutoff = ssbo_ClusterCones[clusterId].coneCutoff;
     
-    /*if (visible)
-    {
-        float4 aabb = float4(0.f, 0.f, 0.f, 0.f);
-        if(ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
-        {
-            visible = OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear);
-        }
-    }*/
-    
-    if (visible)
-    {
-        rwssbo_ClusterGroupData[dispatchGroupID.x].visibleAny = 1;
-        rwb_ClusterVisibility[dispatchThreadID.x] = 1;
-    }
-    else
+    // Backface culling
+    if (!ClusterBackfaceCheck(center, radius, coneAxis, coneCutoff, cameraPosition))
     {
         rwb_ClusterVisibility[dispatchThreadID.x] = 0;
+        return;
     }
+    
+    // Frustum culling
+    if (!FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar))
+    {
+        rwb_ClusterVisibility[dispatchThreadID.x] = 0;
+        return;
+    }
+    
+    // Occlusion culling
+    //float4 aabb = float4(0.f, 0.f, 0.f, 0.f);
+    //if(ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
+    //{
+    //    if (!OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear))
+    //    {
+    //        rwb_ClusterVisibility[dispatchThreadID.x] = 0;
+    //        return;
+    //    }
+    //}
+    
+    // Visible cluster confirmed
+    rwssbo_ClusterGroupData[dispatchGroupID.x].visibleAny = 1;
+    rwb_ClusterVisibility[dispatchThreadID.x] = 1;
 }

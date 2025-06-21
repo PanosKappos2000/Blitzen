@@ -91,10 +91,6 @@ namespace BlitzenEngine
 
     void UpdateProjection(Camera& camera, float newWidth, float newHeight)
     {
-        // New window sizes
-        camera.transformData.windowWidth = newWidth;
-        camera.transformData.windowHeight = newHeight;
-
         // Infinite z projection
         camera.transformData.projectionMatrix = BlitML::InfiniteZPerspective(camera.transformData.fov, newWidth / newHeight, camera.viewData.zNear);
 
@@ -121,7 +117,7 @@ namespace BlitzenEngine
         camera.viewData.frustumBottom = frustumY.z;
     
         // Updates the lod target threshold multiplier, as it is also dependent on projection
-        camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / float(camera.transformData.windowHeight));
+        camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / newHeight);
     }
 
     void ObliqueNearPlaneClippingMatrixModification(BlitML::mat4& proj, BlitML::mat4& res, const BlitML::vec4& clipPlane)

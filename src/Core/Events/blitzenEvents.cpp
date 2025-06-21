@@ -390,9 +390,7 @@ namespace BlitzenCore
             return 0;
         }
 
-        camera.transformData.bWindowResize = 1;
-
-        if (camera.transformData.windowWidth == 0 || camera.transformData.windowHeight == 0)
+        if (context.WIDTH == 0 || context.HEIGHT == 0)
         {
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SUSPENDED;
             return 1;
@@ -404,12 +402,12 @@ namespace BlitzenCore
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
         }
 
-        BlitzenEngine::UpdateProjection(camera, camera.transformData.windowWidth, camera.transformData.windowHeight);
+        BlitzenEngine::UpdateProjection(camera, (float)context.WIDTH, (float)context.HEIGHT);
 
-        BlitML::vec2 hizExtent{ context.pWORLD->P_RENDERER->UpdateWindow((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight, context.pPlatform) };
+        BlitML::vec2 hizExtent{ context.pWORLD->P_RENDERER->UpdateWindow(context.WIDTH, context.HEIGHT , context.pPlatform) };
 
 #if defined(DASHER_JOIN)
-        context.pDasher->UpdateWindowSize((uint32_t)camera.transformData.windowWidth, (uint32_t)camera.transformData.windowHeight);
+        context.pDasher->UpdateWindowSize(context.WIDTH, context.HEIGHT);
 #endif
 
         camera.viewData.pyramidWidth = hizExtent.x;

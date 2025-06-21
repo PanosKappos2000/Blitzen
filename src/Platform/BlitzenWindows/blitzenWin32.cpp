@@ -188,18 +188,16 @@ namespace BlitzenPlatform
                 uint32_t width = rect.right - rect.left;
                 uint32_t height = rect.bottom - rect.top;
 
-                auto& camera{ pEventSystem->m_pWorldContext->pCameraContainer->GetMainCamera()};
+                auto oldWidth = pEventSystem->m_systemContext.WIDTH;
+                auto oldHeight = pEventSystem->m_systemContext.HEIGHT;
 
-                auto oldWidth = camera.transformData.windowWidth;
-                auto oldHeight = camera.transformData.windowHeight;
-
-                camera.transformData.windowWidth = float(width);
-                camera.transformData.windowHeight = float(height);
+                pEventSystem->m_systemContext.WIDTH = width;
+                pEventSystem->m_systemContext.HEIGHT = height;
 
                 if (!pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowUpdate))
                 {
-                    camera.transformData.windowWidth = oldWidth;
-                    camera.transformData.windowHeight = oldHeight;
+                    pEventSystem->m_systemContext.WIDTH = oldWidth;
+                    pEventSystem->m_systemContext.HEIGHT = oldHeight;
                 }
                 break;
             }

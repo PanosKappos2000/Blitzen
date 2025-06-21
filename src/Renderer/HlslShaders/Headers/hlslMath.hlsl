@@ -111,6 +111,11 @@ bool OcclusionCheck(float4 aabb, Texture2D<float4> tex_HiZMap, uint pyramidWidth
 	return depthSphere > depth;
 }
 
+bool ClusterBackfaceCheck(float3 center, float radius, float3 coneAxis, float coneCutoff, float3 cameraPosition)
+{
+    return dot(center - cameraPosition, coneAxis) >= coneCutoff * length(center - cameraPosition) + radius;
+}
+
 float3 UnpackNormals(uint packed)
 {
 	float x = ((packed >> 24) & 0xFF) / 127.5f - 1.0f; 

@@ -6,32 +6,19 @@ namespace BlitzenEngine
 {
     struct CameraTransformData
     {
-        // Multiplied to create the view matrix
         BlitML::mat4 rotation{};
         BlitML::mat4 translation{};
-
-        // Keeps track of the movement of the camera
         BlitML::vec3 velocity{ 0.f };
-
-        // Keeps track of the camera's orientation
         float yawRotation;
         float pitchRotation;
-
-        // Signifies that camera values have been updated
         bool bCameraDirty{ false };
-
-        float windowWidth;
-        float windowHeight;
-        bool bWindowResize{ false };
-
-        // Projection matrix data
         float fov;
-        BlitML::mat4 projectionMatrix;
-        BlitML::mat4 projectionTranspose;
-
 		// Debug functionality, to freeze frustum culling
         bool bFreezeFrustum{ false };
         uint32_t debugPyramidLevel{ 0 };
+
+        BlitML::mat4 projectionMatrix;
+        BlitML::mat4 projectionTranspose;
     };
 
     // Shader struct. Shaders are expected to have a struct that is aligned with this

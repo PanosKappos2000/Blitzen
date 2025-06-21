@@ -8,6 +8,9 @@ namespace BlitzenWorld
     struct BLITZEN_SYSTEM_CONTEXT
     {
         BlitzenCore::Engine BLITZEN_ENGINE;
+
+        uint32_t WIDTH{ BlitzenCore::Ce_InitialWindowWidth };
+        uint32_t HEIGHT{ BlitzenCore::Ce_InitialWindowHeight };
         
         // SYSTEMS
         BlitzenEngine::RenderingResources* pRenderingResources{ nullptr };

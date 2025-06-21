@@ -35,7 +35,7 @@ cbuffer ViewData : register(b0)
 {
     float4x4 viewMatrix;
     float4x4 projectionView;
-    float3 position;
+    float3 cameraPosition;
 
     float frustumRight;
     float frustumLeft;
