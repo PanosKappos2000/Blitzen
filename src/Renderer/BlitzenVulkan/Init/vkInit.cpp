@@ -1569,4 +1569,19 @@ namespace BlitzenVulkan
         // SUCCESS
         return 1;
     }
+
+    uint8_t CreateDummy2DTextureViews(VkDevice device, VmaAllocator vma, ROResources& readOnlies)
+    {
+        for (uint32_t i = 0; i < BlitzenCore::Ce_MaxTextureCount; ++i)
+        {
+            if (!Create2DImageResource(device, vma, readOnlies.m_textures[i].image, 1, 1, VK_FORMAT_BC1_RGBA_UNORM_BLOCK, VK_IMAGE_USAGE_SAMPLED_BIT, 1, VMA_MEMORY_USAGE_GPU_ONLY))
+            {
+                BLIT_ERROR("%s: Failed to create dummy 2DTex image view", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            readOnlies.m_textures[i].sampler = readOnlies.m_textureSampler.m_handle;
+        }
+        return 1;
+    }
 }

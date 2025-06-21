@@ -1,13 +1,14 @@
 #include "blitEvents.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenCore
 {
-    EventSystem::EventSystem(BlitzenWorld::WORLD_blit* pWORLD, BlitzenWorld::BlitzenPrivateContext& systemContext) :
+    EventSystem::EventSystem(BlitzenWorld::WORLD_blit* pWORLD, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& systemContext) :
         m_pWorldContext{ pWORLD }, m_systemContext{ systemContext }
     {
         for (uint32_t i = 0; i < uint8_t(BlitEventType::MaxTypes); ++i)
         {
-            m_eventCallbacks[i] = [](BlitzenWorld::BlitzenPrivateContext&, BlitEventType type)->uint8_t {return false; };
+            m_eventCallbacks[i] = [](BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&, BlitEventType type)->uint8_t {return false; };
         }
 
         for (auto& controller : m_controllers)
@@ -44,10 +45,10 @@ namespace BlitzenCore
         case BlitEventType::BringBackEditor:
         {
 #if defined(DASHER_JOIN)
-            if (m_privateContext.pDasher->m_state == DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN && *m_privateContext.pEngineState == EngineState::RUNNING_EDITOR_NO_START)
+            if (m_systemContext.pDasher->m_state == DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN && m_systemContext.BLITZEN_ENGINE.m_state == EngineState::RUNNING_EDITOR_NO_START)
             {
-                m_privateContext.pDasher->m_state = DASHER_STATE::DASHER_EDITOR_FULL_BLIT_RENDERER_IDLE;
-                *m_privateContext.pEngineState = EngineState::RUNNING;
+                m_systemContext.pDasher->m_state = DASHER_STATE::DASHER_EDITOR_FULL_BLIT_RENDERER_IDLE;
+                m_systemContext.BLITZEN_ENGINE.m_state = EngineState::RUNNING;
                 m_activeControllerIDX = Ce_EditorControllerID;
 
                 return true;
@@ -59,10 +60,10 @@ namespace BlitzenCore
         case BlitEventType::BringDasherRuntimeDebugWindow:
         {
 #if defined(DASHER_JOIN)
-            if (m_privateContext.pDasher->m_state == DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN && *m_privateContext.pEngineState == EngineState::RUNNING_EDITOR_NO_START)
+            if (m_systemContext.pDasher->m_state == DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN && m_systemContext.BLITZEN_ENGINE.m_state == EngineState::RUNNING_EDITOR_NO_START)
             {
-                m_privateContext.pDasher->m_state = DASHER_STATE::DASHER_EDITOR_DEBUG_RENDERER;
-                *m_privateContext.pEngineState = EngineState::RUNNING;
+                m_systemContext.pDasher->m_state = DASHER_STATE::DASHER_EDITOR_DEBUG_RENDERER;
+                m_systemContext.BLITZEN_ENGINE.m_state = EngineState::RUNNING;
                 m_activeControllerIDX = Ce_EditorControllerID;
 
                 return true;
@@ -85,7 +86,7 @@ namespace BlitzenCore
 
     void EventSystem::InputProcessKey(BlitKey key, bool bPressed)
     {
-        auto idx = static_cast<uint16_t>(key);
+        auto idx = uint16_t(key);
 
         // If the state changed, fire callback
         if (m_currentKeyboard[idx] != bPressed)
@@ -198,7 +199,7 @@ namespace BlitzenCore
             {
             case EditorEventType::BUTTON_CLICK:
             {
-                m_activeControllerIDX = m_editorButtonCallbacks[editorEvent.m_eventTypeID](m_privateContext);
+                m_activeControllerIDX = m_editorButtonCallbacks[editorEvent.m_eventTypeID](m_systemContext);
 
                 BLIT_ASSERT_MESSAGE(m_activeControllerIDX < Ce_MaxControllerCount, "Editor callback returned a controller index, which is bigger than the max count");
 
@@ -220,16 +221,15 @@ namespace BlitzenCore
 
 
     /*************************************                         {DEFAULT CALLBACKS SET BY}                            ************************************************/
-    static uint8_t OnShutdown(BlitzenWorld::BlitzenPrivateContext& context, BlitzenCore::BlitEventType eventType)
+    static uint8_t OnShutdown(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context, BlitzenCore::BlitEventType eventType)
     {
         if (eventType == BlitzenCore::BlitEventType::EngineShutdown)
         {
             BLIT_WARN("Engine shutdown event encountered!");
-            auto pBlitState{ context.pEngineState };
 
-            while (*context.pEngineState == BlitzenCore::EngineState::LOADING);// Wait
+            while (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING);// Wait
 
-            *pBlitState = BlitzenCore::EngineState::SHUTDOWN;
+            context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 
             return 1;
         }
@@ -381,12 +381,11 @@ namespace BlitzenCore
         return BlitEventType::BringDasherRuntimeDebugWindow;
     }
 
-    static uint8_t ResizeEventCallback(BlitzenWorld::BlitzenPrivateContext& context, BlitzenCore::BlitEventType eventType)
+    static uint8_t ResizeEventCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context, BlitzenCore::BlitEventType eventType)
     {
         auto& camera{ reinterpret_cast<BlitzenWorld::WORLD_blit*>(context.pWORLD)->pCameraContainer->GetMainCamera()};
-        auto pBlitState{ context.pEngineState };
 
-        if (*pBlitState == BlitzenCore::EngineState::LOADING)
+        if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING)
         {
             return 0;
         }
@@ -395,14 +394,14 @@ namespace BlitzenCore
 
         if (camera.transformData.windowWidth == 0 || camera.transformData.windowHeight == 0)
         {
-            *pBlitState = BlitzenCore::EngineState::SUSPENDED;
+            context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SUSPENDED;
             return 1;
         }
 
         // Reactivate
-        if (*pBlitState == BlitzenCore::EngineState::SUSPENDED)
+        if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::SUSPENDED)
         {
-            *pBlitState = BlitzenCore::EngineState::RUNNING;
+            context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
         }
 
         BlitzenEngine::UpdateProjection(camera, camera.transformData.windowWidth, camera.transformData.windowHeight);
@@ -487,21 +486,21 @@ namespace BlitzenCore
 
 
     /***********************************                        EDITOR EVENTS                    *******************************************************/
-    static uint32_t EditorFreezeFrustum(BlitzenWorld::BlitzenPrivateContext& context)
+    static uint32_t EditorFreezeFrustum(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context)
     {
 #if defined(DASHER_JOIN)
 
-        if (*context.pEngineState != EngineState::RUNNING)
+        if (context.BLITZEN_ENGINE.m_state != EngineState::RUNNING)
         {
             return BlitzenCore::Ce_EditorControllerID;
         }
 
-        auto pBlitzenContext{ reinterpret_cast<BlitzenWorld::BlitzenWorldContext*>(context.pBlitzenContext) };
+        auto pBlitzenContext{ reinterpret_cast<BlitzenWorld::WORLD_blit*>(context.pWORLD) };
         auto& camera{ pBlitzenContext->pCameraContainer->GetMainCamera() };
 
         camera.transformData.bFreezeFrustum = !camera.transformData.bFreezeFrustum;
 
-        *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+        context.BLITZEN_ENGINE.m_state = EngineState::RUNNING_EDITOR_NO_START;
 
         context.pDasher->m_state = DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN;
         
@@ -513,16 +512,16 @@ namespace BlitzenCore
 #endif
     }
 
-    static uint32_t EditorEndSceneStart(BlitzenWorld::BlitzenPrivateContext& context)
+    static uint32_t EditorEndSceneStart(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context)
     {
 #if defined(DASHER_JOIN)
 
-        if (*context.pEngineState != EngineState::RUNNING)
+        if (context.BLITZEN_ENGINE.m_state != EngineState::RUNNING)
         {
             return BlitzenCore::Ce_EditorControllerID;
         }
 
-        *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+        context.BLITZEN_ENGINE.m_state = EngineState::RUNNING_EDITOR_NO_START;
 
         context.pDasher->m_state = DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN;
 
@@ -534,16 +533,16 @@ namespace BlitzenCore
 #endif
     }
 
-    static uint32_t EditorDebugWindowClose(BlitzenWorld::BlitzenPrivateContext& context)
+    static uint32_t EditorDebugWindowClose(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context)
     {
 #if defined(DASHER_JOIN)
 
-        if (*context.pEngineState != EngineState::RUNNING)
+        if (context.BLITZEN_ENGINE.m_state != EngineState::RUNNING)
         {
             return BlitzenCore::Ce_EditorControllerID;
         }
         
-        *context.pEngineState = EngineState::RUNNING_EDITOR_NO_START;
+        context.BLITZEN_ENGINE.m_state = EngineState::RUNNING_EDITOR_NO_START;
 
         context.pDasher->m_state = DASHER_STATE::BLIT_RENDERER_FULL_DASHER_EDITOR_NO_JOIN;
 

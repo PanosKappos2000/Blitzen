@@ -92,7 +92,8 @@ namespace BlitzenPlatform
         pPlatform->m_hwnd = hwnd;
         
         // BACKEND RENDERING API INIT
-        if (!BlitzenEngine::StartupRenderer(reinterpret_cast<BlitzenEngine::RendererPtrType>(args.m_pRenderer), BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, pPlatform))
+        auto pRenderer{ reinterpret_cast<BlitzenEngine::RendererPtrType>(args.m_pRenderer) };
+        if (!BlitzenEngine::StartupRenderer(pRenderer, BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight, pPlatform))
         {
             BLIT_FATAL("Failed to initialize rendering API");
             return false;

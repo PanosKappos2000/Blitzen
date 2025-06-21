@@ -13,14 +13,10 @@ using WorldSystemMemory = BlitCL::SmartPointer<BlitzenWorld::WORLD_blit, Blitzen
 int main(int argc, char* argv[])
 {
     /* ENGINE SYSTEMS INITIALIZATION */
-    BlitzenCore::Engine blitzenEngine;
-    blitzenEngine.m_state = BlitzenCore::EngineState::LOADING;
-
-    BlitzenWorld::BlitzenPrivateContext blitzenPrivateContext{};
+    BlitzenWorld::BLITZEN_SYSTEM_CONTEXT blitzenPrivateContext{};
+    blitzenPrivateContext.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::LOADING;
 
     BlitzenCore::InitLogging();
-
-    blitzenPrivateContext.pEngineState = &blitzenEngine.m_state;
 
     BlitzenEngine::CameraContainer blitzenCameraSystem;
     auto& mainCamera = blitzenCameraSystem.GetMainCamera();
@@ -71,7 +67,7 @@ int main(int argc, char* argv[])
     #endif
 
     // LOOP
-    while(blitzenEngine.m_state != BlitzenCore::EngineState::SHUTDOWN)
+    while(blitzenPrivateContext.BLITZEN_ENGINE.m_state != BlitzenCore::EngineState::SHUTDOWN)
     {
         BlitzenWorld::WorldLoop(blitzenPrivateContext);
 

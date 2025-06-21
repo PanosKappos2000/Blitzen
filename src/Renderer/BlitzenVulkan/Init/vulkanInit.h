@@ -22,4 +22,6 @@ namespace BlitzenVulkan
 	uint8_t CreateReadWriteBuffers(VkDevice device, VmaAllocator vma, RWResources* readWritesArray, DescriptorContext& descriptorContext);
 
 	uint8_t CreateReadOnlyBuffers(VkDevice device, VmaAllocator vma, ROResources& readOnlies, VulkanStats& stats);
+
+	uint8_t CreateDummy2DTextureViews(VkDevice device, VmaAllocator vma, ROResources& readOnlies);
 }

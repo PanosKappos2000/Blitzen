@@ -19,7 +19,7 @@ namespace BlitzenCore
                                     else                                                                        \
                                     {                                                                           \
                                         BlitzenCore::ReportAssertionFailure(#expr, "", __FILE__, __LINE__);     \
-                                        BDB_BREAK()                                                               \
+                                        BDB_BREAK();                                                               \
                                     }                                                                           \
 
         #define BLIT_ASSERT_MESSAGE(expr, message)                                                                      \
@@ -28,7 +28,7 @@ namespace BlitzenCore
                                     else                                                                                \
                                     {                                                                                   \
                                         BlitzenCore::ReportAssertionFailure(#expr, message, __FILE__, __LINE__);        \
-                                        BDB_BREAK()                                                                       \
+                                        BDB_BREAK();                                                                       \
                                     }                                                                                   \
                                 }
 

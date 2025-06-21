@@ -2,7 +2,7 @@
 
 namespace BlitzenWorld
 {
-	void RenderLoop(BlitzenPrivateContext& context)
+	void RenderLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		
 			// TODO: CULL STATIC OBJECTS FIRST
@@ -10,7 +10,7 @@ namespace BlitzenWorld
 			// TODO: Update view after waiting for camera
 
 			// TODO: Wait for update loop
-			switch (*context.pEngineState)
+			switch (context.BLITZEN_ENGINE.m_state)
 			{
 			case BlitzenCore::EngineState::RUNNING_EDITOR_NO_START:
 			{

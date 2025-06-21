@@ -7,7 +7,7 @@
 
 namespace BlitzenEngine
 {
-    uint8_t StartupRenderer(BlitzenVulkan::VulkanRenderer* pRenderer, uint32_t windowWidth, uint32_t windowHeight, void* pPlatform)
+    uint8_t StartupRenderer(BlitzenVulkan::VulkanRenderer* pRenderer, uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pPlatform)
     {
 
         if (!BlitzenVulkan::CreateInstance(pRenderer->m_instance, pRenderer->m_stats, &pRenderer->m_debugMessenger))
@@ -133,6 +133,12 @@ namespace BlitzenEngine
         }
 
         if (!BlitzenVulkan::CreateReadOnlyBuffers(pRenderer->m_device, pRenderer->m_allocator, pRenderer->m_readOnlies, pRenderer->m_stats))
+        {
+            BLIT_ERROR("%s: Failed to create read only resources", BlitzenCore::CE_VULKAN_SYSTEM_NAME);
+            return 0;
+        }
+
+        if (!BlitzenVulkan::CreateDummy2DTextureViews(pRenderer->m_device, pRenderer->m_allocator, pRenderer->m_readOnlies))
         {
             BLIT_ERROR("%s: Failed to create read only resources", BlitzenCore::CE_VULKAN_SYSTEM_NAME);
             return 0;

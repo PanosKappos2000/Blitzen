@@ -21,6 +21,6 @@ namespace BlitCL
 		{
 			BLIT_DBLOG("{%s DATA}: %s", itemName, stringArg, p);
 		}
-	}
 #endif
+	}
 }

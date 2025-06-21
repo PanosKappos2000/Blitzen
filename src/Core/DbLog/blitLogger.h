@@ -44,7 +44,7 @@ namespace BlitzenCore
     {
 #if defined(NDEBUG)
 
-        if (!BlitzenCore::BLIT_CHECK_FAIL(level))
+        if (!BlitzenCore::BLIT_CHECK_FAIL((int64_t)level))
         {
             return;
         }

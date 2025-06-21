@@ -1,4 +1,6 @@
 #include "Core/Dasher/Interface/dasherInterface.h"
+#include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenIMGUI
 {

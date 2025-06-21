@@ -113,13 +113,14 @@ namespace BlitzenVulkan
                 return 0;
             }
 
+            // PERSISTENT STAGING BUFFER FOR TRANSFORM DATA
             if (drawContext.m_pResidents->m_transforms.m_dynamicTransformCount == 0)
             {
                 BLIT_WARN("%s: No dynamic data found, passing 1 to dynamic transform count for placeholder data", BLIT_VK_SYSTEM);
                 drawContext.m_pResidents->m_transforms.m_dynamicTransformCount = 1;
             }
 
-            readWrites.m_transformBuffer.m_staging.m_dataSize = drawContext.m_pResidents->m_transforms.m_staticTransformCount * sizeof(BlitzenEngine::MeshTransform);
+            readWrites.m_transformBuffer.m_staging.m_dataSize = drawContext.m_pResidents->m_transforms.m_dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform);
 
             if (!CreateBuffer(vma, readWrites.m_transformBuffer.m_staging.m_buffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
                 readWrites.m_transformBuffer.m_staging.m_dataSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
@@ -142,7 +143,7 @@ namespace BlitzenVulkan
             BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
             CopyBufferToBuffer(commandBuffer, transformStagingContext.staging.m_buffer.m_handle, readWrites.m_transformBuffer.m_buffer.m_buffer.m_handle,
-                readWrites.m_transformBuffer.m_staging.m_dataSize * sizeof(BlitzenEngine::MeshTransform), 0, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform));
+                transformStagingContext.staging.m_dataSize, 0, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform));
 
             CopyBufferToBuffer(commandBuffer, readWrites.m_transformBuffer.m_staging.m_buffer.m_handle, readWrites.m_transformBuffer.m_buffer.m_buffer.m_handle,
                 readWrites.m_transformBuffer.m_staging.m_dataSize, 0, BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform));
@@ -209,21 +210,24 @@ namespace BlitzenVulkan
         }
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::Cluster> clusterStagingContext{};
-        clusterStagingContext.elementCount = drawContext.m_meshes.m_clusters.m_clusterCount;
-        clusterStagingContext.pData = drawContext.m_meshes.m_clusters.m_clusters;
-        if (!CreateStaging(vma, device, clusterStagingContext))
-        {
-            BLIT_ERROR("%s: Failed to create cluster staging buffer", BLIT_VK_SYSTEM);
-            return 0;
-        }
-
         BUFFER_STAGING_CONTEXT<uint32_t> clusterIndexStaging{};
-        clusterIndexStaging.elementCount = drawContext.m_meshes.m_clusters.m_clusterIndicesCount;
-        clusterIndexStaging.pData = drawContext.m_meshes.m_clusters.m_clusterIndices;
-        if (!CreateStaging(vma, device, clusterIndexStaging))
+        if constexpr (BlitzenCore::Ce_BuildClusters)
         {
-            BLIT_ERROR("Failed to create cluster index staging buffer", BLIT_VK_SYSTEM);
-            return 0;
+            clusterStagingContext.elementCount = drawContext.m_meshes.m_clusters.m_clusterCount;
+            clusterStagingContext.pData = drawContext.m_meshes.m_clusters.m_clusters;
+            if (!CreateStaging(vma, device, clusterStagingContext))
+            {
+                BLIT_ERROR("%s: Failed to create cluster staging buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            clusterIndexStaging.elementCount = drawContext.m_meshes.m_clusters.m_clusterIndicesCount;
+            clusterIndexStaging.pData = drawContext.m_meshes.m_clusters.m_clusterIndices;
+            if (!CreateStaging(vma, device, clusterIndexStaging))
+            {
+                BLIT_ERROR("Failed to create cluster index staging buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
         }
 
         BeginCommandBuffer(cmdContext.m_transferCmdB, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -303,7 +307,7 @@ namespace BlitzenVulkan
 
             descriptorContext.m_transformDescInfo[frame].buffer = rw.m_transformBuffer.m_buffer.m_buffer.m_handle;
             descriptorContext.m_transformDescInfo[frame].offset = 0;
-            descriptorContext.m_transformDescInfo[frame].range = drawContext.m_pResidents->m_transforms.m_transformCount * sizeof(BlitzenEngine::MeshTransform);
+            descriptorContext.m_transformDescInfo[frame].range = (drawContext.m_pResidents->m_transforms.m_staticTransformCount + BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET) * sizeof(BlitzenEngine::MeshTransform);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_TransformBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_transformDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_TransformBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 
@@ -315,7 +319,7 @@ namespace BlitzenVulkan
 
             descriptorContext.m_renderBufferDescInfo[frame].buffer = roResources.m_renderBuffer.m_buffer.m_handle;
             descriptorContext.m_renderBufferDescInfo[frame].offset = 0;
-            descriptorContext.m_renderBufferDescInfo[frame].range = drawContext.m_pResidents->m_renders.RENDER_COUNT * sizeof(BlitzenEngine::RenderObject);
+            descriptorContext.m_renderBufferDescInfo[frame].range = (drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET) * sizeof(BlitzenEngine::RenderObject);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_RenderBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_renderBufferDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_RenderBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
         }
@@ -381,7 +385,7 @@ namespace BlitzenVulkan
         }
 
         // Array of descriptor infos
-        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos{ readOnlies.m_textureCount };
+        BlitCL::DynamicArray<VkDescriptorImageInfo> imageInfos{ BlitzenCore::Ce_MaxTextureCount };
         for (size_t i = 0; i < imageInfos.GetSize(); ++i)
         {
             imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

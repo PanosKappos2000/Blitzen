@@ -4,17 +4,17 @@
 
 namespace BlitzenWorld
 {
-	static void UpdateWVs(BlitzenPrivateContext& context, float deltaTime)
+	static void UpdateWVs(BLITZEN_SYSTEM_CONTEXT& context, float deltaTime)
 	{
 		
 	}
 
-	void WorldLoop(BlitzenPrivateContext& context)
+	void WorldLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		BlitzenCore::UpdateWorldClock(*context.pClock);
 		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
 
-		switch (*context.pEngineState)
+		switch (context.BLITZEN_ENGINE.m_state)
 		{
 		case BlitzenCore::EngineState::LOADING:
 		{
@@ -24,7 +24,7 @@ namespace BlitzenWorld
 		{
 			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
 			{
-				*context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
+				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 			}
 
 			// TODO: Does NOT belong here
@@ -40,7 +40,7 @@ namespace BlitzenWorld
 		{
 			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
 			{
-				*context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
+				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 			}
 
 			// TODO: Does NOT belong here
@@ -52,7 +52,7 @@ namespace BlitzenWorld
 		{
 			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
 			{
-				*context.pEngineState = BlitzenCore::EngineState::SHUTDOWN;
+				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 			}
 
 			break;
@@ -61,7 +61,7 @@ namespace BlitzenWorld
 		{
 			BlitzenEngine::PrepareRendererForRuntime(context.pWORLD->P_RENDERER.Data());
 
-			*context.pEngineState = BlitzenCore::EngineState::RUNNING;
+			context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
 
 			break;
 		}

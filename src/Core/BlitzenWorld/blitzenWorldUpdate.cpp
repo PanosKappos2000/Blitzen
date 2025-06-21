@@ -2,14 +2,14 @@
 
 namespace BlitzenWorld
 {
-	inline static BlitzenPrivateContext* S_P_CONTEXT = nullptr;
+	inline static BLITZEN_SYSTEM_CONTEXT* S_P_CONTEXT = nullptr;
 
-	static void DispatchUpdate(BlitzenWorldUpdate& update, BlitzenPrivateContext& context)
+	static void DispatchUpdate(BlitzenWorldUpdate& update, BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		
 	}
 
-	void UpdateLoop(BlitzenPrivateContext& context)
+	void UpdateLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		S_P_CONTEXT = &context;
 

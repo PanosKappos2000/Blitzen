@@ -871,7 +871,7 @@ namespace BlitzenVulkan
 
             uint32_t dispatchCount{ uint32_t(*reinterpret_cast<uint32_t*>(readWrites.m_clusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData)) };
             uint32_t transparentDispatchCount = 0;
-            if (context.m_pResidents->m_renders.m_transparentStaticCount)
+            if (false)//context.m_pResidents->m_renders.m_transparentStaticCount)
             {
                 transparentDispatchCount = uint32_t(*reinterpret_cast<uint32_t*>(readWrites.m_transClusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData));
             }
@@ -992,7 +992,7 @@ namespace BlitzenVulkan
             DrawOpaque(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);
             vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
-            if (context.m_pResidents->m_renders.m_transparentStaticCount != 0)
+            if (false)//context.m_pResidents->m_renders.m_transparentStaticCount != 0)
             {
                 // TRANSPARENT CULLING (takes advantage of already generated scene)
                 DrawCullTrans(cmd.m_mainGraphicsCmdB, m_instance, m_pipelines, m_readOnlies, m_readWrites[m_currentFrame], m_descriptorContext, context, m_currentFrame);

@@ -17,7 +17,7 @@ void main()
 {
     uint objectIndex = gl_GlobalInvocationID.x + pushConstant.drawOffset;
 
-    if(pushConstant.drawCount <= objectIndex)
+    if(pushConstant.drawCount <= objectIndex + pushConstant.drawOffset)
     {
         return;
     }

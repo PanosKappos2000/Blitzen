@@ -295,7 +295,7 @@ namespace BlitzenCore
     {
     public:
         Engine() = default;
-        EngineState m_state{ EngineState::SHUTDOWN };
+        volatile EngineState m_state{ EngineState::SHUTDOWN };
 
         // Defined in blitMemory.h
         ~Engine();

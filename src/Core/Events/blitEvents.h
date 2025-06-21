@@ -7,10 +7,10 @@
 namespace BlitzenCore
 {
     // Standard events
-    using EventCallback = BlitCL::Pfn<uint8_t, BlitzenWorld::BlitzenPrivateContext&, BlitEventType>;
+    using EventCallback = BlitCL::Pfn<uint8_t, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&, BlitEventType>;
 
     // Editor events take full context and return controller id
-    using EditorCallback = BlitCL::Pfn<uint32_t, BlitzenWorld::BlitzenPrivateContext&>;
+    using EditorCallback = BlitCL::Pfn<uint32_t, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&>;
 
     // Mouse buttons and mouse position
     struct MouseState
@@ -24,7 +24,7 @@ namespace BlitzenCore
     {
     public:
         
-        EventSystem(BlitzenWorld::WORLD_blit* WORLD, BlitzenWorld::BlitzenPrivateContext& systemContext);
+        EventSystem(BlitzenWorld::WORLD_blit* WORLD, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& systemContext);
 
         inline ~EventSystem() {}
 
@@ -40,7 +40,7 @@ namespace BlitzenCore
 
         bool FireEvent(BlitEventType type);
 
-        BlitzenWorld::BlitzenPrivateContext& m_systemContext;
+        BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& m_systemContext;
         BlitzenWorld::WORLD_blit* m_pWorldContext;
 
         EventCallback m_eventCallbacks[uint8_t(BlitEventType::MaxTypes)]{};
@@ -48,7 +48,7 @@ namespace BlitzenCore
         Controller m_controllers[Ce_MaxControllerCount];
         uint32_t m_activeControllerIDX{ Ce_InitialControllerID };
 
-        EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BlitzenWorld::BlitzenPrivateContext&)->uint32_t {return Ce_InitialControllerID; } };
+        EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&)->uint32_t {return Ce_InitialControllerID; } };
 
         bool m_currentKeyboard[Ce_KeyCallbackCount];
         bool m_previousKeyboard[Ce_KeyCallbackCount];

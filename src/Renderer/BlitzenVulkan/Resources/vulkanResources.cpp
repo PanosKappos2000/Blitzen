@@ -85,16 +85,20 @@ namespace BlitzenVulkan
         imageAllocationInfo.usage = memoryUsage;
         imageAllocationInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+        image.m_image.~Image();
+
         VkResult res = vmaCreateImage(allocator, &imageInfo, &imageAllocationInfo, &image.m_image.m_handle, &image.m_image.m_vmaAlloc, nullptr);
         if (res != VK_SUCCESS)
         {
-            BLIT_ERROR("Failed to create image resource");
+            BLIT_ERROR("%s: Failed to create image resource", BLIT_VK_SYSTEM);
             return VK_LOG_ERROR_MSG_AND_RETURN(res);
         }
 
+        image.m_view.~ImageView();
+
         if (!CreateImageView(device, image.m_view.m_handle, image.m_image.m_handle, format, 0, mipLevels))
         {
-            BLIT_ERROR("Failed to create image view");
+            BLIT_ERROR("%s: Failed to create image view", BLIT_VK_SYSTEM);
             return 0;
         }
 
@@ -507,11 +511,13 @@ namespace BlitzenVulkan
     {
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.pNext = nullptr;
+
         write.dstSet = dstSet;
         write.dstBinding = binding;
         write.descriptorType = descriptorType;
         write.descriptorCount = descriptorCount;
         write.pImageInfo = pImageInfos;
+
         write.dstArrayElement = dstArrayElement;
     }
 
