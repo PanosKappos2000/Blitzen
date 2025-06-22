@@ -11,7 +11,8 @@ namespace BlitzenCore
     using MouseButtonPressCallback = BlitCL::Pfn<BlitEventType, BlitzenWorld::WORLD_blit*, int16_t, int16_t>;
     using MouseButtonReleaseCallback = BlitCL::Pfn<BlitEventType, BlitzenWorld::WORLD_blit*, int16_t, int16_t>;
 
-    using MouseMoveCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::WORLD_blit*, int16_t, int16_t, int16_t, int16_t>;
+    using MouseMoveCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::WORLD_blit*, int16_t, int16_t>;
+
     using MouseWheelCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::WORLD_blit*, int8_t>;
 
 	struct Controller
@@ -41,7 +42,7 @@ namespace BlitzenCore
             controller.m_mouseReleasePFNs[pfn] = [](BlitzenWorld::WORLD_blit*, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
         }
 
-        controller.m_mouseMovePFNs = [](BlitzenWorld::WORLD_blit*, int16_t, int16_t, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
+        controller.m_mouseMovePFNs = [](BlitzenWorld::WORLD_blit*, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
 
         controller.m_mouseWheelPFNs = [](BlitzenWorld::WORLD_blit*, int8_t)->BlitEventType { return BlitEventType::MaxTypes; };
     }

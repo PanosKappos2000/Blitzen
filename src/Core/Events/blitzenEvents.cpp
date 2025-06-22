@@ -84,7 +84,7 @@ namespace BlitzenCore
         }
     }
 
-    void EventSystem::InputProcessKey(BlitKey key, bool bPressed)
+    void EventSystem::InputProcessKey(BlitKey key, BlitzenCore::FAT_BOOL bPressed)
     {
         auto idx = uint16_t(key);
 
@@ -107,33 +107,24 @@ namespace BlitzenCore
         }
     }
 
-    void EventSystem::InputProcessMouseMove(int16_t x, int16_t y)
-    {
-        if (m_currentMouse.x != x || m_currentMouse.y != y)
-        {
-            m_previousMouse.x = m_currentMouse.x;
-            m_previousMouse.y = m_currentMouse.y;
-            m_currentMouse.x = x;
-            m_currentMouse.y = y;
-
-            m_controllers[m_activeControllerIDX].m_mouseMovePFNs(m_pWorldContext, m_currentMouse.x, m_currentMouse.y, m_previousMouse.x, m_previousMouse.y);
-        }
-    }
-
-    void EventSystem::InputProcessButton(MouseButton button, bool bPressed)
+    void EventSystem::InputProcessButton(MouseButton button, BlitzenCore::FAT_BOOL bPressed)
     {
         auto idx = uint8_t(button);
 
-        if (m_currentMouse.buttons[idx] != bPressed)
+        if (m_mouseButtonFlags[idx] != bPressed)
         {
-            m_currentMouse.buttons[idx] = bPressed;
+            int16_t mouseX{ 0 };
+            int16_t mouseY{ 0 };
+            BlitzenPlatform::GetSystemMousePos(m_systemContext.pPlatform, mouseX, mouseY);
+
+            m_mouseButtonFlags[idx] = bPressed;
             if (bPressed)
             {
-                m_controllers[m_activeControllerIDX].m_mousePressPFNs[idx](m_pWorldContext, m_currentMouse.x, m_currentMouse.y);
+                m_controllers[m_activeControllerIDX].m_mousePressPFNs[idx](m_pWorldContext, mouseX, mouseY);
             }
             else
             {
-                m_controllers[m_activeControllerIDX].m_mouseReleasePFNs[idx](m_pWorldContext, m_currentMouse.x, m_currentMouse.y);
+                m_controllers[m_activeControllerIDX].m_mouseReleasePFNs[idx](m_pWorldContext, mouseX, mouseY);
             }
         }
     }
@@ -218,6 +209,10 @@ namespace BlitzenCore
 #endif
     }
 
+    void EventSystem::DispatchRawInput_MOUSE_MOVED(int16_t xAxisMovement, int16_t yAxisMovement)
+    {
+        m_controllers[m_activeControllerIDX].m_mouseMovePFNs(m_pWorldContext, xAxisMovement, yAxisMovement);
+    }
 
 
     /*************************************                         {DEFAULT CALLBACKS SET BY}                            ************************************************/
@@ -416,16 +411,13 @@ namespace BlitzenCore
         return 1;
     }
 
-    static BlitEventType OnMouseMove(BlitzenWorld::WORLD_blit* blitzenContext, int16_t currentX, int16_t currentY, int16_t previousX, int16_t previousY)
+    static BlitEventType OnMouseMove(BlitzenWorld::WORLD_blit* blitzenContext, int16_t xAxisMovement, int16_t yAxisMovement)
     {
         auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
 
         auto deltaTime = float(blitzenContext->deltaTime);
 
-        auto xMovement = float(currentX - previousX);
-        auto yMovement = float(currentY - previousY);
-
-        BlitzenEngine::RotateCamera(camera, deltaTime, yMovement, xMovement);
+        BlitzenEngine::RotateCamera(camera, deltaTime, yAxisMovement, xAxisMovement);
 
         return BlitEventType::MaxTypes;
     }

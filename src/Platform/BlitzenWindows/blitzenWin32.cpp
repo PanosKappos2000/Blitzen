@@ -11,14 +11,18 @@
 #include "backends/imgui_impl_win32.h"
 #include "Core/Dasher/Interface/dasherInterface.h"
 
+// Needs to make sure that IMGUI callback does not get overriden
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
-    
     extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 #endif
 
 namespace BlitzenPlatform
 {
+    constexpr SHORT CE_HID_USAGE_PAGE_GENERIC = 0x01;
+    constexpr SHORT CE_HID_USAGE_MOUSE = 0x02;
+    constexpr SHORT CE_HID_USAGE_KEYBOARD = 0x06;
+    constexpr SHORT CE_HID_USAGE_JOYSTICK = 0x04;
+
     // EVENT CALLBACK
     LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM w_param, LPARAM l_param);
 
@@ -91,14 +95,13 @@ namespace BlitzenPlatform
         pPlatform->m_hinstance = hInstance;
         pPlatform->m_hwnd = hwnd;
 
-        // Example for Windows platform, where hwnd is the handle to the main window
+        // RAW INPUT
         RAWINPUTDEVICE rid[1];
-        rid[0].usUsagePage = 0x01;  
-        rid[0].usUsage = 0x02;      
+        rid[0].usUsagePage = CE_HID_USAGE_PAGE_GENERIC;  
+        rid[0].usUsage = CE_HID_USAGE_MOUSE;      
         rid[0].dwFlags = 0;
         rid[0].hwndTarget = hwnd;   
-
-        if (RegisterRawInputDevices(rid, 1, sizeof(rid[0])) == FALSE)
+        if (!RegisterRawInputDevices(rid, 1, sizeof(rid[0])))
         {
             MessageBox(hwnd, "Failed to register raw input device", "Error", MB_OK);
             return false;
@@ -164,15 +167,23 @@ namespace BlitzenPlatform
         return true;
     }
 
-    void PutMouseInGameState(void* pPlatform)
+    void PutMouseInGameState(PlatformContext* ptrBP_HANDLE)
     {
-        auto ptrHandle{ reinterpret_cast<PlatformContext*>(pPlatform) };
-
         while(ShowCursor(FALSE) >= 0);
-        UpdateWindow(ptrHandle->m_hwnd);
+        UpdateWindow(ptrBP_HANDLE->m_hwnd);
 
         // Optionally lock the cursor within the window bounds
         //ClipCursor(ptrHandle->);
+    }
+
+    void GetSystemMousePos(PlatformContext* ptrBP_HANDLE, int16_t& mouseXData, int16_t mouseYData)
+    {
+        POINT mousePos;
+        GetCursorPos(&mousePos);  
+        ScreenToClient(ptrBP_HANDLE->m_hwnd, &mousePos);
+
+        mouseXData = (int16_t)mousePos.x;
+        mouseYData = (int16_t)mousePos.y;
     }
 
     struct BLITWIN32_SCOPED_RAWINPUT_BYTE
@@ -247,21 +258,11 @@ namespace BlitzenPlatform
             case WM_SYSKEYUP: 
             {
                 // press or release
-                bool bPressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+                BlitzenCore::FAT_BOOL bPressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) ? BlitzenCore::FAT_TRUE : BlitzenCore::FAT_FALSE;
 
                 auto key = BlitzenCore::BlitKey(wparam);
 
                 pEventSystem->InputProcessKey(key, bPressed);
-
-                break;
-            } 
-
-            case WM_MOUSEMOVE: 
-            {
-                int32_t mouseX = GET_X_LPARAM(lparam);
-                int32_t mouseY = GET_Y_LPARAM(lparam);
-
-                pEventSystem->InputProcessMouseMove(mouseX, mouseY);
 
                 break;
             }
@@ -286,7 +287,7 @@ namespace BlitzenPlatform
                     int32_t mouseDX = raw->data.mouse.lLastX;  // Relative movement in X
                     int32_t mouseDY = raw->data.mouse.lLastY;  // Relative movement in Y
 
-                    //pEventSystem->InputProcessMouseMove(mouseDX, mouseDY);  // Process the mouse movement
+                    pEventSystem->DispatchRawInput_MOUSE_MOVED(mouseDX, mouseDY);  // Process the mouse movement
                 }
 
                 break;

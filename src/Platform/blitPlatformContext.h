@@ -8,6 +8,8 @@
 #include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev
 #endif
 
+#include <stdint.h>
+
 namespace BlitzenPlatform
 {
 #if defined(_WIN32)
@@ -37,4 +39,8 @@ namespace BlitzenPlatform
 #else
 	static_assert(true, "Platform not supported");
 #endif
+
+	void PutMouseInGameState(PlatformContext* ptrBP_HANDLE);
+
+	void GetSystemMousePos(PlatformContext* ptrBP_HANDLE, int16_t& mouseXData, int16_t mouseYData);
 }

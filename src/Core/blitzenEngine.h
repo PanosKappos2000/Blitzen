@@ -48,6 +48,8 @@ namespace BlitzenCore
     constexpr BIG_BOOL BB_FALSE = 0;
 
     using FAT_BOOL = uint32_t;
+	constexpr FAT_BOOL FAT_TRUE = 1;
+	constexpr FAT_BOOL FAT_FALSE = 0;
 
     template<typename PTR>
     using ARRAY_OF_POINTERS = PTR**;

@@ -12,14 +12,6 @@ namespace BlitzenCore
     // Editor events take full context and return controller id
     using EditorCallback = BlitCL::Pfn<uint32_t, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&>;
 
-    // Mouse buttons and mouse position
-    struct MouseState
-    {
-        int16_t x;
-        int16_t y;
-        bool buttons[uint8_t(MouseButton::MaxButtons)];
-    };
-
     class EventSystem 
     {
     public:
@@ -30,15 +22,15 @@ namespace BlitzenCore
 
         void UpdateInput(double deltaTime, EditorEventContext* pEditor = nullptr);
 
-        void InputProcessKey(BlitKey key, bool bPressed);
+        void InputProcessKey(BlitKey key, BlitzenCore::FAT_BOOL bPressed);
 
-        void InputProcessButton(MouseButton button, bool bPressed);
-
-        void InputProcessMouseMove(int16_t x, int16_t y);
+        void InputProcessButton(MouseButton button, BlitzenCore::FAT_BOOL bPressed);
 
         void InputProcessMouseWheel(int8_t zDelta);
 
         bool FireEvent(BlitEventType type);
+
+        void DispatchRawInput_MOUSE_MOVED(int16_t xAxisMovement, int16_t yAxisMovement);
 
         BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& m_systemContext;
         BlitzenWorld::WORLD_blit* m_pWorldContext;
@@ -50,11 +42,9 @@ namespace BlitzenCore
 
         EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&)->uint32_t {return Ce_InitialControllerID; } };
 
-        bool m_currentKeyboard[Ce_KeyCallbackCount];
-        bool m_previousKeyboard[Ce_KeyCallbackCount];
-
-        MouseState m_currentMouse;
-        MouseState m_previousMouse;
+        BlitzenCore::FAT_BOOL m_currentKeyboard[Ce_KeyCallbackCount];
+        BlitzenCore::FAT_BOOL m_previousKeyboard[Ce_KeyCallbackCount];
+        BlitzenCore::FAT_BOOL m_mouseButtonFlags[uint8_t(MouseButton::MaxButtons)];
     };
 
     // Passes the logic to be called when a speicific key is pressed
