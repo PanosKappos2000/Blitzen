@@ -20,8 +20,6 @@ namespace BlitzenDX12
         uint8_t UploadTexture(const char* filepath);
     
         void DrawWhileWaiting(float deltaTime);
-        
-        BlitML::vec2 UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle);
 
         void UpdateTransforms(BlitzenEngine::MeshTransform* pTransform, uint32_t transformCount, BlitzenEngine::MeshTransform* transforms);
 

@@ -74,5 +74,5 @@ namespace BlitzenEngine
 
     void RenderObjects(RendererPtrType pContext, uint32_t renderOffset, RENDER_OBJECT_TYPE objectType, DrawContext& drawContext);
 
-    void UpdateRendererWindowData(RendererPtrType pRenderer, uint32_t newWidth, uint32_t newHeight);
+    BlitML::vec2 UpdateRendererWindowData(RendererPtrType pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pPlatform);
 }

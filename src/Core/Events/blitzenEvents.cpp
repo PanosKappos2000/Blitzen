@@ -399,7 +399,7 @@ namespace BlitzenCore
 
         BlitzenEngine::UpdateProjection(camera, (float)context.WIDTH, (float)context.HEIGHT);
 
-        BlitML::vec2 hizExtent{ context.pWORLD->P_RENDERER->UpdateWindow(context.WIDTH, context.HEIGHT , context.pPlatform) };
+        BlitML::vec2 hizExtent{ BlitzenEngine::UpdateRendererWindowData(context.pWORLD->P_RENDERER.Data(), context.WIDTH, context.HEIGHT , context.pPlatform)};
 
 #if defined(DASHER_JOIN)
         context.pDasher->UpdateWindowSize(context.WIDTH, context.HEIGHT);

@@ -1,10 +1,24 @@
 #include "Renderer/Interface/blitRenderer.h"
 #include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
+#include "vkRuntimeHelpers.h"
 #include "vulkanCommands.h" 
 #include "BlitCL/blitDynamicArr.h"
 
 namespace BlitzenEngine
 {
+    BlitML::vec2 UpdateRendererWindowData(BlitzenVulkan::VulkanRenderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)
+    {
+        pRenderer->m_drawWidth = newWidth;
+        pRenderer->m_drawHeight = newHeight;
+
+        // AT THIS POINT JUST PASS THE RENDERER... whatever, should fix this at some point
+        BlitzenVulkan::RecreateSwapchain(pRenderer->m_device, pRenderer->m_instance, pRenderer->m_swapchain, pRenderer->m_surface.handle, pRenderer->m_physicalDevice, pRenderer->m_allocator, 
+            pRenderer->m_pipelines, pRenderer->m_readOnlies, pRenderer->m_readWrites, pRenderer->m_descriptorContext,
+            pRenderer->m_drawWidth, pRenderer->m_drawHeight, pRenderer->m_currentFrame, pRenderer->m_graphicsQueue, pRenderer->m_presentQueue, pRenderer->m_computeQueue);
+
+        return BlitML::vec2{ float(pRenderer->m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_width), float(pRenderer->m_readWrites[0].m_HI_Z_MAP.m_pyramid.m_height) };
+    }
+
     void PrepareRendererForRuntime(BlitzenVulkan::VulkanRenderer* pRenderer)
     {
         vkDeviceWaitIdle(pRenderer->m_device);

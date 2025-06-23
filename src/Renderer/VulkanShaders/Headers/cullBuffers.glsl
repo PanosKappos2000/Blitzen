@@ -40,38 +40,33 @@ uint LODSelection(vec3 center, float radius, float scale, float lodTarget, uint 
     return lodIndex + lodOffset;
 }
 
-struct ClusterGroupData
+layout(set = 0, binding = 7, std430) writeonly buffer RWSSBO_DRAW_CMD
 {
-    uint objectId;
-    uint lodIndex;
-    uint clusterId;
+        IndirectDraw data[];
+}rwssbo_DrawCmd;
 
-    uint padding0;
-};
+layout(set = 0, binding = 9, std430) writeonly buffer RWSSBO_DRAW_CMD_COUNT
+{
+    uint data;
+}rwssbo_DrawCount;
 
-#ifdef PRE_CLUSTER
-layout(set = 0, binding = 11, std430) writeonly buffer SSBO_CLUSTER_DISPATCH
+void PrepareDrawCmd(uint lodIndex, uint objectIndex)
 {
-	ClusterGroupData data[];
-}rwssbo_cluster_group;
-#else
-layout(set = 0, binding = 11, std430) readonly buffer SSBO_CLUSTER_DISPATCH
-{
-	ClusterGroupData data[];
-}rwssbo_cluster_group;
-#endif
+    // Increments draw count
+    uint drawID = atomicAdd(rwssbo_DrawCount.data, 1);
 
-layout(set = 0, binding = 13, std430) writeonly buffer RWSSBO_CLUSTER_COUNT
-{
-	uint data[];
-}rwssbo_cluster_count;
+    // object id
+    rwssbo_DrawCmd.data[drawID].objectId = objectIndex;
 
-// The indirect count buffer holds a single integer that is the draw count for VkCmdDrawIndexedIndirectCount. 
-// Will be incremented when necessary by a compute shader
-layout(set = 0, binding = 9, std430) writeonly buffer IndirectDrawCount
-{
-    uint drawCount;
-}indirectDrawCountBuffer;
+    // vertices
+    rwssbo_DrawCmd.data[drawID].indexCount = ssbo_LODs.data[lodIndex].indexCount;
+    rwssbo_DrawCmd.data[drawID].firstIndex = ssbo_LODs.data[lodIndex].firstIndex;
+    rwssbo_DrawCmd.data[drawID].vertexOffset = 0;
+        
+    // instances
+    rwssbo_DrawCmd.data[drawID].instanceCount = 1;
+    rwssbo_DrawCmd.data[drawID].firstInstance = 0;
+}
 
 #ifdef DOUBLE_PASS
 
@@ -82,50 +77,7 @@ layout(set = 0, binding = 10, std430) buffer RWSSBO_DRAW_VIS
 
 #endif
 
-#ifdef CLUSTER_CULLING
-
-layout (push_constant) uniform PushConstants
-{
-    uint clusterGroupOffset;
-    uint clusterCountOffset;
-    uint drawOffset;
-    uint drawCount;
-}pushConstant;
-
-// Meshlet used in the mesh shader to draw a surface or mesh
-struct Cluster
-{
-    // Bounding sphere for frustum culling
-    vec3 center;
-    float radius;
-
-    // This is for backface culling
-    int8_t coneAxisX;
-    int8_t coneAxisY;
-    int8_t coneAxisZ;
-    int8_t coneCutoff;
-
-    uint dataOffset; // Index into meshlet data
-    uint8_t vertexCount;
-    uint8_t triangleCount;
-    uint8_t padding0;
-    uint8_t padding1;
-};
-
-// The single buffer that holds all meshlet data in the scene
-layout(set = 0, binding = 12, std430) readonly buffer SSBO_CLUSTER
-{
-    Cluster data[];
-}ssbo_cluster;
-
-#else
-
 layout (push_constant) uniform CullingConstants
 {
-    uint drawOffset;
     uint drawCount;
-	uint padding0;
-    uint padding1;
 }pushConstant;
-
-#endif

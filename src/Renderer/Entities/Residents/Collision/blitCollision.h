@@ -51,4 +51,6 @@ namespace BlitzenEngine
 
 		// Some sort of transform data as well I am guessing
 	};
+
+	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds);
 }

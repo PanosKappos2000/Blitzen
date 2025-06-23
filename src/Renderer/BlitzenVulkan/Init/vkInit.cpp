@@ -1381,7 +1381,7 @@ namespace BlitzenVulkan
 
         // CULLING SHADERS
         VkPushConstantRange cullShaderPushConstant{};
-        CreatePushConstantRange(cullShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DrawCullShaderPushConstant));
+        CreatePushConstantRange(cullShaderPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t));
 
         if (!CreatePipelineLayout(device, &context.m_drawCullLayout.handle, 1, &descriptorContext.m_pushDescriptorLayout.handle, 1, &cullShaderPushConstant))
         {
@@ -1393,7 +1393,7 @@ namespace BlitzenVulkan
         if (BlitzenCore::Ce_BuildClusters)
         {
             VkPushConstantRange clusterCullPushConstant{};
-            CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ClusterCullShaderPushConstant));
+            CreatePushConstantRange(clusterCullPushConstant, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t));
             if (!CreatePipelineLayout(device, &context.m_clusterCullLayout.handle, 1, &descriptorContext.m_pushDescriptorLayout.handle, 1, &clusterCullPushConstant))
             {
                 BLIT_ERROR("Failed to create culling pipeline layout");

@@ -22,4 +22,12 @@ namespace BlitzenEngine
 
 		return m_boundingSphereCount++;
 	}
+
+	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds)
+	{
+		BlitML::vec3 delta = firstBounds.m_center - secondBounds.m_center;
+		float distSq = BlitML::LengthSquared(delta);  // or delta.LengthSquared() if you have it
+		float radiusSum = firstBounds.m_radius + secondBounds.m_radius;
+		return distSq <= (radiusSum * radiusSum);
+	}
 }

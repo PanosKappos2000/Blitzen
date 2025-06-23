@@ -182,6 +182,16 @@ namespace BlitzenVulkan
             return 0;
         }
 
+        BUFFER_STAGING_CONTEXT<BlitzenEngine::RenderObject> transRenderStagingContext{};
+        transRenderStagingContext.elementCount = drawContext.m_pResidents->m_renders.m_transparentStaticCount;
+        transRenderStagingContext.pData = drawContext.m_pResidents->m_renders.m_renders;
+        transRenderStagingContext.offset = BLIT_TRANSPARENT_RENDER_OFFSET;
+        if (!CreateStaging(vma, device, transRenderStagingContext))
+        {
+            BLIT_ERROR("%s: Failed to create transparent render staging buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
         BUFFER_STAGING_CONTEXT<BlitzenEngine::PrimitiveSurface> surfaceStagingContext{};
         surfaceStagingContext.elementCount = drawContext.m_meshes.m_meshPrimitives.m_meshPrimitivesCount;
         surfaceStagingContext.pData = drawContext.m_meshes.m_meshPrimitives.m_meshPrimitives;
@@ -238,6 +248,9 @@ namespace BlitzenVulkan
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, renderStagingContext.staging.m_buffer.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, renderStagingContext.staging.m_dataSize, 0, 
             BLIT_OPAQUE_STATIC_RENDER_OFFSET * sizeof(BlitzenEngine::RenderObject));
+
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, transRenderStagingContext.staging.m_buffer.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, transRenderStagingContext.staging.m_dataSize, 0,
+            BLIT_TRANSPARENT_RENDER_OFFSET * sizeof(BlitzenEngine::RenderObject));
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, surfaceStagingContext.staging.m_buffer.m_handle, readOnlies.m_surfaceBuffer.m_buffer.m_handle, surfaceStagingContext.staging.m_dataSize, 0, 0);
 

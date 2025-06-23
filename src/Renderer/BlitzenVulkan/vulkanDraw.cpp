@@ -85,8 +85,7 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullFirstPso.handle);
-        DrawCullShaderPushConstant pushConstant{ BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount};
-        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &drawContext.m_pResidents->m_renders.m_opaqueStaticCount);
 
         // Dispatch
         vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueStaticCount, 64), 1, 1);
@@ -154,8 +153,7 @@ namespace BlitzenVulkan
 
         // Pipeline and push Constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawCullLatePso.handle);
-        DrawCullShaderPushConstant pushConstant{ BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount };
-        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &drawContext.m_pResidents->m_renders.m_opaqueStaticCount);
 
         // Dispatch
         vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueStaticCount, 64), 1, 1);
@@ -214,8 +212,7 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_transDrawCullPso.handle);
-        DrawCullShaderPushConstant pushConstant{ BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount };
-        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &drawContext.m_pResidents->m_renders.m_transparentStaticCount);
 
         // Dispatch
         vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_transparentStaticCount, 64), 1, 1);
@@ -276,8 +273,7 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawTemporalOccPso.handle);
-        DrawCullShaderPushConstant pushConstant{ BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount };
-        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &drawContext.m_pResidents->m_renders.m_opaqueStaticCount);
 
         // Dispatch
         vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_opaqueStaticCount, 64), 1, 1);
@@ -338,8 +334,7 @@ namespace BlitzenVulkan
 
         // Pipeline and descriptors
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_drawTemporalOccPso.handle);
-        DrawCullShaderPushConstant pushConstant{ BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount };
-        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DrawCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_drawCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &drawContext.m_pResidents->m_renders.m_transparentStaticCount);
 
         // Dispatch
         vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(drawContext.m_pResidents->m_renders.m_transparentStaticCount, 64), 1, 1);
@@ -390,12 +385,7 @@ namespace BlitzenVulkan
 
 		// Pipeline and push constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullDispatchPso.handle);
-        ClusterCullShaderPushConstant pushConstant
-        {
-            CE_CLUSTER_GROUP_OPAQUE_OFFSET, CE_CLUSTER_COUNT_OPAQUE_OFFSET,
-            BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount
-        };
-        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &drawContext.m_pResidents->m_renders.m_opaqueStaticCount);
         // Dispatch
         vkCmdDispatch(cmdb, (drawContext.m_pResidents->m_renders.m_opaqueStaticCount / 64) + 1, 1, 1);
 
@@ -448,12 +438,7 @@ namespace BlitzenVulkan
 
         // Pipeline and push constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullDispatchPso.handle);
-        ClusterCullShaderPushConstant pushConstant
-        {
-            CE_CLUSTER_GROUP_TRANS_OFFSET, CE_CLUSTER_COUNT_TRANS_OFFSET,
-            BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount
-        };
-        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &drawContext.m_pResidents->m_renders.m_transparentStaticCount);
         // Dispatch
         vkCmdDispatch(cmdb, (drawContext.m_pResidents->m_renders.m_transparentStaticCount / 64) + 1, 1, 1);
 
@@ -508,12 +493,7 @@ namespace BlitzenVulkan
 
         // Pipeline and push constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullPso.handle);
-        ClusterCullShaderPushConstant pushConstant
-        {
-            CE_CLUSTER_GROUP_OPAQUE_OFFSET, CE_CLUSTER_COUNT_OPAQUE_OFFSET,
-            BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_opaqueStaticCount
-        };
-        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &dispatchCount);
         // Dispatch
         vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(dispatchCount, 64) , 1, 1);
 
@@ -562,12 +542,7 @@ namespace BlitzenVulkan
 
         // Pipeline and push constants
         vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullPso.handle);
-        ClusterCullShaderPushConstant pushConstant
-        {
-            CE_CLUSTER_GROUP_TRANS_OFFSET, CE_CLUSTER_COUNT_TRANS_OFFSET,
-            BLIT_TRANSPARENT_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_transparentStaticCount
-        };
-        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ClusterCullShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &dispatchCount);
         // Dispatch
         vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(dispatchCount, 64), 1, 1);
 

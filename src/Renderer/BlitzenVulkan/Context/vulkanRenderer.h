@@ -34,8 +34,6 @@ namespace BlitzenVulkan
 
         void DrawWhileWaiting(float deltaTime);
 
-        BlitML::vec2 VulkanRenderer::UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle);
-
         void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
 
         void DrawFrame(BlitzenEngine::DrawContext& context);

@@ -33,13 +33,7 @@ struct IndirectDraw
 };
 
 // Indirect buffers are writeonly in compute and readonly in vertex
-#ifdef COMPUTE_PIPELINE
-    layout(set = 0, binding = 7, std430) writeonly buffer RWSSBO_DRAW_CMD
-    {
-        IndirectDraw data[];
-    }rwssbo_DrawCmd;
-
-#else
+#ifndef COMPUTE_PIPELINE
     layout(set = 0, binding = 7, std430) readonly buffer RWSSBO_DRAW_CMD
     {
         IndirectDraw data[];

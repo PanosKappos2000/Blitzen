@@ -7,7 +7,7 @@
 	
 namespace BlitzenDX12
 {
-	static void RecreateSwapchain(HWND hwnd, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
+	void RecreateSwapchain(HWND hwnd, IDXGIFactory6* factory, ID3D12Device* device, ID3D12CommandQueue* queue, uint32_t newWidth, uint32_t newHeight,
 		DX12WRAPPER<IDXGISwapChain3>* pSwapchain, DX12WRAPPER<ID3D12Resource>* pSwapchainBuffers, DX12WRAPPER<ID3D12Resource>* pDepthTargets,
 		DescriptorContext& descriptorContext, CmdContext* pCmd)
 	{
@@ -67,7 +67,7 @@ namespace BlitzenDX12
 		}
 	}
 
-	static void RecreateDepthPyramidDescriptors(ID3D12Device* device, ReadWriteResources* rwResourcesArray, DescriptorContext& context, UINT drawWidth, UINT drawHeight)
+	void RecreateDepthPyramidDescriptors(ID3D12Device* device, ReadWriteResources* rwResourcesArray, DescriptorContext& context, UINT drawWidth, UINT drawHeight)
 	{
 		SIZE_T offset{ context.m_HI_Z_MapSRVOffset[0] };
 
@@ -121,7 +121,7 @@ namespace BlitzenDX12
 
 	}
 
-	static void RecreateDepthTargetDescriptor(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* pDepthTargets, DescriptorContext& ctx)
+	void RecreateDepthTargetDescriptor(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>* pDepthTargets, DescriptorContext& ctx)
 	{
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -144,34 +144,6 @@ namespace BlitzenDX12
 
 			offset++;
 		}
-	}
-
-	BlitML::vec2 Dx12Renderer::UpdateWindow(uint32_t windowWidth, uint32_t windowHeight, void* pHandle)
-	{
-		auto& rwResources = m_rwResources[m_currentFrame];
-
-		m_swapchainWidth = windowWidth;
-		m_swapchainHeight = windowHeight;
-
-		HWND hwnd{ reinterpret_cast<BlitzenPlatform::PlatformContext*>(pHandle)->m_hwnd };
-		RecreateSwapchain(hwnd, m_factory.Get(), m_device.Get(), m_commandQueue.Get(), m_swapchainWidth, m_swapchainHeight, &m_swapchain,
-			m_swapchainBackBuffers, m_depthBuffers, m_descriptorContext, m_cmdContext);
-
-		CreateOMSTargetDescs(m_pipelineContext.m_renderTargetPassDesc, m_pipelineContext.m_depthTargetPassDesc, m_descriptorContext.m_swapchainRtvHandle, m_descriptorContext.m_depthTargetDSVHandle);
-
-		if constexpr (BlitzenCore::Ce_Build_HI_Z)
-		{
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
-			{
-				CreateDepthPyramidResource(m_device.Get(), m_rwResources[i].m_HI_Z, m_swapchainWidth, m_swapchainHeight);
-			}
-
-			RecreateDepthPyramidDescriptors(m_device.Get(), m_rwResources, m_descriptorContext, m_swapchainWidth, m_swapchainHeight);
-
-			RecreateDepthTargetDescriptor(m_device.Get(), m_depthBuffers, m_descriptorContext);
-		}
-
-		return BlitML::vec2{ float(rwResources.m_HI_Z.width), float(rwResources.m_HI_Z.height) };
 	}
 
 	void Dx12Renderer::Present(UINT placeholderCount)

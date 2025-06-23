@@ -8,6 +8,7 @@
 #include "../Headers/sharedBuffers.glsl"
 #include "../Headers/cullBuffers.glsl"
 #include "../Headers/math.glsl"
+#include "../Headers/bufferOffsets.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -15,9 +16,9 @@ layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
 
 void main()
 {
-    uint objectIndex = gl_GlobalInvocationID.x + pushConstant.drawOffset;
+    uint objectIndex = gl_GlobalInvocationID.x + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
 
-    if(pushConstant.drawCount <= objectIndex + pushConstant.drawOffset)
+    if(pushConstant.drawCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET <= objectIndex)
     {
         return;
     }
@@ -46,7 +47,7 @@ void main()
         uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
 
         // Increments draw count
-        uint drawID = atomicAdd(indirectDrawCountBuffer.drawCount, 1);
+        uint drawID = atomicAdd(rwssbo_DrawCount.data, 1);
 
         // object id
         rwssbo_DrawCmd.data[drawID].objectId = objectIndex;

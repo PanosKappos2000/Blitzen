@@ -182,8 +182,6 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.cpp"
                 "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHepers.cpp"
                 "src/Renderer/BlitzenDX12/dx12Draw.cpp"
-                "src/Renderer/BlitzenDX12/Update/dx12Update.h"
-                "src/Renderer/BlitzenDX12/Update/dx12Update.cpp"
                 "src/Renderer/BlitzenDX12/Init/dx12Init.h"
                 "src/Renderer/BlitzenDX12/Cull/dx12Cull.cpp"
                 "src/Renderer/BlitzenDX12/Context/dx12Renderer.cpp"
@@ -208,7 +206,7 @@ add_executable(BlitzenEngine
                 "src/Client/WVRotatingKitten.h"   
                 "src/Client/ClientWV/wvData.h"
                  "src/Renderer/Resources/Mesh/blitClusters.h"      
-                  "src/Renderer/BlitzenGL/glRuntimeHelpersInterface.cpp" "src/Renderer/Resources/Mesh/Generator/blitLODDegrader.cpp" "src/Renderer/Resources/Mesh/Generator/blitClusterizer.cpp" "src/Renderer/Resources/Mesh/Generator/blitVertLocalizer.cpp")
+                  "src/Renderer/BlitzenGL/glRuntimeHelpersInterface.cpp" "src/Renderer/Resources/Mesh/Generator/blitLODDegrader.cpp" "src/Renderer/Resources/Mesh/Generator/blitClusterizer.cpp" "src/Renderer/Resources/Mesh/Generator/blitVertLocalizer.cpp" "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHelpers.h" "src/Renderer/BlitzenVulkan/RuntimeHelpers/vkRuntimeHelpers.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -275,7 +273,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             DASHER_JOIN
                             DASHER_USE_DEAR
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode

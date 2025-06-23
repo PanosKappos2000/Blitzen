@@ -1,11 +1,43 @@
 #if defined(_WIN32)
 
 #include "Renderer/BlitzenDX12/Resources/dx12Resources.h"
+#include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
+#include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include "dx12RuntimeHelpers.h"
 #include "Core/blitzenEngine.h"
 
 namespace BlitzenEngine
 {
+	BlitML::vec2 UpdateRendererWindowData(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)
+	{
+		auto& rwResources = pRenderer->m_rwResources[pRenderer->m_currentFrame];
+
+		pRenderer->m_swapchainWidth = newWidth;
+		pRenderer->m_swapchainHeight = newHeight;
+
+		HWND hwnd{ pbpHandle->m_hwnd };
+		BlitzenDX12::RecreateSwapchain(hwnd, pRenderer->m_factory.Get(), pRenderer->m_device.Get(), pRenderer->m_commandQueue.Get(), newWidth, newHeight, &pRenderer->m_swapchain,
+			pRenderer->m_swapchainBackBuffers, pRenderer->m_depthBuffers, pRenderer->m_descriptorContext, pRenderer->m_cmdContext);
+
+		BlitzenDX12::CreateOMSTargetDescs(pRenderer->m_pipelineContext.m_renderTargetPassDesc, pRenderer->m_pipelineContext.m_depthTargetPassDesc, 
+			pRenderer->m_descriptorContext.m_swapchainRtvHandle, pRenderer->m_descriptorContext.m_depthTargetDSVHandle);
+
+		if constexpr (BlitzenCore::Ce_Build_HI_Z)
+		{
+			for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
+			{
+				BlitzenDX12::CreateDepthPyramidResource(pRenderer->m_device.Get(), pRenderer->m_rwResources[i].m_HI_Z, pRenderer->m_swapchainWidth, pRenderer->m_swapchainHeight);
+			}
+
+			BlitzenDX12::RecreateDepthPyramidDescriptors(pRenderer->m_device.Get(), pRenderer->m_rwResources, pRenderer->m_descriptorContext, pRenderer->m_swapchainWidth, pRenderer->m_swapchainHeight);
+
+			BlitzenDX12::RecreateDepthTargetDescriptor(pRenderer->m_device.Get(), pRenderer->m_depthBuffers, pRenderer->m_descriptorContext);
+		}
+
+		return BlitML::vec2{ float(rwResources.m_HI_Z.width), float(rwResources.m_HI_Z.height) };
+	}
+
 	void PrepareRendererForRuntime(BlitzenDX12::Dx12Renderer* pRenderer)
 	{
 		auto& cmdContext{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };

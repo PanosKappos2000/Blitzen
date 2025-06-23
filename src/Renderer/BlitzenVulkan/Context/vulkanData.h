@@ -500,26 +500,6 @@ namespace BlitzenVulkan
     constexpr uint32_t CE_CLUSTER_COUNT_OPAQUE_OFFSET = 0;
     constexpr uint32_t CE_CLUSTER_COUNT_TRANS_OFFSET = 1;
 
-	struct alignas(16) ClusterCullShaderPushConstant
-	{
-        uint32_t clusterGroupOffset;
-        uint32_t clusterCounterOffset;
-        uint32_t drawOffset;
-        uint32_t drawCount;
-	};
-    static_assert(sizeof(ClusterCullShaderPushConstant) == 16, "Unexpected size for ClusterCullShaderPushConstant");
-    static_assert(alignof(ClusterCullShaderPushConstant) == 16, "Unexpected alignment for ClusterCullShaderPushConstant");
-
-    struct alignas(16) DrawCullShaderPushConstant
-    {
-        uint32_t drawOffset;
-        uint32_t drawCount;
-        uint32_t padding0;
-        uint32_t padding1;
-    };
-    static_assert(sizeof(DrawCullShaderPushConstant) == 16, "Unexpected size for DrawCullShaderPushConstant");
-    static_assert(alignof(DrawCullShaderPushConstant) == 16, "Unexpected alignment for DrawCullShaderPushConstant");
-
     struct BackgroundShaderPushConstant
     {
         BlitML::vec4 data1;
