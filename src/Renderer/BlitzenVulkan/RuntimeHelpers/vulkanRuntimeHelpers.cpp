@@ -53,37 +53,6 @@ namespace BlitzenVulkan
         PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 1, &presentImageBarrier);
     }
 
-    void VulkanRenderer::Present(uint32_t waitCount)
-    {
-        auto& cmd = m_commandsContext[m_currentFrame];
-
-        VkPresentInfoKHR info{};
-        info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        info.pNext = nullptr;
-
-        info.swapchainCount = 1;
-        info.pSwapchains = &m_swapchain.m_handle;
-
-#if defined(DASHER_JOIN)
-
-        VkSemaphore waitSemaphores[2]{ cmd.m_renderSemaphore.handle, cmd.m_dasherRenderSemaphore.handle };
-        info.waitSemaphoreCount = waitCount;
-        info.pWaitSemaphores = waitSemaphores;
-
-#else
-
-        info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = &cmd.m_renderSemaphore.handle;
-#endif
-
-        info.pImageIndices = &m_swapchainIDX;
-        info.pResults = nullptr;
-
-        vkQueuePresentKHR(m_graphicsQueue.handle, &info);
-
-        m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
-    }
-
     void RecreateSwapchain(VkDevice device, VkInstance instance, Swapchain& swapchainData, VkSurfaceKHR surface, VkPhysicalDevice pdv, VmaAllocator vma,
         PipelineContext& pipelineContext, ROResources& readOnlies,
         RWResources* readWrites, DescriptorContext& descriptorContext, uint32_t windowWidth, uint32_t windowHeight, uint32_t frame, Queue graphicsQueue, Queue presentQueue, Queue computeQueue)

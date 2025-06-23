@@ -1,5 +1,3 @@
-
-
 struct DrawCmd
 {
     // Index into render object buffer
@@ -21,17 +19,11 @@ RWBuffer<uint> rwb_DrawCmdCounter : register(u1);
 
 struct Lod 
 {
-    // Non cluster path, used to create draw commands
     uint indexCount;
     uint indexOffset;
-
-    // Cluster path, used to create draw commands
     uint clusterOffset;
     uint clusterCount;
-
-    // Used for more accurate LOD selection
     float error;
-
     // Pad to 32 bytes total 
     uint padding0;  
     uint padding1;
@@ -55,6 +47,13 @@ uint LODSelection(float3 center, float radius, float scale, float lodTarget, uin
     }
     return lodOffset + lodIndex;
 }
+
+struct BoundingSphere
+{
+    float3 center;
+    float radius;
+};
+StructuredBuffer<BoundingSphere> ssbo_BoundingSpheres : register(t11);
 
 #ifdef DRAW_CULL_OCCLUSION
 

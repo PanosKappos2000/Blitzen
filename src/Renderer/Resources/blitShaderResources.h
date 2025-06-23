@@ -63,10 +63,10 @@ namespace BlitzenEngine
     {
         uint32_t indexCount;
         uint32_t firstIndex;
-        // Cluster path
         uint32_t clusterOffset;
         uint32_t clusterCount;
         float error;
+        // Pad to 32 bytes total
         uint32_t padding0;  
         uint32_t padding1;
         uint32_t padding2;
@@ -88,10 +88,6 @@ namespace BlitzenEngine
 
     struct alignas(16) PrimitiveSurface
     {
-        // TODO: Should be owned by render instances, for static object optimizations
-        BlitML::vec3 center;     
-        float radius;
-        /* THE ACTUAL MEMBERS AFTER THE CHANGE */
         uint32_t materialId;
         uint32_t lodOffset;
         uint32_t lodCount{ 0 };
@@ -105,11 +101,17 @@ namespace BlitzenEngine
         BlitML::quat orientation;
     };
 
+    struct CPU_TRANSFORM
+    {
+        BlitML::vec3 position;
+        BlitML::vec3 eulerAngles;
+        // BlitML::vec2 padding0 ??
+    };
+
     struct RenderObject
     {
         uint32_t transformId;
         uint32_t surfaceId;
-        // uint32_t staticBoundingSphere; TODO: Own bounding sphere
     };
 
     struct BoundingSphere

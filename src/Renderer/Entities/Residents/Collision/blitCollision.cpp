@@ -5,24 +5,6 @@
 
 namespace BlitzenEngine
 {
-	uint32_t ColliderContainer::AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform)
-	{
-		if (m_boundingSphereCount >= CE_MAX_WORLD_BOUNDING_SPHERE_COUNT)
-		{
-			BLIT_ERROR("%s: Reached maximum render object bounding sphere count", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-			return CE_MAX_WORLD_BOUNDING_SPHERE_COUNT;
-		}
-
-		auto& newcomer{ m_boundingSpheres[m_boundingSphereCount] };
-
-		BlitzenCore::BlitMemCopy(&newcomer, pSphere, sizeof(BoundingSphere));
-
-		newcomer.m_center = BlitML::RotateQuat(newcomer.m_center, transform.orientation) * transform.scale + transform.pos;
-		newcomer.m_radius *= transform.scale;
-
-		return m_boundingSphereCount++;
-	}
-
 	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds)
 	{
 		BlitML::vec3 delta = firstBounds.m_center - secondBounds.m_center;
@@ -30,4 +12,17 @@ namespace BlitzenEngine
 		float radiusSum = firstBounds.m_radius + secondBounds.m_radius;
 		return distSq <= (radiusSum * radiusSum);
 	}
+
+    void ColliderContainer::AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, bool isStatic)
+    {
+        auto& newcomer{ m_boundingSpheres[renderObjectID] };
+
+        BlitzenCore::BlitMemCopy(&newcomer, pSphere, sizeof(BoundingSphere));
+
+		if (isStatic)
+		{
+			newcomer.m_center = BlitML::RotateQuat(newcomer.m_center, transform.orientation) * transform.scale + transform.pos;
+			newcomer.m_radius *= transform.scale;
+		}
+    }
 }

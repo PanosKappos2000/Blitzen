@@ -1301,6 +1301,8 @@ namespace BlitzenVulkan
 
         CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_DrawVisBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
+        CreateDescriptorSetLayoutBinding(bindings[bindingCount++], Ce_BoundingSphereDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
         if (BlitzenCore::Ce_BuildClusters)
         {
             auto clusterBufferShaderStageFlags{ bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT : VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT };
@@ -1514,35 +1516,43 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        VkDeviceSize indexBufferSize{ CreateSSBO<uint32_t>(vma, device, readOnlies.m_idxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxWorldVertexIndicesCount) };
+        VkDeviceSize indexBufferSize{ CreateSSBO<uint32_t>(vma, device, readOnlies.m_idxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            BlitzenCore::Ce_MaxWorldVertexIndicesCount) };
         if (indexBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create index buffer", BLIT_VK_SYSTEM);
             return 0;
         }
 
-        VkDeviceSize renderBufferSize{ CreateSSBO<BlitzenEngine::RenderObject>(vma, device, readOnlies.m_renderBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BLIT_MAX_WORLD_RENDERS) };
+        VkDeviceSize renderBufferSize{ CreateSSBO<BlitzenEngine::RenderObject>(vma, device, readOnlies.m_renderBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            BLIT_MAX_WORLD_RENDERS) };
         if (renderBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create render object buffer", BLIT_VK_SYSTEM);
             return 0;
         }
+
+        VkDeviceSize boundingSphereBufferSize{ CreateSSBO<BlitzenEngine::BoundingSphere>(vma, device, readOnlies.m_boundingSphereBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            BlitzenEngine::CE_MAX_WORLD_BOUNDING_SPHERE_COUNT) };
         
-        VkDeviceSize surfaceBufferSize{ CreateSSBO<BlitzenEngine::PrimitiveSurface>(vma, device, readOnlies.m_surfaceBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxMeshPrimitivesCount) };
+        VkDeviceSize surfaceBufferSize{ CreateSSBO<BlitzenEngine::PrimitiveSurface>(vma, device, readOnlies.m_surfaceBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            BlitzenCore::Ce_MaxMeshPrimitivesCount) };
         if (surfaceBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create mesh primitives buffer", BLIT_VK_SYSTEM);
             return 0;
         }
 
-        VkDeviceSize lodBufferSize{ CreateSSBO<BlitzenEngine::LodData>(vma, device, readOnlies.m_LODBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenEngine::CE_MAX_LOD_COUNT)};
+        VkDeviceSize lodBufferSize{ CreateSSBO<BlitzenEngine::LodData>(vma, device, readOnlies.m_LODBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            BlitzenEngine::CE_MAX_LOD_COUNT)};
         if (lodBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create LOD buffer", BLIT_VK_SYSTEM);
             return 0;
         }
 
-        VkDeviceSize materialBufferSize{ CreateSSBO<BlitzenEngine::Material>(vma, device, readOnlies.m_matBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxMaterialCount) };
+        VkDeviceSize materialBufferSize{ CreateSSBO<BlitzenEngine::Material>(vma, device, readOnlies.m_matBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            BlitzenCore::Ce_MaxMaterialCount) };
         if (materialBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create material buffer", BLIT_VK_SYSTEM);
@@ -1551,14 +1561,16 @@ namespace BlitzenVulkan
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::Cluster>(vma, device,  readOnlies.m_clusterBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT);
+            VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::Cluster>(vma, device,  readOnlies.m_clusterBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT);
             if (clusterBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create cluster buffer", BLIT_VK_SYSTEM);
                 return 0;
             }
 
-            VkDeviceSize clusterIndexBufferSize = CreateSSBO<uint32_t>(vma, device, readOnlies.m_clusterIdxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenCore::Ce_MaxWorldVertexIndicesCount);
+            VkDeviceSize clusterIndexBufferSize = CreateSSBO<uint32_t>(vma, device, readOnlies.m_clusterIdxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                BlitzenCore::Ce_MaxWorldVertexIndicesCount);
             if (clusterIndexBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create cluster indices buffer", BLIT_VK_SYSTEM);

@@ -68,6 +68,16 @@ void PrepareDrawCmd(uint lodIndex, uint objectIndex)
     rwssbo_DrawCmd.data[drawID].firstInstance = 0;
 }
 
+struct BoundingSphere
+{
+    vec3 center;
+    float radius;
+};
+layout(set = 0, binding = 15, std430) readonly buffer SSBO_BOUNDING_SPHERES
+{
+    BoundingSphere data[];
+}ssbo_BoundingSphere;
+
 #ifdef DOUBLE_PASS
 
 layout(set = 0, binding = 10, std430) buffer RWSSBO_DRAW_VIS

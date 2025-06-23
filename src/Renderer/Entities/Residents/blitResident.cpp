@@ -5,6 +5,8 @@
 
 namespace BlitzenEngine
 {
+	inline WORLD_RESIDENTS* pWorldResidents_STATIC_ACCESS{ nullptr };
+
 	RESIDENT_CREATE_RES WORLD_RESIDENTS::AddResident(const RESIDENT_CREATE_CONTEXT& ctx)
 	{
 		RenderObject* pFirstRender{ nullptr };
@@ -15,7 +17,8 @@ namespace BlitzenEngine
 			return WORLD_TRANSFORM_CREATION_FAILED;
 		}
 
-		auto boundingSpheres{ GetBoundingSphereResources_STATIC_ACCESS(ctx.m_pResource) };
+		// Retrieves bounding spheres array
+		auto boundingSpheresArr{ GetBoundingSphereResources_STATIC_ACCESS(ctx.m_pResource) };
 
 		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
 		{
@@ -23,16 +26,17 @@ namespace BlitzenEngine
 			renderContext.m_type = ctx.m_renderTypes[prim];
 			renderContext.m_primitiveID = prim + ctx.m_pResource->firstSurface;
 			renderContext.m_transformID = transformID;
-			
-			//m_colliders.AddRenderObjectBoundingSphere(&boundingSpheres[prim], &m_transforms[transformID]);
 
+			// Creates render object
 			uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext);
-
 			if (renderObjectId == BLIT_MAX_WORLD_RENDERS)
 			{
 				return RENDER_OBJECT_CREATION_FAILED;
 			}
 
+			m_colliders.AddRenderObjectBoundingSphere(&boundingSpheresArr[prim], m_transforms.m_transforms[transformID], renderObjectId, false);
+
+			// Saves the first render for the resident
 			if (prim == 0)
 			{
 				pFirstRender = &m_renders.m_renders[renderObjectId];
@@ -51,12 +55,22 @@ namespace BlitzenEngine
 
 	Resident CreateResident(RenderObject* pRender, uint32_t renderCount)
 	{
-		BLIT_ASSERT_MESSAGE(pRender != nullptr, "Passed null render object");
-
 		Resident res{};
 		res.m_pRender = pRender;
 		res.m_count = renderCount;
 
 		return res;
+	}
+
+	MeshTransform& GetMeshTransform_STATIC_ACCESS(uint32_t transformID)
+	{
+		return pWorldResidents_STATIC_ACCESS->m_transforms.m_transforms[transformID];
+	}
+
+	void SetWorldResidentsPtr_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
+	{
+		BLIT_ASSERT(pWorldResidents_STATIC_ACCESS == nullptr);
+
+		pWorldResidents_STATIC_ACCESS = ptr;
 	}
 }

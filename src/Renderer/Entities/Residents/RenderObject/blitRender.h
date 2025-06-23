@@ -26,7 +26,9 @@ namespace BlitzenEngine
 	{
 	public:
 
-		BlitzenEngine::RenderObject m_renders[BLIT_MAX_WORLD_RENDERS];
+		RenderObject m_renders[BLIT_MAX_WORLD_RENDERS];
+		BoundingSphere m_boundingSpheres[BLIT_MAX_WORLD_RENDERS];
+
 		uint32_t m_opaqueDynamicCount{ 0 };
 		uint32_t m_transparentStaticCount{ 0 };
 		uint32_t m_opaqueStaticCount{ 0 };
@@ -34,7 +36,7 @@ namespace BlitzenEngine
 
 		uint32_t CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context);
 
-		BlitzenEngine::RenderObject* m_instancedRenderArrays[CE_MAX_ALLOWED_INSTANCED_RESOURCES];
+		RenderObject* m_instancedRenderArrays[CE_MAX_ALLOWED_INSTANCED_RESOURCES];
 
 		uint32_t CreateInstancedRenderObject(uint32_t* transformIDArr, uint32_t m_primitiveID, uint32_t count);
 	};

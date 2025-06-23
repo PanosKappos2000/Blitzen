@@ -1,14 +1,12 @@
 #pragma once
-
-#include "Renderer/Resources/blitShaderResources.h"
+#include "Renderer/Entities/Residents/blitResident.h"
 
 namespace BlitzenEngine
 {
 	struct MovingResident
 	{
-		uint32_t m_renderObjectID;
-
-		BlitML::mat4 cpu_worldTransform;
+		CPU_TRANSFORM m_worldTransform;
+		Resident* m_pResident{ nullptr };
 
 		bool isBlocked{ false };
 		bool isMoving{ false };

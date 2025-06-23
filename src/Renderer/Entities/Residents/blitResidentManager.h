@@ -2,6 +2,7 @@
 #include "blitResident.h"
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
+#include "Collision/blitCollisionManager.h"
 
 namespace BlitzenEngine
 {
@@ -42,18 +43,23 @@ namespace BlitzenEngine
 		RENDER_OBJECT_TYPE* m_renderTypes{nullptr};
 	};
 
-	struct WORLD_RESIDENTS
+	class WORLD_RESIDENTS
 	{
+	public:
 		WVKEY m_worldVariableAccessors[BlitzenCore::Ce_MaxWorldVariableCount]{};
 		uint32_t m_worldVariableCount{ 0 };
-
 		Resident m_residents[BlitzenCore::Ce_MaxWorldResidentCount];
 		uint32_t m_residentCount{ 0 };
-
 		RenderContainer m_renders;
-
 		WorldTransformContainer m_transforms;
+		ColliderContainer m_colliders;
 
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
+
+		RESIDENT_CREATE_RES AddWVResident();
 	};
+
+	void SetWorldResidentsPtr_STATIC_ACCESS(WORLD_RESIDENTS* ptr);
+
+	MeshTransform& GetMeshTransform_STATIC_ACCESS(uint32_t transformID);
 }

@@ -3,9 +3,6 @@
 
 struct Surface
 {
-    vec3 center;     
-    float radius;            
-
     uint materialId;
 
     uint lodOffset;

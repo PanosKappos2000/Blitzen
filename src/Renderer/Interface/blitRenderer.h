@@ -47,6 +47,10 @@ namespace BlitzenEngine
 
     uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
 
+    uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData);
+
+    void PresentRender(RendererPtrType pRenderer, uint32_t waitCount);
+
     void PrepareRendererForRuntime(RendererPtrType pRenderer);
 
     void BarRenderFrame(RendererPtrType pContext);

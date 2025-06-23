@@ -9,6 +9,13 @@
 
 namespace BlitzenEngine
 {
+	void PresentRender(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t waitCount)
+	{
+		pRenderer->m_swapchain->Present(1, 0);
+
+		pRenderer->m_currentFrame = (pRenderer->m_currentFrame + 1) % BlitzenDX12::ce_framesInFlight;
+	}
+
 	BlitML::vec2 UpdateRendererWindowData(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)
 	{
 		auto& rwResources = pRenderer->m_rwResources[pRenderer->m_currentFrame];
@@ -73,6 +80,9 @@ namespace BlitzenEngine
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_MaterialStagingIndex], pRenderer->m_roResources.m_matBuffer.buffer.Get(), 
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_BoundingSphereBoundingIndex], pRenderer->m_roResources.m_boundingSpheres.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		if (BlitzenCore::Ce_BuildClusters)

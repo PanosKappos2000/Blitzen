@@ -741,6 +741,8 @@ namespace BlitzenDX12
 	{
 		auto& cmdContext = m_cmdContext[m_currentFrame];
 
+		PlaceFence(cmdContext.m_frameFence.m_value, m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
+
 		m_swapchainIDX = m_swapchain->GetCurrentBackBufferIndex();
 
 		cmdContext.m_graphicsCmdAlloc->Reset();
@@ -770,10 +772,6 @@ namespace BlitzenDX12
 		cmdContext.m_graphicsCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmdContext.m_graphicsCmdList.Get() };
 		m_commandQueue->ExecuteCommandLists(1, commandLists);
-
-		Present();
-
-		PlaceFence(cmdContext.m_frameFence.m_value, m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
 	}
 }
 

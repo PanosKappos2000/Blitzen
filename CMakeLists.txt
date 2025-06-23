@@ -86,24 +86,36 @@ add_executable(BlitzenEngine
 
                 # ENGINE RENDERING 
                 "src/Renderer/Interface/blitRenderer.h"
-                
                 "src/Renderer/Interface/blitRendererInterface.h"
                 "src/Renderer/Resources/blitShaderResources.h"
                 "src/Renderer/Resources/blitRenderingResources.h"
                 "src/Renderer/Resources/blitzenRenderingResources.cpp"
+
+                # TEXTURES
                 "src/Renderer/Resources/Textures/blitTextures.h"
                 "src/Renderer/Resources/Textures/blitzenTextures.cpp"
+
+                # MESHES
                 "src/Renderer/Resources/Mesh/blitMeshes.h"
                 "src/Renderer/Resources/Mesh/blitMeshes.cpp"
-                "src/Renderer/Scene/blitScene.h"
-                "src/Renderer/Scene/blitScene.cpp"
-                "src/Renderer/Resources/Mesh/blitMeshPrimitive.h"
-                "src/Core/BlitzenWorld/blitzenWorldRender.cpp"
-                "src/Renderer/Scene/gltfScene.h"
-                "src/Renderer/Scene/gltfScene.cpp"
+                "src/Renderer/Resources/Mesh/blitClusters.h"
                 "src/Renderer/Resources/Mesh/blitTriangle.h"
                 "src/Renderer/Resources/Mesh/blitMeshPrimitive.cpp" 
                 "src/Renderer/Resources/Mesh/blitTriangle.cpp"
+                "src/Renderer/Resources/Mesh/blitMeshPrimitive.h"
+
+                # GENERATOR
+                "src/Renderer/Resources/Mesh/Generator/blitLODDegrader.cpp" 
+                "src/Renderer/Resources/Mesh/Generator/blitClusterizer.cpp" 
+                "src/Renderer/Resources/Mesh/Generator/blitVertLocalizer.cpp"
+
+                # SCENE / WORLD
+                "src/Renderer/Scene/blitScene.h"
+                "src/Renderer/Scene/blitScene.cpp"
+                "src/Core/BlitzenWorld/blitzenWorldRender.cpp"
+                "src/Renderer/Scene/gltfScene.h"
+                "src/Renderer/Scene/gltfScene.cpp"
+                
 
                 # CAMERA
                 "src/Renderer/View/blitCamera.h"
@@ -159,12 +171,14 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenVulkan/Init/vulkanInit.h" 
                 "src/Renderer/BlitzenVulkan/Context/vulkanRenderer.cpp"
                 "src/Renderer/BlitzenVulkan/RuntimeHelpers/vkRuntimerHelpersInterface.cpp"
+                "src/Renderer/BlitzenVulkan/RuntimeHelpers/vkRuntimeHelpers.h"
 
                 # GL
                 "src/Renderer/BlitzenGL/openglData.h"
                 "src/Renderer/BlitzenGL/openglRenderer.h"
                 "src/Renderer/BlitzenGL/openglResources.cpp"
                 "src/Renderer/BlitzenGL/openglRenderer.cpp"
+                "src/Renderer/BlitzenGL/glRuntimeHelpersInterface.cpp"
 
                 # DX12
                 "src/Renderer/BlitzenDX12/Context/dx12Data.h"
@@ -189,6 +203,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/Resources/dx12ResourcesUpload.h"
                 "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp"
                 "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHelpersInterface.cpp"
+                "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHelpers.h"
 
                 # vendor
                 "src/VendorCode/fast_obj.h"
@@ -204,9 +219,7 @@ add_executable(BlitzenEngine
                 
                 
                 "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h"
-                 "src/Renderer/Resources/Mesh/blitClusters.h"      
-                  "src/Renderer/BlitzenGL/glRuntimeHelpersInterface.cpp" "src/Renderer/Resources/Mesh/Generator/blitLODDegrader.cpp" "src/Renderer/Resources/Mesh/Generator/blitClusterizer.cpp" "src/Renderer/Resources/Mesh/Generator/blitVertLocalizer.cpp" "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHelpers.h" "src/Renderer/BlitzenVulkan/RuntimeHelpers/vkRuntimeHelpers.h")
+                "src/Client/ClientWV/wvData.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -273,7 +286,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             DASHER_JOIN
                             DASHER_USE_DEAR
 
-                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode

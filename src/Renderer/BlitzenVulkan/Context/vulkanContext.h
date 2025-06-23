@@ -127,6 +127,8 @@ namespace BlitzenVulkan
 
         VkDescriptorBufferInfo m_drawCmdCounterDescInfo[ce_framesInFlight]{};
 
+        VkDescriptorBufferInfo m_boundingSphereDescInfo[ce_framesInFlight]{};
+
         VkDescriptorBufferInfo m_drawVisDescInfo[ce_framesInFlight]{};
 
         VkDescriptorBufferInfo m_vtxDescInfo{};
@@ -165,12 +167,6 @@ namespace BlitzenVulkan
 
         BlitVk_UBUFFER<uint32_t> m_clusterDispatchCounterCopy;
 
-        BlitVk_SSBO m_transClusterGroupDataBuffer;
-
-        BlitVk_SSBO m_transClusterDispatchCounterBuffer;
-
-        BlitVk_UBUFFER<uint32_t> m_transClusterDispatchCounterCopy;
-
         BlitVk_SSBO m_drawVisBuffer;
 
         BlitVk_2DIMAGE_SAMP m_colorTarget;
@@ -193,7 +189,7 @@ namespace BlitzenVulkan
 
         BlitVk_SSBO m_renderBuffer;
 
-        BlitVk_SSBO m_transRenderBuffer;
+        BlitVk_SSBO m_boundingSphereBuffer;
 
         BlitVk_SSBO m_surfaceBuffer;
 

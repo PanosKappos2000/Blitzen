@@ -238,8 +238,8 @@ namespace BlitzenPlatform
                 uint32_t width = rect.right - rect.left;
                 uint32_t height = rect.bottom - rect.top;
 
-                auto oldWidth = pEventSystem->m_systemContext.WIDTH;
-                auto oldHeight = pEventSystem->m_systemContext.HEIGHT;
+                uint32_t oldWidth = pEventSystem->m_systemContext.WIDTH;
+                uint32_t oldHeight = pEventSystem->m_systemContext.HEIGHT;
 
                 pEventSystem->m_systemContext.WIDTH = width;
                 pEventSystem->m_systemContext.HEIGHT = height;

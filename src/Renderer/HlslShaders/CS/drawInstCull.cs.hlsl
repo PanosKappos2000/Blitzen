@@ -26,9 +26,9 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     Transform transform = ssbo_Transforms[obj.transformId];
 
     // Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
-    float3 center = RotateQuat(surface.center, transform.orientation) * transform.scale + transform.position;
+    float3 center = RotateQuat(ssbo_BoundingSpheres[objId].center, transform.orientation) * transform.scale + transform.position;
     center = mul(viewMatrix, float4(center, 1)).xyz;
-	float radius = surface.radius * transform.scale;
+    float radius = ssbo_BoundingSpheres[objId].radius * transform.scale;
 
     // Frustum culling
     bool visible = FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar);

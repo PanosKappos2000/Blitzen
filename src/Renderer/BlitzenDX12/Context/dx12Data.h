@@ -78,7 +78,7 @@ namespace BlitzenDX12
 
 
     // DESCRIPTORS FOR DRAW CULL :
-    constexpr UINT Ce_DrawCullSRVsRangeCount = 3;
+    constexpr UINT Ce_DrawCullSRVsRangeCount = 4;
 
     constexpr UINT Ce_DrawCullDrawCmdUAVRegister = 0;
     constexpr UINT Ce_DrawCullDrawCmdUAVRangeID = 0;
@@ -88,6 +88,9 @@ namespace BlitzenDX12
 
     constexpr UINT Ce_DrawCullLODSRVRegister = 7;
     constexpr UINT Ce_DrawCullLODSRVRangeID = 2;
+
+    constexpr UINT Ce_DrawCullBoundingSRVRegister = 11;
+    constexpr UINT Ce_DrawCullBoundingRangeID = 3;
 
     constexpr UINT Ce_DrawCullDrawCountContantRegister = 1;
 	constexpr UINT Ce_DrawCullDrawCountContant32BitCount = 1;
@@ -286,10 +289,11 @@ namespace BlitzenDX12
     constexpr UINT Ce_VtxTangentsStagingBufferIndex = 6;
     constexpr UINT Ce_VtxNrmStagingBufferIndex = 7;
     constexpr UINT Ce_VtxTexCoordStagingBufferIndex = 8;
+    constexpr UINT Ce_BoundingSphereBoundingIndex = 9;
     // optional, when clusters are requested
-    constexpr UINT Ce_ClusterVtxsStagingIndex = 9;
-    constexpr UINT Ce_ClusterSpheresStagingIndex = 10;
-    constexpr UINT Ce_ClusterConesStagingIndex = 11;
+    constexpr UINT Ce_ClusterVtxsStagingIndex = 10;
+    constexpr UINT Ce_ClusterSpheresStagingIndex = 11;
+    constexpr UINT Ce_ClusterConesStagingIndex = 12;
     
     constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
 

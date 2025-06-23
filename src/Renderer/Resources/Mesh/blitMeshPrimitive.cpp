@@ -71,8 +71,9 @@ namespace BlitzenEngine
             return SurfaceCreateRes::LOD_GENERATION_FAILED;
         }
 
-        // TODO: Move to resident system
-        GenerateBoundingSphere(newSurface, context);
+        // Generates bounding sphere for surface, will be taken later by any render object using this surface
+        // This might be potentially wasteful when it come to memory, but accessing the vertices of a surface, outside of this funtion, to generate the sphere, would be a bit of a pain
+        GenerateBoundingSphere(newSurface, m_boundingSpheres[m_meshPrimitivesCount], context);
 
         newSurface.materialId = context.m_materialID;
 
@@ -317,7 +318,7 @@ namespace BlitzenEngine
         return (uint32_t)meshop_meshlets.GetSize();
     }
 
-    void MeshPrimitivesContainer::GenerateBoundingSphere(PrimitiveSurface& surface, MESH_PRIMITIVE_CREATE_CONTEXT& context)
+    void MeshPrimitivesContainer::GenerateBoundingSphere(PrimitiveSurface& surface, BoundingSphere& surfaceBounds, MESH_PRIMITIVE_CREATE_CONTEXT& context)
     {
         BlitML::vec3 center{ 0.f };
         for (size_t i = 0; i < context.m_vertexCount; ++i)
@@ -333,8 +334,8 @@ namespace BlitzenEngine
             const auto& pos = context.m_vertices[i].position;
             radius = BlitML::Max(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
         }
-        surface.center = center;
-        surface.radius = radius;
+        surfaceBounds.m_center = center;
+        surfaceBounds.m_radius = radius;
     }
 
     void MeshPrimitivesContainer::GenerateTangents(MESH_PRIMITIVE_CREATE_CONTEXT& context)

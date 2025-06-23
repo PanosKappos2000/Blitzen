@@ -24,12 +24,11 @@ namespace BlitzenDX12
         INDEX_BUFFER m_clusterIdxBuffer{};
 
         SSBO m_surfaceBuffer{};
-
         SSBO m_LODBuffer{};
-
         SSBO m_matBuffer{};
 
         SSBO m_renderBuffer{};
+        SSBO m_boundingSpheres{};
 
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
@@ -39,7 +38,7 @@ namespace BlitzenDX12
     {
         CPU_WRITE_SSBO<BlitzenEngine::MeshTransform> m_transformBuffer;
 
-        SSBO m_boundingSphereBuffer;
+        CPU_WRITE_SSBO<BlitzenEngine::MeshTransform> m_transformUpdates;
 
         SSBO m_drawCmdBuffer;
 

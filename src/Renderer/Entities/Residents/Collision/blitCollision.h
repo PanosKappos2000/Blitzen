@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/Resources/blitShaderResources.h"
+#include "Renderer/Entities/Residents/blitResident.h"
 #include "BlitCL/blitPfn.h"
 
 namespace BlitzenEngine
@@ -16,7 +17,7 @@ namespace BlitzenEngine
 	{
 		BoundingSphere* m_pSphere;
 
-		void* pWVDATA{ nullptr };
+		Resident* pResident{ nullptr };
 
 		BLITZEN_COLLISION_FLAGS m_flags;
 

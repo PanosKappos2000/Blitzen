@@ -6,6 +6,37 @@
 
 namespace BlitzenEngine
 {
+    void PresentRender(BlitzenVulkan::VulkanRenderer* pRenderer, uint32_t waitCount)
+    {
+        auto& cmd = pRenderer->m_commandsContext[pRenderer->m_currentFrame];
+
+        VkPresentInfoKHR info{};
+        info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        info.pNext = nullptr;
+
+        info.swapchainCount = 1;
+        info.pSwapchains = &pRenderer->m_swapchain.m_handle;
+
+#if defined(DASHER_JOIN)
+
+        VkSemaphore waitSemaphores[2]{ cmd.m_renderSemaphore.handle, cmd.m_dasherRenderSemaphore.handle };
+        info.waitSemaphoreCount = waitCount;
+        info.pWaitSemaphores = waitSemaphores;
+
+#else
+
+        info.waitSemaphoreCount = 1;
+        info.pWaitSemaphores = &cmd.m_renderSemaphore.handle;
+#endif
+
+        info.pImageIndices = &pRenderer->m_swapchainIDX;
+        info.pResults = nullptr;
+
+        vkQueuePresentKHR(pRenderer->m_graphicsQueue.handle, &info);
+
+        pRenderer->m_currentFrame = (pRenderer->m_currentFrame + 1) % BlitzenVulkan::ce_framesInFlight;
+    }
+
     BlitML::vec2 UpdateRendererWindowData(BlitzenVulkan::VulkanRenderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)
     {
         pRenderer->m_drawWidth = newWidth;

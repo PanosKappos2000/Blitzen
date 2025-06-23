@@ -173,22 +173,20 @@ namespace BlitzenVulkan
         }
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::RenderObject> renderStagingContext{};
-        renderStagingContext.elementCount = (uint32_t)drawContext.m_pResidents->m_renders.m_opaqueStaticCount;
+        renderStagingContext.elementCount = drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
         renderStagingContext.pData = drawContext.m_pResidents->m_renders.m_renders;
-        renderStagingContext.offset = BLIT_OPAQUE_STATIC_RENDER_OFFSET;
         if (!CreateStaging(vma, device, renderStagingContext))
         {
             BLIT_ERROR("%s: Failed to create render staging buffer", BLIT_VK_SYSTEM);
             return 0;
         }
 
-        BUFFER_STAGING_CONTEXT<BlitzenEngine::RenderObject> transRenderStagingContext{};
-        transRenderStagingContext.elementCount = drawContext.m_pResidents->m_renders.m_transparentStaticCount;
-        transRenderStagingContext.pData = drawContext.m_pResidents->m_renders.m_renders;
-        transRenderStagingContext.offset = BLIT_TRANSPARENT_RENDER_OFFSET;
-        if (!CreateStaging(vma, device, transRenderStagingContext))
+        BUFFER_STAGING_CONTEXT<BlitzenEngine::BoundingSphere> boundingSphereStagingContext{};
+        boundingSphereStagingContext.elementCount = drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
+        boundingSphereStagingContext.pData = drawContext.m_pResidents->m_colliders.m_boundingSpheres;
+        if (!CreateStaging(vma, device, boundingSphereStagingContext))
         {
-            BLIT_ERROR("%s: Failed to create transparent render staging buffer", BLIT_VK_SYSTEM);
+            BLIT_ERROR("%s: Failed to create bounding sphere staging buffer", BLIT_VK_SYSTEM);
             return 0;
         }
 
@@ -246,17 +244,15 @@ namespace BlitzenVulkan
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, idxStagingContext.staging.m_buffer.m_handle, readOnlies.m_idxBuffer.m_buffer.m_handle, idxStagingContext.staging.m_dataSize, 0, 0);
 
-        CopyBufferToBuffer(cmdContext.m_transferCmdB, renderStagingContext.staging.m_buffer.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, renderStagingContext.staging.m_dataSize, 0, 
-            BLIT_OPAQUE_STATIC_RENDER_OFFSET * sizeof(BlitzenEngine::RenderObject));
-
-        CopyBufferToBuffer(cmdContext.m_transferCmdB, transRenderStagingContext.staging.m_buffer.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, transRenderStagingContext.staging.m_dataSize, 0,
-            BLIT_TRANSPARENT_RENDER_OFFSET * sizeof(BlitzenEngine::RenderObject));
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, renderStagingContext.staging.m_buffer.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, renderStagingContext.staging.m_dataSize, 0, 0);
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, surfaceStagingContext.staging.m_buffer.m_handle, readOnlies.m_surfaceBuffer.m_buffer.m_handle, surfaceStagingContext.staging.m_dataSize, 0, 0);
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, LODstagingContext.staging.m_buffer.m_handle, readOnlies.m_LODBuffer.m_buffer.m_handle, LODstagingContext.staging.m_dataSize, 0, 0);
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, matStagingContext.staging.m_buffer.m_handle, readOnlies.m_matBuffer.m_buffer.m_handle, matStagingContext.staging.m_dataSize, 0, 0);
+
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, boundingSphereStagingContext.staging.m_buffer.m_handle, readOnlies.m_boundingSphereBuffer.m_buffer.m_handle, boundingSphereStagingContext.staging.m_dataSize, 0, 0);
 
         if (BlitzenCore::Ce_BuildClusters)
         {
@@ -352,6 +348,12 @@ namespace BlitzenVulkan
             descriptorContext.m_drawCmdCounterDescInfo[frame].range = VK_WHOLE_SIZE;
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsCull[Ce_DrawCmdCounterCullPushID + frame * Ce_CullDescriptorCount], &descriptorContext.m_drawCmdCounterDescInfo[frame], 
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_DrawCmdCounterDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
+
+            descriptorContext.m_boundingSphereDescInfo[frame].buffer = roResources.m_boundingSphereBuffer.m_buffer.m_handle;
+            descriptorContext.m_boundingSphereDescInfo[frame].offset = 0;
+            descriptorContext.m_boundingSphereDescInfo[frame].range = (drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET) * sizeof(BlitzenEngine::BoundingSphere);
+            WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsCull[Ce_BoundingSphereCullPushID + frame * Ce_CullDescriptorCount], &descriptorContext.m_boundingSphereDescInfo[frame], 
+                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_BoundingSphereDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
         }
 
         for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)

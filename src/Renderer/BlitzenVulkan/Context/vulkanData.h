@@ -199,13 +199,16 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_RenderBufferSharedPushID = 4;
 
     // CULL DESCRIPTORS
-    constexpr uint32_t Ce_CullDescriptorCount = 2;
+    constexpr uint32_t Ce_CullDescriptorCount = 3;
 
     constexpr uint32_t Ce_LODBufferDescriptorBinding = 4;
     constexpr uint32_t Ce_LODBufferCullPushID = 0;
 
     constexpr uint32_t Ce_DrawCmdCounterDescriptorBinding = 9;
     constexpr uint32_t Ce_DrawCmdCounterCullPushID = 1;
+
+    constexpr uint32_t Ce_BoundingSphereDescriptorBinding = 15;
+    constexpr uint32_t Ce_BoundingSphereCullPushID = 2;
 
     // DRAW OCC DESCRIPTORS
     constexpr uint32_t Ce_DrawOcclusionDescriptorCount = 1;
@@ -238,7 +241,7 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_HI_Z_SrcImageBinding = 1;
 
 
-    constexpr uint32_t Ce_DefaultPushDescriptorBindingCount = 11;
+    constexpr uint32_t Ce_DefaultPushDescriptorBindingCount = 12;
 
     constexpr size_t ce_textureStagingBufferSize = 128 * 1024 * 1024;
 

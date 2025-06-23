@@ -71,8 +71,9 @@ namespace BlitzenEngine
 		uint32_t m_indicesCount{ 0 };
 	};
 
-	struct MeshPrimitivesContainer
+	class MeshPrimitivesContainer
 	{
+	public:
 		MeshPrimitiveData m_meshPrimitiveData[BlitzenCore::Ce_MaxMeshPrimitivesCount];
 		PrimitiveSurface m_meshPrimitives[BlitzenCore::Ce_MaxMeshPrimitivesCount];
 		BoundingSphere m_boundingSpheres[BlitzenCore::Ce_MaxMeshPrimitivesCount];
@@ -89,7 +90,7 @@ namespace BlitzenEngine
 		uint32_t GenerateClusters(LOD_CLUSTERS_CREATE_CONTEXT&  context, uint32_t vertexOffset, ClusterContainer* pClusters);
 
 		// Generates bounding sphere for primitive based on given vertices and indices
-		void GenerateBoundingSphere(PrimitiveSurface& surface, MESH_PRIMITIVE_CREATE_CONTEXT& context);
+		void GenerateBoundingSphere(PrimitiveSurface& surface, BoundingSphere& surfaceBounds, MESH_PRIMITIVE_CREATE_CONTEXT& context);
 
 		void GenerateTangents(MESH_PRIMITIVE_CREATE_CONTEXT& context);
 	};

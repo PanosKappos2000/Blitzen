@@ -22,8 +22,10 @@ namespace BlitzenEngine
 		float m_randomTransformMultiplier{ 0.f };
 	};
 
-	struct WorldTransformContainer
+	class WorldTransformContainer
 	{
+	public:
+
 		MeshTransform m_transforms[BLIT_MAX_WORLD_TRANSFORM_COUNT];
 		uint32_t m_transformCount{ 0 };
 		uint32_t m_dynamicTransformCount{ 0 };

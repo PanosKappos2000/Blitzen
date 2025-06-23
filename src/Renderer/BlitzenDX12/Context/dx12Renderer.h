@@ -25,8 +25,6 @@ namespace BlitzenDX12
 
         void DrawFrame(BlitzenEngine::DrawContext& context);
 
-        void Present(UINT placeHolderCount = 1);
-
     public:
 
         Dx12Stats m_stats;

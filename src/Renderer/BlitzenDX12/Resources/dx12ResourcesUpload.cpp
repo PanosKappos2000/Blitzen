@@ -411,10 +411,17 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		STAGING<BlitzenEngine::RenderObject> opaqueStaticStaging{ nullptr };
-		if (!CreateStaging(device, opaqueStaticStaging, drawContext.m_pResidents->m_renders.m_opaqueStaticCount, drawContext.m_pResidents->m_renders.m_renders, BLIT_OPAQUE_STATIC_RENDER_OFFSET))
+		STAGING<BlitzenEngine::RenderObject> renderStaging{ nullptr };
+		if (!CreateStaging(device, renderStaging, drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_renders))
 		{
 			BLIT_ERROR("%s: Failed to create render staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		STAGING<BlitzenEngine::BoundingSphere> boundingSphereStaging{ nullptr };
+		if (!CreateStaging(device, boundingSphereStaging, drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_colliders.m_boundingSpheres))
+		{
+			BLIT_ERROR("%s: Failed to create bounding sphere buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
@@ -477,6 +484,8 @@ namespace BlitzenDX12
 
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_RenderStagingBufferIndex], roResources.m_renderBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
+		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_BoundingSphereBoundingIndex], roResources.m_boundingSpheres.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_LodStagingIndex], roResources.m_LODBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_MaterialStagingIndex], roResources.m_matBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -518,7 +527,9 @@ namespace BlitzenDX12
 
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_SurfaceStagingBufferIndex], surfaceStagingBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_RenderStagingBufferIndex], opaqueStaticStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_RenderStagingBufferIndex], renderStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_BoundingSphereBoundingIndex], boundingSphereStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_LodStagingIndex], lodStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
@@ -557,8 +568,9 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxTexCoordBuffer.buffer.Get(), 0, vtxTexCoordStaging.m_buffer.Get(), 0, vtxTexCoordStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_idxBuffer.m_buffer.Get(), 0, indexStagingBuffer.Get(), 0, idxBufferSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, surfaceStagingBuffer.m_buffer.Get(), 0, surfaceStagingBuffer.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_renderBuffer.buffer.Get(), BLIT_OPAQUE_STATIC_RENDER_OFFSET * sizeof(BlitzenEngine::RenderObject), 
-			opaqueStaticStaging.m_buffer.Get(), 0, opaqueStaticStaging.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_renderBuffer.buffer.Get(), 0, 
+			renderStaging.m_buffer.Get(), 0, renderStaging.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_boundingSpheres.buffer.Get(), 0, boundingSphereStaging.m_buffer.Get(), 0, boundingSphereStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_LODBuffer.buffer.Get(), 0, lodStaging.m_buffer.Get(), 0, lodStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_matBuffer.buffer.Get(), 0, materialStaging.m_buffer.Get(), 0, materialStaging.m_dataSize);
 		if constexpr (BlitzenCore::Ce_BuildClusters)
@@ -611,7 +623,7 @@ namespace BlitzenDX12
 			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), ctx, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, 
 				sizeof(BlitzenEngine::MeshTransform));
 
-			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_MAX_WORLD_OPAQUE_DYNAMIC_RENDERS + BLIT_MAX_WORLD_TRANSPARENT_RENDERS, 
+			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, 
 				sizeof(BlitzenEngine::RenderObject));
 
 			CreateConstantBufferView(device, ctx, rwResources.m_viewBuffer.buffer.Get(), sizeof(BlitzenEngine::CameraViewData));
@@ -632,6 +644,9 @@ namespace BlitzenDX12
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawCmdCounterBuffer.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
 			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_LODCount, sizeof(BlitzenEngine::LodData));
+
+			CreateBufferShaderResourceView(device, roResources.m_boundingSpheres.buffer.Get(), ctx,
+				context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, sizeof(BlitzenEngine::BoundingSphere));
 		}
 
 		// INSTANCING DESCRIPTORS

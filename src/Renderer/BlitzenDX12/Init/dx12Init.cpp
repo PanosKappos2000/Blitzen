@@ -133,6 +133,7 @@ namespace BlitzenDX12
 		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullDrawCmdUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawCullDrawCmdUAVRegister);
 		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullDrawCmdCountUAVRegister], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawCullDrawCmdCountUAVRegister);
 		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullLODSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawCullLODSRVRegister);
+		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullBoundingRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawCullBoundingSRVRegister);
 
 		// ROOT PARAMS
 		D3D12_ROOT_PARAMETER drawCullRootParameters[Ce_DrawCullRootParameterCount]{};
@@ -599,6 +600,11 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if (CreateSSBO<BlitzenEngine::BoundingSphere>(device, roResources.m_boundingSpheres, BlitzenEngine::CE_MAX_WORLD_BOUNDING_SPHERE_COUNT) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create bounding sphere buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
 		
 		if (CreateSSBO<BlitzenEngine::LodData>(device, roResources.m_LODBuffer, BlitzenEngine::CE_MAX_LOD_COUNT) == 0)
 		{

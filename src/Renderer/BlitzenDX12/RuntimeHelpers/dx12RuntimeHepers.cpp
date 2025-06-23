@@ -145,13 +145,6 @@ namespace BlitzenDX12
 			offset++;
 		}
 	}
-
-	void Dx12Renderer::Present(UINT placeholderCount)
-	{
-		m_swapchain->Present(1, 0);
-
-		m_currentFrame = (m_currentFrame + 1) % ce_framesInFlight;
-	}
 }
 
 #endif

@@ -1,18 +1,9 @@
 struct Surface
 {
-    // Bounding sphere
-    float3 center;     
-    float radius;            
-
     uint materialId;
-
-    // Index to lod buffer
-    // Each primitive can be drawn in multiple ways, depending on its LODs
-    // The LOD is selected in compute shaders
     uint lodOffset;
     uint lodCount;
-
-    uint vertexOffset; // Not used in the shaders but can hold the offset when loading
+    uint padding0;
 };
 StructuredBuffer<Surface> ssbo_Surfaces : register(t2);
 

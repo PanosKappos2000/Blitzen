@@ -16,7 +16,7 @@ namespace BlitzenWorld
 			{
 				context.pWORLD->P_RENDERER->DrawFrame(context.pWORLD->m_drawContext);
 
-				context.pWORLD->P_RENDERER->Present();
+				BlitzenEngine::PresentRender(context.pWORLD->P_RENDERER.Data(), 1);
 
 				break;
 			}
@@ -30,13 +30,14 @@ namespace BlitzenWorld
 
 #endif
 
-				context.pWORLD->P_RENDERER->Present();
+				BlitzenEngine::PresentRender(context.pWORLD->P_RENDERER.Data(), 2);
 
 				break;
 			}
 			case BlitzenCore::EngineState::LOADING:
 			{
 				context.pWORLD->P_RENDERER->DrawWhileWaiting(context.pWORLD->deltaTime);
+				BlitzenEngine::PresentRender(context.pWORLD->P_RENDERER.Data(), 1);
 
 				break;
 			}
