@@ -69,6 +69,7 @@ namespace BlitzenCore
     constexpr const char* CE_MEMORY_SYSTEM_NAME = "blit_mem";
     constexpr const char* CE_PLATFORM_SYSTEM_NAME = "blit_platform";
     constexpr const char* CE_MESH_SYSTEM_NAME = "MeshResources";
+    constexpr const char* CE_MESH_DATA_GENERATOR_SYSTEM_NAME = "blit_mesh_data_generator";
     constexpr const char* CE_RESOURCE_SYSTEM_NAME = "RenderingResourceSystem";
     constexpr const char* CE_WORLD_SYSTEM_NAME = "WORLD";
     constexpr const char* CE_SCENE_SYSTEM_NAME = "SceneManager";

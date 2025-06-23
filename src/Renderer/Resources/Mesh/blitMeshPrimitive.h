@@ -100,4 +100,20 @@ namespace BlitGenerator
 	// This function calculates the "degradation scale" for Level of Detail (LOD) based on the bounding box size (extent) of the mesh. 
 	// The LOD degradation scale is used to determine how much lower the level of detail can go based on the size of the mesh.
 	float GetLODDegradationScale(BlitzenEngine::Vertex* vtxArr, uint32_t vertexCount);
+
+	constexpr uint32_t CE_DEGRADATION_ERROR_CODE = UINT32_MAX;
+	struct LOD_DEGRADE_CONTEXT
+	{
+		uint32_t* m_previousIndices{ nullptr };
+		uint32_t m_indexCount{ 0 };
+		BlitzenEngine::Vertex* m_vertexArr{ nullptr };
+		BlitML::vec3* m_vtxNormalsArr{ nullptr };
+		BlitML::vec4* m_vtxTangentsArr{ nullptr };
+		BlitML::vec2* m_vtxTexCoordsArr{ nullptr };
+		uint32_t m_vertexCount{ 0 };
+		const float* m_attributeWeightsArr{ nullptr };
+		uint32_t m_attribute32BITCount{ 0 };
+		const unsigned char* m_vertexLock{ nullptr };
+	};
+	uint32_t DegradeLevelOfDetail(uint32_t* degradedIndices, uint32_t degradedIndexCount, LOD_DEGRADE_CONTEXT& context, float error, float* pError);
 }

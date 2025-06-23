@@ -163,13 +163,33 @@ namespace BlitzenEngine
                 const float maxError = 1e-1f;
                 float nextError = 0.f;
 
+                //BlitGenerator::LOD_DEGRADE_CONTEXT lodDegradationContext{};
+                //lodDegradationContext.m_previousIndices = lodIndices.Data();
+                //lodDegradationContext.m_indexCount = (uint32_t)lodIndices.GetSize();
+                //lodDegradationContext.m_vertexArr = context.m_pMeshPrimitiveInfo->m_vertices;
+                //lodDegradationContext.m_vertexCount = context.m_pMeshPrimitiveInfo->m_vertexCount;
+                //lodDegradationContext.m_vtxNormalsArr = normals.Data();
+                //lodDegradationContext.m_attributeWeightsArr = normalWeights;
+                //lodDegradationContext.m_attribute32BITCount = 3;
+                //uint32_t blitNext = BlitGenerator::DegradeLevelOfDetail(lodIndices.Data(), (uint32_t)lodIndices.GetSize(), lodDegradationContext, maxError, &nextError);
+                //if (blitNext == BlitGenerator::CE_DEGRADATION_ERROR_CODE)
+                //{
+                //    BLIT_WARN("%s: LOD degradation returned error code", BlitzenCore::CE_MESH_SYSTEM_NAME);
+                //    break;
+                //}
+                //if (blitNext > lodIndices.GetSize())
+                //{
+                //    BLIT_WARN("%s: Next LOD index count that was generated after degradation, was bigger than the previous lod size", BlitzenCore::CE_MESH_SYSTEM_NAME);
+                //    break;
+                //}
+
                 // Gets the size of the next level of detail
                 size_t nextIndicesSize = meshopt_simplifyWithAttributes(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), &context.m_pMeshPrimitiveInfo->m_vertices[0].position.x,
                     context.m_pMeshPrimitiveInfo->m_vertexCount, sizeof(Vertex), &normals[0].x, sizeof(BlitML::vec3), normalWeights, 3, nullptr, nextIndicesTarget, maxError, 0, &nextError);
 
                 if (nextIndicesSize > lodIndices.GetSize())
                 {
-                    BLIT_WARN("%s: Something went wrong with LOD generation: LOD algorithm size mismatch", BlitzenCore::CE_MESH_SYSTEM_NAME);
+                    BLIT_WARN("%s: Next LOD index count that was generated after degradation, was bigger than the previous lod size", BlitzenCore::CE_MESH_SYSTEM_NAME);
                     break;
                 }
                 // Reached the error bounds
