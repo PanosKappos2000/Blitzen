@@ -42,22 +42,41 @@ namespace BlitzenEngine
         static_assert(true);
 
     #endif
-
+    
+    // API initialization. Requests handles, preallocates buffers and checks that the host can succesfully run the chosen renderer
     uint8_t StartupRenderer(RendererPtrType pRenderer, uint32_t windowWidth, uint32_t windowHeight, BlitzenPlatform::PlatformContext* pPlatform);
 
+    // Post-loading function. CPU side resources passed to GPU side buffers (or whichever type of handle is used)
+    // Views for resources also placed
     uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
 
+    // Singular texture upload
     uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData);
 
-    void PresentRender(RendererPtrType pRenderer, uint32_t waitCount);
-
-    void PrepareRendererForRuntime(RendererPtrType pRenderer);
-
+    // Returns pointer to the buffer which is responsible for dynamic transform data copy. 
+    // If this is never called, the application will either brreak or dynamic objects will not move
     void* GetMovingObjectsBufferMappedPointer(RendererPtrType pRenderer);
 
-    void BarRenderFrame(RendererPtrType pContext);
+    // Finalizes resources so that the renderer is ready for culling and rendering
+    void PrepareRendererForRuntime(RendererPtrType pRenderer);
+
+    enum class RENDERER_FENCE_TYPE : uint8_t
+    {
+        PREVIOUS_FRAME,
+        BUFFER_UPDATE,
+        CULL
+    };
+    // Custom CPU fence. Meant to stop renderer command recording until a desired event.
+    void PlaceRendererFence(RendererPtrType pRenderer, RENDERER_FENCE_TYPE type);
+
+    // Gives new camera values to the shader. Static object culling can be dispatched after this
+    void UpdateRendererView(RendererPtrType pRenderer, CameraViewData& camera, bool isFrustumFrozen);
     
-    void GenerateHI_Z_MAP(RendererPtrType pContext);
+    // Generates a Hierarchical depth buffer by copying the depth target. Allow for occlusion culling. Should be called before transparent object are drawn
+    void GenerateHI_Z_MAP(RendererPtrType pRenderer);
+
+    // Should be called after game logic is done. Copies movement data to shader buffer. Dynamic object culling can be dispatched after this
+    void UpdateRendererTransforms(RendererPtrType pRenderer);
 
     enum class BLIT_CULL_TYPE : uint8_t
     {
@@ -74,11 +93,28 @@ namespace BlitzenEngine
         RENDER_OBJECT_TYPE m_workType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
         uint32_t m_workCount{ 0 };
     };
-    void DispatchCullingShaders(RendererPtrType pContext, const CULL_CONTEXT& cullContext);
+    // Culls a group of renders using compute shader. Prepares draw commands for rendering
+    void DispatchCullingShaders(RendererPtrType pRenderer, const CULL_CONTEXT& cullContext);
 
-    //void UpdateRendererTransforms(RendererPtrType pContext, BlitzenCore::ARRAY_OF_POINTERS<DynamicTransform> pDynamicTransformArr, uint32_t dynamicTransformCount, MeshTransform* transformArr);
+    // Needs to be called before the first render pass to define vieport
+    void SetupForFirstRenderPass(RendererPtrType pRenderer);
 
-    void RenderObjects(RendererPtrType pContext, uint32_t renderOffset, RENDER_OBJECT_TYPE objectType, DrawContext& drawContext);
+    enum class BLIT_RENDER_TYPE : uint8_t
+    {
+        RENDER_OPAQUE,
+        RENDER_INSTANCED,
+        RENDER_TRANSPARENT
+    };
+    struct RENDER_CONTEXT
+    {
+        BLIT_RENDER_TYPE m_renderType{ BLIT_RENDER_TYPE::RENDER_OPAQUE };
+    };
+    void RenderObjects(RendererPtrType pRenderer, const RENDER_CONTEXT& renderContext);
 
+    void FinalizeRendering(RendererPtrType pRenderer);
+
+    void PresentRender(RendererPtrType pRenderer, uint32_t waitCount);
+
+    // Should be called by event system to update renderer surface resources when a window resize event is encountered
     BlitML::vec2 UpdateRendererWindowData(RendererPtrType pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pPlatform);
 }

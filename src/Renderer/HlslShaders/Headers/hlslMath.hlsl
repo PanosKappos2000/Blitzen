@@ -94,7 +94,7 @@ bool OcclusionCheck(float4 aabb, Texture2D<float4> tex_HiZMap, uint pyramidWidth
     // Scales aabb to pyramid width and height, to get the desired pyramid level
 	float width = (aabb.z - aabb.x) * pyramidWidth;
 	float height = (aabb.w - aabb.y) * pyramidHeight;
-	uint level = floor(log2(max(width, height)));
+	uint level = ceil(log2(max(width, height)));
 
 	// Scales aab to this mip's level, to access the texture
 	uint mipWidth = max(1u, pyramidWidth >> level);

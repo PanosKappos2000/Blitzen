@@ -51,6 +51,8 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12CommandQueue> m_commandQueue;
 
         DX12WRAPPER<ID3D12CommandQueue> m_transferCommandQueue;
+
+        DX12WRAPPER<ID3D12CommandQueue> m_computeCommandQueue;
     
         DX12WRAPPER<ID3D12Resource> m_swapchainBackBuffers [ce_framesInFlight];
 

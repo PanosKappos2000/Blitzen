@@ -68,6 +68,12 @@ namespace BlitzenEngine
             return 0;
         }
 
+        if (!BlitzenDX12::CreateCommandQueue(pRenderer->m_device.Get(), pRenderer->m_computeCommandQueue.ReleaseAndGetAddressOf(), D3D12_COMMAND_QUEUE_FLAG_NONE, D3D12_COMMAND_LIST_TYPE_COMPUTE))
+        {
+            BLIT_ERROR("Failed to create compute command queue");
+            return 0;
+        }
+
         for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; i++)
         {
             if (!pRenderer->m_cmdContext[i].Init(pRenderer->m_device.Get()))

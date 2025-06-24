@@ -259,6 +259,17 @@ namespace BlitzenCore
 
 #endif
 
+    enum class BLIT_RENDERING_SYSTEM : uint32_t
+    {
+        BLITZEN_VULKAN,
+        BLITZEN_DX12,
+        BLITZEN_GL,
+    };
+    constexpr BLIT_RENDERING_SYSTEM CE_BLITZEN_RENDERING_SYSTEM = BLIT_RENDERING_SYSTEM::BLITZEN_DX12;
+#if defined(linux)
+    static_assert(CE_BLITZEN_RENDERING_SYSTEM == BLIT_RENDERING_SYSTEM::BLITZEN_VULKAN);
+#endif
+
 
     void ShutdownLogging(size_t totalAllocated, size_t* typeAllocations);
 

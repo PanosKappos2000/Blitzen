@@ -6,31 +6,6 @@
 
 namespace BlitzenDX12
 {
-	static void UpdateBuffers(CmdContext& cmdContext, ReadWriteResources& rwResources, BlitzenEngine::Camera* pCamera, ID3D12CommandQueue* commandQueue)
-	{
-		if (pCamera->transformData.bFreezeFrustum)
-		{
-			// Only change the matrix that moves the camera if the freeze frustum debug functionality is active
-			rwResources.m_viewBuffer.pData->projectionViewMatrix = pCamera->viewData.projectionViewMatrix;
-		}
-		else
-		{
-			*rwResources.m_viewBuffer.pData = pCamera->viewData;
-		}
-
-		cmdContext.m_copyCmdAlloc->Reset();
-		cmdContext.m_copyCmdList->Reset(cmdContext.m_copyCmdAlloc.Get(), nullptr);
-		
-		cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.m_ssbo.buffer.Get(), 0, rwResources.m_transformBuffer.m_dynamicDataStaging.m_buffer.Get(), 0, 
-			rwResources.m_transformBuffer.m_dynamicDataStaging.m_dataSize);
-		
-		cmdContext.m_copyCmdList->Close();
-		ID3D12CommandList* commandLists[] = { cmdContext.m_copyCmdList.Get() };
-		commandQueue->ExecuteCommandLists(1, commandLists);
-		
-		PlaceFence(cmdContext.m_copyFence.m_value, commandQueue, cmdContext.m_copyFence.m_dx12Handle.Get(), cmdContext.m_copyFence.m_event);
-	}
-
 	static void DrawCountReset(ID3D12GraphicsCommandList* commandList, ID3D12RootSignature* resetRoot, ID3D12PipelineState* resetPso, D3D12_GPU_DESCRIPTOR_HANDLE cullSrvHandle, 
 		ReadWriteResources& rwResources)
 	{
@@ -558,23 +533,8 @@ namespace BlitzenDX12
 		auto& cmdContext = m_cmdContext[m_currentFrame];
 		auto& rwResources = m_rwResources[m_currentFrame];
 
-		// LAST FRAME FENCE
-		PlaceFence(cmdContext.m_frameFence.m_value, m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
-
-		// DYNAMIC BUFFERS UPDATE
-		UpdateBuffers(cmdContext, rwResources, &context.m_camera, m_transferCommandQueue.Get());
-
 		// swapchain index
 		m_swapchainIDX = m_swapchain->GetCurrentBackBufferIndex();
-
-		// RECORDING
-		cmdContext.m_graphicsCmdAlloc->Reset();
-		cmdContext.m_graphicsCmdList->Reset(cmdContext.m_graphicsCmdAlloc.Get(), nullptr);
-
-		// Restores transform buffer for graphics
-		D3D12_RESOURCE_BARRIER transformAfterCopyBarrier{};
-		CreateResourcesTransitionBarrier(transformAfterCopyBarrier, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &transformAfterCopyBarrier);
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
@@ -711,11 +671,6 @@ namespace BlitzenDX12
 			// Shaders used: opaqueDraw.vs.hlsl + opaqueDraw.ps.hlsl
 			DrawIndirect(cmdContext.m_graphicsCmdList.Get(), m_pipelineContext, m_descriptorContext, m_roResources, rwResources, m_currentFrame);
 		}
-
-		// Prepares transform buffer for next frame data copy
-		D3D12_RESOURCE_BARRIER transformCopyBarrier{};
-		CreateResourcesTransitionBarrier(transformCopyBarrier, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
-		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &transformCopyBarrier);
 		
 #if defined(DX12_OCCLUSION_DRAW_CULL) && defined(BLIT_DEPTH_PYRAMID_TEST)
 
