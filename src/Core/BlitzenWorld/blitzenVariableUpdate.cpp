@@ -30,10 +30,10 @@ namespace BlitzenWorld
 			// TODO: Does NOT belong here
 			BlitzenEngine::UpdateCamera(context.pWORLD->pCameraContainer->GetMainCamera(), context.pWORLD->deltaTime);
 
-			/*while (*context.pEngineState != BlitzenCore::EngineState::SHUTDOWN)
+			for (uint32_t wv = 0; wv < context.pComponents->m_tickingWorldVariableCount; ++wv)
 			{
-				UpdateWVs(context, context.pClock->m_deltaTime);
-			}*/
+				BlitzenEngine::WorldVariableTick(context.pComponents->m_tickingWorldVariables[wv], context.pWORLD->m_worldVariables);
+			}
 			break;
 		}
 		case BlitzenCore::EngineState::RUNNING:

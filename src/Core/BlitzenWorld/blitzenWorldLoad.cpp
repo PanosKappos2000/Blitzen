@@ -11,6 +11,15 @@ namespace BlitzenWorld
     {
         BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data()));
 
+        BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->m_residents);
+        BlitzenEngine::InitializeWorldVariableContextPtr_STATIC_ACCESS(&context.pWORLD->m_worldVariables);
+        BlitzenEngine::InitializeComponentSystemPointer_STATIC_ACCESS(context.pComponents);
+
+        context.pWORLD->m_residents.m_moveablesArr = reinterpret_cast<BlitzenEngine::CPU_TRANSFORM*>(BlitzenEngine::GetMovingObjectsBufferMappedPointer(context.pWORLD->P_RENDERER.Data()));
+        
+        context.pWORLD->m_worldVariables.AddClientWorldVariableDescriptions();
+        BlitzenEngine::AllocateWorldVariables_STATIC_ACCESS(BlitzenCore::Ce_MaxWorldVariableCount);
+
         while (true)
         {
             if (context.BLITZEN_ENGINE.m_state != BlitzenCore::EngineState::LOADING)

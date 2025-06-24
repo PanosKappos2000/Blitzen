@@ -218,12 +218,13 @@ add_executable(BlitzenEngine
                 
                 
                 
-                "src/Client/WVRotatingKitten.h"   
-                "src/Client/ClientWV/wvData.h")
+                "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
+                "ClientTest/Src/WorldVariables/wvData.h" "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
-            "${PROJECT_SOURCE_DIR}/src"
+            "${PROJECT_SOURCE_DIR}/Src"
+            "${PROJECT_SOURCE_DIR}/ClientTest/src"
             "${PROJECT_SOURCE_DIR}/ExternalDependencies/Vulkan/include"
             "${PROJECT_SOURCE_DIR}/ExternalDependencies"
             "${PROJECT_SOURCE_DIR}/src/VendorCode"
@@ -286,7 +287,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             DASHER_JOIN
                             DASHER_USE_DEAR
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
                             #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode

@@ -3,6 +3,7 @@
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
 #include "Collision/blitCollisionManager.h"
+#include "Dynamic/blitMovingResident.h"
 
 namespace BlitzenEngine
 {
@@ -10,6 +11,7 @@ namespace BlitzenEngine
 	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_BASIC = 0;
 	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_MOVING = 0x5;
 	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_COLLISION = 0xA;
+	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_WORLD_VARIABLE = 0xF;
 
 	enum RESIDENT_CREATE_RES : int8_t
 	{
@@ -50,16 +52,14 @@ namespace BlitzenEngine
 		uint32_t m_worldVariableCount{ 0 };
 		Resident m_residents[BlitzenCore::Ce_MaxWorldResidentCount];
 		uint32_t m_residentCount{ 0 };
+		CPU_TRANSFORM* m_moveablesArr{nullptr};
+		uint32_t m_moveableCount{ 0 };
 		RenderContainer m_renders;
 		WorldTransformContainer m_transforms;
 		ColliderContainer m_colliders;
 
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
-
-		RESIDENT_CREATE_RES AddWVResident();
 	};
 
-	void SetWorldResidentsPtr_STATIC_ACCESS(WORLD_RESIDENTS* ptr);
-
-	MeshTransform& GetMeshTransform_STATIC_ACCESS(uint32_t transformID);
+	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr);
 }

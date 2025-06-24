@@ -71,7 +71,10 @@ namespace BlitzenDX12
             return 0;
         }
 
-        BlitzenCore::BlitMemCopy(staging.m_pMapped, pData + dataOffset, dataSize);
+        if (pData)
+        {
+            BlitzenCore::BlitMemCopy(staging.m_pMapped, pData + dataOffset, dataSize);
+        }
 
         staging.m_dataSize = dataSize;
 

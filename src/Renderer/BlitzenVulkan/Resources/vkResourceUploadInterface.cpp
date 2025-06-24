@@ -1,6 +1,7 @@
 #include "Renderer/Interface/blitRenderer.h"
 #include "vkResourcesUpload.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
@@ -27,4 +28,9 @@ namespace BlitzenEngine
 
         return 1;
 	}
+
+    void* GetMovingObjectsBufferMappedPointer(BlitzenVulkan::VulkanRenderer* pRenderer)
+    {
+        return pRenderer->m_readOnlies.CPU_MOVING_RESIDENTS_MAPPED.m_pMapped;
+    }
 }

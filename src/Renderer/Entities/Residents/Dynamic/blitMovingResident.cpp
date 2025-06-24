@@ -3,8 +3,10 @@
 
 namespace BlitzenEngine
 {
-	void RotateEntity(BlitML::fRotation& rotation, float deltaTime, uint32_t movingObjectID)
+	void MovingResident::Rotate(BlitML::fRotation& rotation, float deltaTime)
 	{
-		BlitzenWorld::S_WORLD_UPDATE_RESIDENT_MOVED(movingObjectID);
+		m_pWorldTransform->eulerAngles += rotation;
+
+		AddMovingResident_STATIC_ACCESS(this);
 	}
 }

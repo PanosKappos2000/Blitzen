@@ -6,7 +6,7 @@
 #include "../Headers/hlslMath.hlsl"
 #include "../Headers/cpuShared.h"
 
-cbuffer ObjCountConstant: register (b1)
+cbuffer ObjCountConstant : register(b1)
 {
     uint objCount;
 };
@@ -14,10 +14,10 @@ cbuffer ObjCountConstant: register (b1)
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
 {
-    uint objId = dispatchThreadID.x + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
+    uint objId = dispatchThreadID.x + BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET;
     
     // Early return if it's out of bounds
-    if(objId >= objCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET)
+    if (objId >= objCount + BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET)
     {
         return;
     }
@@ -27,7 +27,8 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     Transform transform = ssbo_Transforms[obj.transformId];
 
     // Bounding sphere to view coordinates
-    float3 center = mul(viewMatrix, float4(ssbo_BoundingSpheres[objId].center, 1)).xyz;
+    float3 center = RotateQuat(ssbo_BoundingSpheres[objId].center, transform.orientation) * transform.scale + transform.position;
+    center = mul(viewMatrix, float4(ssbo_BoundingSpheres[objId].center, 1)).xyz;
     float radius = ssbo_BoundingSpheres[objId].radius;
 
     // Frustum culling
@@ -46,7 +47,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         }
     }
 
-    // If the render object get past culling, lod selection is done and draw command is added
+    // If the render object gets past culling, lod selection is done and draw command is added
     uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
     PrepareDrawCmd(lodId, objId);
 }

@@ -1559,6 +1559,14 @@ namespace BlitzenVulkan
             return 0;
         }
 
+        BUFFER_STAGING_CONTEXT<BlitzenEngine::CPU_TRANSFORM> cpuTransformStagingCtx{};
+        cpuTransformStagingCtx.elementCount = BlitzenCore::Ce_MaxWorldMovingResidentCount;
+        if (!CreateStaging<BlitzenEngine::CPU_TRANSFORM>(vma, device, cpuTransformStagingCtx))
+        {
+            BLIT_ERROR("%s: Failed to create Cpu transform mapped buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
         if (BlitzenCore::Ce_BuildClusters)
         {
             VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::Cluster>(vma, device,  readOnlies.m_clusterBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 

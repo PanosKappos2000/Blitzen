@@ -32,6 +32,8 @@ namespace BlitzenDX12
 
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
+
+        STAGING<BlitzenEngine::CPU_TRANSFORM> CPU_MOVING_OBJECT_BUFFER{};
     };
 
     struct ReadWriteResources

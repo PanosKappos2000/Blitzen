@@ -32,8 +32,10 @@ namespace BlitzenWorld
     };
 
     // WORLD variable. Represent the idea of world interaction
-    struct WORLD_blit
+    class WORLD_blit
     {
+    public:
+
         // Scene resources
         BlitzenEngine::SceneContext m_scenes[10]{};
         uint32_t m_sceneCount{ 0 };
@@ -60,4 +62,6 @@ namespace BlitzenWorld
     };
 
     bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer);
+
+
 }

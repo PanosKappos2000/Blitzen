@@ -205,5 +205,7 @@ namespace BlitzenVulkan
         AccelerationStructure m_blasData[BlitzenCore::Ce_MaxMeshPrimitivesCount];
         BlitVk_SSBO m_tlas;
         AccelerationStructure m_tlasData;
+
+        BlitVk_STAGING<BlitzenEngine::CPU_TRANSFORM> CPU_MOVING_RESIDENTS_MAPPED{};
     };
 }

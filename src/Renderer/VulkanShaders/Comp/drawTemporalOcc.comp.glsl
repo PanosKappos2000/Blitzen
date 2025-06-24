@@ -25,39 +25,26 @@ void main()
     RenderObject obj = ssbo_render.data[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
     
-    // Frustum culling
-    vec3 center;
-	float radius;
-	bool visible = CheckFrustum(center, radius, ssbo_BoundingSphere.data[objectIndex].center, ssbo_BoundingSphere.data[objectIndex].radius, transform.scale, transform.pos, transform.orientation, viewData.view, 
-        viewData.frustumRight, viewData.frustumLeft, viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar);
+    // Bounding sphere to world coordinates
+    vec3 center = (viewData.view * vec4(ssbo_BoundingSphere.data[objectIndex].center, 1)).xyz;
+	float radius = ssbo_BoundingSphere.data[objectIndex].radius * transform.scale;
 
-    // If an object passes frustum culling, it goes through occlusion culling
-    if (visible)
-	{
-		vec4 aabb;
-		if (ProjectSphere(center, radius, viewData.zNear, viewData.proj0, viewData.proj5, aabb))
-		{
-			visible = CheckOcclusion(aabb, depthPyramid, viewData.pyramidWidth, viewData.pyramidHeight, center, radius, viewData.zNear);
-		}
+    // Frustum culling
+	if(!CheckFrustum(center, radius, viewData.frustumRight, viewData.frustumLeft, viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar))
+    {
+        return;
+    }
+
+    // Occlusion culling
+    vec4 aabb;
+    if (ProjectSphere(center, radius, viewData.zNear, viewData.proj0, viewData.proj5, aabb))
+    {
+		if(!CheckOcclusion(aabb, depthPyramid, viewData.pyramidWidth, viewData.pyramidHeight, center, radius, viewData.zNear))
+        {
+            return;
+        }
 	}
 
-    if(visible)
-    {
-        uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
-
-        // Increments draw count
-        uint drawID = atomicAdd(rwssbo_DrawCount.data, 1);
-
-        // object id
-        rwssbo_DrawCmd.data[drawID].objectId = objectIndex;
-
-        // vertices
-        rwssbo_DrawCmd.data[drawID].indexCount = ssbo_LODs.data[lodIndex].indexCount;
-        rwssbo_DrawCmd.data[drawID].firstIndex = ssbo_LODs.data[lodIndex].firstIndex;
-        rwssbo_DrawCmd.data[drawID].vertexOffset = 0;
-        
-        // instances
-        rwssbo_DrawCmd.data[drawID].instanceCount = 1;
-        rwssbo_DrawCmd.data[drawID].firstInstance = 0;
-    }
+    uint lodIndex = LODSelection(center, radius, transform.scale, viewData.lodTarget, surfaceBuffer.surfaces[obj.surfaceId].lodOffset, surfaceBuffer.surfaces[obj.surfaceId].lodCount);
+    PrepareDrawCmd(lodIndex, objectIndex); 
 }

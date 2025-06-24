@@ -24,10 +24,12 @@ void main()
     RenderObject obj = ssbo_render.data[objectIndex];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];
 
-    vec3 center;
-    float radius;
-    if(!CheckFrustum(center, radius, ssbo_BoundingSphere.data[objectIndex].center, ssbo_BoundingSphere.data[objectIndex].radius, transform.scale, transform.pos, transform.orientation,
-        viewData.view, viewData.frustumRight, viewData.frustumLeft, viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar))
+    // Bounding sphere to world coordinates
+    vec3 center = (viewData.view * vec4(ssbo_BoundingSphere.data[objectIndex].center, 1)).xyz;
+	float radius = ssbo_BoundingSphere.data[objectIndex].radius * transform.scale;
+
+    // Frustum culling
+	if(!CheckFrustum(center, radius, viewData.frustumRight, viewData.frustumLeft, viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar))
     {
         return;
     }

@@ -53,6 +53,8 @@ namespace BlitzenEngine
 
     void PrepareRendererForRuntime(RendererPtrType pRenderer);
 
+    void* GetMovingObjectsBufferMappedPointer(RendererPtrType pRenderer);
+
     void BarRenderFrame(RendererPtrType pContext);
     
     void GenerateHI_Z_MAP(RendererPtrType pContext);

@@ -618,6 +618,12 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if (!CreateStaging(device, roResources.CPU_MOVING_OBJECT_BUFFER, BlitzenCore::Ce_MaxWorldMovingResidentCount, (BlitzenEngine::CPU_TRANSFORM*)nullptr))
+		{
+			BLIT_ERROR("%s: Failed to create moving object peristently mapped buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			if (CreateSSBO<BlitzenEngine::ClusterVertices>(device, roResources.m_clusterVtxsBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)

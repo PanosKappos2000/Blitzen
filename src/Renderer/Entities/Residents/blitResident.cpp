@@ -34,7 +34,7 @@ namespace BlitzenEngine
 				return RENDER_OBJECT_CREATION_FAILED;
 			}
 
-			m_colliders.AddRenderObjectBoundingSphere(&boundingSpheresArr[prim], m_transforms.m_transforms[transformID], renderObjectId, false);
+			m_colliders.AddRenderObjectBoundingSphere(&boundingSpheresArr[prim], m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type != RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC);
 
 			// Saves the first render for the resident
 			if (prim == 0)
@@ -62,12 +62,7 @@ namespace BlitzenEngine
 		return res;
 	}
 
-	MeshTransform& GetMeshTransform_STATIC_ACCESS(uint32_t transformID)
-	{
-		return pWorldResidents_STATIC_ACCESS->m_transforms.m_transforms[transformID];
-	}
-
-	void SetWorldResidentsPtr_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
+	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
 	{
 		BLIT_ASSERT(pWorldResidents_STATIC_ACCESS == nullptr);
 

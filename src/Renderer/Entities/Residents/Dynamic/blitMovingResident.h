@@ -3,14 +3,17 @@
 
 namespace BlitzenEngine
 {
-	struct MovingResident
+	class MovingResident
 	{
-		CPU_TRANSFORM m_worldTransform;
-		Resident* m_pResident{ nullptr };
+	public:
+
+		CPU_TRANSFORM* m_pWorldTransform;
 
 		bool isBlocked{ false };
 		bool isMoving{ false };
+
+		void Rotate(BlitML::fRotation& rotation, float deltaTime);
 	};
 
-	void RotateEntity(BlitML::fRotation& rotation, float deltaTime, uint32_t movingObjectID);
+	MovingResident& GetMovingResident_STATIC_ACCESS(uint32_t residentID);
 }

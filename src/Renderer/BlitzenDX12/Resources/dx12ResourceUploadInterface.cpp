@@ -44,6 +44,11 @@ namespace BlitzenEngine
 
 		return 1;
 	}
+
+	void* GetMovingObjectsBufferMappedPointer(BlitzenDX12::Dx12Renderer* pRenderer)
+	{
+		return pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_pMapped;
+	}
 }
 
 #endif

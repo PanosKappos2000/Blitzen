@@ -32,13 +32,8 @@ bool ProjectSphere(vec3 c, float r, float znear, float P00, float P11, out vec4 
 }
 
 // Frustum culling function
-bool CheckFrustum(out vec3 center, out float radius, vec3 boundCenter, float boundRadius, float scale, vec3 pos, vec4 orientation,
-	mat4 view, float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, float znear, float zfar)
+bool CheckFrustum(vec3 center, float radius, float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, float znear, float zfar)
 {
-	// Promotes the bounding sphere's center to model and the view coordinates (frustum culling will be done on view space)
-    center = RotateQuat(boundCenter, orientation) * scale + pos;
-    center = (view * vec4(center, 1)).xyz;
-	radius = boundRadius * scale;
 	bool visible = true;
 
     // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time

@@ -49,11 +49,6 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        if (!context.pData)
-        {
-            return 0;
-        }
-
         context.staging.m_dataSize = context.elementCount * sizeof(DATA);
 
         if (!CreateBuffer(allocator, context.staging.m_buffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, context.staging.m_dataSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
@@ -67,7 +62,10 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        BlitzenCore::BlitMemCopy(context.staging.m_pMapped, context.pData + context.offset, context.staging.m_dataSize);
+        if (context.pData)
+        {
+            BlitzenCore::BlitMemCopy(context.staging.m_pMapped, context.pData + context.offset, context.staging.m_dataSize);
+        }
 
         return 1;
     }

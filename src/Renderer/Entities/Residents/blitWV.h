@@ -47,6 +47,8 @@ namespace BlitzenEngine
 		WVDESC m_descs[WVTYPES];
 		uint32_t m_poolSize{ 0 };
 
+		void AddClientWorldVariableDescriptions();
+
 		~WVHOST();
 	};
 
@@ -60,7 +62,7 @@ namespace BlitzenEngine
 
 	void WorldVariableStart(WVHANDLE handle, WVTYPE type);
 
-	void WorldVariableTick(WVHANDLE handle, WVTYPE type);
+	void WorldVariableTick(WVKEY key, const WVHOST& host);
 
 	void WorldVariableCollision(WVHANDLE sender, WVTYPE senderType, WVHANDLE receiver, WVTYPE receiverType);
 }

@@ -36,4 +36,5 @@ namespace BlitzenEngine
 	};
 
 	void RandomizeTransform(MeshTransform& transform, float multiplier, float scale);
+	MeshTransform& GetMeshTransform_STATIC_ACCESS(uint32_t transformID);
 }
