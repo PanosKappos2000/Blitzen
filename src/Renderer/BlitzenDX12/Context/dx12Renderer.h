@@ -21,10 +21,6 @@ namespace BlitzenDX12
     
         void DrawWhileWaiting(float deltaTime);
 
-        void UpdateTransforms(BlitzenEngine::MeshTransform* pTransform, uint32_t transformCount, BlitzenEngine::MeshTransform* transforms);
-
-        void DrawFrame(BlitzenEngine::DrawContext& context);
-
     public:
 
         Dx12Stats m_stats;
