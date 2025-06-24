@@ -34,11 +34,11 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     float coneCutoff = ssbo_ClusterCones[clusterId].coneCutoff;
     
     // Backface culling
-    //if (ClusterBackfaceCheck(center, radius, coneAxis, coneCutoff, 0))
-    //{
-    //    rwb_ClusterVisibility[dispatchThreadID.x] = 0;
-    //    return;
-    //}
+    if (ClusterBackfaceCheck(center, radius, coneAxis, coneCutoff, 0))
+    {
+        rwb_ClusterVisibility[dispatchThreadID.x] = 0;
+        return;
+    }
     
     // Frustum culling
     if (!FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar))
@@ -48,15 +48,15 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     }
     
     // Occlusion culling
-    //float4 aabb = float4(0.f, 0.f, 0.f, 0.f);
-    //if(ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
-    //{
-    //    if (!OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear))
-    //    {
-    //        rwb_ClusterVisibility[dispatchThreadID.x] = 0;
-    //        return;
-    //    }
-    //}
+    float4 aabb = float4(0.f, 0.f, 0.f, 0.f);
+    if(ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
+    {
+        if (!OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear))
+        {
+            rwb_ClusterVisibility[dispatchThreadID.x] = 0;
+            return;
+        }
+    }
     
     // Visible cluster confirmed
     rwssbo_ClusterGroupData[dispatchGroupID.x].visibleAny = 1;

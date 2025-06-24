@@ -138,7 +138,7 @@ namespace BlitzenDX12
     constexpr UINT Ce_HI_Z_MapSRVRegister = 0;
 
     constexpr UINT Ce_HI_Z_MapMipLvlConstantRegister = 0;
-    constexpr UINT Ce_HI_Z_MapMipLvlContant32BitCount = 1;
+    constexpr UINT Ce_HI_Z_MapMipLvlContant32BitCount = 5;
 
 	// Root param descriptor grouping
     constexpr UINT Ce_HI_Z_MapRootParameterCount = 3;

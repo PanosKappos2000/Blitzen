@@ -135,12 +135,12 @@ namespace BlitzenDX12
 	uint8_t CreateDepthPyramidResource(ID3D12Device* device, HI_Z_MAP& hi_z, uint32_t width, uint32_t height)
 	{
 		// Conservative starting extent
-		//depthPyramid.width = BlitML::PreviousPow2(width);
-		//depthPyramid.height = BlitML::PreviousPow2(height);
+		hi_z.width = BlitML::PreviousPow2(width);
+		hi_z.height = BlitML::PreviousPow2(height);
 
-		// NOTE: THIS IS DIFFERENT FROM VULKAN BECAUSE THE SHADER GENERATION LOGIC IS DIFFERENT
-		hi_z.width = BlitML::Max(1u, (width) >> 1);
-		hi_z.height = BlitML::Max(1u, (height) >> 1);
+		// Makes it aggressive but easier to implement
+		//hi_z.width = BlitML::Max(1u, (width) >> 1);
+		//hi_z.height = BlitML::Max(1u, (height) >> 1);
 
 		hi_z.mipCount = BlitML::GetDepthPyramidMipLevels(hi_z.width, hi_z.height);
 

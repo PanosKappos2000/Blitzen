@@ -122,7 +122,8 @@ namespace BlitzenDX12
 		CreateRootParameterDescriptorTable(opaqueDrawRootParams[Ce_OpaqueDrawTexSRVRootID], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 
 		// OPAQUE DRAW ROOT
-		if (!CreateRootSignature(device, context.m_opaqueDrawRoot.ReleaseAndGetAddressOf(), Ce_OpaqueDrawRootParameterCount, opaqueDrawRootParams, D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
+		if (!CreateRootSignature(device, context.m_opaqueDrawRoot.ReleaseAndGetAddressOf(), Ce_OpaqueDrawRootParameterCount, opaqueDrawRootParams, 
+			D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
 		{
 			BLIT_ERROR("Failed to create opaque root signature");
 			return 0;
@@ -139,7 +140,8 @@ namespace BlitzenDX12
 		D3D12_ROOT_PARAMETER drawCullRootParameters[Ce_DrawCullRootParameterCount]{};
 		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_DrawCullExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 		CreateRootParameterDescriptorTable(drawCullRootParameters[Ce_DrawCullSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-		CreateRootParameterPushConstants(drawCullRootParameters[Ce_DrawCullDrawCountConstantRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterPushConstants(drawCullRootParameters[Ce_DrawCullDrawCountConstantRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, 
+			D3D12_SHADER_VISIBILITY_ALL);
 
 		// DRAW CULL ROOT
 		if (!CreateRootSignature(device, context.m_drawCullRoot.ReleaseAndGetAddressOf(), Ce_DrawCullRootParameterCount, drawCullRootParameters))
@@ -167,9 +169,11 @@ namespace BlitzenDX12
 
 			// ROOT PARAMS
 			D3D12_ROOT_PARAMETER opaqueDrawInstRootParams[Ce_OpaqueDrawInstRootParameterCount]{};
-			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstExclusiveSRVsRootID], opaqueSrvRanges, Ce_OpaqueDrawExclusiveSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstExclusiveSRVsRootID], opaqueSrvRanges, Ce_OpaqueDrawExclusiveSRVsRangeCount, 
+				D3D12_SHADER_VISIBILITY_VERTEX);
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
-			CreateRootParameterPushConstants(opaqueDrawInstRootParams[Ce_OpaqueDrawObjIDRootID], Ce_OpaqueDrawObjIDConstantRegister, 0, Ce_OpaqueDrawObjIDConstant32BitCount, D3D12_SHADER_VISIBILITY_VERTEX);
+			CreateRootParameterPushConstants(opaqueDrawInstRootParams[Ce_OpaqueDrawObjIDRootID], Ce_OpaqueDrawObjIDConstantRegister, 0, Ce_OpaqueDrawObjIDConstant32BitCount, 
+				D3D12_SHADER_VISIBILITY_VERTEX);
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstTexSMPRootID], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstMatSRVRootID], materialSrvRange, Ce_OpaqueDrawPSExclusiveSRVsRangeCount, D3D12_SHADER_VISIBILITY_PIXEL);
 			CreateRootParameterDescriptorTable(opaqueDrawInstRootParams[Ce_OpaqueDrawInstTexSRVRootID], &textureSrvsRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -190,7 +194,8 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER drawInstCullRootParameters[Ce_DrawCullInstRootParameterCount]{};
 			CreateRootParameterDescriptorTable(drawInstCullRootParameters[Ce_DrawCullInstExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawInstCullRootParameters[Ce_DrawCullInstSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(drawInstCullRootParameters[Ce_DrawCullInstDrawCountConstantRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(drawInstCullRootParameters[Ce_DrawCullInstDrawCountConstantRootID], Ce_DrawCullDrawCountContantRegister, 0, 
+				Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawInstCullRootParameters[Ce_DrawCullInstAdditionalSRVsRootID], drawCullInstRanges, Ce_DrawCullInstSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 
 			// DRAW CULL INST ROOT
@@ -211,7 +216,8 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER drawOccFirstRootParameters[Ce_DrawOccFirstRootParameterCount]{};
 			CreateRootParameterDescriptorTable(drawOccFirstRootParameters[Ce_DrawOccFirstExclusiveSRVsRootId], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccFirstRootParameters[Ce_DrawOccFirstSharedSRVsRootId], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(drawOccFirstRootParameters[Ce_DrawOccFirstDrawCountRootId], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(drawOccFirstRootParameters[Ce_DrawOccFirstDrawCountRootId], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, 
+				D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccFirstRootParameters[Ce_DrawOccFirstDrawVisUAVRootId], &drawVisibilityBufferRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
 			// DRAW OCC FIRST PASS ROOT
@@ -228,7 +234,8 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER drawOccLateRootParameters[Ce_DrawOccLateRootParameterCount]{};
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateExclusiveSRVsRootId], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateSharedSRVsRootId], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(drawOccLateRootParameters[Ce_DrawOccLateDrawCountRootId], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(drawOccLateRootParameters[Ce_DrawOccLateDrawCountRootId], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, 
+				D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateDrawVisUAVRootId], &drawVisibilityBufferRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(drawOccLateRootParameters[Ce_DrawOccLateHI_Z_MapRootId], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
@@ -252,7 +259,8 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER depthPyramidGenParameters[Ce_HI_Z_MapRootParameterCount]{};
 			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_HI_Z_MapUAVRootID], &depthPyramidUAVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(depthPyramidGenParameters[Ce_HI_Z_MapSRVRootID], &depthPyramidSRVRange, 1, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_HI_Z_MapMipLvlConstantRootID], Ce_HI_Z_MapMipLvlConstantRegister, 0, Ce_HI_Z_MapMipLvlContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(depthPyramidGenParameters[Ce_HI_Z_MapMipLvlConstantRootID], Ce_HI_Z_MapMipLvlConstantRegister, 0, Ce_HI_Z_MapMipLvlContant32BitCount, 
+				D3D12_SHADER_VISIBILITY_ALL);
 
 			// HI_Z MAP ROOT
 			if (!CreateRootSignature(device, context.m_HI_Z_MapRoot.ReleaseAndGetAddressOf(), Ce_HI_Z_MapRootParameterCount, depthPyramidGenParameters))

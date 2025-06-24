@@ -7,13 +7,25 @@ RWTexture2D<float4> rwtex_depthOut : register(u0);
 cbuffer PyramidMip : register(b0)
 {
     uint mipLevel;
+    uint2 depthTargetSize;
+    uint2 depthPyramidSize;
 };
 
 // Define the workgroup size
 [numthreads(32, 32, 1)] 
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    uint2 texCoords = uint2(dispatchThreadID.xy) << 1;
+    uint2 texCoords;
+    if(depthTargetSize.x != 0)
+    {
+        uint2 mipLevelSize = uint2(1u << (int) log2(depthTargetSize.x), 1u << (int) log2(depthTargetSize.y));
+
+        texCoords = uint2(dispatchThreadID.xy) * depthTargetSize / mipLevelSize;
+    }
+    else
+    {
+        texCoords = uint2(dispatchThreadID.xy) << 1;
+    }
 
     float4 texels;
     texels.r = tex_depthIn.Load(uint3(texCoords, mipLevel)).r;

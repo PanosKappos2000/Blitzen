@@ -297,15 +297,12 @@ namespace BlitzenEngine
 		commandList->SetComputeRootSignature(pipelineContext.m_HI_Z_MapRoot.Get());
 		commandList->SetPipelineState(pipelineContext.m_HI_Z_MapPso.Get());
 
-		uint32_t mipLevel{ 0 };
-
+		UINT mipLevel{ 0 };
 		for (uint32_t i = 0; i < rwResources.m_HI_Z.mipCount; ++i)
 		{
 			// Mip size calculcations
 			uint32_t levelWidth = BlitML::Max(1u, (rwResources.m_HI_Z.width) >> i);
 			uint32_t levelHeight = BlitML::Max(1u, (rwResources.m_HI_Z.height) >> i);
-
-			commandList->SetComputeRoot32BitConstant(BlitzenDX12::Ce_HI_Z_MapMipLvlConstantRootID, mipLevel, 0);
 
 			// Binds write texture (the depth pyramid has a copy for double buffering and each one has the correct offsets for the descriptor heap)
 			commandList->SetComputeRootDescriptorTable(BlitzenDX12::Ce_HI_Z_MapUAVRootID, rwResources.m_HI_Z.mips[i]);
@@ -314,10 +311,14 @@ namespace BlitzenEngine
 			if (i == 0)
 			{
 				commandList->SetComputeRootDescriptorTable(BlitzenDX12::Ce_HI_Z_MapSRVRootID, descriptorContext.m_depthTargetSRVHandle[swapchainId]);
+				UINT HI_Z_constants[BlitzenDX12::Ce_HI_Z_MapMipLvlContant32BitCount]{ mipLevel, pRenderer->m_swapchainWidth, pRenderer->m_swapchainHeight, levelWidth, levelHeight };
+				commandList->SetComputeRoot32BitConstants(BlitzenDX12::Ce_HI_Z_MapMipLvlConstantRootID, BlitzenDX12::Ce_HI_Z_MapMipLvlContant32BitCount, HI_Z_constants, 0);
 			}
 			else
 			{
 				commandList->SetComputeRootDescriptorTable(BlitzenDX12::Ce_HI_Z_MapSRVRootID, descriptorContext.m_HI_Z_MapSRVHandle[frame]);
+				UINT HI_Z_constants[BlitzenDX12::Ce_HI_Z_MapMipLvlContant32BitCount]{ mipLevel, 0, 0, levelWidth, levelHeight };
+				commandList->SetComputeRoot32BitConstants(BlitzenDX12::Ce_HI_Z_MapMipLvlConstantRootID, BlitzenDX12::Ce_HI_Z_MapMipLvlContant32BitCount, HI_Z_constants, 0);
 				mipLevel++;
 			}
 
