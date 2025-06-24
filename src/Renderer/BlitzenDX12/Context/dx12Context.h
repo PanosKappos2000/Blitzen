@@ -118,7 +118,6 @@ namespace BlitzenDX12
         SIZE_T m_texDescriptorsSRVOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE m_texDescriptorsSRVHandle;
 
-
         // SAMPLERS
         DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
 
@@ -128,7 +127,6 @@ namespace BlitzenDX12
 
         SIZE_T m_texSmpOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE m_texSmpHandle;
-
 
         // RTVs
         DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
@@ -140,7 +138,6 @@ namespace BlitzenDX12
         SIZE_T m_swapchainRtvOffset[ce_framesInFlight];
         D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandle[ce_framesInFlight];
 
-
         // DSVs
 		DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
 
@@ -150,6 +147,10 @@ namespace BlitzenDX12
 
         SIZE_T m_depthTargetDsvOffset[ce_framesInFlight];
         D3D12_CPU_DESCRIPTOR_HANDLE m_depthTargetDSVHandle[ce_framesInFlight];
+
+        // Additional solo handles
+		D3D12_GPU_DESCRIPTOR_HANDLE m_viewDataHandle[ce_framesInFlight];
+		D3D12_GPU_DESCRIPTOR_HANDLE m_boundSpheresBufferHandle[ce_framesInFlight];
     };
 
 	struct PipelineContext
@@ -192,21 +193,19 @@ namespace BlitzenDX12
         // CLUSTER CULLING MODE
         DX12WRAPPER<ID3D12CommandSignature> m_clusterCullCmdSign;
         DX12WRAPPER<ID3D12RootSignature> m_clusterCullRoot;
-
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdResetPso;
-
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullDispatchPso;
-
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullPso;
-
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullBatchCmdPso;
-
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullBatchPso;
-
 
         // Draws triangle with hardcoded vertices in the shader (legacy shader)
         DX12WRAPPER<ID3D12RootSignature> m_triangleRoot;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
+
+        // Bounding sphere debug draw
+		DX12WRAPPER<ID3D12RootSignature> m_boundingSphereRoot;
+		DX12WRAPPER<ID3D12PipelineState> m_boundingSpherePso;
 
         // Vertex and Pixel shaders for opaque objects. Uses execute indirect
         DX12WRAPPER<ID3D12CommandSignature> m_opaqueDrawCmdSign;

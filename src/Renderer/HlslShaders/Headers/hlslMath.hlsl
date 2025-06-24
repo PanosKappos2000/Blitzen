@@ -147,3 +147,12 @@ uint GetComputeShaderGroupSize(uint totalWorkCount, uint threadsPerGroup)
 {
     return (totalWorkCount / threadsPerGroup) + 1;
 }
+
+float3 CalculateDirectionalLighting(float3 normal, float4 tangent, float3 normalMap)
+{
+    float3 bitangent = cross(normal, tangent.xyz) * tangent.w;
+    float3 finalTangent = tangent.xyz - dot(tangent.xyz, normal) * normal;
+    float3 nrm = normalize(normalMap.r * finalTangent + normalMap.g * bitangent + normalMap.b * normal);
+    float3 sunDirection = normalize(float3(-1, 1, -1));
+    return max(dot(nrm, sunDirection), 0.0);
+}

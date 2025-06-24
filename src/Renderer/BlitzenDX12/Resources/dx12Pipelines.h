@@ -38,6 +38,8 @@ namespace BlitzenDX12
     // Main drawing pipeline creation
     uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx);
 
+    uint8_t CreateBoundingSphereDebugDrawPipeline(ID3D12Device* device, PipelineContext& ctx);
+
     void CreateOMSTargetDescs(D3D12_RENDER_PASS_RENDER_TARGET_DESC* renderTargetDesc, D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* depthTargetDesc,
         D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetHandle, D3D12_CPU_DESCRIPTOR_HANDLE* depthTargetHandle);
 

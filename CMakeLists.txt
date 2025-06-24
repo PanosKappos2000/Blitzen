@@ -172,6 +172,9 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenVulkan/Context/vulkanRenderer.cpp"
                 "src/Renderer/BlitzenVulkan/RuntimeHelpers/vkRuntimerHelpersInterface.cpp"
                 "src/Renderer/BlitzenVulkan/RuntimeHelpers/vkRuntimeHelpers.h"
+                "src/Renderer/BlitzenVulkan/Cull/vkCull.h"
+                "src/Renderer/BlitzenVulkan/Cull/vkCullInterface.cpp"
+                "src/Renderer/BlitzenVulkan/Render/vkRenderInterface.cpp"
 
                 # GL
                 "src/Renderer/BlitzenGL/openglData.h"
@@ -204,6 +207,9 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/Resources/dx12ResourceUploadInterface.cpp"
                 "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHelpersInterface.cpp"
                 "src/Renderer/BlitzenDX12/RuntimeHelpers/dx12RuntimeHelpers.h"
+                "src/Renderer/BlitzenDX12/Cull/dx12CullInterface.cpp"
+                "src/Renderer/BlitzenDX12/Cull/dx12Cull.h"
+                "src/Renderer/BlitzenDX12/Render/dx12DrawInterface.cpp"
 
                 # vendor
                 "src/VendorCode/fast_obj.h"
@@ -219,7 +225,8 @@ add_executable(BlitzenEngine
                 
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
-                "ClientTest/Src/WorldVariables/wvData.h" "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/Renderer/BlitzenDX12/Cull/dx12CullInterface.cpp" "src/Renderer/BlitzenDX12/Cull/dx12Cull.h" "src/Renderer/BlitzenDX12/Render/dx12DrawInterface.cpp")
+                "ClientTest/Src/WorldVariables/wvData.h"
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

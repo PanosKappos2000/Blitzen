@@ -255,6 +255,19 @@ namespace BlitzenDX12
     constexpr UINT Ce_OpaqueDrawInstInstUAVRegister = 3;
     constexpr UINT Ce_OpaqueDrawInstInstSRVRangeID = 0;
 
+    // Descriptors for bounding sphere draw
+    constexpr UINT Ce_BoundingSphereRootParameterCount = 3;
+
+	constexpr UINT Ce_BoundingSphereSphereSRVRegister = 0;
+	constexpr UINT Ce_BoundingSphereSphereRootParameterID = 0;
+
+	constexpr UINT Ce_BoundingSphereObjectIDConstantRegister = 1;
+	constexpr UINT Ce_BoundingSphereObjectIDConstant32BitCount = 1;
+    constexpr UINT Ce_BoundingSphereObjectIDRootParameterID = 1;
+
+	constexpr UINT Ce_BoundingSphereViewDataCBVRegister = 0;
+    constexpr UINT Ce_BoundingSphereViewDataRootParameterID = 2;
+
     // Root param descriptor grouping 
     constexpr UINT Ce_OpaqueDrawInstRootParameterCount = 7;
     constexpr UINT Ce_OpaqueDrawInstExclusiveSRVsRootID = 0;

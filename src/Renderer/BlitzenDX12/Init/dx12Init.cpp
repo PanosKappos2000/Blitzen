@@ -286,8 +286,10 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER clusterCullRootParameters[Ce_ClusterCullRootParameterCount]{};
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterPushConstants(clusterCullRootParameters[Ce_ClusterCullDrawCountRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
-			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullAdditionalViewsRootID], clusterDispatchAdditionalViewRanges, Ce_ClusterDispatchAdditionalViewsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterPushConstants(clusterCullRootParameters[Ce_ClusterCullDrawCountRootID], Ce_DrawCullDrawCountContantRegister, 0, 
+				Ce_DrawCullDrawCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullAdditionalViewsRootID], clusterDispatchAdditionalViewRanges, 
+				Ce_ClusterDispatchAdditionalViewsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			CreateRootParameterDescriptorTable(clusterCullRootParameters[Ce_ClusterCullHI_Z_MapSrvRootID], &depthPyramidCullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
 
 			if (!CreateRootSignature(device, context.m_clusterCullRoot.ReleaseAndGetAddressOf(), Ce_ClusterCullRootParameterCount, clusterCullRootParameters))
@@ -296,6 +298,20 @@ namespace BlitzenDX12
 				return 0;
 			}
 		}
+
+#if !defined(NDEBUG)
+		D3D12_ROOT_PARAMETER boundingSphereRootParameters[Ce_BoundingSphereRootParameterCount]{};
+		CreateRootParameterSrv(boundingSphereRootParameters[Ce_BoundingSphereSphereRootParameterID], Ce_BoundingSphereSphereSRVRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterCBV(boundingSphereRootParameters[Ce_BoundingSphereViewDataRootParameterID], Ce_BoundingSphereViewDataCBVRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterPushConstants(boundingSphereRootParameters[Ce_BoundingSphereObjectIDRootParameterID], Ce_BoundingSphereObjectIDConstantRegister, 0, Ce_BoundingSphereObjectIDConstant32BitCount,
+			D3D12_SHADER_VISIBILITY_VERTEX);
+
+		if (!CreateRootSignature(device, context.m_boundingSphereRoot.ReleaseAndGetAddressOf(), Ce_BoundingSphereRootParameterCount, boundingSphereRootParameters))
+		{
+			BLIT_ERROR("%s: Failed to create bounding sphere root signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+#endif
 
 		// success
 		return 1;
@@ -366,19 +382,19 @@ namespace BlitzenDX12
 	{
 		if (!CreateOpaqueGraphicsPipeline(device, context))
 		{
-			BLIT_ERROR("Failed to create opaque grahics pipeline");
+			BLIT_ERROR("%s: Failed to create opaque grahics pipeline", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!CreateComputeShaderProgram(device, context.m_drawCountResetRoot.Get(), context.m_drawCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawCountReset.cs.hlsl.bin"))
 		{
-			BLIT_ERROR("Failed to create drawCountReset.cs shader program");
+			BLIT_ERROR("%s: Failed to create drawCountReset.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!CreateComputeShaderProgram(device, context.m_drawCullRoot.Get(), context.m_drawCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawCull.cs.hlsl.bin"))
 		{
-			BLIT_ERROR("Failed to create drawCull.cs shader program");
+			BLIT_ERROR("%s: Failed to create drawCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
@@ -386,7 +402,7 @@ namespace BlitzenDX12
 		{
 			if (!CreateComputeShaderProgram(device, context.m_HI_Z_MapRoot.Get(), context.m_HI_Z_MapPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/hi_z_map.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create depthPyramid.cs shader program");
+				BLIT_ERROR("%s: Failed to create depthPyramid.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
@@ -395,13 +411,13 @@ namespace BlitzenDX12
 		{
 			if (!CreateComputeShaderProgram(device, context.m_drawOccFirstRoot.Get(), context.m_drawOccFirstPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccFirst.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create drawCull.cs shader program");
+				BLIT_ERROR("%s: Failed to create drawCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!CreateComputeShaderProgram(device, context.m_drawOccLateRoot.Get(), context.m_drawOccLatePso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccLate.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create drawOccLate.cs shader program");
+				BLIT_ERROR("%s: Failed to create drawOccLate.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
@@ -410,7 +426,7 @@ namespace BlitzenDX12
 		{
 			if (!CreateComputeShaderProgram(device, context.m_drawOccLateRoot.Get(), context.m_drawOccTemporalPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawOccTemporal.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create drawOccTemporal.cs shader program");
+				BLIT_ERROR("%s: Failed to create drawOccTemporal.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
@@ -419,13 +435,13 @@ namespace BlitzenDX12
 		{
 			if (!CreateComputeShaderProgram(device, context.m_drawCullInstRoot.Get(), context.m_drawCullInstPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawInstCull.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create drawInstCull.cs shader program");
+				BLIT_ERROR("%s: Failed to create drawInstCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!CreateComputeShaderProgram(device, context.m_drawCullInstRoot.Get(), context.m_drawInstCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/drawInstCountReset.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create drawInstCountReset.cs shader program");
+				BLIT_ERROR("%s: Failed to create drawInstCountReset.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
@@ -434,34 +450,42 @@ namespace BlitzenDX12
 		{
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullCmdResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullCmdReset.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create clusterDispatchCmdReset.cs shader program");
+				BLIT_ERROR("%s: Failed to create clusterDispatchCmdReset.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullDispatchPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullDispatch.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create clusterCullDispatch.cs shader program");
+				BLIT_ERROR("%s: Failed to create clusterCullDispatch.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCull.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create clusterCull.cs shader program");
+				BLIT_ERROR("%s: Failed to create clusterCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullBatchCmdPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullBatchCmd.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create clusterCullBatchCmd.cs shader program");
+				BLIT_ERROR("%s: Failed to create clusterCullBatchCmd.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!CreateComputeShaderProgram(device, context.m_clusterCullRoot.Get(), context.m_clusterCullBatchPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/clusterCullBatch.cs.hlsl.bin"))
 			{
-				BLIT_ERROR("Failed to create clusterCullBatch.cs shader program");
+				BLIT_ERROR("%s: Failed to create clusterCullBatch.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
+
+#if !defined(NDEBUG)
+		if(!CreateBoundingSphereDebugDrawPipeline(device, context))
+		{
+			BLIT_ERROR("%s: Failed to create bounding sphere debug draw pipeline", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+#endif
 
 		return 1;
 	}

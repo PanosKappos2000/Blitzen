@@ -305,7 +305,7 @@ namespace BlitzenDX12
         vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDraw.vs.hlsl.bin", vsBytes);
         if (!vsSize)
         {
-            BLIT_ERROR("Failed to create main opaque vertex shader");
+            BLIT_ERROR("%s: Failed to create main opaque vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
 
@@ -334,7 +334,7 @@ namespace BlitzenDX12
         HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawPso.ReleaseAndGetAddressOf()));
         if (FAILED(psoResult))
         {
-            BLIT_ERROR("Failed to create opaque draw pipeline state object");
+            BLIT_ERROR("%s: Failed to create opaque draw pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
         }
 
@@ -346,7 +346,7 @@ namespace BlitzenDX12
             vsSize = GetShaderBytes(device, "HlslShaders/VS/opaqueDrawInst.vs.hlsl.bin", vsBytes);
             if (vsSize == 0)
             {
-                BLIT_ERROR("Failed to create opaque instanced vertex shader");
+                BLIT_ERROR("%s: Failed to create opaque instanced vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
                 return 0;
             }
 
@@ -359,9 +359,53 @@ namespace BlitzenDX12
             HRESULT psoInstResult{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawInstPso.ReleaseAndGetAddressOf())) };
             if (FAILED(psoInstResult))
             {
-                BLIT_ERROR("Failed to create opaque draw instanced pipeline state object");
+                BLIT_ERROR("%s: Failed to create opaque draw instanced pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
                 return LOG_ERROR_MESSAGE_AND_RETURN(psoInstResult);
             }
+        }
+
+        return 1;
+    }
+
+    uint8_t CreateBoundingSphereDebugDrawPipeline(ID3D12Device* device, PipelineContext& ctx)
+    {
+        BlitCL::String vsBytes;
+        size_t vsSize{ 0 };
+
+        vsSize = GetShaderBytes(device, "HlslShaders/VS/boundingSphere.vs.hlsl.bin", vsBytes);
+        if (!vsSize)
+        {
+            BLIT_ERROR("%s: Failed to create bounding sphere debug  vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        D3D12_SHADER_BYTECODE vsCode{};
+        vsCode.BytecodeLength = vsSize;
+        vsCode.pShaderBytecode = vsBytes.Data();
+
+        BlitCL::String psBytes;
+        size_t psSize{ GetShaderBytes(device, "HlslShaders/PS/boundingSphere.ps.hlsl.bin", psBytes) };
+        if (!psSize)
+        {
+            BLIT_ERROR("%s: Failed to create bounding sphere debug pixel shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+        D3D12_SHADER_BYTECODE psCode{};
+        psCode.BytecodeLength = psSize;
+        psCode.pShaderBytecode = psBytes.Data();
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+        CreateDefaultPsoDescription(psoDesc);
+        psoDesc.pRootSignature = ctx.m_boundingSphereRoot.Get();
+        psoDesc.VS = vsCode;
+        psoDesc.PS = psCode;
+        psoDesc.DSVFormat = Ce_DepthTargetFormat;
+
+        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_boundingSpherePso.ReleaseAndGetAddressOf()));
+        if (FAILED(psoResult))
+        {
+            BLIT_ERROR("%s: Failed to create bounding sphere debug pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
         }
 
         return 1;
