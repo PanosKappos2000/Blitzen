@@ -12,17 +12,22 @@ layout(set = 0, binding = 11, std430) writeonly buffer SSBO_CLUSTER_DISPATCH
 {
 	ClusterGroupData data[];
 }rwssbo_ClusterGroup;
+layout(set = 0, binding = 13, std430) writeonly buffer RWSSBO_CLUSTER_COUNT
+{
+	uint data;
+}rwssbo_ClusterCount;
 #else
 layout(set = 0, binding = 11, std430) readonly buffer SSBO_CLUSTER_DISPATCH
 {
 	ClusterGroupData data[];
 }rwssbo_ClusterGroup;
-#endif
-
-layout(set = 0, binding = 13, std430) writeonly buffer RWSSBO_CLUSTER_COUNT
+layout(set = 0, binding = 13, std430) readonly buffer RWSSBO_CLUSTER_COUNT
 {
 	uint data;
 }rwssbo_ClusterCount;
+#endif
+
+
 
 /* TODO: Maybe put a define in transparent culling and then add this */
 //layout(set = 0, binding = 20, std430) writeonly buffer RWSSBO_CLUSTER_COUNT_TRANSPARENT

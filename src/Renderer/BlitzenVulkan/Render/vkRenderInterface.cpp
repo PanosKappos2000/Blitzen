@@ -56,8 +56,6 @@ namespace BlitzenEngine
 
 	void FinalizeRendering(BlitzenVulkan::VulkanRenderer* pRenderer)
 	{
-        BLIT_ASSERT_MESSAGE(pRenderer->m_secondWaitSemaphore != VK_NULL_HANDLE, "The second wait semaphore needs to be passed after culling");
-
         auto& cmd{ pRenderer->m_commandsContext[pRenderer->m_currentFrame] };
 
         // COPIES COLOR TARGET TO SWAPCHAIN
@@ -75,7 +73,7 @@ namespace BlitzenEngine
         // SUBMIT
         VkSemaphoreSubmitInfo waitSemaphores[2]{};
         BlitzenVulkan::CreateSemahoreSubmitInfo(waitSemaphores[0], cmd.m_swapchainSemaphore.handle, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
-        BlitzenVulkan::CreateSemahoreSubmitInfo(waitSemaphores[1], pRenderer->m_secondWaitSemaphore, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
+        BlitzenVulkan::CreateSemahoreSubmitInfo(waitSemaphores[1], cmd.m_bufferUpdateSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
 
         VkSemaphoreSubmitInfo signalSemaphore{};
         BlitzenVulkan::CreateSemahoreSubmitInfo(signalSemaphore, cmd.m_renderSemaphore.handle, VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);

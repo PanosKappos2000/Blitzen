@@ -87,6 +87,12 @@ layout(set = 0, binding = 10, std430) buffer RWSSBO_DRAW_VIS
 
 #endif
 
+#ifdef OCCLUSION_CULLING
+
+layout (set = 0, binding = 3) uniform sampler2D depthPyramid;
+
+#endif
+
 layout (push_constant) uniform CullingConstants
 {
     uint drawCount;

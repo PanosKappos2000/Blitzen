@@ -96,7 +96,7 @@ namespace BlitzenVulkan
 
         VkWriteDescriptorSet m_pushDescriptorsDrawOcc[Ce_DrawOcclusionDescriptorCount * ce_framesInFlight]{};
 
-        VkWriteDescriptorSet m_pushDescriptorsClusterCull[Ce_ClusterCullDescriptorCount];
+        VkWriteDescriptorSet m_pushDescriptorsClusterCull[Ce_ClusterCullDescriptorCount * ce_framesInFlight];
 
         VkWriteDescriptorSet m_HI_Z_cullDescriptor[ce_framesInFlight]{};
 
@@ -136,6 +136,8 @@ namespace BlitzenVulkan
         VkDescriptorBufferInfo m_matDescInfo{};
 
         VkDescriptorBufferInfo m_clusterBufferDescInfo{};
+        VkDescriptorBufferInfo m_clusterGroupDescInfo{};
+        VkDescriptorBufferInfo m_clusterGroupCounterDescInfo{};
 
         VkDescriptorBufferInfo m_renderBufferDescInfo[ce_framesInFlight]{};
 
@@ -164,8 +166,6 @@ namespace BlitzenVulkan
         BlitVk_SSBO m_clusterGroupDataBuffer;
 
         BlitVk_SSBO m_clusterDispatchCounterBuffer;
-
-        BlitVk_UBUFFER<uint32_t> m_clusterDispatchCounterCopy;
 
         BlitVk_SSBO m_drawVisBuffer;
 

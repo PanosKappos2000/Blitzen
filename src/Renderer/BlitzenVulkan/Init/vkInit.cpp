@@ -1305,11 +1305,20 @@ namespace BlitzenVulkan
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            auto clusterBufferShaderStageFlags{ bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT : VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT };
+            auto clusterBufferShaderStageFlags{ bMeshShaders ? VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | 
+                VK_SHADER_STAGE_TASK_BIT_EXT : VK_SHADER_STAGE_COMPUTE_BIT};
             VkDescriptorSetLayoutBinding clusterBinding{};
             CreateDescriptorSetLayoutBinding(clusterBinding, Ce_ClusterBufferDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, clusterBufferShaderStageFlags);
 
+            VkDescriptorSetLayoutBinding clusterGroupBinding{};
+            CreateDescriptorSetLayoutBinding(clusterGroupBinding, Ce_ClusterGroupDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+            VkDescriptorSetLayoutBinding clusterGroupCounterBinding{};
+            CreateDescriptorSetLayoutBinding(clusterGroupCounterBinding, Ce_ClusterCounterDescriptorBinding, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
             bindings.PushBack(clusterBinding);
+            bindings.PushBack(clusterGroupBinding);
+            bindings.PushBack(clusterGroupCounterBinding);
         }
 
         if (bRaytracing)
@@ -1488,12 +1497,6 @@ namespace BlitzenVulkan
                 if (clusterCounterBufferSize == 0)
                 {
                     BLIT_ERROR("%s: Failed to create cluster dispatch counter", BLIT_VK_SYSTEM);
-                    return 0;
-                }
-
-                if (!CreateBuffer(vma, readWrites.m_clusterDispatchCounterCopy.m_buffer, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_ONLY, sizeof(uint32_t), VMA_ALLOCATION_CREATE_MAPPED_BIT))
-                {
-                    BLIT_ERROR("%s: Failed to create cluster counter copy", BLIT_VK_SYSTEM);
                     return 0;
                 }
             }

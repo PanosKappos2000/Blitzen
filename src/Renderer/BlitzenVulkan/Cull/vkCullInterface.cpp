@@ -62,7 +62,7 @@ namespace BlitzenEngine
 				// Additional image memory barrier for depth pyramid
 				VkImageMemoryBarrier2 HI_Z_barrier{};
 				BlitzenVulkan::ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, HI_Z_barrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-					VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
+					VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
 					VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
 
 				// execute
@@ -97,7 +97,6 @@ namespace BlitzenEngine
 				// Execute
 				BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(graphicsBarrier), graphicsBarrier, 0, nullptr);
 
-				pRenderer->m_secondWaitSemaphore = cmd.m_bufferUpdateSemaphore.handle;
 				break;
 			}
 			case RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC:
@@ -115,12 +114,9 @@ namespace BlitzenEngine
 		{
 			auto device{ pRenderer->m_device };
 
-			// Fist culling pass with separate command buffer
-			BlitzenVulkan::BeginCommandBuffer(cmd.m_computeCmdB, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
 			// Barrier before count reset
 			VkBufferMemoryBarrier2 clusterResetBarrier{};
-			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, clusterResetBarrier, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
+			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, clusterResetBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
 				VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, 0, VK_WHOLE_SIZE);
 			// execute
 			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, 1, &clusterResetBarrier, 0, nullptr);
@@ -132,19 +128,28 @@ namespace BlitzenEngine
 			VkBufferMemoryBarrier2 cullBarriers[2]{};
 			// Cluster count
 			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, cullBarriers[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
+				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
 			// Cluster dispatch
 			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle, cullBarriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
 				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
 
+			VkImageMemoryBarrier2 HI_Z_barrier{};
+			BlitzenVulkan::ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, HI_Z_barrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+				VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
+
 			// Execute
-			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullBarriers), cullBarriers, 0, nullptr);
+			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullBarriers), cullBarriers, 1, &HI_Z_barrier);
 
 			// Descriptors
 			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, BlitzenVulkan::Ce_PushDescriptorSetID, 
 				BlitzenVulkan::Ce_CullDescriptorCount, &descriptorContext.m_pushDescriptorsCull[BlitzenVulkan::Ce_CullDescriptorCount * frame]);
 			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, BlitzenVulkan::Ce_PushDescriptorSetID, 
 				BlitzenVulkan::Ce_SharedDescriptorCount, &descriptorContext.m_pushDescriptorsShared[BlitzenVulkan::Ce_SharedDescriptorCount * frame]);
+			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, BlitzenVulkan::Ce_PushDescriptorSetID,
+				BlitzenVulkan::Ce_ClusterCullDescriptorCount, &descriptorContext.m_pushDescriptorsClusterCull[BlitzenVulkan::Ce_ClusterCullDescriptorCount * frame]);
+			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, BlitzenVulkan::Ce_PushDescriptorSetID,
+				1, &descriptorContext.m_HI_Z_cullDescriptor[frame]);
 
 			// Pipeline and push constants
 			vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullDispatchPso.handle);
@@ -153,33 +158,13 @@ namespace BlitzenEngine
 			vkCmdDispatch(cmdb, (cullContext.m_workCount / 64) + 1, 1, 1);
 
 			// Cluster dispatch read barrier
-			VkBufferMemoryBarrier2 clusterCullBarrier{};
-			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle, clusterCullBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+			VkBufferMemoryBarrier2 clusterCullBarrier[2]{};
+			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle, clusterCullBarrier[0], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
+			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, clusterCullBarrier[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
 				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
 			// execute
-			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, 1, &clusterCullBarrier, 0, nullptr);
-
-			// Cluster count copy barrier
-			VkBufferMemoryBarrier2 countCopyBarrier{};
-			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, countCopyBarrier, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-				VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, 0, sizeof(uint32_t));
-			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, 1, &countCopyBarrier, 0, nullptr);
-			// Copy
-			BlitzenVulkan::CopyBufferToBuffer(cmdb, readWrites.m_clusterDispatchCounterBuffer.m_buffer.m_handle, readWrites.m_clusterDispatchCounterCopy.m_buffer.m_handle, sizeof(uint32_t), 0, 0);
-
-			// Submits command buffer to generate cluster dispatch count
-			VkSemaphoreSubmitInfo bufferUpdateWaitSemaphore{};
-			BlitzenVulkan::CreateSemahoreSubmitInfo(bufferUpdateWaitSemaphore, cmd.m_bufferUpdateSemaphore.handle, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
-
-			VkSemaphoreSubmitInfo waitForClusterData{};
-			BlitzenVulkan::CreateSemahoreSubmitInfo(waitForClusterData, cmd.m_clusterSemaphore.handle, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
-			BlitzenVulkan::SubmitCommandBuffer(pRenderer->m_computeQueue.handle, cmd.m_computeCmdB, 1, &bufferUpdateWaitSemaphore, 1, &waitForClusterData, cmd.m_preClusterFence.handle);
-
-			// FENCE DISPATCH
-			vkWaitForFences(device, 1, &cmd.m_preClusterFence.handle, VK_TRUE, BlitzenVulkan::ce_fenceTimeout);
-			vkResetFences(device, 1, &cmd.m_preClusterFence.handle);
-
-			uint32_t dispatchCount{ uint32_t(*reinterpret_cast<uint32_t*>(readWrites.m_clusterDispatchCounterCopy.m_buffer.m_vmaInfo.pMappedData)) };
+			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(clusterCullBarrier), clusterCullBarrier, 0, nullptr);
 
 			// Draw count reset barrier
 			VkBufferMemoryBarrier2 drawCountResetBarrier{};
@@ -190,16 +175,13 @@ namespace BlitzenEngine
 			vkCmdFillBuffer(cmdb, readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, sizeof(uint32_t), 0);
 
 			// Wait for draw count reset, previous frame command read and cluster dispatch write
-			VkBufferMemoryBarrier2 cullingShaders[3] = {};
+			VkBufferMemoryBarrier2 cullingShaders[2]{};
 			// Draw count reset
 			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, cullingShaders[0], VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
 				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
 			// Command read barrier
 			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_drawCmdBuffer.m_buffer.m_handle, cullingShaders[1], VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT,
 				VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, 0, VK_WHOLE_SIZE);
-			// Cluster dispatch barrier
-			BlitzenVulkan::BufferMemoryBarrier(readWrites.m_clusterGroupDataBuffer.m_buffer.m_handle, cullingShaders[2], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, 0, VK_WHOLE_SIZE);
 			// Execution
 			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(cullingShaders), cullingShaders, 0, nullptr);
 
@@ -208,14 +190,13 @@ namespace BlitzenEngine
 				BlitzenVulkan::Ce_CullDescriptorCount, &descriptorContext.m_pushDescriptorsCull[frame * BlitzenVulkan::Ce_CullDescriptorCount]);
 			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, BlitzenVulkan::Ce_PushDescriptorSetID, 
 				BlitzenVulkan::Ce_SharedDescriptorCount, &descriptorContext.m_pushDescriptorsShared[frame * BlitzenVulkan::Ce_SharedDescriptorCount]);
-			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, BlitzenVulkan::Ce_PushDescriptorSetID, 
-				BlitzenVulkan::Ce_ClusterCullDescriptorCount, descriptorContext.m_pushDescriptorsClusterCull);
+			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullLayout.handle, BlitzenVulkan::Ce_PushDescriptorSetID,
+				BlitzenVulkan::Ce_ClusterCullDescriptorCount, &descriptorContext.m_pushDescriptorsClusterCull[BlitzenVulkan::Ce_ClusterCullDescriptorCount * frame]);
 
 			// Pipeline and push constants
 			vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_clusterCullPso.handle);
-			vkCmdPushConstants(cmdb, pipelineContext.m_clusterCullLayout.handle, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &dispatchCount);
 			// Dispatch
-			vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(dispatchCount, 64), 1, 1);
+			vkCmdDispatch(cmdb, BlitML::GetComputeShaderGroupSize(BlitzenVulkan::Ce_ClusterGroupBufferSize, 64), 1, 1);
 
 			// Barriers stop graphics command read and count read
 			VkBufferMemoryBarrier2 waitForCullingShader[2]{};
@@ -229,7 +210,6 @@ namespace BlitzenEngine
 			// Execute
 			BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, BLIT_ARRAY_SIZE(waitForCullingShader), waitForCullingShader, 0, nullptr);
 
-			pRenderer->m_secondWaitSemaphore = cmd.m_clusterSemaphore.handle;
 			break;
 		}
 		default:
@@ -256,7 +236,7 @@ namespace BlitzenEngine
 			VK_IMAGE_ASPECT_DEPTH_BIT, 0, VK_REMAINING_MIP_LEVELS);
 		// Depth pyramid to shader write
 		BlitzenVulkan::ImageMemoryBarrier(readWrites.m_HI_Z_MAP.m_pyramid.m_image.m_handle, HI_Z_barriers[1], VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
-			VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+			VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL,
 			VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS);
 		// Execute
 		BlitzenVulkan::PipelineBarrier(cmdb, 0, nullptr, 0, nullptr, 2, HI_Z_barriers);

@@ -15,10 +15,12 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
     uint groupIndex = gl_GlobalInvocationID.x;
-    if(pushConstant.drawCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET <= groupIndex)
+
+    if(rwssbo_ClusterCount.data <= groupIndex)
     {
         return;
     }
+
     ClusterGroupData data = rwssbo_ClusterGroup.data[groupIndex];
     RenderObject obj = ssbo_render.data[data.objectId];
     Transform transform = transformBuffer.instances[obj.meshInstanceId];

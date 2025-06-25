@@ -367,11 +367,31 @@ namespace BlitzenVulkan
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_DrawVisBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
         }
 
-        descriptorContext.m_clusterBufferDescInfo.buffer = roResources.m_clusterBuffer.m_buffer.m_handle;
-        descriptorContext.m_clusterBufferDescInfo.offset = 0;
-        descriptorContext.m_clusterBufferDescInfo.range = drawContext.m_meshes.m_clusters.m_clusterCount * sizeof(BlitzenEngine::Cluster);
-        WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterBufferPushID], &descriptorContext.m_clusterBufferDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            Ce_ClusterBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
+        if constexpr (BlitzenCore::Ce_BuildClusters)
+        {
+            for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
+            {
+                auto& rw{ rwResourcesArray[frame] };
+
+                descriptorContext.m_clusterBufferDescInfo.buffer = roResources.m_clusterBuffer.m_buffer.m_handle;
+                descriptorContext.m_clusterBufferDescInfo.offset = 0;
+                descriptorContext.m_clusterBufferDescInfo.range = drawContext.m_meshes.m_clusters.m_clusterCount * sizeof(BlitzenEngine::Cluster);
+                WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterBufferPushID + frame * Ce_ClusterCullDescriptorCount], 
+                    &descriptorContext.m_clusterBufferDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_ClusterBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
+
+                descriptorContext.m_clusterGroupDescInfo.buffer = rw.m_clusterGroupDataBuffer.m_buffer.m_handle;
+                descriptorContext.m_clusterGroupDescInfo.offset = 0;
+                descriptorContext.m_clusterGroupDescInfo.range = Ce_ClusterGroupBufferSize * sizeof(ClusterGroupData);
+                WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterGroupBufferPushID + frame * Ce_ClusterCullDescriptorCount],
+                    &descriptorContext.m_clusterGroupDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_ClusterGroupDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
+
+                descriptorContext.m_clusterGroupCounterDescInfo.buffer = rw.m_clusterDispatchCounterBuffer.m_buffer.m_handle;
+                descriptorContext.m_clusterGroupCounterDescInfo.offset = 0;
+                descriptorContext.m_clusterGroupCounterDescInfo.range = sizeof(uint32_t);
+                WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterCounterBufferPushID + frame * Ce_ClusterCullDescriptorCount],
+                    &descriptorContext.m_clusterGroupCounterDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_ClusterCounterDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
+            }
+        }
     }
 
     uint8_t AllocateTextureDescriptorSet(VkDevice device, ROResources& readOnlies, DescriptorContext& descriptorContext)
