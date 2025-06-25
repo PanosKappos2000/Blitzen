@@ -70,6 +70,7 @@ namespace BlitzenVulkan
         Queue m_transferQueue;
 
         CommandContext m_commandsContext[ce_framesInFlight];
+        VkSemaphore m_secondWaitSemaphore{ VK_NULL_HANDLE };
 
         VkDebugUtilsMessengerEXT m_debugMessenger;
 

@@ -294,10 +294,10 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             DASHER_JOIN
                             DASHER_USE_DEAR
 
-                            #BLIT_VK_FORCE # Forces Vulkan as the renderer backend
+                            BLIT_VK_FORCE # Forces Vulkan as the renderer backend
                             #BLIT_GL_LEGACY_OVERRIDE # Activates opengl (only on windows. It get overriden if VK_FORCE is defined)
 
-                            BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
+                            #BLITZEN_CLUSTER_CULLING # Activates mesh cluster mode
                             #BLITZEN_DRAW_INSTANCED_CULLING # Activates indirect instancing
                             BLITZEN_DRAW_TEMPORAL_OCCLUSION
                             BLIT_VSYNC # VSYNC (DX12 is VSyned by default, the other two depend on this)

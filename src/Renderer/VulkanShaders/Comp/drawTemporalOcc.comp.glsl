@@ -27,7 +27,7 @@ void main()
     
     // Bounding sphere to world coordinates
     vec3 center = (viewData.view * vec4(ssbo_BoundingSphere.data[objectIndex].center, 1)).xyz;
-	float radius = ssbo_BoundingSphere.data[objectIndex].radius * transform.scale;
+	float radius = ssbo_BoundingSphere.data[objectIndex].radius;
 
     // Frustum culling
 	if(!CheckFrustum(center, radius, viewData.frustumRight, viewData.frustumLeft, viewData.frustumTop, viewData.frustumBottom, viewData.zNear, viewData.zFar))
