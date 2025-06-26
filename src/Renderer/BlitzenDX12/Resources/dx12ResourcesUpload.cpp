@@ -603,8 +603,8 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, sizeof(BlitzenEngine::PrimitiveSurface));
 
-			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.buffer.Get(), ctx, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, 
-				sizeof(BlitzenEngine::MeshTransform));
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_transformBuffer.buffer.Get(), nullptr, 
+				BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, sizeof(BlitzenEngine::MeshTransform), 0);
 
 			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, 
 				sizeof(BlitzenEngine::RenderObject));
@@ -630,6 +630,8 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_boundingSpheres.buffer.Get(), ctx,
 				context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, sizeof(BlitzenEngine::BoundingSphere));
+
+			CreateBufferShaderResourceView(device, rwResources.m_movementBuffer.buffer.Get(), ctx, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM));
 		}
 
 		// INSTANCING DESCRIPTORS

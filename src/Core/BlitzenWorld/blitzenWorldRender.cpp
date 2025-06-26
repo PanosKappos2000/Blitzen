@@ -21,7 +21,7 @@ namespace BlitzenWorld
 
 				// 3. Cull static objects
 				BlitzenEngine::CULL_CONTEXT cullContext{};
-				cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::CLUSTER_CULL_DEFAULT;
+				cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::DRAW_CULL_TEMPORAL_OCCLUSION;
 				cullContext.m_workType = BlitzenEngine::RENDER_OBJECT_TYPE::OPAQUE_STATIC;
 				cullContext.m_workCount = RESIDENTS.m_renders.m_opaqueStaticCount;
 				cullContext.m_pResidents = &RESIDENTS;// IS THIS NEEDED?

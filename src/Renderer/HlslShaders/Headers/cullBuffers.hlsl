@@ -73,7 +73,14 @@ struct BoundingSphere
     float3 center;
     float radius;
 };
-StructuredBuffer<BoundingSphere> ssbo_BoundingSpheres : register(t11);
+StructuredBuffer<BoundingSphere> ssbo_BoundingSpheres : register(t1);
+
+struct Movement
+{
+    float3 velocity;
+    float3 rotation;
+};
+StructuredBuffer<Movement> ssbo_Movements : register(t11);
 
 #ifdef DRAW_CULL_OCCLUSION
 

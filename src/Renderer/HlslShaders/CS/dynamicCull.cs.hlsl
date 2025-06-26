@@ -6,13 +6,6 @@
 #include "../Headers/hlslMath.hlsl"
 #include "../Headers/cpuShared.h"
 
-struct Movement
-{
-    float3 velocity;
-    float3 rotation;
-};
-StructuredBuffer<Movement> ssbo_Movements : register(t20);
-
 cbuffer ObjCountConstant : register(b1)
 {
     uint objCount;
@@ -62,6 +55,9 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
             return;
         }
     }
+    
+    ssbo_Transforms[obj.transformId].orientation = orientation;
+    ssbo_Transforms[obj.transformId].position = position;
 
     // If the render object gets past culling, lod selection is done and draw command is added
     uint lodId = LODSelection(center, radius, scale, lodTarget, surface.lodOffset, surface.lodCount);

@@ -156,6 +156,11 @@ namespace BlitzenEngine
 		// EXECUTE
 		cmdContext.m_graphicsCmdList->ResourceBarrier(pRenderer->m_roResources.BUFFER_COUNT, staticBufferBarriers.Data());
 
+		D3D12_RESOURCE_BARRIER movementStagingBarrier{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(movementStagingBarrier, roResources.CPU_MOVING_OBJECT_BUFFER.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &movementStagingBarrier);
+
 		// RW BUFFERS
 		uint32_t rwID{ 0 };
 		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> rwBuffersFinal{ BlitzenDX12::Ce_VarBuffersCount };
@@ -168,7 +173,13 @@ namespace BlitzenEngine
 
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
-			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], rwResources[i].m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], rwResources[i].m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			rwID++;
+		}
+
+		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
+		{
+			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], rwResources[i].m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 			rwID++;
 		}
 

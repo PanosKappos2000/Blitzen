@@ -96,7 +96,7 @@ namespace BlitzenDX12
 		// Ranges for descrtiptor table for SRVs that are allocated in the shared section of the heap
 		D3D12_DESCRIPTOR_RANGE sharedSrvRanges[Ce_SharedSRVsRangeCount]{};
 		CreateDescriptorRange(sharedSrvRanges[Ce_SurfaceSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_SurfaceSRVRegister);
-		CreateDescriptorRange(sharedSrvRanges[Ce_TransformSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_TransformSRVRegister);
+		CreateDescriptorRange(sharedSrvRanges[Ce_TransformUAVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_TransformUAVRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_RenderSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_RenderSRVRegister);
 		CreateDescriptorRange(sharedSrvRanges[Ce_ViewCBVRootID], D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, Ce_ViewCBVRegister);
 
@@ -125,7 +125,7 @@ namespace BlitzenDX12
 		if (!CreateRootSignature(device, context.m_opaqueDrawRoot.ReleaseAndGetAddressOf(), Ce_OpaqueDrawRootParameterCount, opaqueDrawRootParams, 
 			D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
 		{
-			BLIT_ERROR("Failed to create opaque root signature");
+			BLIT_ERROR("%s: Failed to create opaque root signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
@@ -135,6 +135,7 @@ namespace BlitzenDX12
 		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullDrawCmdCountUAVRegister], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, Ce_DrawCullDrawCmdCountUAVRegister);
 		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullLODSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawCullLODSRVRegister);
 		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullBoundingRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawCullBoundingSRVRegister);
+		CreateDescriptorRange(drawCullSrvRanges[Ce_DrawCullMovementSRVRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, Ce_DrawCullMovementSRVRegister);
 
 		// ROOT PARAMS
 		D3D12_ROOT_PARAMETER drawCullRootParameters[Ce_DrawCullRootParameterCount]{};
@@ -156,9 +157,15 @@ namespace BlitzenDX12
 		// DRAW COUNT RESET ROOT
 		if (!CreateRootSignature(device, context.m_drawCountResetRoot.ReleaseAndGetAddressOf(), 1, &resetShaderRootParameter))
 		{
-			BLIT_ERROR("Failed to create draw count reset shader push constant");
+			BLIT_ERROR("%s: Failed to create draw count reset shader push constant");
 			return 0;
 		}
+
+		D3D12_ROOT_PARAMETER dynamicCullRootParameters[Ce_DrawCullRootParameterCount]{};
+		CreateRootParameterDescriptorTable(dynamicCullRootParameters[Ce_DrawCullExclusiveSRVsRootID], drawCullSrvRanges, Ce_DrawCullSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterDescriptorTable(dynamicCullRootParameters[Ce_DrawCullSharedSRVsRootID], sharedSrvRanges, Ce_SharedSRVsRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterPushConstants(dynamicCullRootParameters[Ce_DrawCullDrawCountConstantRootID], Ce_DrawCullDrawCountContantRegister, 0, Ce_DrawCullDrawCountContant32BitCount,
+			D3D12_SHADER_VISIBILITY_ALL);
 
 		// DRAW INST ADDITIONAL
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
@@ -398,6 +405,12 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if (!CreateComputeShaderProgram(device, context.m_drawOccLateRoot.Get(), context.m_dynamicCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/dynamicCull.cs.hlsl.bin"))
+		{
+			BLIT_ERROR("%s: Failed to create dynamicCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
 		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
 		{
 			if (!CreateComputeShaderProgram(device, context.m_HI_Z_MapRoot.Get(), context.m_HI_Z_MapPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/hi_z_map.cs.hlsl.bin"))
@@ -517,9 +530,15 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateSSBO<BlitzenEngine::MeshTransform>(device, rwResources.m_transformBuffer, BLIT_MAX_WORLD_TRANSFORM_COUNT))
+			if (!CreateSSBO<BlitzenEngine::MeshTransform>(device, rwResources.m_transformBuffer, BLIT_MAX_WORLD_TRANSFORM_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
 				BLIT_ERROR("%s: Failed to create transform buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (!CreateSSBO<BlitzenEngine::CPU_TRANSFORM>(device, rwResources.m_movementBuffer, BlitzenCore::Ce_MaxWorldMovingResidentCount))
+			{
+				BLIT_ERROR("%s: Failed to create movement buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 

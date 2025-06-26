@@ -67,8 +67,8 @@ namespace BlitzenDX12
     constexpr UINT Ce_SurfaceSRVRegister = 2;
     constexpr UINT Ce_SurfaceSRVRangeID = 0;
      
-    constexpr UINT Ce_TransformSRVRegister = 1;
-    constexpr UINT Ce_TransformSRVRangeID = 1;
+    constexpr UINT Ce_TransformUAVRegister = 2;
+    constexpr UINT Ce_TransformUAVRangeID = 1;
 
     constexpr UINT Ce_RenderSRVRegister = 0;
     constexpr UINT Ce_RenderSRVRangeID = 2;
@@ -78,7 +78,7 @@ namespace BlitzenDX12
 
 
     // DESCRIPTORS FOR DRAW CULL :
-    constexpr UINT Ce_DrawCullSRVsRangeCount = 4;
+    constexpr UINT Ce_DrawCullSRVsRangeCount = 5;
 
     constexpr UINT Ce_DrawCullDrawCmdUAVRegister = 0;
     constexpr UINT Ce_DrawCullDrawCmdUAVRangeID = 0;
@@ -89,8 +89,11 @@ namespace BlitzenDX12
     constexpr UINT Ce_DrawCullLODSRVRegister = 7;
     constexpr UINT Ce_DrawCullLODSRVRangeID = 2;
 
-    constexpr UINT Ce_DrawCullBoundingSRVRegister = 11;
+    constexpr UINT Ce_DrawCullBoundingSRVRegister = 1;
     constexpr UINT Ce_DrawCullBoundingRangeID = 3;
+
+    constexpr UINT Ce_DrawCullMovementSRVRegister = 11;
+    constexpr UINT Ce_DrawCullMovementSRVRangeID = 4;
 
     constexpr UINT Ce_DrawCullDrawCountContantRegister = 1;
 	constexpr UINT Ce_DrawCullDrawCountContant32BitCount = 1;

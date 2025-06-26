@@ -163,6 +163,9 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12RootSignature> m_drawCullRoot;
         DX12WRAPPER<ID3D12PipelineState> m_drawCullPso;
 
+        DX12WRAPPER<ID3D12RootSignature> m_dynamicCullRoot;
+        DX12WRAPPER<ID3D12PipelineState> m_dynamicCullPso;
+
         // Small compute shader for instance count rwssbo reset
         // Uses draw cull inst root
 		DX12WRAPPER<ID3D12PipelineState> m_drawInstCountResetPso;

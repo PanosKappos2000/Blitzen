@@ -11,4 +11,4 @@ struct InstanceDrawCmd
     uint padding1;
     uint padding2;
 };
-RWStructuredBuffer<InstanceDrawCmd> rwssbo_InstDrawCmd : register(u2);
+RWStructuredBuffer<InstanceDrawCmd> rwssbo_InstDrawCmd : register(u3);
