@@ -65,7 +65,7 @@ namespace BlitzenEngine
         BlitzenVulkan::BeginCommandBuffer(cmd.m_mainGraphicsCmdB, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     }
 
-    void UpdateRendererTransforms(BlitzenVulkan::VulkanRenderer* pRenderer)
+    void UpdateRendererTransforms(BlitzenVulkan::VulkanRenderer* pRenderer, BlitzenEngine::CPU_TRANSFORM* pTransforms, uint32_t transformCount)
     {
         auto& cmdContext{ pRenderer->m_commandsContext[pRenderer->m_currentFrame] };
         auto& buffers{ pRenderer->m_readWrites[pRenderer->m_currentFrame] };

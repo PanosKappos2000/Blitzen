@@ -27,6 +27,16 @@ namespace BlitzenEngine
         return &P_MESH_RESOURCES->m_meshPrimitives.m_boundingSpheres[pMesh->firstSurface];
     }
 
+    Mesh& RequestMeshResources_STATIC_ACCESS(const char* meshName)
+    {
+		return P_MESH_RESOURCES->m_meshMap[meshName];
+    }
+
+    BlitzenCore::FAT_BOOL GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(uint32_t surfaceID)
+    {
+        return P_MESH_RESOURCES->m_meshPrimitives.m_meshPrimitiveData[surfaceID].m_primitiveTransparencyFlags;
+    }
+
     uint32_t MeshResources::AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName /*="BLIT_DO_NOT_ADD_TO_MESH_TABLE"*/)
     {
         if (m_meshCount >= BlitzenCore::Ce_MaxMeshCount)

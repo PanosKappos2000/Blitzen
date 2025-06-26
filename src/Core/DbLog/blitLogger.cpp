@@ -77,9 +77,12 @@ namespace BlitzenCore
                 Unfreed Entity memory: %i \n \
                 Unfreed Entity node memory: %i \n \
                 Unfreed Scene memory: %i \n \
-                Unfreed SmartPtr memory: %i \n",
+                Unfreed SmartPtr memory: %i \n, \
+                Unfreed Linear Allocator memory: %i \n \
+                Unfreed World Variable memory: %i \n \
+                Unfreed Triangle Memory: %i \n", 
                 totalAllocated, typeAllocations[0], typeAllocations[1], typeAllocations[2], typeAllocations[3], typeAllocations[4], typeAllocations[5], typeAllocations[6], typeAllocations[7], 
-                typeAllocations[8], typeAllocations[9], typeAllocations[10]);
+                typeAllocations[8], typeAllocations[9], typeAllocations[10], typeAllocations[11], typeAllocations[12], typeAllocations[13]);
             #else
             printf("There is still unfreed memory--\n \
                 Total: %i \n \

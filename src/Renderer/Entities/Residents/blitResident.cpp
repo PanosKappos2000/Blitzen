@@ -23,7 +23,15 @@ namespace BlitzenEngine
 		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
 		{
 			RENDER_OBJECT_CREATE_CONTEXT renderContext{};
-			renderContext.m_type = ctx.m_renderTypes[prim];
+			if (ctx.m_isMoveable)
+			{
+				renderContext.m_type = RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
+			}
+			else
+			{
+				renderContext.m_type = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_pResource->firstSurface + prim) == BlitzenCore::FAT_FALSE ? 
+					RENDER_OBJECT_TYPE::OPAQUE_STATIC : RENDER_OBJECT_TYPE::TRANSPARENT_STATIC;
+			}
 			renderContext.m_primitiveID = prim + ctx.m_pResource->firstSurface;
 			renderContext.m_transformID = transformID;
 
@@ -62,10 +70,30 @@ namespace BlitzenEngine
 		return res;
 	}
 
+	MovingResident* RequestMovementComponent()
+	{
+		auto& transforms{ pWorldResidents_STATIC_ACCESS->m_transforms };
+		BLIT_ASSERT(transforms.m_moveableCount < BlitzenCore::Ce_MaxWorldMovingResidentCount);
+
+		CPU_TRANSFORM* pTransform = pWorldResidents_STATIC_ACCESS->m_transforms.SwitchLastToDynamic();
+
+		return &pWorldResidents_STATIC_ACCESS->m_movingResidents[transforms.m_moveableCount];
+	}
+
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
 	{
 		BLIT_ASSERT(pWorldResidents_STATIC_ACCESS == nullptr);
 
 		pWorldResidents_STATIC_ACCESS = ptr;
+	}
+
+	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(uint32_t residentID)
+	{
+		return pWorldResidents_STATIC_ACCESS->m_transforms.m_moveables[pWorldResidents_STATIC_ACCESS->m_residents[residentID].m_pRender->transformId];
+	}
+
+	RESIDENT_CREATE_RES AddResident_STATIC_ACCESS(const RESIDENT_CREATE_CONTEXT& ctx)
+	{
+		return pWorldResidents_STATIC_ACCESS->AddResident(ctx);
 	}
 }

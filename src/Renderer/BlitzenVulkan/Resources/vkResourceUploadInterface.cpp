@@ -28,9 +28,4 @@ namespace BlitzenEngine
 
         return 1;
 	}
-
-    void* GetMovingObjectsBufferMappedPointer(BlitzenVulkan::VulkanRenderer* pRenderer)
-    {
-        return pRenderer->m_readOnlies.CPU_MOVING_RESIDENTS_MAPPED.m_pMapped;
-    }
 }

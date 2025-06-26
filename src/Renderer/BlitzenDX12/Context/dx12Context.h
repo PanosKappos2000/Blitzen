@@ -38,9 +38,9 @@ namespace BlitzenDX12
 
     struct ReadWriteResources
     {
-        CPU_WRITE_SSBO<BlitzenEngine::MeshTransform> m_transformBuffer;
+        SSBO m_transformBuffer;
 
-        CPU_WRITE_SSBO<BlitzenEngine::MeshTransform> m_transformUpdates;
+        SSBO m_movementBuffer;
 
         SSBO m_drawCmdBuffer;
 

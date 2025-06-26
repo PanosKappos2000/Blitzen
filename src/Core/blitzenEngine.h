@@ -80,6 +80,7 @@ namespace BlitzenCore
     constexpr const char* CE_RENDERER_SYSTEM_NAME = "blit_renderer";
     constexpr const char* CE_DASHER_EDITOR_SYSTEM_NAME = "dasher_editor";
     constexpr const char* CE_DEAR_DASHER_EDITOR_SYSTEM_NAME = "dearDasher_editor";
+	constexpr const char* CE_BLITZEN_LOADING_LOOP_NAME = "BLITZEN_LOADING_LOOP";
 
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
@@ -315,6 +316,12 @@ namespace BlitzenCore
         ~Engine();
     };
 }
+
+#define BLIT_FAT_FALSE BlitzenCore::FAT_FALSE;
+#define BLIT_FAT_TRUE BlitzenCore::FAT_TRUE;
+
+#define BLIT_BB_TRUE BlitzenCore::BB_TRUE;
+#define BLIT_BB_FALSE BlitzenCore::BB_FALSE;
 
 /********************************************************************************************************************************************************
 * SECTION: CONTAINER LIBRARY CONSTANTS                                                                                                                  *

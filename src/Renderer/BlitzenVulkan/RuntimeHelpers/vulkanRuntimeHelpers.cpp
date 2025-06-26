@@ -6,12 +6,6 @@
 
 namespace BlitzenVulkan
 {
-    void VulkanRenderer::UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform)
-    {
-        auto pData = m_readWrites[m_currentFrame].m_transformBuffer.m_staging.m_pMapped;
-        BlitzenCore::BlitMemCopy(pData + transformId, pTransform, sizeof(BlitzenEngine::MeshTransform));
-    }
-
     void VulkanRenderer::CopyTargetToSwapchain(VkCommandBuffer cmdb)
     {
         auto& readWrites{ m_readWrites[m_currentFrame] };

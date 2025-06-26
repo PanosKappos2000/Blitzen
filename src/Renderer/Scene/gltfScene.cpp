@@ -371,13 +371,7 @@ namespace BlitzenEngine
                 nodeContext.m_transformInfo.m_pTransform = &transform;
 
                 uint32_t surfaceOffset{ meshContext.m_meshes[meshIdx].firstSurface };
-                BlitCL::DynamicArray<RENDER_OBJECT_TYPE> renderTypes{ meshContext.m_meshes[meshIdx].surfaceCount };
-                nodeContext.m_renderTypes = renderTypes.Data();
-                for (uint32_t prim = 0; prim < meshContext.m_meshes[meshIdx].surfaceCount; ++prim)
-                {
-                    renderTypes[prim] = meshContext.m_meshPrimitives.m_meshPrimitiveData[prim + surfaceOffset].m_primitiveTransparencyFlags ?
-                        RENDER_OBJECT_TYPE::TRANSPARENT_STATIC : RENDER_OBJECT_TYPE::OPAQUE_STATIC;
-                }
+                nodeContext.m_isMoveable = BLIT_FAT_FALSE;
 
                 auto res{ pResidents->AddResident(nodeContext) };
 

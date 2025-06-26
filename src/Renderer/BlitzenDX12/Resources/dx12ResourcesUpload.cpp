@@ -208,20 +208,13 @@ namespace BlitzenDX12
 	uint8_t UploadResourcesToBuffers(ID3D12Device* device, const BlitzenEngine::DrawContext& drawContext, ReadOnlyResources& roResources, ReadWriteResources* rwResourcesArr, 
 		CmdContext& cmdContext, ID3D12CommandQueue* commandQueue)
 	{
-		CPU_DATA_SSBO_SIZE_INFO transformBufferSizeInfo{};
-		transformBufferSizeInfo.m_fullSSBOSize = BLIT_MAX_WORLD_TRANSFORM_COUNT;
-		transformBufferSizeInfo.m_staticDataSize = drawContext.m_pResidents->m_transforms.m_staticTransformCount;
-		transformBufferSizeInfo.m_staticDataOffset = BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET;
-		transformBufferSizeInfo.m_dynamicDataSize = drawContext.m_pResidents->m_transforms.m_dynamicTransformCount;
-		transformBufferSizeInfo.m_dynamicDataOffset = BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET;
-
 		for (UINT frame = 0; frame < ce_framesInFlight; ++frame)
 		{
 			auto& rwResources{ rwResourcesArr[frame] };
 
-			STAGING<BlitzenEngine::MeshTransform> staticTransformStaging;
-			if (!CreateCPU_WRITE_SSBO_Stagings(device, staticTransformStaging, rwResources.m_transformBuffer.m_dynamicDataStaging, drawContext.m_pResidents->m_transforms.m_transforms,
-				transformBufferSizeInfo))
+			STAGING<BlitzenEngine::MeshTransform> transformStaging;
+			if (!CreateStaging(device, transformStaging, drawContext.m_pResidents->m_transforms.m_staticTransformCount + BlitzenCore::Ce_MaxWorldMovingResidentCount, 
+				drawContext.m_pResidents->m_transforms.m_transforms))
 			{
 				BLIT_ERROR("%s: Failed to create transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
@@ -267,7 +260,7 @@ namespace BlitzenDX12
 			// DEST BARRIERS
 			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copyDestBarriers{ Ce_VarSSBODataCount };
 
-			CreateResourcesTransitionBarrier(copyDestBarriers[0], rwResources.m_transformBuffer.m_ssbo.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			CreateResourcesTransitionBarrier(copyDestBarriers[0], rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 			// DRAW OCC MODE VIS BUFFER (normally not needed for temporal occlusion)
 			if constexpr (BlitzenCore::Ce_OcclusionCulling)
@@ -298,7 +291,7 @@ namespace BlitzenDX12
 			// SRC BARRIERS
 			BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copySourceBarriers{ Ce_VarSSBODataCount };
 
-			CreateResourcesTransitionBarrier(copySourceBarriers[0], staticTransformStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 			if constexpr (BlitzenCore::Ce_OcclusionCulling)
 			{
@@ -337,17 +330,7 @@ namespace BlitzenDX12
 				cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_clusterDispatchBuffer.buffer.Get(), 0, clusterDispatchStaging.m_buffer.Get(), 0, clusterDispatchStaging.m_dataSize);
 			}
 
-			// Puts persistent transform staging in copy source state forever
-			D3D12_RESOURCE_BARRIER dynamicTransformBarrier{};
-			CreateResourcesTransitionBarrier(dynamicTransformBarrier, rwResources.m_transformBuffer.m_dynamicDataStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			// execute
-			cmdContext.m_copyCmdList->ResourceBarrier(1, &dynamicTransformBarrier);
-
-			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.m_ssbo.buffer.Get(), BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform), 
-				rwResources.m_transformBuffer.m_dynamicDataStaging.m_buffer.Get(), 0, rwResources.m_transformBuffer.m_dynamicDataStaging.m_dataSize);
-
-			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.m_ssbo.buffer.Get(), BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform),
-				staticTransformStaging.m_buffer.Get(), 0, staticTransformStaging.m_dataSize);
+			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), 0, transformStaging.m_buffer.Get(), 0, transformStaging.m_dataSize);
 
 			cmdContext.m_copyCmdList->Close();
 			ID3D12CommandList* commandLists[] = { cmdContext.m_copyCmdList.Get() };
@@ -620,7 +603,7 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, sizeof(BlitzenEngine::PrimitiveSurface));
 
-			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), ctx, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, 
+			CreateBufferShaderResourceView(device, rwResources.m_transformBuffer.buffer.Get(), ctx, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, 
 				sizeof(BlitzenEngine::MeshTransform));
 
 			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, 

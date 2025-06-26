@@ -2,6 +2,7 @@
 #include "Core/Dasher/Interface/dasherInterface.h"
 #include "Renderer/WORLD/blitzenWorld.h"
 #include "Renderer/Entities/Interface/blitComponents.h"
+#include "WorldVariables/wvData.h"
 
 namespace BlitzenWorld
 {

@@ -41,7 +41,7 @@ namespace BlitzenEngine
 		cmd.m_graphicsCmdList->Reset(cmd.m_graphicsCmdAlloc.Get(), nullptr);
 	}
 
-	void UpdateRendererTransforms(BlitzenDX12::Dx12Renderer* pRenderer)
+	void UpdateRendererTransforms(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenEngine::CPU_TRANSFORM* pTransforms, uint32_t transformCount)
 	{
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
 		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
@@ -168,8 +168,7 @@ namespace BlitzenEngine
 
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
-			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], rwResources[i].m_transformBuffer.m_ssbo.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], rwResources[i].m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			rwID++;
 		}
 

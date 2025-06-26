@@ -34,10 +34,6 @@ namespace BlitzenVulkan
 
         void DrawWhileWaiting(float deltaTime);
 
-        void UpdateObjectTransform(uint32_t transformId, BlitzenEngine::MeshTransform* pTransform);
-
-        void DrawFrame(BlitzenEngine::DrawContext& context);
-
         void CopyTargetToSwapchain(VkCommandBuffer commandBuffer);
 
         void LendRenderingInfos(VkRenderingAttachmentInfo** ppColorInfo, VkImage* pColorTarget);

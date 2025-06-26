@@ -105,7 +105,7 @@ namespace BlitzenVulkan
             }
 
             BUFFER_STAGING_CONTEXT<BlitzenEngine::MeshTransform> transformStagingContext{};
-            transformStagingContext.elementCount = drawContext.m_pResidents->m_transforms.m_staticTransformCount;
+            transformStagingContext.elementCount = BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + drawContext.m_pResidents->m_transforms.m_staticTransformCount;
             transformStagingContext.pData = &drawContext.m_pResidents->m_transforms.m_transforms[BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET];
             if (!CreateStaging(vma, device, transformStagingContext))
             {
@@ -113,40 +113,11 @@ namespace BlitzenVulkan
                 return 0;
             }
 
-            // PERSISTENT STAGING BUFFER FOR TRANSFORM DATA
-            if (drawContext.m_pResidents->m_transforms.m_dynamicTransformCount == 0)
-            {
-                BLIT_WARN("%s: No dynamic data found, passing 1 to dynamic transform count for placeholder data", BLIT_VK_SYSTEM);
-                drawContext.m_pResidents->m_transforms.m_dynamicTransformCount = 1;
-            }
-
-            readWrites.m_transformBuffer.m_staging.m_dataSize = drawContext.m_pResidents->m_transforms.m_dynamicTransformCount * sizeof(BlitzenEngine::MeshTransform);
-
-            if (!CreateBuffer(vma, readWrites.m_transformBuffer.m_staging.m_buffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, 
-                readWrites.m_transformBuffer.m_staging.m_dataSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
-            {
-                BLIT_ERROR("%s: Failed to create dynamic transform staging buffer resource", BLIT_VK_SYSTEM);
-                return 0;
-            }
-
-            readWrites.m_transformBuffer.m_staging.m_pMapped = reinterpret_cast<BlitzenEngine::MeshTransform*>(readWrites.m_transformBuffer.m_staging.m_buffer.m_vmaInfo.pMappedData);
-            if (!readWrites.m_transformBuffer.m_staging.m_pMapped)
-            {
-                BLIT_ERROR("%s: Failed to map pointer to dynamic transform staging buffer", BLIT_VK_SYSTEM);
-                return 0;
-            }
-
-            BlitzenCore::BlitMemCopy(readWrites.m_transformBuffer.m_staging.m_pMapped, &drawContext.m_pResidents->m_transforms.m_transforms[BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET], 
-                readWrites.m_transformBuffer.m_staging.m_dataSize);
-
             // Records command to copy staging buffer data to GPU buffers
             BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
             CopyBufferToBuffer(commandBuffer, transformStagingContext.staging.m_buffer.m_handle, readWrites.m_transformBuffer.m_buffer.m_buffer.m_handle,
-                transformStagingContext.staging.m_dataSize, 0, BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform));
-
-            CopyBufferToBuffer(commandBuffer, readWrites.m_transformBuffer.m_staging.m_buffer.m_handle, readWrites.m_transformBuffer.m_buffer.m_buffer.m_handle,
-                readWrites.m_transformBuffer.m_staging.m_dataSize, 0, BlitzenEngine::CE_DYNAMIC_TRANSFORM_OFFSET * sizeof(BlitzenEngine::MeshTransform));
+                transformStagingContext.staging.m_dataSize, 0, 0);
 
             vkCmdFillBuffer(commandBuffer, readWrites.m_drawVisBuffer.m_buffer.m_handle, 0, drawContext.m_pResidents->m_renders.RENDER_COUNT * sizeof(uint32_t), 0);
 

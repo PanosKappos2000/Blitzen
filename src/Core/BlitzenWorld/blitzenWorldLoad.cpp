@@ -14,11 +14,17 @@ namespace BlitzenWorld
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->m_residents);
         BlitzenEngine::InitializeWorldVariableContextPtr_STATIC_ACCESS(&context.pWORLD->m_worldVariables);
         BlitzenEngine::InitializeComponentSystemPointer_STATIC_ACCESS(context.pComponents);
-
-        context.pWORLD->m_residents.m_moveablesArr = reinterpret_cast<BlitzenEngine::CPU_TRANSFORM*>(BlitzenEngine::GetMovingObjectsBufferMappedPointer(context.pWORLD->P_RENDERER.Data()));
         
-        context.pWORLD->m_worldVariables.AddClientWorldVariableDescriptions();
-        BlitzenEngine::AllocateWorldVariables_STATIC_ACCESS(BlitzenCore::Ce_MaxWorldVariableCount);
+#if defined(MOVING_RESIDENT_TEST)
+        BlitzenEngine::WV_CONTEXT wvContext{};
+        wvContext.m_wvTypeCount = 1;
+        BlitzenEngine::WVDESC wvDescs[1]{};
+        wvDescs[0].m_instanceCount = 5'000;
+		wvDescs[0].m_maxInstances = 5'000;
+        wvDescs[0].m_typeSize = sizeof(BlitzenEngine::WVRotatingKitten);
+        wvDescs[0].m_wv_type.id = 0;
+        context.pWORLD->m_worldVariables.AddClientWorldVariableDescriptions(wvContext, wvDescs, 1);
+#endif
 
         while (true)
         {
@@ -41,7 +47,7 @@ namespace BlitzenWorld
             BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)stressTestSceneRes));
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)stressTestSceneRes))
             {
-                BLIT_ERROR("Failed to load renderer stress test scene. The engine will continue but there will be unexpected behaviour.");
+                BLIT_ERROR("%s: Failed to load renderer stress test scene. The engine will continue but there will be unexpected behaviour.", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME);
             }
 #endif
 
@@ -54,13 +60,12 @@ namespace BlitzenWorld
             movingResidentSceneCtx.pResidents = &context.pWORLD->m_residents;
             movingResidentSceneCtx.pResources = context.pRenderingResources;
 
-            context.pWORLD->m_scenes.EmplaceEmtpy();
-            auto movingResidentsSceneRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes.Back(), movingResidentSceneCtx) };
+            auto movingResidentsSceneRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], movingResidentSceneCtx)};
 
-            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL(movingResidentsSceneRes));
-            if (BlitzenCore::BLIT_CHECK_FAIL(movingResidentsSceneRes))
+            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)movingResidentsSceneRes));
+            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)movingResidentsSceneRes))
             {
-                BLIT_ERROR("Failed to load moving residents test scene. The engine will continue but there will be unexpected behaviour");
+                BLIT_ERROR("%s: Failed to load moving residents test scene. The engine will continue but there will be unexpected behaviour", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME);
             }
                 
 #endif

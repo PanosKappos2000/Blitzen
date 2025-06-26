@@ -517,7 +517,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateSSBO<BlitzenEngine::MeshTransform>(device, rwResources.m_transformBuffer.m_ssbo, BLIT_MAX_WORLD_TRANSFORM_COUNT))
+			if (!CreateSSBO<BlitzenEngine::MeshTransform>(device, rwResources.m_transformBuffer, BLIT_MAX_WORLD_TRANSFORM_COUNT))
 			{
 				BLIT_ERROR("%s: Failed to create transform buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;

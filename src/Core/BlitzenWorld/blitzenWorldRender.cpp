@@ -5,6 +5,7 @@ namespace BlitzenWorld
 	void RenderLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 			BlitzenEngine::RendererPtrType pRenderer = context.pWORLD->P_RENDERER.Data();
+			BlitzenEngine::WORLD_RESIDENTS& RESIDENTS = context.pWORLD->m_residents;
 			auto& camera = context.pWORLD->pCameraContainer->GetMainCamera();
 
 			switch (context.BLITZEN_ENGINE.m_state)
@@ -22,12 +23,12 @@ namespace BlitzenWorld
 				BlitzenEngine::CULL_CONTEXT cullContext{};
 				cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::CLUSTER_CULL_DEFAULT;
 				cullContext.m_workType = BlitzenEngine::RENDER_OBJECT_TYPE::OPAQUE_STATIC;
-				cullContext.m_workCount = context.pWORLD->m_residents.m_renders.m_opaqueStaticCount;
-				cullContext.m_pResidents = &context.pWORLD->m_residents;// IS THIS NEEDED?
+				cullContext.m_workCount = RESIDENTS.m_renders.m_opaqueStaticCount;
+				cullContext.m_pResidents = &RESIDENTS;// IS THIS NEEDED?
 				BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 
 				// 4. Wait for game logic and update transforms
-				BlitzenEngine::UpdateRendererTransforms(pRenderer);
+				BlitzenEngine::UpdateRendererTransforms(pRenderer, RESIDENTS.m_transforms.m_moveables, RESIDENTS.m_transforms.m_moveableCount);
 
 				// 5. Cull Moving objects
 

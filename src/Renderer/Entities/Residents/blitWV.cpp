@@ -25,13 +25,13 @@ namespace BlitzenEngine
 		}
 	}
 
-	void WorldVariableTick(WVKEY key, const WVHOST& host)
+	void WorldVariableTick(WVKEY key, const WVHOST& host, float deltaTime)
 	{
 		switch (key.wv_type.id)
 		{
 		case 0:
 		{
-			reinterpret_cast<WVRotatingKitten*>(GetWorldVariable(key, &host))->Tick();
+			reinterpret_cast<WVRotatingKitten*>(GetWorldVariable(key, &host))->Tick(deltaTime);
 			break;
 		}
 		}
@@ -49,38 +49,6 @@ namespace BlitzenEngine
 		}
 	}
 
-	void AllocateWorldVariables_STATIC_ACCESS(uint32_t poolSize)
-	{
-		uint32_t biggestWV{ 0 };
-		for (uint32_t dsc = 0; dsc < WVTYPES; ++dsc)
-		{
-			biggestWV = wv_pHost_STATIC_ACCESS->m_descs[dsc].m_typeSize > biggestWV ? wv_pHost_STATIC_ACCESS->m_descs[dsc].m_typeSize : biggestWV;
-		}
-
-		if (biggestWV == 0)
-		{
-			biggestWV = 1;
-		}
-
-		wv_pHost_STATIC_ACCESS->m_pPool = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::WV, poolSize * biggestWV);
-		wv_pHost_STATIC_ACCESS->m_poolSize = poolSize * biggestWV;
-	}
-
-	void AddClientWorldVariableDescriptions()
-	{
-		
-	}
-
-	void AddWorldVariable_STATIC_ACCESS(WVKEY* pwv)
-	{
-		pwv->wv_inst.inst = wv_pHost_STATIC_ACCESS->m_descs[pwv->wv_type.id].NEW();
-	}
-
-	WVHANDLE GetWorldVariable_STATIC_ACCESS(WVKEY key)
-	{
-		return GetWorldVariable(key, wv_pHost_STATIC_ACCESS);
-	}
-
 	void WVDESC::OFFSET(uint32_t maxInstances, uint32_t size, WVTYPE typeID)
 	{
 		m_maxInstances = maxInstances;
@@ -95,19 +63,46 @@ namespace BlitzenEngine
 		if (m_instanceCount >= m_maxInstances)
 		{
 			BLIT_ERROR("Exceeded maximum instance count for world variable with flag: %u", m_wv_type.id);
-			BLIT_ASSERT(true);
+			BLIT_ASSERT(false);
 		}
 
 		return m_instanceCount++;
 	}
 
-	void WVHOST::AddClientWorldVariableDescriptions()
+	void WVHOST::AddClientWorldVariableDescriptions(const WV_CONTEXT& wvContext, WVDESC* wvDescriptions, uint32_t uniqueWvCount)
 	{
-		m_descs[0].m_instanceCount = 0;
-		m_descs[0].m_maxInstances = 5'000;
-		m_descs[0].m_offset = 0;
-		m_descs[0].m_wv_type.id = 0;
-		m_descs[0].m_typeSize = sizeof(WVRotatingKitten);
+		if (wvContext.m_wvTypeCount > CE_MAX_WORLD_WV_UNIQUE_TYPES)
+		{
+			BLIT_ERROR("%s: Exceeded maximum world variable unique types (%u > %u)", BlitzenCore::CE_WORLD_VARIABLE_SYSTEM_NAME, wvContext.m_wvTypeCount, CE_MAX_WORLD_WV_UNIQUE_TYPES);
+			BLIT_ASSERT(false);
+		}
+
+		uint32_t biggestWV = 0;
+		for (uint32_t desc = 0; desc < uniqueWvCount; ++desc)
+		{
+			auto& write{ m_descs[desc] };
+			auto& read{ wvDescriptions[desc] };
+
+			if (read.m_wv_type.id != desc)
+			{
+				BLIT_ERROR("%s: World Variable with type ID: %u, violated rule: ", BlitzenCore::CE_WORLD_VARIABLE_SYSTEM_NAME, read.m_wv_type.id);
+				BLIT_INFO("%s: World Variable descriptions must be written in ascending order", BlitzenCore::CE_WORLD_VARIABLE_SYSTEM_NAME);
+				BLIT_ASSERT(false);
+			}
+
+			write.m_instanceCount = read.m_instanceCount;
+			write.m_maxInstances = read.m_maxInstances;
+			write.m_wv_type.id = desc;
+			write.m_typeSize = read.m_typeSize;
+			write.m_offset = m_currentPoolOffset;
+
+			m_currentPoolOffset += read.m_typeSize * read.m_maxInstances;
+
+			biggestWV = read.m_typeSize > biggestWV ? read.m_typeSize : biggestWV;
+		}
+
+		m_poolSize = biggestWV * m_currentPoolOffset;
+		wv_pHost_STATIC_ACCESS->m_pPool = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::WV, m_poolSize);
 	}
 
 	WVHOST::~WVHOST()
@@ -123,5 +118,15 @@ namespace BlitzenEngine
 		BLIT_ASSERT_MESSAGE(wv_pHost_STATIC_ACCESS == nullptr, "Tried to reinitialize world variable context pointer");
 
 		wv_pHost_STATIC_ACCESS = ptr;
+	}
+
+	void AddWorldVariable_STATIC_ACCESS(WVKEY* pwv)
+	{
+		pwv->wv_inst.inst = wv_pHost_STATIC_ACCESS->m_descs[pwv->wv_type.id].NEW();
+	}
+
+	WVHANDLE GetWorldVariable_STATIC_ACCESS(WVKEY key)
+	{
+		return GetWorldVariable(key, wv_pHost_STATIC_ACCESS);
 	}
 }

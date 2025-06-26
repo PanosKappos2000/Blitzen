@@ -42,7 +42,7 @@ namespace BlitzenEngine
 		RESIDENT_CREATE_CONTEXT_FLAGS m_flags{ RESIDENT_CREATE_BASIC };
 		Mesh* m_pResource{ nullptr };
 		TRANSFORM_CREATE_CONTEXT m_transformInfo{};
-		RENDER_OBJECT_TYPE* m_renderTypes{nullptr};
+		BlitzenCore::FAT_BOOL m_isMoveable{ BlitzenCore::FAT_FALSE };
 	};
 
 	class WORLD_RESIDENTS
@@ -52,8 +52,7 @@ namespace BlitzenEngine
 		uint32_t m_worldVariableCount{ 0 };
 		Resident m_residents[BlitzenCore::Ce_MaxWorldResidentCount];
 		uint32_t m_residentCount{ 0 };
-		CPU_TRANSFORM* m_moveablesArr{nullptr};
-		uint32_t m_moveableCount{ 0 };
+		MovingResident m_movingResidents[BlitzenCore::Ce_MaxWorldMovingResidentCount];
 		RenderContainer m_renders;
 		WorldTransformContainer m_transforms;
 		ColliderContainer m_colliders;
@@ -62,4 +61,6 @@ namespace BlitzenEngine
 	};
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr);
+
+	RESIDENT_CREATE_RES AddResident_STATIC_ACCESS(const RESIDENT_CREATE_CONTEXT& ctx);
 }

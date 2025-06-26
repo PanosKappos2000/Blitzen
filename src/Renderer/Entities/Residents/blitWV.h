@@ -4,20 +4,19 @@
 namespace BlitzenEngine
 {
 	using WVHANDLE = void*;
-	constexpr uint32_t WVTYPES = 1;
+	constexpr uint32_t CE_MAX_WORLD_WV_UNIQUE_TYPES = 1;
 
+	// World Variable Identifiers
 	struct WVTYPE
 	{
 		uint32_t id;
 	};
-	
-	using WVSPOTS = uint32_t*;
-	
 	struct WVINST
 	{
 		uint32_t inst;
 	};
 
+	// Single wv type description
 	class WVDESC
 	{
 	public:
@@ -33,28 +32,35 @@ namespace BlitzenEngine
 		uint32_t NEW();
 	};
 
+	// Key to the wv pool for an individual world variable instance
 	struct WVKEY
 	{
 		WVTYPE wv_type;
 		WVINST wv_inst;
 	};
 
+	// Full context of client world variables
+	struct WV_CONTEXT
+	{
+		uint32_t m_wvTypeCount{ 0 };
+	};
+
+	// World Variable Pool Manager
 	class WVHOST
 	{
 	public:
 
 		void* m_pPool{ nullptr };
-		WVDESC m_descs[WVTYPES];
 		uint32_t m_poolSize{ 0 };
+		uint32_t m_currentPoolOffset{ 0 };
+		WVDESC m_descs[CE_MAX_WORLD_WV_UNIQUE_TYPES];
 
-		void AddClientWorldVariableDescriptions();
+		void AddClientWorldVariableDescriptions(const WV_CONTEXT& wvContext, WVDESC* wvDescriptions, uint32_t uniqueWvCount);
 
 		~WVHOST();
 	};
 
 	void InitializeWorldVariableContextPtr_STATIC_ACCESS(WVHOST* ptr);
-
-	void AllocateWorldVariables_STATIC_ACCESS(uint32_t poolSize);
 
 	void AddWorldVariable_STATIC_ACCESS(WVKEY* pwv);
 
@@ -62,7 +68,7 @@ namespace BlitzenEngine
 
 	void WorldVariableStart(WVHANDLE handle, WVTYPE type);
 
-	void WorldVariableTick(WVKEY key, const WVHOST& host);
+	void WorldVariableTick(WVKEY key, const WVHOST& host, float deltaTime);
 
 	void WorldVariableCollision(WVHANDLE sender, WVTYPE senderType, WVHANDLE receiver, WVTYPE receiverType);
 }

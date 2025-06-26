@@ -24,47 +24,6 @@ namespace BlitzenDX12
 		commandList->Dispatch(1, 1, 1);
 	}
 
-	static void DrawCullPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources, 
-		uint32_t objCount, uint32_t frame)
-	{
-		// Binds heap for compute
-		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get() };
-		commandList->SetDescriptorHeaps(1, srvHeaps);
-
-		// Resets Count
-		DrawCountReset(commandList, pipelineContext.m_drawCountResetRoot.Get(), pipelineContext.m_drawCountResetPso.Get(), descriptorContext.m_drawCullViewsHandle[frame], rwResources);
-
-		// Culling barrier, waits for draw count reset and draw command read
-		D3D12_RESOURCE_BARRIER cullingBarriers[2]{};
-		// Count reset barrier 
-		CreateResourceUAVBarrier(cullingBarriers[0], rwResources.m_drawCmdCounterBuffer.buffer.Get());
-		// Command read barrier
-		CreateResourcesTransitionBarrier(cullingBarriers[1], rwResources.m_drawCmdBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		// execute
-		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
-
-		// Descriptors
-		commandList->SetComputeRootSignature(pipelineContext.m_drawCullRoot.Get());
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullSharedSRVsRootID, descriptorContext.m_sharedViewHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(Ce_DrawCullExclusiveSRVsRootID, descriptorContext.m_drawCullViewsHandle[frame]);
-
-		// Pipeline + constants
-		commandList->SetPipelineState(pipelineContext.m_drawCullPso.Get());
-		commandList->SetComputeRoot32BitConstant(Ce_DrawCullDrawCountConstantRootID, objCount, 0);
-
-		// CULL
-		commandList->Dispatch(BlitML::GetComputeShaderGroupSize(objCount, 64), 1, 1);
-
-		// Block graphics, should wait for command and count write
-		D3D12_RESOURCE_BARRIER graphicsBarriers[2]{};
-		// Command write
-		CreateResourcesTransitionBarrier(graphicsBarriers[0], rwResources.m_drawCmdBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		// Counter write
-		CreateResourcesTransitionBarrier(graphicsBarriers[1], rwResources.m_drawCmdCounterBuffer.buffer.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-		// execute
-		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
-	}
-
 	static void DrawOccFirstPass(ID3D12GraphicsCommandList* commandList, DescriptorContext& descriptorContext, PipelineContext& pipelineContext, ReadWriteResources& rwResources, 
 		uint32_t objCount, uint32_t frame)
 	{

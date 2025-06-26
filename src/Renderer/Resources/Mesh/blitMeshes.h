@@ -25,5 +25,9 @@ namespace BlitzenEngine
 
     void InitializeMeshResourcesPointer_STATIC_ACCESS(MeshResources* ptr);
 
+	Mesh& RequestMeshResources_STATIC_ACCESS(const char* meshName);
+
     BoundingSphere* GetBoundingSphereResources_STATIC_ACCESS(Mesh* pMesh);
+
+    BlitzenCore::FAT_BOOL GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(uint32_t surfaceID);
 }

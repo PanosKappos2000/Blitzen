@@ -53,10 +53,6 @@ namespace BlitzenEngine
     // Singular texture upload
     uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData);
 
-    // Returns pointer to the buffer which is responsible for dynamic transform data copy. 
-    // If this is never called, the application will either brreak or dynamic objects will not move
-    void* GetMovingObjectsBufferMappedPointer(RendererPtrType pRenderer);
-
     // Finalizes resources so that the renderer is ready for culling and rendering
     void PrepareRendererForRuntime(RendererPtrType pRenderer);
 
@@ -76,7 +72,7 @@ namespace BlitzenEngine
     void GenerateHI_Z_MAP(RendererPtrType pRenderer);
 
     // Should be called after game logic is done. Copies movement data to shader buffer. Dynamic object culling can be dispatched after this
-    void UpdateRendererTransforms(RendererPtrType pRenderer);
+    void UpdateRendererTransforms(RendererPtrType pRenderer, CPU_TRANSFORM* pTransforms, uint32_t transformCount);
 
     enum class BLIT_CULL_TYPE : uint8_t
     {

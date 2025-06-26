@@ -27,12 +27,11 @@ namespace BlitzenWorld
 				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 			}
 
-			// TODO: Does NOT belong here
 			BlitzenEngine::UpdateCamera(context.pWORLD->pCameraContainer->GetMainCamera(), context.pWORLD->deltaTime);
 
 			for (uint32_t wv = 0; wv < context.pComponents->m_tickingWorldVariableCount; ++wv)
 			{
-				BlitzenEngine::WorldVariableTick(context.pComponents->m_tickingWorldVariables[wv], context.pWORLD->m_worldVariables);
+				BlitzenEngine::WorldVariableTick(context.pComponents->m_tickingWorldVariables[wv], context.pWORLD->m_worldVariables, context.pWORLD->deltaTime);
 			}
 			break;
 		}
@@ -43,7 +42,6 @@ namespace BlitzenWorld
 				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 			}
 
-			// TODO: Does NOT belong here
 			BlitzenEngine::UpdateCamera(context.pWORLD->pCameraContainer->GetMainCamera(), context.pWORLD->deltaTime);
 
 			break;
