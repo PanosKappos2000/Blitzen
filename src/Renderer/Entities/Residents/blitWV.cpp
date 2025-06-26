@@ -13,13 +13,15 @@ namespace BlitzenEngine
 		return &reinterpret_cast<uint8_t*>(wv_pHost->m_pPool)[desc.m_offset + key.wv_inst.inst * desc.m_typeSize];
 	}
 
-	void WorldVariableStart(WVHANDLE wv, WVTYPE type)
+	void WorldVariableStart(WVKEY key, uint32_t residentID)
 	{
-		switch (type.id)
+		switch (key.wv_type.id)
 		{
 		case 0:
 		{
-			// reinterpret_cast<WVRotatingKitten*>(wv)->Start();
+			auto wv = reinterpret_cast<WVRotatingKitten*>(GetWorldVariable(key, wv_pHost_STATIC_ACCESS));
+			wv->RESIDENT_ID = residentID;
+			wv->Start();
 			break;
 		}
 		}

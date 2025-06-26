@@ -12,6 +12,7 @@ namespace BlitzenWorld
 	void WorldLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		BlitzenCore::UpdateWorldClock(*context.pClock);
+		auto pWORLD = context.pWORLD;
 		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
 
 		switch (context.BLITZEN_ENGINE.m_state)
@@ -27,12 +28,10 @@ namespace BlitzenWorld
 				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 			}
 
-			BlitzenEngine::UpdateCamera(context.pWORLD->pCameraContainer->GetMainCamera(), context.pWORLD->deltaTime);
+			BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
 
-			for (uint32_t wv = 0; wv < context.pComponents->m_tickingWorldVariableCount; ++wv)
-			{
-				BlitzenEngine::WorldVariableTick(context.pComponents->m_tickingWorldVariables[wv], context.pWORLD->m_worldVariables, context.pWORLD->deltaTime);
-			}
+			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
+
 			break;
 		}
 		case BlitzenCore::EngineState::RUNNING:
@@ -42,7 +41,7 @@ namespace BlitzenWorld
 				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 			}
 
-			BlitzenEngine::UpdateCamera(context.pWORLD->pCameraContainer->GetMainCamera(), context.pWORLD->deltaTime);
+			BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
 
 			break;
 		}

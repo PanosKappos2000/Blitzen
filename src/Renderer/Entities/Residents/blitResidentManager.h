@@ -2,7 +2,7 @@
 #include "blitResident.h"
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
-#include "Collision/blitCollisionManager.h"
+#include "Collision/blitColliders.h"
 #include "Dynamic/blitMovingResident.h"
 
 namespace BlitzenEngine
@@ -13,7 +13,7 @@ namespace BlitzenEngine
 	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_COLLISION = 0xA;
 	constexpr RESIDENT_CREATE_CONTEXT_FLAGS RESIDENT_CREATE_WORLD_VARIABLE = 0xF;
 
-	enum RESIDENT_CREATE_RES : int8_t
+	enum class RESIDENT_CREATE_RES : int8_t
 	{
 		SUCCESS = 0,
 
@@ -21,6 +21,7 @@ namespace BlitzenEngine
 		WORLD_TRANSFORM_CREATION_FAILED = -2,
 		RESIDENT_CREATION_FAILED = -3,
 		NO_WORLD_TRANSFORM_CONTEXT_GIVEN = -4,
+		WORLD_VARIABLE_COUNT_EXCEEDED = -5,
 
 		UNKNOWN = -10
 	};
@@ -30,9 +31,10 @@ namespace BlitzenEngine
 		switch (res)
 		{
 		case RESIDENT_CREATE_RES::SUCCESS: return "SUCCESS";
-		case RENDER_OBJECT_CREATION_FAILED: return "RENDER_OBJECT_CREATION_FAILED";
-		case WORLD_TRANSFORM_CREATION_FAILED: return "WORLD_TRANSFORM_CREATION_FAILED";
-		case RESIDENT_CREATION_FAILED: return "RESIDENT_CREATION_FAILED";
+		case RESIDENT_CREATE_RES::RENDER_OBJECT_CREATION_FAILED: return "RENDER_OBJECT_CREATION_FAILED";
+		case RESIDENT_CREATE_RES::WORLD_TRANSFORM_CREATION_FAILED: return "WORLD_TRANSFORM_CREATION_FAILED";
+		case RESIDENT_CREATE_RES::RESIDENT_CREATION_FAILED: return "RESIDENT_CREATION_FAILED";
+		case RESIDENT_CREATE_RES::WORLD_VARIABLE_COUNT_EXCEEDED: return "WORLD_VARIABLE_COUNT_EXCEEDED";
 		default: case RESIDENT_CREATE_RES::UNKNOWN: return "UNKNOWN";
 		}
 	}
@@ -45,10 +47,17 @@ namespace BlitzenEngine
 		BlitzenCore::FAT_BOOL m_isMoveable{ BlitzenCore::FAT_FALSE };
 	};
 
+	struct WORLD_VARIABLE_CREATE_CONTEXT
+	{
+		RESIDENT_CREATE_CONTEXT residentCtx{};
+		uint32_t m_worldVariableID{ 0 };
+	};
+
 	class WORLD_RESIDENTS
 	{
 	public:
-		WVKEY m_worldVariableAccessors[BlitzenCore::Ce_MaxWorldVariableCount]{};
+		//WVKEY m_worldVariableAccessors[BlitzenCore::Ce_MaxWorldVariableCount]{};
+		WORLD_VARIABLE m_worldVariables[BlitzenCore::Ce_MaxWorldVariableCount]{};
 		uint32_t m_worldVariableCount{ 0 };
 		Resident m_residents[BlitzenCore::Ce_MaxWorldResidentCount];
 		uint32_t m_residentCount{ 0 };
@@ -58,6 +67,8 @@ namespace BlitzenEngine
 		ColliderContainer m_colliders;
 
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
+
+		RESIDENT_CREATE_RES AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx);
 	};
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr);

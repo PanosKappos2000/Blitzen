@@ -1,8 +1,20 @@
 #include "blitzenWorld.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenWorld
 {
+    inline WORLD_blit* p_BLITZEN_WORLD = nullptr;
+
+    void WORLD_blit::DispatchFrameEvents(float deltaTime)
+    {
+        for (uint32_t event = 0; event < m_frameEvents.m_frameEventCount; ++event)
+        {
+            auto& frameEvent = m_frameEvents.m_frameEvents[event];
+            frameEvent.m_function(frameEvent.m_worldVariableArg, deltaTime);
+        }
+    }
+
     bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
         if (!pRenderer->UploadTexture("Assets/Textures/base_baseColor.dds"))
@@ -58,5 +70,16 @@ namespace BlitzenWorld
 
         // Success
         return true;
+    }
+
+    void INITIALIZE_WORLD_POINTER(WORLD_blit* ptr)
+    {
+        BLIT_ASSERT_MESSAGE(p_BLITZEN_WORLD == nullptr, "Tried to reinitialize WORLD pointer");
+        p_BLITZEN_WORLD = ptr;
+    }
+
+    void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function)
+    {
+        p_BLITZEN_WORLD->m_frameEvents.RegisterFrameEvent(worldVariable, function);
     }
 }

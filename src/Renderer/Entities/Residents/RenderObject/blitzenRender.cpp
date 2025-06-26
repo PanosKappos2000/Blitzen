@@ -147,12 +147,6 @@ namespace BlitzenEngine
         return BLIT_MAX_WORLD_TRANSFORM_COUNT;
     }
 
-    CPU_TRANSFORM* WorldTransformContainer::SwitchLastToDynamic()
-    {
-		m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount] = m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount--];
-        return &m_moveables[m_moveableCount++];
-    }
-
     void RandomizeTransform(MeshTransform* pTransform, float multiplier, float scale)
     {
         pTransform->pos = BlitML::vec3((float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier);
@@ -160,5 +154,11 @@ namespace BlitzenEngine
         pTransform->scale = scale;
 
         pTransform->orientation = BlitML::QuatFromAngleAxis(BlitML::vec3((float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1), BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), 0);
+    }
+
+    void RandomizeTransform(CPU_TRANSFORM* pTransform, float multiplier)
+    {
+        pTransform->position = BlitML::vec3((float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier);
+        pTransform->eulerAngles = BlitML::vec3((float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier);
     }
 }

@@ -35,12 +35,10 @@ namespace BlitzenEngine
 
 		// Creates transform and returns its index in the transform list
 		uint32_t CreateTransform(const TRANSFORM_CREATE_CONTEXT& transform);
-
-		// Switches the last static transform to dynamic. WARNING: This function only works for the last static transform. Effectively, this should only be used by world variables
-		CPU_TRANSFORM* SwitchLastToDynamic();
 	};
 
 	void RandomizeTransform(MeshTransform* pTransform, float multiplier, float scale);
+	void RandomizeTransform(CPU_TRANSFORM* pTransform, float multiplier);
 
 	// UNSAFE!!!
 	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(uint32_t residentID);

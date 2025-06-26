@@ -3,6 +3,8 @@
 
 namespace BlitzenCore
 {
+    inline EventSystem* P_EVENT_SYSTEM = nullptr;
+
     EventSystem::EventSystem(BlitzenWorld::WORLD_blit* pWORLD, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& systemContext) :
         m_pWorldContext{ pWORLD }, m_systemContext{ systemContext }
     {
@@ -15,6 +17,8 @@ namespace BlitzenCore
         {
             InitControllerPFNs(controller);
         }
+
+        InitializeEventSystemPtr_STATIC_ACCESS(this);
     }
 
     void RegisterEvent(EventSystem* pContext, BlitEventType type, EventCallback eventCallback)
@@ -551,5 +555,11 @@ namespace BlitzenCore
         pContext->m_editorButtonCallbacks[Ce_ImguiSceneStartButtonID] = EditorEndSceneStart;
 
         pContext->m_editorButtonCallbacks[Ce_ImguiDebugWindowCloseID] = EditorDebugWindowClose;
+    }
+
+    void InitializeEventSystemPtr_STATIC_ACCESS(EventSystem* ptr)
+    {
+        BLIT_ASSERT_MESSAGE(P_EVENT_SYSTEM == nullptr, "Tried to reinitialize event system reference");
+        P_EVENT_SYSTEM = ptr;
     }
 }

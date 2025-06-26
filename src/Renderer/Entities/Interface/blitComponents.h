@@ -3,16 +3,11 @@
 #include "Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
 #include "Renderer/View/blitCamera.h"
 #include "Renderer/Entities/Residents/blitWV.h"
+#include "Renderer/Entities/Residents/Collision/blitCollisionManager.h"
 
 
 namespace BlitzenEngine
 {
-    using ENTITY_CREATION_FLAGS = int64_t;
-
-    using WVTICK_blitpfn = BlitCL::Pfn<void, void*, float>;
-
-    constexpr ENTITY_CREATION_FLAGS ENTITY_CREATE_GAME_LOGIC_UPDATE = 100;
-    constexpr ENTITY_CREATION_FLAGS ENTITY_CREATE_DYNAMIC_TRANSFORM = 200;
 
     class ComponentSystem
     {
@@ -24,15 +19,21 @@ namespace BlitzenEngine
         MovingResident* m_movingResidents[BlitzenCore::Ce_MaxWorldMovingResidentCount]{};
         uint32_t m_movingResidentCount{ 0 };
 
+        CollisionManager m_collisions;
+
         // Camera
         Camera m_camera;
 
         void AddTickingWV(WVKEY key);
 
         void UpdateCPUTransforms();
+
+        void EvaluateCollisionResults();
     };
 
     void AddMovingResident_STATIC_ACCESS(MovingResident* pMoving);
 
     void InitializeComponentSystemPointer_STATIC_ACCESS(ComponentSystem* ptr);
+
+    COLLISION_CREATE_RES RequestBlockingCollision(MovingResident* pMoving);
 }

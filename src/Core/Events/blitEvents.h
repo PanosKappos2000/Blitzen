@@ -3,6 +3,7 @@
 #include "blitController.h"
 #include "Core/BlitzenWorld/blitzenWorldPrivate.h"
 #include "blitEditorEvents.h"
+#include "blitFrameEvents.h"
 
 namespace BlitzenCore
 {
@@ -31,6 +32,8 @@ namespace BlitzenCore
         bool FireEvent(BlitEventType type);
 
         void DispatchRawInput_MOUSE_MOVED(int16_t xAxisMovement, int16_t yAxisMovement);
+
+        void DispatchFrameEvents();
 
         BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& m_systemContext;
         BlitzenWorld::WORLD_blit* m_pWorldContext;
@@ -75,6 +78,8 @@ namespace BlitzenCore
     void RegisterDefaultEvents(EventSystem* pEvents);
 
     void AssignEditorCallbacks(EventSystem* pContext);
+
+    void InitializeEventSystemPtr_STATIC_ACCESS(EventSystem* ptr);
 
     using EventSystemMemory = BlitCL::SmartPointer<BlitzenCore::EventSystem>;
 }

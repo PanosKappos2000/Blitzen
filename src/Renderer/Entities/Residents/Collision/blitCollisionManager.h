@@ -1,23 +1,20 @@
-#pragma once 
+#pragma once
 #include "blitCollision.h"
-#include "Renderer/HlslShaders/Headers/cpuShared.h"
 
 namespace BlitzenEngine
 {
-	constexpr uint32_t CE_MAX_WORLD_BOUNDING_SPHERE_COUNT = BLIT_MAX_WORLD_RENDERS;
-
-	class ColliderContainer
+	enum class COLLISION_CREATE_RES : int64_t
 	{
-	public:
+		SUCCESS = BlitzenCore::CE_BLITZEN_SUCCESS, 
+		FATAL = BlitzenCore::CE_BLITZEN_FATAL, 
+	};
 
+	struct CollisionManager
+	{
 		Collision m_collisions[BlitzenCore::Ce_MaxWorldResidentCount];
 		uint32_t m_colliderCount{ 0 };
 
-		CollisionGrid m_collisionGrids[CE_MAX_WORLD_COLLISION_GRIDS];
+		CollisionGrid* m_collisionGrids{ nullptr };
 		uint32_t m_collisionGridCount{ 0 };
-
-		BoundingSphere m_boundingSpheres[CE_MAX_WORLD_BOUNDING_SPHERE_COUNT];
-
-		void AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, bool isStatic);
 	};
 }

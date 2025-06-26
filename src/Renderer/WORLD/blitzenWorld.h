@@ -1,6 +1,7 @@
 #pragma once
 #include "BlitCL/blitPfn.h"
 #include "Renderer/Scene/blitScene.h"
+#include "Core/Events/blitFrameEvents.h"
 
 namespace BlitzenWorld
 {
@@ -36,6 +37,8 @@ namespace BlitzenWorld
     {
     public:
 
+        void DispatchFrameEvents(float deltaTime);
+
         // Scene resources
         BlitzenEngine::SceneContext m_scenes[10]{};
         uint32_t m_sceneCount{ 0 };
@@ -50,7 +53,10 @@ namespace BlitzenWorld
         // World residents
         BlitzenEngine::WORLD_RESIDENTS m_residents{};
 
-        BlitzenEngine::WVHOST m_worldVariables{};
+        //BlitzenEngine::WVHOST m_worldVariables{}; 
+        /* Nice while it lasted, but I thought of a possibly better approach. We'll see how it goes */
+
+        BlitzenCore::FrameEventManager m_frameEvents;
 
         float deltaTime{0.f};
 
@@ -63,5 +69,7 @@ namespace BlitzenWorld
 
     bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer);
 
+    void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function);
 
+    void INITIALIZE_WORLD_POINTER(WORLD_blit* ptr);
 }

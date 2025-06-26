@@ -375,7 +375,7 @@ namespace BlitzenEngine
 
                 auto res{ pResidents->AddResident(nodeContext) };
 
-                if (BlitzenCore::BLIT_CHECK_FAIL(res))
+                if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)res))
                 {
                     return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_SCENE_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(res));
                 }

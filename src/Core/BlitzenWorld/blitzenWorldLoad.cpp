@@ -12,19 +12,9 @@ namespace BlitzenWorld
         BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data()));
 
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->m_residents);
-        BlitzenEngine::InitializeWorldVariableContextPtr_STATIC_ACCESS(&context.pWORLD->m_worldVariables);
+        //BlitzenEngine::InitializeWorldVariableContextPtr_STATIC_ACCESS(&context.pWORLD->m_worldVariables);
         BlitzenEngine::InitializeComponentSystemPointer_STATIC_ACCESS(context.pComponents);
-        
-#if defined(MOVING_RESIDENT_TEST)
-        BlitzenEngine::WV_CONTEXT wvContext{};
-        wvContext.m_wvTypeCount = 1;
-        BlitzenEngine::WVDESC wvDescs[1]{};
-        wvDescs[0].m_instanceCount = 5'000;
-		wvDescs[0].m_maxInstances = 5'000;
-        wvDescs[0].m_typeSize = sizeof(BlitzenEngine::WVRotatingKitten);
-        wvDescs[0].m_wv_type.id = 0;
-        context.pWORLD->m_worldVariables.AddClientWorldVariableDescriptions(wvContext, wvDescs, 1);
-#endif
+        INITIALIZE_WORLD_POINTER(context.pWORLD);
 
         while (true)
         {

@@ -7,11 +7,12 @@ namespace BlitzenEngine
 	class WVRotatingKitten
 	{
 	public:
+		uint32_t RESIDENT_ID;
+	public:
 		void Start();
 
 		void Tick(float deltaTime);
 	private:
-		uint32_t residentID;
 
 		MovingResident* m_pMovingResident;
 

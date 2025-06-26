@@ -66,9 +66,17 @@ namespace BlitzenEngine
 
 	WVHANDLE GetWorldVariable_STATIC_ACCESS(WVKEY pwv);
 
-	void WorldVariableStart(WVHANDLE handle, WVTYPE type);
+	void WorldVariableStart(WVKEY key, uint32_t residentID);
 
 	void WorldVariableTick(WVKEY key, const WVHOST& host, float deltaTime);
 
 	void WorldVariableCollision(WVHANDLE sender, WVTYPE senderType, WVHANDLE receiver, WVTYPE receiverType);
+
+	// !!!! NEW STYLE POSSIBLY SUPERIOR
+
+	struct WORLD_VARIABLE
+	{
+		uint32_t m_engineResidentID;
+		uint32_t m_worldVariableID;
+	};
 }

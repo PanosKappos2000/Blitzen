@@ -2,6 +2,8 @@
 #include "blitResidentManager.h"
 #include "Core/DbLog/blitAssert.h"
 #include "Renderer/Resources/Mesh/blitMeshes.h"
+#include "Renderer/Entities/Interface/blitComponents.h"
+#include "BlitCL/blitDynamicArr.h"
 
 namespace BlitzenEngine
 {
@@ -14,35 +16,44 @@ namespace BlitzenEngine
 		uint32_t transformID{ m_transforms.CreateTransform(ctx.m_transformInfo) };
 		if (transformID == BLIT_MAX_WORLD_TRANSFORM_COUNT)
 		{
-			return WORLD_TRANSFORM_CREATION_FAILED;
+			return RESIDENT_CREATE_RES::WORLD_TRANSFORM_CREATION_FAILED;
 		}
 
 		// Retrieves bounding spheres array
 		auto boundingSpheresArr{ GetBoundingSphereResources_STATIC_ACCESS(ctx.m_pResource) };
 
-		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
+		BlitCL::DynamicArray<RENDER_OBJECT_CREATE_CONTEXT> renderContext{ ctx.m_pResource->surfaceCount };
+
+		// Resolve render object types for resident
+		if (ctx.m_isMoveable)
 		{
-			RENDER_OBJECT_CREATE_CONTEXT renderContext{};
-			if (ctx.m_isMoveable)
+			for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
 			{
-				renderContext.m_type = RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
+				renderContext[prim].m_type = RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
 			}
-			else
+		}
+		else
+		{
+			for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
 			{
-				renderContext.m_type = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_pResource->firstSurface + prim) == BlitzenCore::FAT_FALSE ? 
+				renderContext[prim].m_type = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_pResource->firstSurface + prim) == BlitzenCore::FAT_FALSE ?
 					RENDER_OBJECT_TYPE::OPAQUE_STATIC : RENDER_OBJECT_TYPE::TRANSPARENT_STATIC;
 			}
-			renderContext.m_primitiveID = prim + ctx.m_pResource->firstSurface;
-			renderContext.m_transformID = transformID;
+		}
+
+		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
+		{
+			renderContext[prim].m_primitiveID = prim + ctx.m_pResource->firstSurface;
+			renderContext[prim].m_transformID = transformID;
 
 			// Creates render object
-			uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext);
+			uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext[prim]);
 			if (renderObjectId == BLIT_MAX_WORLD_RENDERS)
 			{
-				return RENDER_OBJECT_CREATION_FAILED;
+				return RESIDENT_CREATE_RES::RENDER_OBJECT_CREATION_FAILED;
 			}
 
-			m_colliders.AddRenderObjectBoundingSphere(&boundingSpheresArr[prim], m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type != RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC);
+			m_colliders.AddRenderObjectBoundingSphere(&boundingSpheresArr[prim], m_transforms.m_transforms[transformID], renderObjectId, renderContext[prim].m_type != RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC);
 
 			// Saves the first render for the resident
 			if (prim == 0)
@@ -53,31 +64,39 @@ namespace BlitzenEngine
 
 		if (pFirstRender == nullptr)
 		{
-			return UNKNOWN;
+			return RESIDENT_CREATE_RES::UNKNOWN;
 		}
 
-		m_residents[m_residentCount] = CreateResident(pFirstRender, ctx.m_pResource->surfaceCount);
+		m_residents[m_residentCount++] = transformID;
 
-		return SUCCESS;
+		return RESIDENT_CREATE_RES::SUCCESS;
 	}
 
-	Resident CreateResident(RenderObject* pRender, uint32_t renderCount)
+	RESIDENT_CREATE_RES WORLD_RESIDENTS::AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx)
 	{
-		Resident res{};
-		res.m_pRender = pRender;
-		res.m_count = renderCount;
+		auto baseResidentResidentRes = AddResident(ctx.residentCtx);
+		if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)baseResidentResidentRes))
+		{
+			return baseResidentResidentRes;
+		}
 
-		return res;
+		if (m_worldVariableCount >= BlitzenCore::Ce_MaxWorldVariableCount)
+		{
+			return RESIDENT_CREATE_RES::WORLD_VARIABLE_COUNT_EXCEEDED;
+		}
+
+		m_worldVariables[m_worldVariableCount].m_worldVariableID = ctx.m_worldVariableID;
+		m_worldVariables[m_worldVariableCount].m_engineResidentID = m_residents[m_residentCount - 1];
+		m_worldVariableCount++;
+
+		return RESIDENT_CREATE_RES::SUCCESS;
 	}
 
-	MovingResident* RequestMovementComponent()
+	MovingResident* RequestMovementComponent(Resident resident)
 	{
-		auto& transforms{ pWorldResidents_STATIC_ACCESS->m_transforms };
-		BLIT_ASSERT(transforms.m_moveableCount < BlitzenCore::Ce_MaxWorldMovingResidentCount);
+		BLIT_ASSERT(resident < BlitzenCore::Ce_MaxWorldMovingResidentCount + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
 
-		CPU_TRANSFORM* pTransform = pWorldResidents_STATIC_ACCESS->m_transforms.SwitchLastToDynamic();
-
-		return &pWorldResidents_STATIC_ACCESS->m_movingResidents[transforms.m_moveableCount];
+		return &pWorldResidents_STATIC_ACCESS->m_movingResidents[resident];
 	}
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
@@ -87,13 +106,26 @@ namespace BlitzenEngine
 		pWorldResidents_STATIC_ACCESS = ptr;
 	}
 
-	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(uint32_t residentID)
+	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(Resident resident)
 	{
-		return pWorldResidents_STATIC_ACCESS->m_transforms.m_moveables[pWorldResidents_STATIC_ACCESS->m_residents[residentID].m_pRender->transformId];
+		BLIT_ASSERT(resident < BlitzenCore::Ce_MaxWorldMovingResidentCount + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
+
+		return pWorldResidents_STATIC_ACCESS->m_transforms.m_moveables[resident];
 	}
 
 	RESIDENT_CREATE_RES AddResident_STATIC_ACCESS(const RESIDENT_CREATE_CONTEXT& ctx)
 	{
 		return pWorldResidents_STATIC_ACCESS->AddResident(ctx);
+	}
+
+	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime)
+	{
+		auto& moving{ pWorldResidents_STATIC_ACCESS->m_movingResidents[residentID] };
+
+		if (!moving.m_isBlocked)
+		{
+			moving.m_pWorldTransform->eulerAngles += rotation;
+			AddMovingResident_STATIC_ACCESS(&moving);
+		}
 	}
 }

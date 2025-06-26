@@ -10,11 +10,11 @@ namespace BlitzenEngine
 		CPU_TRANSFORM* m_pWorldTransform;
 
 		BlitzenCore::FAT_BOOL m_isBlocked{ BlitzenCore::FAT_FALSE };
-
-		void Rotate(BlitML::fRotation& rotation, float deltaTime);
 	};
 
 	MovingResident& GetMovingResident_STATIC_ACCESS(uint32_t residentID);
 
-	MovingResident* RequestMovementComponent();
+	MovingResident* RequestMovementComponent(uint32_t residentID);
+
+	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime);
 }

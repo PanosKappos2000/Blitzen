@@ -193,9 +193,11 @@ namespace BlitzenCore
 
     constexpr uint32_t Ce_MaxWorldMovingResidentCount = 5'000;
 
-    constexpr uint32_t Ce_MaxWorldVariableCount = 1'000;
+    // WORLD VARIABLES
+    constexpr uint32_t Ce_MaxWorldVariableCount = 5'000;
+    constexpr uint32_t CE_MAX_FRAME_EVENTS = Ce_MaxWorldVariableCount;
 
-    constexpr uint32_t Ce_MaxTickingWorldVariables = 1'000;
+    constexpr uint32_t Ce_MaxTickingWorldVariables = 5'000;
     static_assert(Ce_MaxWorldVariableCount >= Ce_MaxTickingWorldVariables, "The should be at least as many world variables as there are ticking world variables");
 
 #if defined(BLIT_DYNAMIC_OBJECT_TEST)

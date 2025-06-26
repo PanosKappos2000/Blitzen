@@ -129,7 +129,7 @@ add_executable(BlitzenEngine
 
                 # RESIDENTS
                 "src/Renderer/Entities/Residents/Collision/blitCollision.h"
-                "src/Renderer/Entities/Residents/Collision/blitCollisionManager.h"
+                "src/Renderer/Entities/Residents/Collision/blitColliders.h"
                 "src/Renderer/Entities/Residents/blitWV.h"
                 "src/Renderer/Entities/Residents/blitResident.h"
                 "src/Renderer/Entities/Residents/blitResidentManager.h"
@@ -226,7 +226,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/Renderer/Entities/Residents/Collision/blitCollisionManager.h" "src/Renderer/Entities/Interface/blitWVComponents.h" "src/Core/Events/blitFrameEvents.h" "src/Core/Events/blitFrameEvents.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
