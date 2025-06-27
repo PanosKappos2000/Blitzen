@@ -262,6 +262,12 @@ namespace BlitzenCore
 
 #endif
 
+#if defined(BLITZEN_DRAW_DOUBLE_PASS_OCCLUSION)
+    constexpr uint8_t CE_OCCLUSION_DOUBLE_PASS = 1;
+#else
+    constexpr uint8_t CE_OCCLUSION_DOUBLE_PASS = 0;
+#endif
+
     enum class BLIT_RENDERING_SYSTEM : uint32_t
     {
         BLITZEN_VULKAN,

@@ -326,12 +326,12 @@ namespace BlitzenDX12
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
         CreateDefaultPsoDescription(psoDesc);
-        psoDesc.pRootSignature = ctx.m_opaqueDrawRoot.Get();
+        psoDesc.pRootSignature = ctx.m_graphicsRoot.Get();
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;
         psoDesc.DSVFormat = Ce_DepthTargetFormat;
 
-        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawPso.ReleaseAndGetAddressOf()));
+        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_staticDrawPso.ReleaseAndGetAddressOf()));
         if (FAILED(psoResult))
         {
             BLIT_ERROR("%s: Failed to create opaque draw pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
@@ -354,9 +354,9 @@ namespace BlitzenDX12
             vsCode.pShaderBytecode = vsBytes.Data();
 
             psoDesc.VS = vsCode;
-            psoDesc.pRootSignature = ctx.m_opaqueDrawInstRoot.Get();
+            psoDesc.pRootSignature = ctx.m_graphicsRoot.Get();
 
-            HRESULT psoInstResult{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_opaqueDrawInstPso.ReleaseAndGetAddressOf())) };
+            HRESULT psoInstResult{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_drawInstPso.ReleaseAndGetAddressOf())) };
             if (FAILED(psoInstResult))
             {
                 BLIT_ERROR("%s: Failed to create opaque draw instanced pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);

@@ -69,7 +69,7 @@ namespace BlitzenDX12
 
 	void RecreateDepthPyramidDescriptors(ID3D12Device* device, ReadWriteResources* rwResourcesArray, DescriptorContext& context, UINT drawWidth, UINT drawHeight)
 	{
-		SIZE_T offset{ context.m_HI_Z_MapSRVOffset[0] };
+		SIZE_T offset{ context.m_HI_Z_MAP_cullOffset[0] };
 
 		for (uint32_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -97,7 +97,7 @@ namespace BlitzenDX12
 		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
 		{
 			auto& rwResources = rwResourcesArray[f];
-			offset = context.m_HI_Z_MapMipsFirstUAVOffset[f];
+			offset = context.m_HI_Z_MAP_mipOffset[f];
 
 			for (uint32_t hi_z_mip = 0; hi_z_mip < rwResources.m_HI_Z.mipCount; ++hi_z_mip)
 			{
@@ -125,7 +125,7 @@ namespace BlitzenDX12
 	{
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			SIZE_T offset{ ctx.m_depthTargetSRVOffset[i] };
+			SIZE_T offset{ ctx.m_depthTargetOffset[i] };
 
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 			srvDesc.Format = Ce_DepthTargetSRVFormat;

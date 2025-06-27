@@ -9,6 +9,7 @@
 #include <comdef.h>
 #include "Core/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
+#include "Renderer/HlslShaders/Headers/cpuShared.h"
 
 namespace BlitzenDX12
 {
@@ -60,203 +61,98 @@ namespace BlitzenDX12
 
     constexpr D3D12_TEXTURE_LAYOUT Ce_DefaultTextureFormat = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 
-
+    /**************************************************************************************************************
+    * DESCRIPTOR CONSTANTS SECTION                                                                                *
+    ***************************************************************************************************************/
     // SHARED SRVs :
-    constexpr UINT Ce_SharedSRVsRangeCount = 4;
+    constexpr UINT CE_GLOBAL_DESCRIPTOR_RANGE_COUNT = 4;
+    constexpr UINT CE_GDESC_RENDER_ID = 0;
+    constexpr UINT CE_GDESC_TRANSFORM_ID = 1;
+    constexpr UINT CE_GDESC_SURFACE_ID = 2;
+    constexpr UINT CE_GDESC_VIEW_ID = 3;
 
-    constexpr UINT Ce_SurfaceSRVRegister = 2;
-    constexpr UINT Ce_SurfaceSRVRangeID = 0;
-     
-    constexpr UINT Ce_TransformUAVRegister = 2;
-    constexpr UINT Ce_TransformUAVRangeID = 1;
+    // GLOBAL DESCRIPTORS FOR CULLING:
+    constexpr UINT CE_CULL_GLOBAL_RANGE_COUNT = 2;
+    constexpr UINT CE_CULL_GLOBAL_LOD_ID = 0;
+    constexpr UINT CE_CULL_GLOBAL_BOUNDS_ID = 1;
 
-    constexpr UINT Ce_RenderSRVRegister = 0;
-    constexpr UINT Ce_RenderSRVRangeID = 2;
+    // DESCRIPTORS FOR DRAW CULL STATIC OPAQUE :
+    constexpr UINT CE_CULL_OS_RANGE_COUNT = 2;
+    constexpr UINT CE_CULL_OS_DRAW_CMD_ID = 0;
+    constexpr UINT CE_CULL_OS_DRAW_COUNTER_ID = 1;
 
-    constexpr UINT Ce_ViewCBVRegister = 0;
-    constexpr UINT Ce_ViewCBVRootID = 3;
+    // DESCRIPTOR FOR DRAW CULL DYNAMIC OPAQUE
+    constexpr UINT CE_CULL_OD_RANGE_COUNT = 3;
+    constexpr UINT CE_CULL_OD_DRAW_CMD_ID = 0;
+    constexpr UINT CE_CULL_OD_DRAW_COUNTER_ID = 1;
+    constexpr UINT CE_CULL_OD_MOVEMENT_ID = 2;
 
+    // DESCRIPTORS FOR DRAW CULL INSTANCES
+    constexpr UINT CE_CULL_INST_RANGE_COUNT = 2;
+    constexpr UINT CE_CULL_INST_DRAW_CMD_ID = 0;
+    constexpr UINT CE_CULL_INST_DRAW_COUNTER_ID = 1;
 
-    // DESCRIPTORS FOR DRAW CULL :
-    constexpr UINT Ce_DrawCullSRVsRangeCount = 5;
+    // DESCRIPTOR FOR DRAW OCC WITH DOUBLE PASS
+    constexpr UINT CE_CULL_OCCFL_RANGE_COUNT = 3;
+    constexpr UINT CE_CULL_OCCFL_DRAW_CMD_ID = 0;
+    constexpr UINT CE_CULL_OCCFL_DRAW_COUNTER_ID = 1;
+    constexpr UINT CE_CULL_OCCFL_DRAW_VISIBILITY_ID = 2;
 
-    constexpr UINT Ce_DrawCullDrawCmdUAVRegister = 0;
-    constexpr UINT Ce_DrawCullDrawCmdUAVRangeID = 0;
-    
-    constexpr UINT Ce_DrawCullDrawCmdCountUAVRegister = 1;
-    constexpr UINT Ce_DrawCullDrawCmdCountUAVRangeID = 1;
+    // DESCRIPTORS FOR CLUSTER CULLING
+    constexpr UINT CE_CULL_CLUSTERS_RANGE_COUNT = 8;
+    constexpr UINT CE_CULL_CLUSTERS_CMD_RANGE_ID = 0;
+    constexpr UINT CE_CULL_CLUSTERS_CMD_COUNTER_ID = 1;
+    constexpr UINT CE_CULL_CLUSTERS_GROUP_DATA_ID = 2;
+    constexpr UINT CE_CULL_CLUSTERS_GROUP_COUNTER_ID = 3;
+    constexpr UINT CE_CULL_CLUSTERS_VISIBILITY_ID = 4;
+    constexpr UINT CE_CULL_CLUSTERS_VTXS_ID = 5;
+    constexpr UINT CE_CULL_CLUSTERS_SPHERES_ID = 6;
+    constexpr UINT CE_CULL_CLUSTERS_CONES_ID = 7;
 
-    constexpr UINT Ce_DrawCullLODSRVRegister = 7;
-    constexpr UINT Ce_DrawCullLODSRVRangeID = 2;
+    // CULLING ROOT PARAMETERS
+    constexpr uint32_t CE_CULL_ROOT_PARAMETER_COUNT = 7;
+    constexpr UINT CE_CULL_ROOT_GLOBAL_ID = 0;
+    constexpr UINT CE_CULL_ROOT_CULL_GLOBAL_ID = 1;
+    constexpr UINT CE_CULL_ROOT_STATIC_TABLE_ID = 2;
+    constexpr UINT CE_CULL_ROOT_STATIC_WORK_CONSTANT_ID = 3;
+    constexpr UINT CE_CULL_ROOT_HI_Z_MAP_ID = 4;
+    constexpr UINT CE_CULL_ROOT_DYNAMIC_TABLE_ID = 5;
+    constexpr UINT CE_CULL_ROOT_DYNAMIC_WORK_CONSTANT_ID = 6;
 
-    constexpr UINT Ce_DrawCullBoundingSRVRegister = 1;
-    constexpr UINT Ce_DrawCullBoundingRangeID = 3;
+    constexpr UINT CE_CULL_WORK_COUNT_CONSTANT_32_BIT_COUNT = 1;
 
-    constexpr UINT Ce_DrawCullMovementSRVRegister = 11;
-    constexpr UINT Ce_DrawCullMovementSRVRangeID = 4;
+	// HI Z MAP DESCRIPTORS
+    constexpr UINT CE_HI_Z_MAP_ROOT_COUNT = 3;
+    constexpr UINT CE_HI_Z_MAP_INPUT_ID = 0;
+    constexpr UINT CE_HI_Z_MAP_OUTPUT_ID = 1;
+    constexpr UINT CE_HI_Z_MAP_CONSTANT_ID = 2;
 
-    constexpr UINT Ce_DrawCullDrawCountContantRegister = 1;
-	constexpr UINT Ce_DrawCullDrawCountContant32BitCount = 1;
+    constexpr UINT CE_HI_Z_MAP_CONSTANT_32BIT_COUNT = 5;
 
-    // Root param descriptor grouping
-    constexpr uint32_t Ce_DrawCullRootParameterCount = 3;
+    // DESCRIPTORS FOR DRAW VERTEX
+    constexpr UINT CE_VERTEX_ODS_RANGE_COUNT = 4;
+    constexpr UINT CE_VERTEX_ODS_VTXPOS_ID = 0;
+    constexpr UINT CE_VERTEX_ODS_VTXNORMAL_ID = 1;
+    constexpr UINT CE_VERTEX_ODS_VTXTANGENT_ID = 2;
+    constexpr UINT CE_VERTEX_ODS_VTXTEXCOORD_ID = 3;
 
-    constexpr UINT Ce_DrawCullExclusiveSRVsRootID = 0;
-    constexpr UINT Ce_DrawCullSharedSRVsRootID = 1;
-    constexpr UINT Ce_DrawCullDrawCountConstantRootID= 2;
+    // DESCRIPTORS FOR DRAW PIXEL 
+    constexpr UINT CE_PIXEL_ODS_RANGE_COUNT = 1;
+    constexpr UINT CE_PIXEL_ODS_MATERIAL_ID = 0;
 
-    // DESCRIPTORS FOR DRAW CULL INST :
-    // additional descriptors
-    constexpr UINT Ce_DrawCullInstSRVsRangeCount = 2;
+    constexpr UINT CE_DRAW_OBJ_ID_32_BIT_COUNT = 1;
 
-    constexpr UINT Ce_DrawCullInstInstIdsxUAVRegister = 3;
-	constexpr UINT Ce_DrawCullInstInstIdsxUAVRangeID = 0;
+    constexpr UINT CE_TEXTURE_DESCRIPTOR_COUNT = BLIT_MAX_WORLD_TEXTURE_RESOURCES;
 
-    constexpr UINT Ce_DrawCullInstInstCounterUAVRegister = 2;
-	constexpr UINT Ce_DrawCullInstInstCounterUAVRangeID = 1;
-
-	// Root param descriptor grouping
-	constexpr UINT Ce_DrawCullInstRootParameterCount = 4;
-
-	constexpr UINT Ce_DrawCullInstExclusiveSRVsRootID = 0;
-	constexpr UINT Ce_DrawCullInstSharedSRVsRootID = 1;
-	constexpr UINT Ce_DrawCullInstDrawCountConstantRootID = 2;
-	constexpr UINT Ce_DrawCullInstAdditionalSRVsRootID = 3;
-
-    // DESCRIPTORS FOR DRAW OCC FIRST:
-	// additional SRVs
-    constexpr UINT Ce_DrawOccFirstDrawVisUAVRegister = 5;
-    
-    // Root param dscriptor grouping
-    constexpr UINT Ce_DrawOccFirstRootParameterCount = 4;
-
-	constexpr UINT Ce_DrawOccFirstExclusiveSRVsRootId = 0;
-	constexpr UINT Ce_DrawOccFirstSharedSRVsRootId = 1;
-	constexpr UINT Ce_DrawOccFirstDrawCountRootId = 2;
-	constexpr UINT Ce_DrawOccFirstDrawVisUAVRootId = 3;
-
-    // DESCRIPTORS FOR HI_Z_MAP GENERATION: 
-    constexpr UINT Ce_HI_Z_MapUAVRegister = 0;
-
-    constexpr UINT Ce_HI_Z_MapSRVRegister = 0;
-
-    constexpr UINT Ce_HI_Z_MapMipLvlConstantRegister = 0;
-    constexpr UINT Ce_HI_Z_MapMipLvlContant32BitCount = 5;
-
-	// Root param descriptor grouping
-    constexpr UINT Ce_HI_Z_MapRootParameterCount = 3;
-
-    constexpr UINT Ce_HI_Z_MapUAVRootID = 0;
-    constexpr UINT Ce_HI_Z_MapSRVRootID = 1;
-    constexpr UINT Ce_HI_Z_MapMipLvlConstantRootID = 2;
-
-    // DESCRIPTOR FOR DRAW OCC LATE:
-    // additional SRVs
-    constexpr UINT Ce_DrawOccLateDrawVisUAVRegister = 5;
-
-    // HI_Z MAP For occlusion
-    constexpr UINT Ce_DrawOccLateHI_Z_MapSRVRegister = 3;
-
-	// Root param descriptor grouping
-	constexpr UINT Ce_DrawOccLateRootParameterCount = 5;
-    
-	constexpr UINT Ce_DrawOccLateExclusiveSRVsRootId = 0;
-	constexpr UINT Ce_DrawOccLateSharedSRVsRootId = 1;
-	constexpr UINT Ce_DrawOccLateDrawCountRootId = 2;
-	constexpr UINT Ce_DrawOccLateHI_Z_MapRootId = 3;
-    constexpr UINT Ce_DrawOccLateDrawVisUAVRootId = 4;
-
-    // DESCRIPTORS FOR DRAW OCC TEMPORAL:
-    constexpr UINT Ce_DrawOccTemporalHI_Z_MapSRVRegister = 10;
-
-	// Root parameter descriptor grouping
-	constexpr UINT Ce_DrawOccTemporalRootParameterCount = 4;
-	constexpr UINT Ce_DrawOccTemporalExclusiveSRVsRootId = 0;
-	constexpr UINT Ce_DrawOccTemporalSharedSRVsRootId = 1;
-	constexpr UINT Ce_DrawOccTemporalDrawCountRootId = 2;
-	constexpr UINT Ce_DrawOccTemporalHI_Z_MapRootId = 3;
-
-    // DESCRIPTOR FOR CLUSTER CULL:
-    constexpr UINT Ce_ClusterDispatchAdditionalViewsRangeCount = 6;
-
-    // Cluster dispatch command buffer
-    constexpr UINT Ce_ClusterCullCmdUAVRegister = 5;
-    constexpr UINT Ce_ClusterCullCmdUAVRangeID = 0;
-
-    // Cluster dispatch counter buffer
-    constexpr UINT Ce_ClusterCullCounterUAVRegister = 6;
-    constexpr UINT Ce_ClusterCullCounterUAVRangeID = 1;
-
-    // Cluster group data buffer
-    constexpr UINT Ce_ClusterCullGroupDataUAVRegister = 7;
-    constexpr UINT Ce_ClusterCullGroupDataUAVRangerID = 2;
-
-    // Cluster attributes(3)
-    constexpr UINT Ce_ClusterCullClusterVtxsSRVRegister = 8;
-    constexpr UINT Ce_ClusterCullClusterVtxsSRVRangeID = 3;
-
-    constexpr UINT Ce_ClusterCullClusterSpheresSRVRegister = 9;
-    constexpr UINT Ce_ClusterCullClusterSpheresSRVRangeID = 4;
-
-    constexpr UINT Ce_ClusterCullClusterConesSRVRegister = 10;
-    constexpr UINT Ce_ClusterCullClusterConesSRVRangeID = 5;
-
-    // root param descriptor grouping
-    constexpr UINT Ce_ClusterCullRootParameterCount = 5;
-
-    constexpr UINT Ce_ClusterCullExclusiveSRVsRootID = 0;
-    constexpr UINT Ce_ClusterCullSharedSRVsRootID = 1;
-    constexpr UINT Ce_ClusterCullDrawCountRootID = 2;
-    constexpr UINT Ce_ClusterCullAdditionalViewsRootID = 3;
-    constexpr UINT Ce_ClusterCullHI_Z_MapSrvRootID = 4;
-
-    // DESCRIPTORS FOR OPAQUE DRAW :
-    // exclusive range specific
-    constexpr UINT Ce_OpaqueDrawExclusiveSRVsRangeCount = 4;
-
-    constexpr UINT Ce_OpaqueDrawVtxPosSRVRegister = 3;
-    constexpr UINT Ce_OpaqueDrawVtxPosSRVRangeID = 0;
-
-    constexpr UINT Ce_OpaqueDrawVtxNormalSRVRegister = 4;
-    constexpr UINT Ce_OpaqueDrawVtxNormalSRVRangeID = 1;
-
-    constexpr UINT Ce_OpaqueDrawVtxTangentSRVRegister = 5;
-    constexpr UINT Ce_OpaqueDrawVtxTangentSRVRangeID = 2;
-
-    constexpr UINT Ce_OpaqueDrawVtxTexCoordSRVRegister = 6;
-    constexpr UINT Ce_OpaqueDrawVtxTexCoordSRVRangeID = 3;
-
-    // exclusive ps range 
-    constexpr UINT Ce_OpaqueDrawPSExclusiveSRVsRangeCount = 1;
-
-    constexpr UINT Ce_OpaqueDrawPSMaterialSRVRegister = 7;
-    constexpr UINT Ce_OpaqueDrawPSMaterialSRVRangeID = 0;
-
-    // texture sampler
-    constexpr UINT Ce_OpaqueDrawTexSMPRegister = 0;
-
-    // object id root constant
-    constexpr UINT Ce_OpaqueDrawObjIDConstantRegister = 1;
-    constexpr UINT Ce_OpaqueDrawObjIDConstant32BitCount = 1;
-
-    // texture descriptor array
-    constexpr UINT Ce_OpaqueDrawTexRegister = 8;
-    constexpr UINT Ce_OpaqueDrawTexDescriptorCount = BlitzenCore::Ce_MaxTextureCount;
-
-    // Root param descriptor grouping 
-    constexpr UINT Ce_OpaqueDrawRootParameterCount = 6;
-    constexpr UINT Ce_OpaqueDrawExclusiveSRVsRootID = 0;
-    constexpr UINT Ce_OpaqueDrawSharedSRVsRootID = 1;
-    constexpr UINT Ce_OpaqueDrawObjIDRootID = 2;
-    constexpr UINT Ce_OpaqueDrawTexSMPRootID = 3;
-    constexpr UINT Ce_OpaqueDrawMatSRVRootID = 4;
-    constexpr UINT Ce_OpaqueDrawTexSRVRootID = 5;
-
-    // DESCRIPTORS FOR OPAQUE DRAW INST :
-    // additional srvs
-    constexpr UINT Ce_OpaqueDrawInstAdditionalSRVsRangeCount = 1;
-    constexpr UINT Ce_OpaqueDrawInstInstUAVRegister = 3;
-    constexpr UINT Ce_OpaqueDrawInstInstSRVRangeID = 0;
+    // ROOT PARAMETERS FOR GRAPHICS
+    constexpr UINT CE_GRAPHICS_ODS_ROOT_COUNT = 7;
+    constexpr UINT CE_GRAPHICS_ODS_VTX_TABLE_ID = 0;
+    constexpr UINT CE_GRAPHICS_ODS_PS_TABLE_ID = 1;
+    constexpr UINT CE_GRAPHICS_ODS_GLOBAL_ID = 2;
+    constexpr UINT CE_GRAPHICS_ODS_TEX_ID = 3;
+    constexpr UINT CE_GRAPHICS_ODS_TEXSMP_ID = 4;
+    constexpr UINT CE_GRAPHICS_ODS_STATIC_OBJIDX_ID = 5;
+    constexpr UINT CE_GRAPHICS_ODS_DYNAMIC_OBJIDX_ID = 6;
 
     // Descriptors for bounding sphere draw
     constexpr UINT Ce_BoundingSphereRootParameterCount = 3;
@@ -270,28 +166,6 @@ namespace BlitzenDX12
 
 	constexpr UINT Ce_BoundingSphereViewDataCBVRegister = 0;
     constexpr UINT Ce_BoundingSphereViewDataRootParameterID = 2;
-
-    // Root param descriptor grouping 
-    constexpr UINT Ce_OpaqueDrawInstRootParameterCount = 7;
-    constexpr UINT Ce_OpaqueDrawInstExclusiveSRVsRootID = 0;
-    constexpr UINT Ce_OpaqueDrawInstSharedSRVsRootID = 1;
-    constexpr UINT Ce_OpaqueDrawInstObjIDRootID = 2;
-    constexpr UINT Ce_OpaqueDrawInstTexSMPRootID = 3;
-    constexpr UINT Ce_OpaqueDrawInstMatSRVRootID = 4;
-    constexpr UINT Ce_OpaqueDrawInstTexSRVRootID = 5;
-    constexpr UINT Ce_OpaqueDrawInstInstSRVRootID = 6;
-
-
-    // VIEW HEAP DESCRIPTOR COUNT
-    constexpr UINT Ce_MaterialSRVDescriptorCount = 1;
-    constexpr UINT Ce_DrawVisUavDescriptorCount = 1;
-	constexpr UINT Ce_DepthTargetSRVDescriptorCount = 1;
-	constexpr UINT Ce_HI_Z_MapSRVDescriptorCount = 1;
-    constexpr UINT Ce_ClusterDispatchUAVsCount = 4;
-    constexpr UINT Ce_ClusterCullClustersSRVCount = 1;
-
-    // SAMPLER HEAP DESCRIPTOR COUNT
-    constexpr UINT Ce_TexSmpDescriptorCount = 1;
 
 
     /* SSBO data copy helpers */
@@ -421,7 +295,6 @@ namespace BlitzenDX12
         uint32_t padding1;
     };
     static_assert(sizeof(IndirectDrawCmd) % 16 == 0);
-    constexpr uint32_t Ce_IndirectDrawCmdBufferSize = 500'000;
 
     struct ClusterGroupData
     {

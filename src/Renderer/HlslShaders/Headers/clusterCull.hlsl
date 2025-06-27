@@ -24,18 +24,23 @@ struct ClusterVertices
     uint idxOffset;
     uint idxCount;
 };
-StructuredBuffer<ClusterVertices> ssbo_ClusterVertices : register(t8);
+StructuredBuffer<ClusterVertices> ssbo_ClusterVertices : register(t6);
 
 struct ClusterSphere
 {
     float3 center;
     float radius;
 };
-StructuredBuffer<ClusterSphere> ssbo_ClusterSpheres : register(t9);
+StructuredBuffer<ClusterSphere> ssbo_ClusterSpheres : register(t7);
 
 struct ClusterCone
 {
     float3 cone;
     float coneCutoff;
 };
-StructuredBuffer<ClusterCone> ssbo_ClusterCones : register(t10);
+StructuredBuffer<ClusterCone> ssbo_ClusterCones : register(t8);
+
+cbuffer ObjCountConstant : register(b8)
+{
+    uint objCount;
+};

@@ -3,6 +3,7 @@
 #include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include "Renderer/BlitzenDX12/Cull/dx12Cull.h"
 #include "dx12RuntimeHelpers.h"
 #include "Core/blitzenEngine.h"
 
@@ -25,6 +26,9 @@ namespace BlitzenEngine
 	{
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
 		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
+		auto& pipelineContext{ pRenderer->m_pipelineContext };
+		auto& descriptorContext{ pRenderer->m_descriptorContext };
+		UINT frame{ pRenderer->m_currentFrame };
 
 		if (isFrustumFrozen)
 		{
@@ -39,6 +43,10 @@ namespace BlitzenEngine
 		// Start culling commands
 		cmd.m_graphicsCmdAlloc->Reset();
 		cmd.m_graphicsCmdList->Reset(cmd.m_graphicsCmdAlloc.Get(), nullptr);
+
+		// Binds heap for compute
+		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get() };
+		cmd.m_graphicsCmdList->SetDescriptorHeaps(1, srvHeaps);
 	}
 
 	void UpdateRendererTransforms(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenEngine::CPU_TRANSFORM* pTransforms, uint32_t transformCount)
@@ -46,28 +54,26 @@ namespace BlitzenEngine
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
 		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
 
-		//cmd.m_copyCmdAlloc->Reset();
-		//cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
-		//
-		//cmd.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.m_ssbo.buffer.Get(), 0, rwResources.m_transformBuffer.m_dynamicDataStaging.m_buffer.Get(), 0,
-		//	rwResources.m_transformBuffer.m_dynamicDataStaging.m_dataSize);
-		//
-		//cmd.m_copyCmdList->Close();
-		//ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };
-		//pRenderer->m_transferCommandQueue->ExecuteCommandLists(1, commandLists);
+		BlitzenCore::BlitMemCopy(pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_pMapped, pTransforms, transformCount * sizeof(CPU_TRANSFORM));
+
+		cmd.m_copyCmdAlloc->Reset();
+		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
+		
+		cmd.m_copyCmdList->CopyBufferRegion(rwResources.m_movementBuffer.buffer.Get(), 0, pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_buffer.Get(), 0,
+			transformCount * sizeof(CPU_TRANSFORM));
+		
+		cmd.m_copyCmdList->Close();
+		ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };
+		pRenderer->m_transferCommandQueue->ExecuteCommandLists(1, commandLists);
 
 		// Fence until transforms are ready
-		//BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
-
-		// Start graphics
-		//cmd.m_graphicsCmdAlloc->Reset();
-		//cmd.m_graphicsCmdList->Reset(cmd.m_graphicsCmdAlloc.Get(), nullptr);
+		BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
 		
 		// Restore transform buffer
-		//D3D12_RESOURCE_BARRIER transformAfterCopyBarrier{};
-		//BlitzenDX12::CreateResourcesTransitionBarrier(transformAfterCopyBarrier, rwResources.m_transformBuffer.m_ssbo.buffer.Get(), 
-		//	D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		//cmd.m_graphicsCmdList->ResourceBarrier(1, &transformAfterCopyBarrier);
+		D3D12_RESOURCE_BARRIER transformAfterCopyBarrier{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(transformAfterCopyBarrier, rwResources.m_movementBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		cmd.m_graphicsCmdList->ResourceBarrier(1, &transformAfterCopyBarrier);
 	}
 
 	BlitML::vec2 UpdateRendererWindowData(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)
@@ -186,7 +192,7 @@ namespace BlitzenEngine
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
 			// Starts off as indirect argument, because the first transition barrier will be expecting that
-			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_drawCmdBuffer.buffer.Get(), 
+			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_staticDrawCmdBuffer.buffer.Get(), 
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			rwID++;
 		}
@@ -194,7 +200,7 @@ namespace BlitzenEngine
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
 			// Starts off as indirect argument, because the first transition barrier will be expecting that
-			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_drawCmdCounterBuffer.buffer.Get(), 
+			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_staticDrawCmdCounter.buffer.Get(), 
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			rwID++;
 		}
@@ -239,7 +245,7 @@ namespace BlitzenEngine
 				auto& rwResources{ pRenderer->m_rwResources[frame] };
 
 				D3D12_RESOURCE_BARRIER clusterDispatchBarrier{};
-				BlitzenDX12::CreateResourcesTransitionBarrier(clusterDispatchBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), 
+				BlitzenDX12::CreateResourcesTransitionBarrier(clusterDispatchBarrier, rwResources.m_clusterGroupCounter.buffer.Get(), 
 					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 
 				rwBuffersFinal.PushBack(clusterDispatchBarrier);

@@ -98,6 +98,7 @@ namespace BlitzenEngine
     enum class BLIT_RENDER_TYPE : uint8_t
     {
         RENDER_OPAQUE,
+        RENDER_DYNAMIC,
         RENDER_INSTANCED,
         RENDER_TRANSPARENT
     };

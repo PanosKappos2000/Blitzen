@@ -10,11 +10,9 @@ struct Material
     uint padding1;
     uint padding2;
 };
-StructuredBuffer<Material> ssbo_MaterialBuffer : register(t7);
+StructuredBuffer<Material> ssbo_MaterialBuffer : register(t13);
 
 SamplerState smp_textureSampler : register(s0);
-Texture2D<float4> tex_Textures[5000] : register(t8);
-
 
 struct VSOutput
 {

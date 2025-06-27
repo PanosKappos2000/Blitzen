@@ -12,28 +12,33 @@ namespace BlitzenDX12
             return 0;
         }
 
-		UINT srvHeapDescriptorCount = (Ce_SharedSRVsRangeCount + Ce_DrawCullSRVsRangeCount + Ce_OpaqueDrawExclusiveSRVsRangeCount) * ce_framesInFlight;
-        srvHeapDescriptorCount += Ce_OpaqueDrawPSExclusiveSRVsRangeCount;
-        srvHeapDescriptorCount += Ce_OpaqueDrawTexDescriptorCount;
+        UINT srvHeapDescriptorCount = 0;
+        srvHeapDescriptorCount += CE_GLOBAL_DESCRIPTOR_RANGE_COUNT * ce_framesInFlight;
+        srvHeapDescriptorCount += CE_CULL_GLOBAL_RANGE_COUNT * ce_framesInFlight;
+        srvHeapDescriptorCount += CE_VERTEX_ODS_RANGE_COUNT * ce_framesInFlight;
+        srvHeapDescriptorCount += CE_PIXEL_ODS_RANGE_COUNT;
+        srvHeapDescriptorCount += CE_TEXTURE_DESCRIPTOR_COUNT;
+        srvHeapDescriptorCount += CE_CULL_OS_RANGE_COUNT * ce_framesInFlight;
+        srvHeapDescriptorCount += CE_CULL_OD_RANGE_COUNT * ce_framesInFlight;
 
         if (BlitzenCore::Ce_InstanceCulling)
         {
-			srvHeapDescriptorCount += Ce_DrawCullInstSRVsRangeCount * ce_framesInFlight;// This include the descriptor used by the graphics pipeline in instanced mode
+			srvHeapDescriptorCount += CE_CULL_INST_RANGE_COUNT * ce_framesInFlight;// This include the descriptor used by the graphics pipeline in instanced mode
         }
 
-		if (BlitzenCore::Ce_OcclusionCulling)
+		if (BlitzenCore::CE_OCCLUSION_DOUBLE_PASS)
 		{
-            srvHeapDescriptorCount += Ce_DrawVisUavDescriptorCount * ce_framesInFlight;
+            srvHeapDescriptorCount += ce_framesInFlight;
 		}
 
-        if (CE_DX12_BUILD_HI_Z_MAP)
+        if (BlitzenCore::Ce_Build_HI_Z)
         {
-            srvHeapDescriptorCount += (Ce_DepthPyramidMaxMips + Ce_DepthTargetSRVDescriptorCount + Ce_HI_Z_MapSRVDescriptorCount) * ce_framesInFlight;
+            srvHeapDescriptorCount += (Ce_DepthPyramidMaxMips + 1 + 1) * ce_framesInFlight;
         }
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            srvHeapDescriptorCount += Ce_ClusterDispatchUAVsCount * ce_framesInFlight;
+            srvHeapDescriptorCount += CE_CULL_CLUSTERS_RANGE_COUNT * ce_framesInFlight;
         }
 
         if (!CreateDescriptorHeap(device, ctx.m_viewHeap.ReleaseAndGetAddressOf(), srvHeapDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -61,7 +66,7 @@ namespace BlitzenDX12
 		ctx.m_dsvHeapHandle = ctx.m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 		ctx.m_dsvHeapIncrement = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
-        if (!CreateDescriptorHeap(device, ctx.m_samplerHeap.ReleaseAndGetAddressOf(), Ce_TexSmpDescriptorCount, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
+        if (!CreateDescriptorHeap(device, ctx.m_samplerHeap.ReleaseAndGetAddressOf(), 1, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
         {
             BLIT_ERROR("Failed to create sampler descriptor heap");
             return 0;

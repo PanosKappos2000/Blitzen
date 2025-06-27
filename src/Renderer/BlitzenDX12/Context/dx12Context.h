@@ -40,22 +40,23 @@ namespace BlitzenDX12
     {
         SSBO m_transformBuffer;
 
+        SSBO m_staticDrawCmdBuffer;
+        SSBO m_staticDrawCmdCounter;
+
         SSBO m_movementBuffer;
-
-        SSBO m_drawCmdBuffer;
-
-        SSBO m_drawCmdCounterBuffer;
-
-        SSBO m_clusterDispatchBuffer;
-
-        SSBO m_clusterVisibilityBuffer;
+        SSBO m_dynamicDrawCmdBuffer;
+        SSBO m_dynamicDrawCmdCounter;
 
         SSBO m_clusterGroupDataBuffer;
+        SSBO m_clusterGroupCounter;
+        SSBO m_clusterVisibilityBuffer;
+        SSBO m_clusterDrawCmdBuffer;
+        SSBO m_clusterDrawCounter;
 
         SSBO m_drawVisBuffer;
 
-        SSBO m_instanceDrawCmdBuffers[10];
-        SSBO m_instanceIdxsBuffers[10];
+        SSBO m_instanceDrawCmdBuffers;
+        SSBO m_instanceDrawCmdCounter;
 
         CBUFFER<BlitzenEngine::CameraViewData> m_viewBuffer;
 
@@ -71,52 +72,47 @@ namespace BlitzenDX12
         SIZE_T m_viewHeapIncrement;
         SIZE_T m_viewHeapCurrentOffset{ 0 };
 
-        // Views for descriptors that are used by compute and grahics
-        SIZE_T m_sharedViewsOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_sharedViewHandle[ce_framesInFlight];
+        SIZE_T m_globalTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_globalTableHandle[ce_framesInFlight];
 
-        // Views for descriptors used by all draw cull shaders
-        SIZE_T m_drawCullViewsOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_drawCullViewsHandle[ce_framesInFlight];
+        SIZE_T m_cullGlobalTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_cullGlobalTableHandle[ce_framesInFlight];
 
-        // Views for descriptors used by instanced culling shaders
-		SIZE_T m_drawCullInstUAVsOffset[ce_framesInFlight];
-		D3D12_GPU_DESCRIPTOR_HANDLE m_drawCullInstUAVsHandle[ce_framesInFlight];
+        SIZE_T m_cullOSTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_cullOSTableHandle[ce_framesInFlight];
 
-        // View for draw visibility descriptor
-		SIZE_T  m_drawVisUAVOffset[ce_framesInFlight];
-		D3D12_GPU_DESCRIPTOR_HANDLE m_drawVisUANHandle[ce_framesInFlight];
+        SIZE_T m_cullODTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_cullODTableHandle[ce_framesInFlight];
 
-        // View for depth target descriptor
-        SIZE_T m_depthTargetSRVOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_depthTargetSRVHandle[ce_framesInFlight];
+		SIZE_T m_cullInstTableOffset[ce_framesInFlight];
+		D3D12_GPU_DESCRIPTOR_HANDLE m_cullInstTableHandle[ce_framesInFlight];
 
-        // SRV for hi_z_map
-        SIZE_T m_HI_Z_MapSRVOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MapSRVHandle[ce_framesInFlight];
+        SIZE_T m_cullClusterTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_cullClusterTableHandle[ce_framesInFlight];
 
-		// first UAV for all mips of the HI_Z map (the rest are held by the depth pyramid struct)
-        SIZE_T m_HI_Z_MapMipsFirstUAVOffset[ce_framesInFlight];
+        SIZE_T m_cullOCCDPTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_cullOCCDPTableHandle[ce_framesInFlight];
+
+		SIZE_T  m_HI_Z_MAP_cullOffset[ce_framesInFlight];
+		D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MAP_cullHandle[ce_framesInFlight];
+
+        SIZE_T m_depthTargetOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_depthTargetHandle[ce_framesInFlight];
+
+        SIZE_T m_HI_Z_MAP_mipOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MAP_mipHandle[ce_framesInFlight];
+        SIZE_T m_HI_Z_MAP_firstUAVOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MapMipsFirstUAVHandle[ce_framesInFlight];
 
-        // Views for descriptors only used by opaqueDraw.cs
-        SIZE_T m_opaqueDrawViewsExclusiveOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_opaqueDrawViewsExclusiveHandle[ce_framesInFlight];
+        SIZE_T m_vertexODSTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE m_vertexODSTableHandle[ce_framesInFlight];
 
-        // UAV for instance indices descriptor
-		SIZE_T m_opaqueDrawInstInstUAVOffset[ce_framesInFlight];
-		D3D12_GPU_DESCRIPTOR_HANDLE m_opaqueDrawInstInstUAVHandle[ce_framesInFlight];
-
-        SIZE_T m_clusterDispatchAdditionalUAVsOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_clusterDispatchAdditionalUAVsHandle[ce_framesInFlight];
-
-        // View for material descriptor
-        SIZE_T m_opaqueDrawPSExclusiveViewsOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE m_opaqueDrawPSExclusiveViewsHandle;
+		SIZE_T m_pixelODSTableOffset;
+		D3D12_GPU_DESCRIPTOR_HANDLE m_pixelODSTableHandle;
 
         // Views for texture descriptor array start
-        SIZE_T m_texDescriptorsSRVOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE m_texDescriptorsSRVHandle;
+        SIZE_T m_texturesTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_texturesTableHandle;
 
         // SAMPLERS
         DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
@@ -148,79 +144,60 @@ namespace BlitzenDX12
         SIZE_T m_depthTargetDsvOffset[ce_framesInFlight];
         D3D12_CPU_DESCRIPTOR_HANDLE m_depthTargetDSVHandle[ce_framesInFlight];
 
-        // Additional solo handles
 		D3D12_GPU_DESCRIPTOR_HANDLE m_viewDataHandle[ce_framesInFlight];
 		D3D12_GPU_DESCRIPTOR_HANDLE m_boundSpheresBufferHandle[ce_framesInFlight];
     };
 
 	struct PipelineContext
 	{
-        // Small compute shader for setting draw count rwssbo to 0
-        DX12WRAPPER<ID3D12RootSignature> m_drawCountResetRoot;
-        DX12WRAPPER<ID3D12PipelineState> m_drawCountResetPso;
+        DX12WRAPPER<ID3D12RootSignature> m_cullRoot;
+        UINT m_cullInstTableRootID;
+        UINT m_cullInstWorkRootID;
+        UINT m_clusterCullTableRootID;
+        UINT m_clusterCullWorkRootID;
 
-		// Culling compute shader. Performs frustum culling and LOD selection. Creates indirect draw commands
-        DX12WRAPPER<ID3D12RootSignature> m_drawCullRoot;
-        DX12WRAPPER<ID3D12PipelineState> m_drawCullPso;
+        DX12WRAPPER<ID3D12PipelineState> m_staticCullPso;
+        DX12WRAPPER<ID3D12PipelineState> m_drawOccTemporalPso;
+        DX12WRAPPER<ID3D12PipelineState> m_opaqueStaticCountResetPso;
 
-        DX12WRAPPER<ID3D12RootSignature> m_dynamicCullRoot;
         DX12WRAPPER<ID3D12PipelineState> m_dynamicCullPso;
+        DX12WRAPPER<ID3D12PipelineState> m_opaqueDynamicCountResetPso;
 
-        // Small compute shader for instance count rwssbo reset
-        // Uses draw cull inst root
-		DX12WRAPPER<ID3D12PipelineState> m_drawInstCountResetPso;
-
-        // Culling compute shader. Performs frumtum culling and LOD selection. Sets instance counter
-        DX12WRAPPER<ID3D12RootSignature> m_drawCullInstRoot;
 		DX12WRAPPER<ID3D12PipelineState> m_drawCullInstPso;
+        DX12WRAPPER<ID3D12PipelineState> m_instanceCountResetPso;
 
-		// Culling compute shader. Performs frustum culling and LOD selection. Ignores objects that were tagged not visible last frame.
-        DX12WRAPPER<ID3D12RootSignature> m_drawOccFirstRoot;
 		DX12WRAPPER<ID3D12PipelineState> m_drawOccFirstPso;
-
-        // Resource copy compute shader. Generates HI_Z map for occlusion culling.
-        DX12WRAPPER<ID3D12RootSignature> m_HI_Z_MapRoot;
-        DX12WRAPPER<ID3D12PipelineState> m_HI_Z_MapPso;
-        
-        // Culling compute shader. Performs frustum and occlusion culling and LOD selection. 
-        // Creates indirect draw commands for objects that were not tagged as visible last frame.
-		// Tags objects with their visibility for the next frame.
-        DX12WRAPPER<ID3D12RootSignature> m_drawOccLateRoot;
         DX12WRAPPER<ID3D12PipelineState> m_drawOccLatePso;
 
-        // Culling compute shader. Performs frustum and occlusion culling and LOD selection. Uses previous HI_Z map
-		// Uses draw occ late root
-		DX12WRAPPER<ID3D12PipelineState> m_drawOccTemporalPso;
-
-
-        // CLUSTER CULLING MODE
-        DX12WRAPPER<ID3D12CommandSignature> m_clusterCullCmdSign;
-        DX12WRAPPER<ID3D12RootSignature> m_clusterCullRoot;
-        DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdResetPso;
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullDispatchPso;
+        DX12WRAPPER<ID3D12CommandSignature> m_clusterCullCmdSign;
+        DX12WRAPPER<ID3D12PipelineState> m_clusterCullCmdResetPso;
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullPso;
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullBatchCmdPso;
         DX12WRAPPER<ID3D12PipelineState> m_clusterCullBatchPso;
 
-        // Draws triangle with hardcoded vertices in the shader (legacy shader)
+        DX12WRAPPER<ID3D12RootSignature> m_HI_Z_MapRoot;
+        DX12WRAPPER<ID3D12PipelineState> m_HI_Z_MapPso;
+
         DX12WRAPPER<ID3D12RootSignature> m_triangleRoot;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
 
-        // Bounding sphere debug draw
 		DX12WRAPPER<ID3D12RootSignature> m_boundingSphereRoot;
 		DX12WRAPPER<ID3D12PipelineState> m_boundingSpherePso;
 
-        // Vertex and Pixel shaders for opaque objects. Uses execute indirect
-        DX12WRAPPER<ID3D12CommandSignature> m_opaqueDrawCmdSign;
-        DX12WRAPPER<ID3D12RootSignature> m_opaqueDrawRoot;
-        DX12WRAPPER<ID3D12PipelineState> m_opaqueDrawPso;
+        DX12WRAPPER<ID3D12RootSignature> m_graphicsRoot;
+        UINT m_clusterObjidxContantRootID;
 
-		// Vertex and Pixel shader for opaque objects with instancing. Uses execute indirect
-        DX12WRAPPER<ID3D12CommandSignature> m_opaqueDrawInstCmdSign;
-        DX12WRAPPER<ID3D12RootSignature> m_opaqueDrawInstRoot;
-        DX12WRAPPER<ID3D12PipelineState> m_opaqueDrawInstPso;
+        DX12WRAPPER<ID3D12CommandSignature> m_staticDrawCmdSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_staticDrawPso;
+        
+        DX12WRAPPER<ID3D12CommandSignature> m_dynamicDrawCmdSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_dynamicDrawPso;
 
-        // Transparent
+        DX12WRAPPER<ID3D12CommandSignature> m_drawInstCmdSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_drawInstPso;
+
+        DX12WRAPPER<ID3D12CommandSignature> m_transparentDrawCmdSignature;
         DX12WRAPPER<ID3D12PipelineState> m_transparentDrawPso;
 
         D3D12_RENDER_PASS_RENDER_TARGET_DESC m_renderTargetPassDesc[ce_framesInFlight]{};

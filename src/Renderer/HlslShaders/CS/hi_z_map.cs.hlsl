@@ -1,10 +1,10 @@
 #define DRAW_CULL_OCCLUSION
 #define DRAW_CULL_OCCLUSION_LATE
 
-Texture2D<float4> tex_depthIn : register(t0);
-RWTexture2D<float4> rwtex_depthOut : register(u0);
+Texture2D<float4> tex_depthIn : register(t14);
+RWTexture2D<float4> rwtex_depthOut : register(u13);
 
-cbuffer PyramidMip : register(b0)
+cbuffer PyramidMip : register(b6)
 {
     uint mipLevel;
     uint2 depthTargetSize;

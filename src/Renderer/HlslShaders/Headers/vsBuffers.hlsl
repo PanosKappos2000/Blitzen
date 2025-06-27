@@ -1,9 +1,9 @@
-StructuredBuffer<float3> ssbo_VtxPositions : register(t3);
-StructuredBuffer<float4> ssbo_VtxNormals : register(t4);
-StructuredBuffer<float4> ssbo_VtxTangents : register(t5);
-StructuredBuffer<float2> ssbo_VtxTexCoords : register(t6);
+StructuredBuffer<float3> ssbo_VtxPositions : register(t9);
+StructuredBuffer<float4> ssbo_VtxNormals : register(t10);
+StructuredBuffer<float4> ssbo_VtxTangents : register(t11);
+StructuredBuffer<float2> ssbo_VtxTexCoords : register(t12);
 
-cbuffer ObjId : register(b1)
+cbuffer ObjId : register(b3)
 {
     uint objId;
 };

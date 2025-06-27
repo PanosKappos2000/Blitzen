@@ -1,12 +1,11 @@
+#define OPAQUE_STATIC_CULL
+
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
+#include "../Headers/staticCull.hlsl"
+#include "../Headers/cullOut.hlsl"
 #include "../Headers/hlslMath.hlsl"
 #include "../Headers/cpuShared.h"
-
-cbuffer ObjCountConstant: register (b1)
-{
-    uint objCount;
-};
 
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)

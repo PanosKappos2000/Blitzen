@@ -280,7 +280,7 @@ namespace BlitzenDX12
 			if constexpr (BlitzenCore::Ce_BuildClusters)
 			{
 				D3D12_RESOURCE_BARRIER clusterDipatchBarrier{};
-				CreateResourcesTransitionBarrier(clusterDipatchBarrier, rwResources.m_clusterDispatchBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+				CreateResourcesTransitionBarrier(clusterDipatchBarrier, rwResources.m_clusterGroupCounter.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 				copyDestBarriers.PushBack(clusterDipatchBarrier);
 			}
@@ -327,7 +327,7 @@ namespace BlitzenDX12
 
 			if constexpr (BlitzenCore::Ce_BuildClusters)
 			{
-				cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_clusterDispatchBuffer.buffer.Get(), 0, clusterDispatchStaging.m_buffer.Get(), 0, clusterDispatchStaging.m_dataSize);
+				cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_clusterGroupCounter.buffer.Get(), 0, clusterDispatchStaging.m_buffer.Get(), 0, clusterDispatchStaging.m_dataSize);
 			}
 
 			cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_transformBuffer.buffer.Get(), 0, transformStaging.m_buffer.Get(), 0, transformStaging.m_dataSize);
@@ -579,9 +579,9 @@ namespace BlitzenDX12
 		// DRAW DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			ctx.m_opaqueDrawViewsExclusiveOffset[i] = ctx.m_viewHeapCurrentOffset;
-			ctx.m_opaqueDrawViewsExclusiveHandle[i] = ctx.m_viewHeapHandle;
-			ctx.m_opaqueDrawViewsExclusiveHandle[i].ptr += ctx.m_opaqueDrawViewsExclusiveOffset[i] * ctx.m_viewHeapIncrement;
+			ctx.m_vertexODSTableOffset[i] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_vertexODSTableHandle[i] = ctx.m_viewHeapHandle;
+			ctx.m_vertexODSTableHandle[i].ptr += ctx.m_vertexODSTableOffset[i] * ctx.m_viewHeapIncrement;
 
 			CreateBufferShaderResourceView(device, roResources.m_vtxPosBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_vertexCount, sizeof(BlitzenEngine::VtxPos));
 
@@ -595,41 +595,66 @@ namespace BlitzenDX12
 		// SHARED DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			ctx.m_sharedViewsOffset[i] = ctx.m_viewHeapCurrentOffset;
-			ctx.m_sharedViewHandle[i] = ctx.m_viewHeapHandle;
-			ctx.m_sharedViewHandle[i].ptr += ctx.m_sharedViewsOffset[i] * ctx.m_viewHeapIncrement;
+			ctx.m_globalTableOffset[i] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_globalTableHandle[i] = ctx.m_viewHeapHandle;
+			ctx.m_globalTableHandle[i].ptr += ctx.m_globalTableOffset[i] * ctx.m_viewHeapIncrement;
 
 			auto& rwResources = rwResourcesArray[i];
 
-			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, sizeof(BlitzenEngine::PrimitiveSurface));
+			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET,
+				sizeof(BlitzenEngine::RenderObject));
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_transformBuffer.buffer.Get(), nullptr, 
 				BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, sizeof(BlitzenEngine::MeshTransform), 0);
 
-			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, 
-				sizeof(BlitzenEngine::RenderObject));
+			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, sizeof(BlitzenEngine::PrimitiveSurface));
 
 			CreateConstantBufferView(device, ctx, rwResources.m_viewBuffer.buffer.Get(), sizeof(BlitzenEngine::CameraViewData));
 		}
 
-		// CULLING DESCRIPTORS (all modes)
-		for (size_t i = 0; i < ce_framesInFlight; ++i)
+		// CULLING GLOBAL DESCRIPTORS
+		for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
 		{
-			ctx.m_drawCullViewsOffset[i] = ctx.m_viewHeapCurrentOffset;
-			ctx.m_drawCullViewsHandle[i] = ctx.m_viewHeapHandle;
-			ctx.m_drawCullViewsHandle[i].ptr += ctx.m_drawCullViewsOffset[i] * ctx.m_viewHeapIncrement;
+			ctx.m_cullGlobalTableOffset[frame] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_cullGlobalTableHandle[frame] = ctx.m_viewHeapHandle;
+			ctx.m_cullGlobalTableHandle[frame].ptr += ctx.m_cullGlobalTableOffset[frame] * ctx.m_viewHeapIncrement;
 
-			auto& rwResources = rwResourcesArray[i];
-
-			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawCmdBuffer.buffer.Get(), rwResources.m_drawCmdCounterBuffer.buffer.Get(), 
-				Ce_IndirectDrawCmdBufferSize, sizeof(IndirectDrawCmd), 0);
-
-			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawCmdCounterBuffer.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+			auto& rwResources{ rwResourcesArray[frame] };
 
 			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_LODCount, sizeof(BlitzenEngine::LodData));
 
 			CreateBufferShaderResourceView(device, roResources.m_boundingSpheres.buffer.Get(), ctx,
 				context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, sizeof(BlitzenEngine::BoundingSphere));
+		}
+
+		// CULLING DESCRIPTORS OPAQUE STATIC
+		for (size_t i = 0; i < ce_framesInFlight; ++i)
+		{
+			ctx.m_cullOSTableOffset[i] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_cullOSTableHandle[i] = ctx.m_viewHeapHandle;
+			ctx.m_cullOSTableHandle[i].ptr += ctx.m_cullOSTableOffset[i] * ctx.m_viewHeapIncrement;
+
+			auto& rwResources = rwResourcesArray[i];
+
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_staticDrawCmdBuffer.buffer.Get(), rwResources.m_staticDrawCmdCounter.buffer.Get(), 
+				BLIT_MAX_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);
+
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_staticDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+		}
+
+		// CULLING DESCRIPTORS OPAQUE DYNAMIC
+		for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
+		{
+			ctx.m_cullODTableOffset[frame] = ctx.m_viewHeapCurrentOffset;
+			ctx.m_cullODTableHandle[frame] = ctx.m_viewHeapHandle;
+			ctx.m_cullODTableHandle[frame].ptr += ctx.m_cullODTableOffset[frame] * ctx.m_viewHeapIncrement;
+
+			auto& rwResources{ rwResourcesArray[frame] };
+
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_dynamicDrawCmdBuffer.buffer.Get(), rwResources.m_dynamicDrawCmdCounter.buffer.Get(),
+				BLIT_MAX_DYNAMIC_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);
+
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
 			CreateBufferShaderResourceView(device, rwResources.m_movementBuffer.buffer.Get(), ctx, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM));
 		}
@@ -637,31 +662,36 @@ namespace BlitzenDX12
 		// INSTANCING DESCRIPTORS
 		if (BlitzenCore::Ce_InstanceCulling)
 		{
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
 			{
-				
+				ctx.m_cullInstTableOffset[frame] = ctx.m_viewHeapCurrentOffset;
+				ctx.m_cullInstTableHandle[frame] = ctx.m_viewHeapHandle;
+				ctx.m_cullInstTableHandle[frame].ptr += ctx.m_cullInstTableOffset[frame] * ctx.m_viewHeapIncrement;
+
+				auto& rwResources{ rwResourcesArray[frame] };
+
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instanceDrawCmdBuffers.buffer.Get(), rwResources.m_instanceDrawCmdCounter.buffer.Get(),
+					BlitzenCore::Ce_MaxLodCountPerSurface, sizeof(IndirectDrawCmd), 0);
+
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instanceDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+
+				CreateBufferShaderResourceView(device, rwResources.m_movementBuffer.buffer.Get(), ctx, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM));
 			}
 		}
 
-		// VISIBILITY BUFFER FOR OCCLUSION (non-temporal)
-		if constexpr (BlitzenCore::Ce_OcclusionCulling)
+		// VISIBILITY BUFFER FOR Double pass occlusion
+		if constexpr (BlitzenCore::CE_OCCLUSION_DOUBLE_PASS)
 		{
-			for (uint32_t i = 0; i < ce_framesInFlight; ++i)
+			for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
 			{
-				auto& rwResources = rwResourcesArray[i];
+				auto& rwResources = rwResourcesArray[frame];
 
-				ctx.m_drawVisUAVOffset[i] = ctx.m_viewHeapCurrentOffset;
-				ctx.m_drawVisUANHandle[i] = ctx.m_viewHeapHandle;
-				ctx.m_drawVisUANHandle[i].ptr += ctx.m_drawVisUAVOffset[i] * ctx.m_viewHeapIncrement;
+				ctx.m_cullOCCDPTableOffset[frame] = ctx.m_viewHeapCurrentOffset;
+				ctx.m_cullOCCDPTableHandle[frame] = ctx.m_viewHeapHandle;
+				ctx.m_cullOCCDPTableHandle[frame].ptr += ctx.m_cullOCCDPTableOffset[frame] * ctx.m_viewHeapIncrement;
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawVisBuffer.buffer.Get(), nullptr, context.m_pResidents->m_renders.RENDER_COUNT, sizeof(uint32_t), 0);
+				//CreateBufferUnorderedAccessView(device, ctx, rwResources.m_drawVisBuffer.buffer.Get(), nullptr, context.m_pResidents->m_renders.RENDER_COUNT, sizeof(uint32_t), 0);
 			}
-		}
-
-		// HI_Z_MAP DESCRIPTORS
-		if constexpr (CE_DX12_BUILD_HI_Z_MAP)
-		{
-			CreateDepthPyramidDescriptors(device, rwResourcesArray, ctx, pDepthTargets, drawWidth, drawHeight);
 		}
 
 		// CLUSTER DESCRIPTORS
@@ -671,15 +701,21 @@ namespace BlitzenDX12
 			{
 				auto& rwResources{ rwResourcesArray[i] };
 
-				ctx.m_clusterDispatchAdditionalUAVsOffset[i] = ctx.m_viewHeapCurrentOffset;
-				ctx.m_clusterDispatchAdditionalUAVsHandle[i] = ctx.m_viewHeapHandle;
-				ctx.m_clusterDispatchAdditionalUAVsHandle[i].ptr += ctx.m_clusterDispatchAdditionalUAVsOffset[i] * ctx.m_viewHeapIncrement;
+				ctx.m_cullClusterTableOffset[i] = ctx.m_viewHeapCurrentOffset;
+				ctx.m_cullClusterTableHandle[i] = ctx.m_viewHeapHandle;
+				ctx.m_cullClusterTableHandle[i].ptr += ctx.m_cullClusterTableOffset[i] * ctx.m_viewHeapIncrement;
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDispatchBuffer.buffer.Get(), nullptr, 1, sizeof(ClusterDispatchCmd), 0);
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDrawCmdBuffer.buffer.Get(), rwResources.m_clusterDrawCounter.buffer.Get(),
+					BLIT_MAX_DYNAMIC_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterVisibilityBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize * 64,  sizeof(BlitzenCore::FAT_BOOL), 0);
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDrawCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterGroupDataBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize, sizeof(ClusterGroupData), 0);
+
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterGroupCounter.buffer.Get(), nullptr, 1, sizeof(ClusterDispatchCmd), 0);
+
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterVisibilityBuffer.buffer.Get(), nullptr, Ce_ClusterGroupDataBufferSize * BLIT_MAX_CLUSTERS_PER_GROUP, 
+					sizeof(BlitzenCore::FAT_BOOL), 0);
 
 				CreateBufferShaderResourceView(device, roResources.m_clusterVtxsBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::ClusterVertices));
 
@@ -688,18 +724,24 @@ namespace BlitzenDX12
 				CreateBufferShaderResourceView(device, roResources.m_clusterConesBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::ClusterCone));
 			}
 		}
+
+		// HI_Z_MAP DESCRIPTORS
+		if constexpr (BlitzenCore::Ce_Build_HI_Z)
+		{
+			CreateDepthPyramidDescriptors(device, rwResourcesArray, ctx, pDepthTargets, drawWidth, drawHeight);
+		}
 		
 		// OPAQUE DRAW PS EXCLUSIVES
-		ctx.m_opaqueDrawPSExclusiveViewsOffset = ctx.m_viewHeapCurrentOffset;
-		ctx.m_opaqueDrawPSExclusiveViewsHandle = ctx.m_viewHeapHandle;
-		ctx.m_opaqueDrawPSExclusiveViewsHandle.ptr += ctx.m_opaqueDrawPSExclusiveViewsOffset * ctx.m_viewHeapIncrement;
+		ctx.m_pixelODSTableOffset = ctx.m_viewHeapCurrentOffset;
+		ctx.m_pixelODSTableHandle = ctx.m_viewHeapHandle;
+		ctx.m_pixelODSTableHandle.ptr += ctx.m_pixelODSTableOffset * ctx.m_viewHeapIncrement;
 
 		CreateBufferShaderResourceView(device, roResources.m_matBuffer.buffer.Get(), ctx, context.m_textures.m_materialCount, sizeof(BlitzenEngine::Material));
 
 		// TEXTURE DESCRIPTORS
-		ctx.m_texDescriptorsSRVOffset = ctx.m_viewHeapCurrentOffset;
-		ctx.m_texDescriptorsSRVHandle = ctx.m_viewHeapHandle;
-		ctx.m_texDescriptorsSRVHandle.ptr += ctx.m_texDescriptorsSRVOffset * ctx.m_viewHeapIncrement;
+		ctx.m_texturesTableOffset = ctx.m_viewHeapCurrentOffset;
+		ctx.m_texturesTableHandle = ctx.m_viewHeapHandle;
+		ctx.m_texturesTableHandle.ptr += ctx.m_texturesTableOffset * ctx.m_viewHeapIncrement;
 		for (size_t i = 0; i < roResources.m_textureCount; ++i)
 		{
 			auto& tex2D{ roResources.m_drawTextures[i] };

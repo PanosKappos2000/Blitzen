@@ -1,8 +1,9 @@
-#define DRAW_INSTANCING
+#define INSTANCED_CULL
 
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/instCull.hlsl"
+#include "../Headers/cullOut.hlsl"
 #include "../Headers/hlslMath.hlsl"
 #include "../Headers/cpuShared.h"
 
@@ -37,7 +38,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         uint lodId = LODSelection(center, radius, transform.scale, lodTarget, surface.lodOffset, surface.lodCount);
         
-        InterlockedAdd(rwssbo_InstDrawCmd[lodId].instCount, 1);
+        InterlockedAdd(rwb_DrawCmdCounter[lodId], 1);
 
         // Should set this stuff on load, there is 8 of them at best since this will only looks at one type of mesh.
         //rwssbo_InstDrawCmd[lodId].indexCount = ssbo_LODs[lodId].indexCount;

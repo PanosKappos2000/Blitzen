@@ -3,10 +3,13 @@ struct PSOutput
     float4 color : SV_TARGET;
 };
 
+#include "../Headers/cpuShared.h"
 #include "../Headers/psBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
 //#define NO_PS_TEST
+
+Texture2D<float4> tex_Textures[BLIT_MAX_WORLD_TEXTURE_RESOURCES] : register(t15);
 
 PSOutput main(VSOutput input)
 {

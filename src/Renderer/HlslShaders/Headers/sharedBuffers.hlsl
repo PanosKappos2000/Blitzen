@@ -13,7 +13,7 @@ struct Transform
     float scale;
     float4 orientation;
 };
-RWStructuredBuffer<Transform> ssbo_Transforms : register(u2);
+RWStructuredBuffer<Transform> ssbo_Transforms : register(u4);
 
 struct Render
 {

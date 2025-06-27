@@ -50,6 +50,44 @@ namespace BlitzenEngine
         float lodTarget;
     };
 
+    struct CameraCullData
+    {
+        BlitML::mat4 viewMatrix;
+        float frustumRight;
+        float frustumLeft;
+        float frustumTop;
+        float frustumBottom;
+        float projection0;
+        float projection5;
+        float zNear;
+        float zFar;
+        float HI_Z_MAP_width;
+        float HI_Z_MAP_height;
+        float lodTarget;
+        float padding0;
+    };
+    struct alignas(256) CameraCullData_HLSLCBV
+    {
+        BlitML::mat4 viewMatrix;
+        float frustumRight;
+        float frustumLeft;
+        float frustumTop;
+        float frustumBottom;
+        float projection0;
+        float projection5;
+        float zNear;
+        float zFar;
+        float HI_Z_MAP_width;
+        float HI_Z_MAP_height;
+        float lodTarget;
+        float padding0;
+    };
+
+    struct CameraClipCoordinates
+    {
+        BlitML::mat4 clipCoordinates;
+    };
+
     struct Camera
     {
         CameraViewData viewData;

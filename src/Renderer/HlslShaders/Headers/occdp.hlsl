@@ -1,0 +1,1 @@
+RWStructuredBuffer<uint> rwssbo_DrawVisibilityBuffer : register(u10);

@@ -10,7 +10,7 @@ struct Lod
     uint padding1;
     uint padding3;
 };
-StructuredBuffer<Lod> ssbo_LODs : register(t7);
+StructuredBuffer<Lod> ssbo_LODs : register(t4);
 
 // The LOD index is calculated using a formula, where the distance to the bounding sphere's surface is taken
 // and the minimum error that would result in acceptable screen-space deviation is computed based on camera parameters
@@ -44,11 +44,26 @@ struct DrawCmd
     uint padding0;
     uint padding1;
 };
-RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u0);
+#ifdef OPAQUE_STATIC_CULL
+    RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u0);
+    RWBuffer<uint> rwb_DrawCmdCounter : register(u1);
+#endif
 
-RWBuffer<uint> rwb_DrawCmdCounter : register(u1);
+#ifdef OPAQUE_DYNAMIC_CULL
+    RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u2);
+    RWBuffer<uint> rwb_DrawCmdCounter : register(u3);
+#endif
 
-// Command count
+#ifdef INSTANCED_CULL
+    RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u11);
+    RWBuffer<uint> rwb_DrawCmdCounter : register(u12);
+#endif
+
+#ifdef CLUSTER_CULL
+    RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u8);
+    RWBuffer<uint> rwb_DrawCmdCounter : register(u9);
+#endif
+
 void PrepareDrawCmd(uint lodId, uint objId)
 {
 
@@ -74,22 +89,3 @@ struct BoundingSphere
     float radius;
 };
 StructuredBuffer<BoundingSphere> ssbo_BoundingSpheres : register(t1);
-
-struct Movement
-{
-    float3 velocity;
-    float3 rotation;
-};
-StructuredBuffer<Movement> ssbo_Movements : register(t11);
-
-#ifdef DRAW_CULL_OCCLUSION
-
-RWStructuredBuffer<uint> rwssbo_DrawVisibilityBuffer : register (u5);
-
-#endif
-
-#ifdef HI_Z_MAP_OCCLUSION
-
-Texture2D<float4> tex_HiZMap : register (t3);
-
-#endif

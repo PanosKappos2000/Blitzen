@@ -4,13 +4,9 @@
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/clusterCull.hlsl"
+#include "../Headers/occlusionCull.hlsl"
 #include "../Headers/hlslMath.hlsl"
 #include "../Headers/cpuShared.h"
-
-cbuffer ObjCountConstant : register(b1)
-{
-    uint objCount;
-};
 
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
@@ -41,7 +37,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     float4 aabb = float4(0, 0, 0, 0);
     if (ProjectSphere(center, radius, zNear, proj0, proj5, aabb))
     {
-        if (!OcclusionCheck(aabb, tex_HiZMap, pyramidWidth, pyramidHeight, center, radius, zNear))
+        if (!OcclusionCheck(aabb, pyramidWidth, pyramidHeight, center, radius, zNear))
         {
             return;
         }

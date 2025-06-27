@@ -161,9 +161,9 @@ namespace BlitzenDX12
 		{
 			auto& rwResources = rwResourcesArray[i];
 
-			context.m_HI_Z_MapSRVOffset[i] = context.m_viewHeapCurrentOffset;
-			context.m_HI_Z_MapSRVHandle[i] = context.m_viewHeapHandle;
-			context.m_HI_Z_MapSRVHandle[i].ptr += context.m_HI_Z_MapSRVOffset[i] * context.m_viewHeapIncrement;
+			context.m_HI_Z_MAP_cullOffset[i] = context.m_viewHeapCurrentOffset;
+			context.m_HI_Z_MAP_cullHandle[i] = context.m_viewHeapHandle;
+			context.m_HI_Z_MAP_cullHandle[i].ptr += context.m_HI_Z_MAP_cullOffset[i] * context.m_viewHeapIncrement;
 
 			CreateTexture2DShaderResourceView(device, rwResources.m_HI_Z.pyramid.Get(), context, Ce_DepthPyramidFormat, rwResources.m_HI_Z.mipCount);
 		}
@@ -172,12 +172,12 @@ namespace BlitzenDX12
 		{
 			auto& rwResources = rwResourcesArray[f];
 
-			context.m_HI_Z_MapMipsFirstUAVOffset[f] = context.m_viewHeapCurrentOffset;
-			context.m_HI_Z_MapMipsFirstUAVHandle[f] = context.m_viewHeapHandle;
-			context.m_HI_Z_MapMipsFirstUAVHandle[f].ptr += context.m_HI_Z_MapMipsFirstUAVOffset[f] * context.m_viewHeapIncrement;
+			context.m_HI_Z_MAP_mipOffset[f] = context.m_viewHeapCurrentOffset;
+			context.m_HI_Z_MAP_mipHandle[f] = context.m_viewHeapHandle;
+			context.m_HI_Z_MAP_mipHandle[f].ptr += context.m_HI_Z_MAP_mipOffset[f] * context.m_viewHeapIncrement;
 
 			SIZE_T mipsEndOffset = context.m_viewHeapCurrentOffset;
-			auto mipsStartHandle = context.m_HI_Z_MapMipsFirstUAVHandle[f];
+			auto mipsStartHandle = context.m_HI_Z_MAP_mipHandle[f];
 
 
 			for (uint32_t i = 0; i < Ce_DepthPyramidMaxMips; ++i)
@@ -197,9 +197,9 @@ namespace BlitzenDX12
 		
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			context.m_depthTargetSRVOffset[i] = context.m_viewHeapCurrentOffset;
-			context.m_depthTargetSRVHandle[i] = context.m_viewHeapHandle;
-			context.m_depthTargetSRVHandle[i].ptr += context.m_depthTargetSRVOffset[i] * context.m_viewHeapIncrement;
+			context.m_depthTargetOffset[i] = context.m_viewHeapCurrentOffset;
+			context.m_depthTargetHandle[i] = context.m_viewHeapHandle;
+			context.m_depthTargetHandle[i].ptr += context.m_depthTargetOffset[i] * context.m_viewHeapIncrement;
 
 			CreateTexture2DShaderResourceView(device, pDepthTargets[i].Get(), context, Ce_DepthTargetSRVFormat, 1);
 		}
