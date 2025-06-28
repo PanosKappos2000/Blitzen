@@ -122,8 +122,11 @@ namespace BlitzenEngine
 		return P_WORLD_RESIDENTS->AddResident(ctx);
 	}
 
-	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime)
+	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint rotationFlags)
 	{
+		auto& rotating{ P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID] };
+
+		rotating.rotatingFlags = rotationFlags;
 		if (!P_WORLD_RESIDENTS->m_movingResidents[residentID].m_isBlocked)
 		{
 			P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID].eulerAngles += rotation * deltaTime;

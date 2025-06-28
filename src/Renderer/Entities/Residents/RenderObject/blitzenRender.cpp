@@ -98,7 +98,7 @@ namespace BlitzenEngine
 
             if (context.cpu_pTransform == nullptr)
             {
-                BLIT_ERROR("%s: Dynamic transform requested but no CPU transform passed", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
+                BLIT_ERROR("%s: Dynamic transform requested but no CPU transform data passed", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
                 return CE_TRANSFORM_CREATE_ERROR_CODE;
             }
 
@@ -106,15 +106,20 @@ namespace BlitzenEngine
             BlitzenCore::BlitMemCopy(&m_moveables[m_moveableCount], context.cpu_pTransform, sizeof(CPU_TRANSFORM));
 
             // Shader side data
-            if (context.m_pTransform != nullptr)
+            if (context.m_pTransform == nullptr)
             {
-                BlitzenCore::BlitMemCopy(&m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount], context.m_pTransform, sizeof(MeshTransform));
+                BLIT_ERROR("%s: Dynamic transform requested but no shader transform data passed", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
+                return CE_TRANSFORM_CREATE_ERROR_CODE;
             }
-            else
-            {
-                BLIT_WARN("%s: Dynamic transform is being created with no initial GPU data", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-            }
-            
+
+            BlitzenCore::BlitMemCopy(&m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount], context.m_pTransform, sizeof(MeshTransform));
+
+            auto& transform{ m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount] };
+
+            BlitML::quat orientationYaw = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(0.f, -1.f, 0.f), context.cpu_pTransform->eulerAngles.x);
+            BlitML::quat orientationPitch = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(1.f, 0.f, 0.f), context.cpu_pTransform->eulerAngles.y);
+            transform.orientation = BlitML::MulitplyQuat(orientationYaw, orientationPitch);
+
             m_transformCount++;
             return CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount++;
         }
@@ -127,7 +132,6 @@ namespace BlitzenEngine
                 BLIT_ERROR("Exceeded max static transform count");
                 return BLIT_MAX_WORLD_TRANSFORM_COUNT;
             }
-
 
             if (context.m_pTransform != nullptr)
             {

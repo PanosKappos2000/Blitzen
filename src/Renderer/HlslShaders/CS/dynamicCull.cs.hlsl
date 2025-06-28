@@ -25,15 +25,38 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     
     float3 position = movement.velocity;
     
-    float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, -1.f, 0.f), movement.rotation.x);
-    float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.y);
+    if(!(movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_NONE))
+    {
     
-    float4 orientation = MulitplyQuat(orientationYaw, orientationPitch);
+        float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
+        if (movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
+        {
+        //rwssbo_Euler[obj.transformId] += movement.rotation.x;
+            float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, -1.f, 0.f), movement.rotation.x);
+            orientation = MultiplyQuat(orientation, orientationYaw);
+        }
+        if (movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
+        {
+            float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.y);
+            orientation = MultiplyQuat(orientation, orientationPitch);
+        }
+        if (movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT)
+        {
+        
+        }
+        ssbo_Transforms[obj.transformId].orientation = orientation;
+    }
     
-    float scale = 1.f;
+    float4 newOrientation = ssbo_Transforms[obj.transformId].orientation;
+    
+    //float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, -1.f, 0.f), movement.rotation.x);
+    //float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.y);
+    //
+    //float4 orientation = MultiplyQuat(orientationYaw, orientationPitch);
+    float scale = ssbo_Transforms[obj.transformId].scale;
 
     // Bounding sphere to view coordinates
-    float3 center = RotateQuat(ssbo_BoundingSpheres[objId].center, orientation) * scale + position;
+    float3 center = RotateQuat(ssbo_BoundingSpheres[objId].center, newOrientation) * scale + position;
     center = mul(viewMatrix, float4(center, 1)).xyz;
     float radius = ssbo_BoundingSpheres[objId].radius * scale;
 
@@ -53,9 +76,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         }
     }
     
-    ssbo_Transforms[obj.transformId].orientation = orientation;
     ssbo_Transforms[obj.transformId].position = position;
-    ssbo_Transforms[obj.transformId].scale = scale;
 
     // If the render object gets past culling, lod selection is done and draw command is added
     uint lodId = LODSelection(center, radius, scale, lodTarget, surface.lodOffset, surface.lodCount);

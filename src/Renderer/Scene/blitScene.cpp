@@ -178,12 +178,14 @@ namespace BlitzenEngine
     static void RotatingKittenFunc(WORLD_VARIABLE worldVariable, float deltaTime)
     {
         constexpr float movementSpeed = 1.f;
-        RotateEntity(worldVariable.m_engineResidentID, BlitML::fRotation{1.f}, deltaTime);
+        RotateEntity(worldVariable.m_engineResidentID, BlitML::fRotation{ 1.f }, deltaTime, BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT | BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT | 
+            BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT);
     }
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier)
     {
         constexpr uint32_t WV_ROTATING_KITTEN_COUNT = 5'000;
+        constexpr float WV_ROTATING_KITTEN_SCALE = 1.f;
 
         for (uint32_t wv = 0; wv < WV_ROTATING_KITTEN_COUNT; ++wv)
         {
@@ -198,6 +200,11 @@ namespace BlitzenEngine
             CPU_TRANSFORM randomTransform;
             RandomizeTransform(&randomTransform, transformMultiplier);
             wvCtx.residentCtx.m_transformInfo.cpu_pTransform = &randomTransform;
+
+            MeshTransform randomTransform_gpu;
+            RandomizeTransform(&randomTransform_gpu, transformMultiplier, WV_ROTATING_KITTEN_SCALE);
+            wvCtx.residentCtx.m_transformInfo.m_pTransform = &randomTransform_gpu;
+
             wvCtx.residentCtx.m_transformInfo.m_type = WorldTransformType::DYNAMIC;
 
             wvCtx.m_worldVariableID = wv;

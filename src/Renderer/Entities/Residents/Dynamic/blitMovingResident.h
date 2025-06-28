@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/Entities/Residents/blitResident.h"
+#include "Renderer/HlslShaders/Headers/cpuShared.h"
 
 namespace BlitzenEngine
 {
@@ -13,5 +14,5 @@ namespace BlitzenEngine
 
 	MovingResident* RequestMovementComponent(uint32_t residentID);
 
-	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime);
+	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint rotatingFlags = BLIT_RESIDENT_MOVEMENT_NONE);
 }

@@ -2,7 +2,7 @@ struct Movement
 {
     float3 velocity;
     float3 rotation;
-    uint padding0;
+    uint rotationFlags;
     uint padding1;
 };
 StructuredBuffer<Movement> ssbo_Movements : register(t3);

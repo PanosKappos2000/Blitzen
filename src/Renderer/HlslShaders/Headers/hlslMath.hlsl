@@ -26,7 +26,7 @@ float4 NormalizedQuatFromAngleAxis(float3 axis, float angle)
     return NormalizeQuat(q);
 }
 
-inline float4 MulitplyQuat(float4 q1, float4 q2)
+inline float4 MultiplyQuat(float4 q1, float4 q2)
 {
     float4 res;
 

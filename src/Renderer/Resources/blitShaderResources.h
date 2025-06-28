@@ -105,7 +105,7 @@ namespace BlitzenEngine
     {
         BlitML::vec3 position;
         BlitML::vec3 eulerAngles;
-        uint32_t padding0;
+        uint32_t rotatingFlags;
         uint32_t padding1;
     };
 

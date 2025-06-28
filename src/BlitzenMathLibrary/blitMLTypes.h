@@ -138,6 +138,7 @@ namespace BlitML
 
     inline vec4 operator / (const vec4& v1, float f) { return vec4(v1.x / f, v1.y / f, v1.z / f, v1.w / f); }
 
+    using float4 = vec4;
 
 
     // Quaternion
