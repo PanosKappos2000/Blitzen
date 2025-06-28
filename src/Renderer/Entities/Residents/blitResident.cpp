@@ -7,7 +7,7 @@
 
 namespace BlitzenEngine
 {
-	inline WORLD_RESIDENTS* pWorldResidents_STATIC_ACCESS{ nullptr };
+	inline static WORLD_RESIDENTS* P_WORLD_RESIDENTS{ nullptr };
 
 	RESIDENT_CREATE_RES WORLD_RESIDENTS::AddResident(const RESIDENT_CREATE_CONTEXT& ctx)
 	{
@@ -17,6 +17,10 @@ namespace BlitzenEngine
 		if (transformID == BLIT_MAX_WORLD_TRANSFORM_COUNT)
 		{
 			return RESIDENT_CREATE_RES::WORLD_TRANSFORM_CREATION_FAILED;
+		}
+		if (ctx.m_transformInfo.m_type == WorldTransformType::DYNAMIC)
+		{
+			m_movingResidents[transformID].m_isBlocked = BLIT_FAT_FALSE;
 		}
 
 		// Retrieves bounding spheres array
@@ -96,36 +100,34 @@ namespace BlitzenEngine
 	{
 		BLIT_ASSERT(resident < BlitzenCore::Ce_MaxWorldMovingResidentCount + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
 
-		return &pWorldResidents_STATIC_ACCESS->m_movingResidents[resident];
+		return &P_WORLD_RESIDENTS->m_movingResidents[resident];
 	}
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
 	{
-		BLIT_ASSERT(pWorldResidents_STATIC_ACCESS == nullptr);
+		BLIT_ASSERT(P_WORLD_RESIDENTS == nullptr);
 
-		pWorldResidents_STATIC_ACCESS = ptr;
+		P_WORLD_RESIDENTS = ptr;
 	}
 
 	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(Resident resident)
 	{
 		BLIT_ASSERT(resident < BlitzenCore::Ce_MaxWorldMovingResidentCount + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
 
-		return pWorldResidents_STATIC_ACCESS->m_transforms.m_moveables[resident];
+		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident];
 	}
 
 	RESIDENT_CREATE_RES AddResident_STATIC_ACCESS(const RESIDENT_CREATE_CONTEXT& ctx)
 	{
-		return pWorldResidents_STATIC_ACCESS->AddResident(ctx);
+		return P_WORLD_RESIDENTS->AddResident(ctx);
 	}
 
 	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime)
 	{
-		auto& moving{ pWorldResidents_STATIC_ACCESS->m_movingResidents[residentID] };
-
-		if (!moving.m_isBlocked)
+		if (!P_WORLD_RESIDENTS->m_movingResidents[residentID].m_isBlocked)
 		{
-			moving.m_pWorldTransform->eulerAngles += rotation;
-			AddMovingResident_STATIC_ACCESS(&moving);
+			P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID].eulerAngles += rotation * deltaTime;
+			//AddMovingResident_STATIC_ACCESS(&moving);
 		}
 	}
 }

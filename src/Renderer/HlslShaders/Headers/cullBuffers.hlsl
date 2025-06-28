@@ -12,6 +12,13 @@ struct Lod
 };
 StructuredBuffer<Lod> ssbo_LODs : register(t4);
 
+struct BoundingSphere
+{
+    float3 center;
+    float radius;
+};
+StructuredBuffer<BoundingSphere> ssbo_BoundingSpheres : register(t1);
+
 // The LOD index is calculated using a formula, where the distance to the bounding sphere's surface is taken
 // and the minimum error that would result in acceptable screen-space deviation is computed based on camera parameters
 uint LODSelection(float3 center, float radius, float scale, float lodTarget, uint lodOffset, uint lodCount)
@@ -54,16 +61,12 @@ struct DrawCmd
     RWBuffer<uint> rwb_DrawCmdCounter : register(u3);
 #endif
 
-#ifdef INSTANCED_CULL
-    RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u11);
-    RWBuffer<uint> rwb_DrawCmdCounter : register(u12);
-#endif
-
 #ifdef CLUSTER_CULL
     RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u8);
     RWBuffer<uint> rwb_DrawCmdCounter : register(u9);
 #endif
 
+#ifndef INSTANCED_CULL
 void PrepareDrawCmd(uint lodId, uint objId)
 {
 
@@ -82,10 +85,4 @@ void PrepareDrawCmd(uint lodId, uint objId)
     ssbo_DrawCmd[cmdId].instCount = 1;
     ssbo_DrawCmd[cmdId].insOffset = 0;
 }
-
-struct BoundingSphere
-{
-    float3 center;
-    float radius;
-};
-StructuredBuffer<BoundingSphere> ssbo_BoundingSpheres : register(t1);
+#endif

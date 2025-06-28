@@ -31,13 +31,17 @@ namespace BlitzenWorld
 				BlitzenEngine::UpdateRendererTransforms(pRenderer, RESIDENTS.m_transforms.m_moveables, RESIDENTS.m_transforms.m_moveableCount);
 
 				// 5. Cull Moving objects
+				cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::DRAW_CULL_TEMPORAL_OCCLUSION;
+				cullContext.m_workType = BlitzenEngine::RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
+				cullContext.m_workCount = RESIDENTS.m_renders.m_opaqueDynamicCount;
+				BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 
 				// 6. Draw
 				BlitzenEngine::SetupForFirstRenderPass(pRenderer);
-				BlitzenEngine::RENDER_CONTEXT renderContext{};
-				renderContext.m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_OPAQUE;
-				BlitzenEngine::RenderObjects(pRenderer, renderContext);
-				//pRenderer->DrawFrame(context.pWORLD->m_drawContext);
+				BlitzenEngine::RENDER_CONTEXT renderContext[2]{};
+				renderContext[0].m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_OPAQUE;
+				renderContext[1].m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_DYNAMIC;
+				BlitzenEngine::RenderObjects(pRenderer, renderContext, 2);
 
 				// 7. Generate HI_Z_MAP
 				BlitzenEngine::GenerateHI_Z_MAP(pRenderer);

@@ -105,13 +105,20 @@ namespace BlitzenEngine
     {
         BlitML::vec3 position;
         BlitML::vec3 eulerAngles;
-        // BlitML::vec2 padding0 ??
+        uint32_t padding0;
+        uint32_t padding1;
     };
 
     struct RenderObject
     {
         uint32_t transformId;
         uint32_t surfaceId;
+    };
+
+    struct InstancedRender
+    {
+        uint32_t transformId;
+        uint32_t drawCommandId;
     };
 
     struct BoundingSphere

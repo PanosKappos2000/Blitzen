@@ -5,7 +5,7 @@
 
 namespace BlitzenEngine
 {
-	void RenderObjects(BlitzenDX12::Dx12Renderer* pRenderer, const RENDER_CONTEXT& renderContext)
+	void RenderObjects(BlitzenDX12::Dx12Renderer* pRenderer, const RENDER_CONTEXT* renderContextArr, uint32_t renderContextCount)
 	{
 		UINT frame{ pRenderer->m_currentFrame };
 		UINT swapchainIDX{ pRenderer->m_swapchainIDX };
@@ -27,45 +27,48 @@ namespace BlitzenEngine
 		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_TEXSMP_ID, descriptorContext.m_texSmpHandle);
 		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_PS_TABLE_ID, descriptorContext.m_pixelODSTableHandle);
 
-		switch (renderContext.m_renderType)
-		{
-		case BLIT_RENDER_TYPE::RENDER_OPAQUE:
-		{
-			BlitzenDX12::BeginRenderPassClear(cmd.m_graphicsCmdList.Get(), renderTarget, descriptorContext, pipelineContext, swapchainIDX);
+		BlitzenDX12::BeginRenderPassClear(cmd.m_graphicsCmdList.Get(), renderTarget, descriptorContext, pipelineContext, swapchainIDX);
 
-			// Pipeline
-			cmdList->SetPipelineState(pipelineContext.m_staticDrawPso.Get());
-			// Primitives
-			cmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			// Index buffer
-			cmdList->IASetIndexBuffer(&pRenderer->m_roResources.m_idxBuffer.m_view);
-			// DRAW
-			cmdList->ExecuteIndirect(pipelineContext.m_staticDrawCmdSignature.Get(), BLIT_MAX_DRAW_COMMANDS - BLIT_OPAQUE_STATIC_RENDER_OFFSET, rwResources.m_staticDrawCmdBuffer.buffer.Get(),
-				0, rwResources.m_staticDrawCmdCounter.buffer.Get(), 0);
-
-			// Ends pass
-			cmdList->EndRenderPass();
-
-			break;
-		}
-		case BLIT_RENDER_TYPE::RENDER_DYNAMIC:
+		for (uint32_t ctx = 0; ctx < renderContextCount; ++ctx)
 		{
-			// Pipeline
-			cmdList->SetPipelineState(pipelineContext.m_dynamicDrawPso.Get());
-			// Primitives
-			cmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			// Index buffer
-			cmdList->IASetIndexBuffer(&pRenderer->m_roResources.m_idxBuffer.m_view);
-			// DRAW
-			cmdList->ExecuteIndirect(pipelineContext.m_dynamicDrawCmdSignature.Get(), BLIT_MAX_WORLD_OPAQUE_DYNAMIC_RENDERS, rwResources.m_dynamicDrawCmdBuffer.buffer.Get(),
-				0, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), 0);
-			break;
+			switch (renderContextArr[ctx].m_renderType)
+			{
+			case BLIT_RENDER_TYPE::RENDER_OPAQUE:
+			{
+				// Pipeline
+				cmdList->SetPipelineState(pipelineContext.m_staticDrawPso.Get());
+				// Primitives
+				cmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				// Index buffer
+				cmdList->IASetIndexBuffer(&pRenderer->m_roResources.m_idxBuffer.m_view);
+				// DRAW
+				cmdList->ExecuteIndirect(pipelineContext.m_staticDrawCmdSignature.Get(), BLIT_MAX_STATIC_DRAW_COMMANDS, rwResources.m_staticDrawCmdBuffer.buffer.Get(),
+					0, rwResources.m_staticDrawCmdCounter.buffer.Get(), 0);
+
+				break;
+			}
+			case BLIT_RENDER_TYPE::RENDER_DYNAMIC:
+			{
+				// Pipeline
+				cmdList->SetPipelineState(pipelineContext.m_dynamicDrawPso.Get());
+				// Primitives
+				cmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				// Index buffer
+				cmdList->IASetIndexBuffer(&pRenderer->m_roResources.m_idxBuffer.m_view);
+				// DRAW
+				cmdList->ExecuteIndirect(pipelineContext.m_dynamicDrawCmdSignature.Get(), BLIT_MAX_DYNAMIC_DRAW_COMMANDS, rwResources.m_dynamicDrawCmdBuffer.buffer.Get(),
+					0, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), 0);
+				break;
+			}
+			default:
+			{
+				break;
+			}
+			}
 		}
-		default:
-		{
-			break;
-		}
-		}
+
+		// Ends pass
+		cmdList->EndRenderPass();
 	}
 
 	void SetupForFirstRenderPass(BlitzenDX12::Dx12Renderer* pRenderer)

@@ -6,9 +6,6 @@ namespace BlitzenEngine
 	class MovingResident
 	{
 	public:
-
-		CPU_TRANSFORM* m_pWorldTransform;
-
 		BlitzenCore::FAT_BOOL m_isBlocked{ BlitzenCore::FAT_FALSE };
 	};
 

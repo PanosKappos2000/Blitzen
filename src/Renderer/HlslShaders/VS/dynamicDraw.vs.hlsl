@@ -1,22 +1,22 @@
-#define INSTANCING
+#define OPAQUE_DYNAMIC
 
 #include "../Headers/vsBuffers.hlsl"
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 
 // The main vertex shader function
-VSOutput main(uint vertexIndex : SV_VERTEXID, uint instId : SV_INSTANCEID)
+VSOutput main(uint vertexIndex : SV_VERTEXID)
 {
-    InstancedRender render = ssbo_Instanced[instanceOffset + instId];
-    float4 orientation = ssbo_Transforms[render.transformId].orientation;
+    Render obj = ssbo_Renders[objId];
+    float4 orientation = ssbo_Transforms[obj.transformId].orientation;
     VSOutput output;
 
     // Position
-    float3 modelPos = RotateQuat(ssbo_VtxPositions[vertexIndex], orientation) * ssbo_Transforms[render.transformId].scale + ssbo_Transforms[render.transformId].position;
+    float3 modelPos = RotateQuat(ssbo_VtxPositions[vertexIndex], orientation) * ssbo_Transforms[obj.transformId].scale + ssbo_Transforms[obj.transformId].position;
     output.position = mul(projectionView, (float4(modelPos, 1.0f)));
     
     // Material index
-    output.materialId = ssbo_Surfaces[resourceID].materialId;
+    output.materialId = ssbo_Surfaces[obj.surfaceId].materialId;
     
     // Tex coords
     output.texCoord = ssbo_VtxTexCoords[vertexIndex];

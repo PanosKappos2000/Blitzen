@@ -6,6 +6,7 @@
 #include "Renderer/BlitzenDX12/Cull/dx12Cull.h"
 #include "dx12RuntimeHelpers.h"
 #include "Core/blitzenEngine.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
@@ -167,9 +168,11 @@ namespace BlitzenEngine
 
 		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &movementStagingBarrier);
 
+		constexpr uint32_t CE_RW_BUFFER_INITIAL_COUNT = 7 * BlitzenDX12::ce_framesInFlight;
+
 		// RW BUFFERS
 		uint32_t rwID{ 0 };
-		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> rwBuffersFinal{ BlitzenDX12::Ce_VarBuffersCount };
+		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> rwBuffersFinal{ CE_RW_BUFFER_INITIAL_COUNT };
 
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
@@ -191,7 +194,6 @@ namespace BlitzenEngine
 
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
-			// Starts off as indirect argument, because the first transition barrier will be expecting that
 			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_staticDrawCmdBuffer.buffer.Get(), 
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			rwID++;
@@ -199,11 +201,26 @@ namespace BlitzenEngine
 
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
-			// Starts off as indirect argument, because the first transition barrier will be expecting that
 			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_staticDrawCmdCounter.buffer.Get(), 
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			rwID++;
 		}
+
+		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
+		{
+			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_dynamicDrawCmdBuffer.buffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+			rwID++;
+		}
+
+		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
+		{
+			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], pRenderer->m_rwResources[i].m_dynamicDrawCmdCounter.buffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+			rwID++;
+		}
+
+		BLIT_ASSERT(rwID == CE_RW_BUFFER_INITIAL_COUNT);
 
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{

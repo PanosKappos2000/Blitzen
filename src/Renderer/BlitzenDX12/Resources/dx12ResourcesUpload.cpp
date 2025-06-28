@@ -637,7 +637,7 @@ namespace BlitzenDX12
 			auto& rwResources = rwResourcesArray[i];
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_staticDrawCmdBuffer.buffer.Get(), rwResources.m_staticDrawCmdCounter.buffer.Get(), 
-				BLIT_MAX_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);
+				BLIT_MAX_STATIC_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_staticDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 		}
@@ -670,12 +670,10 @@ namespace BlitzenDX12
 
 				auto& rwResources{ rwResourcesArray[frame] };
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instanceDrawCmdBuffers.buffer.Get(), rwResources.m_instanceDrawCmdCounter.buffer.Get(),
+				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instanceDrawCmdBuffer.buffer.Get(), rwResources.m_instanceDrawCmdBuffer.buffer.Get(),
 					BlitzenCore::Ce_MaxLodCountPerSurface, sizeof(IndirectDrawCmd), 0);
 
-				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_instanceDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
-
-				CreateBufferShaderResourceView(device, rwResources.m_movementBuffer.buffer.Get(), ctx, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM));
+				CreateBufferUnorderedAccessView(device, ctx, roResources.m_instancedRenders.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 			}
 		}
 

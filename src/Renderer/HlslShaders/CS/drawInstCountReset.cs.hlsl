@@ -1,9 +1,15 @@
 #define INSTANCED_CULL
+#define INSTANCING
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/instCull.hlsl"
 
-[numthreads(8, 1, 1)]
-void csMain(uint3 threadID : SV_GroupThreadID)
+[numthreads(64, 1, 1)]
+void csMain(uint3 dispatchID : SV_DispatchThreadID)
 {
-    rwb_DrawCmdCounter[threadID.x] = 0;
+    if(dispatchID.x >= workCount)
+    {
+        return;
+    }
+    
+    rwssbo_DrawCmd[dispatchID.x].instanceOffset = 0;
 }

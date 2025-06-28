@@ -24,6 +24,8 @@ add_executable(BlitzenEngine
                 "src/Core/Events/blitTimeManager.h"
                 "src/Core/Events/blitzenTimeManager.cpp"
                 "src/Core/Events/blitEditorEvents.h"
+                "src/Core/Events/blitFrameEvents.h" 
+                "src/Core/Events/blitFrameEvents.cpp"
                 # WORLD (ALL SYSTEMS)
                 "src/Renderer/WORLD/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
@@ -125,6 +127,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Interface/blitComponents.h"
                 "src/Renderer/Entities/Interface/blitComponents.cpp"
                 "src/Renderer/Entities/Physics/blitGravity.h"
+                "src/Renderer/Entities/Interface/blitWVComponents.h"
                 
 
                 # RESIDENTS
@@ -141,6 +144,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
                 "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.cpp"
                 "src/Renderer/Entities/Residents/Collision/blitCollision.cpp"
+                "src/Renderer/Entities/Residents/Collision/blitCollisionManager.h" 
 
                 # LIGHTING
                 "src/Renderer/Lighting/blitDirectionalLight.h"
@@ -226,7 +230,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/Renderer/Entities/Residents/Collision/blitCollisionManager.h" "src/Renderer/Entities/Interface/blitWVComponents.h" "src/Core/Events/blitFrameEvents.h" "src/Core/Events/blitFrameEvents.cpp")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"  )
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

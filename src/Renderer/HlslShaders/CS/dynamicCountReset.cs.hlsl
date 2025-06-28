@@ -1,4 +1,4 @@
-#define OPAQUE_STATIC_CULL
+#define OPAQUE_DYNAMIC_CULL
 
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/dynamicCull.hlsl"

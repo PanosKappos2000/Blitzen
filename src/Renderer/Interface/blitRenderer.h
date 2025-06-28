@@ -106,7 +106,7 @@ namespace BlitzenEngine
     {
         BLIT_RENDER_TYPE m_renderType{ BLIT_RENDER_TYPE::RENDER_OPAQUE };
     };
-    void RenderObjects(RendererPtrType pRenderer, const RENDER_CONTEXT& renderContext);
+    void RenderObjects(RendererPtrType pRenderer, const RENDER_CONTEXT* renderContextArr, uint32_t renderContextCount);
 
     void FinalizeRendering(RendererPtrType pRenderer);
 

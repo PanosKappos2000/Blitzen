@@ -30,6 +30,8 @@ namespace BlitzenDX12
         SSBO m_renderBuffer{};
         SSBO m_boundingSpheres{};
 
+        SSBO m_instancedRenders;
+
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
 
@@ -55,8 +57,7 @@ namespace BlitzenDX12
 
         SSBO m_drawVisBuffer;
 
-        SSBO m_instanceDrawCmdBuffers;
-        SSBO m_instanceDrawCmdCounter;
+        SSBO m_instanceDrawCmdBuffer;
 
         CBUFFER<BlitzenEngine::CameraViewData> m_viewBuffer;
 

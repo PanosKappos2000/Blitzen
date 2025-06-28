@@ -308,6 +308,14 @@ namespace BlitzenDX12
 			return LOG_ERROR_MESSAGE_AND_RETURN(opaqueCmdRes);
 		}
 
+		indirectDescs[0].Constant.RootParameterIndex = CE_GRAPHICS_ODS_DYNAMIC_OBJIDX_ID;
+		HRESULT dynamicCmdRes{ device->CreateCommandSignature(&sigDesc, ctx.m_graphicsRoot.Get(), IID_PPV_ARGS(ctx.m_dynamicDrawCmdSignature.ReleaseAndGetAddressOf())) };
+		if (FAILED(dynamicCmdRes))
+		{
+			BLIT_ERROR("%s: Filaed to create dynamic draw command signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return LOG_ERROR_MESSAGE_AND_RETURN(dynamicCmdRes);
+		}
+
 		// opaque draw inst cmd signature
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
@@ -367,6 +375,12 @@ namespace BlitzenDX12
 		if (!CreateComputeShaderProgram(device, context.m_cullRoot.Get(), context.m_dynamicCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/dynamicCull.cs.hlsl.bin"))
 		{
 			BLIT_ERROR("%s: Failed to create dynamicCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!CreateComputeShaderProgram(device, context.m_cullRoot.Get(), context.m_opaqueDynamicCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/dynamicCountReset.cs.hlsl.bin"))
+		{
+			BLIT_ERROR("%s: Failed to create dynamicCountReset.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
@@ -498,7 +512,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			UINT64 indirectBufferSize{ BLIT_MAX_DRAW_COMMANDS * sizeof(IndirectDrawCmd) };
+			UINT64 indirectBufferSize{ BLIT_MAX_STATIC_DRAW_COMMANDS * sizeof(IndirectDrawCmd) };
 			if (!CreateSSBO<IndirectDrawCmd>(device, rwResources.m_staticDrawCmdBuffer, indirectBufferSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
 				BLIT_ERROR("%s: Failed to create indirect draw command buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
@@ -518,7 +532,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateSSBO<uint32_t>(device, rwResources.m_staticDrawCmdCounter, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			if (!CreateSSBO<uint32_t>(device, rwResources.m_dynamicDrawCmdCounter, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
 				BLIT_ERROR("%s: Failed to create dynamic draw command counter resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;

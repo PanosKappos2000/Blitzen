@@ -21,7 +21,7 @@ namespace BlitzenEngine
 
     void AddMovingResident_STATIC_ACCESS(MovingResident* pMoving)
     {
-        pComponents_STATIC_ACCESS->m_movingResidents[pComponents_STATIC_ACCESS->m_movingResidentCount++] = pMoving;
+        //pComponents_STATIC_ACCESS->m_movingResidents[pComponents_STATIC_ACCESS->m_movingResidentCount++] = pMoving;
     }
 
     void InitializeComponentSystemPointer_STATIC_ACCESS(ComponentSystem* ptr)

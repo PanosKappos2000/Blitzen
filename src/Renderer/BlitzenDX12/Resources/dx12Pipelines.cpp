@@ -338,6 +338,27 @@ namespace BlitzenDX12
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
         }
 
+        vsBytes.Clear();
+        vsSize = 0;
+
+        vsSize = GetShaderBytes(device, "HlslShaders/VS/dynamicDraw.vs.hlsl.bin", vsBytes);
+        if (vsSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create dynamic object vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        vsCode.BytecodeLength = vsSize;
+        vsCode.pShaderBytecode = vsBytes.Data();
+        psoDesc.VS = vsCode;
+
+        HRESULT dynamicPsoRes{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_dynamicDrawPso.ReleaseAndGetAddressOf())) };
+        if (FAILED(dynamicPsoRes))
+        {
+            BLIT_ERROR("%s: Failed to create dynamic draw pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
         if constexpr (BlitzenCore::Ce_InstanceCulling)
         {
             vsBytes.Clear();

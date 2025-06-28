@@ -20,7 +20,7 @@ namespace BlitzenCore
         double m_clockFrequency;
     };
 
-    void UpdateWorldClock(WorldTimeManager& clock);
+    void UpdateWorldClock(WorldTimeManager* pClock);
 }
 
 namespace BlitzenPlatform

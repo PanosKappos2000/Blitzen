@@ -1,3 +1,5 @@
+#define OPAQUE_STATIC
+
 #include "../Headers/vsBuffers.hlsl"
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"

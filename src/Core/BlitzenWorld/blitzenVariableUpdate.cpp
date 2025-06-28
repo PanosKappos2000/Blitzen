@@ -11,7 +11,7 @@ namespace BlitzenWorld
 
 	void WorldLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
-		BlitzenCore::UpdateWorldClock(*context.pClock);
+		BlitzenCore::UpdateWorldClock(context.pClock);
 		auto pWORLD = context.pWORLD;
 		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
 
@@ -42,6 +42,8 @@ namespace BlitzenWorld
 			}
 
 			BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
+
+			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
 
 			break;
 		}

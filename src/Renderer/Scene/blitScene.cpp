@@ -22,7 +22,7 @@ namespace BlitzenEngine
         }
 
         constexpr float RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER = 3'000.f;
-		constexpr float MOVING_RESIDENT_TEST_RANDOM_TRANSFORM_MULTIPLIER = 300.f;
+		constexpr float MOVING_RESIDENT_TEST_RANDOM_TRANSFORM_MULTIPLIER = 100.f;
 
         switch (sceneContext.m_type)
         {

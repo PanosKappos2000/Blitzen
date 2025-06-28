@@ -184,8 +184,6 @@ namespace BlitzenDX12
     constexpr UINT Ce_ClusterVtxsStagingIndex = 10;
     constexpr UINT Ce_ClusterSpheresStagingIndex = 11;
     constexpr UINT Ce_ClusterConesStagingIndex = 12;
-    
-    constexpr UINT Ce_VarBuffersCount = 3 * ce_framesInFlight;
 
     constexpr UINT Ce_VarSSBODataCount = 1;
 
@@ -285,16 +283,20 @@ namespace BlitzenDX12
     // Draw Indirect command struct (passed to the shaders)
     struct IndirectDrawCmd
     {
-        // Id into the render object buffer(root constant)
         uint32_t objId;
-
-        // Draw command
-        D3D12_DRAW_INDEXED_ARGUMENTS command;// 5 32bit integers
-
+        D3D12_DRAW_INDEXED_ARGUMENTS command;
         uint32_t padding0;
         uint32_t padding1;
     };
     static_assert(sizeof(IndirectDrawCmd) % 16 == 0);
+
+    struct InstancedDrawCmd
+    {
+        uint32_t instanceOffset;
+        uint32_t resourceId;
+        D3D12_DRAW_INDEXED_ARGUMENTS command;
+        uint32_t padding0;
+    };
 
     struct ClusterGroupData
     {
