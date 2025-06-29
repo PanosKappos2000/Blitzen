@@ -110,7 +110,7 @@ namespace BlitzenPlatform
             m_fileSize = GetFileSize(m_hFile, nullptr);
             if (m_fileSize == INVALID_FILE_SIZE)
             {
-                return BLIT_MMF_RES::FILE_SIZE_ZERO;
+                return BLIT_MMF_RES::FILE_SIZE_INVALID;
             }
             if (m_fileSize == 0)
             {

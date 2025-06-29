@@ -3,8 +3,10 @@
 
 namespace BlitzenEngine
 {
-	struct PrimitiveContainer
+	class PrimitiveContainer
 	{
+	public:
+
 		Vertex* m_vertices{ nullptr };
 		uint32_t m_vertexCount{ 0 };
 		uint32_t* m_indices{ nullptr };
@@ -15,12 +17,31 @@ namespace BlitzenEngine
 		VtxNormals* m_vertexNormals{ nullptr };
 		VtxTangents* m_vertexTangents{ nullptr };
 
+		uint32_t m_currentContextVertexCount{ 0 };
+		uint32_t m_currentContextIndexCount{ 0 };
+
 		void ALLOC();
+		void CLEAN();
 		~PrimitiveContainer();
 
 		bool AddVertices(Vertex* vertices, uint32_t count);
 		bool AddIndices(uint32_t* indices, uint32_t count);
+
+		// Puts current mesh indices and vertices pool offset back to zero
+		void MeshReset();
+
+		// Puts current scene indices and vertices pool offset back to zero
+		void SceneRest();
 	};
 
 	bool GenerateHlslVertices(PrimitiveContainer& context);
+
+	struct HLSL_VTX_CONTEXT
+	{
+		VtxPos* m_vtxPosArr{ nullptr };
+		VtxNormals* m_vtxNrmArr{ nullptr };
+		VtxTangents* m_vtxTngArr{ nullptr };
+		VtxTexCoords* m_texCoordArr{ nullptr };
+	};
+	void ConvertClassicVerticesToHlslFormat(HLSL_VTX_CONTEXT& hlslCtx, Vertex* classicVtxArr, uint32_t count);
 }

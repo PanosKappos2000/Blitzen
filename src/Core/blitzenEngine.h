@@ -85,6 +85,7 @@ namespace BlitzenCore
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
+    constexpr size_t CE_RAPID_RESOURCE_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
 
     constexpr uint32_t Ce_MaxControllerCount = 5;
 

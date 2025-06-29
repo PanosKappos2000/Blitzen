@@ -23,6 +23,7 @@ namespace BlitzenPlatform
         WRITE_SIZE_ZERO = 5,
         FILE_MAPPING_NULL = 6,
         FILE_MAPPING_VIEW_NULL = 7,
+        MEMORY_ALLOCATION_FAILED = 8,
 
         BLIT_MMF_RES_MAX
     };
@@ -38,20 +39,31 @@ namespace BlitzenPlatform
 		case BLIT_MMF_RES::WRITE_SIZE_ZERO: return "{BLIT_MMF_RES_ERROR}: Write size is zero\n";
 		case BLIT_MMF_RES::FILE_MAPPING_NULL: return "{BLIT_MMF_RES_ERROR}: File mapping handle is null\n";
 		case BLIT_MMF_RES::FILE_MAPPING_VIEW_NULL: return "{BLIT_MMF_RES_ERROR}: File mapping view is null\n";
+        case BLIT_MMF_RES::MEMORY_ALLOCATION_FAILED: return "{BLIT_MMF_RES_ERROR}: Manual Memory allocation failed\n";
 		default: return "{BLIT_MMF_RES_ERROR}: Unknown error\n";
 		}
 	}
 
+    inline bool CHECK_BLIT_MMF_RES_FOR_ERROR(BLIT_MMF_RES mmfResult)
+    {
+        return mmfResult != BLIT_MMF_RES::SUCCESS && mmfResult != BLIT_MMF_RES::SUCCESS_FALLBACK;
+    }
+
     using FILE_MODE_FLAGS = uint32_t;
     using FILE_MODE_FLAG_BITS = uint8_t;
 
-    #if defined(_WIN32)
-    struct MEMORY_MAPPED_FILE_SCOPE
+#if defined(_WIN32)
+
+    class MEMORY_MAPPED_FILE_SCOPE
     {
+    public:
+        // Opens file for reading. Allocates the mapped pointer based on file size
         BLIT_MMF_RES OpenRead(const char* path);
 
+        // Opens file for writing. Alloctes the mapped pointer based on write size passed
         BLIT_MMF_RES OpenWrite(const char* path, DWORD writeSize);
 
+        // Opens file for both writing and reading. Allocates the mapped pointer based on write size passed. If it's zero, it allocates with file size
         BLIT_MMF_RES OpenGeneral(const char* path, DWORD writeSize);
 
         void Close();
@@ -74,10 +86,11 @@ namespace BlitzenPlatform
         FILE_MODE_FLAGS m_mode;
     };
 
-    #elif defined(linux)
+#elif defined(linux)
 
-    struct MEMORY_MAPPED_FILE_SCOPE
+    class MEMORY_MAPPED_FILE_SCOPE
     {
+    public:
         BLIT_MMF_RES OpenRead(const char* path);
 
         BLIT_MMF_RES OpenWrite(const char* path, size_t writeSize);
@@ -104,7 +117,7 @@ namespace BlitzenPlatform
         FILE_MODE_FLAGS m_mode{(FILE_MODE_FLAG_BITS)FileModes::NONE}; 
     };
 
-    #endif
+#endif
 
     // Helper to read from the mapped memory
     bool ReadMemoryMappedFile(MEMORY_MAPPED_FILE_SCOPE& platformFile, size_t offset, size_t size, void* pDataRead);

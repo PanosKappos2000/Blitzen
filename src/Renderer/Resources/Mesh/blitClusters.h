@@ -11,8 +11,9 @@ namespace BlitzenEngine
     constexpr uint32_t CE_MAX_TRIANGLES_PER_CLUSTER = 124;
     constexpr float CE_CLUSTER_CONE_WEIGHT = 0.25f;
 
-	struct ClusterContainer
+	class ClusterContainer
 	{
+    public:
         Cluster* m_clusters{ nullptr };
         uint32_t m_clusterCount{ 0 };
 
@@ -24,6 +25,7 @@ namespace BlitzenEngine
         ClusterCone* m_clusterCones{ nullptr };
 
         void ALLOC();
+        void CLEAN();
         ~ClusterContainer();
 	};
 

@@ -9,13 +9,6 @@ namespace BlitzenEngine
 	constexpr uint32_t CE_MAX_INSTANCES_PER_LOD = 100'000;
 	constexpr uint32_t CE_MAX_LOD_COUNT = BlitzenCore::Ce_MaxMeshPrimitivesCount * BlitzenCore::Ce_MaxLodCountPerSurface;
 
-	struct MeshPrimitiveData
-	{
-		BlitzenCore::BIG_BOOL m_primitiveTransparencyFlags{ BlitzenCore::BB_FALSE };
-		uint32_t m_primitiveVertexCount{ 0 };
-		uint32_t m_primitiveVertexOffset{ UINT32_MAX };
-	};
-
 	enum class SurfaceCreateRes : int8_t
 	{
 		SUCCESS = 0,
@@ -71,6 +64,32 @@ namespace BlitzenEngine
 		uint32_t m_indicesCount{ 0 };
 	};
 
+	struct MESH_PRIMITIVE_GENERATE_CONTEXT
+	{
+		HLSL_VTX_CONTEXT* m_pVertexContext{ nullptr };
+		uint32_t m_vertexCount{ 0 };
+		uint32_t* m_indices{ nullptr };
+		uint32_t m_indexCount{ 0 };
+		MESH_PRIMITIVE_SPECIAL_FLAGS m_specialFlags{ MESH_PRIMITIVE_SPECIAL_NONE };
+		uint32_t m_materialID{ 0 };
+	};
+
+	struct MESH_PRIMITIVE_LOD_GENERATE_CONTEXT
+	{
+		MESH_PRIMITIVE_GENERATE_CONTEXT* m_pMeshPrimitiveInfo{ nullptr };
+		PrimitiveContainer* m_pPrimitives{ nullptr };
+		ClusterContainer* m_pClusters{ nullptr };
+		uint32_t m_vertexOffset{ 0 };
+	};
+
+	struct LOD_CLUSTERS_GENERATE_CONTEXT
+	{
+		HLSL_VTX_CONTEXT* m_pVertexContext{ nullptr };
+		uint32_t m_vertexCount{ 0 };
+		uint32_t* m_indices{ nullptr };
+		uint32_t m_indicesCount{ 0 };
+	};
+
 	class MeshPrimitivesContainer
 	{
 	public:
@@ -82,15 +101,24 @@ namespace BlitzenEngine
 		LodData m_LODs[CE_MAX_LOD_COUNT]{};
 		uint32_t m_LODCount{ 0 };
 
+		uint32_t m_currentContextLODCount{ 0 };
+		uint32_t m_currentContextMeshPrimitiveCount{ 0 };
+
 		SurfaceCreateRes GenerateSurface(PrimitiveContainer& primitives, ClusterContainer& clusters, MESH_PRIMITIVE_CREATE_CONTEXT& context);
 
+		SurfaceCreateRes GenerateMeshPrimitive(PrimitiveContainer& primitives, ClusterContainer clusters, MESH_PRIMITIVE_GENERATE_CONTEXT& context);
+
 		bool GenerateLODs(PrimitiveSurface& surface, MESH_PRIMITIVE_LOD_CREATE_CONTEXT& context);
+
+		bool GenerateMeshPrimitiveLODIndices(PrimitiveSurface& surface, MESH_PRIMITIVE_LOD_GENERATE_CONTEXT& context);
 
 		// Generates clusters for a given array of vertices and indices
 		uint32_t GenerateClusters(LOD_CLUSTERS_CREATE_CONTEXT&  context, uint32_t vertexOffset, ClusterContainer* pClusters);
 
 		// Generates bounding sphere for primitive based on given vertices and indices
 		void GenerateBoundingSphere(PrimitiveSurface& surface, BoundingSphere& surfaceBounds, MESH_PRIMITIVE_CREATE_CONTEXT& context);
+
+		void GenerateBoundingSphere(BoundingSphere& surfaceBounds, BlitML::vec3* vtxPosArr, uint32_t vtxCount);
 
 		void GenerateTangents(MESH_PRIMITIVE_CREATE_CONTEXT& context);
 	};

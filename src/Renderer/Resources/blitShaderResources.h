@@ -94,6 +94,13 @@ namespace BlitzenEngine
         uint32_t padding0;
     };
 
+    struct MeshPrimitiveData
+    {
+        BlitzenCore::BIG_BOOL m_primitiveTransparencyFlags{ BlitzenCore::BB_FALSE };
+        uint32_t m_primitiveVertexCount{ 0 };
+        uint32_t m_primitiveVertexOffset{ UINT32_MAX };
+    };
+
     struct alignas(16) MeshTransform
     {
         BlitML::vec3 pos;

@@ -1,6 +1,7 @@
 #pragma once
 #include "Mesh/blitMeshes.h"
 #include "Textures/blitTextures.h"
+#include "RapidFile/blitResourceRPF.h"
 
 namespace BlitzenEngine
 {
@@ -13,5 +14,7 @@ namespace BlitzenEngine
         MeshResources m_meshContext;
 
         TextureManager m_textureManager;
+
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE m_mappedFile;
     };
 }

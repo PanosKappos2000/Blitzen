@@ -110,7 +110,11 @@ namespace BlitzenWorld
 
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
 
+            // Useless, but keeping it here to remember to do something with it
             BlitzenPlatform::PutMouseInGameState(context.pPlatform);
+
+            context.pRenderingResources->m_meshContext.m_triangles.CLEAN();
+            context.pRenderingResources->m_meshContext.m_clusters.CLEAN();
         }
     }
 }

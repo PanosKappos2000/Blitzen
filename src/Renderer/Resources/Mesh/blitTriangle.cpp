@@ -17,6 +17,22 @@ namespace BlitzenEngine
 		m_vertexTangents = reinterpret_cast<VtxTangents*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTangents)));
 	}
 
+	void PrimitiveContainer::CLEAN()
+	{
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertices, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(Vertex));
+		m_vertices = nullptr;
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_indices, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
+		m_indices = nullptr;
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexPositions, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxPos));
+		m_vertexPositions = nullptr;
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexUVs, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTexCoords));
+		m_vertexUVs = nullptr;
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexNormals, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxNormals));
+		m_vertexNormals = nullptr;
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexTangents, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTangents));
+		m_vertexTangents = nullptr;
+	}
+
 	PrimitiveContainer::~PrimitiveContainer()
 	{
 		if (m_vertices)
@@ -58,6 +74,23 @@ namespace BlitzenEngine
 
 		m_clusters = reinterpret_cast<Cluster*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(Cluster)));
 		m_clusterIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t)));
+	}
+
+	void ClusterContainer::CLEAN()
+	{
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterVertices, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(ClusterVertices));
+			m_clusterVertices = nullptr;
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterSpheres, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(ClusterSphere));
+			m_clusterSpheres = nullptr;
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterCones, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(ClusterCone));
+			m_clusterCones = nullptr;
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusters, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(Cluster));
+			m_clusters = nullptr;
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterIndices, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
+			m_clusterIndices = nullptr;
+		}
 	}
 
 	ClusterContainer::~ClusterContainer()
@@ -103,6 +136,19 @@ namespace BlitzenEngine
 		return true;
 	}
 
+	void ConvertClassicVerticesToHlslFormat(HLSL_VTX_CONTEXT& hlslCtx, Vertex* classicVtxArr, uint32_t count)
+	{
+		for (uint32_t vert = 0; vert < count; vert++)
+		{
+			const auto& classic = classicVtxArr[vert];
+
+			hlslCtx.m_vtxPosArr[vert] = classic.position;
+			hlslCtx.m_texCoordArr[vert] = VtxTexCoords{ classic.uvX, classic.uvY };
+			hlslCtx.m_vtxNrmArr[vert] = VtxNormals{ classic.normalX / 127.5f - 1.0f, classic.normalY / 127.5f - 1.0f, classic.normalZ / 127.5f - 1.0f, classic.normalW / 127.5f - 1.0f };
+			hlslCtx.m_vtxTngArr[vert] = VtxTangents{ classic.tangentX / 127.5f - 1.0f, classic.tangentY / 127.5f - 1.0f, classic.tangentZ / 127.5f - 1.0f, classic.tangentW / 127.5f - 1.0f };
+		}
+	}
+
 	bool GenerateHLSLClusters(ClusterContainer& context)
 	{
 		for(uint32_t clst = 0; clst < context.m_clusterCount; ++clst)
@@ -127,5 +173,17 @@ namespace BlitzenEngine
 		}
 
 		return true;
+	}
+
+	void PrimitiveContainer::MeshReset()
+	{
+		m_vtxIdxCount = 0;
+		m_vertexCount = 0;
+	}
+
+	void PrimitiveContainer::SceneRest()
+	{
+		m_currentContextIndexCount = 0;
+		m_currentContextVertexCount = 0;
 	}
 }

@@ -230,7 +230,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"  )
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"   "src/Renderer/Resources/RapidFile/blitResourceRPF.h" "src/Renderer/Resources/RapidFile/blitResourceRPF.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
