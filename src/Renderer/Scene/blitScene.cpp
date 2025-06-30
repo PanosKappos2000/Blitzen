@@ -23,7 +23,7 @@ namespace BlitzenEngine
 
         constexpr float RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER = 3'000.f;
 		constexpr float MOVING_RESIDENT_TEST_RANDOM_TRANSFORM_MULTIPLIER = 100.f;
-        constexpr float CUSTOM_FILE_TEST_RANDOM_TRANSFORM_MULTIPLIER = 30.f;
+        constexpr float CUSTOM_FILE_TEST_RANDOM_TRANSFORM_MULTIPLIER = 2'000.f;
 
         switch (sceneContext.m_type)
         {
@@ -233,7 +233,7 @@ namespace BlitzenEngine
     {
         auto pMeshContainer{ &pResources->m_meshContext };
 
-        uint32_t meshID = LoadObjFileMeshToDisk(pResources->m_meshContext, BlitzenCore::Ce_DefaultKittenMeshName, BlitzenCore::Ce_MeshDoNotAddToTable);
+        uint32_t meshID = LoadObjFileMeshToDisk(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenCore::Ce_DefaultKittenMeshName);
         if (meshID == BlitzenCore::Ce_MaxMeshCount)
         {
             return SCENE_CREATE_RES::FAILED_TO_LOAD_OBJ_MESH_TO_DISK;
@@ -245,7 +245,63 @@ namespace BlitzenEngine
             return SCENE_CREATE_RES::FAILED_TO_ALLOCATE_RENDERER_STAGING_BUFFERS;
         }
 
+        if (!UploadToMeshPrimitiveStagingBuffer(loadingContextMesh, pMeshContainer->m_meshPrimitives.m_meshPrimitives, pMeshContainer->m_meshPrimitives.m_meshPrimitivesCount))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_MESH_PRIMITIVES_TO_STAGING_BUFFER;
+        }
 
+        if (!UploadToLODDataStagingBuffer(loadingContextMesh, pMeshContainer->m_meshPrimitives.m_LODs, pMeshContainer->m_meshPrimitives.m_LODCount))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_LOD_DATA_TO_STAGING_BUFFER;
+        }
+
+        if (!UploadToVertexPositionsStagingBuffer(loadingContextMesh, pMeshContainer->m_triangles.m_vertexPositions, pMeshContainer->m_triangles.m_vertexCount))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_VERTEX_POSITIONS_TO_STAGING_BUFFER;
+        }
+
+        if (!UploadToVertexNormalsStagingBuffer(loadingContextMesh, pMeshContainer->m_triangles.m_vertexNormals, pMeshContainer->m_triangles.m_vertexCount))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_VERTEX_NORMALS_TO_STAGING_BUFFER;
+        }
+
+        if (!UploadToVertexTangentsStagingBuffer(loadingContextMesh, pMeshContainer->m_triangles.m_vertexTangents, pMeshContainer->m_triangles.m_vertexCount))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_VERTEX_TANGENTS_TO_STAGING_BUFFER;
+        }
+
+        if (!UploadToVertexTextureCoordinatesStagingBuffer(loadingContextMesh, pMeshContainer->m_triangles.m_vertexUVs, pMeshContainer->m_triangles.m_vertexCount))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_VERTEX_TEXTURE_COORDINATES_TO_STAGING_BUFFER;
+        }
+
+        if (!UploadToVertexIndicesStagingBuffer(loadingContextMesh, pMeshContainer->m_triangles.m_indices, pMeshContainer->m_triangles.m_vtxIdxCount))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_VERTEX_INDICES_TO_STAGING_BUFFER;
+        }
+
+        constexpr uint32_t kittenCount = 1'500'000;
+        constexpr uint32_t KittenScale = 1.f;
+
+        RESIDENT_CREATE_CONTEXT residentCtx{};
+        residentCtx.m_flags = 0;
+        residentCtx.m_pResource = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName];
+
+        // Randomize transform
+        MeshTransform randomTransform;
+        RandomizeTransform(&randomTransform, transformMultiplier, KittenScale);
+        residentCtx.m_transformInfo.m_pTransform = &randomTransform;
+
+        RENDER_OBJECT_TYPE renderType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
+        residentCtx.m_isMoveable = BLIT_FAT_FALSE;
+
+        auto kittenRes{ pResidents->AddResident(residentCtx) };
+        if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)kittenRes))
+        {
+            BLIT_ERROR("%s: Renderer Stress Test Scene-> Failed to create kitten residents", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_RESIDENT_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(kittenRes));
+            return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
+        }
 
         return SCENE_CREATE_RES::SUCCESS;
     }

@@ -38,6 +38,9 @@ namespace BlitzenWorld
         pResources->m_meshContext.m_triangles.ALLOC();
         pResources->m_meshContext.m_clusters.ALLOC();
 
+#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
+        // Skip hardcoded load
+#else
         uint32_t bunnyMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenCore::Ce_DefaultMeshName) };
         if (bunnyMeshId == BlitzenCore::Ce_MaxMeshCount)
         {
@@ -65,6 +68,7 @@ namespace BlitzenWorld
             BLIT_ERROR("Failed to load default human mesh");
             return false;
         }
+#endif
 
         BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
 

@@ -85,13 +85,14 @@ add_executable(BlitzenEngine
                 "src/Platform/Filesystem/blitCFILE.h"
                 "src/Platform/Filesystem/blitCFILE.cpp"
 
-
-                # ENGINE RENDERING 
+                # RENDERING RESOURCES 
                 "src/Renderer/Interface/blitRenderer.h"
                 "src/Renderer/Interface/blitRendererInterface.h"
                 "src/Renderer/Resources/blitShaderResources.h"
                 "src/Renderer/Resources/blitRenderingResources.h"
                 "src/Renderer/Resources/blitzenRenderingResources.cpp"
+                "src/Renderer/Resources/RapidFile/blitResourceRPF.h" 
+                "src/Renderer/Resources/RapidFile/blitResourceRPF.cpp"
 
                 # TEXTURES
                 "src/Renderer/Resources/Textures/blitTextures.h"
@@ -230,7 +231,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"   "src/Renderer/Resources/RapidFile/blitResourceRPF.h" "src/Renderer/Resources/RapidFile/blitResourceRPF.cpp")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"    "src/Core/BlitzenWorld/blitzenSystemDispatcher.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -290,10 +291,11 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_CONSOLE_LOGGER
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
-                            RENDERER_STRESS_TEST
-                            MOVING_RESIDENT_TEST
+                            #RENDERER_STRESS_TEST
+                            #MOVING_RESIDENT_TEST
                             #DEFAULT_GLTF_SCENE_TEST
-                            LOAD_CMD_ARG_GLTF_FILEPATHS
+                            #LOAD_CMD_ARG_GLTF_FILEPATHS
+                            CUSTOM_FILE_TEST
 
                             DASHER_JOIN
                             DASHER_USE_DEAR

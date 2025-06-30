@@ -23,6 +23,25 @@ namespace BlitzenWorld
                 continue;
             }
 
+#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
+
+            BlitzenEngine::SCENE_CREATE_CONTEXT rpfTestCtx{};
+            rpfTestCtx.m_name = "RPF test scene";
+            rpfTestCtx.m_type = BlitzenEngine::SceneType::CustomFileTest;
+            rpfTestCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
+            rpfTestCtx.pResidents = &context.pWORLD->m_residents;
+            rpfTestCtx.pResources = context.pRenderingResources;
+
+            auto rpfTestRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], rpfTestCtx) };
+
+            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)rpfTestRes));
+            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)rpfTestRes))
+            {
+                BLIT_ERROR("%s: Failed to load rpf file test scene. The engine will continue but there will be unexpected behaviour.", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME);
+            }
+
+#endif
+
 #if defined(RENDERER_STRESS_TEST)
 
             BlitzenEngine::SCENE_CREATE_CONTEXT stressTestCtx{};

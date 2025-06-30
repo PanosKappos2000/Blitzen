@@ -39,6 +39,8 @@ namespace BlitzenEngine
 
         using RenderingLoadingContextMesh = BlitzenDX12::LoadingContextMesh;
 
+        using RenderingLoadingContextRenderObjects = BlitzenDX12::LoadingContextRenderObjects;
+
     #else
 
         static_assert(true);
@@ -60,7 +62,7 @@ namespace BlitzenEngine
     // Copies a mesh's primitives to a staging buffer. Count should not have sizeof(type) included. It's done inside.
     uint8_t UploadToMeshPrimitiveStagingBuffer(RenderingLoadingContextMesh& ctx, PrimitiveSurface* primitives, uint32_t count);
     // Copies a mesh's LODs to a staging buffer. Count should not have sizeof(type) included. It's done inside.
-    uint8_t UploadToLODDataStagingBufer(RenderingLoadingContextMesh& ctx, LodData* LODs, uint32_t count);
+    uint8_t UploadToLODDataStagingBuffer(RenderingLoadingContextMesh& ctx, LodData* LODs, uint32_t count);
     // Copies a mesh's vertex positions to a staging buffer. Count should not have sizeof(type) included. It's done inside.
     uint8_t UploadToVertexPositionsStagingBuffer(RenderingLoadingContextMesh& ctx, VtxPos* vtxPositions, uint32_t count);
     // Copies a mesh's vertex normals to a staging buffer. Count should not have sizeof(type) included. It's done inside.
@@ -79,6 +81,20 @@ namespace BlitzenEngine
     uint8_t UploadToClusterConesStagingBuffer(RenderingLoadingContextMesh& ctx, ClusterCone* clusterCones, uint32_t count);
     // Copies a mesh's cluster indices to a staging buffer. Count shoud not have sizeof(type) include. It's done inside.
     uint8_t UploadToClusterIndicesStagingBuffer(RenderingLoadingContextMesh& ctx, uint32_t* clusterIndices, uint32_t count);
+
+    uint8_t AllocateLoadingContextRenderObjects(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx);
+
+    uint8_t UploadToRenderObjectStagingBuffer(RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
+    uint8_t UploadToDynamicRenderObjectStagingBuffer(RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
+    uint8_t UploadToWorldTransformStagingBuffer(RenderingLoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount);
+    uint8_t UploadToCPUTransformStagingBuffer(RenderingLoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount);
+
+    uint8_t UploadToRenderObjectStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
+    uint8_t UploadToDynamicRenderObjectStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
+    uint8_t UploadToWorldTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount);
+    uint8_t UploadToCPUTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount);
+
+    uint8_t UploadNewGeometryDataToSSBOs(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& instanceData, RenderingLoadingContextMesh& resourceData);
 
     enum class MESH_RESOURCES_STAGING_BUFFER_RESOURCE_TYPE : uint8_t
     {

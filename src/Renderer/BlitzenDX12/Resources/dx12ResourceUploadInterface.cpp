@@ -51,43 +51,43 @@ namespace BlitzenEngine
 	{
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_meshPrimStaging, BlitzenCore::Ce_MaxMeshPrimitivesCount, (PrimitiveSurface*)nullptr))
 		{
-			BLIT_ERROR("%s: Failed to create mesh primitives staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_FATAL("%s: Failed to create mesh primitives staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_lodDataStaging, BlitzenCore::Ce_MaxMeshPrimitivesCount * BlitzenCore::Ce_MaxLodCountPerSurface, (LodData*)nullptr))
 		{
-			BLIT_ERROR("%s: Failed to create Mesh Primitives Level of Detail data staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_FATAL("%s: Failed to create Mesh Primitives Level of Detail data staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxPosStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxPos*)nullptr))
 		{
-			BLIT_ERROR("%s: Failed to create Vertex Positions Staging Buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_FATAL("%s: Failed to create Vertex Positions Staging Buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxNrmStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxNormals*)nullptr))
 		{
-			BLIT_ERROR("%s: Failed to create Vertex Normals Staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_FATAL("%s: Failed to create Vertex Normals Staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxTngStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxTangents*)nullptr))
 		{
-			BLIT_ERROR("%s: Failed to create Vertex Tangents Staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_FATAL("%s: Failed to create Vertex Tangents Staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxTexCoordStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxTexCoords*)nullptr))
 		{
-			BLIT_ERROR("%s: Failed to create Vertex Texture Coordinates staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_FATAL("%s: Failed to create Vertex Texture Coordinates staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxIdxStaging, BlitzenCore::Ce_MaxWorldVertexIndicesCount, (uint32_t*)nullptr))
 		{
-			BLIT_ERROR("%s: Failed to create Vertex Indices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_FATAL("%s: Failed to create Vertex Indices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
@@ -95,25 +95,25 @@ namespace BlitzenEngine
 		{
 			if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_clusterVtxStaging, CE_MAX_WORLD_CLUSTER_COUNT, (ClusterVertices*)nullptr))
 			{
-				BLIT_ERROR("%s: Failed to create Cluster Vertices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				BLIT_FATAL("%s: Failed to create Cluster Vertices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_clusterSpheresStaging, CE_MAX_WORLD_CLUSTER_COUNT, (ClusterSphere*)nullptr))
 			{
-				BLIT_ERROR("%s: Failed to create Cluster Spheres staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				BLIT_FATAL("%s: Failed to create Cluster Spheres staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_clusterConesStaging, CE_MAX_WORLD_CLUSTER_COUNT, (ClusterCone*)nullptr))
 			{
-				BLIT_ERROR("%s: Failed to create Cluster Cones staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				BLIT_FATAL("%s: Failed to create Cluster Cones staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 
 			if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_clusterIdxStaging, BlitzenCore::Ce_MaxWorldVertexIndicesCount, (uint32_t*)nullptr))
 			{
-				BLIT_ERROR("%s: Failed to create Cluster Indices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				BLIT_FATAL("%s: Failed to create Cluster Indices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
@@ -146,7 +146,7 @@ namespace BlitzenEngine
 		return 1;
 	}
 
-	uint8_t UploadToLODDataStagingBufer(BlitzenDX12::LoadingContextMesh& ctx, LodData* LODs, uint32_t count)
+	uint8_t UploadToLODDataStagingBuffer(BlitzenDX12::LoadingContextMesh& ctx, LodData* LODs, uint32_t count)
 	{
 		SIZE_T copySize{ sizeof(LodData) * count };
 		if ((sizeof(LodData) * ctx.m_lodDataStaging.m_validDataIndex) + copySize > ctx.m_lodDataStaging.m_dataSize)
@@ -384,6 +384,108 @@ namespace BlitzenEngine
 			return 0;
 		}
 		}
+	}
+
+	uint8_t AllocateLoadingContextRenderObjects(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx)
+	{
+		if(!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_renderStaging, BLIT_MAX_WORLD_OPAQUE_STATIC_RENDERS, (RenderObject*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate render object staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_dynamicRenderStaging, BLIT_MAX_WORLD_OPAQUE_DYNAMIC_RENDERS, (RenderObject*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate dynamic render object staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+		
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (MeshTransform*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate world transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (CPU_TRANSFORM*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		return 1;
+	}
+
+	uint8_t UploadToRenderObjectStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount)
+	{
+		BLIT_ASSERT_MESSAGE(false, "MISSING IMPLEMENTATION");
+		return 1;
+	}
+
+	uint8_t UploadToDynamicRenderObjectStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount)
+	{
+		BLIT_ASSERT_MESSAGE(false, "MISSING IMPLEMENTATION");
+		return 1;
+	}
+
+	uint8_t UploadToWorldTransformStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount)
+	{
+		BLIT_ASSERT_MESSAGE(false, "MISSING IMPLEMENTATION");
+		return 1;
+	}
+
+	uint8_t UploadToCPUTransformStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount)
+	{
+		BLIT_ASSERT_MESSAGE(false, "MISSING IMPLEMENTATION");
+		return 1;
+	}
+
+	uint8_t UploadToRenderObjectStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount)
+	{
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_renderStaging, BLIT_MAX_WORLD_OPAQUE_STATIC_RENDERS, (RenderObject*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate render object staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		return 1;
+	}
+
+	uint8_t UploadToDynamicRenderObjectStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount)
+	{
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_dynamicRenderStaging, BLIT_MAX_WORLD_OPAQUE_DYNAMIC_RENDERS, (RenderObject*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate dynamic render object staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		return 1;
+	}
+
+	uint8_t UploadToWorldTransformStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount)
+	{
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (MeshTransform*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate world transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		return 1;
+	}
+
+	uint8_t UploadToCPUTransformStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount)
+	{
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (CPU_TRANSFORM*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		return 1;
+	}
+
+	uint8_t UploadNewGeometryDataToSSBOs(BlitzenDX12::Dx12Renderer* pRenderer, RenderingLoadingContextRenderObjects& instanceData, RenderingLoadingContextMesh& resourceData)
+	{
+		return 1;
 	}
 }
 

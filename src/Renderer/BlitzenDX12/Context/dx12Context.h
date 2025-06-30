@@ -230,6 +230,14 @@ namespace BlitzenDX12
         STAGING<BlitzenEngine::PrimitiveSurface> m_meshPrimStaging;
         STAGING<BlitzenEngine::LodData> m_lodDataStaging;
     };
+
+    struct LoadingContextRenderObjects
+    {
+        STAGING<BlitzenEngine::RenderObject> m_renderStaging;
+        STAGING<BlitzenEngine::RenderObject> m_dynamicRenderStaging;
+        STAGING<BlitzenEngine::MeshTransform> m_transformStaging;
+        STAGING<BlitzenEngine::CPU_TRANSFORM> m_cpuTransformStaging;
+    };
 }
 
 #endif 
