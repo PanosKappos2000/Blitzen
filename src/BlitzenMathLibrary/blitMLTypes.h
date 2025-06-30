@@ -21,13 +21,31 @@ namespace BlitML
         inline vec2(const vec2& copy) : x{ copy.x }, y{ copy.y } {}
     };
 
-    inline vec2 operator + (const vec2& v1, const vec2& v2) { return vec2(v1.x + v2.x, v1.y + v2.y); }
+    inline vec2 operator + (vec2 v1, vec2 v2) { return vec2(v1.x + v2.x, v1.y + v2.y); }
+    inline vec2 operator + (vec2 vec, float scalar) { return vec2{ vec.x + scalar, vec.y + scalar }; }
+    inline vec2& operator += (vec2& first, vec2 second)
+    {
+        first.x += second.x;
+        first.y += second.y;
+        
+        return first;
+    }
 
-    inline vec2 operator - (const vec2& v1, const vec2& v2) { return vec2(v1.x - v2.x, v1.y - v2.y); }
+    inline vec2 operator - (vec2 v1, vec2 v2) { return vec2(v1.x - v2.x, v1.y - v2.y); }
+    inline vec2 operator - (vec2 vec, float scalar) {return vec2{ vec.x - scalar, vec.y + scalar };}
+    inline vec2& operator -= (vec2& first, vec2 second)
+    {
+        first.x -= second.x;
+        first.y -= second.y;
 
-    inline vec2 operator * (const vec2& v1, const vec2& v2) { return vec2(v1.x * v2.x, v1.y * v2.y); }
+        return first;
+    }
+
+    inline vec2 operator * (vec2 v1, vec2 v2) { return vec2(v1.x * v2.x, v1.y * v2.y); }
 
     inline vec2 operator / (const vec2& v1, const vec2& v2) { return vec2(v1.x / v2.x, v1.y / v2.y); }
+
+    using float2 = vec2;
 
     struct vec3
     {

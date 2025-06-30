@@ -135,6 +135,20 @@ namespace BlitzenEngine
     };
     static_assert(sizeof(BoundingSphere) % 16 == 0);
 
+    struct AABB
+    {
+        BlitML::vec3 m_minBounds;
+        BlitML::vec3 m_maxBounds;
+        BlitML::float2 m_padding;
+    };
+    static_assert(sizeof(AABB) % 16 == 0);
+
+    struct AABB_NOALIGN
+    {
+        BlitML::vec3 m_minBounds;
+        BlitML::vec3 m_maxBounds;
+    };
+
     struct Velocity
     {
         BlitML::vec3 m_velocity;
