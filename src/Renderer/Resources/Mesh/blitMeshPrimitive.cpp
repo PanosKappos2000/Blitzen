@@ -448,9 +448,6 @@ namespace BlitzenEngine
         // FINAL
         BlitCL::DynamicArray<uint32_t> allLodIndices;
 
-        // First LOD for this surface
-        surface.lodOffset = m_LODCount;
-
         while (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
         {
             if (m_LODCount >= CE_MAX_LOD_COUNT)
@@ -462,7 +459,7 @@ namespace BlitzenEngine
             surface.lodCount++;
 
             auto& lod{ m_LODs[m_LODCount++] };
-            lod.firstIndex = context.m_pPrimitives->m_vtxIdxCount + (uint32_t)allLodIndices.GetSize();
+            lod.firstIndex = (uint32_t)allLodIndices.GetSize();
             lod.indexCount = uint32_t(lodIndices.GetSize());
 
             // CLUSTER OFFSET
@@ -553,11 +550,6 @@ namespace BlitzenEngine
         {
             BLIT_ERROR("A surface has loaded too many LODs");
             return false;
-        }
-
-        for (uint32_t& index : allLodIndices)
-        {
-            index += context.m_vertexOffset;
         }
 
         if (!context.m_pPrimitives->AddIndices(allLodIndices.Data(), uint32_t(allLodIndices.GetSize())))

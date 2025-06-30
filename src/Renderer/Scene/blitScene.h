@@ -9,7 +9,8 @@ namespace BlitzenEngine
     {
         RendererStressTest = 0,
         MovingResidentTest = 1,
-        GltfSceneTest = 2
+        GltfSceneTest = 2, 
+        CustomFileTest = 3,
     };
 
     struct SCENE_CREATE_CONTEXT
@@ -22,7 +23,7 @@ namespace BlitzenEngine
         RenderingResources* pResources{ nullptr };
     };
 
-    enum class SCENE_CREATE_RES : int32_t
+    enum class SCENE_CREATE_RES : int64_t
     {
         SUCCESS = 0,
         FATAL = BlitzenCore::CE_BLITZEN_FATAL,
@@ -35,10 +36,12 @@ namespace BlitzenEngine
         FAILED_TO_LOAD_TEXTURE_TO_GPU = -6,
         FAILED_TO_ADD_TEXTURE_TO_SYSTEM = -7,
         MESH_LOADING_FAILED = -8,
+        FAILED_TO_LOAD_OBJ_MESH_TO_DISK = -9,
 
-        INVALID_RENDERER_HANDLE = - 5000,
-        INVALID_WORLD_RESIDENTS_HANDLE = - 10000,
+        INVALID_RENDERER_HANDLE = - 5'000,
+        INVALID_WORLD_RESIDENTS_HANDLE = - 10'000,
         INVALID_RENDERING_RESOURCES_HANDLE = -1'000,
+        FAILED_TO_ALLOCATE_RENDERER_STAGING_BUFFERS = -15'000,
 
         SCENE_RESIDENTS_FAILURE = -2000
     };
@@ -60,6 +63,8 @@ namespace BlitzenEngine
         case SCENE_CREATE_RES::INVALID_RENDERER_HANDLE: return "INVALID_RENDERER_HANDLE";
         case SCENE_CREATE_RES::INVALID_WORLD_RESIDENTS_HANDLE: return "INVALID_WORLD_RESIDENTS_HANDLE";
         case SCENE_CREATE_RES::INVALID_RENDERING_RESOURCES_HANDLE: return "INVALID_RENDERING_RESOURCES_HANDLE";
+        case SCENE_CREATE_RES::FAILED_TO_LOAD_OBJ_MESH_TO_DISK: return "SCENE_CREATE_RES::FAILED_TO_LOAD_OBJ_MESH_TO_DISK";
+        case SCENE_CREATE_RES::FAILED_TO_ALLOCATE_RENDERER_STAGING_BUFFERS: return "SCENE_CREATE_RES::FAILED_TO_ALLOCATE_RENDERER_STAGING_BUFFERS";
         }
     }
 
@@ -82,4 +87,6 @@ namespace BlitzenEngine
     SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier, BlitzenEngine::SceneContext* pScene);
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier);
+
+    SCENE_CREATE_RES LoadCustomFileTest(WORLD_RESIDENTS* pResidents, RendererPtrType pRenderer, BlitzenEngine::RenderingResources* pResources, float transformMultiplier);
 }

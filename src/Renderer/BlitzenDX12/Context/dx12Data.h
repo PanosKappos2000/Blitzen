@@ -229,6 +229,7 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12Resource> m_buffer{ nullptr };
         DATA* m_pMapped{ nullptr };
         SIZE_T m_dataSize{ 0 };
+        UINT m_validDataIndex{ 0 };
     };
 
     template<class DATA>

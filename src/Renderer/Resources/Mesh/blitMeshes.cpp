@@ -221,7 +221,7 @@ namespace BlitzenEngine
         hlslVerticesContext.m_vtxNrmArr = context.m_triangles.m_vertexNormals;
         hlslVerticesContext.m_vtxTngArr = context.m_triangles.m_vertexTangents;
         hlslVerticesContext.m_texCoordArr = context.m_triangles.m_vertexUVs;
-        ConvertClassicVerticesToHlslFormat(hlslVerticesContext, vertices.Data(), vertexCount);
+        ConvertClassicVerticesToHlslFormat(hlslVerticesContext, vertices.Data(), (uint32_t)vertexCount);
 
         MESH_PRIMITIVE_GENERATE_CONTEXT primitiveCreateCtx{};
         primitiveCreateCtx.m_indexCount = (uint32_t)indices.GetSize();
@@ -234,6 +234,49 @@ namespace BlitzenEngine
             BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_MESH_SYSTEM_NAME, MESH_PRIMITIVE_CREATE_RES_TO_STRING(meshPrimitiveGenRes));
             return BlitzenCore::Ce_MaxMeshCount;
         }
+
+        uint32_t meshId = context.AddMesh(previousSurfaceCount, uint32_t(context.m_meshPrimitives.m_meshPrimitivesCount - previousSurfaceCount), meshName);
+        if (meshId == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("%s: Retrieved error count from AddMesh function", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return BlitzenCore::Ce_MaxMeshCount;
+        }
+
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mmf{};
+        UPLOAD_MESH_RPF_CONTEXT rpfCtx{};
+        rpfCtx.pMesh = &context.m_meshes[meshId];
+        rpfCtx.m_surfaceArray = context.m_meshPrimitives.m_meshPrimitives;
+        rpfCtx.m_meshPrimitiveData = context.m_meshPrimitives.m_meshPrimitiveData;
+        rpfCtx.m_meshPrimitiveCount = context.m_meshPrimitives.m_meshPrimitivesCount;
+        rpfCtx.m_lodDataArr = context.m_meshPrimitives.m_LODs;
+        rpfCtx.m_lodCount = context.m_meshPrimitives.m_LODCount;
+        rpfCtx.m_boundsArr = context.m_meshPrimitives.m_boundingSpheres;
+        rpfCtx.m_vtxIdxArr = context.m_triangles.m_indices;
+        rpfCtx.m_idxCount = context.m_triangles.m_vtxIdxCount;
+        rpfCtx.m_clusterIdxArr = nullptr;
+        rpfCtx.m_vtxPosArr = context.m_triangles.m_vertexPositions;
+        rpfCtx.m_vtxNormalsArr = context.m_triangles.m_vertexNormals;
+        rpfCtx.m_vtxTangArr = context.m_triangles.m_vertexNormals;
+        rpfCtx.m_vtxTexCoordArr = context.m_triangles.m_vertexUVs;
+        rpfCtx.m_vtxCount = context.m_triangles.m_vertexCount;
+        rpfCtx.m_clustersBuiltFlag = false;
+        rpfCtx.m_clusterVtxArr = nullptr;
+        rpfCtx.m_clusterSphereArr = nullptr;
+        rpfCtx.m_clusterConeArr = nullptr;
+        uint32_t m_clusterCount = 0;
+        auto uploadRes{ UploadMeshToDisk(meshName, mmf, rpfCtx) };
+        if (BlitzenCore::BLIT_CHECK_FATAL(int64_t(uploadRes)))
+        {
+            BLIT_ERROR("%s: FATAL ERROR FOUND WHILE LOADING MESH RESOURCE TO RAPID FILE: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, UPLOAD_MESH_TO_DISK_RES_TO_STRING(uploadRes));
+            BLIT_ASSERT(false);
+        }
+        if(BlitzenCore::BLIT_CHECK_FAIL(int64_t(uploadRes)))
+        {
+            BLIT_ERROR("%s: Failed to upload mesh resource to disk. Received error: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, UPLOAD_MESH_TO_DISK_RES_TO_STRING(uploadRes));
+            return BlitzenCore::Ce_MaxMeshCount;
+        }
+
+        return meshId;
     }
 
     /****************
@@ -297,19 +340,21 @@ namespace BlitzenEngine
         // Zero out everything, do not deallocate pool, it will be reused 
     }
 
-    UPLOAD_MESH_TO_DISK_RES UploadMeshToDisk(const char* meshName, BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile, UPLOAD_MESH_RPF_CONTEXT& rpfCtx)
+    UPLOAD_MESH_TO_DISK_RES UploadMeshToDisk(const char* meshName, BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& memoryMappedFile, UPLOAD_MESH_RPF_CONTEXT& rpfCtx)
     {
-        BlitCL::String meshPath{ meshName };
+        BlitCL::String meshPath{ CE_BLITZEN_RAPID_MESH_DIRECTORY_PATH };
+        char* filename = const_cast<char*>(meshName);
         char* extension = const_cast<char*>(CE_BLITZEN_RAPID_MESH_FILE_EXTENSION);
+        meshPath.Append(filename);
         meshPath.Append(extension);
 
-        size_t writeSize(GetRpfMeshSize(rpfCtx));
+        size_t writeSize{ GetRpfMeshSize(rpfCtx) };
         if (writeSize == CE_GET_RPF_MESH_SIZE_ERROR_RETURN_CODE)
         {
             return UPLOAD_MESH_TO_DISK_RES::UPLOAD_SIZE_TOO_BIG;
         }
 
-        auto mmfRes{ memoryMappedFile.OpenWrite(meshPath.GetClassic(), writeSize) };
+        auto mmfRes{ memoryMappedFile.OpenWrite(meshPath.GetClassic(), (DWORD)writeSize) };
         if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(mmfRes))
         {
             BLIT_FATAL("%s: Failed to open Rapid Resource File. Received Platform Error: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(mmfRes));

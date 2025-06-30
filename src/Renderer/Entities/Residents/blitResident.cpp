@@ -122,7 +122,7 @@ namespace BlitzenEngine
 		return P_WORLD_RESIDENTS->AddResident(ctx);
 	}
 
-	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint rotationFlags)
+	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint32_t rotationFlags)
 	{
 		auto& rotating{ P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID] };
 

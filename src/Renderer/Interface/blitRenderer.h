@@ -37,6 +37,8 @@ namespace BlitzenEngine
 
         using RendererType = BlitzenDX12::Dx12Renderer;
 
+        using RenderingLoadingContextMesh = BlitzenDX12::LoadingContextMesh;
+
     #else
 
         static_assert(true);
@@ -52,6 +54,47 @@ namespace BlitzenEngine
 
     // Singular texture upload
     uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData);
+
+    uint8_t AllocateLoadingContextMesh(RendererPtrType pRenderer ,RenderingLoadingContextMesh& ctx);
+
+    // Copies a mesh's primitives to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToMeshPrimitiveStagingBuffer(RenderingLoadingContextMesh& ctx, PrimitiveSurface* primitives, uint32_t count);
+    // Copies a mesh's LODs to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToLODDataStagingBufer(RenderingLoadingContextMesh& ctx, LodData* LODs, uint32_t count);
+    // Copies a mesh's vertex positions to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToVertexPositionsStagingBuffer(RenderingLoadingContextMesh& ctx, VtxPos* vtxPositions, uint32_t count);
+    // Copies a mesh's vertex normals to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToVertexNormalsStagingBuffer(RenderingLoadingContextMesh& ctx, VtxNormals* vtxNormals, uint32_t count);
+    // Copies a mesh's vertex tangents to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToVertexTangentsStagingBuffer(RenderingLoadingContextMesh& ctx, VtxTangents* vtxTangents, uint32_t count);
+    // Copies a mesh's vertex texture coordinates to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToVertexTextureCoordinatesStagingBuffer(RenderingLoadingContextMesh& ctx, VtxTexCoords* vtxTexCoords, uint32_t count);
+    // Copies a mesh's vertex indices to a staging buffer. Count should have sizeof(type) included. It's done inside.
+    uint8_t UploadToVertexIndicesStagingBuffer(RenderingLoadingContextMesh& ctx, uint32_t* indices, uint32_t count);
+    // Copies a mesh's cluster vertices to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToClusterVerticesStagingBuffer(RenderingLoadingContextMesh& ctx, ClusterVertices* clusterVertices, uint32_t count);
+    // Copies a mesh's cluster spheres to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToClusterSpheresStagingBuffer(RenderingLoadingContextMesh& ctx, ClusterSphere* clusterSpheres, uint32_t count);
+    // Copies a mesh's cluster cones to a staging buffer. Count should not have sizeof(type) included. It's done inside.
+    uint8_t UploadToClusterConesStagingBuffer(RenderingLoadingContextMesh& ctx, ClusterCone* clusterCones, uint32_t count);
+    // Copies a mesh's cluster indices to a staging buffer. Count shoud not have sizeof(type) include. It's done inside.
+    uint8_t UploadToClusterIndicesStagingBuffer(RenderingLoadingContextMesh& ctx, uint32_t* clusterIndices, uint32_t count);
+
+    enum class MESH_RESOURCES_STAGING_BUFFER_RESOURCE_TYPE : uint8_t
+    {
+        VERTEX_POSITIONS,
+        VERTEX_NORMALS,
+        VERTEX_TANGENTS,
+        VERTEX_TEXTURE,
+        VERTEX_INDICES,
+        CLUSTER_VERTICES,
+        CLUSTER_SPHERES,
+        CLUSTER_CONES,
+        CLUSTER_INDICES,
+        MESH_PRIMITIVES,
+        LEVELS_OF_DETAIL
+    };
+    uint8_t UploadMeshPrimitiveResourcesToStagingBufferGeneral(RenderingLoadingContextMesh& ctx, BLIT_STRAIGHTHANDLE pData, uint32_t count, MESH_RESOURCES_STAGING_BUFFER_RESOURCE_TYPE resourceType);
 
     // Finalizes resources so that the renderer is ready for culling and rendering
     void PrepareRendererForRuntime(RendererPtrType pRenderer);

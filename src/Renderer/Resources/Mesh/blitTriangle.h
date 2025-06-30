@@ -17,21 +17,12 @@ namespace BlitzenEngine
 		VtxNormals* m_vertexNormals{ nullptr };
 		VtxTangents* m_vertexTangents{ nullptr };
 
-		uint32_t m_currentContextVertexCount{ 0 };
-		uint32_t m_currentContextIndexCount{ 0 };
-
 		void ALLOC();
 		void CLEAN();
 		~PrimitiveContainer();
 
 		bool AddVertices(Vertex* vertices, uint32_t count);
 		bool AddIndices(uint32_t* indices, uint32_t count);
-
-		// Puts current mesh indices and vertices pool offset back to zero
-		void MeshReset();
-
-		// Puts current scene indices and vertices pool offset back to zero
-		void SceneRest();
 	};
 
 	bool GenerateHlslVertices(PrimitiveContainer& context);

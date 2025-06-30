@@ -174,16 +174,4 @@ namespace BlitzenEngine
 
 		return true;
 	}
-
-	void PrimitiveContainer::MeshReset()
-	{
-		m_vtxIdxCount = 0;
-		m_vertexCount = 0;
-	}
-
-	void PrimitiveContainer::SceneRest()
-	{
-		m_currentContextIndexCount = 0;
-		m_currentContextVertexCount = 0;
-	}
 }

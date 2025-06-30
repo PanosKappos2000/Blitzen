@@ -9,7 +9,7 @@ namespace BlitzenEngine
 	constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_SIZE_THRESHOLD = 1024 * 1024 * 10; // 10 MB (Probably too much but oh well, it's just for checking)
     constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_HEADER_SIZE = 1000;
     constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_PADDING_SIZE = 1000;
-    constexpr const char* CE_BLITZEN_RAPID_MESH_DIRECTORY_PATH = "Assets/BlitzenRapidMeshes";
+    constexpr const char* CE_BLITZEN_RAPID_MESH_DIRECTORY_PATH = "Assets/BlitzenRapidMeshes/";
 
     // Straight enum for ease of use
     enum BLIT_RPF_MESH_FILE_HEADER_IDS
@@ -35,29 +35,55 @@ namespace BlitzenEngine
 
     struct UPLOAD_MESH_RPF_CONTEXT
     {
-        const char* filename;
-        Mesh* pMesh{ nullptr };
-        PrimitiveSurface* m_surfaceArray{ nullptr };
-        MeshPrimitiveData* m_meshPrimitiveData{ nullptr };
-        uint32_t m_meshPrimitiveCount{ 0 };
-        LodData* m_lodDataArr{ nullptr };
-        uint32_t m_lodCount{ 0 };
-        BoundingSphere* m_boundsArr{ nullptr };
-        uint32_t* m_vtxIdxArr{ nullptr };
-        uint32_t m_idxCount{ 0 };
-        uint32_t* m_clusterIdxArr{ nullptr };
-        VtxPos* m_vtxPosArr{ nullptr };
-        VtxNormals* m_vtxNormalsArr{ nullptr };
-        VtxTangents* m_vtxTangArr{ nullptr };
-        VtxTexCoords* m_vtxTexCoordArr{ nullptr };
-        uint32_t m_vtxCount{ 0 };
-        bool m_clustersBuiltFlag = false;
-        ClusterVertices* m_clusterVtxArr{ nullptr };
-        ClusterSphere* m_clusterSphereArr{ nullptr };
-        ClusterCone* m_clusterConeArr{ nullptr };
-        uint32_t m_clusterCount{ 0 };
+        Mesh* pMesh;
+        PrimitiveSurface* m_surfaceArray;
+        MeshPrimitiveData* m_meshPrimitiveData;
+        uint32_t m_meshPrimitiveCount;
+        LodData* m_lodDataArr;
+        uint32_t m_lodCount;
+        BoundingSphere* m_boundsArr;
+        uint32_t* m_vtxIdxArr;
+        uint32_t m_idxCount;
+        uint32_t* m_clusterIdxArr;
+        VtxPos* m_vtxPosArr;
+        VtxNormals* m_vtxNormalsArr;
+        VtxTangents* m_vtxTangArr;
+        VtxTexCoords* m_vtxTexCoordArr;
+        uint32_t m_vtxCount;
+        bool m_clustersBuiltFlag;
+        ClusterVertices* m_clusterVtxArr;
+        ClusterSphere* m_clusterSphereArr;
+        ClusterCone* m_clusterConeArr;
+        uint32_t m_clusterCount;
     };
 
     constexpr size_t CE_GET_RPF_MESH_SIZE_ERROR_RETURN_CODE = CE_BLITZEN_RAPID_MESH_FILE_SIZE_THRESHOLD;
 	size_t GetRpfMeshSize(UPLOAD_MESH_RPF_CONTEXT& rpfCtx);
+
+    // FOR FUTURE REFERENCE
+    struct MeshRpfOffsetAccessor
+    {
+        size_t m_offset;
+        size_t m_count;
+    };
+    using BLIT_RPF_MESH_FILE_OFFSETS_ARR = MeshRpfOffsetAccessor[CE_BLIT_RPF_MESH_FILE_HEADER_ELEMENT_COUNT];
+
+    constexpr const char* CE_RPF_MESH_CONTEXT_FILE_NAME = "Assets/BlitzenRapidMeshes/context.blitMesh";
+    constexpr const char* CE_RPF_MESH_OFFSETS_FILE_NAME = "Assets/BlitzenRapidMeshes/offsets.blitMesh";
+    constexpr const char* CE_RPF_MESH_ASSETS_FILE_NAME = "Assets/BlitzenRapidMeshes/assets.blitMesh";
+    class MESH_RPF_OFFSET_MANAGER
+    {
+    public:
+        BLIT_RPF_MESH_FILE_OFFSETS_ARR m_offsets;
+        size_t offset;
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE m_offsetFile;
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE m_assetFile;
+
+        void Startup();
+
+        void CloseAndSave();
+
+        // Might not be needed since the mmf already does destructor memory cleanup
+        ~MESH_RPF_OFFSET_MANAGER();
+    };
 }

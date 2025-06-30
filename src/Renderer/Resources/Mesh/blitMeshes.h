@@ -52,7 +52,7 @@ namespace BlitzenEngine
         FAILED_TO_UPLOAD_CLUSTER_INDICES = -14,
         FAILED_TO_UPLOAD_OFFSETS_TO_HEADER = -15
     };
-    UPLOAD_MESH_TO_DISK_RES UploadMeshToDisk(const char* meshName, BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile, UPLOAD_MESH_RPF_CONTEXT& rpfCtx);
+    UPLOAD_MESH_TO_DISK_RES UploadMeshToDisk(const char* meshName, BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& memoryMappedFile, UPLOAD_MESH_RPF_CONTEXT& rpfCtx);
 
     void InitializeMeshResourcesPointer_STATIC_ACCESS(MeshResources* ptr);
 
@@ -84,6 +84,7 @@ namespace BlitzenEngine
         case UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_CONES: return "UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_CONES";
         case UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_INDICES: return "UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_INDICES";
         case UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_OFFSETS_TO_HEADER: return "UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_OFFSETS_TO_HEADER";
+        default: return "UPLOAD_MESH_TO_DISK_RES::UNKNOWN";
         }
     }
 }

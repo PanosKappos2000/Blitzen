@@ -23,6 +23,7 @@ namespace BlitzenEngine
 
         constexpr float RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER = 3'000.f;
 		constexpr float MOVING_RESIDENT_TEST_RANDOM_TRANSFORM_MULTIPLIER = 100.f;
+        constexpr float CUSTOM_FILE_TEST_RANDOM_TRANSFORM_MULTIPLIER = 30.f;
 
         switch (sceneContext.m_type)
         {
@@ -42,6 +43,12 @@ namespace BlitzenEngine
         {
             auto res{ LoadMovingResidentTest(sceneContext.pResidents, MOVING_RESIDENT_TEST_RANDOM_TRANSFORM_MULTIPLIER) };
             BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading moving resident test scene");
+            return res;
+        }
+        case SceneType::CustomFileTest:
+        {
+            auto res{ LoadCustomFileTest(sceneContext.pResidents, sceneContext.pRenderer, sceneContext.pResources, CUSTOM_FILE_TEST_RANDOM_TRANSFORM_MULTIPLIER) };
+            BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL(int64_t(res)), "Fatal error encountered while loading custom file stress test scene");
             return res;
         }
         default:
@@ -178,7 +185,7 @@ namespace BlitzenEngine
     static void RotatingKittenFunc(WORLD_VARIABLE worldVariable, float deltaTime)
     {
         constexpr float movementSpeed = 1.f;
-        RotateEntity(worldVariable.m_engineResidentID, BlitML::fRotation{ 1.f }, deltaTime, BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT | BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT | 
+        RotateEntity(worldVariable.m_engineResidentID, BlitML::fRotation{ 1.f }, deltaTime, BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT | BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT |
             BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT);
     }
 
@@ -219,6 +226,27 @@ namespace BlitzenEngine
 
             BlitzenWorld::RegisterFrameEvent(pResidents->m_worldVariables[wv], RotatingKittenFunc);
         }
+        return SCENE_CREATE_RES::SUCCESS;
+    }
+
+    SCENE_CREATE_RES LoadCustomFileTest(WORLD_RESIDENTS* pResidents, RendererPtrType pRenderer, BlitzenEngine::RenderingResources* pResources, float transformMultiplier)
+    {
+        auto pMeshContainer{ &pResources->m_meshContext };
+
+        uint32_t meshID = LoadObjFileMeshToDisk(pResources->m_meshContext, BlitzenCore::Ce_DefaultKittenMeshName, BlitzenCore::Ce_MeshDoNotAddToTable);
+        if (meshID == BlitzenCore::Ce_MaxMeshCount)
+        {
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_OBJ_MESH_TO_DISK;
+        }
+        
+        RenderingLoadingContextMesh loadingContextMesh{};
+        if (!AllocateLoadingContextMesh(pRenderer, loadingContextMesh))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_ALLOCATE_RENDERER_STAGING_BUFFERS;
+        }
+
+
+
         return SCENE_CREATE_RES::SUCCESS;
     }
 }

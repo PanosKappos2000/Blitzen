@@ -111,11 +111,9 @@ namespace BlitzenDX12
 		SIZE_T m_pixelODSTableOffset;
 		D3D12_GPU_DESCRIPTOR_HANDLE m_pixelODSTableHandle;
 
-        // Views for texture descriptor array start
         SIZE_T m_texturesTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE m_texturesTableHandle;
 
-        // SAMPLERS
         DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
 
         D3D12_GPU_DESCRIPTOR_HANDLE m_samplerHeapHandle;
@@ -125,7 +123,6 @@ namespace BlitzenDX12
         SIZE_T m_texSmpOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE m_texSmpHandle;
 
-        // RTVs
         DX12WRAPPER<ID3D12DescriptorHeap> m_rtvHeap;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE m_rtvHeapHandle;
@@ -135,7 +132,6 @@ namespace BlitzenDX12
         SIZE_T m_swapchainRtvOffset[ce_framesInFlight];
         D3D12_CPU_DESCRIPTOR_HANDLE m_swapchainRtvHandle[ce_framesInFlight];
 
-        // DSVs
 		DX12WRAPPER<ID3D12DescriptorHeap> m_dsvHeap;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE m_dsvHeapHandle;
@@ -218,6 +214,21 @@ namespace BlitzenDX12
         FENCE m_copyFence;
 
         uint8_t Init(ID3D12Device* device);
+    };
+
+    struct LoadingContextMesh
+    {
+        STAGING<BlitzenEngine::VtxPos> m_vtxPosStaging;
+        STAGING<BlitzenEngine::VtxNormals> m_vtxNrmStaging;
+        STAGING<BlitzenEngine::VtxTangents> m_vtxTngStaging;
+        STAGING<BlitzenEngine::VtxTexCoords> m_vtxTexCoordStaging;
+        STAGING<uint32_t> m_vtxIdxStaging;
+        STAGING<BlitzenEngine::ClusterVertices> m_clusterVtxStaging;
+        STAGING<BlitzenEngine::ClusterSphere> m_clusterSpheresStaging;
+        STAGING<BlitzenEngine::ClusterCone> m_clusterConesStaging;
+        STAGING<uint32_t> m_clusterIdxStaging;
+        STAGING<BlitzenEngine::PrimitiveSurface> m_meshPrimStaging;
+        STAGING<BlitzenEngine::LodData> m_lodDataStaging;
     };
 }
 

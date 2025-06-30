@@ -21,8 +21,6 @@ namespace BlitzenDX12
     
         void DrawWhileWaiting(float deltaTime);
 
-    public:
-
         Dx12Stats m_stats;
 
         uint32_t m_currentFrame{ 0 };
