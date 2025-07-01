@@ -145,10 +145,10 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
                 "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.cpp"
                 "src/Renderer/Entities/Residents/Collision/blitCollision.cpp"
-                "src/Renderer/Entities/Residents/Collision/blitCollisionManager.h" 
+                 
 
                 # LIGHTING
-                "src/Renderer/Lighting/blitDirectionalLight.h"
+                "src/Renderer/Lighting/MaginificentFather.h"
 
                 # VULKAN
                 "src/Renderer/BlitzenVulkan/Context/vulkanData.h"
@@ -231,7 +231,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"    "src/Core/BlitzenWorld/blitzenSystemDispatcher.h")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"    "src/Core/BlitzenWorld/blitzenSystemDispatcher.h" "src/Core/Events/blitController.cpp" "src/Core/BlitzenWorld/blitzenUserInterface.h" "src/Core/Events/blitCollisionEvents.h"   "src/Renderer/Entities/Residents/Collision/blitCollisionFlags.h" "src/Renderer/Entities/Residents/Collision/blitWorldVariableCollision.h" "src/BlitzenMathLibrary/blitMLLight.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -292,10 +292,11 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
                             #RENDERER_STRESS_TEST
-                            #MOVING_RESIDENT_TEST
+                            MOVING_RESIDENT_TEST
                             #DEFAULT_GLTF_SCENE_TEST
                             #LOAD_CMD_ARG_GLTF_FILEPATHS
                             CUSTOM_FILE_TEST
+                            COLLISION_TEST
 
                             DASHER_JOIN
                             DASHER_USE_DEAR

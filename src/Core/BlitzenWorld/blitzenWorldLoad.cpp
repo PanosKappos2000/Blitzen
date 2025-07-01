@@ -23,78 +23,43 @@ namespace BlitzenWorld
                 continue;
             }
 
+            BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
+            sceneCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
+            sceneCtx.pResidents = &context.pWORLD->m_residents;
+            sceneCtx.pResources = context.pRenderingResources;
+
+            BlitCL::DynamicArray<BlitzenEngine::SceneContext> scenes{};
+
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 
-            BlitzenEngine::SCENE_CREATE_CONTEXT rpfTestCtx{};
-            rpfTestCtx.m_name = "RPF test scene";
-            rpfTestCtx.m_type = BlitzenEngine::SceneType::CustomFileTest;
-            rpfTestCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-            rpfTestCtx.pResidents = &context.pWORLD->m_residents;
-            rpfTestCtx.pResources = context.pRenderingResources;
-
-            auto rpfTestRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], rpfTestCtx) };
-
-            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)rpfTestRes));
-            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)rpfTestRes))
-            {
-                BLIT_ERROR("%s: Failed to load rpf file test scene. The engine will continue but there will be unexpected behaviour.", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME);
-            }
+            BlitzenEngine::SceneContext rpf{};
+            rpf.m_type = BlitzenEngine::SceneType::CustomFileTest;
+            scenes.PushBack(rpf);
 
 #endif
 
 #if defined(RENDERER_STRESS_TEST)
 
-            BlitzenEngine::SCENE_CREATE_CONTEXT stressTestCtx{};
-            stressTestCtx.m_name = "Renderer Stress Test Scene";
-            stressTestCtx.m_type = BlitzenEngine::SceneType::RendererStressTest;
-            stressTestCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-            stressTestCtx.pResidents = &context.pWORLD->m_residents;
-            stressTestCtx.pResources = context.pRenderingResources;
+            BlitzenEngine::SceneContext stress{};
+            stress.m_type = BlitzenEngine::SceneType::RendererStressTest;
+            scenes.PushBack(stress);
 
-            auto stressTestSceneRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], stressTestCtx)};
-
-            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)stressTestSceneRes));
-            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)stressTestSceneRes))
-            {
-                BLIT_ERROR("%s: Failed to load renderer stress test scene. The engine will continue but there will be unexpected behaviour.", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME);
-            }
 #endif
 
 #if defined(MOVING_RESIDENT_TEST)
 
-            BlitzenEngine::SCENE_CREATE_CONTEXT movingResidentSceneCtx{};
-            movingResidentSceneCtx.m_name = "Moving Residents Test Scene";
-            movingResidentSceneCtx.m_type = BlitzenEngine::SceneType::MovingResidentTest;
-            movingResidentSceneCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-            movingResidentSceneCtx.pResidents = &context.pWORLD->m_residents;
-            movingResidentSceneCtx.pResources = context.pRenderingResources;
-
-            auto movingResidentsSceneRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], movingResidentSceneCtx)};
-
-            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)movingResidentsSceneRes));
-            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)movingResidentsSceneRes))
-            {
-                BLIT_ERROR("%s: Failed to load moving residents test scene. The engine will continue but there will be unexpected behaviour", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME);
-            }
+            BlitzenEngine::SceneContext moving{};
+            moving.m_type = BlitzenEngine::SceneType::MovingResidentTest;
+            scenes.PushBack(moving);
                 
 #endif
 
 #if defined(DEFAULT_GLTF_SCENE_TEST)
 
-            BlitzenEngine::SCENE_CREATE_CONTEXT defaultGltfSceneCtx{};
-            defaultGltfSceneCtx.m_name = BlitzenCore::Ce_PrimaryGltfTestScene;
-            defaultGltfSceneCtx.m_type = BlitzenEngine::SceneType::GltfSceneTest;
-            defaultGltfSceneCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-            defaultGltfSceneCtx.pResidents = &context.pWORLD->m_residents;
-            defaultGltfSceneCtx.pResources = context.pRenderingResources;
-
-            auto defaultGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], defaultGltfSceneCtx) };
-
-            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)defaultGltfRes));
-            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)defaultGltfRes))
-            {
-                BLIT_ERROR("Failed to load default gltf scene. The engine will continue but there will be unexpected behaviour");
-            }
+            BlitzenEngine::SceneContext defaultGltf{};
+            defaultGltf.m_name = BlitzenCore::Ce_PrimaryGltfTestScene;
+            defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
+            scenes.PushBack(defaultGltf);
 
 #endif
 
@@ -102,22 +67,40 @@ namespace BlitzenWorld
 
             if (argc > 1)
             {
-                BlitzenEngine::SCENE_CREATE_CONTEXT cmdArgGltfContext{};
-                cmdArgGltfContext.m_name = argv[1];
-                cmdArgGltfContext.m_type = BlitzenEngine::SceneType::GltfSceneTest;
-                cmdArgGltfContext.pRenderer = context.pWORLD->P_RENDERER.Data();
-                cmdArgGltfContext.pResidents = &context.pWORLD->m_residents;
-                cmdArgGltfContext.pResources = context.pRenderingResources;
-
-                auto cmdArgGltfRes{ BlitzenEngine::CreateScene(&context.pWORLD->m_scenes[context.pWORLD->m_sceneCount++], cmdArgGltfContext) };
-
-                BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)cmdArgGltfRes));
-                if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)cmdArgGltfRes))
-                {
-                    BLIT_ERROR("Failed to load default gltf scene. The engine will continue but there will be unexpected behaviour");
-                }
+                BlitzenEngine::SceneContext defaultGltf{};
+                defaultGltf.m_name = argv[1];
+                stress.m_type = BlitzenEngine::SceneType::GltfSceneTest;
+                scenes.PushBack(defaultGltf);
             }
 #endif
+
+#if defined(COLLISION_TEST)
+
+            BlitzenEngine::SceneContext collisionTst{};
+            collisionTst.m_type = BlitzenEngine::SceneType::SmallSceneForCollision;
+            scenes.PushBack(collisionTst);
+
+#endif
+            sceneCtx.m_sceneArr = scenes.Data();
+            sceneCtx.m_sceneCount = (uint32_t)scenes.GetSize();
+
+            auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx) };
+
+            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
+            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)sceneRes))
+            {
+                BLIT_ERROR("%s: Error while loading scenes. Received error message: %s", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(sceneRes));
+                BLIT_ASSERT(false);
+            }
+
+            context.pWORLD->m_collisionGrid.DefineGrid(0);
+            context.pWORLD->m_collisionGrid.CreateCells();
+            context.pWORLD->m_collisionGrid.PlaceStatics(&context.pWORLD->m_residents.m_renders.m_renders[BLIT_OPAQUE_STATIC_RENDER_OFFSET], context.pWORLD->m_residents.m_transforms.m_staticTransformCount,
+                context.pWORLD->m_residents.m_transforms.m_transforms);
+
+#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
+
+#else
 
             if (!BlitzenEngine::UploadResourcesToGPU(context.pWORLD->P_RENDERER.Data(), drawContext))
             {
@@ -126,6 +109,8 @@ namespace BlitzenWorld
                 context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
                 return;
             }
+
+#endif
 
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
 

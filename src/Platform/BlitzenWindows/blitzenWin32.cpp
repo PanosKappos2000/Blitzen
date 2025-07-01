@@ -281,13 +281,21 @@ namespace BlitzenPlatform
 
                 RAWINPUT* raw = (RAWINPUT*)SCOPED_BYTE.m_lpb;
 
-                if (raw->header.dwType == RIM_TYPEMOUSE)
+                switch (raw->header.dwType)
+                {
+                case RIM_TYPEMOUSE:
                 {
                     // Extract relative movement
-                    int32_t mouseDX = raw->data.mouse.lLastX;  // Relative movement in X
-                    int32_t mouseDY = raw->data.mouse.lLastY;  // Relative movement in Y
+                    int32_t mouseDX = raw->data.mouse.lLastX;  
+                    int32_t mouseDY = raw->data.mouse.lLastY;  
 
-                    pEventSystem->DispatchRawInput_MOUSE_MOVED(mouseDX, mouseDY);  // Process the mouse movement
+                    pEventSystem->DispatchRawInput_MOUSE_MOVED(mouseDX, mouseDY);
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
                 }
 
                 break;

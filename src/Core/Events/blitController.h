@@ -1,6 +1,7 @@
 #pragma once
 #include "BlitCL/blitPfn.h"
 #include "blitEventType.h"
+#include "blitKeys.h"
 #include "Renderer/WORLD/blitzenWorld.h"
 
 namespace BlitzenCore
@@ -15,8 +16,10 @@ namespace BlitzenCore
 
     using MouseWheelCallbackType = BlitCL::Pfn<BlitEventType, BlitzenWorld::WORLD_blit*, int8_t>;
 
-	struct Controller
+	class Controller
 	{
+    public:
+
         KeyPressCallback m_keyPressPFNs[Ce_KeyCallbackCount];
         KeyReleaseCallback m_keyReleasePFNs[Ce_KeyCallbackCount];
 
@@ -26,24 +29,29 @@ namespace BlitzenCore
 
         MouseButtonReleaseCallback m_mousePressPFNs[Ce_MouseButtonPFNCount];
         MouseButtonPressCallback m_mouseReleasePFNs[Ce_MouseButtonPFNCount];
+
+        void InitControllerPFNs();
 	};
 
-    inline void InitControllerPFNs(Controller& controller)
+    class ResidentController
     {
-        for (uint32_t pfn = 0; pfn < Ce_KeyCallbackCount; ++pfn)
+    public:
+        BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, int16_t, int16_t> CONTROL[Ce_KeyCallbackCount];
+
+        inline BlitEventType operator () (uint32_t id, BlitzenEngine::Resident resident, int16_t screenCoordX, int16_t screenCoordY)
         {
-            controller.m_keyPressPFNs[pfn] = [](BlitzenWorld::WORLD_blit*)->BlitEventType { return BlitEventType::MaxTypes; };
-            controller.m_keyReleasePFNs[pfn] = [](BlitzenWorld::WORLD_blit*)->BlitEventType { return BlitEventType::MaxTypes; };
+            return CONTROL[id](resident, screenCoordX, screenCoordY);
         }
 
-        for (uint32_t pfn = 0; pfn < Ce_MouseButtonPFNCount; ++pfn)
+        inline void REGISTER(uint32_t id, BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, int16_t, int16_t> FUNC)
         {
-            controller.m_mousePressPFNs[pfn] = [](BlitzenWorld::WORLD_blit*, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
-            controller.m_mouseReleasePFNs[pfn] = [](BlitzenWorld::WORLD_blit*, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
+            CONTROL[id] = FUNC;
         }
 
-        controller.m_mouseMovePFNs = [](BlitzenWorld::WORLD_blit*, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
+    private:
+        BlitzenEngine::Resident m_resident;
+        BlitzenEngine::Camera m_gameCamera;
+    };
 
-        controller.m_mouseWheelPFNs = [](BlitzenWorld::WORLD_blit*, int8_t)->BlitEventType { return BlitEventType::MaxTypes; };
-    }
+    BlitEventType BLITZEN_ENGINE_CONTROLLED_RESIDENT_VIEW(BlitzenEngine::Resident resident, int16_t screenCoordX, int16_t screenCoordY, BlitKey key);
 }

@@ -53,8 +53,7 @@ namespace BlitzenWorld
         // World residents
         BlitzenEngine::WORLD_RESIDENTS m_residents{};
 
-        //BlitzenEngine::WVHOST m_worldVariables{}; 
-        /* Nice while it lasted, but I thought of a possibly better approach. We'll see how it goes */
+        BlitzenEngine::CollisionGrid m_collisionGrid{};
 
         BlitzenCore::FrameEventManager m_frameEvents;
 

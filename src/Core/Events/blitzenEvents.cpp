@@ -15,7 +15,12 @@ namespace BlitzenCore
 
         for (auto& controller : m_controllers)
         {
-            InitControllerPFNs(controller);
+            controller.InitControllerPFNs();
+        }
+
+        for (auto& rc : m_gameController.CONTROL)
+        {
+            rc = [](BlitzenEngine::Resident, int16_t, int16_t)->BlitEventType {return BlitEventType::MaxTypes; };
         }
 
         InitializeEventSystemPtr_STATIC_ACCESS(this);

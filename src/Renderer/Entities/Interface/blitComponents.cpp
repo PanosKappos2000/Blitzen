@@ -12,13 +12,6 @@ namespace BlitzenEngine
         // Place in Collision Grid
     }
 
-    COLLISION_CREATE_RES RequestBlockingCollision(uint32_t movingResidentID)
-    {
-        auto& collisions{ pComponents_STATIC_ACCESS };
-
-        return COLLISION_CREATE_RES::SUCCESS;
-    }
-
     void AddMovingResident_STATIC_ACCESS(MovingResident* pMoving)
     {
         //pComponents_STATIC_ACCESS->m_movingResidents[pComponents_STATIC_ACCESS->m_movingResidentCount++] = pMoving;

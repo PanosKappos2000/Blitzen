@@ -13,6 +13,13 @@ namespace BlitzenCore
     // Editor events take full context and return controller id
     using EditorCallback = BlitCL::Pfn<uint32_t, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&>;
 
+    enum class ControllerState : uint8_t
+    {
+        Editor = 0x0,
+        Game = 0x1,
+        Max = UINT8_MAX
+    };
+
     class EventSystem 
     {
     public:
@@ -33,8 +40,6 @@ namespace BlitzenCore
 
         void DispatchRawInput_MOUSE_MOVED(int16_t xAxisMovement, int16_t yAxisMovement);
 
-        void DispatchFrameEvents();
-
         BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& m_systemContext;
         BlitzenWorld::WORLD_blit* m_pWorldContext;
 
@@ -43,11 +48,16 @@ namespace BlitzenCore
         Controller m_controllers[Ce_MaxControllerCount];
         uint32_t m_activeControllerIDX{ Ce_InitialControllerID };
 
+        ResidentController m_gameController;
+
         EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&)->uint32_t {return Ce_InitialControllerID; } };
 
         BlitzenCore::FAT_BOOL m_currentKeyboard[Ce_KeyCallbackCount];
         BlitzenCore::FAT_BOOL m_previousKeyboard[Ce_KeyCallbackCount];
         BlitzenCore::FAT_BOOL m_mouseButtonFlags[uint8_t(MouseButton::MaxButtons)];
+
+        uint32_t m_gameSpecialInputFlags;
+        ControllerState m_controllerState;
     };
 
     // Passes the logic to be called when a speicific key is pressed

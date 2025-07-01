@@ -3,6 +3,7 @@
 #include "Core/Events/blitTimeManager.h"
 #include <math.h>
 #include <stdlib.h>
+#include "blitMLLight.h"
 
 #define BLIT_SEC_TO_MS_MULTIPLIER       1000.f
 #define BLIT_MS_TO_SEC_MULTIPLIER       0.001f
@@ -36,7 +37,6 @@ namespace BlitML
     inline float Cos(float x) {return cosf(x);}
     inline float Tan(float x) {return tanf(x);}
     inline float Acos(float x) {return acosf(x);}
-    inline float Sqrt(float x) {return sqrtf(x);}
     inline float Abs(float x) {return fabsf(x);}
     inline float Max(float x, float y) { return (x > y) ? x : y; }
     inline uint32_t Max(uint32_t x, uint32_t y) { return (x > y) ? x : y; }

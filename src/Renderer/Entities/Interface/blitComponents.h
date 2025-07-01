@@ -3,7 +3,6 @@
 #include "Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
 #include "Renderer/View/blitCamera.h"
 #include "Renderer/Entities/Residents/blitWV.h"
-#include "Renderer/Entities/Residents/Collision/blitCollisionManager.h"
 
 
 namespace BlitzenEngine
@@ -19,8 +18,6 @@ namespace BlitzenEngine
         MovingResident* m_movingResidents[BlitzenCore::Ce_MaxWorldMovingResidentCount]{};
         uint32_t m_movingResidentCount{ 0 };
 
-        CollisionManager m_collisions;
-
         // Camera
         Camera m_camera;
 
@@ -34,6 +31,4 @@ namespace BlitzenEngine
     void AddMovingResident_STATIC_ACCESS(MovingResident* pMoving);
 
     void InitializeComponentSystemPointer_STATIC_ACCESS(ComponentSystem* ptr);
-
-    COLLISION_CREATE_RES RequestBlockingCollision(MovingResident* pMoving);
 }

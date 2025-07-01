@@ -4,6 +4,7 @@
 #include "Renderer/Resources/Mesh/blitMeshes.h"
 #include "Renderer/Entities/Interface/blitComponents.h"
 #include "BlitCL/blitDynamicArr.h"
+#include "Core/BlitzenWorld/blitzenUserInterface.h"
 
 namespace BlitzenEngine
 {

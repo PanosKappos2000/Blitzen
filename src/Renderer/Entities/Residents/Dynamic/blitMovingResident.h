@@ -13,6 +13,4 @@ namespace BlitzenEngine
 	MovingResident& GetMovingResident_STATIC_ACCESS(uint32_t residentID);
 
 	MovingResident* RequestMovementComponent(uint32_t residentID);
-
-	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint rotatingFlags = BLIT_RESIDENT_MOVEMENT_NONE);
 }

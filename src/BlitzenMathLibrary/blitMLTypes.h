@@ -71,9 +71,12 @@ namespace BlitML
 
     using float3 = vec3;
     using fRotation = vec3;
+    using fVelocity = vec3;
 
     inline bool operator == (const vec3& first, const vec3& second) { return (first.x == second.x) && (first.y == second.y) && (first.z == second.z); }
     inline bool operator != (const vec3& first, const vec3& second) { return (first.x != second.x) || (first.y != second.y) || (first.z != second.z); }
+    inline bool operator > (const vec3& first, const vec3& second) { return (first.x > second.x) && (first.y > second.y) && (first.z > second.z); }
+    inline bool operator < (const vec3& first, const vec3& second) { return (first.x < second.x) && (first.y < second.y) && (first.z < second.z); }
 
     inline vec3 operator + (const vec3& first, const vec3& second) { return vec3(first.x + second.x, first.y + second.y, first.z + second.z); }
     inline vec3 operator + (const vec3& vec, float scalar) { return vec3{ vec.x + scalar, vec.y + scalar, vec.z + scalar }; }
@@ -99,6 +102,14 @@ namespace BlitML
 
     inline vec3 operator - (const vec3& first, const vec3& second){ return vec3(first.x - second.x, first.y - second.y, first.z - second.z); }
     inline vec3 operator - (const vec3& vec, float scalar) { return vec3(vec.x - scalar, vec.y - scalar, vec.z - scalar); }
+    inline vec3& operator -=(vec3& first, const vec3& second) 
+    {
+        first.x -= second.x;
+        first.y -= second.y;
+        first.z -= second.z;
+
+        return first;
+    }
 
     inline vec3 operator * (const vec3& first, const vec3& second) { return vec3(first.x * second.x, first.y * second.y, first.z * second.z); }
     inline vec3 operator *(const vec3& vec, float scalar) { return vec3(vec.x * scalar, vec.y * scalar, vec.z * scalar); }
@@ -156,12 +167,9 @@ namespace BlitML
 
     inline vec4 operator / (const vec4& v1, float f) { return vec4(v1.x / f, v1.y / f, v1.z / f, v1.w / f); }
 
+    // Aliases
     using float4 = vec4;
-
-
-    // Quaternion
     using quat = vec4;
-
 
     // 4x4 matrix
     union mat4

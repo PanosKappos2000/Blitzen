@@ -2,64 +2,65 @@
 #include "Renderer/Resources/blitShaderResources.h"
 #include "Renderer/Entities/Residents/blitResident.h"
 #include "BlitCL/blitPfn.h"
+#include "blitCollisionFlags.h"
+#include "Renderer/HlslShaders/Headers/cpuShared.h"
+#include "BlitzenMathLibrary/blitMLLight.h"
 
 namespace BlitzenEngine
 {
-	constexpr float CE_COLLISION_GRID_WIDTH = 1'000.f;
-	constexpr float CE_COLLISION_GRID_HEIGHT = 1'000.f;
-	constexpr float CE_COLLISION_GRID_DEPTH = 1'000.f;
-	constexpr size_t CE_COLLISION_GRID_VOLUME = size_t(CE_COLLISION_GRID_WIDTH) * size_t(CE_COLLISION_GRID_HEIGHT) * size_t(CE_COLLISION_GRID_DEPTH);
+	constexpr uint32_t CE_COLLISION_GRID_EXTENT = 10'000;
 
-	constexpr float CE_COLLSION_GRID_CELL_WIDTH = 100.f;
-	constexpr float CE_COLLISION_GRID_CELL_HEIGHT = 100.f;
-	constexpr float CE_COLLISION_GRID_CELL_DEPTH = 100.f;
-	constexpr size_t CE_COLLISION_GRID_CELL_VOLUME = size_t(CE_COLLSION_GRID_CELL_WIDTH) * size_t(CE_COLLISION_GRID_CELL_HEIGHT) * size_t(CE_COLLISION_GRID_CELL_DEPTH);
+	constexpr uint32_t CE_COLLISION_GRID_CELL_EXTENT = 1'000;
 
-	constexpr size_t CE_COLLISION_GRID_CELL_COUNT = (size_t(CE_COLLISION_GRID_WIDTH) / size_t(CE_COLLSION_GRID_CELL_WIDTH)) *
-													(size_t(CE_COLLISION_GRID_HEIGHT) / size_t(CE_COLLISION_GRID_CELL_HEIGHT)) *
-													(size_t(CE_COLLISION_GRID_DEPTH) / size_t(CE_COLLISION_GRID_CELL_DEPTH));
-	constexpr size_t CE_GENEROUS_OBJECT_SIZE = 1.f;
-	constexpr size_t CE_OBJECTS_PER_COLLISION_GRID_CELL = CE_COLLISION_GRID_CELL_COUNT / CE_GENEROUS_OBJECT_SIZE;
+	constexpr uint32_t CE_COLLISION_GRID_CELL_COUNT = (CE_COLLISION_GRID_EXTENT / CE_COLLISION_GRID_CELL_EXTENT) *
+													(CE_COLLISION_GRID_EXTENT / CE_COLLISION_GRID_CELL_EXTENT) *
+													(CE_COLLISION_GRID_EXTENT / CE_COLLISION_GRID_CELL_EXTENT);
+	constexpr uint32_t CE_GRID_CELL_COUNT_FLAT = (CE_COLLISION_GRID_EXTENT / CE_COLLISION_GRID_CELL_EXTENT);
+	constexpr uint32_t CE_OBJECTS_PER_COLLISION_GRID_CELL = 1'000 / 0.1f;
 
-	enum class BLITZEN_COLLISION_FLAGS_BITS : uint32_t
-	{
-		BLOCK = 0x0,
-	};
+	constexpr uint32_t CE_AVAILABLE_COLLIDER_SPACES = CE_COLLISION_GRID_CELL_COUNT * CE_OBJECTS_PER_COLLISION_GRID_CELL;
 
 	struct Collider
 	{
-		uint32_t m_impactFlags;
-		uint32_t m_reactionFlags;
-		uint32_t m_engineCompAccess;
-		uint32_t m_clientCompAccess;
+		BLITZEN_COLLISION_IDENTIFIER m_collisionIdentifier;
+		WORLD_VARIABLE m_worldVariable;
+		uint32_t padding0;
 	};
 
 	struct CollisionMessage
 	{
-		uint32_t m_impactingObject;
-		uint32_t m_receiverObject;
+		Resident m_impactingObject;
+		Resident m_reactingResident;
 	};
 
-	struct CollisionSpecializedAABB
+	struct CollisionGridCell
 	{
-		BlitML::float3 m_minBounds;
-		BlitML::float3 m_maxBounds;
 		uint32_t colliderOffset;
 		uint32_t colliderCount;
 	};
-	using CollsionGridCell = CollisionSpecializedAABB;
 
 	class CollisionGrid
 	{
 	public:
 
-		CollsionGridCell m_grids[CE_COLLISION_GRID_CELL_COUNT];
-		uint32_t m_colliderIndices[CE_COLLISION_GRID_CELL_COUNT * CE_OBJECTS_PER_COLLISION_GRID_CELL];
+		int32_t m_origin;
+		int32_t m_minBounds;
+		int32_t m_maxBounds;
+
+		CollisionGridCell m_grids[CE_COLLISION_GRID_CELL_COUNT];
+		uint32_t m_colliderIndices[CE_AVAILABLE_COLLIDER_SPACES];
 		uint32_t m_gridsStaticCounts[CE_COLLISION_GRID_CELL_COUNT];
+
+		CollisionMessage m_events[BlitzenCore::Ce_MaxWorldVariableCount];
+		uint32_t m_count{ 0 };
+
+		void DefineGrid(uint32_t origin);
 
 		void CreateCells();
 
-		void PlaceStatics(BlitzenEngine::MeshTransform* pTransform);
+		void PlaceStatics(BlitzenEngine::RenderObject* renderArr, uint32_t count, BlitzenEngine::MeshTransform* transformArr);
+
+		void BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(Collider* colliderArr);
 	};
 
 	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds);

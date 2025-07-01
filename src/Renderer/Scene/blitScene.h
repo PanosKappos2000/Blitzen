@@ -11,12 +11,25 @@ namespace BlitzenEngine
         MovingResidentTest = 1,
         GltfSceneTest = 2, 
         CustomFileTest = 3,
+        SmallSceneForCollision = 4,
+    };
+
+    struct SceneContext
+    {
+        Mesh* m_meshRefArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{ nullptr };
+
+        RenderObject* m_renderRefArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{ nullptr };
+
+        RenderObject* m_transparentArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{ nullptr };
+
+        SceneType m_type;
+        const char* m_name;
     };
 
     struct SCENE_CREATE_CONTEXT
     {
-        SceneType m_type;
-        const char* m_name;
+        SceneContext* m_sceneArr;
+        uint32_t m_sceneCount;
 
         RendererPtrType pRenderer{ nullptr };
         WORLD_RESIDENTS* pResidents;
@@ -90,25 +103,18 @@ namespace BlitzenEngine
         }
     }
 
-    struct SceneContext
-    {
-        Mesh* m_meshRefArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{nullptr};
-
-        RenderObject* m_renderRefArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{nullptr};
-
-        RenderObject* m_transparentArr[BlitzenCore::ARRAY_SIZE_PLACEHOLDER]{ nullptr };
-    };
-
     struct SceneContainer
     {
         bool empty = true;
     };
 
-    SCENE_CREATE_RES CreateScene(SceneContext* pScene, SCENE_CREATE_CONTEXT& scene);
+    SCENE_CREATE_RES CreateScene(SCENE_CREATE_CONTEXT& sceneCtx);
 
     SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier, BlitzenEngine::SceneContext* pScene);
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier);
 
     SCENE_CREATE_RES LoadCustomFileTest(WORLD_RESIDENTS* pResidents, RendererPtrType pRenderer, BlitzenEngine::RenderingResources* pResources, float transformMultiplier);
+
+    SCENE_CREATE_RES LoadCollisionTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier, BlitzenEngine::SceneContext* pScene);
 }
