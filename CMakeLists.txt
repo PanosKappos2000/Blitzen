@@ -26,6 +26,9 @@ add_executable(BlitzenEngine
                 "src/Core/Events/blitEditorEvents.h"
                 "src/Core/Events/blitFrameEvents.h" 
                 "src/Core/Events/blitFrameEvents.cpp"
+                "src/Core/Events/blitController.cpp" 
+                "src/Core/BlitzenWorld/blitzenUserInterface.h" 
+                "src/Core/Events/blitCollisionEvents.h"
                 # WORLD (ALL SYSTEMS)
                 "src/Renderer/WORLD/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
@@ -33,6 +36,7 @@ add_executable(BlitzenEngine
                 "src/Core/BlitzenWorld/blitzenWorldUpdate.cpp"
                 "src/Renderer/WORLD/blitzenWorld.cpp"
                 "src/Core/blitzenWorld/blitzenVariableUpdate.cpp"
+                "src/Core/BlitzenWorld/blitzenSystemDispatcher.h"
                 # DASHER UI
                 "src/Core/Dasher/Interface/dasherState.h"
                 "src/Core/Dasher/Interface/dasherInterface.h"
@@ -59,6 +63,7 @@ add_executable(BlitzenEngine
                 # BLITZEN MATH LIBRARY
                 "src/BlitzenMathLibrary/blitML.h"
                 "src/BlitzenMathLibrary/blitMLTypes.h"
+                "src/BlitzenMathLibrary/blitMLLight.h"
                 
 
                 # PLATFORM
@@ -145,6 +150,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
                 "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.cpp"
                 "src/Renderer/Entities/Residents/Collision/blitCollision.cpp"
+                "src/Renderer/Entities/Residents/Collision/blitCollisionFlags.h" 
+                "src/Renderer/Entities/Residents/Collision/blitWorldVariableCollision.h"
                  
 
                 # LIGHTING
@@ -231,7 +238,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp"    "src/Core/BlitzenWorld/blitzenSystemDispatcher.h" "src/Core/Events/blitController.cpp" "src/Core/BlitzenWorld/blitzenUserInterface.h" "src/Core/Events/blitCollisionEvents.h"   "src/Renderer/Entities/Residents/Collision/blitCollisionFlags.h" "src/Renderer/Entities/Residents/Collision/blitWorldVariableCollision.h" "src/BlitzenMathLibrary/blitMLLight.h")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

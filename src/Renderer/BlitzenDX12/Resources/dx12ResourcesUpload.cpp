@@ -213,7 +213,7 @@ namespace BlitzenDX12
 			auto& rwResources{ rwResourcesArr[frame] };
 
 			STAGING<BlitzenEngine::MeshTransform> transformStaging;
-			if (!CreateStaging(device, transformStaging, drawContext.m_pResidents->m_transforms.m_staticTransformCount + BlitzenCore::Ce_MaxWorldMovingResidentCount, 
+			if (!CreateStaging(device, transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, 
 				drawContext.m_pResidents->m_transforms.m_transforms))
 			{
 				BLIT_ERROR("%s: Failed to create transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
@@ -395,14 +395,14 @@ namespace BlitzenDX12
 		}
 
 		STAGING<BlitzenEngine::RenderObject> renderStaging{ nullptr };
-		if (!CreateStaging(device, renderStaging, drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_renders.m_renders))
+		if (!CreateStaging(device, renderStaging, BLIT_MAX_WORLD_RENDERS, drawContext.m_pResidents->m_renders.m_renders))
 		{
 			BLIT_ERROR("%s: Failed to create render staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		STAGING<BlitzenEngine::BoundingSphere> boundingSphereStaging{ nullptr };
-		if (!CreateStaging(device, boundingSphereStaging, drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, drawContext.m_pResidents->m_colliders.m_boundingSpheres))
+		if (!CreateStaging(device, boundingSphereStaging, BLIT_MAX_WORLD_RENDERS, drawContext.m_pResidents->m_colliders.m_boundingSpheres))
 		{
 			BLIT_ERROR("%s: Failed to create bounding sphere buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -601,11 +601,9 @@ namespace BlitzenDX12
 
 			auto& rwResources = rwResourcesArray[i];
 
-			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET,
-				sizeof(BlitzenEngine::RenderObject));
+			CreateBufferShaderResourceView(device, roResources.m_renderBuffer.buffer.Get(), ctx, BLIT_MAX_WORLD_RENDERS, sizeof(BlitzenEngine::RenderObject));
 
-			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_transformBuffer.buffer.Get(), nullptr, 
-				BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + context.m_pResidents->m_transforms.m_staticTransformCount, sizeof(BlitzenEngine::MeshTransform), 0);
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_transformBuffer.buffer.Get(), nullptr, BLIT_MAX_WORLD_TRANSFORM_COUNT, sizeof(BlitzenEngine::MeshTransform), 0);
 
 			CreateBufferShaderResourceView(device, roResources.m_surfaceBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, sizeof(BlitzenEngine::PrimitiveSurface));
 
@@ -623,8 +621,7 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_LODCount, sizeof(BlitzenEngine::LodData));
 
-			CreateBufferShaderResourceView(device, roResources.m_boundingSpheres.buffer.Get(), ctx,
-				context.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET, sizeof(BlitzenEngine::BoundingSphere));
+			CreateBufferShaderResourceView(device, roResources.m_boundingSpheres.buffer.Get(), ctx, BLIT_MAX_WORLD_RENDERS, sizeof(BlitzenEngine::BoundingSphere));
 		}
 
 		// CULLING DESCRIPTORS OPAQUE STATIC

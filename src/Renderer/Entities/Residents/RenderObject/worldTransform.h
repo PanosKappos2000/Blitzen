@@ -1,18 +1,20 @@
 #pragma once
 #include "Renderer/Resources/blitShaderResources.h"
-#include "Renderer/HlslShaders/Headers/cpuShared.h"
+#include "Renderer/Resources/blitShaderShared.h"
 
 namespace BlitzenEngine
 {
 	constexpr uint32_t CE_DYNAMIC_TRANSFORM_OFFSET = 0;
-	constexpr uint32_t CE_STATIC_TRANSFORM_OFFSET = BlitzenCore::Ce_MaxWorldMovingResidentCount;
-	constexpr uint32_t CE_MAX_STATIC_TRANSFORM_COUNT = BLIT_MAX_WORLD_TRANSFORM_COUNT - BlitzenCore::Ce_MaxWorldMovingResidentCount;
+	constexpr uint32_t CE_STATIC_TRANSFORM_OFFSET = BLIT_MAX_WORLD_VARIABLE_COUNT;
+	constexpr uint32_t CE_MAX_STATIC_TRANSFORM_COUNT = BLIT_MAX_WORLD_STATIC_RESIDENTS;
+	constexpr uint32_t CE_TRANSPARENT_OFFSET = BLIT_TRANSPARENT_RENDER_OFFSET;
 	constexpr uint32_t CE_TRANSFORM_CREATE_ERROR_CODE = BLIT_MAX_WORLD_TRANSFORM_COUNT;
 
 	enum class WorldTransformType: uint8_t
 	{
 		DYNAMIC = 0,
-		STATIC = 1
+		STATIC = 1,
+		BOUND_TO_TRANSPARENT = 2
 	};
 
 	struct TRANSFORM_CREATE_CONTEXT
@@ -30,8 +32,10 @@ namespace BlitzenEngine
 		uint32_t m_transformCount{ 0 };
 		uint32_t m_staticTransformCount{ 0 };
 
-		CPU_TRANSFORM m_moveables[BlitzenCore::Ce_MaxWorldMovingResidentCount]{};
+		CPU_TRANSFORM m_moveables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t m_moveableCount{ 0 };
+
+		uint32_t m_transparentCount{ 0 };
 
 		// Creates transform and returns its index in the transform list
 		uint32_t CreateTransform(const TRANSFORM_CREATE_CONTEXT& transform);

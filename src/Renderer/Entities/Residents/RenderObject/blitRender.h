@@ -1,6 +1,6 @@
 #pragma once
 #include "Renderer/Resources/blitShaderResources.h"
-#include "Renderer/HlslShaders/Headers/cpuShared.h"
+#include "Renderer/Resources/blitShaderShared.h"
 
 namespace BlitzenEngine
 {

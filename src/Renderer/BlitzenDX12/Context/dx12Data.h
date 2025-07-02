@@ -9,7 +9,7 @@
 #include <comdef.h>
 #include "Core/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
-#include "Renderer/HlslShaders/Headers/cpuShared.h"
+#include "Renderer/Resources/blitShaderShared.h"
 
 namespace BlitzenDX12
 {

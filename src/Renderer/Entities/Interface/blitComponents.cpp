@@ -5,13 +5,6 @@ namespace BlitzenEngine
 {
     inline ComponentSystem* pComponents_STATIC_ACCESS{ nullptr };
 
-    void ComponentSystem::UpdateCPUTransforms()
-    {
-        // New transform
-
-        // Place in Collision Grid
-    }
-
     void AddMovingResident_STATIC_ACCESS(MovingResident* pMoving)
     {
         //pComponents_STATIC_ACCESS->m_movingResidents[pComponents_STATIC_ACCESS->m_movingResidentCount++] = pMoving;

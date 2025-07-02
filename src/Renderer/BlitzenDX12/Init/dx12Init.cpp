@@ -506,7 +506,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateSSBO<BlitzenEngine::CPU_TRANSFORM>(device, rwResources.m_movementBuffer, BlitzenCore::Ce_MaxWorldMovingResidentCount))
+			if (!CreateSSBO<BlitzenEngine::CPU_TRANSFORM>(device, rwResources.m_movementBuffer, BLIT_MAX_WORLD_VARIABLE_COUNT))
 			{
 				BLIT_ERROR("%s: Failed to create movement buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
@@ -669,7 +669,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateStaging(device, roResources.CPU_MOVING_OBJECT_BUFFER, BlitzenCore::Ce_MaxWorldMovingResidentCount, (BlitzenEngine::CPU_TRANSFORM*)nullptr))
+		if (!CreateStaging(device, roResources.CPU_MOVING_OBJECT_BUFFER, BLIT_MAX_WORLD_VARIABLE_COUNT, (BlitzenEngine::CPU_TRANSFORM*)nullptr))
 		{
 			BLIT_ERROR("%s: Failed to create moving object peristently mapped buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;

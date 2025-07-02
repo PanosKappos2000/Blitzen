@@ -1,9 +1,12 @@
 #pragma once
 #include "Renderer/Entities/Residents/blitWV.h"
+#include "Renderer/Resources/blitShaderShared.h"
 #include "BlitCL/blitPfn.h"
 
 namespace BlitzenCore
 {
+	constexpr uint32_t CE_MAX_FRAME_EVENTS = BLIT_MAX_WORLD_VARIABLE_COUNT;
+
 	using FrameEventPfn = BlitCL::Pfn<void, BlitzenEngine::WORLD_VARIABLE, float>;
 
 	struct FrameEvent

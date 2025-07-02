@@ -1563,7 +1563,7 @@ namespace BlitzenVulkan
         }
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::CPU_TRANSFORM> cpuTransformStagingCtx{};
-        cpuTransformStagingCtx.elementCount = BlitzenCore::Ce_MaxWorldMovingResidentCount;
+        cpuTransformStagingCtx.elementCount = BLIT_MAX_WORLD_VARIABLE_COUNT;
         if (!CreateStaging<BlitzenEngine::CPU_TRANSFORM>(vma, device, cpuTransformStagingCtx))
         {
             BLIT_ERROR("%s: Failed to create Cpu transform mapped buffer", BLIT_VK_SYSTEM);

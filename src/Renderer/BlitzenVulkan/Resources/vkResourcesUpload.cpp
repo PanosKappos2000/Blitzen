@@ -105,7 +105,7 @@ namespace BlitzenVulkan
             }
 
             BUFFER_STAGING_CONTEXT<BlitzenEngine::MeshTransform> transformStagingContext{};
-            transformStagingContext.elementCount = BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET + drawContext.m_pResidents->m_transforms.m_staticTransformCount;
+            transformStagingContext.elementCount = BLIT_MAX_WORLD_TRANSFORM_COUNT;
             transformStagingContext.pData = &drawContext.m_pResidents->m_transforms.m_transforms[BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET];
             if (!CreateStaging(vma, device, transformStagingContext))
             {
@@ -144,7 +144,7 @@ namespace BlitzenVulkan
         }
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::RenderObject> renderStagingContext{};
-        renderStagingContext.elementCount = drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
+        renderStagingContext.elementCount = BLIT_MAX_WORLD_RENDERS;
         renderStagingContext.pData = drawContext.m_pResidents->m_renders.m_renders;
         if (!CreateStaging(vma, device, renderStagingContext))
         {
@@ -153,7 +153,7 @@ namespace BlitzenVulkan
         }
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::BoundingSphere> boundingSphereStagingContext{};
-        boundingSphereStagingContext.elementCount = drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
+        boundingSphereStagingContext.elementCount = BLIT_MAX_WORLD_RENDERS;
         boundingSphereStagingContext.pData = drawContext.m_pResidents->m_colliders.m_boundingSpheres;
         if (!CreateStaging(vma, device, boundingSphereStagingContext))
         {
@@ -287,7 +287,7 @@ namespace BlitzenVulkan
 
             descriptorContext.m_transformDescInfo[frame].buffer = rw.m_transformBuffer.m_buffer.m_buffer.m_handle;
             descriptorContext.m_transformDescInfo[frame].offset = 0;
-            descriptorContext.m_transformDescInfo[frame].range = (drawContext.m_pResidents->m_transforms.m_staticTransformCount + BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET) * sizeof(BlitzenEngine::MeshTransform);
+            descriptorContext.m_transformDescInfo[frame].range = BLIT_MAX_WORLD_TRANSFORM_COUNT * sizeof(BlitzenEngine::MeshTransform);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_TransformBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_transformDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_TransformBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 
@@ -299,7 +299,7 @@ namespace BlitzenVulkan
 
             descriptorContext.m_renderBufferDescInfo[frame].buffer = roResources.m_renderBuffer.m_buffer.m_handle;
             descriptorContext.m_renderBufferDescInfo[frame].offset = 0;
-            descriptorContext.m_renderBufferDescInfo[frame].range = (drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET) * sizeof(BlitzenEngine::RenderObject);
+            descriptorContext.m_renderBufferDescInfo[frame].range = BLIT_MAX_WORLD_RENDERS * sizeof(BlitzenEngine::RenderObject);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_RenderBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_renderBufferDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_RenderBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
         }
@@ -322,7 +322,7 @@ namespace BlitzenVulkan
 
             descriptorContext.m_boundingSphereDescInfo[frame].buffer = roResources.m_boundingSphereBuffer.m_buffer.m_handle;
             descriptorContext.m_boundingSphereDescInfo[frame].offset = 0;
-            descriptorContext.m_boundingSphereDescInfo[frame].range = (drawContext.m_pResidents->m_renders.m_opaqueStaticCount + BLIT_OPAQUE_STATIC_RENDER_OFFSET) * sizeof(BlitzenEngine::BoundingSphere);
+            descriptorContext.m_boundingSphereDescInfo[frame].range = BLIT_MAX_WORLD_RENDERS * sizeof(BlitzenEngine::BoundingSphere);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsCull[Ce_BoundingSphereCullPushID + frame * Ce_CullDescriptorCount], &descriptorContext.m_boundingSphereDescInfo[frame], 
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_BoundingSphereDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
         }

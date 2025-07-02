@@ -5,7 +5,7 @@
 #include "../Headers/staticCull.hlsl"
 #include "../Headers/cullOut.hlsl"
 #include "../Headers/hlslMath.hlsl"
-#include "../Headers/cpuShared.h"
+#include "../../Resources/blitShaderShared.h"
 
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)

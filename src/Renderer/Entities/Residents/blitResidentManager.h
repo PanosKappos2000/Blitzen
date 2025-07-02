@@ -56,12 +56,11 @@ namespace BlitzenEngine
 	class WORLD_RESIDENTS
 	{
 	public:
-		//WVKEY m_worldVariableAccessors[BlitzenCore::Ce_MaxWorldVariableCount]{};
-		WORLD_VARIABLE m_worldVariables[BlitzenCore::Ce_MaxWorldVariableCount]{};
+		WORLD_VARIABLE m_worldVariables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t m_worldVariableCount{ 0 };
-		Resident m_residents[BlitzenCore::Ce_MaxWorldResidentCount];
+		Resident m_residents[BLIT_MAX_WORLD_RESIDENTS];
 		uint32_t m_residentCount{ 0 };
-		MovingResident m_movingResidents[BlitzenCore::Ce_MaxWorldMovingResidentCount];
+		MovingResident m_movingResidents[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		RenderContainer m_renders;
 		WorldTransformContainer m_transforms;
 		ColliderContainer m_colliders;

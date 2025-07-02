@@ -3,7 +3,7 @@
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/cullBuffers.hlsl"
 #include "../Headers/clusterCull.hlsl"
-#include "../Headers/cpuShared.h"
+#include "../../Resources/blitShaderShared.h"
 
 
 [numthreads(64, 1, 1)]

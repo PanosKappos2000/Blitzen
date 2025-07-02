@@ -59,7 +59,7 @@ namespace BlitzenEngine
 
         case TRANSPARENT_STATIC:
         {
-            if (m_transparentStaticCount > BLIT_MAX_WORLD_TRANSPARENT_RENDERS)
+            if (m_transparentStaticCount > BLIT_MAX_WORLD_TRANSPARENTS)
             {
                 BLIT_ERROR("%s: Exceeded max transparent render object limit", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
                 return BLIT_MAX_WORLD_RENDERS;
@@ -87,10 +87,23 @@ namespace BlitzenEngine
             return BLIT_MAX_WORLD_TRANSFORM_COUNT;
         }
 
+        // Shader side data
+        if (context.m_pTransform == nullptr)
+        {
+            BLIT_ERROR("%s: No GPU data given for transform", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
+            return CE_TRANSFORM_CREATE_ERROR_CODE;
+        }
+
+        if (context.m_pTransform->scale <= 0.f || context.m_pTransform->scale > BLIT_COLLISION_GRID_CELL_EXTENT)
+        {
+			BLIT_ERROR("%s: Invalid scale passed to transform creation: %f", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, context.m_pTransform->scale);
+			return CE_TRANSFORM_CREATE_ERROR_CODE;
+        }
+
         // DYNAMIC TRANSFORMS
         if (context.m_type == WorldTransformType::DYNAMIC)
         {
-            if (m_moveableCount >= BlitzenCore::Ce_MaxWorldMovingResidentCount)
+            if (m_moveableCount >= BLIT_MAX_WORLD_VARIABLE_COUNT)
             {
                 BLIT_ERROR("%s: Exeeded max dynamic transform count", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
                 return CE_TRANSFORM_CREATE_ERROR_CODE;
@@ -104,13 +117,6 @@ namespace BlitzenEngine
 
             // CPU DATA is needed for transforms to update in the shaders and outside
             BlitzenCore::BlitMemCopy(&m_moveables[m_moveableCount], context.cpu_pTransform, sizeof(CPU_TRANSFORM));
-
-            // Shader side data
-            if (context.m_pTransform == nullptr)
-            {
-                BLIT_ERROR("%s: Dynamic transform requested but no shader transform data passed", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                return CE_TRANSFORM_CREATE_ERROR_CODE;
-            }
 
             BlitzenCore::BlitMemCopy(&m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount], context.m_pTransform, sizeof(MeshTransform));
 
@@ -133,18 +139,24 @@ namespace BlitzenEngine
                 return BLIT_MAX_WORLD_TRANSFORM_COUNT;
             }
 
-            if (context.m_pTransform != nullptr)
-            {
-                BlitzenCore::BlitMemCopy(&m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_pTransform, sizeof(MeshTransform));
-            }
-            else
-            {
-                BLIT_ERROR("%s: Did not provide GPU data for static transform creation", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                return BLIT_MAX_WORLD_TRANSFORM_COUNT;
-            }
+            BlitzenCore::BlitMemCopy(&m_transforms[CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount], context.m_pTransform, sizeof(MeshTransform));
 
             m_transformCount++;
             return CE_STATIC_TRANSFORM_OFFSET + m_staticTransformCount++;
+        }
+
+        else if (context.m_type == WorldTransformType::BOUND_TO_TRANSPARENT)
+        {
+            if (m_transparentCount >= BLIT_MAX_WORLD_TRANSPARENTS)
+            {
+                BLIT_ERROR("Exceeded max transparent transform count");
+                return CE_TRANSFORM_CREATE_ERROR_CODE;
+            }
+
+            BlitzenCore::BlitMemCopy(&m_transforms[CE_TRANSPARENT_OFFSET + m_transparentCount], context.m_pTransform, sizeof(MeshTransform));
+
+            m_transformCount++;
+            return CE_TRANSPARENT_OFFSET + m_transparentCount++;
         }
 
         BLIT_ERROR("Unexpected transform type");

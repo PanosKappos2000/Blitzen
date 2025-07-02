@@ -93,6 +93,7 @@ namespace BlitzenEngine
     uint8_t UploadToDynamicRenderObjectStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
     uint8_t UploadToWorldTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount);
     uint8_t UploadToCPUTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount);
+	uint8_t UploadToBoundingSphereStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, BoundingSphere* boundingSpheres, uint32_t sphereCount);
 
     uint8_t UploadNewGeometryDataToSSBOs(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& instanceData, RenderingLoadingContextMesh& resourceData);
 

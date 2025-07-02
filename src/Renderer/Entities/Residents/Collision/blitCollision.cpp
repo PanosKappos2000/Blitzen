@@ -2,7 +2,7 @@
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
 #include "BlitzenMathLibrary/blitML.h"
-#include "Core/blitMemory.h"
+#include "BlitCL/blitDynamicArr.h"
 
 namespace BlitzenEngine
 {
@@ -27,7 +27,7 @@ namespace BlitzenEngine
         {
             auto& gridCell = m_grids[cellId];
 
-            gridCell.colliderOffset = cellId * CE_OBJECTS_PER_COLLISION_GRID_CELL;
+            gridCell.colliderOffset = 0;
             gridCell.colliderCount = 0;
             gridCell.dynamicColliderOffset = cellId * CE_DYNAMIC_RESIDENTS_PER_COLLISION_GRID_CELL;
             gridCell.dynamicColliderCount = 0;
@@ -40,6 +40,7 @@ namespace BlitzenEngine
         uint32_t claustrophobic = 0;
         uint32_t badColliderIndex = 0;
         uint32_t badLogic = 0;
+        BlitCL::DynamicArray<BlitCL::DynamicArray<uint32_t>> colliderIndices{ CE_COLLISION_GRID_CELL_COUNT, {} };
         // Loop through all static objects
         for (uint32_t i = 0; i < count; ++i)
         {
@@ -84,27 +85,42 @@ namespace BlitzenEngine
             }
 
             auto& grid = m_grids[cellIndex];
-            if (grid.colliderCount >= CE_OBJECTS_PER_COLLISION_GRID_CELL)
-            {
-                claustrophobic++;
-                continue;
-            }
 
-            uint32_t colliderIndex = grid.colliderOffset + grid.colliderCount;
-            if (colliderIndex >= CE_AVAILABLE_COLLIDER_SPACES)
-            {
-                badColliderIndex++;
-                continue;
-            }
-
-            m_colliderIndices[colliderIndex] = i;
+            colliderIndices[cellIndex].PushBack(i);
             m_grids[cellIndex].colliderCount++;
         }
 
+        uint32_t offset = 0;
+        uint32_t cellIndex = 0;
+        uint32_t finalCount = 0;
+        BlitCL::DynamicArray<uint32_t> inLineIndices{ BLIT_MAX_WORLD_RESIDENTS };
+        for (auto& array : colliderIndices)
+        {
+            m_grids[cellIndex++].colliderOffset = offset;
+            offset += uint32_t(array.GetSize()); 
+        }
+
+        AllocStatics(offset, inLineIndices.Data());
+
+        offset = 0;
+        for (auto& array : colliderIndices)
+        {
+            BlitzenCore::MANUAL_COPY(&m_colliderIndices[offset], array.Data(), array.GetSize() * sizeof(uint32_t));
+            offset += uint32_t(array.GetSize());
+        }
+
+        BLIT_ASSERT(m_grids[CE_COLLISION_GRID_CELL_COUNT - 1].colliderOffset + m_grids[CE_COLLISION_GRID_CELL_COUNT - 1].colliderCount == m_colliderIndicesTotal);
+
         BLIT_INFO("%s: Ouf of collsion grid bounds object count: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, outOfBounds);
-        BLIT_INFO("%s: Objects overflowing grid cell: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, claustrophobic);
-        BLIT_INFO("%s: In bounds Objects hitting invalid grid cell: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, badColliderIndex);
         BLIT_INFO("%s: Bad grid index calculation: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, badLogic);
+    }
+
+    void CollisionGrid::AllocStatics(uint32_t count, uint32_t* data)
+    {
+        BLIT_ASSERT(m_colliderIndices == nullptr);
+
+        m_colliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, count * sizeof(uint32_t)));
+        m_colliderIndicesTotal += count;
     }
 
     void ColliderContainer::AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, bool isStatic)
@@ -156,5 +172,13 @@ namespace BlitzenEngine
     void CollisionGrid::BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(Collider* colliderArr)
     {
         
+    }
+
+    CollisionGrid::~CollisionGrid()
+    {
+        if (m_colliderIndices)
+        {
+            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, m_colliderIndices, m_colliderIndicesTotal * sizeof(uint32_t));
+        }
     }
 }

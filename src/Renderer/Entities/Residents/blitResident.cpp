@@ -14,6 +14,12 @@ namespace BlitzenEngine
 	{
 		RenderObject* pFirstRender{ nullptr };
 
+		bool transparencyFlag = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_resourceID) == BlitzenCore::FAT_TRUE;
+		if (transparencyFlag)
+		{
+			const_cast<TRANSFORM_CREATE_CONTEXT&>(ctx.m_transformInfo).m_type = WorldTransformType::BOUND_TO_TRANSPARENT;
+		}
+
 		uint32_t transformID{ m_transforms.CreateTransform(ctx.m_transformInfo) };
 		if (transformID == BLIT_MAX_WORLD_TRANSFORM_COUNT)
 		{
@@ -31,7 +37,7 @@ namespace BlitzenEngine
 		renderContext.m_type = ctx.m_isMoveable ? RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC : RENDER_OBJECT_TYPE::OPAQUE_STATIC;
 		if (renderContext.m_type == RENDER_OBJECT_TYPE::OPAQUE_STATIC)
 		{
-			renderContext.m_type = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_resourceID) == BlitzenCore::FAT_FALSE ? RENDER_OBJECT_TYPE::OPAQUE_STATIC : RENDER_OBJECT_TYPE::TRANSPARENT_STATIC;
+			renderContext.m_type = !transparencyFlag ? RENDER_OBJECT_TYPE::OPAQUE_STATIC : RENDER_OBJECT_TYPE::TRANSPARENT_STATIC;
 		}
 
 		renderContext.m_primitiveID = ctx.m_resourceID;
@@ -59,7 +65,7 @@ namespace BlitzenEngine
 			return baseResidentResidentRes;
 		}
 
-		if (m_worldVariableCount >= BlitzenCore::Ce_MaxWorldVariableCount)
+		if (m_worldVariableCount >= BLIT_MAX_WORLD_VARIABLE_COUNT)
 		{
 			return RESIDENT_CREATE_RES::WORLD_VARIABLE_COUNT_EXCEEDED;
 		}
@@ -73,7 +79,7 @@ namespace BlitzenEngine
 
 	MovingResident* RequestMovementComponent(Resident resident)
 	{
-		BLIT_ASSERT(resident < BlitzenCore::Ce_MaxWorldMovingResidentCount + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
+		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
 
 		return &P_WORLD_RESIDENTS->m_movingResidents[resident];
 	}
@@ -87,7 +93,7 @@ namespace BlitzenEngine
 
 	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(Resident resident)
 	{
-		BLIT_ASSERT(resident < BlitzenCore::Ce_MaxWorldMovingResidentCount + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
+		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
 
 		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident];
 	}

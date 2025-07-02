@@ -399,20 +399,20 @@ namespace BlitzenEngine
 			BLIT_FATAL("%s: Failed to allocate dynamic render object staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
-		
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (MeshTransform*)nullptr))
-		{
-			BLIT_FATAL("%s: Failed to allocate world transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
 
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (CPU_TRANSFORM*)nullptr))
-		{
-			BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
+if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (MeshTransform*)nullptr))
+{
+	BLIT_FATAL("%s: Failed to allocate world transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+	return 0;
+}
 
-		return 1;
+if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (CPU_TRANSFORM*)nullptr))
+{
+	BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+	return 0;
+}
+
+return 1;
 	}
 
 	uint8_t UploadToRenderObjectStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount)
@@ -447,6 +447,20 @@ namespace BlitzenEngine
 			return 0;
 		}
 
+		SIZE_T copySize{ sizeof(BlitzenEngine::RenderObject) * renderCount };
+		if ((sizeof(BlitzenEngine::RenderObject) * ctx.m_renderStaging.m_validDataIndex) + copySize > ctx.m_renderStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: Render Object staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(renderObjects != nullptr, "Invalid array handle for render objects (STAGING BUFFER UPLOAD)");
+
+		auto pDest{ &ctx.m_renderStaging.m_pMapped[ctx.m_renderStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, renderObjects, copySize);
+
+		ctx.m_renderStaging.m_validDataIndex += renderCount;
+
 		return 1;
 	}
 
@@ -457,6 +471,20 @@ namespace BlitzenEngine
 			BLIT_FATAL("%s: Failed to allocate dynamic render object staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
+
+		SIZE_T copySize{ sizeof(BlitzenEngine::RenderObject) * renderCount };
+		if ((sizeof(BlitzenEngine::RenderObject) * ctx.m_dynamicRenderStaging.m_validDataIndex) + copySize > ctx.m_dynamicRenderStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: Dynamic Render Object staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(renderObjects != nullptr, "Invalid array handle for render objects (STAGING BUFFER UPLOAD)");
+
+		auto pDest{ &ctx.m_dynamicRenderStaging.m_pMapped[ctx.m_dynamicRenderStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, renderObjects, copySize);
+
+		ctx.m_dynamicRenderStaging.m_validDataIndex += renderCount;
 
 		return 1;
 	}
@@ -469,22 +497,116 @@ namespace BlitzenEngine
 			return 0;
 		}
 
+		SIZE_T copySize{ sizeof(BlitzenEngine::MeshTransform) * transformCount };
+		if ((sizeof(BlitzenEngine::MeshTransform) * ctx.m_transformStaging.m_validDataIndex) + copySize > ctx.m_transformStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: World Transform staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(transforms != nullptr, "Invalid array handle for world transforms (STAGING BUFFER UPLOAD)");
+
+		auto pDest{ &ctx.m_transformStaging.m_pMapped[ctx.m_transformStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, transforms, copySize);
+
+		ctx.m_transformStaging.m_validDataIndex += transformCount;
+
 		return 1;
 	}
 
 	uint8_t UploadToCPUTransformStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount)
 	{
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (CPU_TRANSFORM*)nullptr))
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_VARIABLE_COUNT, (CPU_TRANSFORM*)nullptr))
 		{
 			BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
+		SIZE_T copySize{ sizeof(CPU_TRANSFORM) * transformCount };
+		if((sizeof(CPU_TRANSFORM) * ctx.m_cpuTransformStaging.m_validDataIndex) + copySize > ctx.m_cpuTransformStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: CPU_DATA Transform staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(transforms != nullptr, "Invalid array handle for CPU_DATA transforms (STAGING BUFFER UPLOAD)");
+
+		auto pDest{ &ctx.m_cpuTransformStaging.m_pMapped[ctx.m_cpuTransformStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, transforms, copySize);
+
+		ctx.m_cpuTransformStaging.m_validDataIndex += transformCount;
+
 		return 1;
 	}
 
-	uint8_t UploadNewGeometryDataToSSBOs(BlitzenDX12::Dx12Renderer* pRenderer, RenderingLoadingContextRenderObjects& instanceData, RenderingLoadingContextMesh& resourceData)
+	uint8_t UploadToBoundingSpheresStagingBuffer(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, BoundingSphere* spheres, uint32_t count)
 	{
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_boundingSpheresStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (BoundingSphere*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate Bounding sphere staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		SIZE_T copySize{ sizeof(BoundingSphere) * count };
+		if ((sizeof(BoundingSphere) * ctx.m_boundingSpheresStaging.m_validDataIndex) + copySize > ctx.m_boundingSpheresStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: Bounding Spheres staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(spheres != nullptr, "Invalid array handle for bounding spheres (STAGING BUFFER UPLOAD)");
+
+		auto pDest{ &ctx.m_boundingSpheresStaging.m_pMapped[ctx.m_boundingSpheresStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, spheres, copySize);
+
+		ctx.m_boundingSpheresStaging.m_validDataIndex += count;
+
+		return 1;
+	}
+
+	uint8_t UploadNewGeometryDataToSSBOs(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& instanceData, BlitzenDX12::LoadingContextMesh& resourceData)
+	{
+		constexpr uint32_t CE_STAGING_BUFFER_BARRIER_COUNT = 50;
+		constexpr uint32_t CE_SSBO_BARRIER_ARRAY_OFFSET = CE_STAGING_BUFFER_BARRIER_COUNT;
+		constexpr uint32_t CE_SSBO_BARRIER_COUNT = CE_STAGING_BUFFER_BARRIER_COUNT * BlitzenDX12::ce_framesInFlight;
+		uint32_t validBarrierCount = 0;
+		D3D12_RESOURCE_BARRIER stagingResourceBarriers[CE_SSBO_BARRIER_COUNT + CE_STAGING_BUFFER_BARRIER_COUNT]{};
+
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_vtxPosStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_vtxNrmStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_vtxTngStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_vtxTexCoordStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_vtxIdxStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_clusterVtxStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_clusterSpheresStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_clusterConesStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_clusterIdxStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		}
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_meshPrimStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], resourceData.m_lodDataStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], instanceData.m_renderStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], instanceData.m_dynamicRenderStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], instanceData.m_transformStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], instanceData.m_cpuTransformStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], instanceData.m_boundingSpheresStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_vtxPosBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_vtxNrmBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_vtxTangentBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_vtxTexCoordBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_idxBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_clusterVtxsBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_clusterSpheresBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_clusterConesBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_clusterIdxBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		}
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_surfaceBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_LODBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
 		return 1;
 	}
 }

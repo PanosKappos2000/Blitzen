@@ -1,6 +1,6 @@
 #pragma once 
 #include "blitCollision.h"
-#include "Renderer/HlslShaders/Headers/cpuShared.h"
+#include "Renderer/Resources/blitShaderShared.h"
 
 namespace BlitzenEngine
 {
@@ -11,7 +11,7 @@ namespace BlitzenEngine
 	public:
 		BoundingSphere m_boundingSpheres[CE_MAX_WORLD_BOUNDING_SPHERE_COUNT];
 
-		Collider m_colliders[BlitzenCore::Ce_MaxWorldVariableCount];// Static objects have set reactions
+		Collider m_colliders[BLIT_MAX_WORLD_VARIABLE_COUNT];// Static objects have set reactions
 
 		// Adds bounding sphere for render object. If the render object is static, the sphere is pre transformed
 		void AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, bool isStatic);

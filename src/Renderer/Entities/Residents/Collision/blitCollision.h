@@ -3,23 +3,21 @@
 #include "Renderer/Entities/Residents/blitResident.h"
 #include "BlitCL/blitPfn.h"
 #include "blitCollisionFlags.h"
-#include "Renderer/HlslShaders/Headers/cpuShared.h"
+#include "Renderer/Resources/blitShaderShared.h"
 #include "BlitzenMathLibrary/blitMLLight.h"
 
 namespace BlitzenEngine
 {
-	constexpr uint32_t CE_COLLISION_GRID_EXTENT = 5'000;
+	constexpr uint32_t CE_COLLISION_GRID_EXTENT = BLIT_COLLISION_GRID_EXTENT;
 
-	constexpr uint32_t CE_COLLISION_GRID_CELL_EXTENT = 100;
+	constexpr uint32_t CE_COLLISION_GRID_CELL_EXTENT = BLIT_COLLISION_GRID_CELL_EXTENT;
 
-	constexpr uint32_t CE_COLLISION_GRID_CELL_FLAT_COUNT = CE_COLLISION_GRID_EXTENT / CE_COLLISION_GRID_CELL_EXTENT;
+	constexpr uint32_t CE_COLLISION_GRID_CELL_FLAT_COUNT = BLIT_COLLISION_GRID_CELL_FLAT_COUNT;
 
-	constexpr uint32_t CE_COLLISION_GRID_CELL_COUNT = CE_COLLISION_GRID_CELL_FLAT_COUNT * CE_COLLISION_GRID_CELL_FLAT_COUNT * CE_COLLISION_GRID_CELL_FLAT_COUNT;
-	constexpr uint32_t CE_GRID_CELL_COUNT_FLAT = (CE_COLLISION_GRID_EXTENT / CE_COLLISION_GRID_CELL_EXTENT);
-	constexpr uint32_t CE_OBJECTS_PER_COLLISION_GRID_CELL = uint32_t(CE_COLLISION_GRID_CELL_EXTENT / 0.5f);
-	constexpr uint32_t CE_DYNAMIC_RESIDENTS_PER_COLLISION_GRID_CELL = uint32_t(CE_COLLISION_GRID_CELL_EXTENT / 0.5f);
+	constexpr uint32_t CE_COLLISION_GRID_CELL_COUNT = BLIT_COLLISION_GRID_CELL_COUNT;
+	constexpr uint32_t CE_OBJECTS_PER_COLLISION_GRID_CELL = BLIT_COLLISION_GRID_CELL_EXTENT;
+	constexpr uint32_t CE_DYNAMIC_RESIDENTS_PER_COLLISION_GRID_CELL = BLIT_COLLISION_GRID_CELL_EXTENT;
 
-	constexpr uint32_t CE_AVAILABLE_COLLIDER_SPACES = CE_COLLISION_GRID_CELL_COUNT * CE_OBJECTS_PER_COLLISION_GRID_CELL;
 	constexpr uint32_t CE_AVAILABLE_DYNAMIC_COLLIDER_SPACES = CE_DYNAMIC_RESIDENTS_PER_COLLISION_GRID_CELL * CE_COLLISION_GRID_CELL_COUNT;
 
 	struct Collider
@@ -51,10 +49,11 @@ namespace BlitzenEngine
 		int32_t m_maxBounds;
 
 		CollisionGridCell m_grids[CE_COLLISION_GRID_CELL_COUNT];
-		uint32_t m_colliderIndices[CE_AVAILABLE_COLLIDER_SPACES];
+		uint32_t* m_colliderIndices{ nullptr };
+		uint32_t m_colliderIndicesTotal{ 0 };
 		uint32_t m_dynamicColliderIndices[CE_AVAILABLE_DYNAMIC_COLLIDER_SPACES];
 
-		CollisionMessage m_events[BlitzenCore::Ce_MaxWorldVariableCount];
+		CollisionMessage m_events[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		uint32_t m_count{ 0 };
 
 		void DefineGrid(uint32_t origin);
@@ -63,9 +62,13 @@ namespace BlitzenEngine
 
 		void PlaceStatics(BlitzenEngine::RenderObject* renderArr, uint32_t count, BlitzenEngine::MeshTransform* transformArr);
 
+		void AllocStatics(uint32_t count, uint32_t* data);
+
 		void FindCollisionsNarrow(BoundingSphere* boundsArr);
 
 		void BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(Collider* colliderArr);
+
+		~CollisionGrid();
 	};
 
 	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds);

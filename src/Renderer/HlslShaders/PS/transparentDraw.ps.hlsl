@@ -3,7 +3,7 @@ struct PSOutput
     float4 color : SV_TARGET;
 };
 
-#include "../Headers/cpuShared.h"
+#include "../../Resources/blitShaderShared.h"
 #include "../Headers/psBuffers.hlsl"
 #include "../Headers/hlslMath.hlsl"
 

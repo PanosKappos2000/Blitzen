@@ -1,6 +1,5 @@
 #pragma once
 #include "Renderer/Entities/Residents/blitResident.h"
-#include "Renderer/HlslShaders/Headers/cpuShared.h"
 
 namespace BlitzenEngine
 {
