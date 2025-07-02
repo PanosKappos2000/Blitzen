@@ -25,6 +25,12 @@ PSOutput main(VSOutput input)
     Material mat = ssbo_MaterialBuffer[input.materialId];
     
     float4 albedoMap = float4(0.5, 0.5, 0.5, 1);
+    
+    if (albedoMap.a < 0.5)
+    {
+        discard;
+    }
+    
     if (mat.albedoTag != 0)
     {
         Texture2D<float4> albedo = tex_Textures[NonUniformResourceIndex(mat.albedoTag)];

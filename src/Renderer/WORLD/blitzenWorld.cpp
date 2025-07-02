@@ -17,7 +17,8 @@ namespace BlitzenWorld
 
     bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
-        if (!pRenderer->UploadTexture("Assets/Textures/base_baseColor.dds"))
+        pResources->m_textureManager.ALLOC();
+        if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->m_textureManager.m_singleTextureHandle, "Assets/Textures/base_baseColor.dds"))
         {
             BLIT_ERROR("Rendering resources failed");
             return false;

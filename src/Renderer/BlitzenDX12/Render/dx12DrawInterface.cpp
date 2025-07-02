@@ -100,6 +100,61 @@ namespace BlitzenEngine
 		ID3D12CommandList* commandLists[] = { cmd.m_graphicsCmdList.Get() };
 		pRenderer->m_commandQueue->ExecuteCommandLists(1, commandLists);
 	}
+
+	void RendererWorkIdle(BlitzenDX12::Dx12Renderer* pRenderer, RENDERER_IDLE_MODE mode)
+	{
+		UINT frame{ pRenderer->m_currentFrame };
+		auto& cmdContext = pRenderer->m_cmdContext[frame];
+		auto& pipelineContext = pRenderer->m_pipelineContext;
+		auto& descriptorContext = pRenderer->m_descriptorContext;
+		float swapchainWidth{ (float)pRenderer->m_swapchainWidth };
+		float swapchainHeight{ (float)pRenderer->m_swapchainHeight };
+
+		BlitzenDX12::PlaceFence(cmdContext.m_frameFence.m_value, pRenderer->m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
+		UINT swapchainIDX{ pRenderer->m_swapchain->GetCurrentBackBufferIndex()};
+		auto swapchainBackBuffer = pRenderer->m_swapchainBackBuffers[swapchainIDX].Get();
+
+		pRenderer->m_swapchainIDX = swapchainIDX;
+
+		switch (mode)
+		{
+		case RENDERER_IDLE_MODE::TRIANGLE:
+		{
+			cmdContext.m_graphicsCmdAlloc->Reset();
+			cmdContext.m_graphicsCmdList->Reset(cmdContext.m_graphicsCmdAlloc.Get(), pipelineContext.m_trianglePso.Get());
+
+			cmdContext.m_graphicsCmdList->SetGraphicsRootSignature(pipelineContext.m_triangleRoot.Get());
+			BlitzenDX12::DefineViewportAndScissor(cmdContext.m_graphicsCmdList.Get(), (float)swapchainWidth, (float)swapchainHeight);
+
+			D3D12_RESOURCE_BARRIER attachmentBarrier{};
+			BlitzenDX12::CreateResourcesTransitionBarrier(attachmentBarrier, swapchainBackBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			cmdContext.m_graphicsCmdList->ResourceBarrier(1, &attachmentBarrier);
+
+			cmdContext.m_graphicsCmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIDX], FALSE, nullptr);
+
+			cmdContext.m_graphicsCmdList->ClearRenderTargetView(descriptorContext.m_swapchainRtvHandle[swapchainIDX], BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
+
+			//BlitML::vec3 triangleColor{ 0, 0.8f, 0.4f };
+			//frameTools.mainGraphicsCommandList->SetGraphicsRoot32BitConstants(0, 3, &triangleColor, 0);
+			cmdContext.m_graphicsCmdList->SetPipelineState(pipelineContext.m_trianglePso.Get());
+			cmdContext.m_graphicsCmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			cmdContext.m_graphicsCmdList->DrawInstanced(3, 1, 0, 0);
+			break;
+		}
+		case RENDERER_IDLE_MODE::BLITZEN_LOGO:
+		{
+			break;
+		}
+		}
+
+		D3D12_RESOURCE_BARRIER presentBarrier{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(presentBarrier, swapchainBackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		cmdContext.m_graphicsCmdList->ResourceBarrier(1, &presentBarrier);
+
+		cmdContext.m_graphicsCmdList->Close();
+		ID3D12CommandList* commandLists[] = { cmdContext.m_graphicsCmdList.Get() };
+		pRenderer->m_commandQueue->ExecuteCommandLists(1, commandLists);
+	}
 }
 
 #endif

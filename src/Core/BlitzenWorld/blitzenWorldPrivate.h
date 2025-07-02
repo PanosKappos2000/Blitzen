@@ -25,7 +25,7 @@ namespace BlitzenWorld
 
     void LoadingLoop(int argc, char** argv, BLITZEN_SYSTEM_CONTEXT& context, BlitzenEngine::DrawContext& drawContext);
 
-    void RenderLoop(BLITZEN_SYSTEM_CONTEXT& context);
+    void BMPR_DRIVE(BLITZEN_SYSTEM_CONTEXT& context);
 
     void UpdateLoop(BLITZEN_SYSTEM_CONTEXT& context);
 

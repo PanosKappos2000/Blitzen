@@ -31,11 +31,6 @@ PSOutput main(VSOutput input)
         albedoMap = albedo.Sample(smp_textureSampler, input.texCoord);
     }
     
-    if (albedoMap.a < 0.5)
-    {
-        discard;
-    }
-    
     float3 normalMap = float3(0, 0, 1);
     if(mat.normalTag != 0)
     {

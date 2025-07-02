@@ -47,7 +47,7 @@ namespace BlitzenEngine
 
     // TODO: RENAME THIS
     // Taken from https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
-    enum DXGI_FORMAT
+    enum class BLIT_DXGI_FORMAT_COPY
     {
         DXGI_FORMAT_BC1_UNORM = 71,
         DXGI_FORMAT_BC1_UNORM_SRGB = 72,
@@ -63,5 +63,7 @@ namespace BlitzenEngine
         DXGI_FORMAT_BC6H_SF16 = 96,
         DXGI_FORMAT_BC7_UNORM = 98,
         DXGI_FORMAT_BC7_UNORM_SRGB = 99,
+
+        DXGI_FORMAT_UNKNOWN = 0
     };
 }

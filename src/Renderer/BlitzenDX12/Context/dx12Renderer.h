@@ -17,7 +17,7 @@ namespace BlitzenDX12
 
         ~Dx12Renderer();
     
-        uint8_t UploadTexture(const char* filepath);
+        uint8_t UploadTexture(BLIT_STRAIGHTHANDLE pTexture, BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, size_t imageSize, UINT blockSize, DXGI_FORMAT format);
     
         void DrawWhileWaiting(float deltaTime);
 

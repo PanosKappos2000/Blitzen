@@ -119,26 +119,26 @@ namespace BlitzenEngine
 
 		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
 		{
-			switch (header10.dxgiFormat)
+			switch ((BLIT_DXGI_FORMAT_COPY)header10.dxgiFormat)
 			{
-			case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
-			case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC1_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC1_UNORM_SRGB:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC4_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC4_SNORM:
 			{
 				return 8;
 			}
 
-			case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
-			case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
-			case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
-			case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
-			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC2_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC2_UNORM_SRGB:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC3_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC3_UNORM_SRGB:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC5_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC5_SNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC6H_UF16:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC6H_SF16:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC7_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC7_UNORM_SRGB:
 			{
 				return 16;
 			}
@@ -152,5 +152,99 @@ namespace BlitzenEngine
 		}
 
 		return 16;
+	}
+
+	static BLIT_DXGI_FORMAT_COPY GetDDSFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10)
+	{
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
+		{
+			//return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+			return BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC1_UNORM;
+
+		}
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
+		{
+			//return VK_FORMAT_BC2_UNORM_BLOCK;
+			return BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC2_UNORM;
+		}
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
+		{
+			//return VK_FORMAT_BC3_UNORM_BLOCK;
+			return BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC3_UNORM;
+		}
+
+		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
+		{
+			switch ((BLIT_DXGI_FORMAT_COPY)header10.dxgiFormat)
+			{
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC1_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC1_UNORM_SRGB:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC2_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC2_UNORM_SRGB:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC3_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC3_UNORM_SRGB:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC4_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC4_SNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC5_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC5_SNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC6H_UF16:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC6H_SF16:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC7_UNORM:
+			case BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC7_UNORM_SRGB:
+			{
+				return (BLIT_DXGI_FORMAT_COPY)header10.dxgiFormat;
+			}
+			}
+		}
+
+		return BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_UNKNOWN;
+	}
+
+	size_t LoadDDSImageData(DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, BLIT_DXGI_FORMAT_COPY& format, void* pData, uint32_t& blockSize, const char* filepath)
+	{
+		// Opens file
+		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, scopedFILE))
+		{
+			BLIT_ERROR("%s: Failed to open texture file", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+			return 0;
+		}
+
+		format = GetDDSFormat(header, header10);
+		if (format == BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_UNKNOWN)
+		{
+			BLIT_ERROR("%s: Unknown format retrieved from DDS image", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+			return false;
+		}
+
+		FILE* file = scopedFILE.m_pHandle;
+
+		blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
+		size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+
+		size_t readSize = fread(pData, 1, imageSize, file);
+
+		if (!pData)
+		{
+			BLIT_ERROR("%s: Failed to read texture data", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+			return CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE;
+		}
+		if (readSize != imageSize)
+		{
+			BLIT_ERROR("%s: Failed to read the correct amount of texture data. Expected: %u, Read: %u", BlitzenCore::CE_RESOURCE_SYSTEM_NAME, imageSize, readSize);
+			return CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE;
+		}
+
+		// Success
+		return imageSize;
+	}
+
+	void TextureManager::ALLOC()
+	{
+		m_singleTextureHandle = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Texture, BlitzenCore::CE_TEXTURE_DATA_HANDLE_SIZE);
+	}
+
+	TextureManager::~TextureManager()
+	{
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Texture, m_singleTextureHandle, BlitzenCore::CE_TEXTURE_DATA_HANDLE_SIZE);
 	}
 }

@@ -86,6 +86,7 @@ namespace BlitzenCore
 
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
     constexpr size_t CE_RAPID_RESOURCE_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
+    constexpr size_t CE_TEXTURE_DATA_HANDLE_SIZE = 128 * 1024 * 1024;
 
     constexpr uint32_t Ce_MaxControllerCount = 5;
 
@@ -126,6 +127,7 @@ namespace BlitzenCore
         LinearAlloc = 11,
         WV = 12,
         TRIANGLE = 13,
+        Texture = 14,
 
         MaxTypes = 100
     };

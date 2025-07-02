@@ -7,14 +7,21 @@
 
 namespace BlitzenEngine
 {
-    struct TextureManager
+    class TextureManager
     {
+    public:
         Material m_materials[BlitzenCore::Ce_MaxMaterialCount];
         BlitCL::HashMap<Material*> m_pMaterialTable;
         uint32_t m_materialCount;
 
         BlitCL::HashMap<uint32_t> m_textureIDMap;
         uint32_t m_textureCount{ 0 };
+
+        BLIT_STRAIGHTHANDLE m_singleTextureHandle;
+
+        void ALLOC();
+
+        ~TextureManager();
 
         bool AddTexture(const char* textureName);
 
@@ -32,4 +39,7 @@ namespace BlitzenEngine
     size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize);
 
     uint32_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10);
+
+    constexpr size_t CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE = BlitzenCore::CE_TEXTURE_DATA_HANDLE_SIZE;
+    size_t LoadDDSImageData(DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, BLIT_DXGI_FORMAT_COPY& format, void* pData, uint32_t& blockSize, const char* filepath);
 }

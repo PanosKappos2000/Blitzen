@@ -8,83 +8,6 @@
 
 namespace BlitzenDX12
 {
-	DXGI_FORMAT GetDDSFormat(const BlitzenEngine::DDS_HEADER& header, const BlitzenEngine::DDS_HEADER_DXT10& header10)
-	{
-		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT1"))
-		{
-			//return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-			return DXGI_FORMAT_BC1_UNORM;
-			
-		}
-		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT3"))
-		{
-			//return VK_FORMAT_BC2_UNORM_BLOCK;
-			return DXGI_FORMAT_BC2_UNORM;
-		}
-		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DXT5"))
-		{
-			//return VK_FORMAT_BC3_UNORM_BLOCK;
-			return DXGI_FORMAT_BC3_UNORM;
-		}
-
-		if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
-		{
-			switch (header10.dxgiFormat)
-			{
-			case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
-			case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
-			case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
-			case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
-			case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
-			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
-			case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
-			{
-				return (DXGI_FORMAT)header10.dxgiFormat;
-			}
-			}
-		}
-
-		return DXGI_FORMAT_UNKNOWN;
-	}
-
-	uint8_t LoadDDSImageData(BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, DXGI_FORMAT& format, void* pData, uint32_t& blockSize)
-	{
-		format = GetDDSFormat(header, header10);
-		if (format == DXGI_FORMAT_UNKNOWN)
-		{
-			BLIT_ERROR("Unknow format retrieved from DDS image");
-			return 0;
-		}
-
-		auto file = scopedFILE.m_pHandle;
-
-		blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
-		size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
-
-		size_t readSize = fread(pData, 1, imageSize, file);
-
-		if (!pData)
-		{
-			BLIT_ERROR("Failed to read texture data");
-			return 0;
-		}
-		if (readSize != imageSize)
-		{
-			BLIT_ERROR("Failed to read the correct amount of texture data. Expected: %u, Read: %u", imageSize, readSize);
-			return 0;
-		}
-
-		// Success
-		return 1;
-	}
-
 	uint8_t Create2DTexture(ID3D12Device* device, DX12WRAPPER<ID3D12Resource>& resource, UINT width, UINT height, UINT mipLevels,
 		DXGI_FORMAT format, UINT blockSize, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, DX12WRAPPER<ID3D12Resource>& staging)
 	{
@@ -151,19 +74,8 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	uint8_t Dx12Renderer::UploadTexture(const char* filepath)
+	uint8_t Dx12Renderer::UploadTexture(BLIT_STRAIGHTHANDLE pTexture, BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, size_t imageSize, UINT blockSize, DXGI_FORMAT format)
 	{
-		BlitzenEngine::DDS_HEADER header{};
-		BlitzenEngine::DDS_HEADER_DXT10 header10{};
-		BlitzenPlatform::C_FILE_SCOPE scopedFILE{};
-
-		// Opens file
-		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, scopedFILE))
-		{
-			BLIT_ERROR("Failed to open texture file");
-			return 0;
-		}
-
 		// Copies texture data to staging resource
 		DX12WRAPPER<ID3D12Resource> stagingBuffer;
 		if (!CreateBuffer(m_device.Get(), stagingBuffer.ReleaseAndGetAddressOf(), Ce_TextureDataStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
@@ -181,14 +93,9 @@ namespace BlitzenDX12
 		}
 
 		auto& tex2D{ m_roResources.m_drawTextures[m_roResources.m_textureCount] };
-		uint32_t blockSize{ 0 };
+		tex2D.format = format;
 
-		// LOAD
-		if (!LoadDDSImageData(header, header10, scopedFILE, tex2D.format, pData, blockSize))
-		{
-			BLIT_ERROR("Failed to load texture data");
-			return 0;
-		}
+		BlitzenCore::BlitMemCopy(pData, pTexture, imageSize);
 
 		tex2D.mipLevels = header.dwMipMapCount;
 		if (!Create2DTexture(m_device.Get(), tex2D.resource, header.dwWidth, header.dwHeight, tex2D.mipLevels, tex2D.format, blockSize, m_cmdContext[m_currentFrame], 

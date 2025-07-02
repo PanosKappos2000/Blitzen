@@ -55,7 +55,7 @@ namespace BlitzenEngine
     uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
 
     // Singular texture upload
-    uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData);
+    uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData, const char* filepath);
 
     uint8_t AllocateLoadingContextMesh(RendererPtrType pRenderer ,RenderingLoadingContextMesh& ctx);
 
@@ -174,4 +174,11 @@ namespace BlitzenEngine
 
     // Should be called by event system to update renderer surface resources when a window resize event is encountered
     BlitML::vec2 UpdateRendererWindowData(RendererPtrType pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pPlatform);
+
+    enum class RENDERER_IDLE_MODE : uint8_t
+    {
+        TRIANGLE,
+        BLITZEN_LOGO
+    };
+    void RendererWorkIdle(RendererPtrType pRendrer, RENDERER_IDLE_MODE mode);
 }

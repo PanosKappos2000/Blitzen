@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 
         BlitzenWorld::UpdateLoop(blitzenPrivateContext);
 
-        BlitzenWorld::RenderLoop(blitzenPrivateContext);
+        BlitzenWorld::BMPR_DRIVE(blitzenPrivateContext);
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
         // Using IMGUI for the editor requires some extra care for event handling

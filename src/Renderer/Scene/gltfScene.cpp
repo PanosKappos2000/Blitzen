@@ -44,7 +44,7 @@ namespace BlitzenEngine
             }
 
             // Give to renderer
-            if (!pRenderer->UploadTexture(ddsFilepath.c_str()))
+            if (!UploadTextureToGPU(pRenderer, textureContext.m_singleTextureHandle, ddsFilepath.c_str()))
             {
                 return SCENE_CREATE_RES::FAILED_TO_LOAD_TEXTURE_TO_GPU;
             }

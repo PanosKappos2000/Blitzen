@@ -202,58 +202,58 @@ namespace BlitzenVulkan
 
         if (header.ddspf.dwFourCC == BlitzenEngine::FourCC("DX10"))
 	    {
-	    	switch (header10.dxgiFormat)
+	    	switch ((BlitzenEngine::BLIT_DXGI_FORMAT_COPY)header10.dxgiFormat)
 	    	{
-	    	    case BlitzenEngine::DXGI_FORMAT_BC1_UNORM:
-                case BlitzenEngine::DXGI_FORMAT_BC1_UNORM_SRGB:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC1_UNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC1_UNORM_SRGB:
                 {
                     return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
                 }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC2_UNORM:
-                case BlitzenEngine::DXGI_FORMAT_BC2_UNORM_SRGB:
+	    	    case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC2_UNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC2_UNORM_SRGB:
                 {
                     return VK_FORMAT_BC2_UNORM_BLOCK;
                 }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC3_UNORM:
-                case BlitzenEngine::DXGI_FORMAT_BC3_UNORM_SRGB:
+	    	    case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC3_UNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC3_UNORM_SRGB:
                 {
                     return VK_FORMAT_BC3_UNORM_BLOCK;
                 }
 
-                case BlitzenEngine::DXGI_FORMAT_BC4_UNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC4_UNORM:
                 {
                     return VK_FORMAT_BC4_UNORM_BLOCK;
                 }
 
-                case BlitzenEngine::DXGI_FORMAT_BC4_SNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC4_SNORM:
                 {
                     return VK_FORMAT_BC4_SNORM_BLOCK;
                 }
 
-                case BlitzenEngine::DXGI_FORMAT_BC5_UNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC5_UNORM:
                 {
                     return VK_FORMAT_BC5_UNORM_BLOCK;
                 }
 
-                case BlitzenEngine::DXGI_FORMAT_BC5_SNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC5_SNORM:
                 {
                     return VK_FORMAT_BC5_SNORM_BLOCK;
                 }
 
-                case BlitzenEngine::DXGI_FORMAT_BC6H_UF16:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC6H_UF16:
                 {
                     return VK_FORMAT_BC6H_UFLOAT_BLOCK;
                 }
 
-                case BlitzenEngine::DXGI_FORMAT_BC6H_SF16:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC6H_SF16:
                 {
                     return VK_FORMAT_BC6H_SFLOAT_BLOCK;
                 }
 
-	    	    case BlitzenEngine::DXGI_FORMAT_BC7_UNORM:
-                case BlitzenEngine::DXGI_FORMAT_BC7_UNORM_SRGB:
+	    	    case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC7_UNORM:
+                case BlitzenEngine::BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_BC7_UNORM_SRGB:
                 {
                     return VK_FORMAT_BC7_UNORM_BLOCK;
                 }
