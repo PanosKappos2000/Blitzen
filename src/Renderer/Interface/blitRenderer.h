@@ -181,4 +181,6 @@ namespace BlitzenEngine
         BLITZEN_LOGO
     };
     void RendererWorkIdle(RendererPtrType pRendrer, RENDERER_IDLE_MODE mode);
+
+    uint8_t UploadRendererIdleWorkResources(RendererPtrType pRenderer, RENDERER_IDLE_MODE mode);
 }

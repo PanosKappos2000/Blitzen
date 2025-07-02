@@ -27,7 +27,7 @@ namespace BlitzenWorld
 
     void BMPR_DRIVE(BLITZEN_SYSTEM_CONTEXT& context);
 
-    void UpdateLoop(BLITZEN_SYSTEM_CONTEXT& context);
+    void WV_DRIVE(BLITZEN_SYSTEM_CONTEXT& context);
 
     void WorldLoop(BLITZEN_SYSTEM_CONTEXT& context);
 

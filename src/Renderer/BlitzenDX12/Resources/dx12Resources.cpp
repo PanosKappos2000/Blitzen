@@ -12,7 +12,7 @@ namespace BlitzenDX12
             return 0;
         }
 
-        UINT srvHeapDescriptorCount = 0;
+        UINT srvHeapDescriptorCount = 1;// For Blitzen Logo texture
         srvHeapDescriptorCount += CE_GLOBAL_DESCRIPTOR_RANGE_COUNT * ce_framesInFlight;
         srvHeapDescriptorCount += CE_CULL_GLOBAL_RANGE_COUNT * ce_framesInFlight;
         srvHeapDescriptorCount += CE_VERTEX_ODS_RANGE_COUNT * ce_framesInFlight;

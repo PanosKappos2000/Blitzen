@@ -46,42 +46,49 @@ namespace BlitzenEngine
 	{
 		if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
 		{
+			BLIT_ERROR("%s: Failed to open DDS texture file", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
 			return 0;
 		}
 
 		auto file = scopedFILE.m_pHandle;
 
-		unsigned int magic = 0;
+		uint32_t DDS_MAGIC_SIGNATURE = 0;
 
-		if (fread(&magic, sizeof(magic), 1, file) != 1 || magic != FourCC("DDS "))
+		// Reads and checks the DDS magic header to confirm the file is a valid DDS file
+		if (fread(&DDS_MAGIC_SIGNATURE, sizeof(DDS_MAGIC_SIGNATURE), 1, file) != 1 || DDS_MAGIC_SIGNATURE != FourCC("DDS "))
 		{
-			BLIT_ERROR("Invalid DDS signature in file: %s", filepath);
+			BLIT_ERROR("%s: Invalid DDS signature in file: %s", BlitzenCore::CE_RESOURCE_SYSTEM_NAME, filepath);
 			return 0;
 		}
 
+		// Reads the main DDS header into the 'header' structure
 		if (fread(&header, sizeof(header), 1, file) != 1)
 		{
 			BLIT_ERROR("Failed to read DDS header data from file: %s", filepath);
 			return 0;
 		}
 
+		// If the DDS header indicates it's a DX10 format, reads the extended header (header10) data
 		if (header.ddspf.dwFourCC == FourCC("DX10") && fread(&header10, sizeof(header10), 1, file) != 1)
 		{
 			BLIT_ERROR("Failed to readd DDS header10 data from file: %s", filepath);
 			return 0;
 		}
 
+		// Check the sizes of the header and the ddspf structure to ensure they match the expected values
 		if (header.dwSize != sizeof(header) || header.ddspf.dwSize != sizeof(header.ddspf))
 		{
 			BLIT_ERROR("Invalid DDS header size for file: %s", filepath);
 			return 0;
 		}
 
-		// These could be removed later, they seem to be ignoring certain types of textures
+		// Checks if the DDS file is a cubemap or volume texture. Those types will get different dedicated functions later.
 		if (header.dwCaps2 & (BlitzenCore::DDSCAPS2_CUBEMAP | BlitzenCore::DDSCAPS2_VOLUME))
 		{
 			return 0;
 		}
+
+		// If the DDS file is using the DX10 format, ensures it's a 2D texture. 3D textures might be handled elsewhere when they are needed
 		if (header.ddspf.dwFourCC == FourCC("DX10") && header10.resourceDimension != BlitzenCore::DDS_DIMENSION_TEXTURE2D)
 		{
 			return 0;
@@ -202,8 +209,7 @@ namespace BlitzenEngine
 
 	size_t LoadDDSImageData(DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, BLIT_DXGI_FORMAT_COPY& format, void* pData, uint32_t& blockSize, const char* filepath)
 	{
-		// Opens file
-		if (!BlitzenEngine::OpenDDSImageFile(filepath, header, header10, scopedFILE))
+		if (!OpenDDSImageFile(filepath, header, header10, scopedFILE))
 		{
 			BLIT_ERROR("%s: Failed to open texture file", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
 			return 0;
@@ -218,8 +224,8 @@ namespace BlitzenEngine
 
 		FILE* file = scopedFILE.m_pHandle;
 
-		blockSize = BlitzenEngine::GetDDSBlockSize(header, header10);
-		size_t imageSize = BlitzenEngine::GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+		blockSize = GetDDSBlockSize(header, header10);
+		size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
 
 		size_t readSize = fread(pData, 1, imageSize, file);
 

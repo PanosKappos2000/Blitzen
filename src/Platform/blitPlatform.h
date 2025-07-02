@@ -18,6 +18,8 @@ namespace BlitzenPlatform
 
     bool DispatchEvents(void* pPlatform);
 
+    void MakeWindowVisible(BLIT_STRAIGHTHANDLE pPlatform);
+
     void BlitzenSleep(uint64_t ms);
 
     void* PlatformMalloc(size_t size, uint8_t aligned);

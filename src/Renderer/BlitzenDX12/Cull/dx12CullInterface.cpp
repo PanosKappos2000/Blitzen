@@ -115,7 +115,7 @@ namespace BlitzenEngine
 					commandList->SetComputeRootDescriptorTable(BlitzenDX12::CE_CULL_ROOT_HI_Z_MAP_ID, descriptorContext.m_HI_Z_MAP_cullHandle[frame]);
 
 					// Pipeline + constants
-					commandList->SetPipelineState(pipelineContext.m_staticCullPso.Get());
+					commandList->SetPipelineState(pipelineContext.m_drawOccTemporalPso.Get());
 					commandList->SetComputeRoot32BitConstant(BlitzenDX12::CE_CULL_ROOT_STATIC_WORK_CONSTANT_ID, cullContext.m_workCount, 0);
 
 					// CULL

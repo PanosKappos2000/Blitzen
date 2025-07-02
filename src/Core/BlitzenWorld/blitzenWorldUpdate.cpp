@@ -2,7 +2,7 @@
 
 namespace BlitzenWorld
 {
-	void UpdateLoop(BLITZEN_SYSTEM_CONTEXT& context)
+	void WV_DRIVE(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		
 	}

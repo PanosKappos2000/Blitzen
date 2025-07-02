@@ -248,12 +248,15 @@ namespace BlitzenDX12
         D3D12_INDEX_BUFFER_VIEW m_view;
     };
 
-    struct TEX2D
+    class TEX2D
     {
+    public:
         DX12WRAPPER<ID3D12Resource> resource;
         UINT mipLevels{ 0 };
         DXGI_FORMAT format{ DXGI_FORMAT_UNKNOWN };
         D3D12_GPU_DESCRIPTOR_HANDLE view;
+
+        inline uint8_t isValid() { return format != DXGI_FORMAT_UNKNOWN; }
     };
 
     struct HI_Z_MAP

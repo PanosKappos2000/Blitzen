@@ -432,6 +432,50 @@ namespace BlitzenDX12
         return 1;
     }
 
+    uint8_t CreateBlitzenLogoPipeline(ID3D12Device* device, PipelineContext& ctx)
+    {
+        BlitCL::String vsBytes;
+        size_t vsSize{ GetShaderBytes(device, "HlslShaders/VS/blitzenLogo.vs.hlsl.bin", vsBytes) };
+        if (vsSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create blitzen logo draw vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        D3D12_SHADER_BYTECODE vsCode{};
+        vsCode.BytecodeLength = vsSize;
+        vsCode.pShaderBytecode = vsBytes.Data();
+
+        BlitCL::String psBytes;
+        size_t psSize{ GetShaderBytes(device, "HlslShaders/PS/blitzenLogo.ps.hlsl.bin", psBytes) };
+        if (psSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create blitzen logo draw pixel shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        D3D12_SHADER_BYTECODE psCode{};
+        psCode.BytecodeLength = psSize;
+        psCode.pShaderBytecode = psBytes.Data();
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+        CreateDefaultPsoDescription(psoDesc);
+        psoDesc.pRootSignature = ctx.m_blitzenLogoRoot.Get();
+        psoDesc.VS = vsCode;
+        psoDesc.PS = psCode;
+        psoDesc.DSVFormat = Ce_DepthTargetFormat;
+
+        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_blitzenLogoPipelineState.ReleaseAndGetAddressOf()));
+        if (FAILED(psoResult))
+        {
+            BLIT_ERROR("%s: Failed to create Blitzen logo pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
+        }
+
+        // SUCCESS
+        return 1;
+    }
+
     uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const char* filename)
     {
         BlitCL::String csBytes;

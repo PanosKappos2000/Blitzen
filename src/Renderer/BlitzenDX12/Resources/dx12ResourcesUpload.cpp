@@ -44,8 +44,8 @@ namespace BlitzenDX12
 			src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 			src.PlacedFootprint.Offset = bufferOffset;
 			src.PlacedFootprint.Footprint.Format = format;
-			src.PlacedFootprint.Footprint.Width = mipWidth;
-			src.PlacedFootprint.Footprint.Height = mipHeight;
+			src.PlacedFootprint.Footprint.Width = (mipWidth + 3) / 4 * 4;  // Round up to 4-byte alignment
+			src.PlacedFootprint.Footprint.Height = (mipHeight + 3) / 4 * 4;  // Same for height
 			src.PlacedFootprint.Footprint.Depth = 1;
 			src.PlacedFootprint.Footprint.RowPitch = ((mipWidth + 3) / 4) * blockSize;
 
@@ -54,8 +54,8 @@ namespace BlitzenDX12
 			box.left = 0;
 			box.top = 0;
 			box.front = 0;
-			box.right = (mipWidth + 3) / 4 * 4;  // Round up to 4-byte alignment
-			box.bottom = (mipHeight + 3) / 4 * 4;  // Same for height
+			box.right = src.PlacedFootprint.Footprint.Width;
+			box.bottom = src.PlacedFootprint.Footprint.Height;
 			box.back = 1;
 
 			cmdContext.m_copyCmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, &box);

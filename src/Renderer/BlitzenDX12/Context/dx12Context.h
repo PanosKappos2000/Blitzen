@@ -102,8 +102,6 @@ namespace BlitzenDX12
 
         SIZE_T m_HI_Z_MAP_mipOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MAP_mipHandle[ce_framesInFlight];
-        SIZE_T m_HI_Z_MAP_firstUAVOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_HI_Z_MapMipsFirstUAVHandle[ce_framesInFlight];
 
         SIZE_T m_vertexODSTableOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_vertexODSTableHandle[ce_framesInFlight];
@@ -113,6 +111,9 @@ namespace BlitzenDX12
 
         SIZE_T m_texturesTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE m_texturesTableHandle;
+
+        SIZE_T m_blitzenLogoTextureTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_blitzenLogoTextureTableHandle;
 
         DX12WRAPPER<ID3D12DescriptorHeap> m_samplerHeap;
 
@@ -199,6 +200,9 @@ namespace BlitzenDX12
 
         D3D12_RENDER_PASS_RENDER_TARGET_DESC m_renderTargetPassDesc[ce_framesInFlight]{};
         D3D12_RENDER_PASS_DEPTH_STENCIL_DESC m_depthTargetPassDesc[ce_framesInFlight]{};
+
+        DX12WRAPPER<ID3D12PipelineState> m_blitzenLogoPipelineState;
+        DX12WRAPPER<ID3D12RootSignature> m_blitzenLogoRoot;
 	};
 
     struct CmdContext

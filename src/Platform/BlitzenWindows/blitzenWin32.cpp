@@ -88,7 +88,7 @@ namespace BlitzenPlatform
 
         // UPDATES
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(args.m_pEvents));
-        ShowWindow(hwnd, SW_SHOW);
+        //ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
         
         // SAVE
@@ -165,6 +165,14 @@ namespace BlitzenPlatform
         }
 
         return true;
+    }
+
+    void MakeWindowVisible(BLIT_STRAIGHTHANDLE handle)
+    {
+        PlatformContext* ptrBP_HANDLE = reinterpret_cast<PlatformContext*>(handle);
+
+        ShowWindow(ptrBP_HANDLE->m_hwnd, SW_SHOW);
+        UpdateWindow(ptrBP_HANDLE->m_hwnd);
     }
 
     void PutMouseInGameState(PlatformContext* ptrBP_HANDLE)

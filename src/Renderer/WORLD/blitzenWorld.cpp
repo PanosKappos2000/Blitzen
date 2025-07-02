@@ -18,16 +18,22 @@ namespace BlitzenWorld
     bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
         pResources->m_textureManager.ALLOC();
-        if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->m_textureManager.m_singleTextureHandle, "Assets/Textures/base_baseColor.dds"))
+        if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->m_textureManager.m_singleTextureHandle, "Assets/Textures/BlitzenLSV1.dds"))
         {
-            BLIT_ERROR("Rendering resources failed");
+            BLIT_ERROR("%s: Rendering resources failed", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        if (!BlitzenEngine::UploadRendererIdleWorkResources(pRenderer, BlitzenEngine::RENDERER_IDLE_MODE::BLITZEN_LOGO))
+        {
+            BLIT_ERROR("%s: Failed to put renderer on Idle Work Mode", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
         // Does not return false by design, might change later.
         if (!pResources->m_textureManager.AddTexture(BlitzenCore::Ce_DefaultTextureName))
         {
-            BLIT_ERROR("Something went wrong with texture map");
+            BLIT_ERROR("%s: Something went wrong with texture map", BlitzenCore::CE_WORLD_SYSTEM_NAME);
         }
 
         if (!pResources->m_textureManager.AddMaterial(0, 0, 0, 0, BlitzenCore::Ce_DefaultMaterialName))

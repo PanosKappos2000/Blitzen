@@ -45,7 +45,6 @@ namespace BlitzenEngine
         unsigned int miscFlags2;
     };
 
-    // TODO: RENAME THIS
     // Taken from https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
     enum class BLIT_DXGI_FORMAT_COPY
     {

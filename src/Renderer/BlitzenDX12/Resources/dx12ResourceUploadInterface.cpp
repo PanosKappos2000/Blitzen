@@ -2,6 +2,7 @@
 #include "dx12ResourcesUpload.h"
 #include "Renderer/Interface/blitRenderer.h"
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
+#include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
 
@@ -653,6 +654,33 @@ return 1;
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 		return 1;
+	}
+
+	uint8_t UploadRendererIdleWorkResources(BlitzenDX12::Dx12Renderer* pRenderer, RENDERER_IDLE_MODE mode)
+	{
+		switch (mode)
+		{
+		case RENDERER_IDLE_MODE::TRIANGLE:
+		{
+			return 1;
+		}
+		case RENDERER_IDLE_MODE::BLITZEN_LOGO:
+		{
+			if (!BlitzenDX12::AddBlitzenLogoDescriptor(pRenderer->m_device.Get(), pRenderer->m_roResources, pRenderer->m_descriptorContext))
+			{
+				BLIT_ERROR("%s: Failed to add descriptors for Blitzen Logo Display during idle work", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			//if (!BlitzenDX12::CreateBlitzenLogoPipeline(pRenderer->m_device.Get(), pRenderer->m_pipelineContext))
+			//{
+			//	BLIT_ERROR("%s: Failed to Create Pipeline for Blitzen Logo Display during idle work", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			//	return 0;
+			//}
+
+			return 1;
+		}
+		}
 	}
 }
 

@@ -145,7 +145,7 @@ namespace BlitzenDX12
 		hi_z.mipCount = BlitML::GetDepthPyramidMipLevels(hi_z.width, hi_z.height);
 
 		// Image resource
-		if (!CreateImageResource(device, hi_z.pyramid.ReleaseAndGetAddressOf(), hi_z.width, hi_z.height,hi_z.mipCount, Ce_DepthPyramidFormat, 
+		if (!CreateImageResource(device, hi_z.pyramid.ReleaseAndGetAddressOf(), hi_z.width, hi_z.height, hi_z.mipCount, Ce_DepthPyramidFormat, 
 			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON, nullptr))
 		{
 			BLIT_ERROR("Failed to create depth pyramid resource");
@@ -178,7 +178,6 @@ namespace BlitzenDX12
 
 			SIZE_T mipsEndOffset = context.m_viewHeapCurrentOffset;
 			auto mipsStartHandle = context.m_HI_Z_MAP_mipHandle[f];
-
 
 			for (uint32_t i = 0; i < Ce_DepthPyramidMaxMips; ++i)
 			{
@@ -256,6 +255,34 @@ namespace BlitzenDX12
 		queue->ExecuteCommandLists(1, commandLists);
 
 		swapchain->Present(1, 0);
+	}
+
+	uint8_t AddBlitzenLogoDescriptor(ID3D12Device* device, ReadOnlyResources& readOnlies, DescriptorContext& context)
+	{
+		auto& reindeer = readOnlies.m_drawTextures[0];
+		if (readOnlies.m_textureCount == 0 || !reindeer.isValid())
+		{
+			BLIT_ERROR("%s: Blitzen Logo texture was never uploaded to renderer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		context.m_blitzenLogoTextureTableOffset = context.m_viewHeapCurrentOffset;
+		context.m_blitzenLogoTextureTableHandle = context.m_viewHeapHandle;
+		context.m_blitzenLogoTextureTableHandle.ptr += context.m_blitzenLogoTextureTableOffset * context.m_viewHeapIncrement;
+		CreateTexture2DShaderResourceView(device, reindeer.resource.Get(), context, reindeer.format, reindeer.mipLevels);
+
+		if (context.m_samplerHeapCurrentOffset == 0)
+		{
+			BLIT_ERROR("%s: Texture sampler descriptor was not created before Blitzen Logo", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_WARN("Blitzen will continuer but this should be fixed");
+			
+			context.m_texSmpOffset = context.m_samplerHeapCurrentOffset;
+			context.m_texSmpHandle = context.m_samplerHeapHandle;
+			context.m_texSmpHandle.ptr += context.m_texSmpOffset * context.m_samplerHeapIncrement;
+			BlitzenDX12::CreateSampler(device, context, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, nullptr, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
+		}
+
+		return 1;
 	}
 }
 

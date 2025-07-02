@@ -22,6 +22,8 @@ namespace BlitzenDX12
 
     UINT64 CreateIndexBuffer(ID3D12Device* device, INDEX_BUFFER& idxBuffer, size_t elementCount);
 
+    uint8_t AddBlitzenLogoDescriptor(ID3D12Device* device, ReadOnlyResources& readOnlies, DescriptorContext& context);
+
     template<typename DATA>
     UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, size_t elementCount, D3D12_RESOURCE_FLAGS ssboFlags = D3D12_RESOURCE_FLAG_NONE)
     {
