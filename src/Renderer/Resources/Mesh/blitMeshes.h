@@ -60,6 +60,8 @@ namespace BlitzenEngine
 
     BoundingSphere* GetBoundingSphereResources_STATIC_ACCESS(Mesh* pMesh);
 
+    BoundingSphere& GetBoundingSphere_STATIC_ACCESS(uint32_t resourceID);
+
     BlitzenCore::FAT_BOOL GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(uint32_t surfaceID);
 
     inline const char* UPLOAD_MESH_TO_DISK_RES_TO_STRING(UPLOAD_MESH_TO_DISK_RES res)

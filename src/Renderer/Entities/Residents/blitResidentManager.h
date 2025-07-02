@@ -42,7 +42,7 @@ namespace BlitzenEngine
 	struct RESIDENT_CREATE_CONTEXT
 	{
 		RESIDENT_CREATE_CONTEXT_FLAGS m_flags{ RESIDENT_CREATE_BASIC };
-		Mesh* m_pResource{ nullptr };
+		uint32_t m_resourceID;
 		TRANSFORM_CREATE_CONTEXT m_transformInfo{};
 		BlitzenCore::FAT_BOOL m_isMoveable{ BlitzenCore::FAT_FALSE };
 	};

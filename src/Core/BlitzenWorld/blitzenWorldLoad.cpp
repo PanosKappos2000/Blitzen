@@ -69,7 +69,7 @@ namespace BlitzenWorld
             {
                 BlitzenEngine::SceneContext defaultGltf{};
                 defaultGltf.m_name = argv[1];
-                stress.m_type = BlitzenEngine::SceneType::GltfSceneTest;
+                defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
                 scenes.PushBack(defaultGltf);
             }
 #endif

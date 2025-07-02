@@ -27,6 +27,11 @@ namespace BlitzenEngine
         return &P_MESH_RESOURCES->m_meshPrimitives.m_boundingSpheres[pMesh->firstSurface];
     }
 
+    BoundingSphere& GetBoundingSphere_STATIC_ACCESS(uint32_t resourceID)
+    {
+        return P_MESH_RESOURCES->m_meshPrimitives.m_boundingSpheres[resourceID];
+    }
+
     Mesh& RequestMeshResources_STATIC_ACCESS(const char* meshName)
     {
 		return P_MESH_RESOURCES->m_meshMap[meshName];

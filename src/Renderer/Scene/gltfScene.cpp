@@ -364,20 +364,24 @@ namespace BlitzenEngine
 
                 // Gets id from surface indices
                 uint32_t meshIdx = meshIndices[cgltf_mesh_index(cgltfScope.pData, node->mesh)];
+                auto& mesh = meshContext.m_meshes[meshIdx];
                 
-                RESIDENT_CREATE_CONTEXT nodeContext{};
-                nodeContext.m_flags = 0;
-                nodeContext.m_pResource = &meshContext.m_meshes[meshIdx];
-                nodeContext.m_transformInfo.m_pTransform = &transform;
-
-                uint32_t surfaceOffset{ meshContext.m_meshes[meshIdx].firstSurface };
-                nodeContext.m_isMoveable = BLIT_FAT_FALSE;
-
-                auto res{ pResidents->AddResident(nodeContext) };
-
-                if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)res))
+                for (uint32_t primID = 0; primID < mesh.surfaceCount; ++primID)
                 {
-                    return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_SCENE_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(res));
+                    RESIDENT_CREATE_CONTEXT nodeContext{};
+                    nodeContext.m_flags = 0;
+                    nodeContext.m_resourceID = primID + mesh.firstSurface;
+                    nodeContext.m_transformInfo.m_pTransform = &transform;
+
+                    uint32_t surfaceOffset{ meshContext.m_meshes[meshIdx].firstSurface };
+                    nodeContext.m_isMoveable = BLIT_FAT_FALSE;
+
+                    auto res{ pResidents->AddResident(nodeContext) };
+
+                    if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)res))
+                    {
+                        return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_SCENE_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(res));
+                    }
                 }
             }
         }

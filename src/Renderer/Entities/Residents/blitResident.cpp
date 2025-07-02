@@ -25,54 +25,28 @@ namespace BlitzenEngine
 		}
 
 		// Retrieves bounding spheres array
-		auto boundingSpheresArr{ GetBoundingSphereResources_STATIC_ACCESS(ctx.m_pResource) };
+		auto bounds{ GetBoundingSphere_STATIC_ACCESS(ctx.m_resourceID) };
 
-		BlitCL::DynamicArray<RENDER_OBJECT_CREATE_CONTEXT> renderContext{ ctx.m_pResource->surfaceCount };
-
-		// Resolve render object types for resident
-		if (ctx.m_isMoveable)
+		RENDER_OBJECT_CREATE_CONTEXT renderContext{};
+		renderContext.m_type = ctx.m_isMoveable ? RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC : RENDER_OBJECT_TYPE::OPAQUE_STATIC;
+		if (renderContext.m_type == RENDER_OBJECT_TYPE::OPAQUE_STATIC)
 		{
-			for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
-			{
-				renderContext[prim].m_type = RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
-			}
-		}
-		else
-		{
-			for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
-			{
-				renderContext[prim].m_type = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_pResource->firstSurface + prim) == BlitzenCore::FAT_FALSE ?
-					RENDER_OBJECT_TYPE::OPAQUE_STATIC : RENDER_OBJECT_TYPE::TRANSPARENT_STATIC;
-			}
+			renderContext.m_type = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_resourceID) == BlitzenCore::FAT_FALSE ? RENDER_OBJECT_TYPE::OPAQUE_STATIC : RENDER_OBJECT_TYPE::TRANSPARENT_STATIC;
 		}
 
-		for (uint32_t prim = 0; prim < ctx.m_pResource->surfaceCount; ++prim)
+		renderContext.m_primitiveID = ctx.m_resourceID;
+		renderContext.m_transformID = transformID;
+
+		// Creates render object
+		uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext);
+		if (renderObjectId == BLIT_MAX_WORLD_RENDERS)
 		{
-			renderContext[prim].m_primitiveID = prim + ctx.m_pResource->firstSurface;
-			renderContext[prim].m_transformID = transformID;
-
-			// Creates render object
-			uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext[prim]);
-			if (renderObjectId == BLIT_MAX_WORLD_RENDERS)
-			{
-				return RESIDENT_CREATE_RES::RENDER_OBJECT_CREATION_FAILED;
-			}
-
-			m_colliders.AddRenderObjectBoundingSphere(&boundingSpheresArr[prim], m_transforms.m_transforms[transformID], renderObjectId, renderContext[prim].m_type != RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC);
-
-			// Saves the first render for the resident
-			if (prim == 0)
-			{
-				pFirstRender = &m_renders.m_renders[renderObjectId];
-			}
+			return RESIDENT_CREATE_RES::RENDER_OBJECT_CREATION_FAILED;
 		}
 
-		if (pFirstRender == nullptr)
-		{
-			return RESIDENT_CREATE_RES::UNKNOWN;
-		}
+		m_colliders.AddRenderObjectBoundingSphere(&bounds, m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type != RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC);
 
-		m_residents[m_residentCount++] = transformID;
+		m_residents[m_residentCount++] = renderObjectId;
 
 		return RESIDENT_CREATE_RES::SUCCESS;
 	}
