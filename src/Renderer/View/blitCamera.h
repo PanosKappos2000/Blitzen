@@ -26,28 +26,19 @@ namespace BlitzenEngine
     {
         BlitML::mat4 viewMatrix;
         BlitML::mat4 projectionViewMatrix;
-
         BlitML::vec3 position;
-
-        // Frustum planes
         float frustumRight;
         float frustumLeft;
         float frustumTop;
         float frustumBottom;
-
-        // Occlusion culling projection matrix values
         float proj0;
         float proj5;
-
-        // Used in place of frustum far and frustum near
         float zNear;
         float zFar;
-
         float pyramidWidth;
         float pyramidHeight;
-
-        // Used to adapt the lod threshold to screen / view settings
         float lodTarget;
+        float deltaTime;
     };
 
     struct CameraCullData
@@ -64,7 +55,7 @@ namespace BlitzenEngine
         float HI_Z_MAP_width;
         float HI_Z_MAP_height;
         float lodTarget;
-        float padding0;
+        float deltaTime;
     };
     struct alignas(256) CameraCullData_HLSLCBV
     {
@@ -80,7 +71,7 @@ namespace BlitzenEngine
         float HI_Z_MAP_width;
         float HI_Z_MAP_height;
         float lodTarget;
-        float padding0;
+        float deltaTime;
     };
 
     struct CameraClipCoordinates

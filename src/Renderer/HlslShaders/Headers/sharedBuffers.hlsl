@@ -27,22 +27,18 @@ cbuffer ViewData : register(b0)
     float4x4 viewMatrix;
     float4x4 projectionView;
     float3 cameraPosition;
-
     float frustumRight;
     float frustumLeft;
     float frustumTop;
     float frustumBottom;
-
     float proj0;
     float proj5;
-
     float zNear;
     float zFar;
-
     float pyramidWidth;
     float pyramidHeight;
-
     float lodTarget;
+    float deltaTime;
 };
 
 #ifdef INSTANCING

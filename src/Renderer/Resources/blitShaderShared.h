@@ -75,6 +75,8 @@
 		static_assert(BLIT_AVAILABLE_DYNAMIC_COLLIDER_SPACES == (BLIT_DYNAMIC_COLLIDER_COUNT_PER_GRID_CELL * BLIT_COLLISION_GRID_CELL_COUNT));
 #endif
 
+#define BLIT_GRAVITATIONAL_ACCELERATION														1.f
+
 /************************************************************************************************************************************************
 * DX12 REGISTERS																																*
 *************************************************************************************************************************************************/
@@ -93,11 +95,12 @@
 	constexpr uint BLIT_HLSL_INSTANCED_CMD_BUFFER_REGISTER = 11;
 	constexpr uint BLIT_HLSL_INSTANCED_CMD_COUNTER_REGISTER = 12;
 	constexpr uint BLIT_HLSL_HI_Z_OUTPUT_REGISTER = 13;
+	constexpr uint BLIT_HLSL_MOVEMENT_BUFFER_REGISTER = 14;
 
 	constexpr uint BLIT_HLSL_RENDER_BUFFER_REGISTER = 0;
 	constexpr uint BLIT_HLSL_BOUNDING_SPHERE_REGISTER = 1;
 	constexpr uint BLIT_HLSL_SURFACE_BUFFER_REGISTER = 2;
-	constexpr uint BLIT_HLSL_MOVEMENT_BUFFER_REGISTER = 3;
+	constexpr uint BLIT_HLSL_LAST_FRAME_EULER_REGISTER = 3;
 	constexpr uint BLIT_HLSL_LOD_BUFFER_REGISTER = 4;
 	constexpr uint BLIT_HLSL_HI_Z_MAP_REGISTER = 5;
 	constexpr uint BLIT_HLSL_CLUSTER_VTXS_REGISTER = 6;
@@ -128,10 +131,11 @@
 
 enum BLIT_RESIDENT_MOVEMENT_FLAG_BITS
 {
-	BLIT_RESIDENT_MOVEMENT_NONE = 0x0,
-	BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT = 0x1,
-	BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT = 0x2,
-	BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT = 0x4
+	BLIT_RESIDENT_MOVEMENT_NONE = 0,
+	BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT = 1 << 0,
+	BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT = 1 << 1,
+	BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT = 1 << 2, 
+	BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT = 1 << 3,
 };
 
 #ifdef __cplusplus

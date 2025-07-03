@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 {
     /* ENGINE SYSTEMS INITIALIZATION */
     BlitzenWorld::BLITZEN_SYSTEM_CONTEXT blitzenPrivateContext{};
-    blitzenPrivateContext.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SUSPENDED;
+    blitzenPrivateContext.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::STARTUP;
 
     BlitzenCore::InitLogging();
 

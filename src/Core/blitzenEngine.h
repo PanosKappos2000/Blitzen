@@ -279,6 +279,7 @@ namespace BlitzenCore
         SUSPENDED = 20,
         LOADING = 21,
         SETUP_AFTER_LOAD = 22,
+        STARTUP = 23,
 
         SHUTDOWN = 127,
         SHUTDOWN_AFTER_LOAD = 128,

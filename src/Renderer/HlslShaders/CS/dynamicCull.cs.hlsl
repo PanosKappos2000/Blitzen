@@ -23,37 +23,38 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     Surface surface = ssbo_Surfaces[obj.surfaceId];
     Movement movement = ssbo_Movements[obj.transformId];
     
-    float3 position = movement.velocity;
+    float3 position = ssbo_Transforms[obj.transformId].position;
     
-    if(!(movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_NONE))
+    if (movement.movementFlags != BLIT_RESIDENT_MOVEMENT_NONE)
     {
     
         float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
-        if (movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
+        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
         {
-        //rwssbo_Euler[obj.transformId] += movement.rotation.x;
             float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, -1.f, 0.f), movement.rotation.x);
             orientation = MultiplyQuat(orientation, orientationYaw);
         }
-        if (movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
+        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
         {
             float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.y);
             orientation = MultiplyQuat(orientation, orientationPitch);
         }
-        if (movement.rotationFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT)
+        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT)
         {
         
         }
         ssbo_Transforms[obj.transformId].orientation = orientation;
+        
+        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT && position.y > -100.f)
+        {
+            position.y -= 0.01f;
+        }
     }
     
     float4 newOrientation = ssbo_Transforms[obj.transformId].orientation;
-    
-    //float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, -1.f, 0.f), movement.rotation.x);
-    //float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.y);
-    //
-    //float4 orientation = MultiplyQuat(orientationYaw, orientationPitch);
     float scale = ssbo_Transforms[obj.transformId].scale;
+    ssbo_Transforms[obj.transformId].position = position;
+    //ssbo_Movements[obj.transformId].velocity = position;
 
     // Bounding sphere to view coordinates
     float3 center = RotateQuat(ssbo_BoundingSpheres[objId].center, newOrientation) * scale + position;
@@ -75,8 +76,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
             return;
         }
     }
-    
-    ssbo_Transforms[obj.transformId].position = position;
 
     // If the render object gets past culling, lod selection is done and draw command is added
     uint lodId = LODSelection(center, radius, scale, lodTarget, surface.lodOffset, surface.lodCount);

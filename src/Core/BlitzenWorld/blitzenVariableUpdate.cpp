@@ -1,6 +1,6 @@
 #pragma once
-
 #include "blitzenWorldPrivate.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenWorld
 {
@@ -11,9 +11,16 @@ namespace BlitzenWorld
 
 	void WorldLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
-		BlitzenCore::UpdateWorldClock(context.pClock);
 		auto pWORLD = context.pWORLD;
+		auto& camera = pWORLD->pCameraContainer->GetMainCamera();
+
+		BlitzenCore::UpdateWorldClock(context.pClock);
 		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
+		camera.viewData.deltaTime = context.pWORLD->deltaTime;
+
+		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f);
+
+		BlitzenPlatform::DispatchEvents(context.pPlatform);
 
 		switch (context.BLITZEN_ENGINE.m_state)
 		{
@@ -23,11 +30,6 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::RUNNING_EDITOR_NO_START:
 		{
-			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
-			{
-				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
-			}
-
 			BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
 
 			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
@@ -36,11 +38,6 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::RUNNING:
 		{
-			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
-			{
-				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
-			}
-
 			BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
 
 			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
@@ -49,10 +46,7 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::SUSPENDED:
 		{
-			if (!BlitzenPlatform::DispatchEvents(context.pPlatform))
-			{
-				context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
-			}
+			BlitzenPlatform::DispatchEvents(context.pPlatform);
 
 			break;
 		}
@@ -61,6 +55,12 @@ namespace BlitzenWorld
 			BlitzenEngine::PrepareRendererForRuntime(context.pWORLD->P_RENDERER.Data());
 
 			context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
+
+			break;
+		}
+		default:
+		{
+			BlitzenPlatform::DispatchEvents(context.pPlatform);
 
 			break;
 		}

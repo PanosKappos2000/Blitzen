@@ -279,6 +279,7 @@ namespace BlitzenEngine
             CPU_TRANSFORM randomTransform;
             RandomizeTransform(&randomTransform, transformMultiplier);
             wvCtx.residentCtx.m_transformInfo.cpu_pTransform = &randomTransform;
+            wvCtx.residentCtx.m_transformInfo.cpu_pTransform->movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
 
             MeshTransform randomTransform_gpu;
             RandomizeTransform(&randomTransform_gpu, transformMultiplier, WV_ROTATING_KITTEN_SCALE);

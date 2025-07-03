@@ -680,6 +680,11 @@ return 1;
 
 			return 1;
 		}
+		default:
+		{
+			BLIT_ERROR("%s: Unhandled case statement enountered while Setting up Blitzen Logo pipeline", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
 		}
 	}
 }
