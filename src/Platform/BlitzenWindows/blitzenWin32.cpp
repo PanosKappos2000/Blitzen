@@ -87,7 +87,7 @@ namespace BlitzenPlatform
         }
 
         // UPDATES
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(args.m_pEvents));
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(args.SYSTEM));
         //ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
         
@@ -135,13 +135,13 @@ namespace BlitzenPlatform
 
 #endif
 
-        auto pEvents{ reinterpret_cast<BlitzenCore::EventSystem*>(args.m_pEvents) };
+        auto SYSTEM{ reinterpret_cast<BlitzenWorld::BLITZEN_SYSTEM_CONTEXT*>(args.SYSTEM) };
 
-        BlitzenCore::RegisterDefaultEvents(pEvents);
+        BlitzenCore::RegisterDefaultEvents(SYSTEM);
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
 
-        BlitzenCore::AssignEditorCallbacks(pEvents);
+        BlitzenCore::AssignEditorCallbacks(SYSTEM);
 
 #endif
 
@@ -212,7 +212,7 @@ namespace BlitzenPlatform
     // CALLBACK
     LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM wparam, LPARAM lparam)
     {
-        auto pEventSystem = reinterpret_cast<BlitzenCore::EventSystem*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+        auto SYSTEM = reinterpret_cast<BlitzenWorld::BLITZEN_SYSTEM_CONTEXT*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
 
@@ -229,7 +229,7 @@ namespace BlitzenPlatform
             }
             case WM_CLOSE:
             {
-                return pEventSystem->FireEvent(BlitzenCore::BlitEventType::EngineShutdown);
+                return BlitzenCore::DispatchEventCallback(SYSTEM, BlitzenCore::BlitEventType::EngineShutdown);
             }
 
             case WM_DESTROY:
@@ -246,16 +246,16 @@ namespace BlitzenPlatform
                 uint32_t width = rect.right - rect.left;
                 uint32_t height = rect.bottom - rect.top;
 
-                uint32_t oldWidth = pEventSystem->m_systemContext.WIDTH;
-                uint32_t oldHeight = pEventSystem->m_systemContext.HEIGHT;
+                uint32_t oldWidth = SYSTEM->WIDTH;
+                uint32_t oldHeight = SYSTEM->HEIGHT;
 
-                pEventSystem->m_systemContext.WIDTH = width;
-                pEventSystem->m_systemContext.HEIGHT = height;
+                SYSTEM->WIDTH = width;
+                SYSTEM->HEIGHT = height;
 
-                if (!pEventSystem->FireEvent(BlitzenCore::BlitEventType::WindowUpdate))
+                if (!BlitzenCore::DispatchEventCallback(SYSTEM, BlitzenCore::BlitEventType::WindowUpdate))
                 {
-                    pEventSystem->m_systemContext.WIDTH = oldWidth;
-                    pEventSystem->m_systemContext.HEIGHT = oldHeight;
+                    SYSTEM->WIDTH = oldWidth;
+                    SYSTEM->HEIGHT = oldHeight;
                 }
                 break;
             }
@@ -270,7 +270,7 @@ namespace BlitzenPlatform
 
                 auto key = BlitzenCore::BlitKey(wparam);
 
-                pEventSystem->InputProcessKey(key, bPressed);
+                BlitzenCore::InputProcessKey(SYSTEM, key, bPressed);
 
                 break;
             }
@@ -297,7 +297,7 @@ namespace BlitzenPlatform
                     int32_t mouseDX = raw->data.mouse.lLastX;  
                     int32_t mouseDY = raw->data.mouse.lLastY;  
 
-                    pEventSystem->DispatchRawInput_MOUSE_MOVED(mouseDX, mouseDY);
+                    BlitzenCore::DispatchRawInput_MOUSE_MOVED(SYSTEM, mouseDX, mouseDY);
                     break;
                 }
                 default:
@@ -316,7 +316,7 @@ namespace BlitzenPlatform
                     // Flatten the input to an OS-independent (-1, 1)
                     zDelta = (zDelta < 0) ? -1 : 1;
 
-                    pEventSystem->InputProcessMouseWheel(zDelta);
+                    BlitzenCore::InputProcessMouseWheel(SYSTEM, zDelta);
                 }
                 break;
             }
@@ -354,7 +354,7 @@ namespace BlitzenPlatform
                 }
                 if (button != BlitzenCore::MouseButton::MaxButtons)
                 {
-                    pEventSystem->InputProcessButton(button, bPressed);
+                    BlitzenCore::InputProcessButton(SYSTEM, button, bPressed);
                 }
 
                 break;

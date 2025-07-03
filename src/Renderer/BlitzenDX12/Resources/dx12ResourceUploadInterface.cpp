@@ -743,6 +743,23 @@ return 1;
 				return 0;
 			}
 
+			auto cmdList = pRenderer->m_cmdContext[0].m_graphicsCmdList.Get();
+			pRenderer->m_cmdContext[0].m_graphicsCmdAlloc->Reset();
+			cmdList->Reset(pRenderer->m_cmdContext[0].m_graphicsCmdAlloc.Get(), nullptr);
+
+			D3D12_RESOURCE_BARRIER textureTransitions{};
+			BlitzenDX12::CreateResourcesTransitionBarrier(textureTransitions, pRenderer->m_roResources.m_drawTextures[0].resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+			cmdList->ResourceBarrier(1, &textureTransitions);
+
+			cmdList->Close();
+			ID3D12CommandList* commandLists[] = { cmdList };
+			pRenderer->m_commandQueue->ExecuteCommandLists(1, commandLists);
+
+			BlitzenDX12::PlaceFence(pRenderer->m_cmdContext[0].m_frameFence.m_value, pRenderer->m_commandQueue.Get(), pRenderer->m_cmdContext[0].m_frameFence.m_dx12Handle.Get(), 
+				pRenderer->m_cmdContext[0].m_frameFence.m_event);
+
 			return 1;
 		}
 		default:

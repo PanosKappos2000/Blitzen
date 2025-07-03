@@ -28,20 +28,13 @@ namespace BlitzenWorld
 		{
 			break;
 		}
-		case BlitzenCore::EngineState::RUNNING_EDITOR_NO_START:
-		{
-			BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
-
-			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
-
-			break;
-		}
 		case BlitzenCore::EngineState::RUNNING:
 		{
-			BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
-
-			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
-
+			if (context.m_controllerState != ControllerState::Editor)
+			{
+				BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
+				pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
+			}
 			break;
 		}
 		case BlitzenCore::EngineState::SUSPENDED:

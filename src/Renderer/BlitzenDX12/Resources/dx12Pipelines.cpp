@@ -474,6 +474,7 @@ namespace BlitzenDX12
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
         CreateDefaultPsoDescription(psoDesc);
+        psoDesc.DepthStencilState = {};
         psoDesc.pRootSignature = ctx.m_blitzenLogoRoot.Get();
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;

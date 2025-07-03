@@ -30,28 +30,10 @@ namespace BlitzenCore
         MouseButtonReleaseCallback m_mousePressPFNs[Ce_MouseButtonPFNCount];
         MouseButtonPressCallback m_mouseReleasePFNs[Ce_MouseButtonPFNCount];
 
+        BlitzenEngine::Camera m_engineCamera;
+
         void InitControllerPFNs();
 	};
-
-    class ResidentController
-    {
-    public:
-        BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, int16_t, int16_t> CONTROL[Ce_KeyCallbackCount];
-
-        inline BlitEventType operator () (uint32_t id, BlitzenEngine::Resident resident, int16_t screenCoordX, int16_t screenCoordY)
-        {
-            return CONTROL[id](resident, screenCoordX, screenCoordY);
-        }
-
-        inline void REGISTER(uint32_t id, BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, int16_t, int16_t> FUNC)
-        {
-            CONTROL[id] = FUNC;
-        }
-
-    private:
-        BlitzenEngine::Resident m_resident;
-        BlitzenEngine::Camera m_gameCamera;
-    };
 
     BlitEventType BLITZEN_ENGINE_CONTROLLED_RESIDENT_VIEW(BlitzenEngine::Resident resident, int16_t screenCoordX, int16_t screenCoordY, BlitKey key);
 }

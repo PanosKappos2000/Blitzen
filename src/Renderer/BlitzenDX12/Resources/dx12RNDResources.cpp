@@ -86,6 +86,7 @@ namespace BlitzenDX12
 				Ce_DepthTargetFormat, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear) };
 			if (FAILED(resourceRes))
 			{
+				BLIT_ERROR("%s: Failed to create depth target", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return LOG_ERROR_MESSAGE_AND_RETURN(resourceRes);
 			}
 

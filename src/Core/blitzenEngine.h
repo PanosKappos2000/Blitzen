@@ -95,12 +95,6 @@ namespace BlitzenCore
     constexpr uint32_t Ce_EditorControllerID = 0;
     constexpr uint32_t Ce_EngineDefaultGameControllerID = 1;
 
-#if defined(DASHER_JOIN)
-    constexpr uint32_t Ce_InitialControllerID = Ce_EditorControllerID;
-#else
-    constexpr uint32_t Ce_InitialControllerID = Ce_EngineDefaultGameControllerID;
-#endif
-
     constexpr uint16_t Ce_KeyCallbackCount = 256;
     constexpr uint16_t Ce_MouseButtonPFNCount = 3;
 
@@ -276,7 +270,6 @@ namespace BlitzenCore
     enum class EngineState : uint8_t
     {
         RUNNING = 0,
-        RUNNING_EDITOR_NO_START = 5,
 
         SUSPENDED = 20,
         LOADING = 21,
@@ -290,15 +283,9 @@ namespace BlitzenCore
     };
 
 #if defined(DASHER_JOIN)
-
     constexpr bool Ce_BlitEditorMode = 1;
-    constexpr EngineState Ce_InitialEngineRunningState = EngineState::RUNNING;
-
 #else
-
     constexpr bool Ce_BlitEditorMode = 0;
-    constexpr EngineState Ce_InitialEngineRunningState = EngineState::RUNNING_EDITOR_NO_START;
-
 #endif
 
     /********************************************************************************************************************************************************

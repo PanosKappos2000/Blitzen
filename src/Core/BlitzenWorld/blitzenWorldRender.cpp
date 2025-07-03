@@ -46,7 +46,6 @@ namespace BlitzenWorld
 
 		switch (context.BLITZEN_ENGINE.m_state)
 		{
-		case BlitzenCore::EngineState::RUNNING_EDITOR_NO_START:
 		case BlitzenCore::EngineState::RUNNING:
 		{
 			uint32_t presentCount = 0;
@@ -55,7 +54,7 @@ namespace BlitzenWorld
 			presentCount++;
 
 			// TODO: Move the editor no start outside Blitzen's state
-			if (context.BLITZEN_ENGINE.m_state != BlitzenCore::EngineState::RUNNING_EDITOR_NO_START)
+			if (context.m_controllerState == ControllerState::Editor)
 			{
 			#if defined(DASHER_JOIN)
 				context.pDasher->Draw(context.pWORLD->deltaTime);

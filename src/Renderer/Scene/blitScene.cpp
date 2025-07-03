@@ -4,6 +4,7 @@
 #include "Core/DbLog/blitAssert.h"
 #include "Renderer/WORLD/blitzenWorld.h"
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
+#include "Core/Events/blitEvents.h"
 
 namespace BlitzenEngine
 {
@@ -297,7 +298,14 @@ namespace BlitzenEngine
                 return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
             }
 
-            BlitzenWorld::RegisterFrameEvent(pResidents->m_worldVariables[wv], RotatingKittenFunc);
+            if (wv == 0)
+            {
+                //BlitzenCore::RegisterEvent()
+            }
+            else
+            {
+                BlitzenWorld::RegisterFrameEvent(pResidents->m_worldVariables[wv], RotatingKittenFunc);
+            }
         }
         return SCENE_CREATE_RES::SUCCESS;
     }

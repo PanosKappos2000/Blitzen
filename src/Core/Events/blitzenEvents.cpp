@@ -3,47 +3,37 @@
 
 namespace BlitzenCore
 {
-    inline EventSystem* P_EVENT_SYSTEM = nullptr;
-
-    EventSystem::EventSystem(BlitzenWorld::WORLD_blit* pWORLD, BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& systemContext) :
-        m_pWorldContext{ pWORLD }, m_systemContext{ systemContext }
+    void ZeroInitializeEventFunctionPointers(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM)
     {
         for (uint32_t i = 0; i < uint8_t(BlitEventType::MaxTypes); ++i)
         {
-            m_eventCallbacks[i] = [](BlitzenWorld::BLITZEN_SYSTEM_CONTEXT&, BlitEventType type)->uint8_t {return false; };
+            SYSTEM->m_eventCallbacks[i] = [](BLIT_STRAIGHTHANDLE, BlitEventType type)->uint8_t {return false; };
         }
 
-        for (auto& controller : m_controllers)
+        for (auto& controller : SYSTEM->m_controllers)
         {
             controller.InitControllerPFNs();
         }
-
-        for (auto& rc : m_gameController.CONTROL)
-        {
-            rc = [](BlitzenEngine::Resident, int16_t, int16_t)->BlitEventType {return BlitEventType::MaxTypes; };
-        }
-
-        InitializeEventSystemPtr_STATIC_ACCESS(this);
     }
 
-    void RegisterEvent(EventSystem* pContext, BlitEventType type, EventCallback eventCallback)
+    void RegisterEvent(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitEventType type, BlitzenWorld::EventCallback eventCallback)
     {
-        pContext->m_eventCallbacks[size_t(type)] = eventCallback;
+        SYSTEM->m_eventCallbacks[size_t(type)] = eventCallback;
     }
 
-	bool EventSystem::FireEvent(BlitEventType event)
+	bool DispatchEventCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitEventType event)
     {
         switch (event)
         {
         case BlitEventType::EngineShutdown:
         {
-            auto callback = m_eventCallbacks[uint32_t(event)];
-            return callback(m_systemContext, event);
+            auto callback = SYSTEM->m_eventCallbacks[uint32_t(event)];
+            return callback(SYSTEM, event);
         }
         case BlitEventType::WindowUpdate:
         {
-            auto callback = m_eventCallbacks[uint32_t(event)];
-            if (!callback(m_systemContext, event))
+            auto callback = SYSTEM->m_eventCallbacks[uint32_t(event)];
+            if (!callback(SYSTEM, event))
             {
                 BLIT_ERROR("Failure to update window");
                 return false;
@@ -93,101 +83,103 @@ namespace BlitzenCore
         }
     }
 
-    void EventSystem::InputProcessKey(BlitKey key, BlitzenCore::FAT_BOOL bPressed)
+    void InputProcessKey(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, BlitzenCore::FAT_BOOL bPressed)
     {
         auto idx = uint16_t(key);
 
         // If the state changed, fire callback
-        if (m_currentKeyboard[idx] != bPressed)
+        if (SYSTEM->m_currentKeyboard[idx] != bPressed)
         {
-			BlitEventType event{ BlitEventType::MaxTypes };
+            
+            BlitEventType event{ BlitEventType::MaxTypes };
 
-            m_currentKeyboard[idx] = bPressed;
+            SYSTEM->m_currentKeyboard[idx] = bPressed;
             if (bPressed)
             {
-                event = m_controllers[m_activeControllerIDX].m_keyPressPFNs[idx](m_pWorldContext);
+                event = SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_keyPressPFNs[idx](SYSTEM->pWORLD);
             }
             else
             {
-                event = m_controllers[m_activeControllerIDX].m_keyReleasePFNs[idx](m_pWorldContext);
+                event = SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_keyReleasePFNs[idx](SYSTEM->pWORLD);
             }
 
-            FireEvent(event);
+            DispatchEventCallback(SYSTEM, event);
+            
         }
     }
 
-    void EventSystem::InputProcessButton(MouseButton button, BlitzenCore::FAT_BOOL bPressed)
+    void InputProcessButton(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, BlitzenCore::FAT_BOOL bPressed)
     {
         auto idx = uint8_t(button);
 
-        if (m_mouseButtonFlags[idx] != bPressed)
+        if (SYSTEM->m_mouseButtonFlags[idx] != bPressed)
         {
             int16_t mouseX{ 0 };
             int16_t mouseY{ 0 };
-            BlitzenPlatform::GetSystemMousePos(m_systemContext.pPlatform, mouseX, mouseY);
+            BlitzenPlatform::GetSystemMousePos(SYSTEM->pPlatform, mouseX, mouseY);
 
-            m_mouseButtonFlags[idx] = bPressed;
+            SYSTEM->m_mouseButtonFlags[idx] = bPressed;
             if (bPressed)
             {
-                m_controllers[m_activeControllerIDX].m_mousePressPFNs[idx](m_pWorldContext, mouseX, mouseY);
+                SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mousePressPFNs[idx](SYSTEM->pWORLD, mouseX, mouseY);
             }
             else
             {
-                m_controllers[m_activeControllerIDX].m_mouseReleasePFNs[idx](m_pWorldContext, mouseX, mouseY);
+                SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mouseReleasePFNs[idx](SYSTEM->pWORLD, mouseX, mouseY);
             }
         }
     }
 
-    void EventSystem::InputProcessMouseWheel(int8_t zDelta)
+    void InputProcessMouseWheel(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, int8_t zDelta)
     {
-        m_controllers[m_activeControllerIDX].m_mouseWheelPFNs(m_pWorldContext, zDelta);
+        SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mouseWheelPFNs(SYSTEM->pWORLD, zDelta);
     }
 
-    void RegisterKeyPressCallback(EventSystem* pContext, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX)
+    void RegisterKeyPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = callback;
+        SYSTEM->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = callback;
     }
 
-    void RegisterKeyReleaseCallback(EventSystem* pContext, BlitKey key, KeyReleaseCallback callback, uint32_t controllerIDX)
+    void RegisterKeyReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyReleaseCallback callback, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = callback;
+        SYSTEM->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = callback;
     }
 
-    void RegisterKeyPressAndReleaseCallback(EventSystem* pContext, BlitKey key, KeyPressCallback press, KeyReleaseCallback release, uint32_t controllerIDX)
+    void RegisterKeyPressAndReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyPressCallback press, KeyReleaseCallback release, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = press;
-        pContext->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = release;
+        SYSTEM->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = press;
+        SYSTEM->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = release;
     }
 
-    void RegisterMouseButtonPressCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback callback, uint32_t controllerIDX)
+    void RegisterMouseButtonPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback callback, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_mousePressPFNs[uint8_t(button)] = callback;
+        SYSTEM->m_controllers[controllerIDX].m_mousePressPFNs[uint8_t(button)] = callback;
     }
 
-    void RegisterMouseButtonReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonReleaseCallback callback, uint32_t controllerIDX)
+    void RegisterMouseButtonReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonReleaseCallback callback, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_mouseReleasePFNs[uint8_t(button)] = callback;
+        SYSTEM->m_controllers[controllerIDX].m_mouseReleasePFNs[uint8_t(button)] = callback;
     }
 
-    void RegisterMouseButtonPressAndReleaseCallback(EventSystem* pContext, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release, uint32_t controllerIDX)
+    void RegisterMouseButtonPressAndReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_mousePressPFNs[uint8_t(button)] = press;
-        pContext->m_controllers[controllerIDX].m_mouseReleasePFNs[uint8_t(button)] = release;
+        SYSTEM->m_controllers[controllerIDX].m_mousePressPFNs[uint8_t(button)] = press;
+        SYSTEM->m_controllers[controllerIDX].m_mouseReleasePFNs[uint8_t(button)] = release;
     }
 
-    void RegisterMouseWheelCallback(EventSystem* pContext, MouseWheelCallbackType callback, uint32_t controllerIDX)
+    void RegisterMouseWheelCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseWheelCallbackType callback, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_mouseWheelPFNs = callback;
+        SYSTEM->m_controllers[controllerIDX].m_mouseWheelPFNs = callback;
     }
 
-    void RegisterMouseMoveCallback(EventSystem* pContext, MouseMoveCallbackType callback, uint32_t controllerIDX)
+    void RegisterMouseMoveCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseMoveCallbackType callback, uint32_t controllerIDX)
     {
-        pContext->m_controllers[controllerIDX].m_mouseMovePFNs = callback;
+        SYSTEM->m_controllers[controllerIDX].m_mouseMovePFNs = callback;
     }
 
-    void EventSystem::UpdateInput(double deltaTime, EditorEventContext* pEditorEvents)
+    void UpdateInput(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, double deltaTime, EditorEventContext* pEditorEvents)
     {
-        BlitzenCore::BlitMemCopy(m_previousKeyboard, m_currentKeyboard, sizeof(m_currentKeyboard));
+        BlitzenCore::BlitMemCopy(SYSTEM->m_previousKeyboard, SYSTEM->m_currentKeyboard, sizeof(SYSTEM->m_currentKeyboard));
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
 
@@ -218,22 +210,24 @@ namespace BlitzenCore
 #endif
     }
 
-    void EventSystem::DispatchRawInput_MOUSE_MOVED(int16_t xAxisMovement, int16_t yAxisMovement)
+    void DispatchRawInput_MOUSE_MOVED(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, int16_t xAxisMovement, int16_t yAxisMovement)
     {
-        m_controllers[m_activeControllerIDX].m_mouseMovePFNs(m_pWorldContext, xAxisMovement, yAxisMovement);
+        SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mouseMovePFNs(SYSTEM->pWORLD, xAxisMovement, yAxisMovement);
     }
 
 
     /*************************************                         {DEFAULT CALLBACKS SET BY}                            ************************************************/
-    static uint8_t OnShutdown(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context, BlitzenCore::BlitEventType eventType)
+    static uint8_t OnShutdown(BLIT_STRAIGHTHANDLE sysHandle, BlitzenCore::BlitEventType eventType)
     {
         if (eventType == BlitzenCore::BlitEventType::EngineShutdown)
         {
+			auto SYSTEM{ reinterpret_cast<BlitzenWorld::BLITZEN_SYSTEM_CONTEXT*>(sysHandle) };
+
             BLIT_WARN("Engine shutdown event encountered!");
 
-            while (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING);// Wait
+            while (SYSTEM->BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING);// Wait
 
-            context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
+            SYSTEM->BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
 
             return 1;
         }
@@ -385,30 +379,31 @@ namespace BlitzenCore
         return BlitEventType::BringDasherRuntimeDebugWindow;
     }
 
-    static uint8_t ResizeEventCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context, BlitzenCore::BlitEventType eventType)
+    static uint8_t ResizeEventCallback(BLIT_STRAIGHTHANDLE sysHandle, BlitzenCore::BlitEventType eventType)
     {
-        auto& camera{ reinterpret_cast<BlitzenWorld::WORLD_blit*>(context.pWORLD)->pCameraContainer->GetMainCamera()};
+		auto SYSTEM{ reinterpret_cast<BlitzenWorld::BLITZEN_SYSTEM_CONTEXT*>(sysHandle) };
+        auto& camera{ reinterpret_cast<BlitzenWorld::WORLD_blit*>(SYSTEM->pWORLD)->pCameraContainer->GetMainCamera()};
 
-        if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING)
+        if (SYSTEM->BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING)
         {
             return 0;
         }
 
-        if (context.WIDTH == 0 || context.HEIGHT == 0)
+        if (SYSTEM->WIDTH == 0 || SYSTEM->HEIGHT == 0)
         {
-            context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SUSPENDED;
+            SYSTEM->BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SUSPENDED;
             return 1;
         }
 
         // Reactivate
-        if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::SUSPENDED)
+        if (SYSTEM->BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::SUSPENDED)
         {
-            context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
+            SYSTEM->BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
         }
 
-        BlitzenEngine::UpdateProjection(camera, (float)context.WIDTH, (float)context.HEIGHT);
+        BlitzenEngine::UpdateProjection(camera, (float)SYSTEM->WIDTH, (float)SYSTEM->HEIGHT);
 
-        BlitML::vec2 hizExtent{ BlitzenEngine::UpdateRendererWindowData(context.pWORLD->P_RENDERER.Data(), context.WIDTH, context.HEIGHT , context.pPlatform)};
+        BlitML::vec2 hizExtent{ BlitzenEngine::UpdateRendererWindowData(SYSTEM->pWORLD->P_RENDERER.Data(), SYSTEM->WIDTH, SYSTEM->HEIGHT , SYSTEM->pPlatform)};
 
 #if defined(DASHER_JOIN)
         context.pDasher->UpdateWindowSize(context.WIDTH, context.HEIGHT);
@@ -445,39 +440,39 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    void RegisterDefaultEvents(EventSystem* pEvents)
+    void RegisterDefaultEvents(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM)
     {
-        BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::EngineShutdown, OnShutdown);
+        BlitzenCore::RegisterEvent(SYSTEM, BlitzenCore::BlitEventType::EngineShutdown, OnShutdown);
 
-        BlitzenCore::RegisterEvent(pEvents, BlitzenCore::BlitEventType::WindowUpdate, ResizeEventCallback);
+        BlitzenCore::RegisterEvent(SYSTEM, BlitzenCore::BlitEventType::WindowUpdate, ResizeEventCallback);
 
-        BlitzenCore::RegisterMouseMoveCallback(pEvents, OnMouseMove, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressCallback(pEvents, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback, BlitzenCore::Ce_EditorControllerID);
+        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback, BlitzenCore::Ce_EditorControllerID);
 
-        BlitzenCore::RegisterKeyPressCallback(pEvents, BlitzenCore::BlitKey::__ESCAPE, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__W, MoveDefaultCameraForwardOnWKeyPressCallback, StopMovingCameraForwardOnWKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__W, MoveDefaultCameraForwardOnWKeyPressCallback, StopMovingCameraForwardOnWKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__S, MoveDefaultCameraBackwardOnSKeyPressCallback, StopMovingCameraBackwardOnSKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__S, MoveDefaultCameraBackwardOnSKeyPressCallback, StopMovingCameraBackwardOnSKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__A, MoveDefaultCameraLeftOnAKeyPressCallback, StopMovingCameraLeftOnAKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__A, MoveDefaultCameraLeftOnAKeyPressCallback, StopMovingCameraLeftOnAKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(pEvents, BlitzenCore::BlitKey::__D, MoveDefaultCameraRightOnDKeyPressCallback, StopMovingCameraRightOnDReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__D, MoveDefaultCameraRightOnDKeyPressCallback, StopMovingCameraRightOnDReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(pEvents, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(SYSTEM, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F8, BringDasherRuntimeDebugWindowOnF9, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F8, BringDasherRuntimeDebugWindowOnF9, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
 #if !defined(BLIT_VK_FORCE)
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(pEvents, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
 
 #endif
     }
@@ -485,7 +480,7 @@ namespace BlitzenCore
 
 
     /***********************************                        EDITOR EVENTS                    *******************************************************/
-    static uint32_t EditorFreezeFrustum(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context)
+    static uint32_t EditorFreezeFrustum(BLIT_STRAIGHTHANDLE context)
     {
 #if defined(DASHER_JOIN)
 
@@ -511,7 +506,7 @@ namespace BlitzenCore
 #endif
     }
 
-    static uint32_t EditorEndSceneStart(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context)
+    static uint32_t EditorEndSceneStart(BLIT_STRAIGHTHANDLE context)
     {
 #if defined(DASHER_JOIN)
 
@@ -532,7 +527,7 @@ namespace BlitzenCore
 #endif
     }
 
-    static uint32_t EditorDebugWindowClose(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT& context)
+    static uint32_t EditorDebugWindowClose(BLIT_STRAIGHTHANDLE context)
     {
 #if defined(DASHER_JOIN)
 
@@ -553,18 +548,12 @@ namespace BlitzenCore
 #endif
     }
 
-    void AssignEditorCallbacks(EventSystem* pContext)
+    void AssignEditorCallbacks(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM)
     {
-        pContext->m_editorButtonCallbacks[Ce_ImguiFreezeFrustumButtonID] = EditorFreezeFrustum;
+        SYSTEM->m_editorButtonCallbacks[Ce_ImguiFreezeFrustumButtonID] = EditorFreezeFrustum;
 
-        pContext->m_editorButtonCallbacks[Ce_ImguiSceneStartButtonID] = EditorEndSceneStart;
+        SYSTEM->m_editorButtonCallbacks[Ce_ImguiSceneStartButtonID] = EditorEndSceneStart;
 
-        pContext->m_editorButtonCallbacks[Ce_ImguiDebugWindowCloseID] = EditorDebugWindowClose;
-    }
-
-    void InitializeEventSystemPtr_STATIC_ACCESS(EventSystem* ptr)
-    {
-        BLIT_ASSERT_MESSAGE(P_EVENT_SYSTEM == nullptr, "Tried to reinitialize event system reference");
-        P_EVENT_SYSTEM = ptr;
+        SYSTEM->m_editorButtonCallbacks[Ce_ImguiDebugWindowCloseID] = EditorDebugWindowClose;
     }
 }

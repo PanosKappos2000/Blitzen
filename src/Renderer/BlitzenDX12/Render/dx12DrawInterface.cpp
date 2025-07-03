@@ -110,11 +110,10 @@ namespace BlitzenEngine
 		pRenderer->m_swapchainIDX = swapchainIDX;
 
 		cmdContext.m_graphicsCmdAlloc->Reset();
-		cmdContext.m_graphicsCmdList->Reset(cmdContext.m_graphicsCmdAlloc.Get(), pipelineContext.m_trianglePso.Get());
+		cmdContext.m_graphicsCmdList->Reset(cmdContext.m_graphicsCmdAlloc.Get(), nullptr);
 
 		ID3D12DescriptorHeap* graphicsHeaps[] = { descriptorContext.m_viewHeap.Get(), descriptorContext.m_samplerHeap.Get() };
 		cmdContext.m_graphicsCmdList->SetDescriptorHeaps(2, graphicsHeaps);
-		cmdContext.m_graphicsCmdList->SetGraphicsRootSignature(pipelineContext.m_graphicsRoot.Get());
 
 		switch (mode)
 		{

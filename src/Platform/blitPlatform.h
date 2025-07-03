@@ -7,7 +7,7 @@ namespace BlitzenPlatform
     {
         void* m_pPlatform{ nullptr };
 
-        void* m_pEvents{ nullptr };
+        void* SYSTEM{ nullptr };
 
         void* m_pRenderer{ nullptr };
 

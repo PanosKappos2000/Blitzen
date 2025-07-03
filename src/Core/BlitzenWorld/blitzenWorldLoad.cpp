@@ -54,6 +54,8 @@ namespace BlitzenWorld
             BlitzenEngine::SceneContext moving{};
             moving.m_type = BlitzenEngine::SceneType::MovingResidentTest;
             scenes.PushBack(moving);
+            context.m_activeControllerIDX = 1;
+            context.m_controllerState = ControllerState::Game;
                 
 #endif
 

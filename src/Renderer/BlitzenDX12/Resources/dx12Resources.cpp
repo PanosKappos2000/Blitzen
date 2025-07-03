@@ -12,7 +12,11 @@ namespace BlitzenDX12
             return 0;
         }
 
-        UINT srvHeapDescriptorCount = 1;// For Blitzen Logo texture
+        constexpr UINT BlitzenLogoTextureDescriptorCount = 1;
+        constexpr UINT HIERACHICAL_Z_BUFFER_OutputDescriptorCount = 1;
+        constexpr UINT HIERACHICAL_Z_BUFFER_InputDescriptorCount = 1;
+
+        UINT srvHeapDescriptorCount = BlitzenLogoTextureDescriptorCount;// For Blitzen Logo texture
         srvHeapDescriptorCount += CE_GLOBAL_DESCRIPTOR_RANGE_COUNT * ce_framesInFlight;
         srvHeapDescriptorCount += CE_CULL_GLOBAL_RANGE_COUNT * ce_framesInFlight;
         srvHeapDescriptorCount += CE_VERTEX_ODS_RANGE_COUNT * ce_framesInFlight;
@@ -33,7 +37,7 @@ namespace BlitzenDX12
 
         if (BlitzenCore::Ce_Build_HI_Z)
         {
-            srvHeapDescriptorCount += (Ce_DepthPyramidMaxMips + 1 + 1) * ce_framesInFlight;
+            srvHeapDescriptorCount += (Ce_DepthPyramidMaxMips + HIERACHICAL_Z_BUFFER_OutputDescriptorCount + HIERACHICAL_Z_BUFFER_InputDescriptorCount) * ce_framesInFlight;
         }
 
         if (BlitzenCore::Ce_BuildClusters)

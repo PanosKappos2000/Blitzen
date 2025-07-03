@@ -294,7 +294,7 @@ namespace BlitzenEngine
 		cmdContext.m_graphicsCmdList->ResourceBarrier((UINT)rwBuffersFinal.GetSize(), rwBuffersFinal.Data());
 
 		// TEXTURES
-		for (uint32_t i = 0; i < pRenderer->m_roResources.m_textureCount; ++i)
+		for (uint32_t i = 1; i < pRenderer->m_roResources.m_textureCount; ++i)
 		{
 			D3D12_RESOURCE_BARRIER textureFinalBarrier{};
 			BlitzenDX12::CreateResourcesTransitionBarrier(textureFinalBarrier, pRenderer->m_roResources.m_drawTextures[i].resource.Get(), 

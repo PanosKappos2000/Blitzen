@@ -13,8 +13,9 @@ using WorldSystemMemory = BlitCL::SmartPointer<BlitzenWorld::WORLD_blit, Blitzen
 int main(int argc, char* argv[])
 {
     /* ENGINE SYSTEMS INITIALIZATION */
-    BlitzenWorld::BLITZEN_SYSTEM_CONTEXT blitzenPrivateContext{};
-    blitzenPrivateContext.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::STARTUP;
+    BlitzenWorld::BLITZEN_SYSTEM_CONTEXT SYSTEM{};
+    SYSTEM.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::STARTUP;
+	BlitzenCore::ZeroInitializeEventFunctionPointers(&SYSTEM);
 
     BlitzenCore::InitLogging();
 
@@ -23,33 +24,30 @@ int main(int argc, char* argv[])
     BlitzenEngine::SetupCamera(mainCamera);
 
     BlitzenCore::WorldTimeManager blitzenClock;
-    blitzenPrivateContext.pClock = &blitzenClock;
+    SYSTEM.pClock = &blitzenClock;
 
     ComponentSystemMemory blitzenComponentSystem;
     blitzenComponentSystem.Make();
-    blitzenPrivateContext.pComponents = blitzenComponentSystem.Data();
+    SYSTEM.pComponents = blitzenComponentSystem.Data();
 
     RndResourcesMemory renderingResources;
     renderingResources.Make();
-    blitzenPrivateContext.pRenderingResources = renderingResources.Data();
+    SYSTEM.pRenderingResources = renderingResources.Data();
 
     BlitzenPlatform::PlatformContext platform{};
-    blitzenPrivateContext.pPlatform = &platform;
+    SYSTEM.pPlatform = &platform;
 
     WorldSystemMemory WORLD;
     WORLD.Make(mainCamera, renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);
     WORLD->pCameraContainer = &blitzenCameraSystem;
     WORLD->m_drawContext.m_pResidents = &WORLD->m_residents;
     WORLD->P_RENDERER.Make();
-    blitzenPrivateContext.pWORLD = WORLD.Data();
-    
-    BlitzenCore::EventSystemMemory blitzenEventSystem;
-    blitzenEventSystem.Make(WORLD.Data(), std::ref(blitzenPrivateContext));
+    SYSTEM.pWORLD = WORLD.Data();
 
     BlitzenCore::Dasher dasher;
-    blitzenPrivateContext.pDasher = &dasher;
+    SYSTEM.pDasher = &dasher;
 
-    BlitzenPlatform::PlatformArgs platformArgs{&platform, blitzenEventSystem.Data(), WORLD->P_RENDERER.Data(), &dasher};
+    BlitzenPlatform::PlatformArgs platformArgs{&platform, &SYSTEM, WORLD->P_RENDERER.Data(), &dasher};
     BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
 
     // LOADING RESOURCES
@@ -57,7 +55,7 @@ int main(int argc, char* argv[])
     {
         [&]()
         {
-            BlitzenWorld::LoadingLoop(argc, argv, blitzenPrivateContext, WORLD->m_drawContext);
+            BlitzenWorld::LoadingLoop(argc, argv, SYSTEM, WORLD->m_drawContext);
         }
     };
     #if(_WIN32)
@@ -69,19 +67,19 @@ int main(int argc, char* argv[])
     blitzenClock.Startup();
 
     // LOOP
-    while(blitzenPrivateContext.BLITZEN_ENGINE.m_state != BlitzenCore::EngineState::SHUTDOWN)
+    while(SYSTEM.BLITZEN_ENGINE.m_state != BlitzenCore::EngineState::SHUTDOWN)
     {
-        BlitzenWorld::WorldLoop(blitzenPrivateContext);
+        BlitzenWorld::WorldLoop(SYSTEM);
 
-        BlitzenWorld::BMPR_DRIVE(blitzenPrivateContext);
+        BlitzenWorld::BMPR_DRIVE(SYSTEM);
 
-        BlitzenWorld::WV_DRIVE(blitzenPrivateContext);
+        BlitzenWorld::WV_DRIVE(SYSTEM);
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
         // Using IMGUI for the editor requires some extra care for event handling
-        blitzenEventSystem->UpdateInput(blitzenClock.m_deltaTime, &dasher.m_eventContext);
+        BlitzenCore::UpdateInput(&SYSTEM, blitzenClock.m_deltaTime, &dasher.m_eventContext);
 #else
-        blitzenEventSystem->UpdateInput(blitzenClock.m_deltaTime);
+        BlitzenCore::UpdateInput(&SYSTEM, blitzenClock.m_deltaTime);
 #endif
     }
 }
