@@ -66,6 +66,8 @@ int main(int argc, char* argv[])
         loadingThread.join();
     #endif
 
+    blitzenClock.Startup();
+
     // LOOP
     while(blitzenPrivateContext.BLITZEN_ENGINE.m_state != BlitzenCore::EngineState::SHUTDOWN)
     {

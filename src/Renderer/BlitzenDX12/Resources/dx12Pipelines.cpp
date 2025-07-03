@@ -399,7 +399,6 @@ namespace BlitzenDX12
             BLIT_ERROR("%s: Failed to create bounding sphere debug  vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
-
         D3D12_SHADER_BYTECODE vsCode{};
         vsCode.BytecodeLength = vsSize;
         vsCode.pShaderBytecode = vsBytes.Data();
@@ -420,7 +419,6 @@ namespace BlitzenDX12
         psoDesc.pRootSignature = ctx.m_boundingSphereRoot.Get();
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;
-        psoDesc.DSVFormat = Ce_DepthTargetFormat;
 
         HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_boundingSpherePso.ReleaseAndGetAddressOf()));
         if (FAILED(psoResult))
@@ -434,6 +432,22 @@ namespace BlitzenDX12
 
     uint8_t CreateBlitzenLogoPipeline(ID3D12Device* device, PipelineContext& ctx)
     {
+        D3D12_DESCRIPTOR_RANGE textureRange{};
+        CreateDescriptorRange(textureRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_BLITZEN_LOGO_TEX_REGISTER);
+
+        D3D12_DESCRIPTOR_RANGE textureSamplerRange{};
+        CreateDescriptorRange(textureSamplerRange, D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, BLIT_HLSL_TEX_SAMPLER_REGISTER);
+
+        D3D12_ROOT_PARAMETER rootParams[CE_BLITZEN_LOGO_PIPELINE_PARAM_COUNT]{};
+        CreateRootParameterDescriptorTable(rootParams[CE_BLITZEN_LOGO_TEX_ID], &textureRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+        CreateRootParameterDescriptorTable(rootParams[CE_BLITZEN_LOGO_SAMPLER_ID], &textureSamplerRange, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+
+        if (!CreateRootSignature(device, ctx.m_blitzenLogoRoot.ReleaseAndGetAddressOf(), CE_BLITZEN_LOGO_PIPELINE_PARAM_COUNT, rootParams))
+        {
+            BLIT_ERROR("%s: Failed to create Blitzen logo root signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
         BlitCL::String vsBytes;
         size_t vsSize{ GetShaderBytes(device, "HlslShaders/VS/blitzenLogo.vs.hlsl.bin", vsBytes) };
         if (vsSize == 0)
@@ -463,7 +477,6 @@ namespace BlitzenDX12
         psoDesc.pRootSignature = ctx.m_blitzenLogoRoot.Get();
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;
-        psoDesc.DSVFormat = Ce_DepthTargetFormat;
 
         HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_blitzenLogoPipelineState.ReleaseAndGetAddressOf()));
         if (FAILED(psoResult))

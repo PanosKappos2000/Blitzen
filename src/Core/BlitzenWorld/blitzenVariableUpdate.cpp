@@ -14,11 +14,11 @@ namespace BlitzenWorld
 		auto pWORLD = context.pWORLD;
 		auto& camera = pWORLD->pCameraContainer->GetMainCamera();
 
-		BlitzenCore::UpdateWorldClock(context.pClock);
+		context.pClock->Update();
 		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
 		camera.viewData.deltaTime = context.pWORLD->deltaTime;
 
-		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f);
+		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f && camera.viewData.deltaTime <= BlitzenCore::CE_MAX_TIME_STEP);
 
 		BlitzenPlatform::DispatchEvents(context.pPlatform);
 

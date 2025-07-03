@@ -108,12 +108,6 @@ namespace BlitzenEngine
 		auto& rotating{ P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID] };
 
 		rotating.movementFlags |= rotationFlags;
-		if (!P_WORLD_RESIDENTS->m_movingResidents[residentID].m_isBlocked)
-		{
-			P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID].eulerAngles += rotation * deltaTime;
-			//AddMovingResident_STATIC_ACCESS(&moving);
-		}
-
-		BLIT_ASSERT(rotating.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT);
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID].eulerAngles += rotation * deltaTime;
 	}
 }

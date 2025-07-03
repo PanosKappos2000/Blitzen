@@ -652,6 +652,71 @@ return 1;
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_LODBuffer.buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_renderBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		for (uint32_t frame = 0; frame < BlitzenDX12::ce_framesInFlight; frame++)
+		{
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_rwResources[frame].m_movementBuffer.buffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_rwResources[frame].m_transformBuffer.buffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		}
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_boundingSpheres.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
+		auto cmdList = pRenderer->m_cmdContext[0].m_copyCmdList.Get();
+
+		pRenderer->m_cmdContext[0].m_copyCmdAlloc.Reset();
+		cmdList->Reset(pRenderer->m_cmdContext[0].m_copyCmdAlloc.Get(), nullptr);
+
+		cmdList->ResourceBarrier(validBarrierCount, stagingResourceBarriers);
+
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_vtxPosBuffer.buffer.Get(), 0, resourceData.m_vtxIdxStaging.m_buffer.Get(), 0, 
+			resourceData.m_vtxIdxStaging.m_validDataIndex * sizeof(VtxPos));
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_vtxNrmBuffer.buffer.Get(), 0, resourceData.m_vtxNrmStaging.m_buffer.Get(), 0, 
+			resourceData.m_vtxNrmStaging.m_validDataIndex * sizeof(VtxNormals));
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_vtxTangentBuffer.buffer.Get(), 0, resourceData.m_vtxTngStaging.m_buffer.Get(), 0, 
+			resourceData.m_vtxTngStaging.m_validDataIndex * sizeof(VtxTangents));
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_vtxTexCoordBuffer.buffer.Get(), 0, resourceData.m_vtxTexCoordStaging.m_buffer.Get(), 0, 
+			resourceData.m_vtxTexCoordStaging.m_validDataIndex * sizeof(VtxTexCoords));
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_idxBuffer.m_buffer.Get(), 0, resourceData.m_vtxIdxStaging.m_buffer.Get(), 0, 
+			resourceData.m_vtxIdxStaging.m_validDataIndex * sizeof(uint32_t));
+		if constexpr (BlitzenCore::Ce_BuildClusters)
+		{
+			cmdList->CopyBufferRegion(pRenderer->m_roResources.m_clusterVtxsBuffer.buffer.Get(), 0, resourceData.m_clusterVtxStaging.m_buffer.Get(), 0, 
+				resourceData.m_clusterVtxStaging.m_validDataIndex * sizeof(ClusterVertices));
+			cmdList->CopyBufferRegion(pRenderer->m_roResources.m_clusterSpheresBuffer.buffer.Get(), 0, resourceData.m_clusterSpheresStaging.m_buffer.Get(), 0,
+				resourceData.m_clusterSpheresStaging.m_validDataIndex * sizeof(ClusterSphere));
+			cmdList->CopyBufferRegion(pRenderer->m_roResources.m_clusterConesBuffer.buffer.Get(), 0, resourceData.m_clusterConesStaging.m_buffer.Get(), 0, 
+				resourceData.m_clusterConesStaging.m_validDataIndex * sizeof(ClusterCone));
+			cmdList->CopyBufferRegion(pRenderer->m_roResources.m_clusterIdxBuffer.m_buffer.Get(), 0, resourceData.m_clusterIdxStaging.m_buffer.Get(), 0,
+				resourceData.m_clusterIdxStaging.m_validDataIndex * sizeof(uint32_t));
+		}
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_surfaceBuffer.buffer.Get(), 0, resourceData.m_meshPrimStaging.m_buffer.Get(), 0, 
+			resourceData.m_meshPrimStaging.m_validDataIndex * sizeof(PrimitiveSurface));
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_LODBuffer.buffer.Get(), 0, resourceData.m_lodDataStaging.m_buffer.Get(), 0,
+			resourceData.m_lodDataStaging.m_validDataIndex * sizeof(LodData));
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_renderBuffer.buffer.Get(), BLIT_MAX_WORLD_VARIABLE_COUNT * sizeof(RenderObject), 
+			instanceData.m_renderStaging.m_buffer.Get(), 0, instanceData.m_renderStaging.m_validDataIndex * sizeof(RenderObject));
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_renderBuffer.buffer.Get(), 0, instanceData.m_dynamicRenderStaging.m_buffer.Get(), 0,
+			instanceData.m_dynamicRenderStaging.m_dataSize * sizeof(RenderObject));
+		for (uint32_t frame = 0; frame < BlitzenDX12::ce_framesInFlight; frame++)
+		{
+			cmdList->CopyBufferRegion(pRenderer->m_rwResources[frame].m_movementBuffer.buffer.Get(), 0, instanceData.m_cpuTransformStaging.m_buffer.Get(), 0,
+				instanceData.m_cpuTransformStaging.m_validDataIndex * sizeof(CPU_TRANSFORM));
+			cmdList->CopyBufferRegion(pRenderer->m_rwResources[frame].m_transformBuffer.buffer.Get(), 0, instanceData.m_transformStaging.m_buffer.Get(), 0,
+				instanceData.m_transformStaging.m_validDataIndex * sizeof(MeshTransform));
+		}
+		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_boundingSpheres.buffer.Get(), 0, instanceData.m_boundingSpheresStaging.m_buffer.Get(), 0,
+			instanceData.m_boundingSpheresStaging.m_validDataIndex * sizeof(BoundingSphere));
+
+		cmdList->Close();
+		ID3D12CommandList* commandLists[] = { cmdList };
+		pRenderer->m_transferCommandQueue->ExecuteCommandLists(1, commandLists);
+
+		BlitzenDX12::PlaceFence(pRenderer->m_cmdContext[0].m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), pRenderer->m_cmdContext[0].m_copyFence.m_dx12Handle.Get(), 
+			pRenderer->m_cmdContext[0].m_copyFence.m_event);
+
 
 		return 1;
 	}
@@ -672,11 +737,11 @@ return 1;
 				return 0;
 			}
 
-			//if (!BlitzenDX12::CreateBlitzenLogoPipeline(pRenderer->m_device.Get(), pRenderer->m_pipelineContext))
-			//{
-			//	BLIT_ERROR("%s: Failed to Create Pipeline for Blitzen Logo Display during idle work", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			//	return 0;
-			//}
+			if (!BlitzenDX12::CreateBlitzenLogoPipeline(pRenderer->m_device.Get(), pRenderer->m_pipelineContext))
+			{
+				BLIT_ERROR("%s: Failed to Create Pipeline for Blitzen Logo Display during idle work", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
 
 			return 1;
 		}

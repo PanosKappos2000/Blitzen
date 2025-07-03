@@ -6,10 +6,8 @@ namespace BlitzenWorld
 	{
 		BlitzenEngine::PlaceRendererFence(pRenderer, BlitzenEngine::RENDERER_FENCE_TYPE::PREVIOUS_FRAME);
 
-		// 2. Wait for camera and update view
 		BlitzenEngine::UpdateRendererView(pRenderer, camera.viewData, camera.transformData.bFreezeFrustum);
 
-		// 3. Cull static objects
 		BlitzenEngine::CULL_CONTEXT cullContext{};
 		cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::DRAW_CULL_TEMPORAL_OCCLUSION;
 		cullContext.m_workType = BlitzenEngine::RENDER_OBJECT_TYPE::OPAQUE_STATIC;
@@ -17,28 +15,27 @@ namespace BlitzenWorld
 		cullContext.m_pResidents = &RESIDENTS;// IS THIS NEEDED?
 		BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 
-		// 4. Wait for game logic and update transforms
 		BlitzenEngine::UpdateRendererTransforms(pRenderer, RESIDENTS.m_transforms.m_moveables, RESIDENTS.m_transforms.m_moveableCount);
 
-		// 5. Cull Moving objects
 		cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::DRAW_CULL_TEMPORAL_OCCLUSION;
 		cullContext.m_workType = BlitzenEngine::RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
 		cullContext.m_workCount = RESIDENTS.m_renders.m_opaqueDynamicCount;
 		BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 
-		// 6. Draw
 		BlitzenEngine::SetupForFirstRenderPass(pRenderer);
-		BlitzenEngine::RENDER_CONTEXT renderContext[2]{};
-		renderContext[0].m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_OPAQUE;
-		renderContext[1].m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_DYNAMIC;
-		BlitzenEngine::RenderObjects(pRenderer, renderContext, 2);
+		BlitzenEngine::RENDER_CONTEXT staticRenderContext{};
+		staticRenderContext.m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_OPAQUE;
+		BlitzenEngine::RenderObjects(pRenderer, staticRenderContext);
 
-		// 7. Generate HI_Z_MAP
-		BlitzenEngine::GenerateHI_Z_MAP(pRenderer);
-
-		// Extra. Wait for draw, cull transparents and draw them. This would move the HI_Z_MAP step
+		BlitzenEngine::RENDER_CONTEXT dynamicRenderContext{};
+		dynamicRenderContext.m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_DYNAMIC;
+		BlitzenEngine::RenderObjects(pRenderer, dynamicRenderContext);
 
 		BlitzenEngine::FinalizeRendering(pRenderer);
+
+		BlitzenEngine::GenerateHI_Z_MAP(pRenderer);
+
+		BlitzenEngine::EndGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::GRAPHICS);
 	}
 
 	void BMPR_DRIVE(BLITZEN_SYSTEM_CONTEXT& context)
@@ -72,7 +69,7 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::LOADING:
 		{
-			BlitzenEngine::RendererWorkIdle(pRenderer, BlitzenEngine::RENDERER_IDLE_MODE::TRIANGLE);
+			BlitzenEngine::RendererWorkIdle(pRenderer, BlitzenEngine::RENDERER_IDLE_MODE::BLITZEN_LOGO);
 			BlitzenEngine::PresentRender(pRenderer, 1);
 
 			break;

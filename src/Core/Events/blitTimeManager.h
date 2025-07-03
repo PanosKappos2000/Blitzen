@@ -8,19 +8,15 @@ namespace BlitzenCore
     public:
 
         WorldTimeManager();
+        void Startup();
+        void Update();
 
         double m_startTime;
-
         double m_elapsedTime;
-
         double m_previousTime;
-
         double m_deltaTime;
-
         double m_clockFrequency;
     };
-
-    void UpdateWorldClock(WorldTimeManager* pClock);
 }
 
 namespace BlitzenPlatform

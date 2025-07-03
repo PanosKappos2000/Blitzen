@@ -56,6 +56,8 @@ namespace BlitzenCore
 
     constexpr size_t ARRAY_SIZE_PLACEHOLDER = 100;
 
+    constexpr double CE_MAX_TIME_STEP = 0.1f;
+
 #if !defined(BLIT_VK_FORCE)
 
 #undef DASHER_JOIN

@@ -166,7 +166,7 @@ namespace BlitzenEngine
     {
         BLIT_RENDER_TYPE m_renderType{ BLIT_RENDER_TYPE::RENDER_OPAQUE };
     };
-    void RenderObjects(RendererPtrType pRenderer, const RENDER_CONTEXT* renderContextArr, uint32_t renderContextCount);
+    void RenderObjects(RendererPtrType pRenderer, RENDER_CONTEXT& renderContext);
 
     void FinalizeRendering(RendererPtrType pRenderer);
 
@@ -183,4 +183,11 @@ namespace BlitzenEngine
     void RendererWorkIdle(RendererPtrType pRendrer, RENDERER_IDLE_MODE mode);
 
     uint8_t UploadRendererIdleWorkResources(RendererPtrType pRenderer, RENDERER_IDLE_MODE mode);
+
+    enum class BMPR_COMMAND_LIST_TYPE : uint8_t
+    {
+        GRAPHICS
+    };
+    void BeginGPUCommands(RendererPtrType pRenderer, RENDERER_IDLE_MODE mode);
+    void EndGPUCommands(RendererPtrType pRenderer, BMPR_COMMAND_LIST_TYPE type);
 }

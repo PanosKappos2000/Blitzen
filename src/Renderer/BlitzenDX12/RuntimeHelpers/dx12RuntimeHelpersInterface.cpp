@@ -10,6 +10,15 @@
 
 namespace BlitzenEngine
 {
+	void EndGPUCommands(BlitzenDX12::Dx12Renderer* pRenderer, BMPR_COMMAND_LIST_TYPE type)
+	{
+		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
+
+		cmd.m_graphicsCmdList->Close();
+		ID3D12CommandList* commandLists[] = { cmd.m_graphicsCmdList.Get() };
+		pRenderer->m_commandQueue->ExecuteCommandLists(1, commandLists);
+	}
+
 	void PresentRender(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t waitCount)
 	{
 		pRenderer->m_swapchain->Present(1, 0);

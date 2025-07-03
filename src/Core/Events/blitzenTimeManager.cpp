@@ -7,13 +7,17 @@ namespace BlitzenCore
         m_elapsedTime{ 0.0 }, m_previousTime{ 0.0 }, m_deltaTime{0.0}
 	{
         BlitzenPlatform::PlatfrormSetupClock(this);
+    }
+
+    void WorldTimeManager::Startup()
+    {
         m_startTime = BlitzenPlatform::PlatformGetAbsoluteTime(m_clockFrequency);
     }
 
-    void UpdateWorldClock(WorldTimeManager* pClock)
+    void WorldTimeManager::Update()
     {
-        pClock->m_elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime(pClock->m_clockFrequency) - pClock->m_startTime;
-        pClock->m_deltaTime = pClock->m_elapsedTime - pClock->m_previousTime;
-        pClock->m_previousTime = pClock->m_elapsedTime;
+        m_elapsedTime = BlitzenPlatform::PlatformGetAbsoluteTime(m_clockFrequency) - m_startTime;
+        m_deltaTime = m_elapsedTime - m_previousTime <= CE_MAX_TIME_STEP ? m_elapsedTime - m_previousTime : CE_MAX_TIME_STEP;
+        m_previousTime = m_elapsedTime;
     }
 }

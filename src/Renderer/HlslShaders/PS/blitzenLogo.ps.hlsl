@@ -4,6 +4,7 @@ SamplerState smp_textureSampler : register(s0);
 struct PSInput
 {
     float4 position : SV_POSITION;
+    float2 uv : TEXCOORD0;
 };
 
 struct PSOutput
@@ -14,5 +15,6 @@ struct PSOutput
 PSOutput main(PSInput input) : SV_TARGET
 {
     PSOutput output;
+    output.color = blitzenTexture.Sample(smp_textureSampler, input.uv);
     return output;
 }

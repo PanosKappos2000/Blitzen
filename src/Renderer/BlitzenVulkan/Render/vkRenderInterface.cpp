@@ -7,7 +7,7 @@
 
 namespace BlitzenEngine
 {
-    void RenderObjects(BlitzenVulkan::VulkanRenderer* pRenderer, const RENDER_CONTEXT& renderContext)
+    void RenderObjects(BlitzenVulkan::VulkanRenderer* pRenderer, RENDER_CONTEXT& renderContext)
     {
 		uint32_t frame{ pRenderer->m_currentFrame };
 		auto& readWrites{ pRenderer->m_readWrites[frame] };

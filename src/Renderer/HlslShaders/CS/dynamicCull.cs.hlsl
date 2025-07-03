@@ -47,7 +47,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT && position.y > -100.f)
         {
-            position.y -= 0.01f;
+            position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= -100.f ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : -100.f;
         }
     }
     

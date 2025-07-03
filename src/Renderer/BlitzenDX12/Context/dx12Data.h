@@ -154,6 +154,11 @@ namespace BlitzenDX12
     constexpr UINT CE_GRAPHICS_ODS_STATIC_OBJIDX_ID = 5;
     constexpr UINT CE_GRAPHICS_ODS_DYNAMIC_OBJIDX_ID = 6;
 
+    // ROOT PARAMETERS FOR BLITZEN LOGO LOADING SCREEN
+    constexpr UINT CE_BLITZEN_LOGO_PIPELINE_PARAM_COUNT = 2;
+    constexpr UINT CE_BLITZEN_LOGO_TEX_ID = 0;
+    constexpr UINT CE_BLITZEN_LOGO_SAMPLER_ID = 1;
+
     // Descriptors for bounding sphere draw
     constexpr UINT Ce_BoundingSphereRootParameterCount = 3;
 
