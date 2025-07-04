@@ -66,6 +66,11 @@ namespace BlitzenEngine
 
 		BlitzenCore::BlitMemCopy(pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_pMapped, pTransforms, transformCount * sizeof(CPU_TRANSFORM));
 
+		D3D12_RESOURCE_BARRIER movementBarrier[1]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(movementBarrier[0], rwResources.m_movementBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(movementBarrier), movementBarrier);
+
 		cmd.m_copyCmdAlloc->Reset();
 		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
 		
@@ -79,11 +84,38 @@ namespace BlitzenEngine
 		// Fence until transforms are ready
 		BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
 		
-		// Restore transform buffer
-		D3D12_RESOURCE_BARRIER transformAfterCopyBarrier{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(transformAfterCopyBarrier, rwResources.m_movementBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(movementBarrier[0], rwResources.m_movementBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		cmd.m_graphicsCmdList->ResourceBarrier(1, &transformAfterCopyBarrier);
+		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(movementBarrier), movementBarrier);
+	}
+
+	void RequestGameLogicUpdatesFromShader(BlitzenDX12::Dx12Renderer* pRenderer, SHADER_GAME_LOGIC_UPDATES& outUpdate)
+	{
+		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
+		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
+		auto& roResources{ pRenderer->m_roResources };
+
+		D3D12_RESOURCE_BARRIER resourceBarriers[1]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
+
+		cmd.m_copyCmdAlloc->Reset();
+		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
+
+		cmd.m_copyCmdList->CopyBufferRegion(pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_buffer.Get(), 0, rwResources.m_transformBuffer.buffer.Get(), 0,
+			outUpdate.m_transformCount * sizeof(CPU_TRANSFORM));
+
+		cmd.m_copyCmdList->Close();
+		ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };
+		pRenderer->m_transferCommandQueue->ExecuteCommandLists(1, commandLists);
+
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
+
+		// Fence until transforms are ready
+		BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
+
+		BlitzenCore::BlitMemCopy(outUpdate.pGpuTransorms, pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_pMapped, outUpdate.m_transformCount * sizeof(MeshTransform));
 	}
 
 	BlitML::vec2 UpdateRendererWindowData(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)

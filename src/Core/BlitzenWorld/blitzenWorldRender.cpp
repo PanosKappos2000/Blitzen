@@ -42,7 +42,7 @@ namespace BlitzenWorld
 	{
 		BlitzenEngine::RendererPtrType pRenderer = context.pWORLD->P_RENDERER.Data();
 		BlitzenEngine::WORLD_RESIDENTS& RESIDENTS = context.pWORLD->m_residents;
-		auto& camera = context.pWORLD->pCameraContainer->GetMainCamera();
+		auto& camera = context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX];
 
 		switch (context.BLITZEN_ENGINE.m_state)
 		{

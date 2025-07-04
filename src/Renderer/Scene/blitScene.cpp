@@ -4,7 +4,6 @@
 #include "Core/DbLog/blitAssert.h"
 #include "Renderer/WORLD/blitzenWorld.h"
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
-#include "Core/Events/blitEvents.h"
 
 namespace BlitzenEngine
 {
@@ -280,7 +279,11 @@ namespace BlitzenEngine
             CPU_TRANSFORM randomTransform;
             RandomizeTransform(&randomTransform, transformMultiplier);
             wvCtx.residentCtx.m_transformInfo.cpu_pTransform = &randomTransform;
-            wvCtx.residentCtx.m_transformInfo.cpu_pTransform->movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
+
+            if (wv != 0)
+            {
+                wvCtx.residentCtx.m_transformInfo.cpu_pTransform->movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
+            }
 
             MeshTransform randomTransform_gpu;
             RandomizeTransform(&randomTransform_gpu, transformMultiplier, WV_ROTATING_KITTEN_SCALE);

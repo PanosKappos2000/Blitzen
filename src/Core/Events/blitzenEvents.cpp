@@ -1,5 +1,6 @@
 #include "blitEvents.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Core/BlitzenWorld/blitzenUserInterface.h"
 
 namespace BlitzenCore
 {
@@ -87,20 +88,22 @@ namespace BlitzenCore
     {
         auto idx = uint16_t(key);
 
-        // If the state changed, fire callback
-        if (SYSTEM->m_currentKeyboard[idx] != bPressed)
-        {
-            
-            BlitEventType event{ BlitEventType::MaxTypes };
+        auto& keyboard = SYSTEM->m_currentKeyboard[idx];
 
-            SYSTEM->m_currentKeyboard[idx] = bPressed;
+        // If the state changed, fire callback
+        if (keyboard != bPressed)
+        {
+            BlitEventType event{ BlitEventType::MaxTypes };
+            keyboard = bPressed;
+            auto& controller = SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX];
+
             if (bPressed)
             {
-                event = SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_keyPressPFNs[idx](SYSTEM->pWORLD);
+                event = controller.KEYPRESS(idx, SYSTEM->pWORLD->deltaTime);
             }
             else
             {
-                event = SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_keyReleasePFNs[idx](SYSTEM->pWORLD);
+                event = controller.KEYRELEASE(idx, SYSTEM->pWORLD->deltaTime);
             }
 
             DispatchEventCallback(SYSTEM, event);
@@ -121,18 +124,18 @@ namespace BlitzenCore
             SYSTEM->m_mouseButtonFlags[idx] = bPressed;
             if (bPressed)
             {
-                SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mousePressPFNs[idx](SYSTEM->pWORLD, mouseX, mouseY);
+                SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].MBPRESS(idx, mouseX, mouseY, SYSTEM->pWORLD->deltaTime);
             }
             else
             {
-                SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mouseReleasePFNs[idx](SYSTEM->pWORLD, mouseX, mouseY);
+                SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].MBPRESS(idx, mouseX, mouseY, SYSTEM->pWORLD->deltaTime);
             }
         }
     }
 
     void InputProcessMouseWheel(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, int8_t zDelta)
     {
-        SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mouseWheelPFNs(SYSTEM->pWORLD, zDelta);
+        SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].WHEEL(zDelta, SYSTEM->pWORLD->deltaTime);
     }
 
     void RegisterKeyPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX)
@@ -212,7 +215,7 @@ namespace BlitzenCore
 
     void DispatchRawInput_MOUSE_MOVED(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, int16_t xAxisMovement, int16_t yAxisMovement)
     {
-        SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].m_mouseMovePFNs(SYSTEM->pWORLD, xAxisMovement, yAxisMovement);
+        SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].MOUSEMOVE(xAxisMovement, yAxisMovement, SYSTEM->pWORLD->deltaTime);
     }
 
 
@@ -235,146 +238,88 @@ namespace BlitzenCore
         return 0;
     }
 
-    static BlitEventType CloseOnEscapeKeyPressCallback(BlitzenWorld::WORLD_blit* context)
+    static BlitEventType CloseOnEscapeKeyPressCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
 		return BlitEventType::EngineShutdown;
     }
 
-    static BlitEventType MoveDefaultCameraForwardOnWKeyPressCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType ForwardTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.bCameraDirty = true;
-        camera.transformData.velocity = BlitML::vec3(0.f, 0.f, 1.f);
+        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity{ 0.f, 0.f, 1.f }, 0.f);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraForwardOnWKeyReleaseCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType ForwardStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.velocity.z = 0.f;
-        if (camera.transformData.velocity.y == 0.f && camera.transformData.velocity.x == 0.f)
-        {
-            camera.transformData.bCameraDirty = false;
-        }
+        BlitzenEngine::ResidentCutVelocityForward(resident);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType MoveDefaultCameraBackwardOnSKeyPressCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType BackwardTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.bCameraDirty = true;
-        camera.transformData.velocity = BlitML::vec3(0.f, 0.f, -1.f);
+        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity(0.f, 0.f, -1.f), deltaTime);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraBackwardOnSKeyReleaseCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType BackwardStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.velocity.z = 0.f;
-        if (camera.transformData.velocity.y == 0.f && camera.transformData.velocity.x == 0.f)
-        {
-            camera.transformData.bCameraDirty = false;
-        }
+        BlitzenEngine::ResidentCutVelocityBack(resident);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType MoveDefaultCameraLeftOnAKeyPressCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType LeftTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.bCameraDirty = true;
-        camera.transformData.velocity = BlitML::vec3(-1.f, 0.f, 0.f);
+        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity(-1.f, 0.f, 0.f), deltaTime);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraLeftOnAKeyReleaseCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType LeftStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.velocity.x = 0.f;
-        if (camera.transformData.velocity.y == 0.f && camera.transformData.velocity.z == 0.f)
-        {
-            camera.transformData.bCameraDirty = false;
-        }
+        BlitzenEngine::ResidentCutVelocityLeft(resident);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType MoveDefaultCameraRightOnDKeyPressCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType RightTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.bCameraDirty = true;
-        camera.transformData.velocity = BlitML::vec3(1.f, 0.f, 0.f);
+        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity(1.f, 0.f, 0.f), deltaTime);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType StopMovingCameraRightOnDReleaseCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType RightStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.velocity.x = 0.f;
-        if (camera.transformData.velocity.y == 0.f && camera.transformData.velocity.z == 0.f)
-        {
-            camera.transformData.bCameraDirty = false;
-        }
+        BlitzenEngine::ResidentCutVelocityRight(resident);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType FreezeFrustumOnF1KeyPressCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType FreezeFrustumOnF1KeyPressCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        camera.transformData.bFreezeFrustum = !camera.transformData.bFreezeFrustum;
-
-        return BlitEventType::MaxTypes;
+        return BlitEventType::FreezeFrustum;
     }
 
-    static BlitEventType ChangePyramidLevelOnF3ReleaseCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType ChangePyramidLevelOnF3ReleaseCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        if (camera.transformData.debugPyramidLevel >= 16)
-        {
-            camera.transformData.debugPyramidLevel = 0;
-        }
-        else
-        {
-            camera.transformData.debugPyramidLevel++;
-        }
-
-        return BlitEventType::MaxTypes;
+        return BlitEventType::HI_Z_MAP_levelIncrease;
     }
 
-    static BlitEventType DecreasePyramidLevelOnF4ReleaseCallback(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType DecreasePyramidLevelOnF4ReleaseCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        if (camera.transformData.debugPyramidLevel != 0)
-        {
-            camera.transformData.debugPyramidLevel--;
-        }
-
-        return BlitEventType::MaxTypes;
+        return BlitEventType::HI_Z_MAP_levelDescrease;
     }
 
-    static BlitEventType BringBackEditorOnF10(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType BringBackEditorOnF10(BlitzenEngine::Resident resident, float deltaTime)
     {
         return BlitEventType::BringBackEditor;
     }
 
-    static BlitEventType BringDasherRuntimeDebugWindowOnF9(BlitzenWorld::WORLD_blit* blitzenContext)
+    static BlitEventType BringDasherRuntimeDebugWindowOnF9(BlitzenEngine::Resident, float deltaTime)
     {
         return BlitEventType::BringDasherRuntimeDebugWindow;
     }
@@ -382,7 +327,8 @@ namespace BlitzenCore
     static uint8_t ResizeEventCallback(BLIT_STRAIGHTHANDLE sysHandle, BlitzenCore::BlitEventType eventType)
     {
 		auto SYSTEM{ reinterpret_cast<BlitzenWorld::BLITZEN_SYSTEM_CONTEXT*>(sysHandle) };
-        auto& camera{ reinterpret_cast<BlitzenWorld::WORLD_blit*>(SYSTEM->pWORLD)->pCameraContainer->GetMainCamera()};
+        auto pWORLD = reinterpret_cast<BlitzenWorld::WORLD_blit*>(SYSTEM->pWORLD);
+        auto& camera{ pWORLD->m_cameras[pWORLD->m_activeCameraIDX]};
 
         if (SYSTEM->BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING)
         {
@@ -415,27 +361,29 @@ namespace BlitzenCore
         return 1;
     }
 
-    static BlitEventType OnMouseMove(BlitzenWorld::WORLD_blit* blitzenContext, int16_t xAxisMovement, int16_t yAxisMovement)
+    static BlitEventType OnMouseMove(BlitzenEngine::Resident resident, float deltaTime, int16_t xAxisMovement, int16_t yAxisMovement)
     {
-        auto& camera{ blitzenContext->pCameraContainer->GetMainCamera() };
-
-        auto deltaTime = float(blitzenContext->deltaTime);
-
-        BlitzenEngine::RotateCamera(camera, deltaTime, yAxisMovement, xAxisMovement);
-
+        BlitzenWorld::RotateResidentAttachedCamera(resident, xAxisMovement, yAxisMovement);
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType OnMouseButtonClickTest(BlitzenWorld::WORLD_blit* blitzenContext, int16_t mouseX, int16_t mouseY)
+    static BlitEventType OnMouseButtonClickTest(BlitzenEngine::Resident resident, float deltaTime, int16_t mouseX, int16_t mouseY)
     {
         BLIT_INFO("Mouse button clicked at %d, %d", mouseX, mouseY);
 
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType OnMouseButtonReleaseTest(BlitzenWorld::WORLD_blit* blitzenContext, int16_t mouseX, int16_t mouseY)
+    static BlitEventType OnMouseButtonReleaseTest(BlitzenEngine::Resident resident, float deltaTime, int16_t mouseX, int16_t mouseY)
     {
         BLIT_INFO("Mouse button released at %d, %d", mouseX, mouseY);
+
+        return BlitEventType::MaxTypes;
+    }
+
+    static BlitEventType SnapToMainCharacter(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        BlitzenWorld::SNAP_MAIN();
 
         return BlitEventType::MaxTypes;
     }
@@ -446,33 +394,41 @@ namespace BlitzenCore
 
         BlitzenCore::RegisterEvent(SYSTEM, BlitzenCore::BlitEventType::WindowUpdate, ResizeEventCallback);
 
-        BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
 
-        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback, BlitzenCore::Ce_EditorControllerID);
+        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, BringBackEditorOnF10, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
 
-        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, 1);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__W, MoveDefaultCameraForwardOnWKeyPressCallback, StopMovingCameraForwardOnWKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, ForwardStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, ForwardStopTestCallback, 1);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__S, MoveDefaultCameraBackwardOnSKeyPressCallback, StopMovingCameraBackwardOnSKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, BackwardStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, BackwardStopTestCallback, 1);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__A, MoveDefaultCameraLeftOnAKeyPressCallback, StopMovingCameraLeftOnAKeyReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, LeftStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, LeftStopTestCallback, 1);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__D, MoveDefaultCameraRightOnDKeyPressCallback, StopMovingCameraRightOnDReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, RightStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, RightStopTestCallback, 1);
 
-        BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(SYSTEM, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__TAB, SnapToMainCharacter, 1);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F8, BringDasherRuntimeDebugWindowOnF9, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(SYSTEM, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F8, BringDasherRuntimeDebugWindowOnF9, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
 
 #if !defined(BLIT_VK_FORCE)
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, 1);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback, BlitzenCore::Ce_EngineDefaultGameControllerID);
+        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
 
 #endif
     }

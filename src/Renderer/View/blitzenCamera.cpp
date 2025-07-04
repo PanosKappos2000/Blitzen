@@ -1,17 +1,19 @@
 #include "blitCamera.h"
 #include "Core/blitzenEngine.h"
+#include "BlitzenMathLibrary/blitML.h"
+#include "Core/BlitzenWorld/blitzenUserInterface.h"
 
 namespace BlitzenEngine
 {
-    static void CreateRotationMatrixFromPitchAndYawQuaternion(const BlitML::quat& pitchOrientation, const BlitML::quat& yawOrientation, BlitML::mat4& rotationMatrix)
+    void CreateRotationMatrixFromPitchAndYawQuaternion(const BlitML::quat& pitchOrientation, const BlitML::quat& yawOrientation, BlitML::mat4& rotationMatrix)
     {
         auto yawRot = BlitML::QuatToMat4(yawOrientation);
         auto pitchRot = BlitML::QuatToMat4(pitchOrientation);
         rotationMatrix = yawRot * pitchRot;
     }
 
-    void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, const BlitML::vec3& initialCameraPosition, 
-        float drawDistance, float initialYawRotation /*=0*/, float initialPitchRotation /*=0*/)
+    void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, const BlitML::vec3& initialCameraPosition, float drawDistance, 
+        float initialYawRotation, float initialPitchRotation)
     {
         camera.transformData.fov = fov;
         camera.viewData.zNear = zNear;
@@ -43,50 +45,48 @@ namespace BlitzenEngine
     {
         SetupCamera(camera, BlitML::Radians(BlitzenCore::Ce_InitialFOV), float(BlitzenCore::Ce_InitialWindowWidth), float(BlitzenCore::Ce_InitialWindowHeight),
             BlitzenCore::Ce_Znear, BlitML::vec3{ BlitzenCore::Ce_InitialCameraX, BlitzenCore::Ce_initialCameraY, BlitzenCore::Ce_initialCameraZ },
-            BlitzenCore::Ce_InitialDrawDistance);
+            BlitzenCore::Ce_InitialDrawDistance, 0.f, 0.f);
     }
 
-    void UpdateCamera(Camera& camera, float deltaTime)
+    void UpdateResidentAttachedCamera(Camera& camera, float deltaTime)
     {
-        if (camera.transformData.bCameraDirty)
+        if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
         {
             // Calculates and adds velocity
-            auto rawVelocity = camera.transformData.velocity * deltaTime * 40.f;
+            auto rawVelocity = GetResidentVelocity(camera.attachmentSettings.attachmentID) * deltaTime;
+            //rawVelocity += camera.attachmentSettings.paddingFromAttachment;
+
             auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ rawVelocity };
             camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
 
             // Creates translation
             camera.transformData.translation = BlitML::Translate(camera.viewData.position);
-
-            // Recreation of view matrix
-            camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
-
-            // Projection * view update
-            camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
         }
+
+        // Recreation of view matrix
+        camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
+
+        // Projection * view update
+        camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
     }
 
-    void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation)
+    void UpdateCamera(Camera& camera, float deltaTime)
     {
-        // Notify for update
-        camera.transformData.bCameraDirty = true;
+        // Calculates and adds velocity
+        auto rawVelocity = GetResidentVelocity(camera.attachmentSettings.attachmentID) * deltaTime;
+        //rawVelocity += camera.attachmentSettings.paddingFromAttachment;
 
-        // Limiter x
-        if(yawRotation < 100.f && yawRotation > -100.f)
-        {
-            camera.transformData.yawRotation += yawRotation * 10.f * deltaTime / 100.f;
-        }
+        auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ rawVelocity };
+        camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
 
-        // Limiter y
-        if(pitchRotation < 100.f && pitchRotation > -100.f)
-        {
-            camera.transformData.pitchRotation -= pitchRotation * 10.f * deltaTime / 100.f;
-        }
+        // Creates translation
+        camera.transformData.translation = BlitML::Translate(camera.viewData.position);
 
-        // New yaw pitch quat and rotation update
-        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0.f, -1.f, 0.f), camera.transformData.yawRotation, 0);
-        auto pitchOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(1.f, 0.f, 0.f), camera.transformData.pitchRotation, 0);
-        CreateRotationMatrixFromPitchAndYawQuaternion(pitchOrientation, yawOrientation, camera.transformData.rotation);
+        // Recreation of view matrix
+        camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
+
+        // Projection * view update
+        camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
     }
 
     void UpdateProjection(Camera& camera, float newWidth, float newHeight)
@@ -104,7 +104,7 @@ namespace BlitzenEngine
         // This is a test for oblique near plane clipping. 
         // TODO: Deactivate when no objects that use it exist
         auto plane = BlitML::NormalizePlane(camera.transformData.projectionTranspose.GetRow(4) + camera.transformData.projectionTranspose.GetRow(0));
-        ObliqueNearPlaneClippingMatrixModification(camera.transformData.projectionMatrix, camera.onbcProjectionMatrix, plane);
+        ObliqueNearPlaneClippingMatrixModification(camera.transformData.projectionMatrix, camera.transformData.onbcProjectionMatrix, plane);
 
         // Frustum planes are retrieved from the new projection matrix
         auto frustumX = BlitML::NormalizePlane(camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(0));

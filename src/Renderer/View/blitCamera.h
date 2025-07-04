@@ -1,6 +1,6 @@
 #pragma once
 #include "Core/blitzenEngine.h"
-#include "BlitzenMathLibrary/blitML.h"
+#include "BlitzenMathLibrary/blitMLTypes.h"
 
 namespace BlitzenEngine
 {
@@ -11,7 +11,6 @@ namespace BlitzenEngine
         BlitML::vec3 velocity{ 0.f };
         float yawRotation;
         float pitchRotation;
-        bool bCameraDirty{ false };
         float fov;
 		// Debug functionality, to freeze frustum culling
         bool bFreezeFrustum{ false };
@@ -19,6 +18,7 @@ namespace BlitzenEngine
 
         BlitML::mat4 projectionMatrix;
         BlitML::mat4 projectionTranspose;
+        BlitML::mat4 onbcProjectionMatrix;
     };
 
     // Shader struct. Shaders are expected to have a struct that is aligned with this
@@ -79,39 +79,26 @@ namespace BlitzenEngine
         BlitML::mat4 clipCoordinates;
     };
 
+    enum class CAMERA_FREE_ROTATION_SETTING : uint32_t
+    {
+        ALWAYS,
+        NO_VELOCITY,
+        NEVER
+    };
+
+    struct CameraAttachmentSettings
+    {
+        uint32_t attachmentID = 0;
+        BlitML::float3 paddingFromAttachment{ 0.f };
+        CAMERA_FREE_ROTATION_SETTING attachmentFreeRotationFlag{ CAMERA_FREE_ROTATION_SETTING::ALWAYS };
+    };
+
     struct Camera
     {
         CameraViewData viewData;
-
         CameraTransformData transformData;
-
-        BlitML::mat4 onbcProjectionMatrix;
+        CameraAttachmentSettings attachmentSettings;
     };
-
-    class CameraContainer
-    {
-    public:
-
-        inline CameraContainer() :m_mainCamera{ m_cameraList[BlitzenCore::Ce_MainCameraId] }
-        {}
-
-        // Returns the main camera
-        inline Camera& GetMainCamera() { return m_mainCamera; }
-
-        // Return the camera container to get access to all the available cameras
-        inline Camera* GetCameras() { return m_cameraList; }
-
-    private:
-
-        // Holds all the camera created and an index to the active one
-        Camera m_cameraList[BlitzenCore::Ce_MaxCameraCount];
-
-        // The main camera is the one whose values are used for culling and other operations
-        Camera& m_mainCamera;
-    };
-
-    void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, const BlitML::vec3& initialCameraPosition, 
-        float drawDistance, float initialYawRotation = 0, float initialPitchRotation = 0);
 
     // Default setup
     void SetupCamera(Camera& camera);
@@ -119,8 +106,9 @@ namespace BlitzenEngine
     // Updates main camera every frame
     void UpdateCamera(Camera& camera, float deltaTime);
 
-    // Camera rotation with quats
-    void RotateCamera(Camera& camera, float deltaTime, float pitchRotation, float yawRotation);
+    void UpdateResidentAttachedCamera(Camera& camera, float deltaTime);
+
+    void CreateRotationMatrixFromPitchAndYawQuaternion(const BlitML::quat& pitchOrientation, const BlitML::quat& yawOrientation, BlitML::mat4& rotationMatrix);
 
     // Updates the projection matrix when necessary
     void UpdateProjection(Camera& camera, float newWidth, float newHeight);

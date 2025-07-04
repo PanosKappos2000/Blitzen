@@ -36,6 +36,7 @@ namespace BlitzenDX12
         UINT m_textureCount{ 0 };
 
         STAGING<BlitzenEngine::CPU_TRANSFORM> CPU_MOVING_OBJECT_BUFFER{};
+        READBACK_BUFFER<BlitzenEngine::MeshTransform> GPU_MOVING_OBJECT_READBACK{};
     };
 
     struct ReadWriteResources

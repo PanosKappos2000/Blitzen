@@ -1,6 +1,7 @@
 #include "blitzenWorld.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Core/BlitzenWorld/blitzenUserInterface.h"
 
 namespace BlitzenWorld
 {
@@ -92,5 +93,61 @@ namespace BlitzenWorld
     void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function)
     {
         p_BLITZEN_WORLD->m_frameEvents.RegisterFrameEvent(worldVariable, function);
+    }
+
+    void RotateResidentAttachedCamera(BlitzenEngine::Resident resident, int16_t movementX, int16_t movementY)
+    {
+        BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < p_BLITZEN_WORLD->m_residents.m_transforms.m_moveableCount);
+
+        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
+        float deltaTime = p_BLITZEN_WORLD->deltaTime;
+
+        constexpr float CE_ROTATION_LIMITER = 100.f;
+
+        float yaw = movementX > 0.f ? 0.5f : movementX < 0.f ? -0.5f : 0.f;
+        float pitch = movementY > 0.f ? 0.5f : movementY < 0.f ? -0.5f : 0.f;
+        
+        camera.transformData.yawRotation += yaw * deltaTime;
+        camera.transformData.pitchRotation += pitch * deltaTime;
+
+        if (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS ||
+            (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::NO_VELOCITY && BlitzenEngine::CheckResidentVelocity(resident) != 0.f))
+        {
+            BlitzenEngine::RotateEntity(resident, BlitML::fRotation(pitch, 0.f, 0.f), deltaTime, BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT);
+        }
+
+        // New yaw pitch quat and rotation update
+        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0.f, -1.f, 0.f), camera.transformData.yawRotation, 0);
+        auto pitchOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(-1.f, 0.f, 0.f), camera.transformData.pitchRotation, 0);
+        BlitzenEngine::CreateRotationMatrixFromPitchAndYawQuaternion(pitchOrientation, yawOrientation, camera.transformData.rotation);
+    }
+
+    void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen)
+    {
+        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
+
+        camera.attachmentSettings.attachmentID = residentID;
+        camera.attachmentSettings.paddingFromAttachment = paddingFromAttachment;
+        camera.attachmentSettings.attachmentFreeRotationFlag = freeRotationWhen;
+
+        camera.viewData.position = BlitzenEngine::GetResidentPosition(residentID);
+        camera.transformData.translation = BlitML::Translate(camera.viewData.position + paddingFromAttachment);
+
+        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3{ 0.f, -1.f, 0.f }, camera.transformData.yawRotation, 0);
+
+        auto pitchOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3{ 1.f, 0.f, 0.f }, camera.transformData.pitchRotation, 0);
+
+        // Combine for rotation
+        BlitzenEngine::CreateRotationMatrixFromPitchAndYawQuaternion(pitchOrientation, yawOrientation, camera.transformData.rotation);
+
+        // View matrix
+        camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
+    }
+
+    void SNAP_MAIN()
+    {
+        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
+        
+        camera.transformData.translation = BlitML::Translate(p_BLITZEN_WORLD->m_residents.m_transforms.m_transforms[p_BLITZEN_WORLD->m_mainCharacter].pos);
     }
 }

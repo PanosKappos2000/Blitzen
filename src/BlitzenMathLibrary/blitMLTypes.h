@@ -74,6 +74,7 @@ namespace BlitML
     using fVelocity = vec3;
 
     inline bool operator == (const vec3& first, const vec3& second) { return (first.x == second.x) && (first.y == second.y) && (first.z == second.z); }
+    inline bool operator == (const vec3& vec, float scalar) { return (vec.x == scalar) && (vec.y == scalar) && (vec.z == scalar); }
     inline bool operator != (const vec3& first, const vec3& second) { return (first.x != second.x) || (first.y != second.y) || (first.z != second.z); }
     inline bool operator > (const vec3& first, const vec3& second) { return (first.x > second.x) && (first.y > second.y) && (first.z > second.z); }
     inline bool operator < (const vec3& first, const vec3& second) { return (first.x < second.x) && (first.y < second.y) && (first.z < second.z); }

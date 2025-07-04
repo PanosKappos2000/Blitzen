@@ -3,6 +3,7 @@
 #include "Renderer/BlitzenVulkan/Resources/vulkanRNDResources.h"
 #include "Renderer/BlitzenVulkan/Resources/vulkanPipelines.h"
 #include "Core/DbLog/blitAssert.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenVulkan
 {

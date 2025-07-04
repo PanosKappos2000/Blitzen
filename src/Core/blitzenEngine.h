@@ -90,11 +90,6 @@ namespace BlitzenCore
     constexpr size_t CE_RAPID_RESOURCE_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
     constexpr size_t CE_TEXTURE_DATA_HANDLE_SIZE = 128 * 1024 * 1024;
 
-    constexpr uint32_t Ce_MaxControllerCount = 5;
-
-    constexpr uint32_t Ce_EditorControllerID = 0;
-    constexpr uint32_t Ce_EngineDefaultGameControllerID = 1;
-
     constexpr uint16_t Ce_KeyCallbackCount = 256;
     constexpr uint16_t Ce_MouseButtonPFNCount = 3;
 
@@ -150,6 +145,11 @@ namespace BlitzenCore
     // Other camera constants
     constexpr uint8_t Ce_MaxCameraCount = 1;
     constexpr uint8_t Ce_MainCameraId = 0;
+
+    constexpr uint32_t CE_INITIAL_CONTROLLER_ID = 0;
+    constexpr uint32_t CE_STARTING_CONTROLLER_COUNT = 2;
+
+    constexpr uint32_t CE_ENGINE_CONTROLLER_ID = 0;
 
     constexpr const char* Ce_PrimaryGltfTestScene = "../../GltfTestScenes/Scenes/Plaza/scene.gltf";
 

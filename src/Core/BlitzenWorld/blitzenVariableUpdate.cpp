@@ -12,7 +12,7 @@ namespace BlitzenWorld
 	void WorldLoop(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		auto pWORLD = context.pWORLD;
-		auto& camera = pWORLD->pCameraContainer->GetMainCamera();
+		auto& camera = context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX];
 
 		context.pClock->Update();
 		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
@@ -32,15 +32,13 @@ namespace BlitzenWorld
 		{
 			if (context.m_controllerState != ControllerState::Editor)
 			{
-				BlitzenEngine::UpdateCamera(pWORLD->pCameraContainer->GetMainCamera(), pWORLD->deltaTime);
+				BlitzenEngine::UpdateResidentAttachedCamera(camera, pWORLD->deltaTime);
 				pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
 			}
 			break;
 		}
 		case BlitzenCore::EngineState::SUSPENDED:
 		{
-			BlitzenPlatform::DispatchEvents(context.pPlatform);
-
 			break;
 		}
 		case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
@@ -53,8 +51,6 @@ namespace BlitzenWorld
 		}
 		default:
 		{
-			BlitzenPlatform::DispatchEvents(context.pPlatform);
-
 			break;
 		}
 		}

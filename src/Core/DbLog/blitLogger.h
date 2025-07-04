@@ -9,6 +9,13 @@
     #define LOGGER_LEVEL_WARN
     #define LOGGER_LEVEL_DEBUG
     #define LOGGER_LEVEL_TRACE
+
+    // CHECKS IF THE EXPRESSION IS TRUE OTHERWISE PERFORMS RUNTIME DEBUG PROTECTION
+    #define BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(expr)              if(!(expr)){BLIT_ERROR("%s: RUNTIME ERROR", BlitzenCore::CE_LOGGER_SYSTEM_NAME); return;}
+    #define BLIT_RUNTIME_TEST_CHECK_ASSERT(expr)                   BLIT_ASSERT((expr));
+#else
+    #define BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(expr)
+    #define BLIT_RUNTIME_TEST_CHECK_ASSERT(expr)
 #endif
 
 namespace BlitzenPlatform

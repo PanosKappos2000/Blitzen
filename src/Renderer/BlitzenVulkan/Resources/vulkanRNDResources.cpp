@@ -2,6 +2,7 @@
 #include "vulkanResourceFunctions.h"
 #include "vulkanPipelines.h"
 #include "Core/DbLog/blitLogger.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenVulkan
 {

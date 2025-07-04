@@ -675,6 +675,12 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if (!CreateReadback(device, roResources.GPU_MOVING_OBJECT_READBACK, BLIT_MAX_WORLD_VARIABLE_COUNT))
+		{
+			BLIT_ERROR("%s: Failed to create moving object GPU readback buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			if (CreateSSBO<BlitzenEngine::ClusterVertices>(device, roResources.m_clusterVtxsBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)

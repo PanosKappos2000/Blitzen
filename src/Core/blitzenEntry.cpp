@@ -19,10 +19,6 @@ int main(int argc, char* argv[])
 
     BlitzenCore::InitLogging();
 
-    BlitzenEngine::CameraContainer blitzenCameraSystem;
-    auto& mainCamera = blitzenCameraSystem.GetMainCamera();
-    BlitzenEngine::SetupCamera(mainCamera);
-
     BlitzenCore::WorldTimeManager blitzenClock;
     SYSTEM.pClock = &blitzenClock;
 
@@ -38,11 +34,13 @@ int main(int argc, char* argv[])
     SYSTEM.pPlatform = &platform;
 
     WorldSystemMemory WORLD;
-    WORLD.Make(mainCamera, renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);
-    WORLD->pCameraContainer = &blitzenCameraSystem;
+    WORLD.Make(renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);
     WORLD->m_drawContext.m_pResidents = &WORLD->m_residents;
     WORLD->P_RENDERER.Make();
     SYSTEM.pWORLD = WORLD.Data();
+
+    BlitzenEngine::SetupCamera(SYSTEM.pWORLD->m_cameras[BlitzenCore::CE_INITIAL_CONTROLLER_ID]);
+    BlitzenEngine::SetupCamera(SYSTEM.pWORLD->m_cameras[1]);
 
     BlitzenCore::Dasher dasher;
     SYSTEM.pDasher = &dasher;

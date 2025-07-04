@@ -155,6 +155,13 @@ namespace BlitzenEngine
     // Needs to be called before the first render pass to define vieport
     void SetupForFirstRenderPass(RendererPtrType pRenderer);
 
+    struct SHADER_GAME_LOGIC_UPDATES
+    {
+        MeshTransform* pGpuTransorms;
+        uint32_t m_transformCount;
+    };
+    void RequestGameLogicUpdatesFromShader(RendererPtrType, SHADER_GAME_LOGIC_UPDATES& outUpdate);
+
     enum class BLIT_RENDER_TYPE : uint8_t
     {
         RENDER_OPAQUE,

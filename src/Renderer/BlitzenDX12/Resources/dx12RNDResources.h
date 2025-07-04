@@ -83,6 +83,38 @@ namespace BlitzenDX12
         return 1;
     }
 
+    template<class DATA>
+    UINT8 CreateReadback(ID3D12Device* device, READBACK_BUFFER<DATA>& staging, UINT elementCount)
+    {
+        if (elementCount == 0)
+        {
+            return 0;
+        }
+
+        UINT64 dataSize{ sizeof(DATA) * elementCount };
+
+        if (!CreateBuffer(device, staging.m_buffer.ReleaseAndGetAddressOf(), dataSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_READBACK))
+        {
+            return 0;
+        }
+
+        void* pMapped{ nullptr };
+        HRESULT mappingRes{ staging.m_buffer->Map(0, nullptr, &pMapped) };
+        if (FAILED(mappingRes))
+        {
+            return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
+        }
+
+        staging.m_pMapped = reinterpret_cast<DATA*>(pMapped);
+
+        if (!staging.m_pMapped)
+        {
+            return 0;
+        }
+
+        return 1;
+    }
+
     struct CPU_DATA_SSBO_SIZE_INFO
     {
         UINT m_fullSSBOSize{ 0 };

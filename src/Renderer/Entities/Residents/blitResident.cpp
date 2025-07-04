@@ -1,6 +1,7 @@
 #pragma once
 #include "blitResidentManager.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Core/DbLog/blitLogger.h"
 #include "Renderer/Resources/Mesh/blitMeshes.h"
 #include "Renderer/Entities/Interface/blitComponents.h"
 #include "BlitCL/blitDynamicArr.h"
@@ -109,5 +110,97 @@ namespace BlitzenEngine
 
 		rotating.movementFlags |= rotationFlags;
 		P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID].eulerAngles += rotation * deltaTime;
+	}
+
+	void AddResidentVelocity(Resident resident, const BlitML::fVelocity& velocity, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position = velocity * 40.f;// temp hardcoded to think about how this will work
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
+	}
+
+	void ResidentCutVelocityForward(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
+		if (velocity.z > 0)
+		{
+			velocity.z = 0;
+			if (velocity == 0)
+			{
+				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
+			}
+		}
+	}
+
+	void ResidentCutVelocityRight(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
+		if (velocity.x > 0)
+		{
+			velocity.x = 0;
+			if (velocity == 0)
+			{
+				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
+			}
+		}
+	}
+
+	void ResidentCutVelocityLeft(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
+		if (velocity.x < 0)
+		{
+			velocity.x = 0;
+			if (velocity == 0)
+			{
+				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
+			}
+		}
+	}
+
+	void ResidentCutVelocityBack(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
+		if (velocity.z < 0)
+		{
+			velocity.z = 0;
+			if (velocity == 0)
+			{
+				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
+			}
+		}
+	}
+
+	BlitML::fVelocity GetResidentVelocity(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
+	}
+
+	BlitML::float3 GetResidentPosition(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		return P_WORLD_RESIDENTS->m_transforms.m_transforms[resident].pos;
+	}
+
+	bool CheckResidentVelocity(Resident resident)
+	{
+		if (resident > P_WORLD_RESIDENTS->m_residentCount)
+		{
+			return false;
+		}
+
+		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
 	}
 }

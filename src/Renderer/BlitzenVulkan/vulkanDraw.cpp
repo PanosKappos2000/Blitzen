@@ -5,6 +5,7 @@
 #include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
 #include "Renderer/BlitzenVulkan/Resources/vulkanRNDResources.h"
 #include "Core/Events/blitTimeManager.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 // Not necessary since I have my own math library
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE

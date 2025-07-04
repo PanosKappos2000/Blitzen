@@ -27,7 +27,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     
     if (movement.movementFlags != BLIT_RESIDENT_MOVEMENT_NONE)
     {
-    
         float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
         {
@@ -45,16 +44,20 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         }
         ssbo_Transforms[obj.transformId].orientation = orientation;
         
-        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT && position.y > -100.f)
+        if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT) && position.y > -100.f)
         {
             position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= -100.f ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : -100.f;
+        }
+        
+        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT)
+        {
+            position += movement.velocity * deltaTime;
         }
     }
     
     float4 newOrientation = ssbo_Transforms[obj.transformId].orientation;
     float scale = ssbo_Transforms[obj.transformId].scale;
     ssbo_Transforms[obj.transformId].position = position;
-    //ssbo_Movements[obj.transformId].velocity = position;
 
     // Bounding sphere to view coordinates
     float3 center = RotateQuat(ssbo_BoundingSpheres[objId].center, newOrientation) * scale + position;

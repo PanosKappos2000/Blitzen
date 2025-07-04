@@ -238,6 +238,13 @@ namespace BlitzenDX12
     };
 
     template<class DATA>
+    struct READBACK_BUFFER
+    {
+        DX12WRAPPER<ID3D12Resource> m_buffer{ nullptr };
+        DATA* m_pMapped{ nullptr };
+    };
+
+    template<class DATA>
     struct CPU_WRITE_SSBO
     {
         SSBO m_ssbo{};

@@ -7,6 +7,7 @@
 #include "Core/Events/blitController.h"
 #include "Core/Events/blitEditorEvents.h"
 #include "Core/Events/blitFrameEvents.h"
+#include "blitzenSystemDispatcher.h"
 
 namespace BlitzenWorld
 {
@@ -29,9 +30,6 @@ namespace BlitzenWorld
     constexpr ControllerState CE_INITIAL_CONTROLLER_STATE = ControllerState::Game;
 #endif
 
-    constexpr uint32_t CE_INITIAL_CONTROLLER_ID = 0;
-    constexpr uint32_t CE_STARTING_CONTROLLER_COUNT = 2;
-
     struct BLITZEN_SYSTEM_CONTEXT
     {
         BlitzenCore::Engine BLITZEN_ENGINE;
@@ -52,10 +50,10 @@ namespace BlitzenWorld
 
         // EVENTS
         EventCallback m_eventCallbacks[uint32_t(BlitzenCore::BlitEventType::MaxTypes)]{};
-        BlitzenCore::Controller m_controllers[BlitzenCore::Ce_MaxControllerCount];
-        uint32_t m_activeControllerIDX{ CE_INITIAL_CONTROLLER_ID };
-        uint32_t m_controllerCount{ CE_STARTING_CONTROLLER_COUNT };
-        EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BLIT_STRAIGHTHANDLE)->uint32_t {return CE_INITIAL_CONTROLLER_ID; } };
+        BlitzenCore::Controller m_controllers[BlitzenCore::CE_STARTING_CONTROLLER_COUNT];
+        uint32_t m_activeControllerIDX{ BlitzenCore::CE_INITIAL_CONTROLLER_ID };
+        uint32_t m_controllerCount{ BlitzenCore::CE_STARTING_CONTROLLER_COUNT };
+        EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BLIT_STRAIGHTHANDLE)->uint32_t {return BlitzenCore::CE_INITIAL_CONTROLLER_ID; } };
         BlitzenCore::FAT_BOOL m_currentKeyboard[BlitzenCore::Ce_KeyCallbackCount];
         BlitzenCore::FAT_BOOL m_previousKeyboard[BlitzenCore::Ce_KeyCallbackCount];
         BlitzenCore::FAT_BOOL m_mouseButtonFlags[uint8_t(BlitzenCore::MouseButton::MaxButtons)];

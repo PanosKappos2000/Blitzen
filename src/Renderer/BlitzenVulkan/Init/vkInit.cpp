@@ -9,6 +9,7 @@
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
 #include <cstring> // For strcmp
+#include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenVulkan
 {
