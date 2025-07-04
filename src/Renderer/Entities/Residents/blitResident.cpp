@@ -116,7 +116,7 @@ namespace BlitzenEngine
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position = velocity * 40.f;// temp hardcoded to think about how this will work
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position = velocity;// temp hardcoded to think about how this will work
 		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
 	}
 
@@ -202,5 +202,12 @@ namespace BlitzenEngine
 		}
 
 		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
+	}
+
+	BlitML::fRotation GetResidentRotation(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles;
 	}
 }

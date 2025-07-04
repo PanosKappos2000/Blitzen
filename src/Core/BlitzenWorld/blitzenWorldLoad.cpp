@@ -108,7 +108,7 @@ namespace BlitzenWorld
             context.m_activeControllerIDX = 1;
             context.pWORLD->m_activeCameraIDX = 1;
             context.m_controllerState = ControllerState::Game;
-            BlitzenWorld::SetupCameraAttachment(context.pWORLD->m_mainCharacter, BlitML::float3(0.f, 20.f, -30.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
+            BlitzenWorld::SetupCameraAttachment(context.pWORLD->m_mainCharacter, BlitML::float3(0.f, 5.f, 5.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
 
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 
@@ -123,11 +123,6 @@ namespace BlitzenWorld
             }
 
 #endif
-            ENGINE_SYSTEM_DRIVE_REQUEST systemRequest{ ENGINE_SYSTEM_DRIVE_REQUEST::PLACEHOLDER };
-            while (systemRequest != ENGINE_SYSTEM_DRIVE_REQUEST::NO_JOBS)
-            {
-                systemRequest = driver.Dispatch();
-            }
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
 
             // Useless, but keeping it here to remember to do something with it

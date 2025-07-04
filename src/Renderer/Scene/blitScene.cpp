@@ -280,7 +280,7 @@ namespace BlitzenEngine
             RandomizeTransform(&randomTransform, transformMultiplier);
             wvCtx.residentCtx.m_transformInfo.cpu_pTransform = &randomTransform;
 
-            if (wv != 0)
+            if (wv != 5'000)
             {
                 wvCtx.residentCtx.m_transformInfo.cpu_pTransform->movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
             }

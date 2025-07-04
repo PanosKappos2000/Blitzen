@@ -30,13 +30,15 @@ namespace BlitzenEngine
 
 	BlitML::float3 GetResidentPosition(Resident resident);
 
+	BlitML::fRotation GetResidentRotation(Resident resident);
+
 	void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, const BlitML::vec3& initialCameraPosition,
 		float drawDistance, float initialYawRotation, float initialPitchRotation);
 }
 
 namespace BlitzenWorld
 {
-	void RotateResidentAttachedCamera(BlitzenEngine::Resident resident, int16_t movementX, int16_t movementY);
+	void RotateResidentAttachedCamera(BlitzenEngine::Resident resident, int32_t movementX, int32_t movementY);
 
 	void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen);
 }

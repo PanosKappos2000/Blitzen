@@ -10,7 +10,7 @@ namespace BlitzenCore
     using KeyReleaseCallback = BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, float>;
     using MouseButtonPressCallback = BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, float, int16_t, int16_t>;
     using MouseButtonReleaseCallback = BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, float, int16_t, int16_t>;
-    using MouseMoveCallbackType = BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, float, int16_t, int16_t>;
+    using MouseMoveCallbackType = BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, float, int32_t, int32_t>;
     using MouseWheelCallbackType = BlitCL::Pfn<BlitEventType, BlitzenEngine::Resident, float, int8_t>;
 
 	class Controller
@@ -35,7 +35,7 @@ namespace BlitzenCore
         {
             return m_keyReleasePFNs[idx](m_resident, deltaTime);
         }
-        inline BlitEventType MOUSEMOVE(int16_t xAxisMovement, int16_t yAxisMovement, float deltaTime)
+        inline BlitEventType MOUSEMOVE(int32_t xAxisMovement, int32_t yAxisMovement, float deltaTime)
         {
             return m_mouseMovePFNs(m_resident, deltaTime, xAxisMovement, yAxisMovement);
         }

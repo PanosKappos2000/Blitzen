@@ -77,6 +77,11 @@ namespace BlitzenCore
             //BlitzenEngine::UpdateRendererTransform(m_privateContext.pRenderer, m_blitzenContext.rendererTransformUpdate);
             return true;
         }
+        case BlitEventType::FreezeFrustum:
+        {
+            SYSTEM->pWORLD->m_cameras[SYSTEM->pWORLD->m_activeCameraIDX].transformData.bFreezeFrustum = !SYSTEM->pWORLD->m_cameras[SYSTEM->pWORLD->m_activeCameraIDX].transformData.bFreezeFrustum;
+            return true;
+        }
         default:
         {
             return false;
@@ -213,7 +218,7 @@ namespace BlitzenCore
 #endif
     }
 
-    void DispatchRawInput_MOUSE_MOVED(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, int16_t xAxisMovement, int16_t yAxisMovement)
+    void DispatchRawInput_MOUSE_MOVED(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, int32_t xAxisMovement, int32_t yAxisMovement)
     {
         SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].MOUSEMOVE(xAxisMovement, yAxisMovement, SYSTEM->pWORLD->deltaTime);
     }
@@ -361,7 +366,7 @@ namespace BlitzenCore
         return 1;
     }
 
-    static BlitEventType OnMouseMove(BlitzenEngine::Resident resident, float deltaTime, int16_t xAxisMovement, int16_t yAxisMovement)
+    static BlitEventType OnMouseMove(BlitzenEngine::Resident resident, float deltaTime, int32_t xAxisMovement, int32_t yAxisMovement)
     {
         BlitzenWorld::RotateResidentAttachedCamera(resident, xAxisMovement, yAxisMovement);
         return BlitEventType::MaxTypes;

@@ -30,12 +30,12 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
         {
-            float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, -1.f, 0.f), movement.rotation.x);
+            float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), movement.rotation.y);
             orientation = MultiplyQuat(orientation, orientationYaw);
         }
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
         {
-            float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.y);
+            float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.x);
             orientation = MultiplyQuat(orientation, orientationPitch);
         }
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT)
@@ -49,10 +49,10 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
             position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= -100.f ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : -100.f;
         }
         
-        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT)
-        {
-            position += movement.velocity * deltaTime;
-        }
+        //if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT)
+        //{
+        //    position = position + movement.velocity;
+        //}
     }
     
     float4 newOrientation = ssbo_Transforms[obj.transformId].orientation;

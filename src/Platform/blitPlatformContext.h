@@ -14,11 +14,24 @@ namespace BlitzenPlatform
 {
 #if defined(_WIN32)
 
+	constexpr SIZE_T BLITWIN32_SCOPED_RAWINPUT_BYTE_FIXED_SIZE = 1000;
+
+	class BLITWIN32_SCOPED_RAWINPUT_BYTE
+	{
+	public:
+		BYTE* m_lpb{ nullptr };
+
+		void ALLOC(UINT dwSize);
+
+		~BLITWIN32_SCOPED_RAWINPUT_BYTE();
+	};
+
 	struct PlatformContext
 	{
 		HWND m_hwnd;
 		HINSTANCE m_hinstance;
 		HGLRC m_hglrc;
+		BLITWIN32_SCOPED_RAWINPUT_BYTE SCOPED_RAW_INPUT_BYTE;
 
 		~PlatformContext();
 	};

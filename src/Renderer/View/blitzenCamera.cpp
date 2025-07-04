@@ -2,6 +2,7 @@
 #include "Core/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {
@@ -50,18 +51,14 @@ namespace BlitzenEngine
 
     void UpdateResidentAttachedCamera(Camera& camera, float deltaTime)
     {
-        if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
-        {
-            // Calculates and adds velocity
-            auto rawVelocity = GetResidentVelocity(camera.attachmentSettings.attachmentID) * deltaTime;
-            //rawVelocity += camera.attachmentSettings.paddingFromAttachment;
+        //if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
+        auto position = GetResidentPosition(camera.attachmentSettings.attachmentID) + camera.attachmentSettings.paddingFromAttachment;
+        
+        auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ position };
+        camera.viewData.position = BlitML::ToVec3(directionalVelocity);
 
-            auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ rawVelocity };
-            camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
-
-            // Creates translation
-            camera.transformData.translation = BlitML::Translate(camera.viewData.position);
-        }
+        // Creates translation
+        camera.transformData.translation = BlitML::Translate(camera.viewData.position);
 
         // Recreation of view matrix
         camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
@@ -72,15 +69,18 @@ namespace BlitzenEngine
 
     void UpdateCamera(Camera& camera, float deltaTime)
     {
-        // Calculates and adds velocity
-        auto rawVelocity = GetResidentVelocity(camera.attachmentSettings.attachmentID) * deltaTime;
-        //rawVelocity += camera.attachmentSettings.paddingFromAttachment;
+        if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
+        {
+            // Calculates and adds velocity
+            auto rawVelocity = GetResidentVelocity(camera.attachmentSettings.attachmentID) * deltaTime * 40.f;
+            //rawVelocity += camera.attachmentSettings.paddingFromAttachment;
 
-        auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ rawVelocity };
-        camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
+            auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ rawVelocity };
+            camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
 
-        // Creates translation
-        camera.transformData.translation = BlitML::Translate(camera.viewData.position);
+            // Creates translation
+            camera.transformData.translation = BlitML::Translate(camera.viewData.position);
+        }
 
         // Recreation of view matrix
         camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);

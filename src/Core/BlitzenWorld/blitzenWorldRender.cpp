@@ -22,6 +22,11 @@ namespace BlitzenWorld
 		cullContext.m_workCount = RESIDENTS.m_renders.m_opaqueDynamicCount;
 		BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 
+		BlitzenEngine::SHADER_GAME_LOGIC_UPDATES shaderDataReadback{};
+		shaderDataReadback.m_transformCount = RESIDENTS.m_transforms.m_moveableCount;
+		shaderDataReadback.pGpuTransorms = RESIDENTS.m_transforms.m_transforms;
+		BlitzenEngine::RequestGameLogicUpdatesFromShader(pRenderer, shaderDataReadback);
+
 		BlitzenEngine::SetupForFirstRenderPass(pRenderer);
 		BlitzenEngine::RENDER_CONTEXT staticRenderContext{};
 		staticRenderContext.m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_OPAQUE;

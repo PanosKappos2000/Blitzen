@@ -16,7 +16,7 @@ namespace BlitzenCore
             m_mouseReleasePFNs[pfn] = [](BlitzenEngine::Resident, float, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
         }
 
-        m_mouseMovePFNs = [](BlitzenEngine::Resident, float, int16_t, int16_t)->BlitEventType { return BlitEventType::MaxTypes; };
+        m_mouseMovePFNs = [](BlitzenEngine::Resident, float, int32_t, int32_t)->BlitEventType { return BlitEventType::MaxTypes; };
 
         m_mouseWheelPFNs = [](BlitzenEngine::Resident, float, int8_t)->BlitEventType { return BlitEventType::MaxTypes; };
 	}

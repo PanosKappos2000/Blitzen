@@ -85,6 +85,8 @@ namespace BlitzenPlatform
             BLIT_FATAL("Window creation failed");
             return false;
         }
+        
+        reinterpret_cast<BlitzenWorld::BLITZEN_SYSTEM_CONTEXT*>(args.SYSTEM)->pPlatform = pPlatform;
 
         // UPDATES
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(args.SYSTEM));
@@ -106,6 +108,8 @@ namespace BlitzenPlatform
             MessageBox(hwnd, "Failed to register raw input device", "Error", MB_OK);
             return false;
         }
+
+        pPlatform->SCOPED_RAW_INPUT_BYTE.ALLOC(BLITWIN32_SCOPED_RAWINPUT_BYTE_FIXED_SIZE);
         
         // BACKEND RENDERING API INIT
         auto pRenderer{ reinterpret_cast<BlitzenEngine::RendererPtrType>(args.m_pRenderer) };
@@ -194,20 +198,15 @@ namespace BlitzenPlatform
         mouseYData = (int16_t)mousePos.y;
     }
 
-    struct BLITWIN32_SCOPED_RAWINPUT_BYTE
+    void BLITWIN32_SCOPED_RAWINPUT_BYTE::ALLOC(UINT dwSize)
     {
-        BYTE* m_lpb{ nullptr };
+        m_lpb = reinterpret_cast<BYTE*>(PlatformMalloc(dwSize, 0));
+    }
 
-        BLITWIN32_SCOPED_RAWINPUT_BYTE(UINT dwSize)
-        {
-            m_lpb = reinterpret_cast<BYTE*>(PlatformMalloc(dwSize, 0));
-        }
-
-        ~BLITWIN32_SCOPED_RAWINPUT_BYTE()
-        {
-            PlatformFree(m_lpb, false);
-        }
-    };
+    BLITWIN32_SCOPED_RAWINPUT_BYTE::~BLITWIN32_SCOPED_RAWINPUT_BYTE()
+    {
+        PlatformFree(m_lpb, false);
+    }
 
     // CALLBACK
     LRESULT CALLBACK Win32ProcessMessage(HWND hwnd, uint32_t msg, WPARAM wparam, LPARAM lparam)
@@ -281,13 +280,19 @@ namespace BlitzenPlatform
                 UINT dwSize{ 0 };
                 GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
 
-                BLITWIN32_SCOPED_RAWINPUT_BYTE SCOPED_BYTE {dwSize};  // Allocate space for the raw input data
-                if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, SCOPED_BYTE.m_lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize)
+                if (dwSize >= BLITWIN32_SCOPED_RAWINPUT_BYTE_FIXED_SIZE)
                 {
                     break;
                 }
 
-                RAWINPUT* raw = (RAWINPUT*)SCOPED_BYTE.m_lpb;
+                auto p_BP_HANDLE = reinterpret_cast<PlatformContext*>(SYSTEM->pPlatform);
+
+                if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, p_BP_HANDLE->SCOPED_RAW_INPUT_BYTE.m_lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize)
+                {
+                    break;
+                }
+
+                RAWINPUT* raw = (RAWINPUT*)p_BP_HANDLE->SCOPED_RAW_INPUT_BYTE.m_lpb;
 
                 switch (raw->header.dwType)
                 {

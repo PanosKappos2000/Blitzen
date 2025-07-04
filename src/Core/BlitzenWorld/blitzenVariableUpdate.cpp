@@ -32,7 +32,6 @@ namespace BlitzenWorld
 		{
 			if (context.m_controllerState != ControllerState::Editor)
 			{
-				BlitzenEngine::UpdateResidentAttachedCamera(camera, pWORLD->deltaTime);
 				pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
 			}
 			break;
