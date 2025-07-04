@@ -149,12 +149,15 @@ namespace BlitzenEngine
 					commandList->Dispatch(1, 1, 1);
 
 					// Culling barrier, waits for draw count reset and draw command read
-					D3D12_RESOURCE_BARRIER cullingBarriers[2]{};
+					D3D12_RESOURCE_BARRIER cullingBarriers[4]{};
 					// Count reset barrier 
 					BlitzenDX12::CreateResourceUAVBarrier(cullingBarriers[0], rwResources.m_dynamicDrawCmdCounter.buffer.Get());
 					// Command read barrier
 					BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarriers[1], rwResources.m_dynamicDrawCmdBuffer.buffer.Get(),
 						D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+					BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarriers[2], rwResources.m_movementBuffer.buffer.Get(),
+						D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+					BlitzenDX12::CreateResourceUAVBarrier(cullingBarriers[3], rwResources.m_transformBuffer.buffer.Get());
 					// execute
 					commandList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
 
@@ -168,13 +171,14 @@ namespace BlitzenEngine
 					commandList->Dispatch(BlitML::GetComputeShaderGroupSize(cullContext.m_workCount, 64), 1, 1);
 
 					// Block graphics, should wait for command and count write
-					D3D12_RESOURCE_BARRIER graphicsBarriers[2]{};
+					D3D12_RESOURCE_BARRIER graphicsBarriers[3]{};
 					// Command write
 					BlitzenDX12::CreateResourcesTransitionBarrier(graphicsBarriers[0], rwResources.m_dynamicDrawCmdBuffer.buffer.Get(),
 						D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 					// Counter write
 					BlitzenDX12::CreateResourcesTransitionBarrier(graphicsBarriers[1], rwResources.m_dynamicDrawCmdCounter.buffer.Get(),
 						D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+					BlitzenDX12::CreateResourceUAVBarrier(graphicsBarriers[2], rwResources.m_transformBuffer.buffer.Get());
 					// execute
 					commandList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
 					break;

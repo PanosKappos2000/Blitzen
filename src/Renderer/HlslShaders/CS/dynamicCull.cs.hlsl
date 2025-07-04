@@ -49,10 +49,10 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
             position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= -100.f ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : -100.f;
         }
         
-        //if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT)
-        //{
-        //    position = position + movement.velocity;
-        //}
+        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT)
+        {
+            position = position + movement.velocity;
+        }
     }
     
     float4 newOrientation = ssbo_Transforms[obj.transformId].orientation;

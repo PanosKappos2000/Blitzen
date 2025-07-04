@@ -83,10 +83,6 @@ namespace BlitzenEngine
 		
 		// Fence until transforms are ready
 		BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
-		
-		BlitzenDX12::CreateResourcesTransitionBarrier(movementBarrier[0], rwResources.m_movementBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(movementBarrier), movementBarrier);
 	}
 
 	void RequestGameLogicUpdatesFromShader(BlitzenDX12::Dx12Renderer* pRenderer, SHADER_GAME_LOGIC_UPDATES& outUpdate)

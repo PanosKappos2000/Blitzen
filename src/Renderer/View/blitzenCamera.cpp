@@ -54,8 +54,7 @@ namespace BlitzenEngine
         //if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
         auto position = GetResidentPosition(camera.attachmentSettings.attachmentID) + camera.attachmentSettings.paddingFromAttachment;
         
-        auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ position };
-        camera.viewData.position = BlitML::ToVec3(directionalVelocity);
+        camera.viewData.position = BlitML::ToVec3(position);
 
         // Creates translation
         camera.transformData.translation = BlitML::Translate(camera.viewData.position);
