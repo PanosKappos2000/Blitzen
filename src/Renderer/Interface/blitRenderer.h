@@ -118,9 +118,9 @@ namespace BlitzenEngine
 
     enum class RENDERER_FENCE_TYPE : uint8_t
     {
-        PREVIOUS_FRAME,
-        BUFFER_UPDATE,
-        CULL
+        GRAPHICS,
+        COMPUTE,
+        TRANSFER
     };
     // Custom CPU fence. Meant to stop renderer command recording until a desired event.
     void PlaceRendererFence(RendererPtrType pRenderer, RENDERER_FENCE_TYPE type);
@@ -155,11 +155,15 @@ namespace BlitzenEngine
     // Needs to be called before the first render pass to define vieport
     void SetupForFirstRenderPass(RendererPtrType pRenderer);
 
+    void ChangeCullingBuffersToReadbackMode(RendererPtrType pRenderer);
+
     struct SHADER_GAME_LOGIC_UPDATES
     {
         CPU_TRANSFORM* pGpuTransorms;
         uint32_t m_transformCount;
     };
+    // Copies updates that were made in the shader back to the GPU. 
+    // Stops compute commands but resets them inside, no need to call BeginGPUCommands after this.
     void RequestGameLogicUpdatesFromShader(RendererPtrType, SHADER_GAME_LOGIC_UPDATES& outUpdate);
 
     enum class BLIT_RENDER_TYPE : uint8_t
@@ -193,8 +197,10 @@ namespace BlitzenEngine
 
     enum class BMPR_COMMAND_LIST_TYPE : uint8_t
     {
-        GRAPHICS
+        GRAPHICS,
+        TRANSFER,
+        COMPUTE
     };
-    void BeginGPUCommands(RendererPtrType pRenderer, RENDERER_IDLE_MODE mode);
+    void BeginGPUCommands(RendererPtrType pRenderer, BMPR_COMMAND_LIST_TYPE mode);
     void EndGPUCommands(RendererPtrType pRenderer, BMPR_COMMAND_LIST_TYPE type);
 }

@@ -9,7 +9,7 @@ namespace BlitzenEngine
 	void DispatchCullingShaders(BlitzenDX12::Dx12Renderer* pRenderer, const CULL_CONTEXT& cullContext)
 	{
 		UINT frame{ pRenderer->m_currentFrame };
-		auto commandList = pRenderer->m_cmdContext[frame].m_graphicsCmdList.Get();
+		auto commandList = pRenderer->m_cmdContext[frame].m_computeCmdList.Get();
 		auto& rwResources{ pRenderer->m_rwResources[frame] };
 		auto& pipelineContext{ pRenderer->m_pipelineContext };
 		auto& descriptorContext{ pRenderer->m_descriptorContext };
@@ -318,7 +318,7 @@ namespace BlitzenEngine
 	{
 		UINT frame{ pRenderer->m_currentFrame };
 		UINT swapchainId{ pRenderer->m_swapchainIDX };
-		auto commandList{ pRenderer->m_cmdContext[frame].m_graphicsCmdList.Get() };
+		auto commandList{ pRenderer->m_cmdContext[frame].m_computeCmdList.Get() };
 		auto depthTarget{ pRenderer->m_depthBuffers[swapchainId].Get() };
 		auto& rwResources{ pRenderer->m_rwResources[frame] };
 		auto& pipelineContext{ pRenderer->m_pipelineContext };
@@ -328,13 +328,8 @@ namespace BlitzenEngine
 		ID3D12DescriptorHeap* heaps[] = { descriptorContext.m_viewHeap.Get() };
 		commandList->SetDescriptorHeaps(1, heaps);
 
-		// Barrier for depth pyramid generation, waits for depth target write and HI Z map read
-		D3D12_RESOURCE_BARRIER depthPyramidBarriers[2]{};
-		// Depth target write
-		BlitzenDX12::CreateResourcesTransitionBarrier(depthPyramidBarriers[0], depthTarget, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		// HI Z map read
-		BlitzenDX12::CreateResourcesTransitionBarrier(depthPyramidBarriers[1], rwResources.m_HI_Z.pyramid.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		// execute
+		D3D12_RESOURCE_BARRIER depthPyramidBarriers[1]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(depthPyramidBarriers[0], rwResources.m_HI_Z.pyramid.Get(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		commandList->ResourceBarrier(BLIT_ARRAY_SIZE(depthPyramidBarriers), depthPyramidBarriers);
 
 		// Descriptors
@@ -379,11 +374,6 @@ namespace BlitzenEngine
 		D3D12_RESOURCE_BARRIER cullingBarrier{};
 		BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarrier, rwResources.m_HI_Z.pyramid.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		commandList->ResourceBarrier(1, &cullingBarrier);
-
-		// Graphics wait for depth target read
-		D3D12_RESOURCE_BARRIER graphicsBarrier{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(graphicsBarrier, depthTarget, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		commandList->ResourceBarrier(1, &graphicsBarrier);
 	}
 }
 

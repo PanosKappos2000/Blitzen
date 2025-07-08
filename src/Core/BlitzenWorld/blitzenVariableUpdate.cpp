@@ -31,10 +31,7 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::RUNNING:
 		{
-			if (context.m_controllerState != ControllerState::Editor)
-			{
-				pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
-			}
+			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
 			break;
 		}
 		case BlitzenCore::EngineState::SUSPENDED:

@@ -162,6 +162,7 @@ namespace BlitzenWorld
     {
         auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
 
+        movement *= p_BLITZEN_WORLD->deltaTime * 20.f;
         auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ movement };
         camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
     }

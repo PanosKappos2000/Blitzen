@@ -7,6 +7,7 @@
 #include "dx12RuntimeHelpers.h"
 #include "Core/blitzenEngine.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {
@@ -14,10 +15,67 @@ namespace BlitzenEngine
 	{
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
 
-		cmd.m_graphicsCmdList->Close();
-		ID3D12CommandList* commandLists[] = { cmd.m_graphicsCmdList.Get() };
-		pRenderer->m_commandQueue->ExecuteCommandLists(1, commandLists);
+		switch(type)
+		{
+		case BMPR_COMMAND_LIST_TYPE::GRAPHICS:
+		{
+			cmd.m_graphicsCmdList->Close();
+			ID3D12CommandList* commandLists[] = { cmd.m_graphicsCmdList.Get() };
+			pRenderer->m_commandQueue->ExecuteCommandLists(1, commandLists);
+			break;
+		}
+		case BMPR_COMMAND_LIST_TYPE::COMPUTE:
+		{
+			cmd.m_computeCmdList->Close();
+			ID3D12CommandList* commandLists[] = { cmd.m_computeCmdList.Get() };
+			pRenderer->m_computeCommandQueue->ExecuteCommandLists(1, commandLists);
+			break;
+		}
+		case BMPR_COMMAND_LIST_TYPE::TRANSFER:
+		{
+			cmd.m_copyCmdList->Close();
+			ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };
+			pRenderer->m_transferCommandQueue->ExecuteCommandLists(1, commandLists);
+			break;
+		}
+		default:
+		{
+			BLIT_ERROR("%s: Unknown command list type in EndGPUCommands!", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			break;
+		}
+		}
+		
 	}
+
+	void BeginGPUCommands(BlitzenDX12::Dx12Renderer* pRenderer, BMPR_COMMAND_LIST_TYPE type)
+	{
+		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
+		if (type == BMPR_COMMAND_LIST_TYPE::GRAPHICS)
+		{
+			cmd.m_graphicsCmdAlloc->Reset();
+			cmd.m_graphicsCmdList->Reset(cmd.m_graphicsCmdAlloc.Get(), nullptr);
+
+			ID3D12DescriptorHeap* descriptorHeaps[]{ pRenderer->m_descriptorContext.m_viewHeap.Get(), pRenderer->m_descriptorContext.m_samplerHeap.Get()};
+			cmd.m_graphicsCmdList->SetDescriptorHeaps(2, descriptorHeaps);
+
+			cmd.m_graphicsCmdList->SetGraphicsRootSignature(pRenderer->m_pipelineContext.m_graphicsRoot.Get());
+		}
+		else if (type == BMPR_COMMAND_LIST_TYPE::COMPUTE)
+		{
+			cmd.m_computeCmdAlloc->Reset();
+			cmd.m_computeCmdList->Reset(cmd.m_computeCmdAlloc.Get(), nullptr);
+
+			ID3D12DescriptorHeap* descriptorHeaps[]{ pRenderer->m_descriptorContext.m_viewHeap.Get()};
+			cmd.m_computeCmdList->SetDescriptorHeaps(1, descriptorHeaps);
+
+			cmd.m_computeCmdList->SetComputeRootSignature(pRenderer->m_pipelineContext.m_cullRoot.Get());
+		}
+		else if (type == BMPR_COMMAND_LIST_TYPE::TRANSFER)
+		{
+			cmd.m_copyCmdAlloc->Reset();
+			cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
+		}
+	}	
 
 	void PresentRender(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t waitCount)
 	{
@@ -29,7 +87,25 @@ namespace BlitzenEngine
 	void PlaceRendererFence(BlitzenDX12::Dx12Renderer* pRenderer, RENDERER_FENCE_TYPE type)
 	{
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
-		BlitzenDX12::PlaceFence(cmd.m_frameFence.m_value, pRenderer->m_commandQueue.Get(), cmd.m_frameFence.m_dx12Handle.Get(), cmd.m_frameFence.m_event);
+
+		switch (type)
+		{
+		case RENDERER_FENCE_TYPE::GRAPHICS:
+		{
+			BlitzenDX12::PlaceFence(cmd.m_frameFence.m_value, pRenderer->m_commandQueue.Get(), cmd.m_frameFence.m_dx12Handle.Get(), cmd.m_frameFence.m_event);
+			break;
+		}
+		case RENDERER_FENCE_TYPE::COMPUTE:
+		{
+			BlitzenDX12::PlaceFence(cmd.m_computeFence.m_value, pRenderer->m_computeCommandQueue.Get(), cmd.m_computeFence.m_dx12Handle.Get(), cmd.m_computeFence.m_event);
+			break;
+		}
+		case RENDERER_FENCE_TYPE::TRANSFER:
+		{
+			BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
+			break;
+		}
+		}
 	}
 
 	void UpdateRendererView(BlitzenDX12::Dx12Renderer* pRenderer, CameraViewData& viewData, bool isFrustumFrozen)
@@ -49,14 +125,6 @@ namespace BlitzenEngine
 		{
 			BlitzenCore::BlitMemCopy(rwResources.m_viewBuffer.pData, &viewData, sizeof(CameraViewData));
 		}
-
-		// Start culling commands
-		cmd.m_graphicsCmdAlloc->Reset();
-		cmd.m_graphicsCmdList->Reset(cmd.m_graphicsCmdAlloc.Get(), nullptr);
-
-		// Binds heap for compute
-		ID3D12DescriptorHeap* srvHeaps[] = { descriptorContext.m_viewHeap.Get() };
-		cmd.m_graphicsCmdList->SetDescriptorHeaps(1, srvHeaps);
 	}
 
 	void UpdateRendererTransforms(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenEngine::CPU_TRANSFORM* pTransforms, uint32_t transformCount)
@@ -65,14 +133,6 @@ namespace BlitzenEngine
 		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
 
 		BlitzenCore::BlitMemCopy(pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_pMapped, pTransforms, transformCount * sizeof(CPU_TRANSFORM));
-		
-		D3D12_RESOURCE_BARRIER movementBarrier[1]{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(movementBarrier[0], rwResources.m_movementBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
-		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(movementBarrier), movementBarrier);
-		
-		cmd.m_copyCmdAlloc->Reset();
-		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
 		
 		cmd.m_copyCmdList->CopyBufferRegion(rwResources.m_movementBuffer.buffer.Get(), 0, pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_buffer.Get(), 0,
 			transformCount * sizeof(CPU_TRANSFORM));
@@ -85,20 +145,19 @@ namespace BlitzenEngine
 		BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
 	}
 
+	void ChangeCullingBuffersToReadbackMode(RendererPtrType pRenderer)
+	{
+		D3D12_RESOURCE_BARRIER resourceBarriers[1]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], pRenderer->m_rwResources[pRenderer->m_currentFrame].m_movementBuffer.buffer.Get(), 
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		pRenderer->m_cmdContext[pRenderer->m_currentFrame].m_computeCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
+	}
+
 	void RequestGameLogicUpdatesFromShader(BlitzenDX12::Dx12Renderer* pRenderer, SHADER_GAME_LOGIC_UPDATES& outUpdate)
 	{
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
 		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
 		auto& roResources{ pRenderer->m_roResources };
-
-		BlitzenDX12::PlaceFence(cmd.m_frameFence.m_value, pRenderer->m_commandQueue.Get(), cmd.m_frameFence.m_dx12Handle.Get(), cmd.m_frameFence.m_event);
-
-		cmd.m_graphicsCmdAlloc->Reset();
-		cmd.m_graphicsCmdList->Reset(cmd.m_graphicsCmdAlloc.Get(), nullptr);
-
-		D3D12_RESOURCE_BARRIER resourceBarriers[1]{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
 
 		cmd.m_copyCmdAlloc->Reset();
 		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
@@ -113,12 +172,11 @@ namespace BlitzenEngine
 		// Fence until transforms are ready
 		BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
+		BeginGPUCommands(pRenderer, BMPR_COMMAND_LIST_TYPE::COMPUTE);
 
-		cmd.m_graphicsCmdList->Close();
-		ID3D12CommandList* computeCommandLists[] = { cmd.m_graphicsCmdList.Get() };
-		pRenderer->m_commandQueue->ExecuteCommandLists(1, computeCommandLists);
+		D3D12_RESOURCE_BARRIER resourceBarriers[1]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		cmd.m_computeCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
 
 		BlitzenCore::BlitMemCopy(outUpdate.pGpuTransorms, pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_pMapped, outUpdate.m_transformCount * sizeof(CPU_TRANSFORM));
 	}

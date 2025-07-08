@@ -61,9 +61,12 @@ namespace BlitzenEngine
 		auto cmdList{ cmd.m_graphicsCmdList };
 
 		// Render target barrier
-		D3D12_RESOURCE_BARRIER renderTargetBarrier{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(renderTargetBarrier, pRenderer->m_swapchainBackBuffers[swapchainIDX].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		cmd.m_graphicsCmdList->ResourceBarrier(1, &renderTargetBarrier);
+		D3D12_RESOURCE_BARRIER renderTargetBarriers[2]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(renderTargetBarriers[0], pRenderer->m_swapchainBackBuffers[swapchainIDX].Get(), 
+			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		BlitzenDX12::CreateResourcesTransitionBarrier(renderTargetBarriers[1], pRenderer->m_depthBuffers[swapchainIDX].Get(), 
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(renderTargetBarriers), renderTargetBarriers);
 
 		// Viewport and scissor
 		BlitzenDX12::DefineViewportAndScissor(cmd.m_graphicsCmdList.Get(), (float)pRenderer->m_swapchainWidth, (float)pRenderer->m_swapchainHeight);
@@ -71,10 +74,6 @@ namespace BlitzenEngine
 		cmd.m_graphicsCmdList->OMSetRenderTargets(1, &descriptorContext.m_swapchainRtvHandle[swapchainIDX], FALSE, &descriptorContext.m_depthTargetDSVHandle[swapchainIDX]);
 		cmd.m_graphicsCmdList->ClearRenderTargetView(descriptorContext.m_swapchainRtvHandle[swapchainIDX], BlitzenCore::Ce_DefaultWindowBackgroundColor, 0, nullptr);
 		cmd.m_graphicsCmdList->ClearDepthStencilView(descriptorContext.m_depthTargetDSVHandle[swapchainIDX], D3D12_CLEAR_FLAG_DEPTH, BlitzenDX12::Ce_ClearDepth, 0, 0, nullptr);
-
-		ID3D12DescriptorHeap* graphicsHeaps[] = { descriptorContext.m_viewHeap.Get(), descriptorContext.m_samplerHeap.Get() };
-		cmdList->SetDescriptorHeaps(2, graphicsHeaps);
-		cmdList->SetGraphicsRootSignature(pRenderer->m_pipelineContext.m_graphicsRoot.Get());
 
 		// DESCRIPTORS
 		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_VTX_TABLE_ID, descriptorContext.m_vertexODSTableHandle[frame]);
@@ -88,10 +87,15 @@ namespace BlitzenEngine
 	{
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
 
-		D3D12_RESOURCE_BARRIER presentBarrier{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(presentBarrier, pRenderer->m_swapchainBackBuffers[pRenderer->m_swapchainIDX].Get(), 
+		D3D12_RESOURCE_BARRIER hi_z_mapBarriers[1]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(hi_z_mapBarriers[0], pRenderer->m_depthBuffers[pRenderer->m_swapchainIDX].Get(), 
+			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		cmd.m_graphicsCmdList->ResourceBarrier(1, hi_z_mapBarriers);
+
+		D3D12_RESOURCE_BARRIER presentBarriers[1]{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(presentBarriers[0], pRenderer->m_swapchainBackBuffers[pRenderer->m_swapchainIDX].Get(),
 			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-		cmd.m_graphicsCmdList->ResourceBarrier(1, &presentBarrier);
+		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(presentBarriers), presentBarriers);
 	}
 
 	void RendererWorkIdle(BlitzenDX12::Dx12Renderer* pRenderer, RENDERER_IDLE_MODE mode)

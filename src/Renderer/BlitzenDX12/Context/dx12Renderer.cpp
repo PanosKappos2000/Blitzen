@@ -10,6 +10,8 @@ namespace BlitzenDX12
         auto& cmdContext = m_cmdContext[m_currentFrame];
 
         PlaceFence(cmdContext.m_frameFence.m_value, m_commandQueue.Get(), cmdContext.m_frameFence.m_dx12Handle.Get(), cmdContext.m_frameFence.m_event);
+        PlaceFence(cmdContext.m_computeFence.m_value, m_computeCommandQueue.Get(), cmdContext.m_computeFence.m_dx12Handle.Get(), cmdContext.m_computeFence.m_event);
+        PlaceFence(cmdContext.m_copyFence.m_value, m_transferCommandQueue.Get(), cmdContext.m_copyFence.m_dx12Handle.Get(), cmdContext.m_copyFence.m_event);
     }
 
     uint8_t CheckForDeviceRemoval(ID3D12Device* device)

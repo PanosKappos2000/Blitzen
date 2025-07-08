@@ -210,13 +210,15 @@ namespace BlitzenDX12
     {
         DX12WRAPPER<ID3D12CommandAllocator> m_graphicsCmdAlloc;
         DX12WRAPPER<ID3D12GraphicsCommandList4> m_graphicsCmdList;
+        FENCE m_frameFence;
 
         DX12WRAPPER<ID3D12CommandAllocator> m_copyCmdAlloc;
         DX12WRAPPER<ID3D12GraphicsCommandList> m_copyCmdList;
-
-        FENCE m_frameFence;
-
         FENCE m_copyFence;
+
+		DX12WRAPPER<ID3D12CommandAllocator> m_computeCmdAlloc;
+        DX12WRAPPER<ID3D12GraphicsCommandList> m_computeCmdList;
+        FENCE m_computeFence;
 
         uint8_t Init(ID3D12Device* device);
     };

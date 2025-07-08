@@ -14,14 +14,14 @@ namespace BlitzenDX12
 		HRESULT commandAllocatorRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(m_graphicsCmdAlloc.ReleaseAndGetAddressOf()));
 		if (FAILED(commandAllocatorRes))
 		{
-            BLIT_ERROR("Failed to create graphics command allocator");
+            BLIT_ERROR("%s: Failed to create graphics command allocator", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return LOG_ERROR_MESSAGE_AND_RETURN(commandAllocatorRes);
 		}
         
 		HRESULT commandListRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_graphicsCmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_graphicsCmdList.ReleaseAndGetAddressOf()));
         if (FAILED(commandListRes))
         {
-            BLIT_ERROR("Failed to create graphics command list");
+            BLIT_ERROR("%s: Failed to create graphics command list", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return LOG_ERROR_MESSAGE_AND_RETURN(commandListRes);
         }
         m_graphicsCmdList->Close();
@@ -29,22 +29,37 @@ namespace BlitzenDX12
         HRESULT transferCommandAllocatorRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(m_copyCmdAlloc.ReleaseAndGetAddressOf()));
         if (FAILED(transferCommandAllocatorRes))
         {
-            BLIT_ERROR("Failed to create transfer command allocator");
+            BLIT_ERROR("%s: Failed to create transfer command allocator", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(transferCommandAllocatorRes);
         }
         
         HRESULT transferCmdListRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, m_copyCmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_copyCmdList.ReleaseAndGetAddressOf()));
         if (FAILED(transferCmdListRes))
         {
-            BLIT_ERROR("Failed to create transfer command list");
+            BLIT_ERROR("%s: Failed to create transfer command list", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(transferCmdListRes);
         }
         m_copyCmdList->Close();
 
+		HRESULT computeCommandAllocatorRes = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS(m_computeCmdAlloc.ReleaseAndGetAddressOf()));
+        if(FAILED(computeCommandAllocatorRes))
+        {
+            BLIT_ERROR("%s: Failed to create compute command allocator", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(computeCommandAllocatorRes);
+		}
+
+		HRESULT computeCmdListRes = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COMPUTE, m_computeCmdAlloc.Get(), nullptr, IID_PPV_ARGS(m_computeCmdList.ReleaseAndGetAddressOf()));
+        if(FAILED(computeCmdListRes))
+        {
+            BLIT_ERROR("%s: Failed to create compute command list", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(computeCmdListRes);
+		}
+        m_computeCmdList->Close();
+
         HRESULT fenceRes = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_frameFence.m_dx12Handle.ReleaseAndGetAddressOf()));
         if (FAILED(fenceRes))
         {
-            BLIT_ERROR("Failed to create fence");
+            BLIT_ERROR("%s: Failed to create fence", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(fenceRes);
         }
 		m_frameFence.m_value = 1;
@@ -53,11 +68,20 @@ namespace BlitzenDX12
         HRESULT copyFenceRes = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_copyFence.m_dx12Handle.ReleaseAndGetAddressOf()));
         if (FAILED(copyFenceRes))
         {
-            BLIT_ERROR("Failed to create copy fence")
+            BLIT_ERROR("%s: Failed to create copy fence", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(copyFenceRes);
         }
         m_copyFence.m_value = 100;
         m_copyFence.m_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+
+		HRESULT computeFenceRes = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_computeFence.m_dx12Handle.ReleaseAndGetAddressOf()));
+        if (FAILED(computeFenceRes))
+        {
+            BLIT_ERROR("%s: Failed to create compute fence", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(computeFenceRes);
+        }
+		m_computeFence.m_value = 1000;
+		m_copyFence.m_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 
         // success
         return 1;
