@@ -120,6 +120,8 @@ namespace BlitzenEngine
 
             BlitzenCore::BlitMemCopy(&m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount], context.m_pTransform, sizeof(MeshTransform));
 
+			context.cpu_pTransform->position = context.m_pTransform->pos;
+
             auto& transform{ m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount] };
 
             BlitML::quat orientationYaw = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(0.f, -1.f, 0.f), context.cpu_pTransform->eulerAngles.x);

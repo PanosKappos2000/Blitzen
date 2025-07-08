@@ -28,7 +28,7 @@ namespace BlitzenEngine
 		}
 		if (ctx.m_transformInfo.m_type == WorldTransformType::DYNAMIC)
 		{
-			m_movingResidents[transformID].m_isBlocked = BLIT_FAT_FALSE;
+			
 		}
 
 		// Retrieves bounding spheres array
@@ -78,6 +78,11 @@ namespace BlitzenEngine
 		return RESIDENT_CREATE_RES::SUCCESS;
 	}
 
+	void WORLD_RESIDENTS::UpdateMovingResidents(float deltaTime)
+	{
+		
+	}
+
 	MovingResident* RequestMovementComponent(Resident resident)
 	{
 		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
@@ -116,8 +121,7 @@ namespace BlitzenEngine
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position = velocity;// temp hardcoded to think about how this will work
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position += velocity;
 	}
 
 	void ResidentCutVelocityForward(Resident resident)
@@ -127,11 +131,7 @@ namespace BlitzenEngine
 		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
 		if (velocity.z > 0)
 		{
-			velocity.z = 0;
-			if (velocity == 0)
-			{
-				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
-			}
+			//P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
 		}
 	}
 
@@ -140,14 +140,6 @@ namespace BlitzenEngine
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
 		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
-		if (velocity.x > 0)
-		{
-			velocity.x = 0;
-			if (velocity == 0)
-			{
-				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
-			}
-		}
 	}
 
 	void ResidentCutVelocityLeft(Resident resident)
@@ -155,14 +147,6 @@ namespace BlitzenEngine
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
 		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
-		if (velocity.x < 0)
-		{
-			velocity.x = 0;
-			if (velocity == 0)
-			{
-				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
-			}
-		}
 	}
 
 	void ResidentCutVelocityBack(Resident resident)
@@ -175,7 +159,7 @@ namespace BlitzenEngine
 			velocity.z = 0;
 			if (velocity == 0)
 			{
-				P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
+				//P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
 			}
 		}
 	}

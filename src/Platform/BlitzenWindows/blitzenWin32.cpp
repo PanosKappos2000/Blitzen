@@ -98,12 +98,16 @@ namespace BlitzenPlatform
         pPlatform->m_hwnd = hwnd;
 
         // RAW INPUT
-        RAWINPUTDEVICE rid[1];
+        RAWINPUTDEVICE rid[2];
         rid[0].usUsagePage = CE_HID_USAGE_PAGE_GENERIC;  
         rid[0].usUsage = CE_HID_USAGE_MOUSE;      
         rid[0].dwFlags = 0;
-        rid[0].hwndTarget = hwnd;   
-        if (!RegisterRawInputDevices(rid, 1, sizeof(rid[0])))
+        rid[0].hwndTarget = hwnd; 
+		rid[1].usUsagePage = CE_HID_USAGE_PAGE_GENERIC;
+		rid[1].usUsage = CE_HID_USAGE_KEYBOARD;
+		rid[1].dwFlags = 0;
+		rid[1].hwndTarget = hwnd;
+        if (!RegisterRawInputDevices(rid, BLIT_ARRAY_SIZE(rid), sizeof(RAWINPUTDEVICE)))
         {
             MessageBox(hwnd, "Failed to register raw input device", "Error", MB_OK);
             return false;
@@ -262,17 +266,17 @@ namespace BlitzenPlatform
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             case WM_KEYUP:
-            case WM_SYSKEYUP: 
-            {
-                // press or release
-                BlitzenCore::FAT_BOOL bPressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) ? BlitzenCore::FAT_TRUE : BlitzenCore::FAT_FALSE;
-
-                auto key = BlitzenCore::BlitKey(wparam);
-
-                BlitzenCore::InputProcessKey(SYSTEM, key, bPressed);
-
-                break;
-            }
+            //case WM_SYSKEYUP: 
+            //{
+            //    // press or release
+            //    BlitzenCore::FAT_BOOL bPressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) ? BlitzenCore::FAT_TRUE : BlitzenCore::FAT_FALSE;
+            //
+            //    auto key = BlitzenCore::BlitKey(wparam);
+            //
+            //    BlitzenCore::InputProcessKey(SYSTEM, key, bPressed);
+            //
+            //    break;
+            //}
 
             case WM_INPUT:
             {
@@ -305,6 +309,14 @@ namespace BlitzenPlatform
                     BlitzenCore::DispatchRawInput_MOUSE_MOVED(SYSTEM, mouseDX, mouseDY);
                     break;
                 }
+                case RIM_TYPEKEYBOARD:
+                {
+                    // Extract key information
+                    auto& keyboard = raw->data.keyboard;
+                    auto key = BlitzenCore::BlitKey(keyboard.VKey);
+                    BlitzenCore::InputProcessKey(SYSTEM, key, !(keyboard.Flags & RI_KEY_BREAK));
+                    break;
+				}
                 default:
                 {
                     break;

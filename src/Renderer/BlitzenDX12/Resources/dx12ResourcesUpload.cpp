@@ -560,7 +560,7 @@ namespace BlitzenDX12
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
-			CreateBufferShaderResourceView(device, rwResources.m_movementBuffer.buffer.Get(), ctx, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM));
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_movementBuffer.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM), 0);
 		}
 
 		// INSTANCING DESCRIPTORS

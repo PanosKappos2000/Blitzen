@@ -61,6 +61,7 @@ namespace BlitzenEngine
 		Resident m_residents[BLIT_MAX_WORLD_RESIDENTS];
 		uint32_t m_residentCount{ 0 };
 		MovingResident m_movingResidents[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		uint32_t m_movingResidentCount{ 0 };
 		RenderContainer m_renders;
 		WorldTransformContainer m_transforms;
 		ColliderContainer m_colliders;
@@ -68,6 +69,8 @@ namespace BlitzenEngine
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 
 		RESIDENT_CREATE_RES AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx);
+
+		void UpdateMovingResidents(float deltaTime);
 	};
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr);

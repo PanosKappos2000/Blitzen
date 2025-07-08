@@ -21,6 +21,7 @@ namespace BlitzenWorld
 		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f && camera.viewData.deltaTime <= BlitzenCore::CE_MAX_TIME_STEP);
 
 		BlitzenPlatform::DispatchEvents(context.pPlatform);
+		context.m_controllers[context.m_activeControllerIDX].DispatchHeldDownKeyEvents(pWORLD->deltaTime);
 
 		switch (context.BLITZEN_ENGINE.m_state)
 		{

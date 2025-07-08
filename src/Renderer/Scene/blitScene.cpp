@@ -303,7 +303,7 @@ namespace BlitzenEngine
 
             if (wv == 0)
             {
-                //BlitzenCore::RegisterEvent()
+                pResidents->m_transforms.m_velocities[0] = BlitML::float3{ 1.f, 1.f, 1.f };
             }
             else
             {

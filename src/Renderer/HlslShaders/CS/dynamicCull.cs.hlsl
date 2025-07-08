@@ -21,7 +21,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
     Render obj = ssbo_Renders[objId];
     Surface surface = ssbo_Surfaces[obj.surfaceId];
-    Movement movement = ssbo_Movements[obj.transformId];
+    Movement movement = rwssbo_HostTransform[obj.transformId];
     
     float3 position = ssbo_Transforms[obj.transformId].position;
     
@@ -44,14 +44,12 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         }
         ssbo_Transforms[obj.transformId].orientation = orientation;
         
+        position = rwssbo_HostTransform[obj.transformId].velocity;
+        
         if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT) && position.y > -100.f)
         {
             position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= -100.f ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : -100.f;
-        }
-        
-        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT)
-        {
-            position = position + movement.velocity;
+            rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
         }
     }
     

@@ -68,7 +68,7 @@ namespace BlitzenEngine
 		
 		D3D12_RESOURCE_BARRIER movementBarrier[1]{};
 		BlitzenDX12::CreateResourcesTransitionBarrier(movementBarrier[0], rwResources.m_movementBuffer.buffer.Get(),
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
 		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(movementBarrier), movementBarrier);
 		
 		cmd.m_copyCmdAlloc->Reset();

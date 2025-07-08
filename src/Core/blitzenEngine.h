@@ -302,11 +302,11 @@ namespace BlitzenCore
     };
 }
 
-#define BLIT_FAT_FALSE BlitzenCore::FAT_FALSE;
-#define BLIT_FAT_TRUE BlitzenCore::FAT_TRUE;
+#define BLIT_FAT_FALSE  BlitzenCore::FAT_FALSE
+#define BLIT_FAT_TRUE   BlitzenCore::FAT_TRUE
 
-#define BLIT_BB_TRUE BlitzenCore::BB_TRUE;
-#define BLIT_BB_FALSE BlitzenCore::BB_FALSE;
+#define BLIT_BB_TRUE    BlitzenCore::BB_TRUE
+#define BLIT_BB_FALSE   BlitzenCore::BB_FALSE
 
 using BLIT_STRAIGHTHANDLE = void*;
 

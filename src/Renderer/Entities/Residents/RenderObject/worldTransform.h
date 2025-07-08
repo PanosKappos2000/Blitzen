@@ -34,6 +34,8 @@ namespace BlitzenEngine
 
 		CPU_TRANSFORM m_moveables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t m_moveableCount{ 0 };
+		BlitML::float3 m_velocities[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		BlitML::fRotation m_rotations[BLIT_MAX_WORLD_VARIABLE_COUNT];
 
 		uint32_t m_transparentCount{ 0 };
 

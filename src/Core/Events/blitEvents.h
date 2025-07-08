@@ -6,13 +6,7 @@ namespace BlitzenCore
     void ZeroInitializeEventFunctionPointers(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM);
 
     // Passes the logic to be called when a speicific key is pressed
-    void RegisterKeyPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX);
-
-    // Passes the logic to be called when a specific key is released
-    void RegisterKeyReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyReleaseCallback callback, uint32_t cotrollerIDX);
-
-    // Passes logic for both key press and release
-    void RegisterKeyPressAndReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyPressCallback press, KeyReleaseCallback release, uint32_t controllerIDX);
+    void RegisterKeyEvent(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyCallback callback, uint32_t controllerIDX, KeyCallbackType type);
 
     // Passed logic to be called when one of the mouse buttons is pressed
     void RegisterMouseButtonPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback callback, uint32_t cotrollerIDX);
@@ -40,7 +34,7 @@ namespace BlitzenCore
 
     void UpdateInput(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, double deltaTime, EditorEventContext* pEditor = nullptr);
 
-    void InputProcessKey(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, BlitzenCore::FAT_BOOL bPressed);
+    void InputProcessKey(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, bool bPressed);
 
     void InputProcessButton(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, BlitzenCore::FAT_BOOL bPressed);
 

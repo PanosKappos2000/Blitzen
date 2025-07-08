@@ -89,31 +89,47 @@ namespace BlitzenCore
         }
     }
 
-    void InputProcessKey(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, BlitzenCore::FAT_BOOL bPressed)
+    void InputProcessKey(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, bool bPressed)
     {
-        auto idx = uint16_t(key);
-
-        auto& keyboard = SYSTEM->m_currentKeyboard[idx];
-
-        // If the state changed, fire callback
-        if (keyboard != bPressed)
+        uint32_t idx = uint32_t(key);
+        BlitEventType event{ BlitEventType::MaxTypes };
+        auto& controller = SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX];
+        switch (controller.m_keyData[idx].m_keyCallbackType)
         {
-            BlitEventType event{ BlitEventType::MaxTypes };
-            keyboard = bPressed;
-            auto& controller = SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX];
-
+        case KeyCallbackType::PRESS:
+        {
             if (bPressed)
             {
                 event = controller.KEYPRESS(idx, SYSTEM->pWORLD->deltaTime);
             }
-            else
+            break;
+        }
+        case KeyCallbackType::RELEASE:
+        {
+            if (!bPressed)
             {
                 event = controller.KEYRELEASE(idx, SYSTEM->pWORLD->deltaTime);
             }
-
-            DispatchEventCallback(SYSTEM, event);
-            
+            break;
         }
+        case KeyCallbackType::HOLD:
+        {
+            if (bPressed)
+            {
+				controller.KEYHOLD(idx, SYSTEM->pWORLD->deltaTime);
+            }
+            else
+            {
+				controller.KEYRELEASEHOLD(idx, SYSTEM->pWORLD->deltaTime);
+            }
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+        DispatchEventCallback(SYSTEM, event);
     }
 
     void InputProcessButton(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, BlitzenCore::FAT_BOOL bPressed)
@@ -143,20 +159,31 @@ namespace BlitzenCore
         SYSTEM->m_controllers[SYSTEM->m_activeControllerIDX].WHEEL(zDelta, SYSTEM->pWORLD->deltaTime);
     }
 
-    void RegisterKeyPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyPressCallback callback, uint32_t controllerIDX)
+    void RegisterKeyEvent(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyCallback callback, uint32_t controllerIDX, KeyCallbackType type)
     {
-        SYSTEM->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = callback;
-    }
+        auto& controller = SYSTEM->m_controllers[controllerIDX];
+        auto& keyData = controller.m_keyData[uint32_t(key)];
+        keyData.m_keyCallbackType = type;
 
-    void RegisterKeyReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyReleaseCallback callback, uint32_t controllerIDX)
-    {
-        SYSTEM->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = callback;
-    }
-
-    void RegisterKeyPressAndReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyPressCallback press, KeyReleaseCallback release, uint32_t controllerIDX)
-    {
-        SYSTEM->m_controllers[controllerIDX].m_keyPressPFNs[size_t(key)] = press;
-        SYSTEM->m_controllers[controllerIDX].m_keyReleasePFNs[size_t(key)] = release;
+        switch (type)
+        {
+            case KeyCallbackType::PRESS:
+            case KeyCallbackType::RELEASE:
+            {
+                keyData.m_PFN = callback;
+                break;
+			}
+            case KeyCallbackType::HOLD:
+            {
+                keyData.m_PFN = callback;
+				controller.m_keyHeldIdxs[controller.m_registeredKeyHeldCount++] = uint32_t(key);
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
     }
 
     void RegisterMouseButtonPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback callback, uint32_t controllerIDX)
@@ -399,41 +426,41 @@ namespace BlitzenCore
 
         BlitzenCore::RegisterEvent(SYSTEM, BlitzenCore::BlitEventType::WindowUpdate, ResizeEventCallback);
 
-        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, CloseOnEscapeKeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::RELEASE);
 
-        BlitzenCore::RegisterKeyPressCallback(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, BringBackEditorOnF10, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__ESCAPE, BringBackEditorOnF10, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::RELEASE);
 
         BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
         BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, 1);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, ForwardStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, ForwardStopTestCallback, 1);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, 1, KeyCallbackType::HOLD);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, BackwardStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, BackwardStopTestCallback, 1);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, 1, KeyCallbackType::HOLD);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, LeftStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, LeftStopTestCallback, 1);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, 1, KeyCallbackType::HOLD);
 
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, RightStopTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
-        BlitzenCore::RegisterKeyPressAndReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, RightStopTestCallback, 1);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, 1, KeyCallbackType::HOLD);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__TAB, SnapToMainCharacter, 1);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__TAB, SnapToMainCharacter, 1, KeyCallbackType::PRESS);
 
         BlitzenCore::RegisterMouseButtonPressAndReleaseCallback(SYSTEM, BlitzenCore::MouseButton::Left, OnMouseButtonClickTest, OnMouseButtonReleaseTest, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F8, BringDasherRuntimeDebugWindowOnF9, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F8, BringDasherRuntimeDebugWindowOnF9, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F10, BringBackEditorOnF10, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
 
 #if !defined(BLIT_VK_FORCE)
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, 1);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, 1, KeyCallbackType::PRESS);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
 
-        BlitzenCore::RegisterKeyReleaseCallback(SYSTEM, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F4, DecreasePyramidLevelOnF4ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
 
 #endif
     }

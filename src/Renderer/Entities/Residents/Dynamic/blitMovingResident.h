@@ -6,7 +6,7 @@ namespace BlitzenEngine
 	class MovingResident
 	{
 	public:
-		BlitzenCore::FAT_BOOL m_isBlocked{ BlitzenCore::FAT_FALSE };
+		
 	};
 
 	MovingResident& GetMovingResident_STATIC_ACCESS(uint32_t residentID);

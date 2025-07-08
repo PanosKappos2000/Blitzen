@@ -113,7 +113,7 @@ namespace BlitzenEngine
         BlitML::vec3 position;
         BlitML::vec3 eulerAngles;
         uint32_t movementFlags = 0;
-        uint32_t padding1;
+        uint32_t targetIdx;
     };
 
     struct RenderObject

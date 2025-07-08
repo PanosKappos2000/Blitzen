@@ -5,7 +5,7 @@ struct Movement
     uint movementFlags;
     uint padding1;
 };
-StructuredBuffer<Movement> ssbo_Movements : register(t3);
+RWStructuredBuffer<Movement> rwssbo_HostTransform : register(u14);
 
 cbuffer ObjCountConstant : register(b2)
 {
