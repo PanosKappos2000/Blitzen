@@ -6,6 +6,7 @@
 #include "Renderer/Entities/Interface/blitComponents.h"
 #include "BlitCL/blitDynamicArr.h"
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenEngine
 {
@@ -121,49 +122,11 @@ namespace BlitzenEngine
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
-		BLIT_INFO("Position: %f, %f, %f", P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position.x, P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position.y, P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position.z);
+		auto& residentData = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident];
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position += velocity;
-	}
+		BlitML::float3 worldMove = BlitML::ToVec3(BlitML::Mat4EulerY(residentData.eulerAngles.y) * BlitML::vec4{ velocity, 0.0f });
 
-	void ResidentCutVelocityForward(Resident resident)
-	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
-
-		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
-		if (velocity.z > 0)
-		{
-			//P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
-		}
-	}
-
-	void ResidentCutVelocityRight(Resident resident)
-	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
-
-		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
-	}
-
-	void ResidentCutVelocityLeft(Resident resident)
-	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
-
-		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
-	}
-
-	void ResidentCutVelocityBack(Resident resident)
-	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
-
-		auto& velocity = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
-		if (velocity.z < 0)
-		{
-			velocity.z = 0;
-			if (velocity == 0)
-			{
-				//P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT);
-			}
-		}
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position += worldMove;
 	}
 
 	BlitML::fVelocity GetResidentVelocity(Resident resident)
