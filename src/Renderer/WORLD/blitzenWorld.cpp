@@ -135,13 +135,20 @@ namespace BlitzenWorld
         camera.attachmentSettings.paddingFromAttachment = paddingFromAttachment;
         camera.attachmentSettings.attachmentFreeRotationFlag = freeRotationWhen;
 
+        // The camera starts off at the position of the resident
         camera.viewData.position = BlitzenEngine::GetResidentPosition(residentID);
-        camera.transformData.translation = BlitML::Translate(camera.viewData.position + paddingFromAttachment);
 
+        // The camera starts off at the initial orientation of the resident
         camera.transformData.yawRotation = BlitzenEngine::GetResidentRotation(residentID).x;
 
-        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3{ 0.f, -1.f, 0.f }, camera.transformData.yawRotation, 0);
+		// Rotates the additional padding so that the camera is placed correctly even when the resident is rotated
+        float offsetX = paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
+		float offsetZ = paddingFromAttachment.z * BlitML::Cos(camera.transformData.yawRotation);
+		auto finalPosition = camera.viewData.position + BlitML::vec3(offsetX, paddingFromAttachment.y, offsetZ);
 
+        camera.transformData.translation = BlitML::Translate(finalPosition);
+
+        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3{ 0.f, -1.f, 0.f }, camera.transformData.yawRotation, 0);
         auto pitchOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3{ 1.f, 0.f, 0.f }, camera.transformData.pitchRotation, 0);
 
         // Combine for rotation
@@ -149,6 +156,14 @@ namespace BlitzenWorld
 
         // View matrix
         camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
+    }
+
+    void MoveCameraReleased(BlitML::float3 movement)
+    {
+        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
+
+        auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ movement };
+        camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
     }
 
     void SNAP_MAIN()

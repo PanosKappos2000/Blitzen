@@ -40,7 +40,8 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         }
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT)
         {
-        
+            float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
+            orientation = MultiplyQuat(orientation, orientationRoll);
         }
         ssbo_Transforms[obj.transformId].orientation = orientation;
         

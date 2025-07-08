@@ -24,12 +24,6 @@ namespace BlitzenWorld
         Max = UINT8_MAX
     };
 
-#if defined(DASHER_JOIN)
-    constexpr ControllerState CE_INITIAL_CONTROLLER_STATE = ControllerState::Editor;
-#else
-    constexpr ControllerState CE_INITIAL_CONTROLLER_STATE = ControllerState::Game;
-#endif
-
     struct BLITZEN_SYSTEM_CONTEXT
     {
         BlitzenCore::Engine BLITZEN_ENGINE;
@@ -57,7 +51,7 @@ namespace BlitzenWorld
         BlitzenCore::FAT_BOOL m_currentKeyboard[BlitzenCore::Ce_KeyCallbackCount];
         BlitzenCore::FAT_BOOL m_previousKeyboard[BlitzenCore::Ce_KeyCallbackCount];
         BlitzenCore::FAT_BOOL m_mouseButtonFlags[uint8_t(BlitzenCore::MouseButton::MaxButtons)];
-        ControllerState m_controllerState{ CE_INITIAL_CONTROLLER_STATE };
+        ControllerState m_controllerState{ ControllerState::Editor };
     };
 
     void LoadingLoop(int argc, char** argv, BLITZEN_SYSTEM_CONTEXT& context, BlitzenEngine::DrawContext& drawContext);

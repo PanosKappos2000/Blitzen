@@ -277,14 +277,7 @@ namespace BlitzenCore
 
     static BlitEventType ForwardTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity{ 0.f, 0.f, 1.f }, 0.f);
-
-        return BlitEventType::MaxTypes;
-    }
-
-    static BlitEventType ForwardStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
-    {
-        BlitzenEngine::ResidentCutVelocityForward(resident);
+        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity{ 0.f, 0.f, 1.f }, deltaTime);
 
         return BlitEventType::MaxTypes;
     }
@@ -296,23 +289,9 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType BackwardStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
-    {
-        BlitzenEngine::ResidentCutVelocityBack(resident);
-
-        return BlitEventType::MaxTypes;
-    }
-
     static BlitEventType LeftTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
         BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity(-1.f, 0.f, 0.f), deltaTime);
-
-        return BlitEventType::MaxTypes;
-    }
-
-    static BlitEventType LeftStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
-    {
-        BlitzenEngine::ResidentCutVelocityLeft(resident);
 
         return BlitEventType::MaxTypes;
     }
@@ -324,12 +303,33 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
-    static BlitEventType RightStopTestCallback(BlitzenEngine::Resident resident, float deltaTime)
+    static BlitEventType ForwardMoveEngineCamera(BlitzenEngine::Resident resident, float deltaTime)
     {
-        BlitzenEngine::ResidentCutVelocityRight(resident);
+        BlitzenWorld::MoveCameraReleased(BlitML::fVelocity{ 0.f, 0.f, 1.f });
+
+        return BlitEventType::MaxTypes;
+	}
+
+    static BlitEventType BackwardMoveEngineCamera(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        BlitzenWorld::MoveCameraReleased(BlitML::fVelocity{ 0.f, 0.f, -1.f });
+
+        return BlitEventType::MaxTypes;
+	}
+
+    static BlitEventType LeftMoveEngineCamera(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        BlitzenWorld::MoveCameraReleased(BlitML::fVelocity{ -1.f, 0.f, 0.f });
 
         return BlitEventType::MaxTypes;
     }
+
+    static BlitEventType RightMoveEngineCamera(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        BlitzenWorld::MoveCameraReleased(BlitML::fVelocity{ 1.f, 0.f, 0.f });
+
+        return BlitEventType::MaxTypes;
+	}
 
     static BlitEventType FreezeFrustumOnF1KeyPressCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
@@ -433,16 +433,16 @@ namespace BlitzenCore
         BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, BlitzenCore::CE_INITIAL_CONTROLLER_ID);
         BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, 1);
 
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, 1, KeyCallbackType::HOLD);
 
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, 1, KeyCallbackType::HOLD);
 
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, 1, KeyCallbackType::HOLD);
 
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, 1, KeyCallbackType::HOLD);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__TAB, SnapToMainCharacter, 1, KeyCallbackType::PRESS);

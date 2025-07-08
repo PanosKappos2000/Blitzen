@@ -41,4 +41,6 @@ namespace BlitzenWorld
 	void RotateResidentAttachedCamera(BlitzenEngine::Resident resident, int32_t movementX, int32_t movementY);
 
 	void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen);
+
+	void MoveCameraReleased(BlitML::float3 movement);
 }

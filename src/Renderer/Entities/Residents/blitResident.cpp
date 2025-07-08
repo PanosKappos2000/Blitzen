@@ -121,6 +121,8 @@ namespace BlitzenEngine
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
+		BLIT_INFO("Position: %f, %f, %f", P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position.x, P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position.y, P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position.z);
+
 		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position += velocity;
 	}
 
@@ -175,7 +177,7 @@ namespace BlitzenEngine
 	{
 		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
-		return P_WORLD_RESIDENTS->m_transforms.m_transforms[resident].pos;
+		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
 	}
 
 	bool CheckResidentVelocity(Resident resident)

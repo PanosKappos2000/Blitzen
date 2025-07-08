@@ -52,9 +52,13 @@ namespace BlitzenEngine
     void UpdateResidentAttachedCamera(Camera& camera, float deltaTime)
     {
         //if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
-        auto position = GetResidentPosition(camera.attachmentSettings.attachmentID) + camera.attachmentSettings.paddingFromAttachment;
-        
-        camera.viewData.position = BlitML::ToVec3(position);
+        auto position = GetResidentPosition(camera.attachmentSettings.attachmentID);
+
+        float offsetX = camera.attachmentSettings.paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
+        float offsetZ = camera.attachmentSettings.paddingFromAttachment.z * BlitML::Cos(camera.transformData.yawRotation);
+		auto finalPosition = position + BlitML::vec3{ offsetX, camera.attachmentSettings.paddingFromAttachment.y, offsetZ };
+
+        camera.viewData.position = BlitML::ToVec3(finalPosition);
 
         // Creates translation
         camera.transformData.translation = BlitML::Translate(camera.viewData.position);
@@ -68,18 +72,7 @@ namespace BlitzenEngine
 
     void UpdateCamera(Camera& camera, float deltaTime)
     {
-        if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
-        {
-            // Calculates and adds velocity
-            auto rawVelocity = GetResidentVelocity(camera.attachmentSettings.attachmentID) * deltaTime * 40.f;
-            //rawVelocity += camera.attachmentSettings.paddingFromAttachment;
-
-            auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ rawVelocity };
-            camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
-
-            // Creates translation
-            camera.transformData.translation = BlitML::Translate(camera.viewData.position);
-        }
+        camera.transformData.translation = BlitML::Translate(camera.viewData.position);
 
         // Recreation of view matrix
         camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);

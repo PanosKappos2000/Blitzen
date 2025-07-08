@@ -157,7 +157,7 @@ namespace BlitzenEngine
 
     struct SHADER_GAME_LOGIC_UPDATES
     {
-        MeshTransform* pGpuTransorms;
+        CPU_TRANSFORM* pGpuTransorms;
         uint32_t m_transformCount;
     };
     void RequestGameLogicUpdatesFromShader(RendererPtrType, SHADER_GAME_LOGIC_UPDATES& outUpdate);

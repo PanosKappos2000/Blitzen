@@ -91,27 +91,36 @@ namespace BlitzenEngine
 		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
 		auto& roResources{ pRenderer->m_roResources };
 
+		BlitzenDX12::PlaceFence(cmd.m_frameFence.m_value, pRenderer->m_commandQueue.Get(), cmd.m_frameFence.m_dx12Handle.Get(), cmd.m_frameFence.m_event);
+
+		cmd.m_graphicsCmdAlloc->Reset();
+		cmd.m_graphicsCmdList->Reset(cmd.m_graphicsCmdAlloc.Get(), nullptr);
+
 		D3D12_RESOURCE_BARRIER resourceBarriers[1]{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
 
 		cmd.m_copyCmdAlloc->Reset();
 		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
 
-		cmd.m_copyCmdList->CopyBufferRegion(pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_buffer.Get(), 0, rwResources.m_transformBuffer.buffer.Get(), 0,
+		cmd.m_copyCmdList->CopyBufferRegion(pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_buffer.Get(), 0, rwResources.m_movementBuffer.buffer.Get(), 0,
 			outUpdate.m_transformCount * sizeof(MeshTransform));
 
 		cmd.m_copyCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };
 		pRenderer->m_transferCommandQueue->ExecuteCommandLists(1, commandLists);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
-
 		// Fence until transforms are ready
 		BlitzenDX12::PlaceFence(cmd.m_copyFence.m_value, pRenderer->m_transferCommandQueue.Get(), cmd.m_copyFence.m_dx12Handle.Get(), cmd.m_copyFence.m_event);
 
-		BlitzenCore::BlitMemCopy(outUpdate.pGpuTransorms, pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_pMapped, outUpdate.m_transformCount * sizeof(MeshTransform));
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
+
+		cmd.m_graphicsCmdList->Close();
+		ID3D12CommandList* computeCommandLists[] = { cmd.m_graphicsCmdList.Get() };
+		pRenderer->m_commandQueue->ExecuteCommandLists(1, computeCommandLists);
+
+		BlitzenCore::BlitMemCopy(outUpdate.pGpuTransorms, pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_pMapped, outUpdate.m_transformCount * sizeof(CPU_TRANSFORM));
 	}
 
 	BlitML::vec2 UpdateRendererWindowData(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)
