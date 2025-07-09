@@ -3,6 +3,10 @@ StructuredBuffer<float4> ssbo_VtxNormals : register(t10);
 StructuredBuffer<float4> ssbo_VtxTangents : register(t11);
 StructuredBuffer<float2> ssbo_VtxTexCoords : register(t12);
 
+#ifdef TERRAIN
+    StructuredBuffer<float3> ssbo_TerrainVtxPositions : register(t16);
+#endif
+
 #ifdef OPAQUE_STATIC
 cbuffer ObjId : register(b3)
 {

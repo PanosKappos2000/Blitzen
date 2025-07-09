@@ -98,6 +98,29 @@ namespace BlitzenEngine
 		cmd.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(presentBarriers), presentBarriers);
 	}
 
+	void RenderTerrain(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t terrainCount)
+	{
+		auto cmdList = pRenderer->m_cmdContext[pRenderer->m_currentFrame].m_graphicsCmdList;
+		auto& rwResources = pRenderer->m_rwResources[pRenderer->m_currentFrame];
+
+		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_TERRAIN_VERTICES_ID, pRenderer->m_descriptorContext.m_terrainVertexTableHandle);
+
+		// Pipeline
+		cmdList->SetPipelineState(pRenderer->m_pipelineContext.m_terrainDrawPso.Get());
+		// Primitives
+		cmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		// Index buffer
+		cmdList->IASetIndexBuffer(&pRenderer->m_roResources.m_terrainIdxBuffer.m_view);
+		// DRAW
+		cmdList->DrawInstanced(terrainCount, 1, 0, 0);
+	}
+#if !defined(NDEBUG)
+	void RENDER_BOUNDING_SPHERES_DEBUG(BlitzenDX12::Dx12Renderer* pRenderer)
+	{
+		auto cmdList = pRenderer->m_cmdContext[pRenderer->m_currentFrame].m_graphicsCmdList;
+	}
+#endif
+
 	void RendererWorkIdle(BlitzenDX12::Dx12Renderer* pRenderer, RENDERER_IDLE_MODE mode)
 	{
 		UINT frame{ pRenderer->m_currentFrame };

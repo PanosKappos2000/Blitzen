@@ -37,6 +37,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/WORLD/blitzenWorld.cpp"
                 "src/Core/blitzenWorld/blitzenVariableUpdate.cpp"
                 "src/Core/BlitzenWorld/blitzenSystemDispatcher.h"
+                "src/Core/BlitzenWorld/blitzenSystemDispatcher.cpp"
                 # DASHER UI
                 "src/Core/Dasher/Interface/dasherState.h"
                 "src/Core/Dasher/Interface/dasherInterface.h"
@@ -59,6 +60,7 @@ add_executable(BlitzenEngine
                 "src/BlitCL/blitArrayIterator.h"
                 "src/BlitCL/blitclDebug.h"
                 "src/BlitCL/blitLinearAllocator.h"
+                "src/BlitCL/blitQueue.h"
 
                 # BLITZEN MATH LIBRARY
                 "src/BlitzenMathLibrary/blitML.h"
@@ -111,6 +113,11 @@ add_executable(BlitzenEngine
                 "src/Renderer/Resources/Mesh/blitMeshPrimitive.cpp" 
                 "src/Renderer/Resources/Mesh/blitTriangle.cpp"
                 "src/Renderer/Resources/Mesh/blitMeshPrimitive.h"
+
+                # TERRAIN
+                "src/Renderer/Resources/Terrain/blitTerrain.h"
+                "src/Renderer/Resources/Terrain/Generator/blitTerrainGen.cpp" 
+                "src/Renderer/Resources/Terrain/blitTerrain.cpp"
 
                 # GENERATOR
                 "src/Renderer/Resources/Mesh/Generator/blitLODDegrader.cpp" 
@@ -238,7 +245,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/BlitCL/blitQueue.h" "src/Core/BlitzenWorld/blitzenSystemDispatcher.cpp" "src/Renderer/Resources/Terrain/blitTerrain.h" "src/Renderer/Resources/Terrain/Generator/blitTerrainGen.cpp" "src/Renderer/Resources/Terrain/blitTerrain.cpp")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

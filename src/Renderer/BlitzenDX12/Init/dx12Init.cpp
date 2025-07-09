@@ -113,6 +113,9 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE textureSrvsRange{};
 		CreateDescriptorRange(textureSrvsRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, CE_TEXTURE_DESCRIPTOR_COUNT, BLIT_HLSL_TEXTURE_DESCRIPTORS_REGISTER);
 
+		D3D12_DESCRIPTOR_RANGE terrainDescriptors[1]{};
+		CreateDescriptorRange(terrainDescriptors[0], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_TERRAIN_VERTEX_POSITIONS_REGISTER);
+
 		// ROOT PARAMS
 		BlitCL::DynamicArray<D3D12_ROOT_PARAMETER> opaqueDrawRootParams{ CE_GRAPHICS_ODS_ROOT_COUNT, {} };
 		CreateRootParameterDescriptorTable(opaqueDrawRootParams[CE_GRAPHICS_ODS_VTX_TABLE_ID], opaqueSrvRanges, CE_VERTEX_ODS_RANGE_COUNT, D3D12_SHADER_VISIBILITY_VERTEX);
@@ -124,6 +127,7 @@ namespace BlitzenDX12
 			D3D12_SHADER_VISIBILITY_VERTEX);
 		CreateRootParameterPushConstants(opaqueDrawRootParams[CE_GRAPHICS_ODS_DYNAMIC_OBJIDX_ID], BLIT_HLSL_OPAQUE_DYNAMIC_OBJID_REGISTER, 0, CE_DRAW_OBJ_ID_32_BIT_COUNT,
 			D3D12_SHADER_VISIBILITY_VERTEX);
+		CreateRootParameterDescriptorTable(opaqueDrawRootParams[CE_GRAPHICS_TERRAIN_VERTICES_ID], terrainDescriptors, BLIT_ARRAY_SIZE(terrainDescriptors), D3D12_SHADER_VISIBILITY_VERTEX);
 
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
@@ -310,8 +314,17 @@ namespace BlitzenDX12
 		HRESULT dynamicCmdRes{ device->CreateCommandSignature(&sigDesc, ctx.m_graphicsRoot.Get(), IID_PPV_ARGS(ctx.m_dynamicDrawCmdSignature.ReleaseAndGetAddressOf())) };
 		if (FAILED(dynamicCmdRes))
 		{
-			BLIT_ERROR("%s: Filaed to create dynamic draw command signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_ERROR("%s: Failed to create dynamic draw command signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return LOG_ERROR_MESSAGE_AND_RETURN(dynamicCmdRes);
+		}
+
+		D3D12_INDIRECT_ARGUMENT_DESC indirectDescsTerrain[1]{};
+		indirectDescsTerrain[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+		HRESULT terrainCmdRes{ device->CreateCommandSignature(&sigDesc, ctx.m_graphicsRoot.Get(), IID_PPV_ARGS(ctx.m_terrainDrawCmdSignature.ReleaseAndGetAddressOf())) };
+		if (FAILED(terrainCmdRes))
+		{
+			BLIT_ERROR("%s: Failed to create terrain draw command signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return LOG_ERROR_MESSAGE_AND_RETURN(terrainCmdRes);
 		}
 
 		// opaque draw inst cmd signature
@@ -352,9 +365,9 @@ namespace BlitzenDX12
 
 	uint8_t CreatePipelines(ID3D12Device* device, PipelineContext& context)
 	{
-		if (!CreateOpaqueGraphicsPipeline(device, context))
+		if (!CreateGraphicsPipelines(device, context))
 		{
-			BLIT_ERROR("%s: Failed to create opaque grahics pipeline", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_ERROR("%s: Failed to create graphics pipelines", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
@@ -633,6 +646,18 @@ namespace BlitzenDX12
 		if (CreateIndexBuffer(device, roResources.m_idxBuffer, BlitzenCore::Ce_MaxWorldVertexIndicesCount) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create index buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (CreateSSBO<BlitzenEngine::VtxPos>(device, roResources.m_terrainVtxBuffer, BlitzenEngine::CE_MAX_TERRAIN_VERTICES) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create terrain vertex buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (CreateIndexBuffer(device, roResources.m_terrainIdxBuffer, BlitzenEngine::CE_MAX_TERRAIN_INDICES) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create terrain index buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 

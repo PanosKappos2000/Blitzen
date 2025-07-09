@@ -23,6 +23,10 @@ namespace BlitzenDX12
 
         INDEX_BUFFER m_clusterIdxBuffer{};
 
+        SSBO m_terrainVtxBuffer{};
+
+        INDEX_BUFFER m_terrainIdxBuffer{};
+
         SSBO m_surfaceBuffer{};
         SSBO m_LODBuffer{};
         SSBO m_matBuffer{};
@@ -113,6 +117,9 @@ namespace BlitzenDX12
         SIZE_T m_texturesTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE m_texturesTableHandle;
 
+        SIZE_T m_terrainVertexTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_terrainVertexTableHandle;
+
         SIZE_T m_blitzenLogoTextureTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE m_blitzenLogoTextureTableHandle;
 
@@ -198,6 +205,9 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12CommandSignature> m_transparentDrawCmdSignature;
         DX12WRAPPER<ID3D12PipelineState> m_transparentDrawPso;
+
+        DX12WRAPPER<ID3D12CommandSignature> m_terrainDrawCmdSignature;
+        DX12WRAPPER<ID3D12PipelineState> m_terrainDrawPso;
 
         D3D12_RENDER_PASS_RENDER_TARGET_DESC m_renderTargetPassDesc[ce_framesInFlight]{};
         D3D12_RENDER_PASS_DEPTH_STENCIL_DESC m_depthTargetPassDesc[ce_framesInFlight]{};

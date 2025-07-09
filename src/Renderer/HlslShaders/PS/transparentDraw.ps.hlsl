@@ -9,7 +9,7 @@ struct PSOutput
 
 //#define NO_PS_TEST
 
-Texture2D<float4> tex_Textures[BLIT_MAX_WORLD_TEXTURE_RESOURCES] : register(t16);
+Texture2D<float4> tex_Textures[BLIT_MAX_WORLD_TEXTURE_RESOURCES] : register(t17);
 
 PSOutput main(VSOutput input)
 {

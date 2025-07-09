@@ -297,7 +297,7 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx)
+    uint8_t CreateGraphicsPipelines(ID3D12Device* device, PipelineContext& ctx)
     {
         BlitCL::String vsBytes;
         size_t vsSize{ 0 };
@@ -357,6 +357,41 @@ namespace BlitzenDX12
         {
             BLIT_ERROR("%s: Failed to create dynamic draw pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
+        }
+
+        vsBytes.Clear();
+        vsSize = 0;
+
+        vsSize = GetShaderBytes(device, "HlslShaders/VS/terrainDraw.vs.hlsl.bin", vsBytes);
+        if (vsSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create terrain draw vertex shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        psBytes.Clear();
+        psSize = 0;
+
+        psSize = GetShaderBytes(device, "HlslShaders/PS/terrainDraw.ps.hlsl.bin", psBytes);
+        if (psSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create terrain draw pixel shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        vsCode.BytecodeLength = vsSize;
+        vsCode.pShaderBytecode = vsBytes.Data();
+        psoDesc.VS = vsCode;
+
+        psCode.BytecodeLength = psSize;
+        psCode.pShaderBytecode = psBytes.Data();
+        psoDesc.PS = psCode;
+
+        HRESULT terrainPsoRes{ device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_terrainDrawPso.ReleaseAndGetAddressOf())) };
+        if (FAILED(terrainPsoRes))
+        {
+            BLIT_ERROR("%s: Failed to create terrain draw pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(terrainPsoRes);
         }
 
         if constexpr (BlitzenCore::Ce_InstanceCulling)

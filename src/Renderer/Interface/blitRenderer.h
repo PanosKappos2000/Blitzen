@@ -13,6 +13,10 @@ namespace BlitzenEngine
 
         using RendererType = BlitzenVulkan::VulkanRenderer;
 
+        using RenderingLoadingContextMesh = BlitzenVulkan::LoadingContextMesh;
+
+        using RenderingLoadingContextRenderObjects = BlitzenVulkan::LoadingContextRenderObjects;
+
     #elif defined(_WIN32) && defined(BLIT_VK_FORCE)
 
         using Renderer = BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>;
@@ -21,6 +25,10 @@ namespace BlitzenEngine
 
         using RendererType = BlitzenVulkan::VulkanRenderer;
 
+        using RenderingLoadingContextMesh = BlitzenVulkan::LoadingContextMesh;
+
+        using RenderingLoadingContextRenderObjects = BlitzenVulkan::LoadingContextRenderObjects;
+
     #elif defined(_WIN32) && defined(BLIT_GL_LEGACY_OVERRIDE) 
 
         using Renderer = BlitCL::SmartPointer<BlitzenGL::OpenglRenderer, BlitzenCore::AllocationType::Renderer>;
@@ -28,6 +36,10 @@ namespace BlitzenEngine
         using RendererPtrType = BlitzenGL::OpenglRenderer*;
 
 		using RendererType = BlitzenGL::OpenglRenderer;
+
+        using RenderingLoadingContextMesh = BlitzenGL::LoadingContextMesh;
+
+        using RenderingLoadingContextRenderObjects = BlitzenGL::LoadingContextRenderObjects;
 
     #elif defined(_WIN32)
 
@@ -178,6 +190,14 @@ namespace BlitzenEngine
         BLIT_RENDER_TYPE m_renderType{ BLIT_RENDER_TYPE::RENDER_OPAQUE };
     };
     void RenderObjects(RendererPtrType pRenderer, RENDER_CONTEXT& renderContext);
+
+    void RenderTerrain(RendererPtrType pRenderer, uint32_t terrainCount);
+
+#if !defined(NDEBUG)
+    void RENDER_BOUNDING_SPHERES_DEBUG(RendererPtrType pRenderer);
+#else
+    #define RENDER_BOUNDING_SPHERES_DEBUG(pRenderer)
+#endif
 
     void FinalizeRendering(RendererPtrType pRenderer);
 

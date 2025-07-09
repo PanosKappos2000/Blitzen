@@ -36,7 +36,7 @@ namespace BlitzenDX12
 	uint8_t CreateTriangleGraphicsPipeline(ID3D12Device* device, DX12WRAPPER<ID3D12RootSignature>& rootSignature, ID3D12PipelineState** ppPso);
 
     // Main drawing pipeline creation
-    uint8_t CreateOpaqueGraphicsPipeline(ID3D12Device* device, PipelineContext& ctx);
+    uint8_t CreateGraphicsPipelines(ID3D12Device* device, PipelineContext& ctx);
 
     uint8_t CreateBoundingSphereDebugDrawPipeline(ID3D12Device* device, PipelineContext& ctx);
 
