@@ -56,6 +56,10 @@ namespace BlitzenWorld
             return false;
         }
 
+        //BlitzenEngine::RenderingLoadingContextMesh loadingContextMesh{};
+        //BlitzenEngine::AllocateLoadingContextMesh(pRenderer, loadingContextMesh);
+        //BlitzenEngine::UploadToVertexPositionsStagingBuffer(loadingContextMesh, pResources->m_meshContext.m_triangles.m_vertexPositions, pResources->m_meshContext.m_triangles.m_vertexCount);
+
         uint32_t kittenMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenCore::Ce_DefaultKittenMeshName) };
         if (kittenMeshId == BlitzenCore::Ce_MaxMeshCount)
         {

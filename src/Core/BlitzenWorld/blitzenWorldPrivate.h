@@ -44,12 +44,10 @@ namespace BlitzenWorld
 
         // EVENTS
         EventCallback m_eventCallbacks[uint32_t(BlitzenCore::BlitEventType::MaxTypes)]{};
-        BlitzenCore::Controller m_controllers[BlitzenCore::CE_STARTING_CONTROLLER_COUNT];
+        BlitzenCore::Controller* m_controllers;
         uint32_t m_activeControllerIDX{ BlitzenCore::CE_INITIAL_CONTROLLER_ID };
         uint32_t m_controllerCount{ BlitzenCore::CE_STARTING_CONTROLLER_COUNT };
         EditorCallback m_editorButtonCallbacks[BlitzenCore::Ce_EditorButtonEventTypeCount]{ [](BLIT_STRAIGHTHANDLE)->uint32_t {return BlitzenCore::CE_INITIAL_CONTROLLER_ID; } };
-        BlitzenCore::FAT_BOOL m_currentKeyboard[BlitzenCore::Ce_KeyCallbackCount];
-        BlitzenCore::FAT_BOOL m_previousKeyboard[BlitzenCore::Ce_KeyCallbackCount];
         BlitzenCore::FAT_BOOL m_mouseButtonFlags[uint8_t(BlitzenCore::MouseButton::MaxButtons)];
         ControllerState m_controllerState{ ControllerState::Editor };
     };

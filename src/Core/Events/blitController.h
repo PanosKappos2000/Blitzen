@@ -80,5 +80,10 @@ namespace BlitzenCore
         void DispatchHeldDownKeyEvents(float deltaTime);
 	};
 
+    struct ControllerContainer
+    {
+        Controller m_controllers[BlitzenCore::CE_STARTING_CONTROLLER_COUNT];
+    };
+
     BlitEventType BLITZEN_ENGINE_CONTROLLED_RESIDENT_VIEW(BlitzenEngine::Resident resident, int16_t screenCoordX, int16_t screenCoordY, BlitKey key);
 }

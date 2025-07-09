@@ -11,9 +11,9 @@ namespace BlitzenCore
             SYSTEM->m_eventCallbacks[i] = [](BLIT_STRAIGHTHANDLE, BlitEventType type)->uint8_t {return false; };
         }
 
-        for (auto& controller : SYSTEM->m_controllers)
+        for (uint32_t ctrlID = 0; ctrlID < CE_STARTING_CONTROLLER_COUNT; ++ctrlID)
         {
-            controller.InitControllerPFNs();
+            SYSTEM->m_controllers[ctrlID].InitControllerPFNs();
         }
     }
 
@@ -214,8 +214,6 @@ namespace BlitzenCore
 
     void UpdateInput(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, double deltaTime, EditorEventContext* pEditorEvents)
     {
-        BlitzenCore::BlitMemCopy(SYSTEM->m_previousKeyboard, SYSTEM->m_currentKeyboard, sizeof(SYSTEM->m_currentKeyboard));
-
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
 
         if (pEditorEvents != nullptr)
