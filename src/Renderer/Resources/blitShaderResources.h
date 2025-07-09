@@ -148,14 +148,4 @@ namespace BlitzenEngine
         BlitML::vec3 m_minBounds;
         BlitML::vec3 m_maxBounds;
     };
-
-    struct Velocity
-    {
-        BlitML::vec3 m_velocity;
-    };
-
-    struct Rotation
-    {
-        BlitML::fRotation m_rotation;
-    };
 }

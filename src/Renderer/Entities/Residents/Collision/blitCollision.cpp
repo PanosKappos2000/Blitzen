@@ -37,39 +37,32 @@ namespace BlitzenEngine
     void CollisionGrid::PlaceStatics(BlitzenEngine::RenderObject* renderArr, uint32_t count, BlitzenEngine::MeshTransform* transformArr)
     {
         uint32_t outOfBounds = 0;
-        uint32_t claustrophobic = 0;
-        uint32_t badColliderIndex = 0;
         uint32_t badLogic = 0;
+
+        // Array of arrays.
+        // Mother array represents all the cells
+        // Children arrays represent the indices that each cell holds
         BlitCL::DynamicArray<BlitCL::DynamicArray<uint32_t>> colliderIndices{ CE_COLLISION_GRID_CELL_COUNT, {} };
-        // Loop through all static objects
+        
         for (uint32_t i = 0; i < count; ++i)
         {
             BlitML::float3 position = transformArr[renderArr[i].transformId].pos;
 
-            if ((int32_t)position.x > m_maxBounds || (int32_t)position.x < m_minBounds)
+            // Residents that are not inside the grid, cannot be placed inside a cell.
+            if ((int32_t)position.x > m_maxBounds || (int32_t)position.x < m_minBounds || (int32_t)position.y > m_maxBounds || (int32_t)position.y < m_minBounds ||
+                (int32_t)position.z > m_maxBounds || (int32_t)position.z < m_minBounds)
             {
-                //BLIT_WARN("%s: Object out of collision grid bounds", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                outOfBounds++;
-                continue;
-            }
-            if ((int32_t)position.y > m_maxBounds || (int32_t)position.y < m_minBounds)
-            {
-                //BLIT_WARN("%s: Object out of collision grid bounds", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                outOfBounds++;
-                continue;
-            }
-            if ((int32_t)position.z > m_maxBounds || (int32_t)position.z < m_minBounds)
-            {
-                //BLIT_WARN("%s: Object out of collision grid bounds", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
                 outOfBounds++;
                 continue;
             }
 
+            // Moves world coordinates to [0, GRID_EXTENT]
             position -= BlitML::float3(float(m_minBounds));
 
+            // Sanity. The first check should have removed such objects. If not, I am doing something wrong
             BLIT_ASSERT_MESSAGE(position > 0.f || position < CE_COLLISION_GRID_EXTENT, "Something went wrong with collision grid calculations");
 
-            // Calculates the grid cell the object belongs to based on position
+            // Creates an index for each axis based on resident position
             uint32_t cellPosX = (position.x / CE_COLLISION_GRID_CELL_EXTENT) < CE_COLLISION_GRID_CELL_FLAT_COUNT ? 
                 uint32_t(position.x / CE_COLLISION_GRID_CELL_EXTENT): CE_COLLISION_GRID_CELL_FLAT_COUNT - 1;
             uint32_t cellPosY = (position.y / CE_COLLISION_GRID_CELL_EXTENT) < CE_COLLISION_GRID_CELL_FLAT_COUNT ? 
@@ -77,7 +70,10 @@ namespace BlitzenEngine
             uint32_t cellPosZ = (position.z / CE_COLLISION_GRID_CELL_EXTENT) < CE_COLLISION_GRID_CELL_FLAT_COUNT ? 
                 uint32_t(position.z / CE_COLLISION_GRID_CELL_EXTENT) : CE_COLLISION_GRID_CELL_FLAT_COUNT - 1;
 
+            // Flat index full
             uint32_t cellIndex = cellPosX + cellPosY * CE_COLLISION_GRID_CELL_FLAT_COUNT + cellPosZ * CE_COLLISION_GRID_CELL_FLAT_COUNT * CE_COLLISION_GRID_CELL_FLAT_COUNT;
+
+            // Something wrong with indexing logic
             if (cellIndex >= CE_COLLISION_GRID_CELL_COUNT)
             {
                 badLogic++;
@@ -85,7 +81,7 @@ namespace BlitzenEngine
             }
 
             auto& grid = m_grids[cellIndex];
-
+            // Places index into collision cell
             colliderIndices[cellIndex].PushBack(i);
             m_grids[cellIndex].colliderCount++;
         }
@@ -93,15 +89,21 @@ namespace BlitzenEngine
         uint32_t offset = 0;
         uint32_t cellIndex = 0;
         uint32_t finalCount = 0;
+        // Flat array translator for the 2D dynamic array from before
         BlitCL::DynamicArray<uint32_t> inLineIndices{ BLIT_MAX_WORLD_RESIDENTS };
+
         for (auto& array : colliderIndices)
         {
+            // For each array saves static offset and updates offset with the size of the array
             m_grids[cellIndex++].colliderOffset = offset;
             offset += uint32_t(array.GetSize()); 
         }
 
+        // The offset will be the full count of all objects in the grid by the end of the above loop
+        // It's used to allocate space for all indices
         AllocStatics(offset, inLineIndices.Data());
 
+        // Copies the dynamic array to the raw pointer style array
         offset = 0;
         for (auto& array : colliderIndices)
         {
@@ -123,13 +125,13 @@ namespace BlitzenEngine
         m_colliderIndicesTotal += count;
     }
 
-    void ColliderContainer::AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, bool isStatic)
+    void ColliderContainer::AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, RENDER_OBJECT_TYPE type)
     {
         auto& newcomer{ m_boundingSpheres[renderObjectID] };
 
         BlitzenCore::BlitMemCopy(&newcomer, pSphere, sizeof(BoundingSphere));
 
-		if (isStatic)
+		if (type == RENDER_OBJECT_TYPE::OPAQUE_STATIC)
 		{
 			newcomer.m_center = BlitML::RotateQuat(newcomer.m_center, transform.orientation) * transform.scale + transform.pos;
 			newcomer.m_radius *= transform.scale;
@@ -169,7 +171,7 @@ namespace BlitzenEngine
         }
     }
 
-    void CollisionGrid::BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(Collider* colliderArr)
+    void CollisionGrid::BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(WVColliderResponse* colliderArr)
     {
         
     }

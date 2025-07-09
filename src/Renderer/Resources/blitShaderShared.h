@@ -141,6 +141,13 @@ enum BLIT_RESIDENT_MOVEMENT_FLAG_BITS
 	BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT = 1 << 4,
 };
 
+enum ColliderType
+{
+	AABB,
+	Capsule,
+	Sphere
+};
+
 #ifdef __cplusplus
 	enum BLITZEN_COLLISION_IDENTIFIER : uint64_t
 	{

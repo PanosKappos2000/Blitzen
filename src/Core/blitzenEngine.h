@@ -119,6 +119,7 @@ namespace BlitzenCore
         WV = 12,
         TRIANGLE = 13,
         Texture = 14,
+        Terrain = 15,
 
         MaxTypes = 100
     };

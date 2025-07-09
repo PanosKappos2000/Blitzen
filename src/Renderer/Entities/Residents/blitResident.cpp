@@ -52,7 +52,7 @@ namespace BlitzenEngine
 			return RESIDENT_CREATE_RES::RENDER_OBJECT_CREATION_FAILED;
 		}
 
-		m_colliders.AddRenderObjectBoundingSphere(&bounds, m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type != RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC);
+		m_colliders.AddRenderObjectBoundingSphere(&bounds, m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type);
 
 		m_residents[m_residentCount++] = renderObjectId;
 

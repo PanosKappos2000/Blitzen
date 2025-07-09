@@ -78,6 +78,9 @@ namespace BlitzenWorld
         }
 #endif
 
+        pResources->m_terrainContainer.ALLOC();
+        BlitGenerator::GenerateTerrainMesh(pResources->m_terrainContainer);
+
         BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
 
         // Success

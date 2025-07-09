@@ -238,7 +238,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/BlitCL/blitQueue.h" "src/Core/BlitzenWorld/blitzenSystemDispatcher.cpp")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/BlitCL/blitQueue.h" "src/Core/BlitzenWorld/blitzenSystemDispatcher.cpp" "src/Renderer/Resources/Terrain/blitTerrain.h" "src/Renderer/Resources/Terrain/Generator/blitTerrainGen.cpp" "src/Renderer/Resources/Terrain/blitTerrain.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -304,7 +304,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             LOAD_CMD_ARG_GLTF_FILEPATHS
                             CUSTOM_FILE_TEST
                             #COLLISION_TEST
-                            BLIT_GAME_TEST
+                            #BLIT_GAME_TEST
 
                             DASHER_JOIN
                             DASHER_USE_DEAR
