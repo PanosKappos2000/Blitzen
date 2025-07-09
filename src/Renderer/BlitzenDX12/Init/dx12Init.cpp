@@ -113,8 +113,8 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE textureSrvsRange{};
 		CreateDescriptorRange(textureSrvsRange, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, CE_TEXTURE_DESCRIPTOR_COUNT, BLIT_HLSL_TEXTURE_DESCRIPTORS_REGISTER);
 
-		D3D12_DESCRIPTOR_RANGE terrainDescriptors[1]{};
-		CreateDescriptorRange(terrainDescriptors[0], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_TERRAIN_VERTEX_POSITIONS_REGISTER);
+		D3D12_DESCRIPTOR_RANGE terrainDescriptors[CE_VERTEX_TERRAIN_RANGE_COUNT]{};
+		CreateDescriptorRange(terrainDescriptors[CE_VERTEX_TERRAIN_VTXPOS_ID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_TERRAIN_VERTEX_POSITIONS_REGISTER);
 
 		// ROOT PARAMS
 		BlitCL::DynamicArray<D3D12_ROOT_PARAMETER> opaqueDrawRootParams{ CE_GRAPHICS_ODS_ROOT_COUNT, {} };
@@ -131,7 +131,7 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
-			// Additional roots
+			
 		}
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
@@ -721,6 +721,12 @@ namespace BlitzenDX12
 			if (CreateSSBO<BlitzenEngine::ClusterCone>(device, roResources.m_clusterConesBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)
 			{
 				BLIT_ERROR("%s: Failed to create cluster cones buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (CreateIndexBuffer(device, roResources.m_clusterIdxBuffer, BlitzenCore::Ce_MaxWorldVertexIndicesCount) == 0)
+			{
+				BLIT_ERROR("%s: Failed to create cluster indices buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}

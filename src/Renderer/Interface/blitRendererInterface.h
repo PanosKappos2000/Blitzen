@@ -14,6 +14,7 @@ namespace BlitzenEngine
         WORLD_RESIDENTS* m_pResidents;
         TextureManager& m_textures;
 		BlitzenPlatform::PlatformContext* m_pPlatform{ nullptr };
+        TerrainContainer* m_pTerrain{ nullptr };
 
         DrawContext(Camera& camera, MeshResources& meshes, TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
             :m_camera(camera), m_meshes(meshes), m_textures{ textureManager }, m_pPlatform{pPlatform}

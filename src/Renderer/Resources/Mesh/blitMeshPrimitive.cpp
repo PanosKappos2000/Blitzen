@@ -221,6 +221,11 @@ namespace BlitzenEngine
             return false;
         }
 
+        for (uint32_t& idx : allLodIndices)
+        {
+            idx += context.m_vertexOffset;
+        }
+
         if (!context.m_pPrimitives->AddIndices(allLodIndices.Data(), uint32_t(allLodIndices.GetSize())))
         {
             BLIT_ERROR("%s: Failed to load all LOD idices", BlitzenCore::CE_MESH_SYSTEM_NAME);
