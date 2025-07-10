@@ -353,9 +353,16 @@ namespace BlitzenEngine
 					D3D12_RESOURCE_BARRIER depthPyramidBarrier{};
 					BlitzenDX12::CreateResourcesTransitionBarrier(depthPyramidBarrier, pRenderer->m_rwResources[f].m_HI_Z.pyramid.Get(), 
 						D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, hi_z_mip);
-
 					rwBuffersFinal.PushBack(depthPyramidBarrier);
 				}
+			}
+
+			for (uint32_t f = 0; f < BlitzenDX12::ce_framesInFlight; ++f)
+			{
+				D3D12_RESOURCE_BARRIER depthTargetBarrier{};
+				BlitzenDX12::CreateResourcesTransitionBarrier(depthTargetBarrier, pRenderer->m_depthBuffers[f].Get(),
+					D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+				rwBuffersFinal.PushBack(depthTargetBarrier);
 			}
 		}
 

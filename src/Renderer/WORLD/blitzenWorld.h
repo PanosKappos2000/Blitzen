@@ -39,7 +39,12 @@ namespace BlitzenWorld
         }
     };
 
-    bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer);
+	// Initializes some basic rendering resources, for the renderer to work out of the box.
+    bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh);
+
+    // Copies vertex data and their indices for a single mesh to the staging buffer.
+    // It resets the count of vertices and indices for the next mesh, but it keeps a map count.
+    bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh);
 
     void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function);
 

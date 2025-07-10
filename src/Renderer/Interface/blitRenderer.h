@@ -64,7 +64,7 @@ namespace BlitzenEngine
 
     // Post-loading function. CPU side resources passed to GPU side buffers (or whichever type of handle is used)
     // Views for resources also placed
-    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext);
+    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext, RenderingLoadingContextMesh& loadingContextMesh);
 
     // Singular texture upload
     uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData, const char* filepath);

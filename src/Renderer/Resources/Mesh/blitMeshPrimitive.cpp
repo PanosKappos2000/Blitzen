@@ -37,6 +37,34 @@ namespace BlitzenEngine
         return true;
     }
 
+    bool PrimitiveContainer::OverrideVertices(Vertex* vertices, uint32_t count)
+    {
+        if (count > CE_MAX_MESH_PRIMITIVE_VERTEX_COUNT)
+        {
+            BLIT_ERROR("%s: Surpassed max mesh primitive vertex count", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return false;
+        }
+
+        BlitzenCore::BlitMemCopy(m_vertices, vertices, count * sizeof(Vertex));
+        m_vertexCount = count;
+
+        return true;
+    }
+
+    bool PrimitiveContainer::OverrideIndices(uint32_t* indices, uint32_t count)
+    {
+        if (count > CE_MAX_MESH_PRIMITIVE_INDEX_COUNT)
+        {
+            BLIT_ERROR("%s: Surpassed max mesh primitive index count", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return false;
+        }
+
+        BlitzenCore::BlitMemCopy(m_indices, indices, count * sizeof(uint32_t));
+        m_vtxIdxCount = count;
+
+        return true;
+    }
+
     SurfaceCreateRes MeshPrimitivesContainer::GenerateSurface(PrimitiveContainer& primitives, ClusterContainer& clusters, MESH_PRIMITIVE_CREATE_CONTEXT& context)
 	{
         if (m_meshPrimitivesCount >= BlitzenCore::Ce_MaxMeshPrimitivesCount)
@@ -50,7 +78,7 @@ namespace BlitzenEngine
         meshopt_optimizeVertexFetch(context.m_vertices, context.m_indices, context.m_indexCount, context.m_vertices, context.m_vertexCount, sizeof(Vertex));
         
         // Adds vertex offset and vertex count
-        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset = primitives.m_vertexCount;
+        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset = primitives.m_mapVtxCount;
         m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexCount = context.m_vertexCount;
 
         // Vertices read to be added after optimize
@@ -129,7 +157,7 @@ namespace BlitzenEngine
             surface.lodCount++;
 
             auto& lod{m_LODs[m_LODCount++]};
-            lod.firstIndex = context.m_pPrimitives->m_vtxIdxCount + (uint32_t)allLodIndices.GetSize();
+            lod.firstIndex = context.m_pPrimitives->m_mapIdxCount + (uint32_t)allLodIndices.GetSize();
             lod.indexCount = uint32_t(lodIndices.GetSize());
 
             // CLUSTER OFFSET

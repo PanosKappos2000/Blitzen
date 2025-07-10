@@ -5,6 +5,7 @@
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 #include "BlitCL/blitDynamicArr.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenDX12
 {
@@ -113,8 +114,12 @@ namespace BlitzenDX12
 	} 
 
 	uint8_t UploadResourcesToBuffers(ID3D12Device* device, const BlitzenEngine::DrawContext& drawContext, ReadOnlyResources& roResources, ReadWriteResources* rwResourcesArr, 
-		CmdContext& cmdContext, ID3D12CommandQueue* commandQueue)
+		CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh)
 	{
+
+		/******************************************************************************************************
+		*	READ WRITE RESOURCES (RESOURCES WITH MULTIPLE COPIES OF THE BUFFER, HENCE THE LOOP)				  *
+		*******************************************************************************************************/
 		for (UINT frame = 0; frame < ce_framesInFlight; ++frame)
 		{
 			auto& rwResources{ rwResourcesArr[frame] };
@@ -246,40 +251,9 @@ namespace BlitzenDX12
 			PlaceFence(cmdContext.m_copyFence.m_value, commandQueue, cmdContext.m_copyFence.m_dx12Handle.Get(), cmdContext.m_copyFence.m_event);
 		}
 
-		STAGING<BlitzenEngine::VtxPos> vtxPosStaging{ nullptr };
-		if (!CreateStaging(device, vtxPosStaging, drawContext.m_meshes.m_triangles.m_vertexCount, drawContext.m_meshes.m_triangles.m_vertexPositions))
-		{
-			BLIT_ERROR("%s: Failed to create vertex positions staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
-		STAGING<BlitzenEngine::VtxNormals> vtxNrmStaging{ nullptr };
-		if (!CreateStaging(device, vtxNrmStaging, drawContext.m_meshes.m_triangles.m_vertexCount, drawContext.m_meshes.m_triangles.m_vertexNormals))
-		{
-			BLIT_ERROR("%s: Failed to create vertex normals staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
-		STAGING<BlitzenEngine::VtxTangents> vtxTangentStaging{ nullptr };
-		if (!CreateStaging(device, vtxTangentStaging, drawContext.m_meshes.m_triangles.m_vertexCount, drawContext.m_meshes.m_triangles.m_vertexTangents))
-		{
-			BLIT_ERROR("%s: Failed to create vertex tangents staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
-		STAGING<BlitzenEngine::VtxTexCoords> vtxTexCoordStaging{ nullptr };
-		if (!CreateStaging(device, vtxTexCoordStaging, drawContext.m_meshes.m_triangles.m_vertexCount, drawContext.m_meshes.m_triangles.m_vertexUVs))
-		{
-			BLIT_ERROR("%s: Failed to create vertex tex coords staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
-		STAGING<uint32_t> indexStagingBuffer{ nullptr };
-		if (!CreateStaging(device, indexStagingBuffer, drawContext.m_meshes.m_triangles.m_vtxIdxCount, drawContext.m_meshes.m_triangles.m_indices))
-		{
-			BLIT_ERROR("%s: Failed to create vertex indices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
+		/******************************************************************************************************
+		*	READ WRITE RESOURCES (RESOURCES WITH MULTIPLE COPIES OF THE BUFFER, HENCE THE LOOP)				  *
+		*******************************************************************************************************/
 
 		//STAGING<BlitzenEngine::VtxPos> terrainVtxPosStagingBuffer{};
 		//if (!CreateStaging(device, terrainVtxPosStagingBuffer, drawContext.m_pTerrain->terrainVertexCount, drawContext.m_pTerrain->terrainVertices))
@@ -407,25 +381,35 @@ namespace BlitzenDX12
 		// SRC BARRIERS
 		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> copySourceBarriers{ Ce_ConstDataSSBOCount, {} };
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxPosStagingBufferIndex], vtxPosStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxPosStagingBufferIndex], loadingContextMesh.m_vtxPosStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxNrmStagingBufferIndex], vtxNrmStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxNrmStagingBufferIndex], loadingContextMesh.m_vtxNrmStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxTangentsStagingBufferIndex], vtxTangentStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxTangentsStagingBufferIndex], loadingContextMesh.m_vtxTngStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxTexCoordStagingBufferIndex], vtxTexCoordStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_VtxTexCoordStagingBufferIndex], loadingContextMesh.m_vtxTexCoordStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_IndexStagingBufferIndex], indexStagingBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_IndexStagingBufferIndex], loadingContextMesh.m_vtxIdxStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_SurfaceStagingBufferIndex], surfaceStagingBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_SurfaceStagingBufferIndex], surfaceStagingBuffer.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_RenderStagingBufferIndex], renderStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_RenderStagingBufferIndex], renderStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_BoundingSphereBoundingIndex], boundingSphereStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_BoundingSphereBoundingIndex], boundingSphereStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_LodStagingIndex], lodStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_LodStagingIndex], lodStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_MaterialStagingIndex], materialStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_MaterialStagingIndex], materialStaging.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
@@ -455,11 +439,16 @@ namespace BlitzenDX12
 		// execute
 		cmdContext.m_copyCmdList->ResourceBarrier(Ce_ConstDataSSBOCount, copySourceBarriers.Data());
 
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxPosBuffer.buffer.Get(), 0, vtxPosStaging.m_buffer.Get(), 0, vtxPosStaging.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxNrmBuffer.buffer.Get(), 0, vtxNrmStaging.m_buffer.Get(), 0, vtxNrmStaging.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxTangentBuffer.buffer.Get(), 0, vtxTangentStaging.m_buffer.Get(), 0, vtxTangentStaging.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxTexCoordBuffer.buffer.Get(), 0, vtxTexCoordStaging.m_buffer.Get(), 0, vtxTexCoordStaging.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_idxBuffer.m_buffer.Get(), 0, indexStagingBuffer.m_buffer.Get(), 0, indexStagingBuffer.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxPosBuffer.buffer.Get(), 0, loadingContextMesh.m_vtxPosStaging.m_buffer.Get(), 0, 
+			sizeof(BlitzenEngine::VtxPos) * loadingContextMesh.m_vtxPosStaging.m_validDataIndex);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxNrmBuffer.buffer.Get(), 0, loadingContextMesh.m_vtxNrmStaging.m_buffer.Get(), 0, 
+			sizeof(BlitzenEngine::VtxNormals) * loadingContextMesh.m_vtxNrmStaging.m_validDataIndex);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxTangentBuffer.buffer.Get(), 0, loadingContextMesh.m_vtxTngStaging.m_buffer.Get(), 0, 
+			sizeof(BlitzenEngine::VtxTangents) * loadingContextMesh.m_vtxTngStaging.m_validDataIndex);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_vtxTexCoordBuffer.buffer.Get(), 0, loadingContextMesh.m_vtxTexCoordStaging.m_buffer.Get(), 0, 
+			sizeof(BlitzenEngine::VtxTexCoords) * loadingContextMesh.m_vtxTexCoordStaging.m_validDataIndex);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_idxBuffer.m_buffer.Get(), 0, loadingContextMesh.m_vtxIdxStaging.m_buffer.Get(), 0, 
+			sizeof(uint32_t) * loadingContextMesh.m_vtxIdxStaging.m_validDataIndex);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, surfaceStagingBuffer.m_buffer.Get(), 0, surfaceStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_renderBuffer.buffer.Get(), 0, 
 			renderStaging.m_buffer.Get(), 0, renderStaging.m_dataSize);
@@ -485,8 +474,15 @@ namespace BlitzenDX12
 	}
 
 	void CreateResourceViews(ID3D12Device* device, DescriptorContext& ctx, CmdContext& cmdContext, ID3D12CommandQueue* queue, ReadOnlyResources& roResources, 
-		ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight)
+		ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight, 
+		LoadingContextMesh& loadingContextMesh)
 	{
+		BLIT_ASSERT(context.m_meshes.m_triangles.m_mapVtxCount == loadingContextMesh.m_vtxPosStaging.m_validDataIndex);
+		BLIT_ASSERT(context.m_meshes.m_triangles.m_mapVtxCount == loadingContextMesh.m_vtxNrmStaging.m_validDataIndex);
+		BLIT_ASSERT(context.m_meshes.m_triangles.m_mapVtxCount == loadingContextMesh.m_vtxTngStaging.m_validDataIndex);
+		BLIT_ASSERT(context.m_meshes.m_triangles.m_mapVtxCount == loadingContextMesh.m_vtxTexCoordStaging.m_validDataIndex);
+		BLIT_ASSERT(context.m_meshes.m_triangles.m_mapIdxCount == loadingContextMesh.m_vtxIdxStaging.m_validDataIndex);
+
 		// DRAW DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
@@ -494,13 +490,13 @@ namespace BlitzenDX12
 			ctx.m_vertexODSTableHandle[i] = ctx.m_viewHeapHandle;
 			ctx.m_vertexODSTableHandle[i].ptr += ctx.m_vertexODSTableOffset[i] * ctx.m_viewHeapIncrement;
 
-			CreateBufferShaderResourceView(device, roResources.m_vtxPosBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_vertexCount, sizeof(BlitzenEngine::VtxPos));
+			CreateBufferShaderResourceView(device, roResources.m_vtxPosBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_mapVtxCount, sizeof(BlitzenEngine::VtxPos));
 
-			CreateBufferShaderResourceView(device, roResources.m_vtxNrmBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_vertexCount, sizeof(BlitzenEngine::VtxNormals));
+			CreateBufferShaderResourceView(device, roResources.m_vtxNrmBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_mapVtxCount, sizeof(BlitzenEngine::VtxNormals));
 
-			CreateBufferShaderResourceView(device, roResources.m_vtxTangentBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_vertexCount, sizeof(BlitzenEngine::VtxTangents));
+			CreateBufferShaderResourceView(device, roResources.m_vtxTangentBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_mapVtxCount, sizeof(BlitzenEngine::VtxTangents));
 
-			CreateBufferShaderResourceView(device, roResources.m_vtxTexCoordBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_vertexCount, sizeof(BlitzenEngine::VtxTexCoords));
+			CreateBufferShaderResourceView(device, roResources.m_vtxTexCoordBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_mapVtxCount, sizeof(BlitzenEngine::VtxTexCoords));
 		}
 
 		// SHARED DESCRIPTORS

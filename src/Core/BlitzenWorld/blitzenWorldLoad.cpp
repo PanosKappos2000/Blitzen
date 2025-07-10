@@ -13,13 +13,13 @@ namespace BlitzenWorld
 
     void LoadingLoop(int argc, char** argv, BLITZEN_SYSTEM_CONTEXT& context, BlitzenEngine::DrawContext& drawContext)
     {
-        BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data()));
+		BlitzenEngine::RenderingLoadingContextMesh loadingMeshContext{};
+        BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data(), loadingMeshContext));
 
         BlitzenPlatform::MakeWindowVisible(context.pPlatform);
         context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::LOADING;
 
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->m_residents);
-        //BlitzenEngine::InitializeWorldVariableContextPtr_STATIC_ACCESS(&context.pWORLD->m_worldVariables);
         BlitzenEngine::InitializeComponentSystemPointer_STATIC_ACCESS(context.pComponents);
         INITIALIZE_WORLD_POINTER(context.pWORLD);
 
@@ -116,7 +116,7 @@ namespace BlitzenWorld
 
 #else
 
-            if (!BlitzenEngine::UploadResourcesToGPU(context.pWORLD->P_RENDERER.Data(), drawContext))
+            if (!BlitzenEngine::UploadResourcesToGPU(context.pWORLD->P_RENDERER.Data(), drawContext, loadingMeshContext))
             {
                 BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
 

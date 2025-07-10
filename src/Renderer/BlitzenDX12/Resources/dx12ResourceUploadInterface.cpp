@@ -8,14 +8,8 @@
 
 namespace BlitzenEngine
 {
-	uint8_t UploadResourcesToGPU(BlitzenDX12::Dx12Renderer* pRenderer, DrawContext& drawContext)
+	uint8_t UploadResourcesToGPU(BlitzenDX12::Dx12Renderer* pRenderer, DrawContext& drawContext, BlitzenDX12::LoadingContextMesh& loadingContextMesh)
 	{
-		if (!BlitzenEngine::GenerateHlslVertices(drawContext.m_meshes.m_triangles))
-		{
-			BLIT_ERROR("%s: Failed to generate HLSL vertices", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			if (!BlitzenEngine::GenerateHLSLClusters(drawContext.m_meshes.m_clusters))
@@ -26,14 +20,14 @@ namespace BlitzenEngine
 		}
 
 		if (!BlitzenDX12::UploadResourcesToBuffers(pRenderer->m_device.Get(), drawContext, pRenderer->m_roResources, pRenderer->m_rwResources, pRenderer->m_cmdContext[0], 
-			pRenderer->m_transferCommandQueue.Get()))
+			pRenderer->m_transferCommandQueue.Get(), loadingContextMesh))
 		{
 			BLIT_ERROR("%s: Failed to upload resources to GPU buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
 		BlitzenDX12::CreateResourceViews(pRenderer->m_device.Get(), pRenderer->m_descriptorContext, pRenderer->m_cmdContext[pRenderer->m_currentFrame], pRenderer->m_transferCommandQueue.Get(), 
-			pRenderer->m_roResources, pRenderer->m_rwResources, drawContext, pRenderer->m_depthBuffers, pRenderer->m_swapchainWidth, pRenderer->m_swapchainHeight);
+			pRenderer->m_roResources, pRenderer->m_rwResources, drawContext, pRenderer->m_depthBuffers, pRenderer->m_swapchainWidth, pRenderer->m_swapchainHeight, loadingContextMesh);
 
 		if (!BlitzenDX12::CheckForDeviceRemoval(pRenderer->m_device.Get()))
 		{
