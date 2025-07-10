@@ -21,48 +21,65 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
     Render obj = ssbo_Renders[objId];
     Surface surface = ssbo_Surfaces[obj.surfaceId];
-    Movement movement = rwssbo_HostTransform[obj.transformId];
+    Movement movement = rwssbo_HostTransform[objId];
     
-    float3 position = ssbo_Transforms[obj.transformId].position;
+    // Starting position at previous
+    float3 position = ssbo_Transforms[objId].position;
+    // Scale needed for radius and radius needed early for gravity
+    float scale = ssbo_Transforms[objId].scale;
+    float radius = ssbo_BoundingSpheres[objId].radius * scale;
     
+    // If the world variable has movement, start updates
     if (movement.movementFlags != BLIT_RESIDENT_MOVEMENT_NONE)
     {
+        // Starts with identity quaternion
         float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
+        
+        // Checks yaw rotation
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
         {
             float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), movement.rotation.y);
             orientation = MultiplyQuat(orientation, orientationYaw);
         }
+        
+        // Checks pitch rotation
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
         {
             float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.x);
             orientation = MultiplyQuat(orientation, orientationPitch);
         }
+        
+        // Checks roll orientation (later)
         if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT)
         {
             //float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
             //orientation = MultiplyQuat(orientation, orientationRoll);
         }
+        
+        // Updates orientation (the logic here is wrong TODO: FIX)
         ssbo_Transforms[obj.transformId].orientation = orientation;
         
-        position = rwssbo_HostTransform[obj.transformId].velocity;
+        // Updates position in case something on the CPU side
+        position = rwssbo_HostTransform[objId].velocity;
         
+        // Check for gravity
         if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT))
         {
+            // Height map logic
             if (position.x >= 0 && position.x < BLIT_TERRAIN_GRID_SIZE_TEMP && position.z >= 0 && position.z < BLIT_TERRAIN_GRID_SIZE_TEMP)
             {
                 int gridX = (int) floor(position.x);
                 int gridZ = (int) floor(position.z);
                 int heightDataIndex = gridX + gridZ * BLIT_TERRAIN_GRID_SIZE_TEMP;
-                float heightBelow = ssbo_TerrainHeight[heightDataIndex];
+                float heightBelow = ssbo_TerrainHeight[heightDataIndex] + radius;
                 if(position.y > heightBelow)
                 {
-                    position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= heightBelow ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : heightBelow;
+                    position.y = max(position.y - BLIT_GRAVITATIONAL_ACCELERATION, heightBelow);
                     rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
                 }
                 else if(position.y < heightBelow)
                 {
-                    position.y = heightBelow;
+                    position.y = min(position.y + 0.02f, heightBelow);
                     rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
                 }
             }
@@ -70,7 +87,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
             {
                 if (position.y > BLIT_TERRAIN_HEIGHT_TEST_VALUE)
                 {
-                    position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= BLIT_TERRAIN_HEIGHT_TEST_VALUE ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : BLIT_TERRAIN_HEIGHT_TEST_VALUE;
+                    position.y = max(position.y - BLIT_GRAVITATIONAL_ACCELERATION, BLIT_TERRAIN_HEIGHT_TEST_VALUE);
                     rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
                 }
                 else if (position.y < BLIT_TERRAIN_HEIGHT_TEST_VALUE)
@@ -83,13 +100,11 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     }
     
     float4 newOrientation = ssbo_Transforms[obj.transformId].orientation;
-    float scale = ssbo_Transforms[obj.transformId].scale;
     ssbo_Transforms[obj.transformId].position = position;
 
     // Bounding sphere to view coordinates
     float3 center = RotateQuat(ssbo_BoundingSpheres[objId].center, newOrientation) * scale + position;
     center = mul(viewMatrix, float4(center, 1)).xyz;
-    float radius = ssbo_BoundingSpheres[objId].radius * scale;
 
     // Frustum culling
     if (!FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar))
