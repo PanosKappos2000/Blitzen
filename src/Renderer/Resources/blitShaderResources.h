@@ -122,10 +122,11 @@ namespace BlitzenEngine
         uint32_t surfaceId;
     };
 
-    struct InstancedRender
+    struct InstancedRenders
     {
-        uint32_t transformId;
-        uint32_t drawCommandId;
+        uint32_t surfaceID;
+        uint32_t drawCmdID;
+        uint32_t renderOffset;
     };
 
     struct BoundingSphere

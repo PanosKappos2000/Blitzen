@@ -252,6 +252,12 @@ namespace BlitzenEngine
 		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_BoundingSphereBoundingIndex], roResources.m_boundingSpheres.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_TERRAIN_VERTEX_SSBO_STAGING_IDX], roResources.m_terrainVtxBuffer.buffer.Get(), 
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX], roResources.m_terrainIdxBuffer.m_buffer.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+
 		if (BlitzenCore::Ce_BuildClusters)
 		{
 			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_ClusterVtxsStagingIndex], pRenderer->m_roResources.m_clusterVtxsBuffer.buffer.Get(),

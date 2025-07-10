@@ -76,6 +76,7 @@
 #endif
 
 #define BLIT_GRAVITATIONAL_ACCELERATION														1.f
+#define BLIT_TERRAIN_HEIGHT_TEST_VALUE														0.f
 
 /************************************************************************************************************************************************
 * DX12 REGISTERS																																*

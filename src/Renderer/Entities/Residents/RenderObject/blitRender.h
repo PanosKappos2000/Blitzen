@@ -36,7 +36,7 @@ namespace BlitzenEngine
 
 		uint32_t CreateRenderObject(RENDER_OBJECT_CREATE_CONTEXT& context);
 
-		InstancedRender* m_instancedRenderArrays;
+		InstancedRenders* m_instancedRenderArrays{ nullptr };
 
 		uint32_t CreateInstancedRenderObject(uint32_t* transformIDArr, uint32_t m_primitiveID, uint32_t count);
 	};

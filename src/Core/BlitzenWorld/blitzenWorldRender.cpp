@@ -2,7 +2,7 @@
 
 namespace BlitzenWorld
 {
-	static void DispatchBlitzenMassivelyParallelRenderer(BlitzenEngine::RendererPtrType pRenderer, BlitzenEngine::WORLD_RESIDENTS& RESIDENTS, BlitzenEngine::Camera& camera)
+	static void DispatchBlitzenMassivelyParallelRenderer(BlitzenEngine::RendererPtrType pRenderer, BlitzenEngine::WORLD_RESIDENTS& RESIDENTS, BlitzenEngine::Camera& camera, uint32_t terrainCount)
 	{
 		// To avoid the double fence, I have to split the camera data.
 		BlitzenEngine::PlaceRendererFence(pRenderer, BlitzenEngine::RENDERER_FENCE_TYPE::COMPUTE);
@@ -20,10 +20,14 @@ namespace BlitzenWorld
 		cullContext.m_pResidents = &RESIDENTS;// IS THIS NEEDED?
 		BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 		BlitzenEngine::EndGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
-		BlitzenEngine::PlaceRendererFence(pRenderer, BlitzenEngine::RENDERER_FENCE_TYPE::COMPUTE);
 
 		BlitzenEngine::BeginGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::GRAPHICS);
 		BlitzenEngine::SetupForFirstRenderPass(pRenderer);
+		BlitzenEngine::RenderTerrain(pRenderer, terrainCount);
+
+		// Wait for culling
+		BlitzenEngine::PlaceRendererFence(pRenderer, BlitzenEngine::RENDERER_FENCE_TYPE::COMPUTE);
+
 		BlitzenEngine::RENDER_CONTEXT staticRenderContext{};
 		staticRenderContext.m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_OPAQUE;
 		BlitzenEngine::RenderObjects(pRenderer, staticRenderContext);
@@ -65,7 +69,7 @@ namespace BlitzenWorld
 		{
 			uint32_t presentCount = 0;
 			// 1. Wait for previous frame
-			DispatchBlitzenMassivelyParallelRenderer(pRenderer, RESIDENTS, camera);
+			DispatchBlitzenMassivelyParallelRenderer(pRenderer, RESIDENTS, camera, context.pRenderingResources->m_terrainContainer.terrainIndexCount);
 			presentCount++;
 
 			// TODO: Move the editor no start outside Blitzen's state

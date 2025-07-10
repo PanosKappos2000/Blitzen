@@ -11,6 +11,7 @@ namespace BlitzenEngine
 		}
 
 		BlitzenCore::MANUAL_COPY(&terrainVertices[terrainVertexCount], vertices, sizeof(VtxPos) * vertexCount);
+		terrainVertexCount += vertexCount;
 		return true;
 	}
 
@@ -22,6 +23,7 @@ namespace BlitzenEngine
 		}
 
 		BlitzenCore::MANUAL_COPY(&terrainIndices[terrainIndexCount], indices, sizeof(uint32_t) * indexCount);
+		terrainIndexCount += indexCount;
 		return true;
 	}
 

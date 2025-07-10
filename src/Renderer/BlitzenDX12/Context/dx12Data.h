@@ -178,7 +178,7 @@ namespace BlitzenDX12
 
 
     /* SSBO data copy helpers */
-    constexpr UINT Ce_ConstDataSSBOCount = 9;
+    constexpr UINT Ce_ConstDataSSBOCount = 12;
     constexpr UINT Ce_VtxPosStagingBufferIndex = 0;
     constexpr UINT Ce_IndexStagingBufferIndex = 1;
     constexpr UINT Ce_SurfaceStagingBufferIndex = 2;
@@ -189,6 +189,8 @@ namespace BlitzenDX12
     constexpr UINT Ce_VtxNrmStagingBufferIndex = 7;
     constexpr UINT Ce_VtxTexCoordStagingBufferIndex = 8;
     constexpr UINT Ce_BoundingSphereBoundingIndex = 9;
+    constexpr UINT CE_TERRAIN_VERTEX_SSBO_STAGING_IDX = 10;
+    constexpr UINT CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX = 11;
     // optional, when clusters are requested
     constexpr UINT Ce_ClusterVtxsStagingIndex = 10;
     constexpr UINT Ce_ClusterSpheresStagingIndex = 11;

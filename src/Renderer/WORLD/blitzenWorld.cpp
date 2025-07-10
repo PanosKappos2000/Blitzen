@@ -328,6 +328,8 @@ namespace BlitzenWorld
         BlitzenWorld::SetupCameraAttachment(context.pWORLD->m_mainCharacter, BlitML::float3(0.f, 0.5f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
 #endif
 
+        BLIT_ASSERT(BlitGenerator::GenerateTerrainMesh(pRenderingResources->m_terrainContainer));
+
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 
 #else

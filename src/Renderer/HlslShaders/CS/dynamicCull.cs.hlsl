@@ -47,9 +47,9 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         
         position = rwssbo_HostTransform[obj.transformId].velocity;
         
-        if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT) && position.y > -100.f)
+        if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT) && position.y > BLIT_TERRAIN_HEIGHT_TEST_VALUE)
         {
-            position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= -100.f ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : -100.f;
+            position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= BLIT_TERRAIN_HEIGHT_TEST_VALUE ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : BLIT_TERRAIN_HEIGHT_TEST_VALUE;
             rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
         }
     }

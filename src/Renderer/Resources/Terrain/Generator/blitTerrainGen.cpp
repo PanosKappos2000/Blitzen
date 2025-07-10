@@ -30,7 +30,7 @@ namespace BlitGenerator
                 float posZ = z * CellSize;
 
                 // Sine wave for height (replace with noise later)
-                float height = BlitML::Sin(posX * Frequency) * BlitML::Cos(posZ * Frequency) * Amplitude;
+                float height = BlitML::Sin(posX * Frequency) * BlitML::Cos(posZ * Frequency) * Amplitude + BLIT_TERRAIN_HEIGHT_TEST_VALUE;
 
                 terrainVertices[vtxId] = BlitML::vec3{ posX, height, posZ };
                 vtxId++;

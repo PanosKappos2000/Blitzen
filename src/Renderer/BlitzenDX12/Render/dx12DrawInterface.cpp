@@ -112,7 +112,7 @@ namespace BlitzenEngine
 		// Index buffer
 		cmdList->IASetIndexBuffer(&pRenderer->m_roResources.m_terrainIdxBuffer.m_view);
 		// DRAW
-		cmdList->DrawInstanced(terrainCount, 1, 0, 0);
+		cmdList->DrawIndexedInstanced(terrainCount, 1, 0, 0, 0);
 	}
 #if !defined(NDEBUG)
 	void RENDER_BOUNDING_SPHERES_DEBUG(BlitzenDX12::Dx12Renderer* pRenderer)

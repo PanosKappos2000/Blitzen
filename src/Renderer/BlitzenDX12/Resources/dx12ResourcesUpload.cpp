@@ -255,12 +255,19 @@ namespace BlitzenDX12
 		*	READ WRITE RESOURCES (RESOURCES WITH MULTIPLE COPIES OF THE BUFFER, HENCE THE LOOP)				  *
 		*******************************************************************************************************/
 
-		//STAGING<BlitzenEngine::VtxPos> terrainVtxPosStagingBuffer{};
-		//if (!CreateStaging(device, terrainVtxPosStagingBuffer, drawContext.m_pTerrain->terrainVertexCount, drawContext.m_pTerrain->terrainVertices))
-		//{
-		//	BLIT_ERROR("%s: Failed to create terrain vertexBuffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-		//	return 0;
-		//}
+		STAGING<BlitzenEngine::VtxPos> terrainVtxPosStagingBuffer{};
+		if (!CreateStaging(device, terrainVtxPosStagingBuffer, drawContext.m_pTerrain->terrainVertexCount, drawContext.m_pTerrain->terrainVertices))
+		{
+			BLIT_ERROR("%s: Failed to create terrain vertex staging Buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		STAGING<uint32_t> terrainVtxIdxStagingBuffer{};
+		if (!CreateStaging(device, terrainVtxIdxStagingBuffer, drawContext.m_pTerrain->terrainIndexCount, drawContext.m_pTerrain->terrainIndices))
+		{
+			BLIT_ERROR("%s: Failed to create terrain index buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
 
 		STAGING<BlitzenEngine::PrimitiveSurface> surfaceStagingBuffer{ };
 		if (!CreateStaging(device, surfaceStagingBuffer, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitives))
@@ -355,6 +362,10 @@ namespace BlitzenDX12
 
 		CreateResourcesTransitionBarrier(copyDestBarriers[Ce_MaterialStagingIndex], roResources.m_matBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
+		CreateResourcesTransitionBarrier(copyDestBarriers[CE_TERRAIN_VERTEX_SSBO_STAGING_IDX], roResources.m_terrainVtxBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
+		CreateResourcesTransitionBarrier(copyDestBarriers[CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX], roResources.m_terrainIdxBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_RESOURCE_BARRIER clusterBufferBarrier{};
@@ -411,6 +422,12 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_MaterialStagingIndex], materialStaging.m_buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
+		CreateResourcesTransitionBarrier(copySourceBarriers[CE_TERRAIN_VERTEX_SSBO_STAGING_IDX], terrainVtxPosStagingBuffer.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		CreateResourcesTransitionBarrier(copySourceBarriers[CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX], terrainVtxIdxStagingBuffer.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_RESOURCE_BARRIER clusterStagingBarrier{};
@@ -449,6 +466,10 @@ namespace BlitzenDX12
 			sizeof(BlitzenEngine::VtxTexCoords) * loadingContextMesh.m_vtxTexCoordStaging.m_validDataIndex);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_idxBuffer.m_buffer.Get(), 0, loadingContextMesh.m_vtxIdxStaging.m_buffer.Get(), 0, 
 			sizeof(uint32_t) * loadingContextMesh.m_vtxIdxStaging.m_validDataIndex);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainVtxBuffer.buffer.Get(), 0, terrainVtxPosStagingBuffer.m_buffer.Get(), 0, 
+			terrainVtxPosStagingBuffer.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainIdxBuffer.m_buffer.Get(), 0, terrainVtxIdxStagingBuffer.m_buffer.Get(), 0,
+			terrainVtxIdxStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, surfaceStagingBuffer.m_buffer.Get(), 0, surfaceStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_renderBuffer.buffer.Get(), 0, 
 			renderStaging.m_buffer.Get(), 0, renderStaging.m_dataSize);
@@ -498,6 +519,13 @@ namespace BlitzenDX12
 
 			CreateBufferShaderResourceView(device, roResources.m_vtxTexCoordBuffer.buffer.Get(), ctx, context.m_meshes.m_triangles.m_mapVtxCount, sizeof(BlitzenEngine::VtxTexCoords));
 		}
+
+		// TERRAIN DESCRIPTORS
+		ctx.m_terrainVertexTableOffset = ctx.m_viewHeapCurrentOffset;
+		ctx.m_terrainVertexTableHandle = ctx.m_viewHeapHandle;
+		ctx.m_terrainVertexTableHandle.ptr += ctx.m_terrainVertexTableOffset * ctx.m_viewHeapIncrement;
+
+		CreateBufferShaderResourceView(device, roResources.m_terrainVtxBuffer.buffer.Get(), ctx, context.m_pTerrain->terrainVertexCount, sizeof(BlitzenEngine::VtxPos));
 
 		// SHARED DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)

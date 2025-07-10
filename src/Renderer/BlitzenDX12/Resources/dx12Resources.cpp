@@ -22,6 +22,7 @@ namespace BlitzenDX12
         srvHeapDescriptorCount += CE_VERTEX_ODS_RANGE_COUNT * ce_framesInFlight;
         srvHeapDescriptorCount += CE_PIXEL_ODS_RANGE_COUNT;
         srvHeapDescriptorCount += CE_TEXTURE_DESCRIPTOR_COUNT;
+        srvHeapDescriptorCount += CE_VERTEX_TERRAIN_RANGE_COUNT;
         srvHeapDescriptorCount += CE_CULL_OS_RANGE_COUNT * ce_framesInFlight;
         srvHeapDescriptorCount += CE_CULL_OD_RANGE_COUNT * ce_framesInFlight;
 
