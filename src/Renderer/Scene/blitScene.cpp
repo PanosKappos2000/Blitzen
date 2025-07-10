@@ -7,7 +7,7 @@
 
 namespace BlitzenEngine
 {
-    SCENE_CREATE_RES CreateScene(SCENE_CREATE_CONTEXT& sceneContext)
+    SCENE_CREATE_RES CreateScene(SCENE_CREATE_CONTEXT& sceneContext, RenderingLoadingContextMesh& loadingContextMesh)
     {
         if (!sceneContext.pRenderer)
         {
@@ -34,7 +34,7 @@ namespace BlitzenEngine
             {
             case SceneType::GltfSceneTest:
             {
-                auto res{ ManageGltf(scene.m_name, sceneContext.pResources, sceneContext.pResidents, sceneContext.pRenderer, &scene) };
+                auto res{ ManageGltf(scene.m_name, sceneContext.pResources, sceneContext.pResidents, sceneContext.pRenderer, &scene, loadingContextMesh) };
                 BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading gltf scene");
                 if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(res)))
                 {

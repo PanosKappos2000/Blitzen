@@ -2,6 +2,7 @@
 #include "gltfScene.h"
 #include "BlitCL/blitDynamicArr.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Renderer/World/blitzenWorld.h"
 
 namespace BlitzenEngine
 {
@@ -14,7 +15,7 @@ namespace BlitzenEngine
     }
 
     SCENE_CREATE_RES ManageGltf(const char* filepath, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::WORLD_RESIDENTS* pWorldResidents, BlitzenEngine::RendererPtrType pRenderer, 
-        BlitzenEngine::SceneContext* pScene)
+        BlitzenEngine::SceneContext* pScene, RenderingLoadingContextMesh& loadingContextMesh)
     {
         auto& textureContext{ pResources->m_textureManager };
         auto& meshContext{ pResources->m_meshContext };
@@ -68,7 +69,7 @@ namespace BlitzenEngine
 
         // Meshes
         BLIT_INFO("Loading meshes for GLTF");
-        if (!LoadGltfMeshes(meshContext, textureContext, cgltfScope, previousMaterialCount, surfaceIndices.Data()))
+        if (!LoadGltfMeshes(meshContext, textureContext, cgltfScope, previousMaterialCount, surfaceIndices.Data(), loadingContextMesh))
         {
             return SCENE_CREATE_RES::MESH_LOADING_FAILED;
         }
@@ -155,7 +156,8 @@ namespace BlitzenEngine
         return true;
     }
 
-    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, uint32_t* surfaceIndices)
+    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, uint32_t* surfaceIndices, 
+        RenderingLoadingContextMesh& loadingContextMesh)
     {
         for (size_t i = 0; i < cgltfScope.pData->meshes_count; ++i)
         {
@@ -173,13 +175,18 @@ namespace BlitzenEngine
             // Saves surface indices for nodes
             surfaceIndices[i] = meshIdx;
 
-            LoadGltfMeshPrimitives(meshContext, textureContext, cgltfScope, gltfMesh, previousMaterialCount);
+            if (!LoadGltfMeshPrimitives(meshContext, textureContext, cgltfScope, gltfMesh, previousMaterialCount, loadingContextMesh))
+            {
+				BLIT_ERROR("%s: Failed to load mesh primitive for mesh number: (%u)", BlitzenCore::CE_SCENE_SYSTEM_NAME, i);
+                return false;
+            }
         }
 
         return true;
     }
 
-    bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount)
+    bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount, 
+        RenderingLoadingContextMesh& loadingContextMesh)
     {
         for (size_t j = 0; j < gltfMesh.primitives_count; ++j)
         {
@@ -286,6 +293,12 @@ namespace BlitzenEngine
             if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(meshPrimitiveRes)))
             {
                 return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_SCENE_SYSTEM_NAME, MESH_PRIMITIVE_CREATE_RES_TO_STRING(meshPrimitiveRes));
+            }
+
+            if (!BlitzenWorld::CopyMeshResourcesToStagingBuffer(&meshContext, loadingContextMesh))
+            {
+                BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for gltf mesh primitive number: (%u)", BlitzenCore::CE_SCENE_SYSTEM_NAME, j);
+                return false;
             }
         }
 

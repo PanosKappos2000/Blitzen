@@ -108,7 +108,7 @@ namespace BlitzenEngine
         bool empty = true;
     };
 
-    SCENE_CREATE_RES CreateScene(SCENE_CREATE_CONTEXT& sceneCtx);
+    SCENE_CREATE_RES CreateScene(SCENE_CREATE_CONTEXT& sceneCtx, RenderingLoadingContextMesh& loadingContextMesh);
 
     SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier, BlitzenEngine::SceneContext* pScene);
 

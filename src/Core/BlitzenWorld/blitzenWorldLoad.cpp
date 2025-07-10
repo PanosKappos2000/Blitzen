@@ -33,105 +33,12 @@ namespace BlitzenWorld
                 continue;
             }
 
-            BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
-            sceneCtx.pRenderer = context.pWORLD->P_RENDERER.Data();
-            sceneCtx.pResidents = &context.pWORLD->m_residents;
-            sceneCtx.pResources = context.pRenderingResources;
-
-            BlitCL::DynamicArray<BlitzenEngine::SceneContext> scenes{};
-
-#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
-
-            BlitzenEngine::SceneContext rpf{};
-            rpf.m_type = BlitzenEngine::SceneType::CustomFileTest;
-            scenes.PushBack(rpf);
-
-#endif
-
-#if defined(RENDERER_STRESS_TEST)
-
-            BlitzenEngine::SceneContext stress{};
-            stress.m_type = BlitzenEngine::SceneType::RendererStressTest;
-            scenes.PushBack(stress);
-
-#endif
-
-            BlitzenEngine::SceneContext moving{};
-            moving.m_type = BlitzenEngine::SceneType::MovingResidentTest;
-            scenes.PushBack(moving);
-
-#if defined(DEFAULT_GLTF_SCENE_TEST)
-
-            BlitzenEngine::SceneContext defaultGltf{};
-            defaultGltf.m_name = BlitzenCore::Ce_PrimaryGltfTestScene;
-            defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
-            scenes.PushBack(defaultGltf);
-
-#endif
-
-#if defined(LOAD_CMD_ARG_GLTF_FILEPATHS)
-
-            if (argc > 1)
-            {
-                BlitzenEngine::SceneContext defaultGltf{};
-                defaultGltf.m_name = argv[1];
-                defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
-                scenes.PushBack(defaultGltf);
-            }
-#endif
-
-#if defined(COLLISION_TEST)
-
-            BlitzenEngine::SceneContext collisionTst{};
-            collisionTst.m_type = BlitzenEngine::SceneType::SmallSceneForCollision;
-            scenes.PushBack(collisionTst);
-
-#endif
-            sceneCtx.m_sceneArr = scenes.Data();
-            sceneCtx.m_sceneCount = (uint32_t)scenes.GetSize();
-
-            auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx) };
-
-            BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
-            if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)sceneRes))
-            {
-                BLIT_ERROR("%s: Error while loading scenes. Received error message: %s", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(sceneRes));
-                BLIT_ASSERT(false);
-            }
-
-            context.pWORLD->m_collisionGrid.DefineGrid(0);
-            context.pWORLD->m_collisionGrid.CreateCells();
-            context.pWORLD->m_collisionGrid.PlaceStatics(&context.pWORLD->m_residents.m_renders.m_renders[BLIT_OPAQUE_STATIC_RENDER_OFFSET], context.pWORLD->m_residents.m_transforms.m_staticTransformCount,
-                context.pWORLD->m_residents.m_transforms.m_transforms);
-
-            // Testing, this should be done another way.
-#if defined(BLIT_GAME_TEST)
-            context.m_activeControllerIDX = 1;
-            context.pWORLD->m_activeCameraIDX = 1;
-            context.m_controllerState = ControllerState::Game;
-            BlitzenWorld::SetupCameraAttachment(context.pWORLD->m_mainCharacter, BlitML::float3(0.f, 0.5f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
-#endif
-
-#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
-
-#else
-
-            if (!BlitzenEngine::UploadResourcesToGPU(context.pWORLD->P_RENDERER.Data(), drawContext, loadingMeshContext))
-            {
-                BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
-
-                context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SHUTDOWN;
-                return;
-            }
-
-#endif
+            BlitzenWorld::LOAD_RESOURCES_MK_BLIT_MINUS(context.pWORLD, context.pRenderingResources, loadingMeshContext, argc, argv);
+            
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
 
             // Useless, but keeping it here to remember to do something with it
             BlitzenPlatform::PutMouseInGameState(context.pPlatform);
-
-            context.pRenderingResources->m_meshContext.m_triangles.CLEAN();
-            context.pRenderingResources->m_meshContext.m_clusters.CLEAN();
         }
     }
 

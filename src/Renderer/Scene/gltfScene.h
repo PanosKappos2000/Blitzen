@@ -16,8 +16,8 @@ namespace BlitzenEngine
         ~CgltfScope();
     };
 
-    SCENE_CREATE_RES ManageGltf(const char* filepath, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::WORLD_RESIDENTS* pWorldResidents, BlitzenEngine::RendererPtrType pRenderer,
-        BlitzenEngine::SceneContext* pScene);
+    SCENE_CREATE_RES ManageGltf(const char* filepath, RenderingResources* pResources, WORLD_RESIDENTS* pWorldResidents, RendererPtrType pRenderer, SceneContext* pScene, 
+        RenderingLoadingContextMesh& loadingContextMesh);
 
 	bool LoadGltfFile(const char* path, CgltfScope& cgltf);
 
@@ -25,9 +25,11 @@ namespace BlitzenEngine
 
     void LoadGltfMaterials(TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousTextureCount);
 
-    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, uint32_t* surfaceIndices);
+    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, uint32_t previousMaterialCount, uint32_t* surfaceIndices, 
+        RenderingLoadingContextMesh& loadingContextMesh);
 
-    bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount);
+    bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount, 
+        RenderingLoadingContextMesh& loadingContextMesh);
 
     bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& meshIndices);
 }

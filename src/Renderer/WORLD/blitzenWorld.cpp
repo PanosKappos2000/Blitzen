@@ -100,49 +100,49 @@ namespace BlitzenWorld
         camera.transformData.translation = BlitML::Translate(p_BLITZEN_WORLD->m_residents.m_transforms.m_transforms[p_BLITZEN_WORLD->m_mainCharacter].pos);
     }
 
-    static bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh)
+    bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::MeshResources* pMeshes, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh)
     {
         BlitzenEngine::HLSL_VTX_CONTEXT hlslVertices{};
-        hlslVertices.m_vtxPosArr = pResources->m_meshContext.m_triangles.m_vertexPositions;
-        hlslVertices.m_vtxNrmArr = pResources->m_meshContext.m_triangles.m_vertexNormals;
-        hlslVertices.m_vtxTngArr = pResources->m_meshContext.m_triangles.m_vertexTangents;
-        hlslVertices.m_texCoordArr = pResources->m_meshContext.m_triangles.m_vertexUVs;
-        BlitzenEngine::ConvertClassicVerticesToHlslFormat(hlslVertices, pResources->m_meshContext.m_triangles.m_vertices, pResources->m_meshContext.m_triangles.m_vertexCount);
+        hlslVertices.m_vtxPosArr = pMeshes->m_triangles.m_vertexPositions;
+        hlslVertices.m_vtxNrmArr = pMeshes->m_triangles.m_vertexNormals;
+        hlslVertices.m_vtxTngArr = pMeshes->m_triangles.m_vertexTangents;
+        hlslVertices.m_texCoordArr = pMeshes->m_triangles.m_vertexUVs;
+        BlitzenEngine::ConvertClassicVerticesToHlslFormat(hlslVertices, pMeshes->m_triangles.m_vertices, pMeshes->m_triangles.m_vertexCount);
 
-        if (!BlitzenEngine::UploadToVertexPositionsStagingBuffer(loadingContextMesh, pResources->m_meshContext.m_triangles.m_vertexPositions, pResources->m_meshContext.m_triangles.m_vertexCount))
+        if (!BlitzenEngine::UploadToVertexPositionsStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexPositions, pMeshes->m_triangles.m_vertexCount))
         {
             BLIT_ERROR("%s: Failed to upload vertex positions to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        if (!BlitzenEngine::UploadToVertexNormalsStagingBuffer(loadingContextMesh, pResources->m_meshContext.m_triangles.m_vertexNormals, pResources->m_meshContext.m_triangles.m_vertexCount))
+        if (!BlitzenEngine::UploadToVertexNormalsStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexNormals, pMeshes->m_triangles.m_vertexCount))
         {
             BLIT_ERROR("%s: Failed to upload vertex normals to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        if (!BlitzenEngine::UploadToVertexTangentsStagingBuffer(loadingContextMesh, pResources->m_meshContext.m_triangles.m_vertexTangents, pResources->m_meshContext.m_triangles.m_vertexCount))
+        if (!BlitzenEngine::UploadToVertexTangentsStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexTangents, pMeshes->m_triangles.m_vertexCount))
         {
             BLIT_ERROR("%s: Failed to upload vertex tangents to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        if (!BlitzenEngine::UploadToVertexTextureCoordinatesStagingBuffer(loadingContextMesh, pResources->m_meshContext.m_triangles.m_vertexUVs, pResources->m_meshContext.m_triangles.m_vertexCount))
+        if (!BlitzenEngine::UploadToVertexTextureCoordinatesStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexUVs, pMeshes->m_triangles.m_vertexCount))
         {
             BLIT_ERROR("%s: Failed to upload vertex texture coordinates to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        if (!BlitzenEngine::UploadToVertexIndicesStagingBuffer(loadingContextMesh, pResources->m_meshContext.m_triangles.m_indices, pResources->m_meshContext.m_triangles.m_vtxIdxCount))
+        if (!BlitzenEngine::UploadToVertexIndicesStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_indices, pMeshes->m_triangles.m_vtxIdxCount))
         {
             BLIT_ERROR("%s: Failed to upload vertex indices to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        pResources->m_meshContext.m_triangles.m_mapIdxCount += pResources->m_meshContext.m_triangles.m_vtxIdxCount;
-        pResources->m_meshContext.m_triangles.m_vtxIdxCount = 0;
-        pResources->m_meshContext.m_triangles.m_mapVtxCount += pResources->m_meshContext.m_triangles.m_vertexCount;
-        pResources->m_meshContext.m_triangles.m_vertexCount = 0;
+        pMeshes->m_triangles.m_mapIdxCount += pMeshes->m_triangles.m_vtxIdxCount;
+        pMeshes->m_triangles.m_vtxIdxCount = 0;
+        pMeshes->m_triangles.m_mapVtxCount += pMeshes->m_triangles.m_vertexCount;
+        pMeshes->m_triangles.m_vertexCount = 0;
 
         // success
         return true;
@@ -190,7 +190,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!CopyMeshResourcesToStagingBuffer(pResources, loadingContextMesh))
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
         {
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for bunny mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -203,7 +203,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!CopyMeshResourcesToStagingBuffer(pResources, loadingContextMesh))
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
         {
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for kitten mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -216,7 +216,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!CopyMeshResourcesToStagingBuffer(pResources, loadingContextMesh))
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
         {
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for dragon mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -229,7 +229,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!CopyMeshResourcesToStagingBuffer(pResources, loadingContextMesh))
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
         {
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for human mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -243,6 +243,105 @@ namespace BlitzenWorld
 
         // Success
         return true;
+    }
+
+    void LOAD_RESOURCES_MK_BLIT_MINUS(WORLD_blit* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh,
+        int argc, char** argv)
+    {
+
+        BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
+        sceneCtx.pRenderer = pWORLD->P_RENDERER.Data();
+        sceneCtx.pResidents = &pWORLD->m_residents;
+        sceneCtx.pResources = pRenderingResources;
+
+        BlitCL::DynamicArray<BlitzenEngine::SceneContext> scenes{};
+
+#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
+
+        BlitzenEngine::SceneContext rpf{};
+        rpf.m_type = BlitzenEngine::SceneType::CustomFileTest;
+        scenes.PushBack(rpf);
+
+#endif
+
+#if defined(RENDERER_STRESS_TEST)
+
+        BlitzenEngine::SceneContext stress{};
+        stress.m_type = BlitzenEngine::SceneType::RendererStressTest;
+        scenes.PushBack(stress);
+
+#endif
+
+        BlitzenEngine::SceneContext moving{};
+        moving.m_type = BlitzenEngine::SceneType::MovingResidentTest;
+        scenes.PushBack(moving);
+
+#if defined(DEFAULT_GLTF_SCENE_TEST)
+
+        BlitzenEngine::SceneContext defaultGltf{};
+        defaultGltf.m_name = BlitzenCore::Ce_PrimaryGltfTestScene;
+        defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
+        scenes.PushBack(defaultGltf);
+
+#endif
+
+#if defined(LOAD_CMD_ARG_GLTF_FILEPATHS)
+
+        if (argc > 1)
+        {
+            BlitzenEngine::SceneContext defaultGltf{};
+            defaultGltf.m_name = argv[1];
+            defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
+            scenes.PushBack(defaultGltf);
+        }
+#endif
+
+#if defined(COLLISION_TEST)
+
+        BlitzenEngine::SceneContext collisionTst{};
+        collisionTst.m_type = BlitzenEngine::SceneType::SmallSceneForCollision;
+        scenes.PushBack(collisionTst);
+
+#endif
+        sceneCtx.m_sceneArr = scenes.Data();
+        sceneCtx.m_sceneCount = (uint32_t)scenes.GetSize();
+
+        auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx, loadingContextMesh) };
+
+        BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
+        if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)sceneRes))
+        {
+            BLIT_ERROR("%s: Error while loading scenes. Received error message: %s", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(sceneRes));
+            BLIT_ASSERT(false);
+        }
+
+        pWORLD->m_collisionGrid.DefineGrid(0);
+        pWORLD->m_collisionGrid.CreateCells();
+        pWORLD->m_collisionGrid.PlaceStatics(&pWORLD->m_residents.m_renders.m_renders[BLIT_OPAQUE_STATIC_RENDER_OFFSET], pWORLD->m_residents.m_transforms.m_staticTransformCount,
+            pWORLD->m_residents.m_transforms.m_transforms);
+
+        // Testing, this should be done another way.
+#if defined(BLIT_GAME_TEST)
+        context.m_activeControllerIDX = 1;
+        context.pWORLD->m_activeCameraIDX = 1;
+        context.m_controllerState = ControllerState::Game;
+        BlitzenWorld::SetupCameraAttachment(context.pWORLD->m_mainCharacter, BlitML::float3(0.f, 0.5f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
+#endif
+
+#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
+
+#else
+
+        if (!BlitzenEngine::UploadResourcesToGPU(pWORLD->P_RENDERER.Data(), pWORLD->m_drawContext, loadingContextMesh))
+        {
+            BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
+            BLIT_ASSERT(false);
+            return;
+        }
+
+#endif
+        pRenderingResources->m_meshContext.m_triangles.CLEAN();
+        pRenderingResources->m_meshContext.m_clusters.CLEAN();
     }
 
     void INITIALIZE_WORLD_POINTER(WORLD_blit* ptr)

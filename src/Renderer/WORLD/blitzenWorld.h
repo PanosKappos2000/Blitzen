@@ -44,7 +44,10 @@ namespace BlitzenWorld
 
     // Copies vertex data and their indices for a single mesh to the staging buffer.
     // It resets the count of vertices and indices for the next mesh, but it keeps a map count.
-    bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh);
+    bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::MeshResources* pResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh);
+
+    void LOAD_RESOURCES_MK_BLIT_MINUS(WORLD_blit* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh, 
+        int argc, char** argv);
 
     void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function);
 
