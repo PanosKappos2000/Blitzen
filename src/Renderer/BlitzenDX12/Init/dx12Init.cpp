@@ -180,6 +180,7 @@ namespace BlitzenDX12
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_DRAW_CMD_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_OPAQUE_DYNAMIC_CMD_BUFFER_REGISTER);
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_DRAW_COUNTER_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_OPAQUE_DYNAMIC_CMD_COUNTER_REGISTER);
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_MOVEMENT_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_CPU_TRANSFORM_BUFFER_REGISTER);
+		CreateDescriptorRange(cullODRanges[CE_CULL_OD_TERRAIN_HEIGHT_ID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_TERRAIN_HEIGHT_BUFFER_REGISTER);
 
 		// ROOT PARAMETER RECONFIGURATION
 		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_DYNAMIC_TABLE_ID], cullODRanges, CE_CULL_OD_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
@@ -658,6 +659,12 @@ namespace BlitzenDX12
 		if (CreateIndexBuffer(device, roResources.m_terrainIdxBuffer, BlitzenEngine::CE_MAX_TERRAIN_INDICES) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create terrain index buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (CreateSSBO<float>(device, roResources.m_terrainHeightBuffer, BLIT_MAX_HEIGHT_MAP_DATA_COUNT) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create terrain height buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 

@@ -25,12 +25,10 @@ namespace BlitzenEngine
 	{
         for (uint32_t cellId = 0; cellId < CE_COLLISION_GRID_CELL_COUNT; ++cellId)
         {
-            auto& gridCell = m_grids[cellId];
-
-            gridCell.colliderOffset = 0;
-            gridCell.colliderCount = 0;
-            gridCell.dynamicColliderOffset = cellId * CE_DYNAMIC_RESIDENTS_PER_COLLISION_GRID_CELL;
-            gridCell.dynamicColliderCount = 0;
+            m_cellStaticOffsets[cellId].colliderOffset = 0;
+            m_cellStaticOffsets[cellId].colliderCount = 0;
+            m_cellDynamicOffsets[cellId].colliderOffset = cellId * CE_DYNAMIC_RESIDENTS_PER_COLLISION_GRID_CELL;
+            m_cellDynamicOffsets[cellId].colliderCount = 0;
         }
 	}
 
@@ -80,10 +78,9 @@ namespace BlitzenEngine
                 continue;
             }
 
-            auto& grid = m_grids[cellIndex];
             // Places index into collision cell
             colliderIndices[cellIndex].PushBack(i);
-            m_grids[cellIndex].colliderCount++;
+            m_cellStaticOffsets[cellIndex].colliderCount++;
         }
 
         uint32_t offset = 0;
@@ -95,7 +92,7 @@ namespace BlitzenEngine
         for (auto& array : colliderIndices)
         {
             // For each array saves static offset and updates offset with the size of the array
-            m_grids[cellIndex++].colliderOffset = offset;
+            m_cellStaticOffsets[cellIndex++].colliderOffset = offset;
             offset += uint32_t(array.GetSize()); 
         }
 
@@ -111,7 +108,7 @@ namespace BlitzenEngine
             offset += uint32_t(array.GetSize());
         }
 
-        BLIT_ASSERT(m_grids[CE_COLLISION_GRID_CELL_COUNT - 1].colliderOffset + m_grids[CE_COLLISION_GRID_CELL_COUNT - 1].colliderCount == m_colliderIndicesTotal);
+        BLIT_ASSERT(m_cellStaticOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].colliderOffset + m_cellStaticOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].colliderCount == m_colliderIndicesTotal);
 
         BLIT_INFO("%s: Ouf of collsion grid bounds object count: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, outOfBounds);
         BLIT_INFO("%s: Bad grid index calculation: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, badLogic);
@@ -140,13 +137,16 @@ namespace BlitzenEngine
 
     void CollisionGrid::FindCollisionsNarrow(BoundingSphere* boundsArr)
     {
-        for (auto& gridCell : m_grids)
+        for (uint32_t IDX = 0; IDX < CE_COLLISION_GRID_CELL_COUNT; IDX++)
         {
-            for (uint32_t dynamicID = gridCell.dynamicColliderOffset; dynamicID < gridCell.colliderCount; ++dynamicID)
+            auto& dynamics = m_cellDynamicOffsets[IDX];
+            auto& statics = m_cellStaticOffsets[IDX];
+
+            for (uint32_t dynamicID = dynamics.colliderOffset; dynamicID < dynamics.colliderCount; ++dynamicID)
             {
                 uint32_t impactingBoundsID = m_dynamicColliderIndices[dynamicID];
 
-                for (uint32_t staticID = gridCell.colliderOffset; staticID < gridCell.colliderCount; ++staticID)
+                for (uint32_t staticID = statics.colliderOffset; staticID < statics.colliderCount; ++staticID)
                 {
                     if (CheckSphereCollision(boundsArr[impactingBoundsID], boundsArr[m_colliderIndices[staticID]]))
                     {
@@ -154,7 +154,7 @@ namespace BlitzenEngine
                     }
                 }
 
-                for (uint32_t dynamicID = gridCell.dynamicColliderOffset; dynamicID < gridCell.dynamicColliderCount; ++dynamicID)
+                for (uint32_t dynamicID = dynamics.colliderOffset; dynamicID < dynamics.colliderCount; ++dynamicID)
                 {
                     uint32_t receiverBoundsID = m_dynamicColliderIndices[dynamicID];
                     if (impactingBoundsID == receiverBoundsID)

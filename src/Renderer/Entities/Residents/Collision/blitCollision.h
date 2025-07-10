@@ -33,14 +33,6 @@ namespace BlitzenEngine
 		Resident m_reactingResident;
 	};
 
-	struct CollisionGridCell
-	{
-		uint32_t colliderOffset;
-		uint32_t colliderCount;
-		uint32_t dynamicColliderOffset;
-		uint32_t dynamicColliderCount;
-	};
-
 	class CollisionGrid
 	{
 	public:
@@ -49,7 +41,8 @@ namespace BlitzenEngine
 		int32_t m_minBounds;
 		int32_t m_maxBounds;
 
-		CollisionGridCell m_grids[CE_COLLISION_GRID_CELL_COUNT];
+		GridCellOffsets m_cellStaticOffsets[CE_COLLISION_GRID_CELL_COUNT];
+		GridCellOffsets m_cellDynamicOffsets[CE_COLLISION_GRID_CELL_COUNT];
 		uint32_t* m_colliderIndices{ nullptr };
 		uint32_t m_colliderIndicesTotal{ 0 };
 		uint32_t m_dynamicColliderIndices[CE_AVAILABLE_DYNAMIC_COLLIDER_SPACES];

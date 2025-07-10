@@ -269,6 +269,13 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		STAGING<float> terrainHeightStaging{};
+		if (!CreateStaging(device, terrainHeightStaging, drawContext.m_pTerrain->m_heightDataCount, drawContext.m_pTerrain->m_heightBufferData))
+		{
+			BLIT_ERROR("%s: Filaed to create terrain height buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
 		STAGING<BlitzenEngine::PrimitiveSurface> surfaceStagingBuffer{ };
 		if (!CreateStaging(device, surfaceStagingBuffer, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitives))
 		{
@@ -366,6 +373,8 @@ namespace BlitzenDX12
 
 		CreateResourcesTransitionBarrier(copyDestBarriers[CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX], roResources.m_terrainIdxBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
+		CreateResourcesTransitionBarrier(copyDestBarriers[CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX], roResources.m_terrainHeightBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_RESOURCE_BARRIER clusterBufferBarrier{};
@@ -428,6 +437,9 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(copySourceBarriers[CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX], terrainVtxIdxStagingBuffer.m_buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
+		CreateResourcesTransitionBarrier(copySourceBarriers[CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX], terrainHeightStaging.m_buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_RESOURCE_BARRIER clusterStagingBarrier{};
@@ -470,6 +482,8 @@ namespace BlitzenDX12
 			terrainVtxPosStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainIdxBuffer.m_buffer.Get(), 0, terrainVtxIdxStagingBuffer.m_buffer.Get(), 0,
 			terrainVtxIdxStagingBuffer.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainHeightBuffer.buffer.Get(), 0, terrainHeightStaging.m_buffer.Get(), 0,
+			terrainHeightStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, surfaceStagingBuffer.m_buffer.Get(), 0, surfaceStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_renderBuffer.buffer.Get(), 0, 
 			renderStaging.m_buffer.Get(), 0, renderStaging.m_dataSize);
@@ -589,6 +603,8 @@ namespace BlitzenDX12
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_movementBuffer.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM), 0);
+
+			CreateBufferShaderResourceView(device, roResources.m_terrainHeightBuffer.buffer.Get(), ctx, context.m_pTerrain->m_heightDataCount, sizeof(float));
 		}
 
 		// INSTANCING DESCRIPTORS

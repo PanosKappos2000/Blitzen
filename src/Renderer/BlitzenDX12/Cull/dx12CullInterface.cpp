@@ -1,4 +1,7 @@
 #if defined(_WIN32)
+
+// BLITZEN IS ABSOLUTE
+
 #include "Renderer/Interface/blitRenderer.h"
 #include "Renderer/BlitzenDX12/Cull/dx12Cull.h"
 #include "Renderer/BlitzenDX12/Resources/dx12Resources.h"

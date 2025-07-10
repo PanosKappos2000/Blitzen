@@ -126,7 +126,7 @@ namespace BlitzenEngine
 
 		BlitML::float3 worldMove = BlitML::ToVec3(BlitML::Mat4EulerY(residentData.eulerAngles.y) * BlitML::vec4{ velocity, 0.0f });
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position += worldMove;
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position += worldMove * 0.01f;
 	}
 
 	BlitML::fVelocity GetResidentVelocity(Resident resident)

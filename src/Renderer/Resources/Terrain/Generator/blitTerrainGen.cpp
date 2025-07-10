@@ -10,12 +10,13 @@ namespace BlitGenerator
     // Generates a grid terrain with sine-wave bumps
     bool GenerateTerrainMesh(BlitzenEngine::TerrainContainer& container)
     {
-        constexpr uint32_t GridSize = 64;//BLIT_COLLISION_GRID_EXTENT;                  // Number of vertices per row/column
+        constexpr uint32_t GridSize = BLIT_TERRAIN_GRID_SIZE_TEMP;//BLIT_COLLISION_GRID_EXTENT;                  // Number of vertices per row/column
         constexpr float CellSize = 1.f;     //BLIT_COLLISION_GRID_CELL_EXTENT;          // Distance between vertices
         constexpr float Amplitude = 3.0f;                                               // Height of the bumps
         constexpr float Frequency = 0.2f;                                               // Frequency of sine waves
 
         BlitCL::DynamicArray<BlitzenEngine::VtxPos> terrainVertices{ GridSize * GridSize };
+        BlitCL::DynamicArray<float> terrainHeightData{ GridSize * GridSize };
         BlitCL::DynamicArray<uint32_t> terrainIndices;
 
         uint32_t vtxId = 0;
@@ -25,14 +26,15 @@ namespace BlitGenerator
             for (uint32_t x = 0; x < GridSize; ++x)
             {
                 BLIT_ASSERT(vtxId < terrainVertices.GetSize());
+                BLIT_ASSERT(vtxId == (x + z * GridSize));
 
                 float posX = x * CellSize;
                 float posZ = z * CellSize;
 
                 // Sine wave for height (replace with noise later)
-                float height = BlitML::Sin(posX * Frequency) * BlitML::Cos(posZ * Frequency) * Amplitude + BLIT_TERRAIN_HEIGHT_TEST_VALUE;
+                terrainHeightData[vtxId] = BlitML::Sin(posX * Frequency) * BlitML::Cos(posZ * Frequency) * Amplitude + BLIT_TERRAIN_HEIGHT_TEST_VALUE;
 
-                terrainVertices[vtxId] = BlitML::vec3{ posX, height, posZ };
+                terrainVertices[vtxId] = BlitML::vec3{ posX, terrainHeightData[vtxId], posZ };
                 vtxId++;
             }
         }
@@ -68,6 +70,12 @@ namespace BlitGenerator
         if (!container.AppendIndices(terrainIndices.Data(), uint32_t(terrainIndices.GetSize())))
         {
             BLIT_ERROR("%s: Failed to copy new terrain indices to general terrain indices array", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+            return false;
+        }
+
+        if (!container.AppendHeightData(terrainHeightData.Data(), uint32_t(terrainHeightData.GetSize())))
+        {
+            BLIT_ERROR("%s: Failed to copy new terrain height data to general terrain height data array", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
             return false;
         }
 

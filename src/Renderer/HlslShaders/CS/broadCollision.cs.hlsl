@@ -22,12 +22,10 @@ struct GRID_CELL
 {
     uint colliderOffset;
     uint colliderCount;
-    uint dynamicColliderOffset;
-    uint dynamicColliderCount;
 };
-RWStructuredBuffer<GRID_CELL> rw_Cells : register(u1);
+RWStructuredBuffer<GRID_CELL> rw_Cells : register(u15);
 
-RWBuffer<uint> rw_ColliderIndices : register(u2);
+RWBuffer<uint> rw_ColliderIndices : register(u16);
 
 [numthreads(64, 1, 1)]
 void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
@@ -71,12 +69,12 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         return;
     }
 
-    uint colliderIndex = grid.dynamicColliderOffset + grid.dynamicColliderCount;
+    uint colliderIndex = grid.colliderOffset + grid.colliderCount;
     if (colliderIndex >= BLIT_AVAILABLE_DYNAMIC_COLLIDER_SPACES)
     {
         return;
     }
 
     rw_ColliderIndices[colliderIndex] = objId;
-    rw_Cells[cellIndex].dynamicColliderCount++;
+    rw_Cells[cellIndex].colliderCount++;
 }

@@ -311,7 +311,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             LOAD_CMD_ARG_GLTF_FILEPATHS
                             CUSTOM_FILE_TEST
                             #COLLISION_TEST
-                            #BLIT_GAME_TEST
+                            BLIT_GAME_TEST
 
                             DASHER_JOIN
                             DASHER_USE_DEAR

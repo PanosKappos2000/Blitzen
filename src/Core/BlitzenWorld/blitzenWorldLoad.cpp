@@ -34,6 +34,14 @@ namespace BlitzenWorld
             }
 
             BlitzenWorld::LOAD_RESOURCES_MK_BLIT_MINUS(context.pWORLD, context.pRenderingResources, loadingMeshContext, argc, argv);
+
+            // Testing, this should be done another way.
+#if defined(BLIT_GAME_TEST)
+            context.m_activeControllerIDX = 1;
+            context.pWORLD->m_activeCameraIDX = 1;
+            context.m_controllerState = ControllerState::Game;
+            BlitzenWorld::SetupCameraAttachment(context.pWORLD->m_mainCharacter, BlitML::float3(0.f, 2.f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
+#endif
             
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
 

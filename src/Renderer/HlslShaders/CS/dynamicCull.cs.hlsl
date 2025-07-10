@@ -47,10 +47,38 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         
         position = rwssbo_HostTransform[obj.transformId].velocity;
         
-        if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT) && position.y > BLIT_TERRAIN_HEIGHT_TEST_VALUE)
+        if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT))
         {
-            position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= BLIT_TERRAIN_HEIGHT_TEST_VALUE ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : BLIT_TERRAIN_HEIGHT_TEST_VALUE;
-            rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
+            if (position.x >= 0 && position.x < BLIT_TERRAIN_GRID_SIZE_TEMP && position.z >= 0 && position.z < BLIT_TERRAIN_GRID_SIZE_TEMP)
+            {
+                int gridX = (int) floor(position.x);
+                int gridZ = (int) floor(position.z);
+                int heightDataIndex = gridX + gridZ * BLIT_TERRAIN_GRID_SIZE_TEMP;
+                float heightBelow = ssbo_TerrainHeight[heightDataIndex];
+                if(position.y > heightBelow)
+                {
+                    position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= heightBelow ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : heightBelow;
+                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
+                }
+                else if(position.y < heightBelow)
+                {
+                    position.y = heightBelow;
+                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
+                }
+            }
+            else
+            {
+                if (position.y > BLIT_TERRAIN_HEIGHT_TEST_VALUE)
+                {
+                    position.y = position.y - BLIT_GRAVITATIONAL_ACCELERATION >= BLIT_TERRAIN_HEIGHT_TEST_VALUE ? position.y - BLIT_GRAVITATIONAL_ACCELERATION : BLIT_TERRAIN_HEIGHT_TEST_VALUE;
+                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
+                }
+                else if (position.y < BLIT_TERRAIN_HEIGHT_TEST_VALUE)
+                {
+                    position.y = BLIT_TERRAIN_HEIGHT_TEST_VALUE;
+                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
+                }
+            }
         }
     }
     

@@ -82,10 +82,11 @@ namespace BlitzenDX12
     constexpr UINT CE_CULL_OS_DRAW_COUNTER_ID = 1;
 
     // DESCRIPTOR FOR DRAW CULL DYNAMIC OPAQUE
-    constexpr UINT CE_CULL_OD_RANGE_COUNT = 3;
+    constexpr UINT CE_CULL_OD_RANGE_COUNT = 4;
     constexpr UINT CE_CULL_OD_DRAW_CMD_ID = 0;
     constexpr UINT CE_CULL_OD_DRAW_COUNTER_ID = 1;
     constexpr UINT CE_CULL_OD_MOVEMENT_ID = 2;
+    constexpr UINT CE_CULL_OD_TERRAIN_HEIGHT_ID = 3;
 
     // DESCRIPTORS FOR DRAW CULL INSTANCES
     constexpr UINT CE_CULL_INST_RANGE_COUNT = 2;
@@ -178,7 +179,7 @@ namespace BlitzenDX12
 
 
     /* SSBO data copy helpers */
-    constexpr UINT Ce_ConstDataSSBOCount = 12;
+    constexpr UINT Ce_ConstDataSSBOCount = 13;
     constexpr UINT Ce_VtxPosStagingBufferIndex = 0;
     constexpr UINT Ce_IndexStagingBufferIndex = 1;
     constexpr UINT Ce_SurfaceStagingBufferIndex = 2;
@@ -191,10 +192,11 @@ namespace BlitzenDX12
     constexpr UINT Ce_BoundingSphereBoundingIndex = 9;
     constexpr UINT CE_TERRAIN_VERTEX_SSBO_STAGING_IDX = 10;
     constexpr UINT CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX = 11;
+    constexpr UINT CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX = 12;
     // optional, when clusters are requested
-    constexpr UINT Ce_ClusterVtxsStagingIndex = 10;
-    constexpr UINT Ce_ClusterSpheresStagingIndex = 11;
-    constexpr UINT Ce_ClusterConesStagingIndex = 12;
+    constexpr UINT Ce_ClusterVtxsStagingIndex = 13;
+    constexpr UINT Ce_ClusterSpheresStagingIndex = 14;
+    constexpr UINT Ce_ClusterConesStagingIndex = 15;
 
     constexpr UINT Ce_VarSSBODataCount = 1;
 

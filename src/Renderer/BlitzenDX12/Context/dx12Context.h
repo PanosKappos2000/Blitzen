@@ -27,6 +27,8 @@ namespace BlitzenDX12
 
         INDEX_BUFFER m_terrainIdxBuffer{};
 
+        SSBO m_terrainHeightBuffer{};
+
         SSBO m_surfaceBuffer{};
         SSBO m_LODBuffer{};
         SSBO m_matBuffer{};
@@ -41,6 +43,9 @@ namespace BlitzenDX12
 
         STAGING<BlitzenEngine::CPU_TRANSFORM> CPU_MOVING_OBJECT_BUFFER{};
         READBACK_BUFFER<BlitzenEngine::CPU_TRANSFORM> GPU_MOVING_OBJECT_READBACK{};
+
+        READBACK_BUFFER<BlitzenEngine::GridCellOffsets> GPU_GRID_CELL_OFFSETS_READBACK{};
+        READBACK_BUFFER<uint32_t> GPU_GRID_COLLIDER_INDICES_READBACK{};
     };
 
     struct ReadWriteResources

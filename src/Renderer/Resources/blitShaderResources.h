@@ -149,4 +149,10 @@ namespace BlitzenEngine
         BlitML::vec3 m_minBounds;
         BlitML::vec3 m_maxBounds;
     };
+
+    struct GridCellOffsets
+    {
+        uint32_t colliderOffset;
+        uint32_t colliderCount;
+    };
 }

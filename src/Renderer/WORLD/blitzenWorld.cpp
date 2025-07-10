@@ -237,7 +237,6 @@ namespace BlitzenWorld
 #endif
 
         pResources->m_terrainContainer.ALLOC();
-        BlitGenerator::GenerateTerrainMesh(pResources->m_terrainContainer);
 
         BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
 
@@ -319,14 +318,6 @@ namespace BlitzenWorld
         pWORLD->m_collisionGrid.CreateCells();
         pWORLD->m_collisionGrid.PlaceStatics(&pWORLD->m_residents.m_renders.m_renders[BLIT_OPAQUE_STATIC_RENDER_OFFSET], pWORLD->m_residents.m_transforms.m_staticTransformCount,
             pWORLD->m_residents.m_transforms.m_transforms);
-
-        // Testing, this should be done another way.
-#if defined(BLIT_GAME_TEST)
-        context.m_activeControllerIDX = 1;
-        context.pWORLD->m_activeCameraIDX = 1;
-        context.m_controllerState = ControllerState::Game;
-        BlitzenWorld::SetupCameraAttachment(context.pWORLD->m_mainCharacter, BlitML::float3(0.f, 0.5f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
-#endif
 
         BLIT_ASSERT(BlitGenerator::GenerateTerrainMesh(pRenderingResources->m_terrainContainer));
 
