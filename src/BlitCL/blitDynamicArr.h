@@ -32,7 +32,7 @@ namespace BlitCL
         {
             for (size_t i = 0; i < initialSize; ++i)
             {
-                BlitzenCore::BlitMemCopy(&m_pBlock[i], &data, sizeof(T));
+                BlitzenCore::BlitMemCopy(&m_pBlock[i], const_cast<T*>(&data), sizeof(T));
             }
         }
 

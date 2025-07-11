@@ -34,5 +34,5 @@ namespace BlitzenEngine
 
 namespace BlitGenerator
 {
-	bool GenerateTerrainMesh(BlitzenEngine::TerrainContainer& container);
+	bool GenerateTerrainVertices(BlitzenEngine::TerrainContainer& container);
 }

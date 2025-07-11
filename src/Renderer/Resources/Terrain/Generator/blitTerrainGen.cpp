@@ -4,11 +4,12 @@
 #include "Core/DbLog/blitAssert.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Renderer/Resources/blitShaderShared.h"
+#include "Renderer/Resources/Mesh/blitMeshPrimitive.h"
 
 namespace BlitGenerator
 {
     // Generates a grid terrain with sine-wave bumps
-    bool GenerateTerrainMesh(BlitzenEngine::TerrainContainer& container)
+    bool GenerateTerrainVertices(BlitzenEngine::TerrainContainer& container)
     {
         constexpr uint32_t GridSize = BLIT_TERRAIN_GRID_SIZE_TEMP;//BLIT_COLLISION_GRID_EXTENT;                  // Number of vertices per row/column
         constexpr float CellSize = 1.f;     //BLIT_COLLISION_GRID_CELL_EXTENT;          // Distance between vertices

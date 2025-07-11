@@ -319,7 +319,15 @@ namespace BlitzenWorld
         pWORLD->m_collisionGrid.PlaceStatics(&pWORLD->m_residents.m_renders.m_renders[BLIT_OPAQUE_STATIC_RENDER_OFFSET], pWORLD->m_residents.m_transforms.m_staticTransformCount,
             pWORLD->m_residents.m_transforms.m_transforms);
 
-        BLIT_ASSERT(BlitGenerator::GenerateTerrainMesh(pRenderingResources->m_terrainContainer));
+        BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pRenderingResources->m_terrainContainer));
+
+        //BlitzenEngine::MESH_PRIMITIVE_CREATE_CONTEXT meshPrimitiveCtx{};
+        //meshPrimitiveCtx.m_indexCount = pRenderingResources->m_terrainContainer.terrainIndexCount;
+        //meshPrimitiveCtx.m_indices = pRenderingResources->m_terrainContainer.terrainIndices;
+        //meshPrimitiveCtx.m_materialID = 0;
+        //meshPrimitiveCtx.m_vertexCount = pRenderingResources->m_terrainContainer.terrainVertexCount;
+        //meshPrimitiveCtx.m_vertices = pRenderingResources->m_terrainContainer.terrainVertices;
+        //pRenderingResources->m_meshContext.m_meshPrimitives.GenerateSurface(pRenderingResources->m_meshContext.m_triangles, pRenderingResources->m_meshContext.m_clusters, meshPrimitiveCtx);
 
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 

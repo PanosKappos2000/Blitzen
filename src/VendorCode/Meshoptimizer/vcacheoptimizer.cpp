@@ -219,7 +219,7 @@ void meshopt_optimizeVertexCacheTable(unsigned int* destination, const unsigned 
 
 		triangle_scores[i] = vertex_scores[a] + vertex_scores[b] + vertex_scores[c];
 	}
-
+		
 	unsigned int cache_holder[2 * (kCacheSizeMax + 4)];
 	unsigned int* cache = cache_holder;
 	unsigned int* cache_new = cache_holder + kCacheSizeMax + 4;

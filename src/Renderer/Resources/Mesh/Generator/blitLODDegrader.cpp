@@ -42,25 +42,7 @@ namespace BlitGenerator
 		return extent;
 	}
 
-	struct EDGE_ADJACENCY_CONTEXT
-	{
-		// Offsets for each vertices's edge in the adjacency list
-		uint32_t* m_offsetsArr{ nullptr };
-
-		// The indices of the previous and next vertices for each edge
-		uint32_t* m_edgesPreviousIndicesArr{ nullptr };
-		uint32_t* m_edgesNextIndicesArr{ nullptr };
-	};
-	// MESH (current lod) EDGE ADJACENCY.
-	// It calculates the connectivity between vertices by organizing edges into an adjacency structure.
-	// Specifically, it creates an array of offsets to efficiently access each vertex's connected edges, 
-	// as well as two arrays storing the previous and next edges for each edge in the mesh. 
-	//
-	// - **Edge Collapse**: When simplifying the mesh (e.g., for LOD generation), we need to collapse vertices and remove edges. To do so correctly, we must know which edges are adjacent to each other. 
-	// - **Preserving Topology**: Edge adjacency ensures that when vertices are merged, the connected faces and edges are updated, maintaining the mesh's topology.
-	// - **Efficient Traversal**: The adjacency structure allows for efficient traversal of the mesh's edges, 
-	// which speeds up the simplification process and ensures that we don't repeatedly recompute the relationships between edges.
-	static bool BuildEdgeAdjacency(EDGE_ADJACENCY_CONTEXT& adjacency, uint32_t* indicesArr, uint32_t indexCount, uint32_t vertexCount)
+	bool BuildEdgeAdjacency(EDGE_ADJACENCY_CONTEXT& adjacency, uint32_t* indicesArr, uint32_t indexCount, uint32_t vertexCount)
 	{
 		// Number of triangles
 		uint32_t faceCount = indexCount / 3;

@@ -73,6 +73,12 @@ namespace BlitzenEngine
             return SurfaceCreateRes::MAX_SURFACE_COUNT_REACHED;
         }
 
+        BlitGenerator::VTXIDX_OPTIMIZATION_CONTEXT vtxIdxOptimizationCtx{};
+        vtxIdxOptimizationCtx.m_idxCount = context.m_indexCount;
+        vtxIdxOptimizationCtx.m_vtxCount = context.m_vertexCount;
+        vtxIdxOptimizationCtx.m_idxArr = context.m_indices;
+        BLIT_ASSERT(BlitGenerator::OptimizeVertexIndices(vtxIdxOptimizationCtx));
+
         // Optimize vertices and indices using meshoptimizer
         meshopt_optimizeVertexCache(context.m_indices, context.m_indices, context.m_indexCount, context.m_vertexCount);
         meshopt_optimizeVertexFetch(context.m_vertices, context.m_indices, context.m_indexCount, context.m_vertices, context.m_vertexCount, sizeof(Vertex));

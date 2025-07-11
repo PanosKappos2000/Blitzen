@@ -102,7 +102,7 @@ constexpr void BLIT_FATAL(const char* message, ARGS... args)
 #endif
 
 #if defined(LOGGER_LEVEL_ERROR)
-#define BLIT_ERROR(message, ...)     BlitLog(BlitzenCore::LogLevel::ERR, message, ##__VA_ARGS__);
+#define BLIT_ERROR(message, ...)     BlitzenCore::BlitLog(BlitzenCore::LogLevel::ERR, message, ##__VA_ARGS__);
 #else
 #define BLIT_ERROR(message, ...)    ;
 #endif
