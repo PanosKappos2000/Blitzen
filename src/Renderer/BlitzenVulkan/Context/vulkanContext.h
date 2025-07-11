@@ -131,7 +131,10 @@ namespace BlitzenVulkan
 
         VkDescriptorBufferInfo m_drawVisDescInfo[ce_framesInFlight]{};
 
-        VkDescriptorBufferInfo m_vtxDescInfo{};
+        VkDescriptorBufferInfo m_vtxPosDescInfo{};
+        VkDescriptorBufferInfo m_vtxNrmDescInfo{};
+        VkDescriptorBufferInfo m_vtxTngDescInfo{};
+        VkDescriptorBufferInfo m_vtxTexCoordsInfo{};
 
         VkDescriptorBufferInfo m_matDescInfo{};
 
@@ -140,7 +143,6 @@ namespace BlitzenVulkan
         VkDescriptorBufferInfo m_clusterGroupCounterDescInfo{};
 
         VkDescriptorBufferInfo m_renderBufferDescInfo[ce_framesInFlight]{};
-
 
         DescriptorSetLayout m_pushDescriptorLayout;
 
@@ -155,17 +157,24 @@ namespace BlitzenVulkan
 
     struct RWResources
     {
-        BlitVk_CPU_DATA_SSBO<BlitzenEngine::MeshTransform> m_transformBuffer;
+        BlitVk_SSBO m_transformBuffer;
 
         BlitVk_UBUFFER<BlitzenEngine::CameraViewData> m_viewDataBuffer;
 
-        BlitVk_SSBO m_drawCmdBuffer;
+        BlitVk_SSBO m_staticDrawCmdBuffer;
+        BlitVk_SSBO m_staticDrawCmdCount;
 
-        BlitVk_SSBO m_drawCmdCounterBuffer;
+        BlitVk_SSBO m_movementBuffer;
+        BlitVk_SSBO m_dynamicDrawCmdBuffer;
+        BlitVk_SSBO m_dynamicDrawCmdCounter;
 
         BlitVk_SSBO m_clusterGroupDataBuffer;
+        BlitVk_SSBO m_clusterGroupCounter;
+        BlitVk_SSBO m_clusterVisibilityBuffer;
+        BlitVk_SSBO m_clusterDrawCmdBuffer;
+        BlitVk_SSBO m_clusterDrawCounter;
 
-        BlitVk_SSBO m_clusterDispatchCounterBuffer;
+        BlitVk_SSBO m_instanceDrawCmdBuffer;
 
         BlitVk_SSBO m_drawVisBuffer;
 
@@ -183,23 +192,28 @@ namespace BlitzenVulkan
 
         ImageSampler m_textureSampler;
 
-        BlitVk_SSBO m_vtxBuffer;
+        BlitVk_SSBO m_vtxPosBuffer;
+        BlitVk_SSBO m_vtxNrmBuffer;
+        BlitVk_SSBO m_vtxTngBuffer;
+        BlitVk_SSBO m_vtxTexCoordBuffer;
 
         BlitVk_SSBO m_idxBuffer;
 
-        BlitVk_SSBO m_renderBuffer;
-
-        BlitVk_SSBO m_boundingSphereBuffer;
-
-        BlitVk_SSBO m_surfaceBuffer;
-
-        BlitVk_SSBO m_LODBuffer;
-
-        BlitVk_SSBO m_matBuffer;
-
-        BlitVk_SSBO m_clusterBuffer;
+        BlitVk_SSBO m_clusterVtxsBuffer{};
+        BlitVk_SSBO m_clusterSpheresBuffer{};
+        BlitVk_SSBO m_clusterConesBuffer{};
 
         BlitVk_SSBO m_clusterIdxBuffer;
+
+        BlitVk_SSBO m_terrainVtxBuffer{};
+        BlitVk_SSBO m_terrainIdxBuffer{};
+        BlitVk_SSBO m_terrainHeightBuffer{};
+
+        BlitVk_SSBO m_renderBuffer;
+        BlitVk_SSBO m_boundingSphereBuffer;
+        BlitVk_SSBO m_surfaceBuffer;
+        BlitVk_SSBO m_LODBuffer;
+        BlitVk_SSBO m_matBuffer;
 
         BlitVk_SSBO m_blas;
         AccelerationStructure m_blasData[BlitzenCore::Ce_MaxMeshPrimitivesCount];
@@ -207,5 +221,33 @@ namespace BlitzenVulkan
         AccelerationStructure m_tlasData;
 
         BlitVk_STAGING<BlitzenEngine::CPU_TRANSFORM> CPU_MOVING_RESIDENTS_MAPPED{};
+        BlitVk_STAGING<BlitzenEngine::CPU_TRANSFORM> GPU_MOVING_OBJECT_READBACK{};
+
+        BlitVk_STAGING<BlitzenEngine::GridCellOffsets> GPU_GRID_CELL_OFFSETS_READBACK{};
+        BlitVk_STAGING<uint32_t> GPU_GRID_COLLIDER_INDICES_READBACK{};
+    };
+
+    struct LoadingContextMesh
+    {
+        BlitVk_STAGING<BlitzenEngine::VtxPos> m_vtxPosStaging;
+        BlitVk_STAGING<BlitzenEngine::VtxNormals> m_vtxNrmStaging;
+        BlitVk_STAGING<BlitzenEngine::VtxTangents> m_vtxTngStaging;
+        BlitVk_STAGING<BlitzenEngine::VtxTexCoords> m_vtxTexCoordStaging;
+        BlitVk_STAGING<uint32_t> m_vtxIdxStaging;
+        BlitVk_STAGING<BlitzenEngine::ClusterVertices> m_clusterVtxStaging;
+        BlitVk_STAGING<BlitzenEngine::ClusterSphere> m_clusterSpheresStaging;
+        BlitVk_STAGING<BlitzenEngine::ClusterCone> m_clusterConesStaging;
+        BlitVk_STAGING<uint32_t> m_clusterIdxStaging;
+        BlitVk_STAGING<BlitzenEngine::PrimitiveSurface> m_meshPrimStaging;
+        BlitVk_STAGING<BlitzenEngine::LodData> m_lodDataStaging;
+    };
+
+    struct LoadingContextRenderObjects
+    {
+        BlitVk_STAGING<BlitzenEngine::RenderObject> m_renderStaging;
+        BlitVk_STAGING<BlitzenEngine::RenderObject> m_dynamicRenderStaging;
+        BlitVk_STAGING<BlitzenEngine::MeshTransform> m_transformStaging;
+        BlitVk_STAGING<BlitzenEngine::CPU_TRANSFORM> m_cpuTransformStaging;
+        BlitVk_STAGING<BlitzenEngine::BoundingSphere> m_boundingSpheresStaging;
     };
 }

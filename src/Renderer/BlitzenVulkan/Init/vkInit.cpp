@@ -1452,7 +1452,7 @@ namespace BlitzenVulkan
 
             // Transform buffer is also dynamic
             Buffer transformStagingBufferTemp;
-            auto transformBufferSize{ CreateSSBO<BlitzenEngine::MeshTransform>(vma, device, readWrites.m_transformBuffer.m_buffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            auto transformBufferSize{ CreateSSBO<BlitzenEngine::MeshTransform>(vma, device, readWrites.m_transformBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                 BLIT_MAX_WORLD_TRANSFORM_COUNT) };
             if (transformBufferSize == 0)
             {
@@ -1460,15 +1460,15 @@ namespace BlitzenVulkan
                 return 0;
             }
 
-            VkDeviceSize drawCmdBufferSize{ CreateSSBO<IndirectDrawData>(vma, device, readWrites.m_drawCmdBuffer,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, 
-                Ce_DrawCmdElementCount) };
+            VkDeviceSize drawCmdBufferSize{ CreateSSBO<IndirectDrawData>(vma, device, readWrites.m_staticDrawCmdBuffer,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, 
+                BLIT_MAX_STATIC_DRAW_COMMANDS) };
             if (drawCmdBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create indirect draw cmd buffer", BLIT_VK_SYSTEM);
                 return 0;
             }
 
-            VkDeviceSize drawCmdCounterSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_drawCmdCounterBuffer, 
+            VkDeviceSize drawCmdCounterSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_staticDrawCmdCount, 
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 1) };
             if (drawCmdCounterSize == 0)
             {
@@ -1476,12 +1476,31 @@ namespace BlitzenVulkan
                 return 0;
             }
 
-            VkDeviceSize visibilityBufferSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_drawVisBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                BLIT_MAX_WORLD_RENDERS) };
-            if (visibilityBufferSize == 0)
+            VkDeviceSize dynamicDrawCmdBufferSize{ CreateSSBO<IndirectDrawData>(vma, device, readWrites.m_dynamicDrawCmdBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+                BLIT_MAX_WORLD_VARIABLE_COUNT) };
+            if (dynamicDrawCmdBufferSize == 0)
             {
-                BLIT_ERROR("%s: Failed to create draw visibility buffer", BLIT_VK_SYSTEM);
+                BLIT_ERROR("%s: Failed to create dynamic draw cmd buffer", BLIT_VK_SYSTEM);
                 return 0;
+            }
+
+            VkDeviceSize dynamicDrawCmdCounterSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_dynamicDrawCmdCounter, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT, 1) };
+            if (dynamicDrawCmdCounterSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create dynamic draw cmd counter", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            VkDeviceSize visibilityBufferSize = 0;
+            if (BlitzenCore::CE_OCCLUSION_DOUBLE_PASS)
+            {
+                visibilityBufferSize = CreateSSBO<uint32_t>(vma, device, readWrites.m_drawVisBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, BLIT_MAX_WORLD_RENDERS);
+                if (visibilityBufferSize == 0)
+                {
+                    BLIT_ERROR("%s: Failed to create draw visibility buffer", BLIT_VK_SYSTEM);
+                    return 0;
+                }
             }
 
             if (BlitzenCore::Ce_BuildClusters)
@@ -1490,14 +1509,6 @@ namespace BlitzenVulkan
                 if (clusterGroupBufferSize == 0)
                 {
                     BLIT_ERROR("%s: Failed to create cluster group data buffer", BLIT_VK_SYSTEM);
-                    return 0;
-                }
-
-                VkDeviceSize clusterCounterBufferSize{ CreateSSBO<uint32_t>(vma, device, readWrites.m_clusterDispatchCounterBuffer,
-                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 1) };
-                if (clusterCounterBufferSize == 0)
-                {
-                    BLIT_ERROR("%s: Failed to create cluster dispatch counter", BLIT_VK_SYSTEM);
                     return 0;
                 }
             }
@@ -1512,11 +1523,34 @@ namespace BlitzenVulkan
         auto bRT{ stats.bRayTracingSupported };
         uint32_t geometryRtFlags = bRT ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT : 0;
 
-        VkDeviceSize vertexBufferSize{ CreateSSBO<BlitzenEngine::Vertex>(vma, device, readOnlies.m_vtxBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags,
-            BlitzenCore::Ce_MaxWorldVertexCount)};
-        if (vertexBufferSize == 0)
+        VkDeviceSize vertexPosBufferSize{ CreateSSBO<BlitzenEngine::VtxPos>(vma, device, readOnlies.m_vtxPosBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+        if (vertexPosBufferSize == 0)
         {
-            BLIT_ERROR("%s: Failed to create vertex buffer", BLIT_VK_SYSTEM);
+            BLIT_ERROR("%s: Failed to create vertex positions buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        VkDeviceSize vertexNrmBufferSize{ CreateSSBO<BlitzenEngine::VtxNormals>(vma, device, readOnlies.m_vtxNrmBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+        if (vertexNrmBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create vertex normals buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        VkDeviceSize vertexTngBufferSize{ CreateSSBO<BlitzenEngine::VtxTangents>(vma, device, readOnlies.m_vtxTngBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+        if (vertexTngBufferSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create vertex tangents buffer", BLIT_VK_SYSTEM);
+            return 0;
+        }
+
+        VkDeviceSize vertexTexCoordBufferSize{ CreateSSBO<BlitzenEngine::VtxTexCoords>(vma, device, readOnlies.m_vtxTexCoordBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+        {
+            BLIT_ERROR("%s: Failed to create vertex texture coordinates buffer", BLIT_VK_SYSTEM);
             return 0;
         }
 
@@ -1573,11 +1607,27 @@ namespace BlitzenVulkan
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::Cluster>(vma, device,  readOnlies.m_clusterBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+            VkDeviceSize clusterBufferSize = CreateSSBO<BlitzenEngine::ClusterVertices>(vma, device,  readOnlies.m_clusterVtxsBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                 BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT);
             if (clusterBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create cluster buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            VkDeviceSize clusterSphereBufferSize = CreateSSBO<BlitzenEngine::ClusterSphere>(vma, device, readOnlies.m_clusterSpheresBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT);
+            if (clusterSphereBufferSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create cluster sphere buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            VkDeviceSize clusterConesBufferSize = CreateSSBO<BlitzenEngine::ClusterCone>(vma, device, readOnlies.m_clusterConesBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT);
+            if (clusterConesBufferSize == 0)
+            {
+                BLIT_ERROR("%s: Failed to create cluster cones buffer", BLIT_VK_SYSTEM);
                 return 0;
             }
 

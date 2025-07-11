@@ -150,6 +150,12 @@ namespace BlitzenEngine
         BlitML::vec3 m_maxBounds;
     };
 
+    struct WVGravity
+    {
+        float current = 0.f;
+        float max = 1.f;
+    };
+
     struct GridCellOffsets
     {
         uint32_t colliderOffset;

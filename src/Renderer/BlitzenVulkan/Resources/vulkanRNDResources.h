@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/BlitzenVulkan/Context/vulkanContext.h"
+#include "Renderer/BlitzenVulkan/Resources/vulkanResourceFunctions.h"
 
 namespace BlitzenVulkan
 {
@@ -67,6 +68,31 @@ namespace BlitzenVulkan
             BlitzenCore::BlitMemCopy(context.staging.m_pMapped, context.pData + context.offset, context.staging.m_dataSize);
         }
 
+        return 1;
+    }
+
+    template<class DATA>
+    uint8_t CreateEmptyStaging(VmaAllocator allocator, VkDevice device, BlitVk_STAGING<DATA>& staging, uint32_t maxElementCount)
+    {
+        if (maxElementCount == 0)
+        {
+            return 0;
+        }
+
+        staging.m_dataSize = maxElementCount * sizeof(DATA);
+
+        if (!CreateBuffer(allocator, staging.m_buffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, staging.m_dataSize, VMA_ALLOCATION_CREATE_MAPPED_BIT))
+        {
+            return 0;
+        }
+
+        staging.m_pMapped = reinterpret_cast<DATA*>(staging.m_buffer.m_vmaInfo.pMappedData);
+        if (!staging.m_pMapped)
+        {
+            return 0;
+        }
+
+        //success
         return 1;
     }
     

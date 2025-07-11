@@ -91,7 +91,7 @@ namespace BlitzenVulkan
     }
 
     uint8_t UploadResourcesToBuffers(VkDevice device, VkInstance instance, VmaAllocator vma, VkQueue queue, BlitzenEngine::DrawContext& drawContext, 
-        ROResources& readOnlies, RWResources* pRWResourcesArray,CommandContext& cmdContext, VulkanStats& stats)
+        ROResources& readOnlies, RWResources* pRWResourcesArray,CommandContext& cmdContext, VulkanStats& stats, LoadingContextMesh& loadingContextMesh)
     {
         for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
@@ -116,31 +116,13 @@ namespace BlitzenVulkan
             // Records command to copy staging buffer data to GPU buffers
             BeginCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-            CopyBufferToBuffer(commandBuffer, transformStagingContext.staging.m_buffer.m_handle, readWrites.m_transformBuffer.m_buffer.m_buffer.m_handle,
+            CopyBufferToBuffer(commandBuffer, transformStagingContext.staging.m_buffer.m_handle, readWrites.m_transformBuffer.m_buffer.m_handle,
                 transformStagingContext.staging.m_dataSize, 0, 0);
 
             vkCmdFillBuffer(commandBuffer, readWrites.m_drawVisBuffer.m_buffer.m_handle, 0, drawContext.m_pResidents->m_renders.RENDER_COUNT * sizeof(uint32_t), 0);
 
             SubmitCommandBuffer(queue, commandBuffer, 0, nullptr, 0, nullptr, VK_NULL_HANDLE);
             vkQueueWaitIdle(queue);
-        }
-
-        BUFFER_STAGING_CONTEXT<BlitzenEngine::Vertex> vtxStagingContext{};
-        vtxStagingContext.elementCount = drawContext.m_meshes.m_triangles.m_vertexCount;
-        vtxStagingContext.pData = drawContext.m_meshes.m_triangles.m_vertices;
-        if (!CreateStaging(vma, device, vtxStagingContext))
-        {
-            BLIT_ERROR("%s: Failed to create vertex staging buffer", BLIT_VK_SYSTEM);
-            return 0;
-        }
-
-        BUFFER_STAGING_CONTEXT<uint32_t> idxStagingContext{};
-        idxStagingContext.elementCount = drawContext.m_meshes.m_triangles.m_vtxIdxCount;
-        idxStagingContext.pData = drawContext.m_meshes.m_triangles.m_indices;
-        if (!CreateStaging(vma, device, idxStagingContext))
-        {
-            BLIT_ERROR("%s: Failed to create index staging buffer", BLIT_VK_SYSTEM);
-            return 0;
         }
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::RenderObject> renderStagingContext{};
@@ -188,15 +170,33 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        BUFFER_STAGING_CONTEXT<BlitzenEngine::Cluster> clusterStagingContext{};
+        BUFFER_STAGING_CONTEXT<BlitzenEngine::ClusterVertices> clusterVtxStagingContext{};
+        BUFFER_STAGING_CONTEXT<BlitzenEngine::ClusterSphere> clusterSphereStagingContext{};
+        BUFFER_STAGING_CONTEXT<BlitzenEngine::ClusterCone> clusterConesStagingContext{};
         BUFFER_STAGING_CONTEXT<uint32_t> clusterIndexStaging{};
         if constexpr (BlitzenCore::Ce_BuildClusters)
         {
-            clusterStagingContext.elementCount = drawContext.m_meshes.m_clusters.m_clusterCount;
-            clusterStagingContext.pData = drawContext.m_meshes.m_clusters.m_clusters;
-            if (!CreateStaging(vma, device, clusterStagingContext))
+            clusterVtxStagingContext.elementCount = drawContext.m_meshes.m_clusters.m_clusterCount;
+            clusterVtxStagingContext.pData = drawContext.m_meshes.m_clusters.m_clusterVertices;
+            if (!CreateStaging(vma, device, clusterVtxStagingContext))
             {
-                BLIT_ERROR("%s: Failed to create cluster staging buffer", BLIT_VK_SYSTEM);
+                BLIT_ERROR("%s: Failed to create cluster vertices staging buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            clusterSphereStagingContext.elementCount = drawContext.m_meshes.m_clusters.m_clusterCount;
+            clusterSphereStagingContext.pData = drawContext.m_meshes.m_clusters.m_clusterSpheres;
+            if (!CreateStaging(vma, device, clusterSphereStagingContext))
+            {
+                BLIT_ERROR("%s: Failed to create cluster spheres staging buffer", BLIT_VK_SYSTEM);
+                return 0;
+            }
+
+            clusterConesStagingContext.elementCount = drawContext.m_meshes.m_clusters.m_clusterCount;
+            clusterConesStagingContext.pData = drawContext.m_meshes.m_clusters.m_clusterCones;
+            if (!CreateStaging(vma, device, clusterConesStagingContext))
+            {
+                BLIT_ERROR("%s: Failed to create cluster cones staging buffer", BLIT_VK_SYSTEM);
                 return 0;
             }
 
@@ -211,9 +211,20 @@ namespace BlitzenVulkan
 
         BeginCommandBuffer(cmdContext.m_transferCmdB, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-        CopyBufferToBuffer(cmdContext.m_transferCmdB, vtxStagingContext.staging.m_buffer.m_handle, readOnlies.m_vtxBuffer.m_buffer.m_handle, vtxStagingContext.staging.m_dataSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, loadingContextMesh.m_vtxPosStaging.m_buffer.m_handle, readOnlies.m_vtxPosBuffer.m_buffer.m_handle, 
+            loadingContextMesh.m_vtxPosStaging.m_validIndex * sizeof(BlitzenEngine::VtxPos), 0, 0);
 
-        CopyBufferToBuffer(cmdContext.m_transferCmdB, idxStagingContext.staging.m_buffer.m_handle, readOnlies.m_idxBuffer.m_buffer.m_handle, idxStagingContext.staging.m_dataSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, loadingContextMesh.m_vtxNrmStaging.m_buffer.m_handle, readOnlies.m_vtxNrmBuffer.m_buffer.m_handle,
+            loadingContextMesh.m_vtxNrmStaging.m_validIndex * sizeof(BlitzenEngine::VtxNormals), 0, 0);
+
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, loadingContextMesh.m_vtxTngStaging.m_buffer.m_handle, readOnlies.m_vtxTngBuffer.m_buffer.m_handle,
+            loadingContextMesh.m_vtxTngStaging.m_validIndex * sizeof(BlitzenEngine::VtxTangents), 0, 0);
+
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, loadingContextMesh.m_vtxTexCoordStaging.m_buffer.m_handle, readOnlies.m_vtxTexCoordBuffer.m_buffer.m_handle,
+            loadingContextMesh.m_vtxTexCoordStaging.m_validIndex * sizeof(BlitzenEngine::VtxTexCoords), 0, 0);
+
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, loadingContextMesh.m_vtxIdxStaging.m_buffer.m_handle, readOnlies.m_idxBuffer.m_buffer.m_handle, 
+            loadingContextMesh.m_vtxIdxStaging.m_validIndex * sizeof(uint32_t), 0, 0);
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, renderStagingContext.staging.m_buffer.m_handle, readOnlies.m_renderBuffer.m_buffer.m_handle, renderStagingContext.staging.m_dataSize, 0, 0);
 
@@ -227,7 +238,14 @@ namespace BlitzenVulkan
 
         if (BlitzenCore::Ce_BuildClusters)
         {
-            CopyBufferToBuffer(cmdContext.m_transferCmdB, clusterStagingContext.staging.m_buffer.m_handle, readOnlies.m_clusterBuffer.m_buffer.m_handle, clusterStagingContext.staging.m_dataSize, 0, 0);
+            CopyBufferToBuffer(cmdContext.m_transferCmdB, clusterVtxStagingContext.staging.m_buffer.m_handle, readOnlies.m_clusterVtxsBuffer.m_buffer.m_handle, 
+                clusterVtxStagingContext.staging.m_dataSize, 0, 0);
+
+            CopyBufferToBuffer(cmdContext.m_transferCmdB, clusterSphereStagingContext.staging.m_buffer.m_handle, readOnlies.m_clusterSpheresBuffer.m_buffer.m_handle,
+                clusterSphereStagingContext.staging.m_dataSize, 0, 0);
+
+            CopyBufferToBuffer(cmdContext.m_transferCmdB, clusterConesStagingContext.staging.m_buffer.m_handle, readOnlies.m_clusterConesBuffer.m_buffer.m_handle,
+                clusterConesStagingContext.staging.m_dataSize, 0, 0);
 
             CopyBufferToBuffer(cmdContext.m_transferCmdB, clusterIndexStaging.staging.m_buffer.m_handle, readOnlies.m_clusterIdxBuffer.m_buffer.m_handle, clusterIndexStaging.staging.m_dataSize, 0, 0);
         }
@@ -257,11 +275,29 @@ namespace BlitzenVulkan
 
     void CreateDescriptors(DescriptorContext& descriptorContext, ROResources& roResources, RWResources* rwResourcesArray, BlitzenEngine::DrawContext& drawContext)
     {
-        descriptorContext.m_vtxDescInfo.buffer = roResources.m_vtxBuffer.m_buffer.m_handle;
-        descriptorContext.m_vtxDescInfo.offset = 0;
-        descriptorContext.m_vtxDescInfo.range = drawContext.m_meshes.m_triangles.m_vertexCount * sizeof(BlitzenEngine::Vertex);
-        WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsGraphics[Ce_VertexBufferGraphicsPushID], &descriptorContext.m_vtxDescInfo,
+        descriptorContext.m_vtxPosDescInfo.buffer = roResources.m_vtxPosBuffer.m_buffer.m_handle;
+        descriptorContext.m_vtxPosDescInfo.offset = 0;
+        descriptorContext.m_vtxPosDescInfo.range = drawContext.m_meshes.m_triangles.m_vertexCount * sizeof(BlitzenEngine::VtxPos);
+        WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsGraphics[Ce_VertexPosBufferGraphicsPushID], &descriptorContext.m_vtxPosDescInfo,
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_VertexBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
+
+        descriptorContext.m_vtxNrmDescInfo.buffer = roResources.m_vtxNrmBuffer.m_buffer.m_handle;
+        descriptorContext.m_vtxNrmDescInfo.offset = 0;
+        descriptorContext.m_vtxNrmDescInfo.range = drawContext.m_meshes.m_triangles.m_vertexCount * sizeof(BlitzenEngine::VtxNormals);
+        WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsGraphics[Ce_VertexNrmBufferGraphicsPushID], &descriptorContext.m_vtxNrmDescInfo,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_VertexNrmBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
+
+        descriptorContext.m_vtxTngDescInfo.buffer = roResources.m_vtxTngBuffer.m_buffer.m_handle;
+        descriptorContext.m_vtxTngDescInfo.offset = 0;
+        descriptorContext.m_vtxTngDescInfo.range = drawContext.m_meshes.m_triangles.m_vertexCount * sizeof(BlitzenEngine::VtxTangents);
+        WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsGraphics[Ce_VertexTngBufferGraphicsPushID], &descriptorContext.m_vtxTngDescInfo,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_VertexTngBufferDescriptorBidning, nullptr, VK_NULL_HANDLE, 1, 0);
+
+        descriptorContext.m_vtxTexCoordsInfo.buffer = roResources.m_vtxTexCoordBuffer.m_buffer.m_handle;
+        descriptorContext.m_vtxTexCoordsInfo.offset = 0;
+        descriptorContext.m_vtxTexCoordsInfo.range = drawContext.m_meshes.m_triangles.m_vertexCount * sizeof(BlitzenEngine::VtxTexCoords);
+        WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsGraphics[Ce_VertexTexCoordsBufferGraphicsPushID], &descriptorContext.m_vtxTexCoordsInfo,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_VertexTexCoordBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 
         descriptorContext.m_matDescInfo.buffer = roResources.m_matBuffer.m_buffer.m_handle;
         descriptorContext.m_matDescInfo.offset = 0;
@@ -285,13 +321,13 @@ namespace BlitzenVulkan
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_SurfaceBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_surfaceDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_SurfaceBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 
-            descriptorContext.m_transformDescInfo[frame].buffer = rw.m_transformBuffer.m_buffer.m_buffer.m_handle;
+            descriptorContext.m_transformDescInfo[frame].buffer = rw.m_transformBuffer.m_buffer.m_handle;
             descriptorContext.m_transformDescInfo[frame].offset = 0;
             descriptorContext.m_transformDescInfo[frame].range = BLIT_MAX_WORLD_TRANSFORM_COUNT * sizeof(BlitzenEngine::MeshTransform);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_TransformBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_transformDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_TransformBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 
-            descriptorContext.m_drawCmdDescInfo[frame].buffer = rw.m_drawCmdBuffer.m_buffer.m_handle;
+            descriptorContext.m_drawCmdDescInfo[frame].buffer = rw.m_staticDrawCmdBuffer.m_buffer.m_handle;
             descriptorContext.m_drawCmdDescInfo[frame].offset = 0;
             descriptorContext.m_drawCmdDescInfo[frame].range = Ce_DrawCmdElementCount * sizeof(IndirectDrawData);
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsShared[Ce_DrawCmdBufferSharedPushID + frame * Ce_SharedDescriptorCount], &descriptorContext.m_drawCmdDescInfo[frame],
@@ -314,7 +350,7 @@ namespace BlitzenVulkan
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsCull[Ce_LODBufferCullPushID + frame * Ce_CullDescriptorCount], &descriptorContext.m_LODDescInfo[frame],
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_LODBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 
-            descriptorContext.m_drawCmdCounterDescInfo[frame].buffer = rw.m_drawCmdCounterBuffer.m_buffer.m_handle;
+            descriptorContext.m_drawCmdCounterDescInfo[frame].buffer = rw.m_staticDrawCmdCount.m_buffer.m_handle;
             descriptorContext.m_drawCmdCounterDescInfo[frame].offset = 0;
             descriptorContext.m_drawCmdCounterDescInfo[frame].range = VK_WHOLE_SIZE;
             WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsCull[Ce_DrawCmdCounterCullPushID + frame * Ce_CullDescriptorCount], &descriptorContext.m_drawCmdCounterDescInfo[frame], 
@@ -344,9 +380,9 @@ namespace BlitzenVulkan
             {
                 auto& rw{ rwResourcesArray[frame] };
 
-                descriptorContext.m_clusterBufferDescInfo.buffer = roResources.m_clusterBuffer.m_buffer.m_handle;
+                descriptorContext.m_clusterBufferDescInfo.buffer = roResources.m_clusterVtxsBuffer.m_buffer.m_handle;
                 descriptorContext.m_clusterBufferDescInfo.offset = 0;
-                descriptorContext.m_clusterBufferDescInfo.range = drawContext.m_meshes.m_clusters.m_clusterCount * sizeof(BlitzenEngine::Cluster);
+                descriptorContext.m_clusterBufferDescInfo.range = drawContext.m_meshes.m_clusters.m_clusterCount * sizeof(BlitzenEngine::ClusterVertices);
                 WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterBufferPushID + frame * Ce_ClusterCullDescriptorCount], 
                     &descriptorContext.m_clusterBufferDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_ClusterBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 
@@ -355,12 +391,6 @@ namespace BlitzenVulkan
                 descriptorContext.m_clusterGroupDescInfo.range = Ce_ClusterGroupBufferSize * sizeof(ClusterGroupData);
                 WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterGroupBufferPushID + frame * Ce_ClusterCullDescriptorCount],
                     &descriptorContext.m_clusterGroupDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_ClusterGroupDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
-
-                descriptorContext.m_clusterGroupCounterDescInfo.buffer = rw.m_clusterDispatchCounterBuffer.m_buffer.m_handle;
-                descriptorContext.m_clusterGroupCounterDescInfo.offset = 0;
-                descriptorContext.m_clusterGroupCounterDescInfo.range = sizeof(uint32_t);
-                WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsClusterCull[Ce_ClusterCounterBufferPushID + frame * Ce_ClusterCullDescriptorCount],
-                    &descriptorContext.m_clusterGroupCounterDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_ClusterCounterDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
             }
         }
     }

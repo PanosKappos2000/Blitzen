@@ -40,8 +40,8 @@ namespace BlitzenEngine
             // Draw
             vkCmdBindPipeline(cmdb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineContext.m_opaqueDrawPso.handle);
             vkCmdBindIndexBuffer(cmdb, readOnlies.m_idxBuffer.m_buffer.m_handle, 0, VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexedIndirectCount(cmdb, readWrites.m_drawCmdBuffer.m_buffer.m_handle, offsetof(BlitzenVulkan::IndirectDrawData, drawIndirect),
-                readWrites.m_drawCmdCounterBuffer.m_buffer.m_handle, 0, BlitzenVulkan::Ce_DrawCmdElementCount, sizeof(BlitzenVulkan::IndirectDrawData));
+            vkCmdDrawIndexedIndirectCount(cmdb, readWrites.m_staticDrawCmdBuffer.m_buffer.m_handle, offsetof(BlitzenVulkan::IndirectDrawData, drawIndirect),
+                readWrites.m_staticDrawCmdCount.m_buffer.m_handle, 0, BlitzenVulkan::Ce_DrawCmdElementCount, sizeof(BlitzenVulkan::IndirectDrawData));
 
 			vkCmdEndRendering(cmd.m_mainGraphicsCmdB);
 
@@ -94,5 +94,11 @@ namespace BlitzenEngine
 
         pipelineContext.m_colorTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         pipelineContext.m_depthTargetInfo[frame].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    }
+
+    void RenderTerrain(BlitzenVulkan::VulkanRenderer* pRenderer, uint32_t terrainCount)
+    {
+        auto cmdList = pRenderer->m_commandsContext[pRenderer->m_currentFrame].m_mainGraphicsCmdB;
+        auto& rwResources = pRenderer->m_readWrites[pRenderer->m_currentFrame];
     }
 }

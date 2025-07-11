@@ -169,13 +169,22 @@ namespace BlitzenVulkan
     constexpr uint32_t Ce_PushDescriptorSetID = 0;
     
     // GRAPHICS DESCRIPTORS
-    constexpr uint32_t Ce_GraphicsDescriptorCount = 2;
+    constexpr uint32_t Ce_GraphicsDescriptorCount = 5;
 
     constexpr uint32_t Ce_VertexBufferDescriptorBinding = 1;
-    constexpr uint32_t Ce_VertexBufferGraphicsPushID = 0;
+    constexpr uint32_t Ce_VertexPosBufferGraphicsPushID = 0;
+
+    constexpr uint32_t Ce_VertexNrmBufferDescriptorBinding = 2;
+    constexpr uint32_t Ce_VertexNrmBufferGraphicsPushID = 1;
+
+    constexpr uint32_t Ce_VertexTngBufferDescriptorBidning = 3;
+    constexpr uint32_t Ce_VertexTngBufferGraphicsPushID = 2;
+
+    constexpr uint32_t Ce_VertexTexCoordBufferDescriptorBinding = 4;
+    constexpr uint32_t Ce_VertexTexCoordsBufferGraphicsPushID = 3;
 
     constexpr uint32_t Ce_MatBufferDescriptorBinding = 6;
-    constexpr uint32_t Ce_MatBufferGraphicsPushID = 1;
+    constexpr uint32_t Ce_MatBufferGraphicsPushID = 4;
 
     constexpr uint32_t Ce_TextureDescriptorsBinding = 0;
     constexpr uint32_t Ce_TextureDescriptorsSetID = 1;
@@ -417,6 +426,7 @@ namespace BlitzenVulkan
         Buffer m_buffer;
         DATA* m_pMapped;
         VkDeviceSize m_dataSize;
+        uint32_t m_validIndex;
     };
 
     template<class DATA>

@@ -41,8 +41,23 @@ namespace BlitzenEngine
     {
         auto& cmd{ pRenderer->m_commandsContext[pRenderer->m_currentFrame] };
 
-        vkWaitForFences(pRenderer->m_device, 1, &cmd.m_frameFence.handle, VK_TRUE, BlitzenVulkan::ce_fenceTimeout);
-        VK_CHECK_MSG(vkResetFences(pRenderer->m_device, 1, &cmd.m_frameFence.handle));
+        switch (fenceType)
+        {
+        case RENDERER_FENCE_TYPE::GRAPHICS:
+        {
+            vkWaitForFences(pRenderer->m_device, 1, &cmd.m_frameFence.handle, VK_TRUE, BlitzenVulkan::ce_fenceTimeout);
+            VK_CHECK_MSG(vkResetFences(pRenderer->m_device, 1, &cmd.m_frameFence.handle));
+            break;
+        }
+        case RENDERER_FENCE_TYPE::COMPUTE:
+        {
+            break;
+        }
+        case RENDERER_FENCE_TYPE::TRANSFER:
+        {
+            break;
+        }
+        }
     }
 
     void UpdateRendererView(BlitzenVulkan::VulkanRenderer* pRenderer, CameraViewData& viewData, bool isFrustumFrozen)
@@ -71,8 +86,8 @@ namespace BlitzenEngine
         auto& buffers{ pRenderer->m_readWrites[pRenderer->m_currentFrame] };
 
         BlitzenVulkan::BeginCommandBuffer(cmdContext.m_transferCmdB, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-        BlitzenVulkan::CopyBufferToBuffer(cmdContext.m_transferCmdB, buffers.m_transformBuffer.m_staging.m_buffer.m_handle, buffers.m_transformBuffer.m_buffer.m_buffer.m_handle,
-            buffers.m_transformBuffer.m_staging.m_dataSize, 0, 0);
+        BlitzenVulkan::CopyBufferToBuffer(cmdContext.m_transferCmdB, buffers.m_movementBuffer.m_buffer.m_handle, pRenderer->m_readOnlies.CPU_MOVING_RESIDENTS_MAPPED.m_buffer.m_handle,
+            pRenderer->m_readOnlies.CPU_MOVING_RESIDENTS_MAPPED.m_dataSize, 0, 0);
 
         // VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT is used here because the signal comes from a transfer queue.
         // More specific shader stages (like VERTEX or COMPUTE) are invalid for transfer queues per Vulkan spec.

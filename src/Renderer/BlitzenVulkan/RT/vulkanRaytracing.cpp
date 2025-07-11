@@ -76,7 +76,7 @@ namespace BlitzenVulkan
         size_t totalScratchSize = 0;
 
         // Gets the address of the vertex buffer and then the index buffer
-        auto vertexBufferAddress = GetBufferAddress(device, readOnlies.m_vtxBuffer.m_buffer.m_handle);
+        auto vertexBufferAddress = GetBufferAddress(device, readOnlies.m_vtxPosBuffer.m_buffer.m_handle);
         auto indexBufferAddress = GetBufferAddress(device, readOnlies.m_idxBuffer.m_buffer.m_handle);
 
         for (size_t i = 0; i < meshPrimitiveCount; ++i)
@@ -98,8 +98,8 @@ namespace BlitzenVulkan
             geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
             // Gets the precise address of the vertex buffer for the current surface (needs to be incremented by the vertex offset)
             geometry.geometry.triangles.vertexData.deviceAddress = 
-                VkDeviceAddress(vertexBufferAddress + context.m_meshes.m_meshPrimitives.m_meshPrimitiveData[i].m_primitiveVertexOffset * sizeof(BlitzenEngine::Vertex));
-            geometry.geometry.triangles.vertexStride = sizeof(BlitzenEngine::Vertex);
+                VkDeviceAddress(vertexBufferAddress + context.m_meshes.m_meshPrimitives.m_meshPrimitiveData[i].m_primitiveVertexOffset * sizeof(BlitzenEngine::VtxPos));
+            geometry.geometry.triangles.vertexStride = sizeof(BlitzenEngine::VtxPos);
             // Primitive vertex count (at the moment), is an array created for this one, optinal line of code
             geometry.geometry.triangles.maxVertex = context.m_meshes.m_meshPrimitives.m_meshPrimitiveData[i].m_primitiveVertexCount;
 

@@ -83,7 +83,7 @@
 		static_assert(BLIT_MAX_HEIGHT_MAP_DATA_COUNT == BLIT_TERRAIN_GRID_SIZE_TEMP * BLIT_TERRAIN_GRID_SIZE_TEMP);
 #endif
 
-#define BLIT_GRAVITATIONAL_ACCELERATION														1.f
+#define BLIT_GRAVITATIONAL_ACCELERATION														0.1f
 #define BLIT_TERRAIN_HEIGHT_TEST_VALUE														0.f
 
 /************************************************************************************************************************************************

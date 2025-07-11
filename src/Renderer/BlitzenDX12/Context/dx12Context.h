@@ -24,9 +24,7 @@ namespace BlitzenDX12
         INDEX_BUFFER m_clusterIdxBuffer{};
 
         SSBO m_terrainVtxBuffer{};
-
         INDEX_BUFFER m_terrainIdxBuffer{};
-
         SSBO m_terrainHeightBuffer{};
 
         SSBO m_surfaceBuffer{};
