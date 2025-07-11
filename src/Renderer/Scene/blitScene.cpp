@@ -279,12 +279,7 @@ namespace BlitzenEngine
             CPU_TRANSFORM randomTransform;
             RandomizeTransform(&randomTransform, transformMultiplier);
             wvCtx.residentCtx.m_transformInfo.cpu_pTransform = &randomTransform;
-
-            if (wv != 5'000)
-            {
-                wvCtx.residentCtx.m_transformInfo.cpu_pTransform->movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
-            }
-
+            
             MeshTransform randomTransform_gpu;
             RandomizeTransform(&randomTransform_gpu, transformMultiplier, WV_ROTATING_KITTEN_SCALE);
             wvCtx.residentCtx.m_transformInfo.m_pTransform = &randomTransform_gpu;
@@ -300,6 +295,8 @@ namespace BlitzenEngine
                 BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_RESIDENT_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(movingRes));
                 return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
             }
+
+            LogResidentForGravity(wv, 1.f);
 
             if (wv == 0)
             {

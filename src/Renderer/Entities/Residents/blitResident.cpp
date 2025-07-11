@@ -84,6 +84,27 @@ namespace BlitzenEngine
 		
 	}
 
+	void WORLD_RESIDENTS::UpdateFallingResidents(float deltaTime)
+	{
+		for (uint32_t wv = 0; wv < m_gravityWVCount; wv++)
+		{
+			uint32_t IDX = m_gravityWVs[wv];
+			auto& transformData = m_transforms.m_moveables[IDX];
+			auto& gravityData = m_gravityData[IDX];
+			if (transformData.movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT)
+			{
+				transformData.position.y -= gravityData.current * deltaTime;
+
+				// TEMP
+				gravityData.current = BlitML::Max(gravityData.max, gravityData.current + BLIT_GRAVITATIONAL_ACCELERATION);
+			}
+			else
+			{
+				m_gravityData[IDX].current = 0;
+			}
+		}
+	}
+
 	MovingResident* RequestMovementComponent(Resident resident)
 	{
 		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
@@ -153,10 +174,29 @@ namespace BlitzenEngine
 		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
 	}
 
+	bool CheckResidentIsFalling(Resident resident)
+	{
+		if (resident > P_WORLD_RESIDENTS->m_worldVariableCount)
+		{
+			return false;
+		}
+
+		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT;
+	}
+
 	BlitML::fRotation GetResidentRotation(Resident resident)
 	{
 		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
 
 		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles;
+	}
+
+	void LogResidentForGravity(Resident resident, float maxSpeed)
+	{
+		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT);
+
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
+		P_WORLD_RESIDENTS->m_gravityWVs[P_WORLD_RESIDENTS->m_gravityWVCount++] = resident;
+		P_WORLD_RESIDENTS->m_gravityData[resident].max = maxSpeed;
 	}
 }

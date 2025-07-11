@@ -163,7 +163,7 @@ namespace BlitzenEngine
 		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
 
 		cmd.m_copyCmdList->CopyBufferRegion(pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_buffer.Get(), 0, rwResources.m_movementBuffer.buffer.Get(), 0,
-			outUpdate.m_transformCount * sizeof(MeshTransform));
+			outUpdate.m_transformCount * sizeof(CPU_TRANSFORM));
 
 		cmd.m_copyCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };

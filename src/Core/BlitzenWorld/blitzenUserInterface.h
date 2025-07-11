@@ -12,19 +12,17 @@ namespace BlitzenEngine
 
 	void AddCollisionReactionFlag(const char* name);
 
+	void LogResidentForGravity(Resident resident, float maxSpeed);
+
 	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint32_t rotationFlags);
 
 	void AddResidentVelocity(Resident resident, const BlitML::fVelocity& velocity, float deltaTime);
 
-	void ResidentCutVelocityForward(Resident resident);
-
-	void ResidentCutVelocityRight(Resident resident);
-
-	void ResidentCutVelocityLeft(Resident resident);
-
-	void ResidentCutVelocityBack(Resident resident);
+	bool CheckResidentIsFalling(Resident resident);
 
 	bool CheckResidentVelocity(Resident resident);
+
+	void ResidentJump(Resident resident);
 
 	BlitML::fVelocity GetResidentVelocity(Resident resident);
 

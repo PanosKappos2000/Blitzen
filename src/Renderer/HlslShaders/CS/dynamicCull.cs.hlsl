@@ -59,43 +59,54 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         // Updates orientation (the logic here is wrong TODO: FIX)
         ssbo_Transforms[obj.transformId].orientation = orientation;
         
-        // Updates position in case something on the CPU side
+        // Initial update on position
         position = rwssbo_HostTransform[objId].velocity;
         
-        // Check for gravity
-        if ((movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT))
+        // Gravity check
+        if(movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT)
         {
+            float heightBelow;
             // Height map logic
             if (position.x >= 0 && position.x < BLIT_TERRAIN_GRID_SIZE_TEMP && position.z >= 0 && position.z < BLIT_TERRAIN_GRID_SIZE_TEMP)
             {
                 int gridX = (int) floor(position.x);
                 int gridZ = (int) floor(position.z);
                 int heightDataIndex = gridX + gridZ * BLIT_TERRAIN_GRID_SIZE_TEMP;
-                float heightBelow = ssbo_TerrainHeight[heightDataIndex] + radius;
-                if(position.y > heightBelow)
+                heightBelow = ssbo_TerrainHeight[heightDataIndex] + radius;
+            }
+            else
+            {
+                heightBelow = BLIT_TERRAIN_HEIGHT_TEST_VALUE + radius;
+            }
+            // If the resident is above the terrain set falling flag
+            if(position.y > heightBelow)
+            {
+                rwssbo_HostTransform[objId].movementFlags |= BLIT_RESIDENT_MOVEMENT_FALLING_BIT;
+            }
+            else if(position.y < heightBelow)
+            {
+                // If the resident went below ground while falling
+                if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT)
                 {
-                    position.y = max(position.y - BLIT_GRAVITATIONAL_ACCELERATION, heightBelow);
-                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
+                    rwssbo_HostTransform[objId].velocity.y = heightBelow;
                 }
-                else if(position.y < heightBelow)
+                else
                 {
+                    // Climbing (PROBABLY TEMP, MAYBE ANOTHER FLAG)
                     position.y = min(position.y + 0.02f, heightBelow);
                     rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
                 }
             }
-            else
+            
+            // If they're standing on the terrain, makes sure there is no falling flag
+            // This is not else if, so that the flag is reset even if the value was aligned inside the shader invocation
+            if (rwssbo_HostTransform[objId].velocity.y == heightBelow)
             {
-                if (position.y > BLIT_TERRAIN_HEIGHT_TEST_VALUE)
-                {
-                    position.y = max(position.y - BLIT_GRAVITATIONAL_ACCELERATION, BLIT_TERRAIN_HEIGHT_TEST_VALUE);
-                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
-                }
-                else if (position.y < BLIT_TERRAIN_HEIGHT_TEST_VALUE)
-                {
-                    position.y = BLIT_TERRAIN_HEIGHT_TEST_VALUE;
-                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
-                }
+                rwssbo_HostTransform[objId].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_FALLING_BIT);
             }
+            
+            // Final update on position
+            position = rwssbo_HostTransform[objId].velocity;
         }
     }
     

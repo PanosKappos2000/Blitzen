@@ -14,6 +14,8 @@ namespace BlitzenWorld
 			{
 				BlitzenEngine::UpdateResidentAttachedCamera(context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX], context.pWORLD->deltaTime);
 			}
+
+			context.pWORLD->m_residents.UpdateFallingResidents(context.pWORLD->deltaTime);
 		}
 	}
 }

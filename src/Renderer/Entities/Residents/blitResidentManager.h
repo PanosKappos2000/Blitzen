@@ -58,6 +58,11 @@ namespace BlitzenEngine
 	public:
 		WORLD_VARIABLE m_worldVariables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t m_worldVariableCount{ 0 };
+
+		WVGravity m_gravityData[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		uint32_t m_gravityWVs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint32_t m_gravityWVCount{ 0 };
+
 		Resident m_residents[BLIT_MAX_WORLD_RESIDENTS];
 		uint32_t m_residentCount{ 0 };
 		MovingResident m_movingResidents[BLIT_MAX_WORLD_VARIABLE_COUNT];
@@ -71,6 +76,8 @@ namespace BlitzenEngine
 		RESIDENT_CREATE_RES AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx);
 
 		void UpdateMovingResidents(float deltaTime);
+
+		void UpdateFallingResidents(float deltaTime);
 	};
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr);
