@@ -16,12 +16,14 @@ namespace BlitzenCore
     {
         PRESS,
         RELEASE,
-        HOLD
+        HOLD, 
+        HOLD_AND_RELEASE
     };
 
     struct KeyData
     {
         BlitKey m_keycode;
+        KeyCallback m_PFNTap;
         KeyCallback m_PFN;
         BlitzenCore::BIG_BOOL m_heldDownFlags = BLIT_FAT_FALSE;
         KeyCallbackType m_keyCallbackType;
@@ -76,6 +78,11 @@ namespace BlitzenCore
         {
             m_keyData[idx].m_heldDownFlags = BLIT_FAT_FALSE;
 		}
+        inline void KEYRELEASEHOLDPFN(uint32_t idx, float deltaTime)
+        {
+            m_keyData[idx].m_heldDownFlags = BLIT_FAT_FALSE;
+            m_keyData[idx].m_PFNTap(m_resident, deltaTime);
+        }
 
         void DispatchHeldDownKeyEvents(float deltaTime);
 	};

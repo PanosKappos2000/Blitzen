@@ -50,19 +50,65 @@ namespace BlitGenerator
 {
 	struct VTXIDX_OPTIMIZATION_CONTEXT
 	{
-		BlitzenEngine::VtxPos* m_vtxPosArr{ nullptr };
-		BlitzenEngine::VtxNormals* m_vtxNrmArr{ nullptr };
-		BlitzenEngine::VtxTangents* m_vtxTngArr{ nullptr };
-		BlitzenEngine::VtxTexCoords* m_vtxUVArr{ nullptr };
 		uint32_t m_vtxCount{ 0 };
+		uint32_t* m_destinationArr{ nullptr };
 		uint32_t* m_idxArr{ nullptr };
 		uint32_t m_idxCount = 0;
 	};
 
-	// Vertex transform cache optimizer
-	// Reorders indices to reduce the number of GPU vertex shader invocations
-	// If index buffer contains multiple ranges for multiple draw calls, this functions needs to be called on each range individually.
-	// Destination must contain enough space for the resulting index buffer (index_count elements)
+	// --------------------------------------------------------------------------------------------
+	// FUNCTION: OptimizeVertexIndices
+	//
+	// DESCRIPTION:
+	//     Reorders the input triangle indices to improve GPU vertex cache locality.
+	//     This optimization significantly reduces redundant vertex shader invocations,
+	//     especially on large meshes. The algorithm is based on the vertex cache optimization
+	//     method from meshoptimizer by Arseny Kapoulkine.
+	//
+	//     This version is implemented independently for academic clarity, fine-grained
+	//     error reporting, and complete control over adjacency and index handling.
+	//     It targets Blitzen's split vertex attributes.
+	//
+	// ALGORITHM OVERVIEW:
+	//     - The function uses a simulated FIFO vertex cache (size CE_CACHE_SIZE_MAX).
+	//     - Triangles are emitted based on a scoring system that favors cache hits and
+	//       minimizes vertex reuse distance.
+	//     - A triangle adjacency structure is used to efficiently track neighboring triangles.
+	//     - Triangle and vertex scores are continuously updated to prioritize optimal emission.
+	//     - When no adjacent triangles remain, the algorithm falls back to a linear scan,
+	//       ensuring that all triangles are processed (even in disconnected meshes).
+	//
+	// MAIN STEPS:
+	//     1. Initialization:
+	//         - Score tables, cache arrays, emitted flags, and adjacency references are set up.
+	//     2. Processing Loop:
+	//         - The current triangle is emitted, and its indices are stored.
+	//         - Cache is updated with the triangle's vertices.
+	//         - The triangle is removed from the adjacency list to reduce future work.
+	//     3. Scoring Update:
+	//         - Vertices in the cache are rescored based on live triangle counts.
+	//         - All connected triangles are updated with the new vertex scores.
+	//         - The triangle with the highest score is selected as the next best candidate.
+	//     4. Dead-End Handling:
+	//         - If no neighbor triangles remain, the algorithm picks the next unprocessed triangle
+	//           from the original index stream.
+	//     5. Repeat until all triangles have been processed.
+	//
+	// NOTES:
+	//     - CE_CACHE_SIZE_MAX is set to 16 by default (typical GPU post-transform cache size).
+	//     - A copy of this function is useful when using split vertex buffers or when exact control
+	//       over the mesh processing pipeline is required.
+	//     - This function assumes the triangle list is valid and adjacency has been precomputed.
+	//
+	// WARNING:
+	//     This is a performance-critical function; changes to memory layout or scoring logic
+	//     may have substantial performance implications on large meshes.
+	//
+	// REFERENCE:
+	//     meshoptimizer (MIT License) by Arseny Kapoulkine
+	//     https://github.com/zeux/meshoptimizer
+	//
+	//
 	bool OptimizeVertexIndices(VTXIDX_OPTIMIZATION_CONTEXT& context);
 
 	struct EDGE_ADJACENCY_CONTEXT
@@ -107,5 +153,6 @@ namespace BlitGenerator
 	};
 	float GetVertexScoreFromTable(int32_t cachePosition, uint32_t liveTriangles);
 
+	// This is used in dead-end recovery — when the active region in the mesh has no more connected triangles.
 	uint32_t GetNextTriangleDeadEnd(uint32_t& inputCursor, BlitzenCore::FAT_BOOL* emittedFlags, uint32_t faceCount);
 }

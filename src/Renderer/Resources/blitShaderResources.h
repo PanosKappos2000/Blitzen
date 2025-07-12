@@ -156,6 +156,8 @@ namespace BlitzenEngine
         float max = 1.f;
     };
 
+    using EulerAngles = BlitML::vec4;// padded
+
     struct GridCellOffsets
     {
         uint32_t colliderOffset;

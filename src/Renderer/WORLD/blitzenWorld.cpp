@@ -5,7 +5,7 @@
 
 namespace BlitzenWorld
 {
-    inline WORLD_blit* p_BLITZEN_WORLD = nullptr;
+    inline WORLD_blit* GSBlitzenWorld = nullptr;
 
     void WORLD_blit::DispatchFrameEvents(float deltaTime)
     {
@@ -18,15 +18,15 @@ namespace BlitzenWorld
 
     void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function)
     {
-        p_BLITZEN_WORLD->m_frameEvents.RegisterFrameEvent(worldVariable, function);
+        GSBlitzenWorld->m_frameEvents.RegisterFrameEvent(worldVariable, function);
     }
 
     void RotateResidentAttachedCamera(BlitzenEngine::Resident resident, int32_t movementX, int32_t movementY)
     {
-        BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < p_BLITZEN_WORLD->m_residents.m_transforms.m_moveableCount);
+        BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSBlitzenWorld->m_residents.m_transforms.m_moveableCount);
 
-        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
-        float deltaTime = p_BLITZEN_WORLD->deltaTime;
+        auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
+        float deltaTime = GSBlitzenWorld->deltaTime;
 
         float yaw = movementX > 0.f ? 0.5f : movementX < 0.f ? -0.5f : 0.f;
         float pitch = movementY > 0.f ? 0.5f : movementY < 0.f ? -0.5f : 0.f;
@@ -44,7 +44,7 @@ namespace BlitzenWorld
         if (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS ||
             (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::NO_VELOCITY && BlitzenEngine::CheckResidentVelocity(resident) != 0.f))
         {
-            BlitzenEngine::RotateEntity(resident, BlitML::fRotation(0.f, yaw, 0.f), deltaTime, BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT);
+            BlitzenEngine::RotateResidentYaw(resident, yaw, deltaTime);
         }
 
         // New yaw pitch quat and rotation update
@@ -55,7 +55,7 @@ namespace BlitzenWorld
 
     void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen)
     {
-        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
+        auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
 
         camera.attachmentSettings.attachmentID = residentID;
         camera.attachmentSettings.paddingFromAttachment = paddingFromAttachment;
@@ -64,8 +64,8 @@ namespace BlitzenWorld
         // The camera starts off at the position of the resident
         camera.viewData.position = BlitzenEngine::GetResidentPosition(residentID);
 
-        // The camera starts off at the initial orientation of the resident
-        camera.transformData.yawRotation = BlitzenEngine::GetResidentRotation(residentID).x;
+        // Fixes resident basic orientation (euler angles)
+        GSBlitzenWorld->m_residents.m_transforms.m_moveables[residentID].eulerAngles = BlitML::fRotation(camera.transformData.pitchRotation, camera.transformData.yawRotation, 0.f);
 
 		// Rotates the additional padding so that the camera is placed correctly even when the resident is rotated
         float offsetX = paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
@@ -86,18 +86,18 @@ namespace BlitzenWorld
 
     void MoveCameraReleased(BlitML::float3 movement)
     {
-        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
+        auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
 
-        movement *= p_BLITZEN_WORLD->deltaTime * 20.f;
+        movement *= GSBlitzenWorld->deltaTime * 20.f;
         auto directionalVelocity = camera.transformData.rotation * BlitML::vec4{ movement };
         camera.viewData.position = camera.viewData.position + BlitML::ToVec3(directionalVelocity);
     }
 
     void SNAP_MAIN()
     {
-        auto& camera = p_BLITZEN_WORLD->m_cameras[p_BLITZEN_WORLD->m_activeCameraIDX];
+        auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
         
-        camera.transformData.translation = BlitML::Translate(p_BLITZEN_WORLD->m_residents.m_transforms.m_transforms[p_BLITZEN_WORLD->m_mainCharacter].pos);
+        camera.transformData.translation = BlitML::Translate(GSBlitzenWorld->m_residents.m_transforms.m_transforms[GSBlitzenWorld->m_mainCharacter].pos);
     }
 
     bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::MeshResources* pMeshes, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh)
@@ -347,7 +347,7 @@ namespace BlitzenWorld
 
     void INITIALIZE_WORLD_POINTER(WORLD_blit* ptr)
     {
-        BLIT_ASSERT_MESSAGE(p_BLITZEN_WORLD == nullptr, "Tried to reinitialize WORLD pointer");
-        p_BLITZEN_WORLD = ptr;
+        BLIT_ASSERT_MESSAGE(GSBlitzenWorld == nullptr, "Tried to reinitialize WORLD pointer");
+        GSBlitzenWorld = ptr;
     }
 }

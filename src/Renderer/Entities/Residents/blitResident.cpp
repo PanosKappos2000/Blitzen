@@ -139,6 +139,27 @@ namespace BlitzenEngine
 		P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID].eulerAngles += rotation * deltaTime;
 	}
 
+	void RotateResidentYaw(Resident resident, float yaw, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles.y += yaw * deltaTime;
+	}
+
+	void RotateResidentPitch(Resident resident, float pitch, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles.x += pitch * deltaTime;
+	}
+
+	void RotateResidentRoll(Resident resident, float roll, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+
+		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles.z += roll * deltaTime;
+	}
+
 	void AddResidentVelocity(Resident resident, const BlitML::fVelocity& velocity, float deltaTime)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);

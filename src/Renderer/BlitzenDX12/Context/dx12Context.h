@@ -72,6 +72,18 @@ namespace BlitzenDX12
         HI_Z_MAP m_HI_Z;
     };
 
+    struct CPU_LOGIC_BUFFERS
+    {
+        SSBO GPUSSBOMovingObjects{}; // BlitzenEngine::CPU_TRANSFORM
+        SSBO GPUSSBOEulerAngles{};// BlitzenEngine::Eurler / Float4
+
+        STAGING<BlitzenEngine::CPU_TRANSFORM> CPUWRMovingObjects{};
+
+        READBACK_BUFFER<BlitzenEngine::CPU_TRANSFORM> CPURDBMovingObjects{};
+        READBACK_BUFFER<BlitzenEngine::GridCellOffsets> CPURDBGridCells{};
+        READBACK_BUFFER<uint32_t> GPURDB_GRID_COLLIDER_INDICES{};
+    };
+
     struct DescriptorContext
     {
         DX12WRAPPER<ID3D12DescriptorHeap> m_viewHeap;

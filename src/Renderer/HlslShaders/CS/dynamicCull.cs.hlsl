@@ -34,27 +34,15 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     {
         // Starts with identity quaternion
         float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
+
+        float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), movement.rotation.y);
+        orientation = MultiplyQuat(orientation, orientationYaw);
         
-        // Checks yaw rotation
-        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
-        {
-            float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), movement.rotation.y);
-            orientation = MultiplyQuat(orientation, orientationYaw);
-        }
-        
-        // Checks pitch rotation
-        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
-        {
-            float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.x);
-            orientation = MultiplyQuat(orientation, orientationPitch);
-        }
-        
-        // Checks roll orientation (later)
-        if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT)
-        {
-            //float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
-            //orientation = MultiplyQuat(orientation, orientationRoll);
-        }
+        float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.x);
+        orientation = MultiplyQuat(orientation, orientationPitch);
+
+        //float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
+        //orientation = MultiplyQuat(orientation, orientationRoll);
         
         // Updates orientation (the logic here is wrong TODO: FIX)
         ssbo_Transforms[obj.transformId].orientation = orientation;

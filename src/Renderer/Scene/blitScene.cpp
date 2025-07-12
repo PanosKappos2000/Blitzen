@@ -257,8 +257,8 @@ namespace BlitzenEngine
     static void RotatingKittenFunc(WORLD_VARIABLE worldVariable, float deltaTime)
     {
         constexpr float movementSpeed = 1.f;
-        RotateEntity(worldVariable.m_engineResidentID, BlitML::fRotation{ 1.f }, deltaTime, BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT | BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT |
-            BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT);
+        RotateResidentYaw(worldVariable.m_engineResidentID, movementSpeed, deltaTime);
+        RotateResidentPitch(worldVariable.m_engineResidentID, movementSpeed, deltaTime);
     }
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier)

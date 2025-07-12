@@ -18,6 +18,7 @@ namespace BlitzenEngine
 		SURFACE_INDICES_COULD_NOT_BE_ADDED = -4,
 		MAX_SURFACE_COUNT_REACHED = -5,
 		LOD_GENERATION_FAILED = -6,
+		VERTEX_INDICES_OPTIMIZATION_FAILED = -7,
 
 		FATAL = -100
 	};
@@ -30,6 +31,7 @@ namespace BlitzenEngine
 		case SurfaceCreateRes::FATAL: return "SurfaceCreateRes::UNKNOWN_FATAL_ERROR";
 		case SurfaceCreateRes::MAX_SURFACE_COUNT_REACHED: return "SurfaceCreateRes::MAX_SURFACE_COUNT_REACHED";
 		case SurfaceCreateRes::LOD_GENERATION_FAILED: return "SurfaceCreateRes::LOD_GENERATION_FAILED";
+		case SurfaceCreateRes::VERTEX_INDICES_OPTIMIZATION_FAILED: return "SurfaceCreateRes::VERTEX_INDICES_OPTIMIZATION_FAILED";
 		default: return "SurfaceCreateRes::UNKNOWN";
 		}
 	}

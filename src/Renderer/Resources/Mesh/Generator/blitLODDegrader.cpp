@@ -3,7 +3,7 @@
 #include <float.h>
 
 // IMPORTANT NOTE:
-// ALL GENERATOR FILES CONTAIN SIMPLIFIED VERSIONS OF THE ALGORITHMS FOUND IN MESHOPTIMIZER LIBRARY BY ARSENY KAPOULKINE (zeux gihub)
+// ALL GENERATOR FILES CONTAIN SIMPLIFIED VERSIONS OF THE ALGORITHMS FOUND IN MESHOPTIMIZER LIBRARY BY ARSENY KAPOULKINE (zeux github)
 // The recreation of these algorithms (instead of using meshoptimizer directly) is done for academic reasons and for better control over errors
 // https://github.com/zeux/meshoptimizer
 
