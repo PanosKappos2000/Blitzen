@@ -71,12 +71,4 @@ namespace BlitzenEngine
 	void WorldVariableTick(WVKEY key, const WVHOST& host, float deltaTime);
 
 	void WorldVariableCollision(WVHANDLE sender, WVTYPE senderType, WVHANDLE receiver, WVTYPE receiverType);
-
-	// !!!! NEW STYLE POSSIBLY SUPERIOR
-
-	struct WORLD_VARIABLE
-	{
-		uint32_t m_engineResidentID;
-		uint32_t m_worldVariableID;
-	};
 }

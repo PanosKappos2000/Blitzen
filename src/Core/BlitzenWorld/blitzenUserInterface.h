@@ -27,6 +27,30 @@ namespace BlitzenEngine
 
 	void AddResidentVelocity(Resident resident, const BlitML::fVelocity& velocity, float deltaTime);
 
+	// Every time this is called the speed of the resident on the z axis is incremented by their acceleration.
+	// Once the max speed stat is reached, the resident will move at a static speed
+	void AddResidentVelocityZAxis(Resident resident, float deltaTime);
+
+	// Every time this is called, the speed of the resident on the z axis is incremented by their acceleration negated.
+	// Once the max speed stat is reached, the resident will move at a static speed
+	void AddResidentVelocityZAxisNegative(Resident resident, float deltaTime);
+
+	// Every time this is called the speed of the resident on the Z axis decelerates, provided that the velocity is positive
+	void KillResidentVelocityZAxis(Resident resident);
+
+	// Every time this is called the speed of the resident on the 
+	void AddResidentVelocityXAxis(Resident resident, float deltaTime);
+
+	void KillResidentVelocityXAxis(Resident resident);
+
+	void SetResidentAcceleration(Resident resident, float acceleration);
+
+	float GetResidentAcceleration(Resident resident);
+
+	void SetResidentMaxVelocity(Resident resident, float maxVelocity);
+
+	float GetResidentMaxVelocity(Resident resident);
+
 	bool CheckResidentIsFalling(Resident resident);
 
 	bool CheckResidentVelocity(Resident resident);

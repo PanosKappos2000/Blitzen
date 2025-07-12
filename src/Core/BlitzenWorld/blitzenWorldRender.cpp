@@ -33,7 +33,7 @@ namespace BlitzenWorld
 		BlitzenEngine::RenderObjects(pRenderer, staticRenderContext);
 
 		BlitzenEngine::BeginGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::TRANSFER);
-		BlitzenEngine::UpdateRendererTransforms(pRenderer, RESIDENTS.m_transforms.m_moveables, RESIDENTS.m_transforms.m_moveableCount);
+		BlitzenEngine::UpdateRendererTransforms(pRenderer, RESIDENTS.m_transforms.WVWithMovement, RESIDENTS.m_transforms.m_moveableCount);
 
 		BlitzenEngine::BeginGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
 		cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::DRAW_CULL_TEMPORAL_OCCLUSION;
@@ -52,7 +52,7 @@ namespace BlitzenWorld
 
 		BlitzenEngine::SHADER_GAME_LOGIC_UPDATES shaderDataReadback{};
 		shaderDataReadback.m_transformCount = RESIDENTS.m_transforms.m_moveableCount;
-		shaderDataReadback.pGpuTransorms = RESIDENTS.m_transforms.m_moveables;
+		shaderDataReadback.pGpuTransorms = RESIDENTS.m_transforms.WVWithMovement;
 		BlitzenEngine::RequestGameLogicUpdatesFromShader(pRenderer, shaderDataReadback);
 		BlitzenEngine::EndGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
 	}

@@ -50,8 +50,8 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12Resource> m_depthBuffers[ce_framesInFlight];
 
         ReadWriteResources m_rwResources[ce_framesInFlight];
-        
         ReadOnlyResources m_roResources;
+        CPU_LOGIC_BUFFERS MCpuLogicBuffers;
 
         DescriptorContext m_descriptorContext;
 

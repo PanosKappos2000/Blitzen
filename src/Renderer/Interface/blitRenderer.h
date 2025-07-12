@@ -99,12 +99,12 @@ namespace BlitzenEngine
     uint8_t UploadToRenderObjectStagingBuffer(RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
     uint8_t UploadToDynamicRenderObjectStagingBuffer(RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
     uint8_t UploadToWorldTransformStagingBuffer(RenderingLoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount);
-    uint8_t UploadToCPUTransformStagingBuffer(RenderingLoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount);
+    uint8_t UploadToCPUTransformStagingBuffer(RenderingLoadingContextRenderObjects& ctx, WVTransform* transforms, uint32_t transformCount);
 
     uint8_t UploadToRenderObjectStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
     uint8_t UploadToDynamicRenderObjectStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
     uint8_t UploadToWorldTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount);
-    uint8_t UploadToCPUTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount);
+    uint8_t UploadToCPUTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, WVTransform* transforms, uint32_t transformCount);
 	uint8_t UploadToBoundingSphereStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, BoundingSphere* boundingSpheres, uint32_t sphereCount);
 
     uint8_t UploadNewGeometryDataToSSBOs(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& instanceData, RenderingLoadingContextMesh& resourceData);
@@ -144,7 +144,7 @@ namespace BlitzenEngine
     void GenerateHI_Z_MAP(RendererPtrType pRenderer);
 
     // Should be called after game logic is done. Copies movement data to shader buffer. Dynamic object culling can be dispatched after this
-    void UpdateRendererTransforms(RendererPtrType pRenderer, CPU_TRANSFORM* pTransforms, uint32_t transformCount);
+    void UpdateRendererTransforms(RendererPtrType pRenderer, WVTransform* pTransforms, uint32_t transformCount);
 
     enum class BLIT_CULL_TYPE : uint8_t
     {
@@ -171,7 +171,7 @@ namespace BlitzenEngine
 
     struct SHADER_GAME_LOGIC_UPDATES
     {
-        CPU_TRANSFORM* pGpuTransorms;
+        WVTransform* pGpuTransorms;
         uint32_t m_transformCount;
     };
     // Copies updates that were made in the shader back to the GPU. 

@@ -220,8 +220,8 @@ namespace BlitzenVulkan
         BlitVk_SSBO m_tlas;
         AccelerationStructure m_tlasData;
 
-        BlitVk_STAGING<BlitzenEngine::CPU_TRANSFORM> CPU_MOVING_RESIDENTS_MAPPED{};
-        BlitVk_STAGING<BlitzenEngine::CPU_TRANSFORM> GPU_MOVING_OBJECT_READBACK{};
+        BlitVk_STAGING<BlitzenEngine::WVTransform> CPU_MOVING_RESIDENTS_MAPPED{};
+        BlitVk_STAGING<BlitzenEngine::WVTransform> GPU_MOVING_OBJECT_READBACK{};
 
         BlitVk_STAGING<BlitzenEngine::GridCellOffsets> GPU_GRID_CELL_OFFSETS_READBACK{};
         BlitVk_STAGING<uint32_t> GPU_GRID_COLLIDER_INDICES_READBACK{};
@@ -247,7 +247,7 @@ namespace BlitzenVulkan
         BlitVk_STAGING<BlitzenEngine::RenderObject> m_renderStaging;
         BlitVk_STAGING<BlitzenEngine::RenderObject> m_dynamicRenderStaging;
         BlitVk_STAGING<BlitzenEngine::MeshTransform> m_transformStaging;
-        BlitVk_STAGING<BlitzenEngine::CPU_TRANSFORM> m_cpuTransformStaging;
+        BlitVk_STAGING<BlitzenEngine::WVTransform> m_cpuTransformStaging;
         BlitVk_STAGING<BlitzenEngine::BoundingSphere> m_boundingSpheresStaging;
     };
 }

@@ -53,15 +53,22 @@ namespace BlitzenEngine
 		uint32_t m_worldVariableID{ 0 };
 	};
 
+	using WORLD_VARIABLE = uint32_t;
+	using BEWV = WORLD_VARIABLE;
+
 	class WORLD_RESIDENTS
 	{
 	public:
-		WORLD_VARIABLE m_worldVariables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t m_worldVariableCount{ 0 };
-
-		WVGravity m_gravityData[BLIT_MAX_WORLD_VARIABLE_COUNT];
-		uint32_t m_gravityWVs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t m_gravityWVCount{ 0 };
+		// Every member variable with WV as a prefix is a world variable
+		// World Variables are a subset of Blitzen World residents, that have unpredictable logic applied to them
+		// Their components are meant to be highly compatible with shaders and they are designed around crowding
+		WORLD_VARIABLE MWorldVariables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint32_t MWorldVariableCount{ 0 };
+		WVGravity WVGravityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint32_t WVWithGravityIDXs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint32_t WVWithGravityCount{ 0 };
+		WVVelocity WVVelocityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		WVMovement WVMovementData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 
 		Resident m_residents[BLIT_MAX_WORLD_RESIDENTS];
 		uint32_t m_residentCount{ 0 };

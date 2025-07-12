@@ -7,6 +7,19 @@ struct Movement
 };
 RWStructuredBuffer<Movement> rwssbo_HostTransform : register(u14);
 
+struct WVMovement
+{
+    float velocityZ;
+    float velocityX;
+    float velocityY;
+    float rotationPitch;
+    float rotationYaw;
+    float rotationRoll;
+    uint padding0;
+    uint padding1;
+};
+RWStructuredBuffer<WVMovement> rwssbo_HostLogicMovment : register(u17);
+
 StructuredBuffer<float> ssbo_TerrainHeight : register(t3);
 
 cbuffer ObjCountConstant : register(b2)

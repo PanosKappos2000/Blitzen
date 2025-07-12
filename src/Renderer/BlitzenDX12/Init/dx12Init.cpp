@@ -179,8 +179,9 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE cullODRanges[CE_CULL_OD_RANGE_COUNT]{};
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_DRAW_CMD_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_OPAQUE_DYNAMIC_CMD_BUFFER_REGISTER);
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_DRAW_COUNTER_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_OPAQUE_DYNAMIC_CMD_COUNTER_REGISTER);
-		CreateDescriptorRange(cullODRanges[CE_CULL_OD_MOVEMENT_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_CPU_TRANSFORM_BUFFER_REGISTER);
+		CreateDescriptorRange(cullODRanges[CE_CULL_OD_WORLD_VARIABLE_TRANSFORM_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_CPU_TRANSFORM_BUFFER_REGISTER);
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_TERRAIN_HEIGHT_ID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_TERRAIN_HEIGHT_BUFFER_REGISTER);
+		CreateDescriptorRange(cullODRanges[CE_CULL_OD_WORLD_VARIABLE_MOVEMENT_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_WORLD_VARIABLE_MOVEMENT_REGISTER);
 
 		// ROOT PARAMETER RECONFIGURATION
 		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_DYNAMIC_TABLE_ID], cullODRanges, CE_CULL_OD_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
@@ -518,12 +519,6 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (!CreateSSBO<BlitzenEngine::CPU_TRANSFORM>(device, rwResources.m_movementBuffer, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-			{
-				BLIT_ERROR("%s: Failed to create movement buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
-				return 0;
-			}
-
 			UINT64 indirectBufferSize{ BLIT_MAX_STATIC_DRAW_COMMANDS * sizeof(IndirectDrawCmd) };
 			if (!CreateSSBO<IndirectDrawCmd>(device, rwResources.m_staticDrawCmdBuffer, indirectBufferSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
@@ -699,18 +694,6 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateStaging(device, roResources.CPU_MOVING_OBJECT_BUFFER, BLIT_MAX_WORLD_VARIABLE_COUNT, (BlitzenEngine::CPU_TRANSFORM*)nullptr))
-		{
-			BLIT_ERROR("%s: Failed to create moving object peristently mapped buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
-		if (!CreateReadback(device, roResources.GPU_MOVING_OBJECT_READBACK, BLIT_MAX_WORLD_VARIABLE_COUNT))
-		{
-			BLIT_ERROR("%s: Failed to create moving object GPU readback buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			if (CreateSSBO<BlitzenEngine::ClusterVertices>(device, roResources.m_clusterVtxsBuffer, BlitzenEngine::CE_MAX_WORLD_CLUSTER_COUNT) == 0)
@@ -739,6 +722,48 @@ namespace BlitzenDX12
 		}
 
 		// Success
+		return 1;
+	}
+
+	uint8_t CreateCpuLogicBuffers(ID3D12Device* device, CPU_LOGIC_BUFFERS& resources)
+	{
+		if (!CreateSSBO<BlitzenEngine::WVTransform>(device, resources.GPUSSBOWorldVariableTransform, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+		{
+			BLIT_ERROR("%s: Failed to create world variable transform buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!CreateSSBO<BlitzenEngine::WVMovement>(device, resources.GPUSSBOWorldVariableMovement, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+		{
+			BLIT_ERROR("%s: Failed to create world variable movement buffer resources", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!CreateStaging(device, resources.CPURWWorldVariableMovements, BLIT_MAX_WORLD_VARIABLE_COUNT, (BlitzenEngine::WVMovement*)nullptr))
+		{
+			BLIT_ERROR("%s: Failed to create world variable movement GPU write buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!CreateReadback(device, resources.CPURDBWorldVariableTransforms, BLIT_MAX_WORLD_VARIABLE_COUNT))
+		{
+			BLIT_ERROR("%s: Failed to create world variable transform GPU readback buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!CreateReadback(device, resources.CPURDBGridCellOffsets, BLIT_COLLISION_GRID_CELL_COUNT))
+		{
+			BLIT_ERROR("%s: Failed to create grid cell offsets GPU readback buffer resources");
+			return 0;
+		}
+
+		if (!CreateReadback(device, resources.GCPURDBGridCellWorldVariableIndices, BLIT_AVAILABLE_DYNAMIC_COLLIDER_SPACES))
+		{
+			BLIT_ERROR("%s: Failed to create grid cell world variable indices GPU readback buffer resource");
+			return 0;
+		}
+
+		// success
 		return 1;
 	}
 }

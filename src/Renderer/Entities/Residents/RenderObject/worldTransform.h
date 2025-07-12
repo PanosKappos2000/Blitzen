@@ -21,7 +21,7 @@ namespace BlitzenEngine
 	{
 		WorldTransformType m_type{ WorldTransformType::STATIC };
 		MeshTransform* m_pTransform{ nullptr };
-		CPU_TRANSFORM* cpu_pTransform{ nullptr };
+		WVTransform* cpu_pTransform{ nullptr };
 	};
 
 	class WorldTransformContainer
@@ -32,10 +32,8 @@ namespace BlitzenEngine
 		uint32_t m_transformCount{ 0 };
 		uint32_t m_staticTransformCount{ 0 };
 
-		CPU_TRANSFORM m_moveables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		WVTransform WVWithMovement[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t m_moveableCount{ 0 };
-		BlitML::float3 m_velocities[BLIT_MAX_WORLD_VARIABLE_COUNT];
-		BlitML::fRotation m_rotations[BLIT_MAX_WORLD_VARIABLE_COUNT];
 
 		uint32_t m_transparentCount{ 0 };
 
@@ -44,8 +42,5 @@ namespace BlitzenEngine
 	};
 
 	void RandomizeTransform(MeshTransform* pTransform, float multiplier, float scale);
-	void RandomizeTransform(CPU_TRANSFORM* pTransform, float multiplier);
-
-	// UNSAFE!!!
-	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(uint32_t residentID);
+	void RandomizeTransform(WVTransform* pTransform, float multiplier);
 }

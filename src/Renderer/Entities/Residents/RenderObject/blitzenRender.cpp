@@ -116,7 +116,7 @@ namespace BlitzenEngine
             }
 
             // CPU DATA is needed for transforms to update in the shaders and outside
-            BlitzenCore::BlitMemCopy(&m_moveables[m_moveableCount], context.cpu_pTransform, sizeof(CPU_TRANSFORM));
+            BlitzenCore::BlitMemCopy(&WVWithMovement[m_moveableCount], context.cpu_pTransform, sizeof(WVTransform));
 
             BlitzenCore::BlitMemCopy(&m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount], context.m_pTransform, sizeof(MeshTransform));
 
@@ -174,7 +174,7 @@ namespace BlitzenEngine
         pTransform->orientation = BlitML::QuatFromAngleAxis(BlitML::vec3((float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1, (float(rand()) / RAND_MAX) * 2 - 1), BlitML::Radians((float(rand()) / RAND_MAX) * 90.f), 0);
     }
 
-    void RandomizeTransform(CPU_TRANSFORM* pTransform, float multiplier)
+    void RandomizeTransform(WVTransform* pTransform, float multiplier)
     {
         pTransform->position = BlitML::vec3((float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier);
         pTransform->eulerAngles = BlitML::vec3((float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier, (float(rand()) / RAND_MAX) * multiplier);

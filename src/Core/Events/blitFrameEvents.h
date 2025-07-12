@@ -1,5 +1,5 @@
 #pragma once
-#include "Renderer/Entities/Residents/blitWV.h"
+#include "Renderer/Entities/Residents/blitResident.h"
 #include "Renderer/Resources/blitShaderShared.h"
 #include "BlitCL/blitPfn.h"
 
@@ -7,12 +7,12 @@ namespace BlitzenCore
 {
 	constexpr uint32_t CE_MAX_FRAME_EVENTS = BLIT_MAX_WORLD_VARIABLE_COUNT;
 
-	using FrameEventPfn = BlitCL::Pfn<void, BlitzenEngine::WORLD_VARIABLE, float>;
+	using FrameEventPfn = BlitCL::Pfn<void, BlitzenEngine::Resident, float>;
 
 	struct FrameEvent
 	{
 		FrameEventPfn m_function;
-		BlitzenEngine::WORLD_VARIABLE m_worldVariableArg;
+		BlitzenEngine::Resident m_resident;
 	};
 
 	class FrameEventManager
@@ -21,6 +21,6 @@ namespace BlitzenCore
 		FrameEvent m_frameEvents[CE_MAX_FRAME_EVENTS];
 		uint32_t m_frameEventCount{ 0 };
 
-		void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, FrameEventPfn function);
+		void RegisterFrameEvent(BlitzenEngine::Resident resident, FrameEventPfn function);
 	};
 }

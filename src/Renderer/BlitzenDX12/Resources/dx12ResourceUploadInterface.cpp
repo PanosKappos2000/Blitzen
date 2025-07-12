@@ -19,7 +19,7 @@ namespace BlitzenEngine
 			}
 		}
 
-		if (!BlitzenDX12::UploadResourcesToBuffers(pRenderer->m_device.Get(), drawContext, pRenderer->m_roResources, pRenderer->m_rwResources, pRenderer->m_cmdContext[0], 
+		if (!BlitzenDX12::UploadResourcesToBuffers(pRenderer->m_device.Get(), drawContext, pRenderer->m_roResources, pRenderer->m_rwResources, pRenderer->MCpuLogicBuffers, pRenderer->m_cmdContext[0], 
 			pRenderer->m_transferCommandQueue.Get(), loadingContextMesh))
 		{
 			BLIT_ERROR("%s: Failed to upload resources to GPU buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
@@ -27,7 +27,8 @@ namespace BlitzenEngine
 		}
 
 		BlitzenDX12::CreateResourceViews(pRenderer->m_device.Get(), pRenderer->m_descriptorContext, pRenderer->m_cmdContext[pRenderer->m_currentFrame], pRenderer->m_transferCommandQueue.Get(), 
-			pRenderer->m_roResources, pRenderer->m_rwResources, drawContext, pRenderer->m_depthBuffers, pRenderer->m_swapchainWidth, pRenderer->m_swapchainHeight, loadingContextMesh);
+			pRenderer->m_roResources, pRenderer->m_rwResources, pRenderer->MCpuLogicBuffers, drawContext, pRenderer->m_depthBuffers, pRenderer->m_swapchainWidth, 
+			pRenderer->m_swapchainHeight, loadingContextMesh);
 
 		if (!BlitzenDX12::CheckForDeviceRemoval(pRenderer->m_device.Get()))
 		{
@@ -419,7 +420,7 @@ if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_transformStagin
 	return 0;
 }
 
-if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (CPU_TRANSFORM*)nullptr))
+if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (WVTransform*)nullptr))
 {
 	BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 	return 0;
@@ -446,7 +447,7 @@ return 1;
 		return 1;
 	}
 
-	uint8_t UploadToCPUTransformStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount)
+	uint8_t UploadToCPUTransformStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, WVTransform* transforms, uint32_t transformCount)
 	{
 		BLIT_ASSERT_MESSAGE(false, "MISSING IMPLEMENTATION");
 		return 1;
@@ -527,16 +528,16 @@ return 1;
 		return 1;
 	}
 
-	uint8_t UploadToCPUTransformStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount)
+	uint8_t UploadToCPUTransformStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, WVTransform* transforms, uint32_t transformCount)
 	{
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_VARIABLE_COUNT, (CPU_TRANSFORM*)nullptr))
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_VARIABLE_COUNT, (WVTransform*)nullptr))
 		{
 			BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		SIZE_T copySize{ sizeof(CPU_TRANSFORM) * transformCount };
-		if((sizeof(CPU_TRANSFORM) * ctx.m_cpuTransformStaging.m_validDataIndex) + copySize > ctx.m_cpuTransformStaging.m_dataSize)
+		SIZE_T copySize{ sizeof(WVTransform) * transformCount };
+		if((sizeof(WVTransform) * ctx.m_cpuTransformStaging.m_validDataIndex) + copySize > ctx.m_cpuTransformStaging.m_dataSize)
 		{
 			BLIT_FATAL("%s: CPU_DATA Transform staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -648,10 +649,10 @@ return 1;
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_roResources.m_renderBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		for (uint32_t frame = 0; frame < BlitzenDX12::ce_framesInFlight; frame++)
 		{
-			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_rwResources[frame].m_movementBuffer.buffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 			BlitzenDX12::CreateResourcesTransitionBarrier(stagingResourceBarriers[validBarrierCount++], pRenderer->m_rwResources[frame].m_transformBuffer.buffer.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		}
@@ -694,10 +695,10 @@ return 1;
 			instanceData.m_renderStaging.m_buffer.Get(), 0, instanceData.m_renderStaging.m_validDataIndex * sizeof(RenderObject));
 		cmdList->CopyBufferRegion(pRenderer->m_roResources.m_renderBuffer.buffer.Get(), 0, instanceData.m_dynamicRenderStaging.m_buffer.Get(), 0,
 			instanceData.m_dynamicRenderStaging.m_dataSize * sizeof(RenderObject));
+		cmdList->CopyBufferRegion(pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 0, instanceData.m_cpuTransformStaging.m_buffer.Get(), 0,
+			instanceData.m_cpuTransformStaging.m_validDataIndex * sizeof(WVTransform));
 		for (uint32_t frame = 0; frame < BlitzenDX12::ce_framesInFlight; frame++)
 		{
-			cmdList->CopyBufferRegion(pRenderer->m_rwResources[frame].m_movementBuffer.buffer.Get(), 0, instanceData.m_cpuTransformStaging.m_buffer.Get(), 0,
-				instanceData.m_cpuTransformStaging.m_validDataIndex * sizeof(CPU_TRANSFORM));
 			cmdList->CopyBufferRegion(pRenderer->m_rwResources[frame].m_transformBuffer.buffer.Get(), 0, instanceData.m_transformStaging.m_buffer.Get(), 0,
 				instanceData.m_transformStaging.m_validDataIndex * sizeof(MeshTransform));
 		}

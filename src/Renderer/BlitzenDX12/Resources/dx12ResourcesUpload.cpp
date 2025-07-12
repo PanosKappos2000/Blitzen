@@ -114,7 +114,7 @@ namespace BlitzenDX12
 	} 
 
 	uint8_t UploadResourcesToBuffers(ID3D12Device* device, const BlitzenEngine::DrawContext& drawContext, ReadOnlyResources& roResources, ReadWriteResources* rwResourcesArr, 
-		CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh)
+		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh)
 	{
 
 		/******************************************************************************************************
@@ -252,7 +252,7 @@ namespace BlitzenDX12
 		}
 
 		/******************************************************************************************************
-		*	READ WRITE RESOURCES (RESOURCES WITH MULTIPLE COPIES OF THE BUFFER, HENCE THE LOOP)				  *
+		*	READ ONLY RESOURCES																				  *
 		*******************************************************************************************************/
 
 		STAGING<BlitzenEngine::VtxPos> terrainVtxPosStagingBuffer{};
@@ -308,6 +308,13 @@ namespace BlitzenDX12
 		if (!CreateStaging(device, materialStaging, drawContext.m_textures.m_materialCount, drawContext.m_textures.m_materials))
 		{
 			BLIT_ERROR("%s: Failed to create material staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		STAGING<BlitzenEngine::WVTransform> worldVariableTransformStaging{ nullptr };
+		if (!CreateStaging(device, worldVariableTransformStaging, drawContext.m_pResidents->m_transforms.m_moveableCount, drawContext.m_pResidents->m_transforms.WVWithMovement))
+		{
+			BLIT_ERROR("%s: Failed to create world variable transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
@@ -373,7 +380,11 @@ namespace BlitzenDX12
 
 		CreateResourcesTransitionBarrier(copyDestBarriers[CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX], roResources.m_terrainIdxBuffer.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
-		CreateResourcesTransitionBarrier(copyDestBarriers[CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX], roResources.m_terrainHeightBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		CreateResourcesTransitionBarrier(copyDestBarriers[CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX], roResources.m_terrainHeightBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, 
+			D3D12_RESOURCE_STATE_COPY_DEST);
+
+		CreateResourcesTransitionBarrier(copyDestBarriers[CE_WORLD_VARIABLE_TRANSFORM_STAGING_IDX], cpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), D3D12_RESOURCE_STATE_COMMON,
+			D3D12_RESOURCE_STATE_COPY_DEST);
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
@@ -440,6 +451,9 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(copySourceBarriers[CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX], terrainHeightStaging.m_buffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
+		CreateResourcesTransitionBarrier(copySourceBarriers[CE_WORLD_VARIABLE_TRANSFORM_STAGING_IDX], worldVariableTransformStaging.m_buffer.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			D3D12_RESOURCE_BARRIER clusterStagingBarrier{};
@@ -490,6 +504,7 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_boundingSpheres.buffer.Get(), 0, boundingSphereStaging.m_buffer.Get(), 0, boundingSphereStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_LODBuffer.buffer.Get(), 0, lodStaging.m_buffer.Get(), 0, lodStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_matBuffer.buffer.Get(), 0, materialStaging.m_buffer.Get(), 0, materialStaging.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(cpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 0, worldVariableTransformStaging.m_buffer.Get(), 0, worldVariableTransformStaging.m_dataSize);
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
 			cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_clusterVtxsBuffer.buffer.Get(), 0, clusterVtxStaging.m_buffer.Get(), 0, clusterVtxStaging.m_dataSize);
@@ -509,7 +524,7 @@ namespace BlitzenDX12
 	}
 
 	void CreateResourceViews(ID3D12Device* device, DescriptorContext& ctx, CmdContext& cmdContext, ID3D12CommandQueue* queue, ReadOnlyResources& roResources, 
-		ReadWriteResources* rwResourcesArray, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight, 
+		ReadWriteResources* rwResourcesArray, CPU_LOGIC_BUFFERS& gameLogicBuffers, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight,
 		LoadingContextMesh& loadingContextMesh)
 	{
 		BLIT_ASSERT(context.m_meshes.m_triangles.m_mapVtxCount == loadingContextMesh.m_vtxPosStaging.m_validDataIndex);
@@ -602,9 +617,13 @@ namespace BlitzenDX12
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
-			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_movementBuffer.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount, sizeof(BlitzenEngine::CPU_TRANSFORM), 0);
+			CreateBufferUnorderedAccessView(device, ctx, gameLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount, 
+				sizeof(BlitzenEngine::WVTransform), 0);
 
 			CreateBufferShaderResourceView(device, roResources.m_terrainHeightBuffer.buffer.Get(), ctx, context.m_pTerrain->m_heightDataCount, sizeof(float));
+
+			CreateBufferUnorderedAccessView(device, ctx, gameLogicBuffers.GPUSSBOWorldVariableMovement.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount,
+				sizeof(BlitzenEngine::WVMovement), 0);
 		}
 
 		// INSTANCING DESCRIPTORS

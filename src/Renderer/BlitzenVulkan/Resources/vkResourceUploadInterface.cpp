@@ -180,7 +180,7 @@ namespace BlitzenEngine
 		return 1;
 	}
 
-	uint8_t UploadToCPUTransformStagingBuffer(BlitzenVulkan::LoadingContextMesh& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount)
+	uint8_t UploadToCPUTransformStagingBuffer(BlitzenVulkan::LoadingContextMesh& ctx, WVTransform* transforms, uint32_t transformCount)
 	{
 		return 1;
 	}
@@ -200,7 +200,7 @@ namespace BlitzenEngine
 		return 1;
 	}
 
-	uint8_t UploadToCPUTransformStagingBuffer_MKII(BlitzenVulkan::VulkanRenderer* pRenderer, BlitzenVulkan::LoadingContextMesh& ctx, CPU_TRANSFORM* transforms, uint32_t transformCount)
+	uint8_t UploadToCPUTransformStagingBuffer_MKII(BlitzenVulkan::VulkanRenderer* pRenderer, BlitzenVulkan::LoadingContextMesh& ctx, WVTransform* transforms, uint32_t transformCount)
 	{
 		return 1;
 	}

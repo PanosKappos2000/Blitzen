@@ -159,6 +159,12 @@ namespace BlitzenEngine
             return 0;
         }
 
+        if (!BlitzenDX12::CreateCpuLogicBuffers(pRenderer->m_device.Get(), pRenderer->MCpuLogicBuffers))
+        {
+            BLIT_ERROR("%s: Failed to create read only resources", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
         return 1;
     }
 }

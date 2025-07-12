@@ -22,6 +22,8 @@ namespace BlitzenDX12
 	uint8_t CreateROResources(ID3D12Device* device, ReadOnlyResources& roResources);
 
 	uint8_t CreateRWResources(ID3D12Device* device, ReadWriteResources* rwResourcesArray, uint32_t swapchainWidth, uint32_t swapchainHeight);
+
+	uint8_t CreateCpuLogicBuffers(ID3D12Device* device, CPU_LOGIC_BUFFERS& resources);
 }
 
 #endif

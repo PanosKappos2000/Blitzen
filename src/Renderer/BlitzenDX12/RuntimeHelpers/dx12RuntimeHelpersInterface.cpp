@@ -127,15 +127,15 @@ namespace BlitzenEngine
 		}
 	}
 
-	void UpdateRendererTransforms(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenEngine::CPU_TRANSFORM* pTransforms, uint32_t transformCount)
+	void UpdateRendererTransforms(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenEngine::WVTransform* pTransforms, uint32_t transformCount)
 	{
 		auto& cmd{ pRenderer->m_cmdContext[pRenderer->m_currentFrame] };
 		auto& rwResources{ pRenderer->m_rwResources[pRenderer->m_currentFrame] };
 
-		BlitzenCore::BlitMemCopy(pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_pMapped, pTransforms, transformCount * sizeof(CPU_TRANSFORM));
+		BlitzenCore::BlitMemCopy(pRenderer->MCpuLogicBuffers.CPURWWorldVariableMovements.m_pMapped, pTransforms, transformCount * sizeof(WVTransform));
 		
-		cmd.m_copyCmdList->CopyBufferRegion(rwResources.m_movementBuffer.buffer.Get(), 0, pRenderer->m_roResources.CPU_MOVING_OBJECT_BUFFER.m_buffer.Get(), 0,
-			transformCount * sizeof(CPU_TRANSFORM));
+		cmd.m_copyCmdList->CopyBufferRegion(pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 0, pRenderer->MCpuLogicBuffers.CPURWWorldVariableMovements.m_buffer.Get(), 0,
+			transformCount * sizeof(WVTransform));
 		
 		cmd.m_copyCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };
@@ -148,7 +148,7 @@ namespace BlitzenEngine
 	void ChangeCullingBuffersToReadbackMode(RendererPtrType pRenderer)
 	{
 		D3D12_RESOURCE_BARRIER resourceBarriers[1]{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], pRenderer->m_rwResources[pRenderer->m_currentFrame].m_movementBuffer.buffer.Get(), 
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		pRenderer->m_cmdContext[pRenderer->m_currentFrame].m_computeCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
 	}
@@ -162,8 +162,8 @@ namespace BlitzenEngine
 		cmd.m_copyCmdAlloc->Reset();
 		cmd.m_copyCmdList->Reset(cmd.m_copyCmdAlloc.Get(), nullptr);
 
-		cmd.m_copyCmdList->CopyBufferRegion(pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_buffer.Get(), 0, rwResources.m_movementBuffer.buffer.Get(), 0,
-			outUpdate.m_transformCount * sizeof(CPU_TRANSFORM));
+		cmd.m_copyCmdList->CopyBufferRegion(pRenderer->MCpuLogicBuffers.CPURDBWorldVariableTransforms.m_buffer.Get(), 0, pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 0,
+			outUpdate.m_transformCount * sizeof(WVTransform));
 
 		cmd.m_copyCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmd.m_copyCmdList.Get() };
@@ -175,10 +175,11 @@ namespace BlitzenEngine
 		BeginGPUCommands(pRenderer, BMPR_COMMAND_LIST_TYPE::COMPUTE);
 
 		D3D12_RESOURCE_BARRIER resourceBarriers[1]{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], rwResources.m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(resourceBarriers[0], pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
 		cmd.m_computeCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(resourceBarriers), resourceBarriers);
 
-		BlitzenCore::BlitMemCopy(outUpdate.pGpuTransorms, pRenderer->m_roResources.GPU_MOVING_OBJECT_READBACK.m_pMapped, outUpdate.m_transformCount * sizeof(CPU_TRANSFORM));
+		BlitzenCore::BlitMemCopy(outUpdate.pGpuTransorms, pRenderer->MCpuLogicBuffers.CPURDBWorldVariableTransforms.m_pMapped, outUpdate.m_transformCount * sizeof(WVTransform));
 	}
 
 	BlitML::vec2 UpdateRendererWindowData(BlitzenDX12::Dx12Renderer* pRenderer, uint32_t newWidth, uint32_t newHeight, BlitzenPlatform::PlatformContext* pbpHandle)
@@ -261,6 +262,9 @@ namespace BlitzenEngine
 		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX], roResources.m_terrainHeightBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_WORLD_VARIABLE_TRANSFORM_STAGING_IDX], pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+
 		if (BlitzenCore::Ce_BuildClusters)
 		{
 			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_ClusterVtxsStagingIndex], pRenderer->m_roResources.m_clusterVtxsBuffer.buffer.Get(),
@@ -277,11 +281,13 @@ namespace BlitzenEngine
 		cmdContext.m_graphicsCmdList->ResourceBarrier(pRenderer->m_roResources.BUFFER_COUNT, staticBufferBarriers.Data());
 
 		D3D12_RESOURCE_BARRIER CPU_COMMUNICATION_BUFFERS[2]{};
-		BlitzenDX12::CreateResourcesTransitionBarrier(CPU_COMMUNICATION_BUFFERS[0], roResources.CPU_MOVING_OBJECT_BUFFER.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		BlitzenDX12::CreateResourcesTransitionBarrier(CPU_COMMUNICATION_BUFFERS[1], roResources.GPU_MOVING_OBJECT_READBACK.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		BlitzenDX12::CreateResourcesTransitionBarrier(CPU_COMMUNICATION_BUFFERS[0], pRenderer->MCpuLogicBuffers.CPURWWorldVariableMovements.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		BlitzenDX12::CreateResourcesTransitionBarrier(CPU_COMMUNICATION_BUFFERS[1], pRenderer->MCpuLogicBuffers.CPURDBWorldVariableTransforms.m_buffer.Get(), 
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 		cmdContext.m_graphicsCmdList->ResourceBarrier(BLIT_ARRAY_SIZE(CPU_COMMUNICATION_BUFFERS), CPU_COMMUNICATION_BUFFERS);
 
-		constexpr uint32_t CE_RW_BUFFER_INITIAL_COUNT = 7 * BlitzenDX12::ce_framesInFlight;
+		constexpr uint32_t CE_RW_BUFFER_INITIAL_COUNT = 6 * BlitzenDX12::ce_framesInFlight;
 
 		// RW BUFFERS
 		uint32_t rwID{ 0 };
@@ -296,12 +302,6 @@ namespace BlitzenEngine
 		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
 		{
 			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], rwResources[i].m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-			rwID++;
-		}
-
-		for (uint32_t i = 0; i < BlitzenDX12::ce_framesInFlight; ++i)
-		{
-			BlitzenDX12::CreateResourcesTransitionBarrier(rwBuffersFinal[rwID], rwResources[i].m_movementBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 			rwID++;
 		}
 

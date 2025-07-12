@@ -10,7 +10,7 @@
 
 namespace BlitzenEngine
 {
-	inline static WORLD_RESIDENTS* P_WORLD_RESIDENTS{ nullptr };
+	inline static WORLD_RESIDENTS* GSWorldResidents{ nullptr };
 
 	RESIDENT_CREATE_RES WORLD_RESIDENTS::AddResident(const RESIDENT_CREATE_CONTEXT& ctx)
 	{
@@ -67,14 +67,13 @@ namespace BlitzenEngine
 			return baseResidentResidentRes;
 		}
 
-		if (m_worldVariableCount >= BLIT_MAX_WORLD_VARIABLE_COUNT)
+		if (MWorldVariableCount >= BLIT_MAX_WORLD_VARIABLE_COUNT)
 		{
 			return RESIDENT_CREATE_RES::WORLD_VARIABLE_COUNT_EXCEEDED;
 		}
 
-		m_worldVariables[m_worldVariableCount].m_worldVariableID = ctx.m_worldVariableID;
-		m_worldVariables[m_worldVariableCount].m_engineResidentID = m_residents[m_residentCount - 1];
-		m_worldVariableCount++;
+		MWorldVariables[MWorldVariableCount] = ctx.m_worldVariableID;
+		MWorldVariableCount++;
 
 		return RESIDENT_CREATE_RES::SUCCESS;
 	}
@@ -86,21 +85,21 @@ namespace BlitzenEngine
 
 	void WORLD_RESIDENTS::UpdateFallingResidents(float deltaTime)
 	{
-		for (uint32_t wv = 0; wv < m_gravityWVCount; wv++)
+		for (uint32_t wv = 0; wv < WVWithGravityCount; wv++)
 		{
-			uint32_t IDX = m_gravityWVs[wv];
-			auto& transformData = m_transforms.m_moveables[IDX];
-			auto& gravityData = m_gravityData[IDX];
+			uint32_t IDX = WVWithGravityIDXs[wv];
+			auto& transformData = m_transforms.WVWithMovement[IDX];
+			auto& gravityData = WVGravityData[IDX];
 			if (transformData.movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT)
 			{
-				transformData.position.y -= gravityData.current * deltaTime;
+				transformData.position.y -= gravityData.currentSpeed * deltaTime;
 
 				// TEMP
-				gravityData.current = BlitML::Max(gravityData.max, gravityData.current + BLIT_GRAVITATIONAL_ACCELERATION);
+				gravityData.currentSpeed = BlitML::Max(gravityData.maxSpeed, gravityData.currentSpeed + BLIT_GRAVITATIONAL_ACCELERATION);
 			}
 			else
 			{
-				m_gravityData[IDX].current = 0;
+				gravityData.currentSpeed = 0;
 			}
 		}
 	}
@@ -109,115 +108,108 @@ namespace BlitzenEngine
 	{
 		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
 
-		return &P_WORLD_RESIDENTS->m_movingResidents[resident];
+		return &GSWorldResidents->m_movingResidents[resident];
 	}
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
 	{
-		BLIT_ASSERT(P_WORLD_RESIDENTS == nullptr);
+		BLIT_ASSERT(GSWorldResidents == nullptr);
 
-		P_WORLD_RESIDENTS = ptr;
-	}
-
-	CPU_TRANSFORM& GetWorldTransform_STATIC_ACCESS(Resident resident)
-	{
-		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
-
-		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident];
+		GSWorldResidents = ptr;
 	}
 
 	RESIDENT_CREATE_RES AddResident_STATIC_ACCESS(const RESIDENT_CREATE_CONTEXT& ctx)
 	{
-		return P_WORLD_RESIDENTS->AddResident(ctx);
+		return GSWorldResidents->AddResident(ctx);
 	}
 
 	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint32_t rotationFlags)
 	{
-		auto& rotating{ P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID] };
+		auto& rotating{ GSWorldResidents->m_transforms.WVWithMovement[residentID] };
 
 		rotating.movementFlags |= rotationFlags;
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[residentID].eulerAngles += rotation * deltaTime;
+		GSWorldResidents->m_transforms.WVWithMovement[residentID].eulerAngles += rotation * deltaTime;
 	}
 
 	void RotateResidentYaw(Resident resident, float yaw, float deltaTime)
 	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles.y += yaw * deltaTime;
+		GSWorldResidents->m_transforms.WVWithMovement[resident].eulerAngles.y += yaw * deltaTime;
 	}
 
 	void RotateResidentPitch(Resident resident, float pitch, float deltaTime)
 	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles.x += pitch * deltaTime;
+		GSWorldResidents->m_transforms.WVWithMovement[resident].eulerAngles.x += pitch * deltaTime;
 	}
 
 	void RotateResidentRoll(Resident resident, float roll, float deltaTime)
 	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles.z += roll * deltaTime;
+		GSWorldResidents->m_transforms.WVWithMovement[resident].eulerAngles.z += roll * deltaTime;
 	}
 
 	void AddResidentVelocity(Resident resident, const BlitML::fVelocity& velocity, float deltaTime)
 	{
-		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
 
-		auto& residentData = P_WORLD_RESIDENTS->m_transforms.m_moveables[resident];
+		auto& residentData = GSWorldResidents->m_transforms.WVWithMovement[resident];
 
 		BlitML::float3 worldMove = BlitML::ToVec3(BlitML::Mat4EulerY(residentData.eulerAngles.y) * BlitML::vec4{ velocity, 0.0f });
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position += worldMove * 0.01f;
+		GSWorldResidents->m_transforms.WVWithMovement[resident].position += worldMove * 0.01f;
 	}
 
 	BlitML::fVelocity GetResidentVelocity(Resident resident)
 	{
-		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < GSWorldResidents->m_transforms.m_moveableCount);
 
-		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
+		return GSWorldResidents->m_transforms.WVWithMovement[resident].position;
 	}
 
 	BlitML::float3 GetResidentPosition(Resident resident)
 	{
-		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < GSWorldResidents->m_transforms.m_moveableCount);
 
-		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].position;
+		return GSWorldResidents->m_transforms.WVWithMovement[resident].position;
 	}
 
 	bool CheckResidentVelocity(Resident resident)
 	{
-		if (resident > P_WORLD_RESIDENTS->m_residentCount)
+		if (resident > GSWorldResidents->m_residentCount)
 		{
 			return false;
 		}
 
-		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
+		return GSWorldResidents->m_transforms.WVWithMovement[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_MANUAL_VELOCITY_BIT;
 	}
 
 	bool CheckResidentIsFalling(Resident resident)
 	{
-		if (resident > P_WORLD_RESIDENTS->m_worldVariableCount)
+		if (resident > GSWorldResidents->MWorldVariableCount)
 		{
 			return false;
 		}
 
-		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT;
+		return GSWorldResidents->m_transforms.WVWithMovement[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT;
 	}
 
 	BlitML::fRotation GetResidentRotation(Resident resident)
 	{
-		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < P_WORLD_RESIDENTS->m_transforms.m_moveableCount);
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < GSWorldResidents->m_transforms.m_moveableCount);
 
-		return P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].eulerAngles;
+		return GSWorldResidents->m_transforms.WVWithMovement[resident].eulerAngles;
 	}
 
 	void LogResidentForGravity(Resident resident, float maxSpeed)
 	{
 		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT);
 
-		P_WORLD_RESIDENTS->m_transforms.m_moveables[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
-		P_WORLD_RESIDENTS->m_gravityWVs[P_WORLD_RESIDENTS->m_gravityWVCount++] = resident;
-		P_WORLD_RESIDENTS->m_gravityData[resident].max = maxSpeed;
+		GSWorldResidents->m_transforms.WVWithMovement[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
+		GSWorldResidents->WVWithGravityIDXs[GSWorldResidents->WVWithGravityCount++] = resident;
+		GSWorldResidents->WVGravityData[resident].maxSpeed = maxSpeed;
 	}
 }

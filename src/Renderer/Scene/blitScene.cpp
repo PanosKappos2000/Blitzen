@@ -254,11 +254,11 @@ namespace BlitzenEngine
         return SCENE_CREATE_RES::SUCCESS;
     }
 
-    static void RotatingKittenFunc(WORLD_VARIABLE worldVariable, float deltaTime)
+    static void RotatingKittenFunc(Resident resident, float deltaTime)
     {
         constexpr float movementSpeed = 1.f;
-        RotateResidentYaw(worldVariable.m_engineResidentID, movementSpeed, deltaTime);
-        RotateResidentPitch(worldVariable.m_engineResidentID, movementSpeed, deltaTime);
+        RotateResidentYaw(resident, movementSpeed, deltaTime);
+        RotateResidentPitch(resident, movementSpeed, deltaTime);
     }
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier)
@@ -276,7 +276,7 @@ namespace BlitzenEngine
             wvCtx.residentCtx.m_isMoveable = BLIT_FAT_TRUE;
 
             // Randomize Transform
-            CPU_TRANSFORM randomTransform;
+            WVTransform randomTransform;
             RandomizeTransform(&randomTransform, transformMultiplier);
             wvCtx.residentCtx.m_transformInfo.cpu_pTransform = &randomTransform;
             
@@ -300,11 +300,11 @@ namespace BlitzenEngine
 
             if (wv == 0)
             {
-                pResidents->m_transforms.m_velocities[0] = BlitML::float3{ 1.f, 1.f, 1.f };
+                
             }
             else
             {
-                BlitzenWorld::RegisterFrameEvent(pResidents->m_worldVariables[wv], RotatingKittenFunc);
+                BlitzenWorld::RegisterFrameEvent(wv, RotatingKittenFunc);
             }
         }
         return SCENE_CREATE_RES::SUCCESS;

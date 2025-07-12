@@ -38,12 +38,6 @@ namespace BlitzenDX12
 
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
-
-        STAGING<BlitzenEngine::CPU_TRANSFORM> CPU_MOVING_OBJECT_BUFFER{};
-        READBACK_BUFFER<BlitzenEngine::CPU_TRANSFORM> GPU_MOVING_OBJECT_READBACK{};
-
-        READBACK_BUFFER<BlitzenEngine::GridCellOffsets> GPU_GRID_CELL_OFFSETS_READBACK{};
-        READBACK_BUFFER<uint32_t> GPU_GRID_COLLIDER_INDICES_READBACK{};
     };
 
     struct ReadWriteResources
@@ -53,12 +47,12 @@ namespace BlitzenDX12
         SSBO m_staticDrawCmdBuffer;
         SSBO m_staticDrawCmdCounter;
 
-        SSBO m_movementBuffer;
         SSBO m_dynamicDrawCmdBuffer;
         SSBO m_dynamicDrawCmdCounter;
 
         SSBO m_clusterGroupDataBuffer;
         SSBO m_clusterGroupCounter;
+
         SSBO m_clusterVisibilityBuffer;
         SSBO m_clusterDrawCmdBuffer;
         SSBO m_clusterDrawCounter;
@@ -74,14 +68,14 @@ namespace BlitzenDX12
 
     struct CPU_LOGIC_BUFFERS
     {
-        SSBO GPUSSBOMovingObjects{}; // BlitzenEngine::CPU_TRANSFORM
-        SSBO GPUSSBOEulerAngles{};// BlitzenEngine::Eurler / Float4
+        SSBO GPUSSBOWorldVariableMovement{}; // BlitzenEngine::WVMovement
+        SSBO GPUSSBOWorldVariableTransform{};// BlitzenEngine::Eurler / Float4
 
-        STAGING<BlitzenEngine::CPU_TRANSFORM> CPUWRMovingObjects{};
+        STAGING<BlitzenEngine::WVMovement> CPURWWorldVariableMovements{};
 
-        READBACK_BUFFER<BlitzenEngine::CPU_TRANSFORM> CPURDBMovingObjects{};
-        READBACK_BUFFER<BlitzenEngine::GridCellOffsets> CPURDBGridCells{};
-        READBACK_BUFFER<uint32_t> GPURDB_GRID_COLLIDER_INDICES{};
+        READBACK_BUFFER<BlitzenEngine::WVTransform> CPURDBWorldVariableTransforms{};
+        READBACK_BUFFER<BlitzenEngine::GridCellOffsets> CPURDBGridCellOffsets{};
+        READBACK_BUFFER<uint32_t> GCPURDBGridCellWorldVariableIndices{};
     };
 
     struct DescriptorContext
@@ -268,7 +262,7 @@ namespace BlitzenDX12
         STAGING<BlitzenEngine::RenderObject> m_renderStaging;
         STAGING<BlitzenEngine::RenderObject> m_dynamicRenderStaging;
         STAGING<BlitzenEngine::MeshTransform> m_transformStaging;
-        STAGING<BlitzenEngine::CPU_TRANSFORM> m_cpuTransformStaging;
+        STAGING<BlitzenEngine::WVTransform> m_cpuTransformStaging;
         STAGING<BlitzenEngine::BoundingSphere> m_boundingSpheresStaging;
     };
 }

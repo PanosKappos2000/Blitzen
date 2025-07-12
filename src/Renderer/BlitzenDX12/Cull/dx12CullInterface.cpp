@@ -158,7 +158,7 @@ namespace BlitzenEngine
 					// Command read barrier
 					BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarriers[1], rwResources.m_dynamicDrawCmdBuffer.buffer.Get(),
 						D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-					BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarriers[2], rwResources.m_movementBuffer.buffer.Get(),
+					BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarriers[2], pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(),
 						D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 					BlitzenDX12::CreateResourceUAVBarrier(cullingBarriers[3], rwResources.m_transformBuffer.buffer.Get());
 					// execute

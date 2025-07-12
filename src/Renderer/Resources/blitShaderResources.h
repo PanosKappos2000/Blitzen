@@ -108,12 +108,24 @@ namespace BlitzenEngine
         BlitML::quat orientation;
     };
 
-    struct CPU_TRANSFORM
+    struct WVTransform
     {
         BlitML::vec3 position;
         BlitML::vec3 eulerAngles;
         uint32_t movementFlags = 0;
         uint32_t targetIdx;
+    };
+
+    struct WVMovement
+    {
+        float velocityZ = 0.f;
+        float velocityX = 0.f;
+        float velocityY = 0.f;
+        float rotationPitch = 0.f;
+        float rotationYaw = 0.f;
+        float rotationRoll = 0.f;
+        uint32_t padding0;
+        uint32_t padding1;
     };
 
     struct RenderObject
@@ -152,8 +164,15 @@ namespace BlitzenEngine
 
     struct WVGravity
     {
-        float current = 0.f;
-        float max = 1.f;
+        float currentSpeed = 0.f;
+        float maxSpeed = 1.f;
+    };
+
+    struct WVVelocity
+    {
+        float acceleration;
+        float deceleration;
+        float maxSpeed;
     };
 
     using EulerAngles = BlitML::vec4;// padded

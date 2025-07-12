@@ -12,7 +12,7 @@ namespace BlitzenWorld
         for (uint32_t event = 0; event < m_frameEvents.m_frameEventCount; ++event)
         {
             auto& frameEvent = m_frameEvents.m_frameEvents[event];
-            frameEvent.m_function(frameEvent.m_worldVariableArg, deltaTime);
+            frameEvent.m_function(frameEvent.m_resident, deltaTime);
         }
     }
 
@@ -65,7 +65,7 @@ namespace BlitzenWorld
         camera.viewData.position = BlitzenEngine::GetResidentPosition(residentID);
 
         // Fixes resident basic orientation (euler angles)
-        GSBlitzenWorld->m_residents.m_transforms.m_moveables[residentID].eulerAngles = BlitML::fRotation(camera.transformData.pitchRotation, camera.transformData.yawRotation, 0.f);
+        GSBlitzenWorld->m_residents.m_transforms.WVWithMovement[residentID].eulerAngles = BlitML::fRotation(camera.transformData.pitchRotation, camera.transformData.yawRotation, 0.f);
 
 		// Rotates the additional padding so that the camera is placed correctly even when the resident is rotated
         float offsetX = paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
