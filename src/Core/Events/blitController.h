@@ -24,7 +24,7 @@ namespace BlitzenCore
     {
         BlitKey m_keycode;
         KeyCallback m_PFNTap;
-        KeyCallback m_PFN;
+        KeyCallback m_PFNHeld;
         BlitzenCore::BIG_BOOL m_heldDownFlags = BLIT_FAT_FALSE;
         KeyCallbackType m_keyCallbackType;
     };
@@ -47,11 +47,11 @@ namespace BlitzenCore
 
         inline BlitEventType KEYPRESS(uint32_t idx, float deltaTime)
         {
-            return m_keyData[idx].m_PFN(m_resident, deltaTime);
+            return m_keyData[idx].m_PFNTap(m_resident, deltaTime);
         }
         inline BlitEventType KEYRELEASE(uint32_t idx, float deltaTime)
         {
-            return m_keyData[idx].m_PFN(m_resident, deltaTime);
+            return m_keyData[idx].m_PFNTap(m_resident, deltaTime);
         }
         inline BlitEventType MOUSEMOVE(int32_t xAxisMovement, int32_t yAxisMovement, float deltaTime)
         {

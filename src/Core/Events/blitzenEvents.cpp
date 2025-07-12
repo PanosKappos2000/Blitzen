@@ -170,12 +170,12 @@ namespace BlitzenCore
             case KeyCallbackType::PRESS:
             case KeyCallbackType::RELEASE:
             {
-                keyData.m_PFN = callback;
+                keyData.m_PFNTap = callback;
                 break;
 			}
             case KeyCallbackType::HOLD:
             {
-                keyData.m_PFN = callback;
+                keyData.m_PFNHeld = callback;
 				controller.m_keyHeldIdxs[controller.m_registeredKeyHeldCount++] = uint32_t(key);
                 break;
             }
@@ -184,6 +184,15 @@ namespace BlitzenCore
                 break;
             }
         }
+    }
+
+    void RegisterHoldReleaseKeyEvent(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyCallback holdCallback, KeyCallback tapCallback, uint32_t controllerIDX)
+    {
+        auto& keyData = SYSTEM->m_controllers[controllerIDX].m_keyData[uint32_t(key)];
+
+        keyData.m_PFNHeld = holdCallback;
+        keyData.m_PFNTap = tapCallback;
+        SYSTEM->m_controllers[controllerIDX].m_keyHeldIdxs[SYSTEM->m_controllers->m_registeredKeyHeldCount++] = uint32_t(key);
     }
 
     void RegisterMouseButtonPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback callback, uint32_t controllerIDX)

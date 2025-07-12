@@ -343,8 +343,8 @@ namespace BlitzenEngine
 		for (uint32_t i = 0; i < rwResources.m_HI_Z.mipCount; ++i)
 		{
 			// Mip size calculcations
-			uint32_t levelWidth = BlitML::Max(1u, (rwResources.m_HI_Z.width) >> i);
-			uint32_t levelHeight = BlitML::Max(1u, (rwResources.m_HI_Z.height) >> i);
+			uint32_t levelWidth = BlitML::UMax(1u, (rwResources.m_HI_Z.width) >> i);
+			uint32_t levelHeight = BlitML::UMax(1u, (rwResources.m_HI_Z.height) >> i);
 
 			// Binds write texture (the depth pyramid has a copy for double buffering and each one has the correct offsets for the descriptor heap)
 			commandList->SetComputeRootDescriptorTable(BlitzenDX12::CE_HI_Z_MAP_OUTPUT_ID, rwResources.m_HI_Z.mips[i]);

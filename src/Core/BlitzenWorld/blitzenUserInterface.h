@@ -35,20 +35,30 @@ namespace BlitzenEngine
 	// Once the max speed stat is reached, the resident will move at a static speed
 	void AddResidentVelocityZAxisNegative(Resident resident, float deltaTime);
 
-	// Every time this is called the speed of the resident on the Z axis decelerates, provided that the velocity is positive
+	// Sets velocity to 0 for ZAxis movement
 	void KillResidentVelocityZAxis(Resident resident);
 
-	// Every time this is called the speed of the resident on the 
+	// Every time this is called the speed of the resident on the x axis is incremented by their acceleration.
+	// Once the max speed stat is reached, the resident will move at a static speed.
 	void AddResidentVelocityXAxis(Resident resident, float deltaTime);
 
+	// Every time this is called the speed of the resident on the x axis is incremented by their acceleration.
+	// Once the max speed stat is reached, the resident will move at a static speed.
+	void AddResidentVelocityXAxisNegative(Resident resident, float deltaTime);
+
+	// Sets velocity to 0 for XAxis movement
 	void KillResidentVelocityXAxis(Resident resident);
 
+	// This sets a world variable's acceleration stat. This stat is used for interpolation functions
 	void SetResidentAcceleration(Resident resident, float acceleration);
 
+	// Returns a world variable's acceleration stat
 	float GetResidentAcceleration(Resident resident);
 
+	// Sets a world variable's max speed stat. This stat is true for movement on every axis (except for y axis gravity, which is different)
 	void SetResidentMaxVelocity(Resident resident, float maxVelocity);
 
+	// Returns a world variable's max speed stat
 	float GetResidentMaxVelocity(Resident resident);
 
 	bool CheckResidentIsFalling(Resident resident);

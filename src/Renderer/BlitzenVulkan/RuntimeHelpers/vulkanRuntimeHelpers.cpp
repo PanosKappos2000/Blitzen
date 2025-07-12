@@ -72,8 +72,8 @@ namespace BlitzenVulkan
         WriteImageDescriptorSets(swapchainImageWrite, &swapchainImageDescriptorInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_NULL_HANDLE, Ce_SwapchainDescriptorBinding);
 
         descriptorContext.m_HI_Z_descInfo[frame].imageView = readWrites.m_HI_Z_MAP.m_levels[pyramidMip];
-        uint32_t levelWidth = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_width) >> pyramidMip);
-        uint32_t levelHeight = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_height) >> pyramidMip);
+        uint32_t levelWidth = BlitML::UMax(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_width) >> pyramidMip);
+        uint32_t levelHeight = BlitML::UMax(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_height) >> pyramidMip);
 
         VkWriteDescriptorSet hizWrite{};
 

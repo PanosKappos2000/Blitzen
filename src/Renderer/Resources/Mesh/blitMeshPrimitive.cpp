@@ -250,7 +250,7 @@ namespace BlitzenEngine
                 meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), context.m_pMeshPrimitiveInfo->m_vertexCount);
 
                 // since it starts from next lod accumulate the error
-                lodError = BlitML::Max(lodError, nextError);
+                lodError = BlitML::FMax(lodError, nextError);
             }
         }
 
@@ -371,7 +371,7 @@ namespace BlitzenEngine
         for (size_t i = 0; i < context.m_vertexCount; ++i)
         {
             const auto& pos = context.m_vertices[i].position;
-            radius = BlitML::Max(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
+            radius = BlitML::FMax(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
         }
         surfaceBounds.m_center = center;
         surfaceBounds.m_radius = radius;
@@ -586,7 +586,7 @@ namespace BlitzenEngine
                 meshopt_optimizeVertexCache(lodIndices.Data(), lodIndices.Data(), lodIndices.GetSize(), context.m_pMeshPrimitiveInfo->m_vertexCount);
 
                 // since it starts from next lod accumulate the error
-                lodError = BlitML::Max(lodError, nextError);
+                lodError = BlitML::FMax(lodError, nextError);
             }
         }
 
@@ -619,7 +619,7 @@ namespace BlitzenEngine
         for (size_t i = 0; i < vtxCount; ++i)
         {
             const auto& pos = vtxPosArr[i];
-            radius = BlitML::Max(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
+            radius = BlitML::FMax(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
         }
         surfaceBounds.m_center = center;
         surfaceBounds.m_radius = radius;

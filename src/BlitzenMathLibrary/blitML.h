@@ -38,13 +38,34 @@ namespace BlitML
     inline float Tan(float x) {return tanf(x);}
     inline float Acos(float x) {return acosf(x);}
     inline float Abs(float x) {return fabsf(x);}
-    inline float Max(float x, float y) { return (x > y) ? x : y; }
-    inline uint32_t Max(uint32_t x, uint32_t y) { return (x > y) ? x : y; }
 
-    inline uint32_t Clamp(uint32_t initial, uint32_t upper, uint32_t lower) { 
-        return (initial >= upper) ? upper
-        : (initial <= lower) ? lower 
-        : initial; 
+    // Not based solely on overload for clarity
+    inline float FMax(float first, float second) 
+    { 
+        return (first > second) ? first : second;
+    }
+
+    // Not based solely on overload for clarity
+    inline uint32_t UMax(uint32_t first, uint32_t second) 
+    { 
+        return (first > second) ? first : second;
+    }
+
+    // Not based solely on overload for clarity
+    inline float FMin(float first, float second)
+    {
+        return first < second ? first : second;
+    }
+
+    // Not based solely on overload for clarity
+    inline uint32_t UMin(uint32_t first, uint32_t second)
+    {
+        return first < second ? first : second;
+    }
+
+    inline uint32_t Clamp(uint32_t initial, uint32_t upper, uint32_t lower) 
+    { 
+        return (initial >= upper) ? upper : (initial <= lower) ? lower : initial; 
     }
 
     inline uint8_t IsPowerOf2(uint64_t value) { return (value != 0) && ((value & (value - 1)) == 0); }

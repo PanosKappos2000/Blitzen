@@ -6,7 +6,8 @@ namespace BlitzenCore
 	{
         for (uint32_t pfn = 0; pfn < Ce_KeyCallbackCount; ++pfn)
         {
-            m_keyData[pfn].m_PFN = [](BlitzenEngine::Resident, float)->BlitEventType { return BlitEventType::MaxTypes; };
+            m_keyData[pfn].m_PFNHeld = [](BlitzenEngine::Resident, float)->BlitEventType { return BlitEventType::MaxTypes; };
+            m_keyData[pfn].m_PFNTap = [](BlitzenEngine::Resident, float)->BlitEventType { return BlitEventType::MaxTypes; };
         }
 
         for (uint32_t pfn = 0; pfn < Ce_MouseButtonPFNCount; ++pfn)
@@ -27,7 +28,7 @@ namespace BlitzenCore
             auto& keyData = m_keyData[m_keyHeldIdxs[hldID]];
             if (keyData.m_heldDownFlags != BLIT_FAT_FALSE)
             {
-                keyData.m_PFN(m_resident, deltaTime);
+                keyData.m_PFNHeld(m_resident, deltaTime);
             }
         }
     }

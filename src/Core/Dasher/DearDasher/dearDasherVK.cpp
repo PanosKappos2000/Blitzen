@@ -39,7 +39,7 @@ namespace BlitzenIMGUI
 		info.DescriptorPool = m_descPool.handle;
 
 		info.MinImageCount = pRenderer->m_swapchain.m_minImageCount;
-		info.ImageCount = BlitML::Max(BlitzenVulkan::ce_framesInFlight, info.MinImageCount);
+		info.ImageCount = BlitML::UMax(BlitzenVulkan::ce_framesInFlight, info.MinImageCount);
 
 		info.UseDynamicRendering = true;
 		VkFormat formats[] { VK_FORMAT_UNDEFINED };

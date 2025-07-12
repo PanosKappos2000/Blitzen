@@ -370,7 +370,7 @@ namespace BlitzenEngine
 
                 MeshTransform transform;
                 transform.pos = BlitML::vec3(translation[0], translation[1], translation[2]);
-                transform.scale = BlitML::Max(scale[0], BlitML::Max(scale[1], scale[2]));
+                transform.scale = BlitML::FMax(scale[0], BlitML::FMax(scale[1], scale[2]));
                 transform.orientation = BlitML::quat(rotation[0], rotation[1], rotation[2], rotation[3]);
 
                 // TODO: better warnings for non-uniform or negative scale

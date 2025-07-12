@@ -263,8 +263,8 @@ namespace BlitzenEngine
 			BlitzenVulkan::PushDescriptors(instance, cmdb, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineContext.m_hiZLayout.handle, 0, 2, &descriptorContext.m_HI_Z_descriptors[2 * frame]);
 
 			// Mip size calculcations
-			uint32_t levelWidth = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_width) >> i);
-			uint32_t levelHeight = BlitML::Max(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_height) >> i);
+			uint32_t levelWidth = BlitML::UMax(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_width) >> i);
+			uint32_t levelHeight = BlitML::UMax(1u, (readWrites.m_HI_Z_MAP.m_pyramid.m_height) >> i);
 
 			// Push constant for extent
 			BlitML::vec2 pyramidLevelExtentPushConstant{ float(levelWidth), float(levelHeight) };

@@ -8,6 +8,10 @@ namespace BlitzenCore
     // Passes the logic to be called when a speicific key is pressed
     void RegisterKeyEvent(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyCallback callback, uint32_t controllerIDX, KeyCallbackType type);
 
+    // Special event register function. This type of callback puts a function pointer when holding the button.
+    // It also puts a tap callback for when releasing. Useful for functionality that need a cleanup call
+    void RegisterHoldReleaseKeyEvent(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyCallback holdCallback, KeyCallback tapCallback, uint32_t controllerIDX);
+
     // Passed logic to be called when one of the mouse buttons is pressed
     void RegisterMouseButtonPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback callback, uint32_t cotrollerIDX);
 
@@ -15,7 +19,8 @@ namespace BlitzenCore
     void RegisterMouseButtonReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonReleaseCallback callback, uint32_t cotrollerIDX);
 
     // Initializes both the release and press function pointers for the given key
-    void RegisterMouseButtonPressAndReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback press, MouseButtonReleaseCallback release, uint32_t controllerIDX);
+    void RegisterMouseButtonPressAndReleaseCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback press, 
+        MouseButtonReleaseCallback release, uint32_t controllerIDX);
 
     void RegisterMouseWheelCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseWheelCallbackType callback, uint32_t cotrollerIDX);
 

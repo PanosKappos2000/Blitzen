@@ -95,7 +95,7 @@ namespace BlitzenEngine
 				transformData.position.y -= gravityData.currentSpeed * deltaTime;
 
 				// TEMP
-				gravityData.currentSpeed = BlitML::Max(gravityData.maxSpeed, gravityData.currentSpeed + BLIT_GRAVITATIONAL_ACCELERATION);
+				gravityData.currentSpeed = BlitML::FMax(gravityData.maxSpeed, gravityData.currentSpeed + BLIT_GRAVITATIONAL_ACCELERATION);
 			}
 			else
 			{
@@ -161,6 +161,92 @@ namespace BlitzenEngine
 		BlitML::float3 worldMove = BlitML::ToVec3(BlitML::Mat4EulerY(residentData.eulerAngles.y) * BlitML::vec4{ velocity, 0.0f });
 
 		GSWorldResidents->m_transforms.WVWithMovement[resident].position += worldMove * 0.01f;
+	}
+
+	void AddResidentVelocityZAxis(Resident resident, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
+		auto& movementData = GSWorldResidents->WVMovementData[resident];
+
+		movementData.velocityZ = BlitML::FMax(movementData.velocityZ + accelerationData.acceleration, accelerationData.maxSpeed);
+		movementData.velocityZ *= deltaTime;
+	}
+
+	void AddResidentVelocityZAxisNegative(Resident resident, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
+		auto& movementData = GSWorldResidents->WVMovementData[resident];
+
+		movementData.velocityZ = BlitML::FMin(movementData.velocityZ - accelerationData.acceleration, -accelerationData.maxSpeed);
+		movementData.velocityZ *= deltaTime;
+	}
+
+	void KillResidentVelocityZAxis(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		GSWorldResidents->WVMovementData[resident].velocityZ = 0;
+	}
+
+	void AddResidentVelocityXAxis(Resident resident, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
+		auto& movementData = GSWorldResidents->WVMovementData[resident];
+
+		movementData.velocityX = BlitML::FMax(movementData.velocityX + accelerationData.acceleration, accelerationData.maxSpeed);
+		movementData.velocityX *= deltaTime;
+	}
+
+	void AddResidentVelocityXAxisNegative(Resident resident, float deltaTime)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
+		auto& movementData = GSWorldResidents->WVMovementData[resident];
+
+		movementData.velocityX = BlitML::FMax(movementData.velocityX - accelerationData.acceleration, -accelerationData.maxSpeed);
+		movementData.velocityX *= deltaTime;
+	}
+
+	void KillResidentVelocityXAxis(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		GSWorldResidents->WVMovementData[resident].velocityZ = 0;
+	}
+
+	void SetResidentAcceleration(Resident resident, float acceleration)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		GSWorldResidents->WVVelocityData[resident].acceleration = acceleration;
+	}
+
+	float GetResidentAcceleration(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		return GSWorldResidents->WVVelocityData[resident].acceleration;
+	}
+
+	void SetResidentMaxVelocity(Resident resident, float maxVelocity)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		GSWorldResidents->WVVelocityData[resident].maxSpeed = maxVelocity;
+	}
+
+	float GetResidentMaxVelocity(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < GSWorldResidents->m_transforms.m_moveableCount);
+
+		return GSWorldResidents->WVVelocityData[resident].maxSpeed;
 	}
 
 	BlitML::fVelocity GetResidentVelocity(Resident resident)
