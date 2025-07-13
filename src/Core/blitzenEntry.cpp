@@ -81,17 +81,70 @@ int main(int argc, char* argv[])
 
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
         // Using IMGUI for the editor requires some extra care for event handling
-        BlitzenCore::UpdateInput(&SYSTEM, blitzenClock.m_deltaTime, &dasher.m_eventContext);
+        BlitzenCore::UpdateInput(&SYSTEM, blitzenClock.mDeltaTime);
 #else
-        BlitzenCore::UpdateInput(&SYSTEM, blitzenClock.m_deltaTime);
+        BlitzenCore::UpdateInput(&SYSTEM, blitzenClock.mDeltaTime);
 #endif
     }
 }
 
 #else
 
+#include "BlitzenMathLibrary/blitMLSIMD.h"
+
 int main()
 {
+    BlitzenWorld::BLITZEN_SYSTEM_CONTEXT SYSTEM{};
+    SYSTEM.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::STARTUP;
+
+    ControllerSystemMemory blitzenControllers;
+    blitzenControllers.Make();
+    SYSTEM.m_controllers = blitzenControllers->m_controllers;
+    BlitzenCore::ZeroInitializeEventFunctionPointers(&SYSTEM);
+
+    BlitzenCore::InitLogging();
+
+    BlitzenCore::WorldTimeManager blitzenClock;
+    SYSTEM.pClock = &blitzenClock;
+
+    blitzenClock.Startup();
+
+    BlitzenCore::BlitPerformanceCounter counter;
+    counter.Generate(&blitzenClock);
+
+    constexpr uint32_t loopCount = 100'000'000;
+
+    BlitML::mat4 testMatrix = BlitML::Translate(BlitML::float3{ 1.0f, 2.0f, 3.0f });
+    BlitML::float4 testVector = BlitML::float4(1.0f, 2.0f, 3.0f, 1.0f);
+    BlitML::float4 result;
+    volatile float accumulator = 0.0f;
+
+    double conventionalStart = counter.Startup();
+
+    for (uint32_t i = 0; i < loopCount; ++i)
+    {
+        result = testMatrix * testVector;
+        accumulator = result.x;
+    }
+
+    double conventionalTime = counter.End();
+
+    BLIT_FATAL("Conventional counter: %6f", conventionalTime);
+
+    counter.Reset();
+
+    double SIMDStart = counter.Startup();
+
+    for (uint32_t i = 0; i < loopCount; ++i)
+    {
+        result = BCPSS::MulMat4Vec4(testMatrix, testVector);
+        accumulator = result.x;
+    }
+
+    double SIMDEnd = counter.End();
+
+    BLIT_FATAL("SIMD counter: %6f", SIMDEnd);
+
     return 0;
 }
 #endif

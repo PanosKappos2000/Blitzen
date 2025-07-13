@@ -16,9 +16,9 @@ namespace BlitzenEngine
 
     void CollisionGrid::DefineGrid(uint32_t origin)
     {
-        m_origin = origin;
-        m_minBounds =  origin - (CE_COLLISION_GRID_EXTENT / 2);
-        m_maxBounds =  origin + (CE_COLLISION_GRID_EXTENT / 2);
+        mOrigin = origin;
+        m_minBounds =  origin - (GCCollisionGridExtent / 2);
+        m_maxBounds =  origin + (GCCollisionGridExtent / 2);
     }
 
 	void CollisionGrid::CreateCells()
@@ -27,7 +27,7 @@ namespace BlitzenEngine
         {
             m_cellStaticOffsets[cellId].colliderOffset = 0;
             m_cellStaticOffsets[cellId].colliderCount = 0;
-            m_cellDynamicOffsets[cellId].colliderOffset = cellId * CE_DYNAMIC_RESIDENTS_PER_COLLISION_GRID_CELL;
+            m_cellDynamicOffsets[cellId].colliderOffset = 0;
             m_cellDynamicOffsets[cellId].colliderCount = 0;
         }
 	}
@@ -47,8 +47,7 @@ namespace BlitzenEngine
             BlitML::float3 position = transformArr[renderArr[i].transformId].pos;
 
             // Residents that are not inside the grid, cannot be placed inside a cell.
-            if ((int32_t)position.x > m_maxBounds || (int32_t)position.x < m_minBounds || (int32_t)position.y > m_maxBounds || (int32_t)position.y < m_minBounds ||
-                (int32_t)position.z > m_maxBounds || (int32_t)position.z < m_minBounds)
+            if ((int32_t)position.x > m_maxBounds || (int32_t)position.x < m_minBounds || (int32_t)position.z > m_maxBounds || (int32_t)position.z < m_minBounds)
             {
                 outOfBounds++;
                 continue;
@@ -58,18 +57,16 @@ namespace BlitzenEngine
             position -= BlitML::float3(float(m_minBounds));
 
             // Sanity. The first check should have removed such objects. If not, I am doing something wrong
-            BLIT_ASSERT_MESSAGE(position > 0.f || position < CE_COLLISION_GRID_EXTENT, "Something went wrong with collision grid calculations");
+            BLIT_ASSERT_MESSAGE(position > 0.f || position < GCCollisionGridExtent, "Something went wrong with collision grid calculations");
 
-            // Creates an index for each axis based on resident position
-            uint32_t cellPosX = (position.x / CE_COLLISION_GRID_CELL_EXTENT) < CE_COLLISION_GRID_CELL_FLAT_COUNT ? 
-                uint32_t(position.x / CE_COLLISION_GRID_CELL_EXTENT): CE_COLLISION_GRID_CELL_FLAT_COUNT - 1;
-            uint32_t cellPosY = (position.y / CE_COLLISION_GRID_CELL_EXTENT) < CE_COLLISION_GRID_CELL_FLAT_COUNT ? 
-                uint32_t(position.y / CE_COLLISION_GRID_CELL_EXTENT): CE_COLLISION_GRID_CELL_FLAT_COUNT - 1;
-            uint32_t cellPosZ = (position.z / CE_COLLISION_GRID_CELL_EXTENT) < CE_COLLISION_GRID_CELL_FLAT_COUNT ? 
-                uint32_t(position.z / CE_COLLISION_GRID_CELL_EXTENT) : CE_COLLISION_GRID_CELL_FLAT_COUNT - 1;
+            // Creates an index for each axis based on resident position.
+            // The id should not be above the cell's extent
+            uint32_t cellPosX = BlitML::UMin(uint32_t(position.x / GCCollisionCellExtent), CE_COLLISION_GRID_CELL_FLAT_COUNT - 1);
+            uint32_t cellPosZ = BlitML::UMin(uint32_t(position.z / GCCollisionCellExtent), CE_COLLISION_GRID_CELL_FLAT_COUNT - 1);
 
-            // Flat index full
-            uint32_t cellIndex = cellPosX + cellPosY * CE_COLLISION_GRID_CELL_FLAT_COUNT + cellPosZ * CE_COLLISION_GRID_CELL_FLAT_COUNT * CE_COLLISION_GRID_CELL_FLAT_COUNT;
+            // The flat index is retrieved by turning 2D to 1D
+            // The xAxis is kept as it is and the Z is multiplied by the cell count on each axis (flat count)
+            uint32_t cellIndex = cellPosX + cellPosZ * CE_COLLISION_GRID_CELL_FLAT_COUNT;
 
             // Something wrong with indexing logic
             if (cellIndex >= CE_COLLISION_GRID_CELL_COUNT)

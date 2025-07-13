@@ -9,9 +9,9 @@
 
 namespace BlitzenEngine
 {
-	constexpr uint32_t CE_COLLISION_GRID_EXTENT = BLIT_COLLISION_GRID_EXTENT;
+	constexpr uint32_t GCCollisionGridExtent = BLIT_COLLISION_GRID_EXTENT;
 
-	constexpr uint32_t CE_COLLISION_GRID_CELL_EXTENT = BLIT_COLLISION_GRID_CELL_EXTENT;
+	constexpr uint32_t GCCollisionCellExtent = BLIT_COLLISION_GRID_CELL_EXTENT;
 
 	constexpr uint32_t CE_COLLISION_GRID_CELL_FLAT_COUNT = BLIT_COLLISION_GRID_CELL_FLAT_COUNT;
 
@@ -37,7 +37,7 @@ namespace BlitzenEngine
 	{
 	public:
 
-		int32_t m_origin;
+		int32_t mOrigin;
 		int32_t m_minBounds;
 		int32_t m_maxBounds;
 
@@ -45,7 +45,7 @@ namespace BlitzenEngine
 		GridCellOffsets m_cellDynamicOffsets[CE_COLLISION_GRID_CELL_COUNT];
 		uint32_t* m_colliderIndices{ nullptr };
 		uint32_t m_colliderIndicesTotal{ 0 };
-		uint32_t m_dynamicColliderIndices[CE_AVAILABLE_DYNAMIC_COLLIDER_SPACES];
+		uint32_t m_dynamicColliderIndices[BLIT_MAX_WORLD_VARIABLE_COUNT];
 
 		CollisionMessage m_events[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		uint32_t m_count{ 0 };

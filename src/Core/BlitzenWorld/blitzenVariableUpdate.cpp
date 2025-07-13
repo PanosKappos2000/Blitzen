@@ -15,10 +15,10 @@ namespace BlitzenWorld
 		auto& camera = context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX];
 
 		context.pClock->Update();
-		context.pWORLD->deltaTime = (float)context.pClock->m_deltaTime;
+		context.pWORLD->deltaTime = (float)context.pClock->mDeltaTime;
 		camera.viewData.deltaTime = context.pWORLD->deltaTime;
 
-		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f && camera.viewData.deltaTime <= BlitzenCore::CE_MAX_TIME_STEP);
+		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f && camera.viewData.deltaTime <= BlitzenCore::GCMaxTimeStep);
 
 		BlitzenPlatform::DispatchEvents(context.pPlatform);
 		context.m_controllers[context.m_activeControllerIDX].DispatchHeldDownKeyEvents(pWORLD->deltaTime);

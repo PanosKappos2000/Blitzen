@@ -66,6 +66,7 @@ add_executable(BlitzenEngine
                 "src/BlitzenMathLibrary/blitML.h"
                 "src/BlitzenMathLibrary/blitMLTypes.h"
                 "src/BlitzenMathLibrary/blitMLLight.h"
+                "src/BlitzenMathLibrary/BlitMLSIMD.h"
                 
 
                 # PLATFORM
@@ -245,7 +246,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/BlitzenMathLibrary/BlitMLSIMD.h")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

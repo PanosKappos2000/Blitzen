@@ -93,7 +93,7 @@ namespace BlitML
     {
         if(!sRandSeeded)
         {
-            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime(clock.m_clockFrequency)));
+            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime(clock.mClockFrequency)));
             sRandSeeded = 1;
         }
         return rand();
@@ -103,7 +103,7 @@ namespace BlitML
     {
         if (!sRandSeeded) 
         {
-            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime(clock.m_clockFrequency)));
+            srand(static_cast<uint32_t>(BlitzenPlatform::PlatformGetAbsoluteTime(clock.mClockFrequency)));
             sRandSeeded = 1;
         }
         return (rand() % (max - min + 1)) + min;

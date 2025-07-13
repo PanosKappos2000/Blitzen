@@ -10,7 +10,7 @@ namespace BlitzenPlatform
         LARGE_INTEGER frequency;
         QueryPerformanceFrequency(&frequency);
 
-        pClock->m_clockFrequency = 1.0 / double(frequency.QuadPart);
+        pClock->mClockFrequency = 1.0 / double(frequency.QuadPart);
         //QueryPerformanceCounter(&inl_startTime); LARGE_INTEGER startTime never used
     }
 
