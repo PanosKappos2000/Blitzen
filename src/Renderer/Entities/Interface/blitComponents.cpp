@@ -5,11 +5,6 @@ namespace BlitzenEngine
 {
     inline ComponentSystem* pComponents_STATIC_ACCESS{ nullptr };
 
-    void AddMovingResident_STATIC_ACCESS(MovingResident* pMoving)
-    {
-        //pComponents_STATIC_ACCESS->m_movingResidents[pComponents_STATIC_ACCESS->m_movingResidentCount++] = pMoving;
-    }
-
     void InitializeComponentSystemPointer_STATIC_ACCESS(ComponentSystem* ptr)
     {
         BLIT_ASSERT_MESSAGE(pComponents_STATIC_ACCESS == nullptr, "Attempted to reinitialize the static access component system pointer");

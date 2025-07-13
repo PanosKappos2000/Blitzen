@@ -136,7 +136,7 @@ namespace BlitzenVulkan
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::BoundingSphere> boundingSphereStagingContext{};
         boundingSphereStagingContext.elementCount = BLIT_MAX_WORLD_RENDERS;
-        boundingSphereStagingContext.pData = drawContext.m_pResidents->m_colliders.m_boundingSpheres;
+        boundingSphereStagingContext.pData = drawContext.m_pResidents->MColliders.m_boundingSpheres;
         if (!CreateStaging(vma, device, boundingSphereStagingContext))
         {
             BLIT_ERROR("%s: Failed to create bounding sphere staging buffer", BLIT_VK_SYSTEM);

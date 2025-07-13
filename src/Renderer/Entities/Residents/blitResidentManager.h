@@ -3,7 +3,6 @@
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
 #include "Collision/blitColliders.h"
-#include "Dynamic/blitMovingResident.h"
 
 namespace BlitzenEngine
 {
@@ -59,6 +58,12 @@ namespace BlitzenEngine
 	class WORLD_RESIDENTS
 	{
 	public:
+		// Everything that can be considered to have an impact on the world (rendering, gameplay, events) is a resident
+		// A resident is an index that can access base components
+		// The elements from 0 to BLIT_MAX_WORLD_VARIABLE_COUNT are assumed to be the world varialbes and should not have any static residents inside
+		Resident m_residents[BLIT_MAX_WORLD_RESIDENTS];
+		uint32_t m_residentCount{ 0 };
+
 		// Every member variable with WV as a prefix is a world variable
 		// World Variables are a subset of Blitzen World residents, that have unpredictable logic applied to them
 		// Their components are meant to be highly compatible with shaders and they are designed around crowding
@@ -69,13 +74,10 @@ namespace BlitzenEngine
 		uint32_t WVWithGravityCount{ 0 };
 		WVVelocity WVVelocityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 
-		Resident m_residents[BLIT_MAX_WORLD_RESIDENTS];
-		uint32_t m_residentCount{ 0 };
-		MovingResident m_movingResidents[BLIT_MAX_WORLD_VARIABLE_COUNT];
-		uint32_t m_movingResidentCount{ 0 };
+		// The render is an index to the resource that will be used when rendering a resident(if the resident can be rendered)
 		RenderContainer m_renders;
 		WorldTransformContainer m_transforms;
-		ColliderContainer m_colliders;
+		ColliderContainer MColliders;
 
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 

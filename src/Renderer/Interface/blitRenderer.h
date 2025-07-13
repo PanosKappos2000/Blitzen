@@ -1,3 +1,4 @@
+// BMPR or Bumper
 #pragma once
 #include "Renderer/BlitzenVulkan/Context/vulkanRenderer.h"
 #include "Renderer/BlitzenGL/openglRenderer.h"
@@ -6,19 +7,7 @@
 
 namespace BlitzenEngine
 {
-    #if defined(linux)
-        using Renderer = BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>;
-
-        using RendererPtrType = BlitzenVulkan::VulkanRenderer*;
-
-        using RendererType = BlitzenVulkan::VulkanRenderer;
-
-        using RenderingLoadingContextMesh = BlitzenVulkan::LoadingContextMesh;
-
-        using RenderingLoadingContextRenderObjects = BlitzenVulkan::LoadingContextRenderObjects;
-
-    #elif defined(_WIN32) && defined(BLIT_VK_FORCE)
-
+    #if defined(linux) || defined(_WIN32) && defined(BLIT_VK_FORCE)
         using Renderer = BlitCL::SmartPointer<BlitzenVulkan::VulkanRenderer, BlitzenCore::AllocationType::Renderer>;
 
         using RendererPtrType = BlitzenVulkan::VulkanRenderer*;

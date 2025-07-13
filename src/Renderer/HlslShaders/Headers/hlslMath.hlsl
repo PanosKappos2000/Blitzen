@@ -56,17 +56,46 @@ float3 ModelSphereToViewSphere(float3 center, float4x4 view, float4 orientation,
     return mul(view, float4(worldCenter, 1)).xyz;
 }
 
+// Performs frustum culling against an axis-aligned bounding sphere in camera space.
+//
+// The four frustum planes (left, right, top, bottom) are computed ahead of time from the projection matrix 
+// using BlitML::ExtractFrustumPlanesForBMPR (see BlitML.h). These planes represent the slope of the frustum 
+// in X/Z and Y/Z space — optimized for GPU culling and simplified to reduce divergence.
+//
+// The function uses Arseny Kapoulkine’s frustum cone test from the Niagara renderer:
+//     https://github.com/zeux/niagara
+// It is also explained in the GPU-driven rendering section of vkguide.dev:
+//     https://vkguide.dev/docs/gpudriven/compute_culling/
+//
+// This test leverages frustum symmetry and projects the sphere center into the XZ and YZ planes.
+// It checks whether the sphere lies within the visible cone defined by the left/right and top/bottom planes.
+//
+// Parameters:
+// - center:  Position of the bounding sphere in camera space (float3).
+// - radius:  Radius of the bounding sphere.
+// - frustumRight:  Right slope boundary of the X/Z cone.
+// - frustumLeft:   Left slope boundary of the X/Z cone.
+// - frustumTop:    Top slope boundary of the Y/Z cone.
+// - frustumBottom: Bottom slope boundary of the Y/Z cone.
+// - znear/zfar:     Clipping range in camera space Z.
+//
+// Returns:
+// - true if the sphere is at least partially inside the frustum
+// - false if fully outside
+//
 bool FrustumCheck(float3 center, float radius, float frustumRight, float frustumLeft, float frustumTop, float frustumBottom, float znear, float zfar)
 {
 	bool visible = true;
 
-    // the left/top/right/bottom plane culling utilizes frustum symmetry to cull against two planes at the same time
-    // Formula taken from Arseny Kapoulkine's Niagara renderer https://github.com/zeux/niagara
-    // It is also referenced in VKguide's GPU driven rendering articles https://vkguide.dev/docs/gpudriven/compute_culling/
+    // Tests X/Z frustum cone (left & right combined)
+    // Projects center into camera XZ, compares against slope-constrained cone
     visible = visible && center.z * frustumLeft - abs(center.x) * frustumRight > -radius;
+    
+    // Tests Y/Z frustum cone (top & bottom combined)
+    // Same as above, but in YZ space
 	visible = visible && center.z * frustumBottom - abs(center.y) * frustumTop > -radius;
 
-	// the near/far plane culling uses camera space Z directly
+	// Test near/far planes using Z range
 	visible = visible && center.z + radius > znear && center.z - radius < zfar;
 
 	return visible;

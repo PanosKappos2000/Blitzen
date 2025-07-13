@@ -13,32 +13,6 @@ namespace BlitzenEngine
 		return &reinterpret_cast<uint8_t*>(wv_pHost->m_pPool)[desc.m_offset + key.wv_inst.inst * desc.m_typeSize];
 	}
 
-	void WorldVariableStart(WVKEY key, uint32_t residentID)
-	{
-		switch (key.wv_type.id)
-		{
-		case 0:
-		{
-			auto wv = reinterpret_cast<WVRotatingKitten*>(GetWorldVariable(key, wv_pHost_STATIC_ACCESS));
-			wv->RESIDENT_ID = residentID;
-			wv->Start();
-			break;
-		}
-		}
-	}
-
-	void WorldVariableTick(WVKEY key, const WVHOST& host, float deltaTime)
-	{
-		switch (key.wv_type.id)
-		{
-		case 0:
-		{
-			reinterpret_cast<WVRotatingKitten*>(GetWorldVariable(key, &host))->Tick(deltaTime);
-			break;
-		}
-		}
-	}
-
 	void WorldVariableCollision(WVHANDLE sender, WVTYPE senderType, WVHANDLE receiver, WVTYPE receiverID)
 	{
 		switch (senderType.id)

@@ -6,7 +6,7 @@
 #include "Renderer/Entities/Interface/blitComponents.h"
 #include "BlitCL/blitDynamicArr.h"
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
-#include "BlitzenMathLibrary/blitML.h"
+#include "BlitzenMathLibrary/blitMLSIMD.h"
 
 namespace BlitzenEngine
 {
@@ -52,7 +52,7 @@ namespace BlitzenEngine
 			return RESIDENT_CREATE_RES::RENDER_OBJECT_CREATION_FAILED;
 		}
 
-		m_colliders.AddRenderObjectBoundingSphere(&bounds, m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type);
+		MColliders.AddRenderObjectBoundingSphere(&bounds, m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type);
 
 		m_residents[m_residentCount++] = renderObjectId;
 
@@ -101,13 +101,6 @@ namespace BlitzenEngine
 				gravityData.currentSpeed = 0.f;
 			}
 		}
-	}
-
-	MovingResident* RequestMovementComponent(Resident resident)
-	{
-		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT + CE_DYNAMIC_TRANSFORM_OFFSET && resident >= CE_DYNAMIC_TRANSFORM_OFFSET);
-
-		return &GSWorldResidents->m_movingResidents[resident];
 	}
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
@@ -181,7 +174,8 @@ namespace BlitzenEngine
 
 		float velocity = BlitML::FMax(accelerationData.currentSpeed + accelerationData.acceleration, accelerationData.maxSpeed);
 		velocity *= deltaTime;
-		transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
+		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
+		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(0.f, 0.f, velocity, 0.f)));
 		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_ZAXIS_BIT;
 	}
 
@@ -194,7 +188,8 @@ namespace BlitzenEngine
 
 		float velocity = BlitML::FMin(accelerationData.currentSpeed - accelerationData.acceleration, -accelerationData.maxSpeed);
 		velocity *= deltaTime;
-		transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
+		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
+		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(0.f, 0.f, velocity, 0.f)));
 		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_ZAXIS_BIT;
 	}
 
@@ -218,7 +213,8 @@ namespace BlitzenEngine
 
 		float velocity = BlitML::FMax(accelerationData.currentSpeed + accelerationData.acceleration, accelerationData.maxSpeed);
 		velocity *= deltaTime;
-		transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ velocity, 0.f, 0.f, 0.0f });
+		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ velocity, 0.f, 0.f, 0.0f });
+		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(velocity, 0.f, 0.f, 0.f)));
 		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_XAXIS_BIT;
 	}
 
@@ -231,7 +227,8 @@ namespace BlitzenEngine
 
 		float velocity = BlitML::FMin(accelerationData.currentSpeed - accelerationData.acceleration, -accelerationData.maxSpeed);
 		velocity *= deltaTime;
-		transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ velocity, 0.f, 0.f, 0.0f });
+		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ velocity, 0.f, 0.f, 0.0f });
+		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(velocity, 0.f, 0.f, 0.f)));
 		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_XAXIS_BIT;
 	}
 

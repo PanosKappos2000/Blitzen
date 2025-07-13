@@ -154,8 +154,8 @@ add_executable(BlitzenEngine
                 "src/Renderer/Entities/Residents/blitResident.cpp"
                 "src/Renderer/Entities/Residents/blitWV.cpp"
                 "src/Renderer/Entities/Residents/RenderObject/worldTransform.h"
-                "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.h"
-                "src/Renderer/Entities/Residents/Dynamic/blitMovingResident.cpp"
+                
+                
                 "src/Renderer/Entities/Residents/Collision/blitCollision.cpp"
                 "src/Renderer/Entities/Residents/Collision/blitCollisionFlags.h" 
                 "src/Renderer/Entities/Residents/Collision/blitWorldVariableCollision.h"
@@ -245,7 +245,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/BlitzenMathLibrary/BlitMLSIMD.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -303,6 +303,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_GDEV_EDT # Activates standard main
                             BLIT_ASSERTIONS_ENABLED
                             BLIT_CONSOLE_LOGGER
+                            BLIT_CPU_SIMD_SAVIOR
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
                             RENDERER_STRESS_TEST

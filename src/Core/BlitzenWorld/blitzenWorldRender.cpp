@@ -2,7 +2,7 @@
 
 namespace BlitzenWorld
 {
-	static void DispatchBlitzenMassivelyParallelRenderer(BlitzenEngine::RendererPtrType pRenderer, BlitzenEngine::WORLD_RESIDENTS& RESIDENTS, BlitzenEngine::Camera& camera, uint32_t terrainCount)
+	static void DispatchBumper(BlitzenEngine::RendererPtrType pRenderer, BlitzenEngine::WORLD_RESIDENTS& RESIDENTS, BlitzenEngine::Camera& camera, uint32_t terrainCount)
 	{
 		// To avoid the double fence, I have to split the camera data.
 		BlitzenEngine::PlaceRendererFence(pRenderer, BlitzenEngine::RENDERER_FENCE_TYPE::COMPUTE);
@@ -82,8 +82,7 @@ namespace BlitzenWorld
 		case BlitzenCore::EngineState::RUNNING:
 		{
 			uint32_t presentCount = 0;
-			// 1. Wait for previous frame
-			DispatchBlitzenMassivelyParallelRenderer(pRenderer, RESIDENTS, camera, context.pRenderingResources->m_terrainContainer.terrainIndexCount);
+			DispatchBumper(pRenderer, RESIDENTS, camera, context.pRenderingResources->m_terrainContainer.terrainIndexCount);
 			presentCount++;
 
 			// TODO: Move the editor no start outside Blitzen's state

@@ -226,6 +226,8 @@ namespace BlitML
         return res;
     }
 
+    using float16 = mat4;
+
     inline mat4 operator * (mat4& mat1, mat4& mat2) 
     {
         mat4 res;

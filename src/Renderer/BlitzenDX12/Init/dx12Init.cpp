@@ -750,7 +750,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateReadback(device, resources.GCPURDBGridCellWorldVariableIndices, BLIT_AVAILABLE_DYNAMIC_COLLIDER_SPACES))
+		if (!CreateReadback(device, resources.GCPURDBGridCellWorldVariableIndices, (UINT)BLIT_AVAILABLE_DYNAMIC_COLLIDER_SPACES))
 		{
 			BLIT_ERROR("%s: Failed to create grid cell world variable indices GPU readback buffer resource");
 			return 0;

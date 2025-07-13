@@ -2,13 +2,5 @@
 
 namespace BlitzenEngine
 {
-	void WVRotatingKitten::Start()
-	{
-		
-	}
 
-	void WVRotatingKitten::Tick(float deltaTime)
-	{
-		
-	}
 }

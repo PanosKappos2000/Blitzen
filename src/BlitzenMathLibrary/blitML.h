@@ -256,10 +256,75 @@ namespace BlitML
         return vec3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
     }
 
-    inline vec4 NormalizePlane(const vec4& p){ return p / Length(ToVec3(p));}
+    inline vec4 NormalizePlane(const vec4& plane)
+    { 
+        return plane / Length(ToVec3(plane));
+    }
 
+    //------------------------------------------------------------------------------------------------------------------------------------------------------
+    // Computes the camera frustum planes from the projection matrix.
+    // Uses the *transposed* projection to access rows directly, as BlitML is in column-major layout.
+    // These values are only recalculated when the projection changes (e.g., window resize or FOV change).
+    // Note: Real-time FOV adjustments are not expected to happen at the moment. However, they might be added for effects like power sprint.
+    //
+    // This specific technique is most commonly associated with Arseny Kapoulkine (@zeuxcg),
+    // and his 2015 talk and follow-up implementations in bgfx, niagara, and the MeshOptimizer sample.
+    // Arseny took the core frustum extraction equations (well-known from the OpenGL Red Book and papers like Gribb & Hartmann 2001)
+    // and simplified them for GPU-friendly, axis-aligned, low-divergence compute dispatches.
+    //
+    // By projecting clip-space boundaries into a small number of planes and encoding them efficiently,
+    // the frustum becomes a tight pyramid, and objects are tested using x/z and y/z comparisons in camera space.
+    //
+    // Output layout:
+    //   frustumRight  -> outVector.x
+    //   frustumLeft   -> outVector.w
+    //   frustumTop    -> outVector.y
+    //   frustumBottom -> outVector.z
+    //------------------------------------------------------------------------------------------------------------------------------------------------------
+    inline vec4 ExtractFrustumPlanesForBMPR(mat4& transposedProjection)
+    {
+        // To extract frustum planes from a projection matrix, the standard algorithm combines the 4th row (W component)
+        // with the other rows:
+        //
+        //   Left   = row4 + row1
+        //   Right  = row4 - row1
+        //   Bottom = row4 + row2
+        //   Top    = row4 - row2
+        //   Near   = row4 + row3
+        //   Far    = row4 - row3
+        //
+        // This optimization selects only the right and top planes.
+        vec4 frustumRight = NormalizePlane(transposedProjection.GetRow(3) + transposedProjection.GetRow(0));
+        vec4 frustumTop = NormalizePlane(transposedProjection.GetRow(3) + transposedProjection.GetRow(1));
+        
+        // Frustum planes.The near and far plane will use camera space Z directly.
+        // NOTE: Even though this uses row3 + rowN (normally for LEFT and BOTTOM), 
+        // these planes are only used to extract *ratios* (x/z and y/z) for bounding-sphere cone tests in camera space — the sign and labeling don’t matter.
+        return vec4{ frustumRight.x, frustumTop.y, frustumTop.z, frustumRight.z };
+        // ->         right             top             bottom         left
+    }
 
+    // Original frustum planes. Not for the optimized version
+    // The f prefix is there because of something defining near and far. I think it's microsoft.
+    struct FRUSTUM_PLANES
+    {
+        vec4 fleft;
+        vec4 fright;
+        vec4 ftop;
+        vec4 fbottom;
+        vec4 fnear;
+        vec4 ffar;
+    };
 
+    inline vec4 ExtractFrustumPlanesOriginal(mat4& transposedProjection, FRUSTUM_PLANES& outPlanes)
+    {
+        outPlanes.fleft = NormalizePlane(transposedProjection.GetRow(3) + transposedProjection.GetRow(0));
+        outPlanes.fright = NormalizePlane(transposedProjection.GetRow(3) - transposedProjection.GetRow(0));
+        outPlanes.fbottom = NormalizePlane(transposedProjection.GetRow(3) + transposedProjection.GetRow(1));
+        outPlanes.ftop = NormalizePlane(transposedProjection.GetRow(3) - transposedProjection.GetRow(1));
+        outPlanes.fnear = NormalizePlane(transposedProjection.GetRow(3) + transposedProjection.GetRow(2));
+        outPlanes.ffar = NormalizePlane(transposedProjection.GetRow(3) - transposedProjection.GetRow(2));
+    }
 
     /*-----------------------
         Matrix operations

@@ -291,7 +291,7 @@ namespace BlitzenDX12
 		}
 
 		STAGING<BlitzenEngine::BoundingSphere> boundingSphereStaging{ nullptr };
-		if (!CreateStaging(device, boundingSphereStaging, BLIT_MAX_WORLD_RENDERS, drawContext.m_pResidents->m_colliders.m_boundingSpheres))
+		if (!CreateStaging(device, boundingSphereStaging, BLIT_MAX_WORLD_RENDERS, drawContext.m_pResidents->MColliders.m_boundingSpheres))
 		{
 			BLIT_ERROR("%s: Failed to create bounding sphere buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;

@@ -53,12 +53,14 @@ namespace BlitzenEngine
     {
         RotateResidentAttachedCamera(camera, deltaTime);
 
-        //if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
-        auto position = GetResidentPosition(camera.attachmentSettings.attachmentID);
+        // Receive the resident's current position. Since the camera is attached to it, it will use it for translation
+        // The resident is assumed to have already taken care of direction
+        // In the future, this design might need to be improved upon
+        BlitML::vec3 position = GetResidentPosition(camera.attachmentSettings.attachmentID);
 
         float offsetX = camera.attachmentSettings.paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
         float offsetZ = camera.attachmentSettings.paddingFromAttachment.z * BlitML::Cos(camera.transformData.yawRotation);
-		auto finalPosition = position + BlitML::vec3{ offsetX, camera.attachmentSettings.paddingFromAttachment.y, offsetZ };
+		BlitML::vec3 finalPosition = position + BlitML::vec3{ offsetX, camera.attachmentSettings.paddingFromAttachment.y, offsetZ };
 
         camera.viewData.position = BlitML::ToVec3(finalPosition);
 
@@ -125,30 +127,28 @@ namespace BlitzenEngine
 
     void UpdateProjection(Camera& camera, float newWidth, float newHeight)
     {
-        // Infinite z projection
+        // Creates the projection matrix first
         camera.transformData.projectionMatrix = BlitML::InfiniteZPerspective(camera.transformData.fov, newWidth / newHeight, camera.viewData.zNear);
 
         camera.viewData.proj0 = camera.transformData.projectionMatrix[0];
         camera.viewData.proj5 = camera.transformData.projectionMatrix[5];
 
-        // Updates other matrices that are affected by the projection matrix
+        // Updates the projection transpose mutliplication, since at least the projection part has been updated.
         camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
+        
+        // Gets transpose of the projection matrix, to put it in row major order. The transpose of the projection matrix will then be used to get the frustum planes.
         camera.transformData.projectionTranspose = BlitML::Transpose(camera.transformData.projectionMatrix);
+        // Extract frustum planes
+        BlitML::vec4 frustumPlanesBMPR = BlitML::ExtractFrustumPlanesForBMPR(camera.transformData.projectionTranspose);
+        camera.viewData.frustumRight = frustumPlanesBMPR.x;
+        camera.viewData.frustumLeft = frustumPlanesBMPR.w;
+        camera.viewData.frustumTop = frustumPlanesBMPR.y;
+        camera.viewData.frustumBottom = frustumPlanesBMPR.z;
 
         // This is a test for oblique near plane clipping. 
         // TODO: Deactivate when no objects that use it exist
         auto plane = BlitML::NormalizePlane(camera.transformData.projectionTranspose.GetRow(4) + camera.transformData.projectionTranspose.GetRow(0));
         ObliqueNearPlaneClippingMatrixModification(camera.transformData.projectionMatrix, camera.transformData.onbcProjectionMatrix, plane);
-
-        // Frustum planes are retrieved from the new projection matrix
-        auto frustumX = BlitML::NormalizePlane(camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(0));
-        auto frustumY = BlitML::NormalizePlane(camera.transformData.projectionTranspose.GetRow(3) + camera.transformData.projectionTranspose.GetRow(1));
-
-        // Frustum planes. The near and far plane will use camera space Z directly
-        camera.viewData.frustumRight = frustumX.x;
-        camera.viewData.frustumLeft = frustumX.z;
-        camera.viewData.frustumTop = frustumY.y;
-        camera.viewData.frustumBottom = frustumY.z;
     
         // Updates the lod target threshold multiplier, as it is also dependent on projection
         camera.viewData.lodTarget = (2 / camera.viewData.proj5) * (1.f / newHeight);
