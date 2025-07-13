@@ -298,7 +298,7 @@ namespace BlitzenEngine
 
             LogResidentForGravity(wv, 1.f);
             SetResidentAcceleration(wv, 0.1f);
-            SetResidentMaxVelocity(wv, 1.f);
+            SetResidentMaxVelocity(wv, 10.f);
 
             if (wv == 0)
             {

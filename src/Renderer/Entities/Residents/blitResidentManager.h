@@ -68,7 +68,6 @@ namespace BlitzenEngine
 		uint32_t WVWithGravityIDXs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t WVWithGravityCount{ 0 };
 		WVVelocity WVVelocityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		WVMovement WVMovementData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 
 		Resident m_residents[BLIT_MAX_WORLD_RESIDENTS];
 		uint32_t m_residentCount{ 0 };

@@ -21,7 +21,7 @@ namespace BlitzenWorld
         GSBlitzenWorld->m_frameEvents.RegisterFrameEvent(worldVariable, function);
     }
 
-    void RotateResidentAttachedCamera(BlitzenEngine::Resident resident, int32_t movementX, int32_t movementY)
+    void RequestGameCameraRotation(BlitzenEngine::Resident resident, int32_t movementX, int32_t movementY)
     {
         BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSBlitzenWorld->m_residents.m_transforms.m_moveableCount);
 
@@ -31,26 +31,8 @@ namespace BlitzenWorld
         float yaw = movementX > 0.f ? 0.5f : movementX < 0.f ? -0.5f : 0.f;
         float pitch = movementY > 0.f ? 0.5f : movementY < 0.f ? -0.5f : 0.f;
 
-        constexpr float SavePitch = 89.f;
-        
-        camera.transformData.yawRotation += yaw * deltaTime;
-        camera.transformData.pitchRotation += pitch * deltaTime;
-
-        if (camera.transformData.pitchRotation > SavePitch)
-        {
-            camera.transformData.pitchRotation = SavePitch;
-        }
-
-        if (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS ||
-            (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::NO_VELOCITY && BlitzenEngine::CheckResidentVelocity(resident) != 0.f))
-        {
-            BlitzenEngine::RotateResidentYaw(resident, yaw, deltaTime);
-        }
-
-        // New yaw pitch quat and rotation update
-        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0.f, -1.f, 0.f), camera.transformData.yawRotation, 0);
-        auto pitchOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(-1.f, 0.f, 0.f), camera.transformData.pitchRotation, 0);
-        BlitzenEngine::CreateRotationMatrixFromPitchAndYawQuaternion(pitchOrientation, yawOrientation, camera.transformData.rotation);
+        camera.transformData.yawMovement = yaw * 2.5f;
+        camera.transformData.pitchMovement = pitch * 2.5f;
     }
 
     void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen)
@@ -313,6 +295,11 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Error while loading scenes. Received error message: %s", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(sceneRes));
             BLIT_ASSERT(false);
         }
+
+#if defined(BLIT_GAME_TEST)
+        pWORLD->m_activeCameraIDX = 1;
+        BlitzenWorld::SetupCameraAttachment(pWORLD->m_mainCharacter, BlitML::float3(0.f, 2.f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
+#endif
 
         pWORLD->m_collisionGrid.DefineGrid(0);
         pWORLD->m_collisionGrid.CreateCells();

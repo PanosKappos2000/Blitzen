@@ -26,7 +26,7 @@ float4 NormalizedQuatFromAngleAxis(float3 axis, float angle)
     return NormalizeQuat(q);
 }
 
-inline float4 MultiplyQuat(float4 q1, float4 q2)
+float4 MultiplyQuat(float4 q1, float4 q2)
 {
     float4 res;
 
@@ -35,6 +35,18 @@ inline float4 MultiplyQuat(float4 q1, float4 q2)
     res.z = q1.x * q1.y - q1.y * q2.x + q1.z * q2.w + q1.w * q2.z;
     res.w = -q1.x * q2.x - q1.y * q2.y - q1.z * q2.z + q1.w * q2.w;
 
+    return res;
+}
+
+float4x4 Mat4EulerY(float radians)
+{
+    float4x4 res;
+    float c = cos(radians);
+    float s = sin(radians);
+    res[0][0] = c;
+    res[1][0] = -s;
+    res[2][0] = s;
+    res[3][0] = c;
     return res;
 }
 

@@ -9,9 +9,14 @@ namespace BlitzenEngine
         BlitML::mat4 rotation{};
         BlitML::mat4 translation{};
         BlitML::vec3 velocity{ 0.f };
+
         float yawRotation;
         float pitchRotation;
+        float yawMovement;
+        float pitchMovement;
+
         float fov;
+
 		// Debug functionality, to freeze frustum culling
         bool bFreezeFrustum{ false };
         uint32_t debugPyramidLevel{ 0 };
@@ -115,4 +120,6 @@ namespace BlitzenEngine
 
     // Test function, taken from https://terathon.com/blog/oblique-clipping.html
     void ObliqueNearPlaneClippingMatrixModification(BlitML::mat4& proj, BlitML::mat4& res, const BlitML::vec4& clipPlane);
+
+    void RotateResidentAttachedCamera(Camera& camera, float deltaTime);
 }

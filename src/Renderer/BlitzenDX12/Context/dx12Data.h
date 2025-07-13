@@ -82,12 +82,11 @@ namespace BlitzenDX12
     constexpr UINT CE_CULL_OS_DRAW_COUNTER_ID = 1;
 
     // DESCRIPTOR FOR DRAW CULL DYNAMIC OPAQUE
-    constexpr UINT CE_CULL_OD_RANGE_COUNT = 5;
+    constexpr UINT CE_CULL_OD_RANGE_COUNT = 4;
     constexpr UINT CE_CULL_OD_DRAW_CMD_ID = 0;
     constexpr UINT CE_CULL_OD_DRAW_COUNTER_ID = 1;
     constexpr UINT CE_CULL_OD_WORLD_VARIABLE_TRANSFORM_ID = 2;
     constexpr UINT CE_CULL_OD_TERRAIN_HEIGHT_ID = 3;
-    constexpr UINT CE_CULL_OD_WORLD_VARIABLE_MOVEMENT_ID = 4;
 
     // DESCRIPTORS FOR DRAW CULL INSTANCES
     constexpr UINT CE_CULL_INST_RANGE_COUNT = 2;
@@ -239,19 +238,31 @@ namespace BlitzenDX12
     };
 
     template<class DATA>
-    struct STAGING
+    class STAGING
     {
+    public:
         DX12WRAPPER<ID3D12Resource> m_buffer{ nullptr };
         DATA* m_pMapped{ nullptr };
         SIZE_T m_dataSize{ 0 };
         UINT m_validDataIndex{ 0 };
+
+        inline uint8_t IsValid()
+        {
+            return m_pMapped != nullptr && m_dataSize != 0;
+        }
     };
 
     template<class DATA>
-    struct READBACK_BUFFER
+    class READBACK_BUFFER
     {
+    public:
         DX12WRAPPER<ID3D12Resource> m_buffer{ nullptr };
         DATA* m_pMapped{ nullptr };
+
+        inline uint8_t IsValid()
+        {
+            return m_pMapped != nullptr;
+        }
     };
 
     template<class DATA>

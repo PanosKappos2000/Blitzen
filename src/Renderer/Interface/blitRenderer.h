@@ -167,7 +167,11 @@ namespace BlitzenEngine
     // Needs to be called before the first render pass to define vieport
     void SetupForFirstRenderPass(RendererPtrType pRenderer);
 
+    // Transitions every buffer that needs to be readback by the cpu, to the state that supports read backs
     void ChangeCullingBuffersToReadbackMode(RendererPtrType pRenderer);
+
+    // Transitions every buffer that need to be written to by the cpu, to the state that supports copies.
+    void ChangeCullingBuffersToWriteMode(RendererPtrType pRenderer);
 
     struct SHADER_GAME_LOGIC_UPDATES
     {

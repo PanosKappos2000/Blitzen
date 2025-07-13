@@ -21,81 +21,83 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
     Render obj = ssbo_Renders[objId];
     Surface surface = ssbo_Surfaces[obj.surfaceId];
-    Movement movement = rwssbo_HostTransform[objId];
+    WVTransform wvtransform = rwssbo_HostTransform[objId];
     
-    // Starting position at previous
-    float3 position = ssbo_Transforms[objId].position;
     // Scale needed for radius and radius needed early for gravity
     float scale = ssbo_Transforms[objId].scale;
     float radius = ssbo_BoundingSpheres[objId].radius * scale;
     
-    // If the world variable has movement, start updates
-    if (movement.movementFlags != BLIT_RESIDENT_MOVEMENT_NONE)
+    // Starts with identity quaternion
+    float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
+
+    if(wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
     {
-        // Starts with identity quaternion
-        float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
-
-        float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), movement.rotation.y);
+        float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), wvtransform.euler.y);
         orientation = MultiplyQuat(orientation, orientationYaw);
-        
-        float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), movement.rotation.x);
+    }
+    
+    if (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
+    {
+        float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), wvtransform.euler.x);
         orientation = MultiplyQuat(orientation, orientationPitch);
+    }
 
-        //float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
-        //orientation = MultiplyQuat(orientation, orientationRoll);
-        
-        // Updates orientation (the logic here is wrong TODO: FIX)
+    //float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
+    //orientation = MultiplyQuat(orientation, orientationRoll);
+    
+    // Only update orientation if rotation happened
+    if ((wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT) || (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT))
+    {
         ssbo_Transforms[obj.transformId].orientation = orientation;
+    }
+    
+    float3 position = wvtransform.position;
         
-        // Initial update on position
-        position = rwssbo_HostTransform[objId].velocity;
-        
-        // Gravity check
-        if(movement.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT)
+    // Gravity check
+    if(wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT)
+    {
+        float heightBelow;
+        // Height map logic
+        if (position.x >= 0 && position.x < BLIT_TERRAIN_GRID_SIZE_TEMP && position.z >= 0 && position.z < BLIT_TERRAIN_GRID_SIZE_TEMP)
         {
-            float heightBelow;
-            // Height map logic
-            if (position.x >= 0 && position.x < BLIT_TERRAIN_GRID_SIZE_TEMP && position.z >= 0 && position.z < BLIT_TERRAIN_GRID_SIZE_TEMP)
+            int gridX = (int) floor(position.x);
+            int gridZ = (int) floor(position.z);
+            int heightDataIndex = gridX + gridZ * BLIT_TERRAIN_GRID_SIZE_TEMP;
+            heightBelow = ssbo_TerrainHeight[heightDataIndex] + radius;
+        }
+        else
+        {
+            heightBelow = BLIT_TERRAIN_HEIGHT_TEST_VALUE + radius;
+        }
+        // If the resident is above the terrain set falling flag
+        if(position.y > heightBelow)
+        {
+            rwssbo_HostTransform[objId].movementFlags |= BLIT_RESIDENT_MOVEMENT_FALLING_BIT;
+        }
+        else if(position.y < heightBelow)
+        {
+            // If the resident went below ground while falling
+            if (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT)
             {
-                int gridX = (int) floor(position.x);
-                int gridZ = (int) floor(position.z);
-                int heightDataIndex = gridX + gridZ * BLIT_TERRAIN_GRID_SIZE_TEMP;
-                heightBelow = ssbo_TerrainHeight[heightDataIndex] + radius;
+                rwssbo_HostTransform[objId].position.y = heightBelow;
             }
             else
             {
-                heightBelow = BLIT_TERRAIN_HEIGHT_TEST_VALUE + radius;
+                // Climbing (PROBABLY TEMP, MAYBE ANOTHER FLAG)
+                position.y = min(position.y + 0.02f, heightBelow);
+                rwssbo_HostTransform[obj.transformId].position.y = position.y;
             }
-            // If the resident is above the terrain set falling flag
-            if(position.y > heightBelow)
-            {
-                rwssbo_HostTransform[objId].movementFlags |= BLIT_RESIDENT_MOVEMENT_FALLING_BIT;
-            }
-            else if(position.y < heightBelow)
-            {
-                // If the resident went below ground while falling
-                if (movement.movementFlags & BLIT_RESIDENT_MOVEMENT_FALLING_BIT)
-                {
-                    rwssbo_HostTransform[objId].velocity.y = heightBelow;
-                }
-                else
-                {
-                    // Climbing (PROBABLY TEMP, MAYBE ANOTHER FLAG)
-                    position.y = min(position.y + 0.02f, heightBelow);
-                    rwssbo_HostTransform[obj.transformId].velocity.y = position.y;
-                }
-            }
-            
-            // If they're standing on the terrain, makes sure there is no falling flag
-            // This is not else if, so that the flag is reset even if the value was aligned inside the shader invocation
-            if (rwssbo_HostTransform[objId].velocity.y == heightBelow)
-            {
-                rwssbo_HostTransform[objId].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_FALLING_BIT);
-            }
-            
-            // Final update on position
-            position = rwssbo_HostTransform[objId].velocity;
         }
+        
+        // If they're standing on the terrain, makes sure there is no falling flag
+        // This is not else if, so that the flag is reset even if the value was aligned inside the shader invocation
+        if (rwssbo_HostTransform[objId].position.y == heightBelow)
+        {
+            rwssbo_HostTransform[objId].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_FALLING_BIT);
+        }
+        
+        // Update once more for gravity
+        position = rwssbo_HostTransform[objId].position;
     }
     
     float4 newOrientation = ssbo_Transforms[obj.transformId].orientation;

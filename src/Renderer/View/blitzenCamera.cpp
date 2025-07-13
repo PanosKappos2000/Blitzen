@@ -51,6 +51,8 @@ namespace BlitzenEngine
 
     void UpdateResidentAttachedCamera(Camera& camera, float deltaTime)
     {
+        RotateResidentAttachedCamera(camera, deltaTime);
+
         //if (CheckResidentVelocity(camera.attachmentSettings.attachmentID))
         auto position = GetResidentPosition(camera.attachmentSettings.attachmentID);
 
@@ -68,6 +70,46 @@ namespace BlitzenEngine
 
         // Projection * view update
         camera.viewData.projectionViewMatrix = camera.transformData.projectionMatrix * camera.viewData.viewMatrix;
+    }
+
+    void RotateResidentAttachedCamera(Camera& camera, float deltaTime)
+    {
+        if (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS ||
+            (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::NO_VELOCITY && 
+                BlitzenEngine::CheckResidentVelocity(camera.attachmentSettings.attachmentID) != 0.f))
+        {
+            if(camera.transformData.yawMovement == 0.f)
+            { 
+                BlitzenEngine::KillResidentYawRotation(camera.attachmentSettings.attachmentID);
+            }
+            else
+            {
+                BlitzenEngine::RotateResidentYaw(camera.attachmentSettings.attachmentID, camera.transformData.yawMovement, deltaTime);
+            }
+        }
+
+        if (camera.transformData.yawMovement == 0.f && camera.transformData.pitchMovement == 0.f)
+        {
+            return;
+        }
+
+        constexpr float SavePitch = 89.f;
+
+        camera.transformData.yawRotation += camera.transformData.yawMovement * deltaTime;
+        camera.transformData.pitchRotation += camera.transformData.pitchMovement * deltaTime;
+
+        if (camera.transformData.pitchRotation > SavePitch)
+        {
+            camera.transformData.pitchRotation = SavePitch;
+        }
+
+        // New yaw pitch quat and rotation update
+        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0.f, -1.f, 0.f), camera.transformData.yawRotation, 0);
+        auto pitchOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(-1.f, 0.f, 0.f), camera.transformData.pitchRotation, 0);
+        BlitzenEngine::CreateRotationMatrixFromPitchAndYawQuaternion(pitchOrientation, yawOrientation, camera.transformData.rotation);
+
+        camera.transformData.yawMovement = 0.f;
+        camera.transformData.pitchMovement = 0.f;
     }
 
     void UpdateCamera(Camera& camera, float deltaTime)

@@ -2,6 +2,7 @@
 #pragma once
 #include "dx12Resources.h"
 #include "Renderer/BlitzenDX12/Context/dx12Context.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenDX12
 {
@@ -23,6 +24,15 @@ namespace BlitzenDX12
     UINT64 CreateIndexBuffer(ID3D12Device* device, INDEX_BUFFER& idxBuffer, size_t elementCount);
 
     uint8_t AddBlitzenLogoDescriptor(ID3D12Device* device, ReadOnlyResources& readOnlies, DescriptorContext& context);
+
+    // Puts a readback buffer on copy dest for common. Introduces safety. Ideal for one time transitions on readback buffers, which is the proper design anyway
+    template<typename DATA>
+    void PutReadBackBufferOnFinalState(READBACK_BUFFER<DATA>& readback, D3D12_RESOURCE_BARRIER* barrier, UINT barrierIDX, UINT64 barrierArrSize)
+    {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(readback.IsValid() && barrierArrSize > barrierIDX);
+
+        CreateResourcesTransitionBarrier(barrier[barrierIDX], readback.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+    }
 
     template<typename DATA>
     UINT64 CreateSSBO(ID3D12Device* device, SSBO& ssbo, size_t elementCount, D3D12_RESOURCE_FLAGS ssboFlags = D3D12_RESOURCE_FLAG_NONE)

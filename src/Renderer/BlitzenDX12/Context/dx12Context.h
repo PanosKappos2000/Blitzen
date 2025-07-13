@@ -68,10 +68,9 @@ namespace BlitzenDX12
 
     struct CPU_LOGIC_BUFFERS
     {
-        SSBO GPUSSBOWorldVariableMovement{}; // BlitzenEngine::WVMovement
-        SSBO GPUSSBOWorldVariableTransform{};// BlitzenEngine::Eurler / Float4
+        SSBO GPUSSBOWorldVariableTransform{}; // BlitzenEngine::WVTransform
 
-        STAGING<BlitzenEngine::WVMovement> CPURWWorldVariableMovements{};
+        STAGING<BlitzenEngine::WVTransform> CPURWWorldVariableTransforms{};
 
         READBACK_BUFFER<BlitzenEngine::WVTransform> CPURDBWorldVariableTransforms{};
         READBACK_BUFFER<BlitzenEngine::GridCellOffsets> CPURDBGridCellOffsets{};

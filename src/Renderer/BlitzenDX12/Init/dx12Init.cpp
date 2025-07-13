@@ -179,9 +179,8 @@ namespace BlitzenDX12
 		D3D12_DESCRIPTOR_RANGE cullODRanges[CE_CULL_OD_RANGE_COUNT]{};
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_DRAW_CMD_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_OPAQUE_DYNAMIC_CMD_BUFFER_REGISTER);
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_DRAW_COUNTER_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_OPAQUE_DYNAMIC_CMD_COUNTER_REGISTER);
-		CreateDescriptorRange(cullODRanges[CE_CULL_OD_WORLD_VARIABLE_TRANSFORM_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_CPU_TRANSFORM_BUFFER_REGISTER);
+		CreateDescriptorRange(cullODRanges[CE_CULL_OD_WORLD_VARIABLE_TRANSFORM_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_WVTRANSFORM_BUFFER_REGISTER);
 		CreateDescriptorRange(cullODRanges[CE_CULL_OD_TERRAIN_HEIGHT_ID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_TERRAIN_HEIGHT_BUFFER_REGISTER);
-		CreateDescriptorRange(cullODRanges[CE_CULL_OD_WORLD_VARIABLE_MOVEMENT_ID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_WORLD_VARIABLE_MOVEMENT_REGISTER);
 
 		// ROOT PARAMETER RECONFIGURATION
 		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_DYNAMIC_TABLE_ID], cullODRanges, CE_CULL_OD_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
@@ -733,13 +732,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateSSBO<BlitzenEngine::WVMovement>(device, resources.GPUSSBOWorldVariableMovement, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-		{
-			BLIT_ERROR("%s: Failed to create world variable movement buffer resources", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
-		if (!CreateStaging(device, resources.CPURWWorldVariableMovements, BLIT_MAX_WORLD_VARIABLE_COUNT, (BlitzenEngine::WVMovement*)nullptr))
+		if (!CreateStaging(device, resources.CPURWWorldVariableTransforms, BLIT_MAX_WORLD_VARIABLE_COUNT, (BlitzenEngine::WVTransform*)nullptr))
 		{
 			BLIT_ERROR("%s: Failed to create world variable movement GPU write buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;

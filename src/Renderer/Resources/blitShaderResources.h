@@ -116,18 +116,6 @@ namespace BlitzenEngine
         uint32_t targetIdx;
     };
 
-    struct WVMovement
-    {
-        float velocityZ = 0.f;
-        float velocityX = 0.f;
-        float velocityY = 0.f;
-        float rotationPitch = 0.f;
-        float rotationYaw = 0.f;
-        float rotationRoll = 0.f;
-        uint32_t padding0;
-        uint32_t padding1;
-    };
-
     struct RenderObject
     {
         uint32_t transformId;
@@ -172,6 +160,7 @@ namespace BlitzenEngine
     {
         float acceleration;
         float deceleration;
+        float currentSpeed = 0.f;
         float maxSpeed;
     };
 

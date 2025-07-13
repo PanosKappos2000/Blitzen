@@ -124,6 +124,18 @@ namespace BlitzenCore
             }
             break;
         }
+        case KeyCallbackType::HOLD_AND_RELEASE:
+        {
+            if (bPressed)
+            {
+                controller.KEYHOLD(idx, SYSTEM->pWORLD->deltaTime);
+            }
+            else
+            {
+                controller.KEYRELEASEHOLDPFN(idx, SYSTEM->pWORLD->deltaTime);
+            }
+            break;
+        }
         default:
         {
             break;
@@ -189,10 +201,12 @@ namespace BlitzenCore
     void RegisterHoldReleaseKeyEvent(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, BlitKey key, KeyCallback holdCallback, KeyCallback tapCallback, uint32_t controllerIDX)
     {
         auto& keyData = SYSTEM->m_controllers[controllerIDX].m_keyData[uint32_t(key)];
+        auto& controller = SYSTEM->m_controllers[controllerIDX];
 
         keyData.m_PFNHeld = holdCallback;
         keyData.m_PFNTap = tapCallback;
-        SYSTEM->m_controllers[controllerIDX].m_keyHeldIdxs[SYSTEM->m_controllers->m_registeredKeyHeldCount++] = uint32_t(key);
+        keyData.m_keyCallbackType = KeyCallbackType::HOLD_AND_RELEASE;
+        controller.m_keyHeldIdxs[controller.m_registeredKeyHeldCount++] = uint32_t(key);
     }
 
     void RegisterMouseButtonPressCallback(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM, MouseButton button, MouseButtonPressCallback callback, uint32_t controllerIDX)
@@ -284,28 +298,42 @@ namespace BlitzenCore
 
     static BlitEventType ForwardTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity{ 0.f, 0.f, 1.f }, deltaTime);
+        BlitzenEngine::AddResidentVelocityZAxis(resident, deltaTime);
 
         return BlitEventType::MaxTypes;
     }
 
     static BlitEventType BackwardTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity(0.f, 0.f, -1.f), deltaTime);
+        BlitzenEngine::AddResidentVelocityZAxisNegative(resident, deltaTime);
+
+        return BlitEventType::MaxTypes;
+    }
+
+    static BlitEventType StopMovingZAxisTestCallback(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        BlitzenEngine::KillResidentVelocityZAxis(resident);
 
         return BlitEventType::MaxTypes;
     }
 
     static BlitEventType LeftTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity(-1.f, 0.f, 0.f), deltaTime);
+        BlitzenEngine::AddResidentVelocityXAxisNegative(resident, deltaTime);
 
         return BlitEventType::MaxTypes;
     }
 
     static BlitEventType RightTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
-        BlitzenEngine::AddResidentVelocity(resident, BlitML::fVelocity(1.f, 0.f, 0.f), deltaTime);
+        BlitzenEngine::AddResidentVelocityXAxis(resident, deltaTime);
+
+        return BlitEventType::MaxTypes;
+    }
+
+    static BlitEventType StopMovingXAxisTestCallback(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        BlitzenEngine::KillResidentVelocityXAxis(resident);
 
         return BlitEventType::MaxTypes;
     }
@@ -402,7 +430,7 @@ namespace BlitzenCore
 
     static BlitEventType OnMouseMove(BlitzenEngine::Resident resident, float deltaTime, int32_t xAxisMovement, int32_t yAxisMovement)
     {
-        BlitzenWorld::RotateResidentAttachedCamera(resident, xAxisMovement, yAxisMovement);
+        BlitzenWorld::RequestGameCameraRotation(resident, xAxisMovement, yAxisMovement);
         return BlitEventType::MaxTypes;
     }
 
@@ -441,16 +469,16 @@ namespace BlitzenCore
         BlitzenCore::RegisterMouseMoveCallback(SYSTEM, OnMouseMove, 1);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, 1, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterHoldReleaseKeyEvent(SYSTEM, BlitzenCore::BlitKey::__W, ForwardTestCallback, StopMovingZAxisTestCallback, 1);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, 1, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterHoldReleaseKeyEvent(SYSTEM, BlitzenCore::BlitKey::__S, BackwardTestCallback, StopMovingZAxisTestCallback, 1);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, 1, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterHoldReleaseKeyEvent(SYSTEM, BlitzenCore::BlitKey::__A, LeftTestCallback, StopMovingXAxisTestCallback, 1);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightMoveEngineCamera, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::HOLD);
-        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, 1, KeyCallbackType::HOLD);
+        BlitzenCore::RegisterHoldReleaseKeyEvent(SYSTEM, BlitzenCore::BlitKey::__D, RightTestCallback, StopMovingXAxisTestCallback, 1);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__TAB, SnapToMainCharacter, 1, KeyCallbackType::PRESS);
 

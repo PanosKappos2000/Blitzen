@@ -1,24 +1,11 @@
-struct Movement
+struct WVTransform
 {
-    float3 velocity;
-    float3 rotation;
+    float3 position;
+    float3 euler;
     uint movementFlags;
     uint padding1;
 };
-RWStructuredBuffer<Movement> rwssbo_HostTransform : register(u14);
-
-struct WVMovement
-{
-    float velocityZ;
-    float velocityX;
-    float velocityY;
-    float rotationPitch;
-    float rotationYaw;
-    float rotationRoll;
-    uint padding0;
-    uint padding1;
-};
-RWStructuredBuffer<WVMovement> rwssbo_HostLogicMovment : register(u17);
+RWStructuredBuffer<WVTransform> rwssbo_HostTransform : register(u14);
 
 StructuredBuffer<float> ssbo_TerrainHeight : register(t3);
 

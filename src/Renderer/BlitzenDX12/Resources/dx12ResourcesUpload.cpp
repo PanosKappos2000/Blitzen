@@ -621,9 +621,6 @@ namespace BlitzenDX12
 				sizeof(BlitzenEngine::WVTransform), 0);
 
 			CreateBufferShaderResourceView(device, roResources.m_terrainHeightBuffer.buffer.Get(), ctx, context.m_pTerrain->m_heightDataCount, sizeof(float));
-
-			CreateBufferUnorderedAccessView(device, ctx, gameLogicBuffers.GPUSSBOWorldVariableMovement.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount,
-				sizeof(BlitzenEngine::WVMovement), 0);
 		}
 
 		// INSTANCING DESCRIPTORS
