@@ -559,9 +559,9 @@ namespace BlitzenDX12
 		// SHARED DESCRIPTORS
 		for (size_t i = 0; i < ce_framesInFlight; ++i)
 		{
-			ctx.m_globalTableOffset[i] = ctx.m_viewHeapCurrentOffset;
-			ctx.m_globalTableHandle[i] = ctx.m_viewHeapHandle;
-			ctx.m_globalTableHandle[i].ptr += ctx.m_globalTableOffset[i] * ctx.m_viewHeapIncrement;
+			ctx.mGlobalDescriptorsTableOffset[i] = ctx.m_viewHeapCurrentOffset;
+			ctx.mGlobalDescriptorsTableHandle[i] = ctx.m_viewHeapHandle;
+			ctx.mGlobalDescriptorsTableHandle[i].ptr += ctx.mGlobalDescriptorsTableOffset[i] * ctx.m_viewHeapIncrement;
 
 			auto& rwResources = rwResourcesArray[i];
 

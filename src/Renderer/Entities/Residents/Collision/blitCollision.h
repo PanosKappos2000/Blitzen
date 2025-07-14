@@ -27,12 +27,6 @@ namespace BlitzenEngine
 		uint64_t m_reactionFlags;
 	};
 
-	struct CollisionMessage
-	{
-		Resident m_impactingObject;
-		Resident m_reactingResident;
-	};
-
 	class CollisionGrid
 	{
 	public:

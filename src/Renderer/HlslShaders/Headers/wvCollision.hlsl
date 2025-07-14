@@ -13,6 +13,5 @@ struct GRID_CELL
 RWStructuredBuffer<GRID_CELL> rw_Cells : register(u15);
 
 RWBuffer<uint> rw_ColliderIndices : register(u16);
-RWBuffer<float3> rw_ColliderFloat3AMax : register(u17);
-RWBuffer<float3> rw_ColliderFloat3BMin : register(u18);
-RWBuffer<float> rw_ColliderFloat : register(u19);
+RWBuffer<float3> rwssbo_ColliderFloat3AMaxRad : register(u17);
+RWBuffer<float3> rwssbo_ColliderFloat3BMinType : register(u18);

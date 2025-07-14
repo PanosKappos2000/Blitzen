@@ -10,31 +10,19 @@ namespace BlitzenEngine
 	// Had some constructor trouble with unions that is why this struct is ugly as hell
     struct Collider
     {
-        ColliderType type;
+        BlitColliderType type;
 		BlitML::vec3 CAPSULEPONE_AABBMIN_SPHEREC;
 		BlitML::vec3 CAPSULEPTWO_AABBMAX;
 		float CAPSULERAD_SPHERERAD;
     };
     static_assert(sizeof(Collider) % 16 == 0);
 
-	struct ColliderFloat3
-	{
-		BlitML::vec3 data;// Can be used for CapsuleA, AABBMIN, AABBMax or sphere center.
-	};
-
-	struct ColliderFloat
-	{
-		float data; // Can be used for Capsule radius or Sphere radius.
-	};
-
 	class ColliderContainer
 	{
 	public:
 		BoundingSphere m_boundingSpheres[CE_MAX_WORLD_BOUNDING_SPHERE_COUNT];
-		ColliderFloat3 MColliderFloat3DataAMax[CE_MAX_WORLD_COLLIDER_COUNT];
-		ColliderFloat3 MColliderFloat3DataBMin[CE_MAX_WORLD_COLLIDER_COUNT];
-		ColliderFloat MColliderFloatData[CE_MAX_WORLD_COLLIDER_COUNT];
-		ColliderType MColliderTypeData[CE_MAX_WORLD_COLLIDER_COUNT];
+		ColliderAMaxRad MColliderAMaxRad[CE_MAX_WORLD_COLLIDER_COUNT];// Holds data for capsule A or AABB max on xyz, capsule or sphere radius on w
+		ColliderBMinType MColliderBMinType[CE_MAX_WORLD_COLLIDER_COUNT];// Holds data for capsule B or AABB min on xyz, collider type on w
 		uint32_t MWorldColliderCount{ 0 };
 
 		// Non world variable residents are assumed to have predictable, blocking collision.

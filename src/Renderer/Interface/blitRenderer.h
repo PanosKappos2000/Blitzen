@@ -153,6 +153,8 @@ namespace BlitzenEngine
     // Culls a group of renders using compute shader. Prepares draw commands for rendering
     void DispatchCullingShaders(RendererPtrType pRenderer, const CULL_CONTEXT& cullContext);
 
+    void BMPRDispatchBroadPhaseCollision(RendererPtrType pRenderer);
+
     // Needs to be called before the first render pass to define vieport
     void SetupForFirstRenderPass(RendererPtrType pRenderer);
 

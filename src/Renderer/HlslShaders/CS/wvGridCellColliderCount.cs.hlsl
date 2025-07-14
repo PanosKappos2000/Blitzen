@@ -55,4 +55,5 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     
     // At this stage the collider count is incremented
     InterlockedAdd(rw_Cells[cellIndex].colliderCount, 1);
+    rwssbo_HostTransform[objId].cellID = cellIndex;
 }

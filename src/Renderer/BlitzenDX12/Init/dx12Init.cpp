@@ -168,7 +168,7 @@ namespace BlitzenDX12
 
 		// ROOT PARAMS
 		BlitCL::DynamicArray<D3D12_ROOT_PARAMETER> drawCullRootParameters{ CE_CULL_ROOT_PARAMETER_COUNT, {} };
-		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_GLOBAL_ID], sharedSrvRanges, CE_GLOBAL_DESCRIPTOR_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
+		CreateRootParameterDescriptorTable(drawCullRootParameters[GCGlobalDescriptorsRootParameterIDCompute], sharedSrvRanges, CE_GLOBAL_DESCRIPTOR_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
 		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_STATIC_TABLE_ID], cullOSRanges, CE_CULL_GLOBAL_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
 		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_CULL_GLOBAL_ID], cullGlobalRanges, CE_CULL_OS_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
 		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_HI_Z_MAP_ID], &HI_Z_MAP_cullRange, 1, D3D12_SHADER_VISIBILITY_ALL);
@@ -186,6 +186,15 @@ namespace BlitzenDX12
 		CreateRootParameterDescriptorTable(drawCullRootParameters[CE_CULL_ROOT_DYNAMIC_TABLE_ID], cullODRanges, CE_CULL_OD_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
 		CreateRootParameterPushConstants(drawCullRootParameters[CE_CULL_ROOT_DYNAMIC_WORK_CONSTANT_ID], BLIT_HLSL_OPAQUE_DYNAMIC_COUNT_CONSTANT_REGISTER, 0, CE_CULL_WORK_COUNT_CONSTANT_32_BIT_COUNT,
 			D3D12_SHADER_VISIBILITY_ALL);
+
+		D3D12_DESCRIPTOR_RANGE collisionSupportRootParameterRange[GCCollisionSupportRangeCount]{};
+		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportGridCellRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_GRID_CELLS_REGISTER);
+		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderIDXsRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_IDXs_REGISTER);
+		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportGlobalColliderIDXsOffsetRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_GLOBAL_COLLIDER_IDXs_OFFSET_REGISTER);
+		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderFloat3AMaxRadRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_FLOAT3_AMAXRAD_REGISTER);
+		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderFloat3BMinTypeRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_FLOAT3_BMINTYPE_REGISTER);
+
+		CreateRootParameterDescriptorTable(drawCullRootParameters[GCCollisionSupportParameterID], collisionSupportRootParameterRange, GCCollisionSupportRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
@@ -732,6 +741,84 @@ namespace BlitzenDX12
 			return 0;
 		}
 
+		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<BlitzenEngine::GridCellOffsets>(device, resources.UAVGridCellWorldVariableOffsets, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create world variable grid cell offsets buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+
+		if constexpr (BLITGCNarrowPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<BlitzenEngine::GridCellOffsets>(device, resources.UAVGridCellStaticOffsets, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create static grid cell offsets buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+
+		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<uint32_t>(device, resources.UAVGlobalColliderIDXOffset, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create world variable collider indices global offset buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+
+		if constexpr (BLITGCNarrowPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<uint32_t>(device, resources.UAVColliderIndices, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create collider indices pool buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+		else if constexpr (BLITGCBroadPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<uint32_t>(device, resources.UAVColliderIndices, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create collider indices pool buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+
+		if constexpr (BLITGCNarrowPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<BlitzenEngine::ColliderAMaxRad>(device, resources.UAVColliderAMaxRad, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule A, AABB Max - float: Capsule Radius, Sphere Radius", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+		else if constexpr (BLITGCBroadPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<BlitzenEngine::ColliderAMaxRad>(device, resources.UAVColliderAMaxRad, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create world variable collider 16-byte union data (float3: Capsule A, AABB Max - float: Capsule Radius, Sphere Radius", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+
+		if constexpr (BLITGCNarrowPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<BlitzenEngine::ColliderBMinType>(device, resources.UAVColliderBMinType, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule B, AABB Min - float(as uint): Collider type)", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+		else if constexpr (BLITGCBroadPhaseCollisionBumper)
+		{
+			if (!CreateSSBO<BlitzenEngine::ColliderBMinType>(device, resources.UAVColliderBMinType, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create world variable collider 16-byte union data (float3: Capsule B, AABB Min - float(as uint): Collider type)", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+		}
+		
 		if (!CreateStaging(device, resources.CPURWWorldVariableTransforms, BLIT_MAX_WORLD_VARIABLE_COUNT, (BlitzenEngine::WVTransform*)nullptr))
 		{
 			BLIT_ERROR("%s: Failed to create world variable movement GPU write buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
@@ -744,16 +831,30 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (!CreateReadback(device, resources.CPURDBGridCellOffsets, BLIT_COLLISION_GRID_CELL_COUNT))
+		if constexpr (BLITGCBroadPhaseCollisionBumper && !BLITGCNarrowPhaseCollisionBumper)
 		{
-			BLIT_ERROR("%s: Failed to create grid cell offsets GPU readback buffer resources");
-			return 0;
-		}
+			if (!CreateReadback(device, resources.RDBGridCellWorldVariableOffsets, BLIT_COLLISION_GRID_CELL_COUNT))
+			{
+				BLIT_ERROR("%s: Failed to create grid cell offsets GPU readback buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
 
-		if (!CreateReadback(device, resources.GCPURDBGridCellWorldVariableIndices, (UINT)BLIT_AVAILABLE_DYNAMIC_COLLIDER_SPACES))
-		{
-			BLIT_ERROR("%s: Failed to create grid cell world variable indices GPU readback buffer resource");
-			return 0;
+			if (!CreateReadback(device, resources.RDBWorldVariableColliderIndices, BLIT_MAX_WORLD_VARIABLE_COUNT))
+			{
+				BLIT_ERROR("%s: Failed to create world variable collider indices GPU readback buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (!CreateReadback(device, resources.RDBColliderFloatAMaxRad, BLIT_MAX_WORLD_VARIABLE_COUNT))
+			{
+				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule B, AABB Min - float(as uint): Collider type) readback buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (!CreateReadback(device, resources.RDBColliderFloatBMinType, BLIT_MAX_WORLD_VARIABLE_COUNT))
+			{
+				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule B, AABB Min - float(as uint): Collider type) readback buffer resource")
+			}
 		}
 
 		// success

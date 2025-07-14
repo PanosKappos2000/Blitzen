@@ -105,12 +105,11 @@
 	constexpr uint BLIT_HLSL_INSTANCED_CMD_COUNTER_REGISTER = 12;
 	constexpr uint BLIT_HLSL_HI_Z_OUTPUT_REGISTER = 13;
 	constexpr uint BLIT_HLSL_WVTRANSFORM_BUFFER_REGISTER = 14;
-	constexpr uint BLIT_HLSL_GRID_CELL_OFFSETS_REGISTER = 15;
-	constexpr uint BLIT_HLSL_GRID_CELL_OBJ_INDICES_REGISTER = 16;
-	constexpr uint BLIT_HLSL_COLLIDER_FLOAT3_AMAX_REGISTER = 17;
-	constexpr uint BLIT_HLSL_COLLIDER_FLOAT3_BMIN_REGISTER = 18;
-	constexpr uint BILT_HLSL_COLLIDER_FLOAT_REGISTER = 19;
-	constexpr uint BLIT_HLSL_COLLIDER_TYPE_REGISTER = 10;
+	constexpr uint BLIT_HLSL_GRID_CELLS_REGISTER = 15;
+	constexpr uint BLIT_HLSL_COLLIDER_IDXs_REGISTER = 16;
+	constexpr uint BLIT_HLSL_COLLIDER_FLOAT3_AMAXRAD_REGISTER = 17;
+	constexpr uint BLIT_HLSL_COLLIDER_FLOAT3_BMINTYPE_REGISTER = 18;
+	constexpr uint BLIT_HLSL_GLOBAL_COLLIDER_IDXs_OFFSET_REGISTER = 19;
 
 	constexpr uint BLIT_HLSL_RENDER_BUFFER_REGISTER = 0;
 	constexpr uint BLIT_HLSL_BOUNDING_SPHERE_REGISTER = 1;
@@ -160,12 +159,15 @@ enum BLIT_RESIDENT_MOVEMENT_FLAG_BITS
 	BLIT_RESIDENT_MOVEMENT_VELOCITY_YAXIS_BIT = 1 << 7,
 };
 
-enum ColliderType
+enum BlitColliderType
 {
 	AABB,
 	Capsule,
 	Sphere
 };
+#ifdef __cplusplus
+	static_assert(sizeof(BlitColliderType) == 4);
+#endif
 
 #ifdef __cplusplus
 	enum BLITZEN_COLLISION_IDENTIFIER : uint64_t
@@ -180,4 +182,19 @@ enum ColliderType
 	};
 
 	using WORLD_VARIABLE_IDENTIFIER = uint32_t;
+#endif
+
+#define BMPR_DRIVE_BROAD_PHASE_COLLISION				1
+#define BMPR_DRIVE_NARROW_PHASE_COLLISION				0
+#ifdef __cplusplus
+	#if BMPR_DRIVE_BROAD_PHASE_COLLISION == 0
+		constexpr uint8_t BLITGCBroadPhaseCollisionBumper = 0;
+	#else
+		constexpr uint8_t BLITGCBroadPhaseCollisionBumper = 1;
+	#endif
+	#if BMPR_DRIVE_NARROW_PHASE_COLLISION == 0
+		constexpr uint8_t BLITGCNarrowPhaseCollisionBumper = 0;
+	#else 
+			constexpr uint8_t BLITGCNarrowPhaseCollisionBumper = 1;
+	#endif
 #endif

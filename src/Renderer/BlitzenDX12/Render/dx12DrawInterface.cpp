@@ -77,7 +77,7 @@ namespace BlitzenEngine
 
 		// DESCRIPTORS
 		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_VTX_TABLE_ID, descriptorContext.m_vertexODSTableHandle[frame]);
-		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_GLOBAL_ID, descriptorContext.m_globalTableHandle[frame]);
+		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_GLOBAL_ID, descriptorContext.mGlobalDescriptorsTableHandle[frame]);
 		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_TEX_ID, descriptorContext.m_texturesTableHandle);
 		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_TEXSMP_ID, descriptorContext.m_texSmpHandle);
 		cmdList->SetGraphicsRootDescriptorTable(BlitzenDX12::CE_GRAPHICS_ODS_PS_TABLE_ID, descriptorContext.m_pixelODSTableHandle);

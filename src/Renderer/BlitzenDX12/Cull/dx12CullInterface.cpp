@@ -18,7 +18,7 @@ namespace BlitzenEngine
 		auto& descriptorContext{ pRenderer->m_descriptorContext };
 
 		commandList->SetComputeRootSignature(pipelineContext.m_cullRoot.Get());
-		commandList->SetComputeRootDescriptorTable(BlitzenDX12::CE_CULL_ROOT_GLOBAL_ID, descriptorContext.m_globalTableHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(BlitzenDX12::GCGlobalDescriptorsRootParameterIDCompute, descriptorContext.mGlobalDescriptorsTableHandle[frame]);
 		commandList->SetComputeRootDescriptorTable(BlitzenDX12::CE_CULL_ROOT_CULL_GLOBAL_ID, descriptorContext.m_cullGlobalTableHandle[frame]);
 
 		switch (cullContext.m_cullType)

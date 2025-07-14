@@ -68,13 +68,31 @@ namespace BlitzenDX12
 
     struct CPU_LOGIC_BUFFERS
     {
-        SSBO GPUSSBOWorldVariableTransform{}; // BlitzenEngine::WVTransform
+        SSBO GPUSSBOWorldVariableTransform{}; // BlitzenEngine::WVTransform -> float3 + float3 + uint32 ID + uint32 flag
 
+        SSBO UAVGridCellWorldVariableOffsets{}; // BlitzenEngine::GridCellOffsets -> 2 uint32 | Collision with BMPR(Any mode) only. Otherwise not created
+        SSBO UAVGridCellStaticOffsets{}; // BlitzenEngine::GridCellOffsets -> uint32 | Narrow Phase Collision with BMPR only. Otherwise not created
+        SSBO UAVGlobalColliderIDXOffset{}; // 1 uint32 | Collision with BMPR(Any mode) only. Otherwise not created
+        SSBO UAVColliderIndices{}; // uint32 | Collision with BMPR(Any mode) only. Size depends on narrow phase or No narrow phase
+        SSBO UAVColliderAMaxRad{}; // BlitzenEngine::ColliderAMaxRad -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
+        SSBO UAVColliderBMinType{}; // BlitzenEngine::ColliderBMinType -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
+
+        SSBO UAVNarrowPhaseIndirectCommands{};
+        SSBO UAVCollisionMessageCounter{};
+        SSBO UAVCollisionMessages{};
+
+        // World Variable Transform copy to GPU and World Variable transform readback on CPU.
         STAGING<BlitzenEngine::WVTransform> CPURWWorldVariableTransforms{};
-
         READBACK_BUFFER<BlitzenEngine::WVTransform> CPURDBWorldVariableTransforms{};
-        READBACK_BUFFER<BlitzenEngine::GridCellOffsets> CPURDBGridCellOffsets{};
-        READBACK_BUFFER<uint32_t> GCPURDBGridCellWorldVariableIndices{};
+
+        // These readbacks are only relevant when Broad Phase with BMPR is active without Narrow Phase
+        // If narrow phase is driven by the BMPR, then all this data does not need to be read
+        READBACK_BUFFER<BlitzenEngine::GridCellOffsets> RDBGridCellWorldVariableOffsets{};
+        READBACK_BUFFER<uint32_t> RDBWorldVariableColliderIndices{};
+        READBACK_BUFFER<BlitzenEngine::ColliderAMaxRad> RDBColliderFloatAMaxRad{};
+        READBACK_BUFFER<BlitzenEngine::ColliderBMinType> RDBColliderFloatBMinType{};
+        READBACK_BUFFER<uint32_t> RDBCollisionMessageCounter{};
+        READBACK_BUFFER<BlitzenEngine::CollisionMessage> RDBCollisionMessage{};
     };
 
     struct DescriptorContext
@@ -86,8 +104,8 @@ namespace BlitzenDX12
         SIZE_T m_viewHeapIncrement;
         SIZE_T m_viewHeapCurrentOffset{ 0 };
 
-        SIZE_T m_globalTableOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_globalTableHandle[ce_framesInFlight];
+        SIZE_T mGlobalDescriptorsTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE mGlobalDescriptorsTableHandle[ce_framesInFlight];
 
         SIZE_T m_cullGlobalTableOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_cullGlobalTableHandle[ce_framesInFlight];
@@ -103,6 +121,9 @@ namespace BlitzenDX12
 
         SIZE_T m_cullClusterTableOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_cullClusterTableHandle[ce_framesInFlight];
+
+        SIZE_T mCollisionSupportTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE mCollisionSupportTableHandle;
 
         SIZE_T m_cullOCCDPTableOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_cullOCCDPTableHandle[ce_framesInFlight];
@@ -192,6 +213,15 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12RootSignature> m_HI_Z_MapRoot;
         DX12WRAPPER<ID3D12PipelineState> m_HI_Z_MapPso;
+
+        // Collision help. BMPR drives collision. First five are broad phase
+        DX12WRAPPER<ID3D12PipelineState> MCellsColliderCountResetPso;
+        DX12WRAPPER<ID3D12PipelineState> MCellsColliderCountPso;
+        DX12WRAPPER<ID3D12PipelineState> MCellsColliderOffsetPso;
+        DX12WRAPPER<ID3D12PipelineState> MColliderIDXsPso;
+        DX12WRAPPER<ID3D12PipelineState> MColliderTransformPso;
+        // Narrow phase collision
+        DX12WRAPPER<ID3D12PipelineState> MNarrowPhaseCollisionPso;
 
         DX12WRAPPER<ID3D12RootSignature> m_triangleRoot;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;

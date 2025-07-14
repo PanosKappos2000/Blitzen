@@ -110,15 +110,24 @@ namespace BlitzenDX12
     constexpr UINT CE_CULL_CLUSTERS_SPHERES_ID = 6;
     constexpr UINT CE_CULL_CLUSTERS_CONES_ID = 7;
 
+    // DESCRIPTORS FOR BROAD PHASE COLLISION
+    constexpr UINT GCCollisionSupportRangeCount = 5;
+    constexpr UINT GCCollisionSupportGridCellRangeID = 0;
+    constexpr UINT GCCollisionSupportColliderIDXsRangeID = 1;
+    constexpr UINT GCCollisionSupportGlobalColliderIDXsOffsetRangeID = 2;
+    constexpr UINT GCCollisionSupportColliderFloat3AMaxRadRangeID = 3;
+    constexpr UINT GCCollisionSupportColliderFloat3BMinTypeRangeID = 4;
+
     // CULLING ROOT PARAMETERS
-    constexpr uint32_t CE_CULL_ROOT_PARAMETER_COUNT = 7;
-    constexpr UINT CE_CULL_ROOT_GLOBAL_ID = 0;
+    constexpr uint32_t CE_CULL_ROOT_PARAMETER_COUNT = 8;
+    constexpr UINT GCGlobalDescriptorsRootParameterIDCompute = 0;
     constexpr UINT CE_CULL_ROOT_CULL_GLOBAL_ID = 1;
     constexpr UINT CE_CULL_ROOT_STATIC_TABLE_ID = 2;
     constexpr UINT CE_CULL_ROOT_STATIC_WORK_CONSTANT_ID = 3;
     constexpr UINT CE_CULL_ROOT_HI_Z_MAP_ID = 4;
     constexpr UINT CE_CULL_ROOT_DYNAMIC_TABLE_ID = 5;
     constexpr UINT CE_CULL_ROOT_DYNAMIC_WORK_CONSTANT_ID = 6;
+    constexpr UINT GCCollisionSupportParameterID = 7;
 
     constexpr UINT CE_CULL_WORK_COUNT_CONSTANT_32_BIT_COUNT = 1;
 

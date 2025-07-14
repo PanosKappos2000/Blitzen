@@ -171,4 +171,28 @@ namespace BlitzenEngine
         uint32_t colliderOffset;
         uint32_t colliderCount;
     };
+
+    struct ColliderAMaxRad
+    {
+        BlitML::float4 data;// Can be used for CapsuleA, AABBMIN, AABBMax or sphere center.
+    };
+
+    struct ColliderBMinType
+    {
+        BlitML::float4 data; // Can be used for Capsule radius or Sphere radius.
+    };
+
+    struct BMPR_NARROW_PHASE_DRIVER
+    {
+        uint32_t cellIndex;
+        uint32_t computeShaderGroupX;
+        uint32_t computeShaderGroupY;
+        uint32_t computeShaderGroupZ;
+    };
+
+    struct CollisionMessage
+    {
+        uint32_t m_impactingObject;
+        uint32_t m_reactingResident;
+    };
 }

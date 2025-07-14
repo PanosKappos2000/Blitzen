@@ -3,7 +3,7 @@ struct WVTransform
     float3 position;
     float3 euler;
     uint movementFlags;
-    uint padding1;
+    uint cellID;
 };
 RWStructuredBuffer<WVTransform> rwssbo_HostTransform : register(u14);
 
