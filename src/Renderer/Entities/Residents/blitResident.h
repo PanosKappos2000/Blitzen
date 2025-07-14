@@ -4,5 +4,5 @@
 
 namespace BlitzenEngine
 {
-	using Resident = uint32_t;
+	
 }

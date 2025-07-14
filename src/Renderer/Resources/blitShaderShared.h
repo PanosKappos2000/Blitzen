@@ -13,6 +13,7 @@
 #define BLIT_MAX_WORLD_STATIC_RESIDENTS														4500000u
 #ifdef __cplusplus
 	static_assert(BLIT_MAX_WORLD_STATIC_RESIDENTS + BLIT_MAX_WORLD_VARIABLE_COUNT < BLIT_MAX_WORLD_RESIDENTS);
+	constexpr bool IS_RESIDENT_STATIC(uint32_t resident) { return resident >= BLIT_MAX_WORLD_VARIABLE_COUNT; }
 #endif
 #define BLIT_MAX_WORLD_RENDERS																BLIT_MAX_WORLD_RESIDENTS
 #define BLIT_MAX_WORLD_OPAQUE_STATIC_RENDERS												BLIT_MAX_WORLD_STATIC_RESIDENTS
@@ -161,9 +162,9 @@ enum BLIT_RESIDENT_MOVEMENT_FLAG_BITS
 
 enum BlitColliderType
 {
-	AABB,
-	Capsule,
-	Sphere
+	BlitzenColliderTypeAABB,
+	BlitzenColliderTypeCapsule,
+	BlitzenColliderTypeSphere,
 };
 #ifdef __cplusplus
 	static_assert(sizeof(BlitColliderType) == 4);
@@ -172,8 +173,8 @@ enum BlitColliderType
 #ifdef __cplusplus
 	enum BLITZEN_COLLISION_IDENTIFIER : uint64_t
 	{
-		BLITZEN_COLLISION_FLAGS_IGNORE = 0x0,
-		BLITZEN_COLLISION_FLAGS_BLOCK = 0x1
+		BlitzenCollisionFlagsIgnore = 0x0,
+		BlitzenCollisionFlagsBlock = 0x1
 	};
 
 	enum WORLD_VARIABLE_CATEGORY : uint64_t

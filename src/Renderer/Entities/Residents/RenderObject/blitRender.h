@@ -5,6 +5,7 @@
 namespace BlitzenEngine
 {
 	constexpr uint32_t CE_MAX_ALLOWED_INSTANCED_RESOURCES = 10;
+	constexpr uint32_t GCRenderObjectCreationErrorCode = BLIT_MAX_WORLD_RENDERS;
 
 	enum RENDER_OBJECT_TYPE : uint8_t
 	{

@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/Resources/blitShaderResources.h"
+#include "Renderer/Resources/blitShaderShared.h"
 #include "blitTriangle.h"
 #include "blitClusters.h"
 
@@ -48,6 +49,7 @@ namespace BlitzenEngine
 		uint32_t m_indexCount{ 0 };
 		MESH_PRIMITIVE_SPECIAL_FLAGS m_specialFlags{ MESH_PRIMITIVE_SPECIAL_NONE };
 		uint32_t m_materialID{ 0 };
+		BlitColliderType mColliderType{ BlitzenColliderTypeSphere };
 	};
 
 	struct MESH_PRIMITIVE_LOD_CREATE_CONTEXT
@@ -74,6 +76,7 @@ namespace BlitzenEngine
 		uint32_t m_indexCount{ 0 };
 		MESH_PRIMITIVE_SPECIAL_FLAGS m_specialFlags{ MESH_PRIMITIVE_SPECIAL_NONE };
 		uint32_t m_materialID{ 0 };
+		BlitColliderType mColliderType{ BlitzenColliderTypeSphere };
 	};
 
 	struct MESH_PRIMITIVE_LOD_GENERATE_CONTEXT
@@ -98,6 +101,7 @@ namespace BlitzenEngine
 		MeshPrimitiveData m_meshPrimitiveData[BlitzenCore::Ce_MaxMeshPrimitivesCount];
 		PrimitiveSurface m_meshPrimitives[BlitzenCore::Ce_MaxMeshPrimitivesCount];
 		BoundingSphere m_boundingSpheres[BlitzenCore::Ce_MaxMeshPrimitivesCount];
+		SplitColliderDataPair mColliders[BlitzenCore::Ce_MaxMeshPrimitivesCount];
 		uint32_t m_meshPrimitivesCount{ 0 };
 
 		LodData m_LODs[CE_MAX_LOD_COUNT]{};

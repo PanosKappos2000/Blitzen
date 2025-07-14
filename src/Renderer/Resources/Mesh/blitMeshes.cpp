@@ -13,33 +13,38 @@
 
 namespace BlitzenEngine
 {
-    inline MeshResources* P_MESH_RESOURCES = nullptr;
+    inline MeshResources* GSMeshResources = nullptr;
 
     void InitializeMeshResourcesPointer_STATIC_ACCESS(MeshResources* ptr)
     {
-        BLIT_ASSERT_MESSAGE(P_MESH_RESOURCES == nullptr, "Attempted to reinitialize mesh resources singleton pointer");
+        BLIT_ASSERT_MESSAGE(GSMeshResources == nullptr, "Attempted to reinitialize mesh resources singleton pointer");
 
-        P_MESH_RESOURCES = ptr;
+        GSMeshResources = ptr;
     }
 
-    BoundingSphere* GetBoundingSphereResources_STATIC_ACCESS(Mesh* pMesh)
+    BoundingSphere* GetVisibilityBoundingSphereFromMesh(Mesh* pMesh)
     {
-        return &P_MESH_RESOURCES->m_meshPrimitives.m_boundingSpheres[pMesh->firstSurface];
+        return &GSMeshResources->m_meshPrimitives.m_boundingSpheres[pMesh->firstSurface];
     }
 
-    BoundingSphere& GetBoundingSphere_STATIC_ACCESS(uint32_t resourceID)
+    BoundingSphere& GetVisibilityBoundingSphereFromMeshPrimitive(uint32_t resourceID)
     {
-        return P_MESH_RESOURCES->m_meshPrimitives.m_boundingSpheres[resourceID];
+        return GSMeshResources->m_meshPrimitives.m_boundingSpheres[resourceID];
+    }
+
+    SplitColliderDataPair& GetColliderFromMeshPrimitive(uint32_t resourceID)
+    {
+        return GSMeshResources->m_meshPrimitives.mColliders[resourceID];
     }
 
     Mesh& RequestMeshResources_STATIC_ACCESS(const char* meshName)
     {
-		return P_MESH_RESOURCES->m_meshMap[meshName];
+		return GSMeshResources->m_meshMap[meshName];
     }
 
     BlitzenCore::FAT_BOOL GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(uint32_t surfaceID)
     {
-        return P_MESH_RESOURCES->m_meshPrimitives.m_meshPrimitiveData[surfaceID].m_primitiveTransparencyFlags;
+        return GSMeshResources->m_meshPrimitives.m_meshPrimitiveData[surfaceID].m_primitiveTransparencyFlags;
     }
 
     uint32_t MeshResources::AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName /*="BLIT_DO_NOT_ADD_TO_MESH_TABLE"*/)

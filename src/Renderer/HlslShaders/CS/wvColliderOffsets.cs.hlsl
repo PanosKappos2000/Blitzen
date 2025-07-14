@@ -9,7 +9,7 @@
 #include "../../Resources/blitShaderShared.h"
 
 [numthreads(64, 1, 1)]
-void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
+void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint objId = dispatchThreadID.x + BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET;
     if (objId > workCount + BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET)

@@ -4,6 +4,8 @@
 
 namespace BlitzenEngine
 {
+    using Resident = uint32_t;
+
     struct Mesh
     {
         uint32_t firstSurface;
@@ -172,14 +174,33 @@ namespace BlitzenEngine
         uint32_t colliderCount;
     };
 
+    //---------------------------------------------------------------------------------------------------------------------------
+    // FULL COLLIDER SPLIT INTO 2 STRUCTS
+    // 
+    // This design is mostly for compatibility and optimal use of SIMD
+    // If I see that SIMD has no place in collision I will simplify this
+    // 
+    // The biggest weakness is the collider type saved as a float which requires casting every time that it's used
+    //----------------------------------------------------------------------------------------------------------------------------
     struct ColliderAMaxRad
     {
-        BlitML::float4 data;// Can be used for CapsuleA, AABBMIN, AABBMax or sphere center.
+        // First three components: Supposed Union for Capsule A and AABB Max. 
+        // Last float component (w): Supposed Union for Capsule Radius and Sphere Radius
+        // Not using true unions because this is a shader struct
+        BlitML::float4 data; 
     };
-
     struct ColliderBMinType
     {
-        BlitML::float4 data; // Can be used for Capsule radius or Sphere radius.
+        // First three components: Supposed Union for Capsule B and AABB Min.
+        // Last float component (w): Holds collider type (treated as uint32 or ColliderType)
+        // Not using true unions because this is a shader struct
+        BlitML::float4 data; 
+    };
+
+    struct SplitColliderDataPair
+    {
+        ColliderAMaxRad AMaxRad;
+        ColliderBMinType BMinType;
     };
 
     struct BMPR_NARROW_PHASE_DRIVER
@@ -192,7 +213,7 @@ namespace BlitzenEngine
 
     struct CollisionMessage
     {
-        uint32_t m_impactingObject;
-        uint32_t m_reactingResident;
+        Resident m_impactingObject;
+        Resident m_reactingResident;
     };
 }

@@ -23,8 +23,8 @@ namespace BlitzenEngine
 
 	struct WVColliderResponse
 	{
-		BLITZEN_COLLISION_IDENTIFIER m_impactFlag;
-		uint64_t m_reactionFlags;
+		BLITZEN_COLLISION_IDENTIFIER m_impactFlag{ BlitzenCollisionFlagsIgnore };
+		uint64_t m_reactionFlags = 0;
 	};
 
 	class CollisionGrid

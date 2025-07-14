@@ -16,25 +16,31 @@ namespace BlitzenEngine
 	{
 		RenderObject* pFirstRender{ nullptr };
 
+		// Checks if the resource that is being used is transparent.
+		// Resources that are transparent need to be place in the correct offset on the transform array
 		bool transparencyFlag = GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(ctx.m_resourceID) == BlitzenCore::FAT_TRUE;
 		if (transparencyFlag)
 		{
 			const_cast<TRANSFORM_CREATE_CONTEXT&>(ctx.m_transformInfo).m_type = WorldTransformType::BOUND_TO_TRANSPARENT;
 		}
 
+		// Creates transform, saves ID, checks for error code.
 		uint32_t transformID{ m_transforms.CreateTransform(ctx.m_transformInfo) };
-		if (transformID == BLIT_MAX_WORLD_TRANSFORM_COUNT)
+		if (transformID == GCTransformCreateErrorCode)
 		{
 			return RESIDENT_CREATE_RES::WORLD_TRANSFORM_CREATION_FAILED;
 		}
+
+		// Uhhhh... something missing?
 		if (ctx.m_transformInfo.m_type == WorldTransformType::DYNAMIC)
 		{
 			
 		}
 
-		// Retrieves bounding spheres array
-		auto bounds{ GetBoundingSphere_STATIC_ACCESS(ctx.m_resourceID) };
+		// Gets the visibility bounding sphere. Will get its transform baked for static objects
+		auto bounds{ GetVisibilityBoundingSphereFromMeshPrimitive(ctx.m_resourceID) };
 
+		// Chooses render object type
 		RENDER_OBJECT_CREATE_CONTEXT renderContext{};
 		renderContext.m_type = ctx.m_isMoveable ? RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC : RENDER_OBJECT_TYPE::OPAQUE_STATIC;
 		if (renderContext.m_type == RENDER_OBJECT_TYPE::OPAQUE_STATIC)
@@ -45,16 +51,34 @@ namespace BlitzenEngine
 		renderContext.m_primitiveID = ctx.m_resourceID;
 		renderContext.m_transformID = transformID;
 
-		// Creates render object
+		// Creates render object. Used to acces
 		uint32_t renderObjectId = m_renders.CreateRenderObject(renderContext);
-		if (renderObjectId == BLIT_MAX_WORLD_RENDERS)
+		if (renderObjectId == GCRenderObjectCreationErrorCode)
 		{
 			return RESIDENT_CREATE_RES::RENDER_OBJECT_CREATION_FAILED;
 		}
 
+		// Add bounding sphere for visibility checks
+		// It is passed to render objects to avoid transforming it for static objects
 		MColliders.AddRenderObjectBoundingSphere(&bounds, m_transforms.m_transforms[transformID], renderObjectId, renderContext.m_type);
 
-		m_residents[m_residentCount++] = renderObjectId;
+		if (renderObjectId != transformID)
+		{
+			return RESIDENT_CREATE_RES::UNKNOWN;
+		}
+
+		if (!(ctx.m_flags & RESIDENT_CREATE_NO_COLLISION))
+		{
+			auto& collider = GetColliderFromMeshPrimitive(ctx.m_resourceID);
+			if (!MColliders.LogResidentForCollision(transformID, collider))
+			{
+				return RESIDENT_CREATE_RES::COLLIDER_CREATION_FAILED;
+			}
+		}
+
+		// This is a weird one since all arrays should be parallel.
+		// Added check above to avoid unexpected behaviour
+		mResidents[mResidentCount++] = renderObjectId;
 
 		return RESIDENT_CREATE_RES::SUCCESS;
 	}
@@ -287,7 +311,7 @@ namespace BlitzenEngine
 
 	bool CheckResidentVelocity(Resident resident)
 	{
-		if (resident > GSWorldResidents->m_residentCount)
+		if (resident > GSWorldResidents->m_transforms.m_moveableCount)
 		{
 			return false;
 		}

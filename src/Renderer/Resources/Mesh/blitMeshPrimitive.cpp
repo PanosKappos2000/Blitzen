@@ -114,6 +114,19 @@ namespace BlitzenEngine
         // This might be potentially wasteful when it come to memory, but accessing the vertices of a surface, outside of this funtion, to generate the sphere, would be a bit of a pain
         GenerateBoundingSphere(newSurface, m_boundingSpheres[m_meshPrimitivesCount], context);
 
+        if (context.mColliderType == BlitzenColliderTypeSphere)
+        {
+            BlitzenCore::BlitMemCopy(&mColliders[m_meshPrimitivesCount], &m_boundingSpheres[m_meshPrimitivesCount], sizeof(BlitML::float4));
+        }
+        else if (context.mColliderType == BlitzenColliderTypeCapsule)
+        {
+
+        }
+        else
+        {
+
+        }
+
         newSurface.materialId = context.m_materialID;
 
         if (context.m_specialFlags & MESH_PRIMITIVE_SPECIAL_TRANSPARENT)

@@ -58,9 +58,11 @@ namespace BlitzenEngine
 
 	Mesh& RequestMeshResources_STATIC_ACCESS(const char* meshName);
 
-    BoundingSphere* GetBoundingSphereResources_STATIC_ACCESS(Mesh* pMesh);
+    BoundingSphere* GetVisibilityBoundingSphereFromMesh(Mesh* pMesh);
 
-    BoundingSphere& GetBoundingSphere_STATIC_ACCESS(uint32_t resourceID);
+    BoundingSphere& GetVisibilityBoundingSphereFromMeshPrimitive(uint32_t resourceID);
+
+    SplitColliderDataPair& GetColliderFromMeshPrimitive(uint32_t resourceID);
 
     BlitzenCore::FAT_BOOL GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(uint32_t surfaceID);
 

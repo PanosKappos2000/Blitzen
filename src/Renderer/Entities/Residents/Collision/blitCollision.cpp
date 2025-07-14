@@ -132,6 +132,42 @@ namespace BlitzenEngine
 		}
     }
 
+    bool ColliderContainer::LogResidentForCollision(Resident resident, SplitColliderDataPair& data, WVColliderResponse behavior)
+    {
+        if (MWorldColliderCount >= CE_MAX_WORLD_COLLIDER_COUNT)
+        {
+            BLIT_ERROR("%s: Max Collider count exceeded", BlitzenCore::GCCollisionSystemName)
+            return false;
+        }
+
+        BlitzenCore::BlitMemCopy(&MColliderAMaxRad[resident], &data.AMaxRad, sizeof(BlitML::float4));
+        BlitzenCore::BlitMemCopy(&MColliderBMinType[resident], &data.BMinType, sizeof(BlitML::float4));
+
+        if (IS_RESIDENT_STATIC(resident))
+        {
+            if ((uint32_t)data.BMinType.data.w == BlitzenColliderTypeSphere)
+            {
+                // transform sphere
+            }
+            else if ((uint32_t)data.BMinType.data.w == BlitzenColliderTypeAABB)
+            {
+                // tranform AABB
+            }
+            else if ((uint32_t)data.BMinType.data.w == BlitzenColliderTypeCapsule)
+            {
+                // transform Capsule
+            }
+        }
+        else
+        {
+            WVColliderHitData[resident] = behavior;
+        }
+
+        MWorldColliderCount++;
+
+        return true;
+    }
+
     void CollisionGrid::FindCollisionsNarrow(BoundingSphere* boundsArr)
     {
         for (uint32_t IDX = 0; IDX < CE_COLLISION_GRID_CELL_COUNT; IDX++)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Entities/Residents/blitResident.h"
+#include "Renderer/Resources/blitShaderShared.h"
 
 namespace BlitzenEngine
 {
@@ -12,7 +13,14 @@ namespace BlitzenEngine
 
 	void AddCollisionReactionFlag(const char* name);
 
+	// Adds world variable to the list that includes all residents with gravity.
+	// This means that the resident will be pulled to the ground constantly, 
+	// unless something deactivates its gravity flag (like jump functions)
 	void LogResidentForGravity(Resident resident, float maxSpeed);
+
+	// Creates collider for resident. This collider will be used to check it against other residents
+	// Residents that have never called this (or future extensions) will be invincible
+	void LogResidentForCollision(Resident resident, BlitColliderType type);
 
 	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint32_t rotationFlags);
 
