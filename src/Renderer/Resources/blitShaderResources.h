@@ -170,8 +170,10 @@ namespace BlitzenEngine
 
     struct GridCellOffsets
     {
-        uint32_t colliderOffset;
-        uint32_t colliderCount;
+        uint32_t staticCollidersOffset;
+        uint32_t staticColliderCount;
+        uint32_t dynamicCollidersOffset;
+        uint32_t dynamicCollidersCount;
     };
 
     //---------------------------------------------------------------------------------------------------------------------------

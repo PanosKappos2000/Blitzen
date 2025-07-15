@@ -19,16 +19,16 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     
     uint cellIndex = rwssbo_HostTransform[objId].cellID;
     
+    // Increments collider count and gets an offset
     uint IDX;
-    // At this stage the collider count is incremented
-    InterlockedAdd(rw_Cells[cellIndex].colliderCount, 1, IDX);
+    InterlockedAdd(rw_Cells[cellIndex].dynamicColliderCount, 1, IDX);
     
     // Most of these checks will be removed
-    if (rw_Cells[cellIndex].colliderOffset + IDX > workCount + BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET)
+    if (rw_Cells[cellIndex].dynamicColliderOffset + IDX > workCount + BLIT_OPAQUE_DYNAMIC_RENDER_OFFSET)
     {
         return;
     }
     
     // Add the resident ID as a collider ID in the correct offset according to its grid.
-    rw_ColliderIndices[rw_Cells[cellIndex].colliderOffset + IDX] = objId;
+    rw_ColliderIndices[rw_Cells[cellIndex].dynamicColliderOffset + IDX] = objId;
 }

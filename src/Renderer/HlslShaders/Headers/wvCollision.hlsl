@@ -7,8 +7,10 @@ cbuffer cb_MoveCount : register(b10)
 
 struct GRID_CELL
 {
-    uint colliderOffset;
-    uint colliderCount;
+    uint staticColliderOffset;
+    uint staticColliderCount;
+    uint dynamicColliderOffset;
+    uint dynamicColliderCount;
 };
 RWStructuredBuffer<GRID_CELL> rw_Cells : register(u15);
 

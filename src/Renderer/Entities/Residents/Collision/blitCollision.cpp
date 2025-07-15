@@ -34,10 +34,10 @@ namespace BlitzenEngine
 	{
         for (uint32_t cellId = 0; cellId < CE_COLLISION_GRID_CELL_COUNT; ++cellId)
         {
-            m_cellStaticOffsets[cellId].colliderOffset = 0;
-            m_cellStaticOffsets[cellId].colliderCount = 0;
-            m_cellDynamicOffsets[cellId].colliderOffset = 0;
-            m_cellDynamicOffsets[cellId].colliderCount = 0;
+            mCellOffsets[cellId].staticCollidersOffset= 0;
+            mCellOffsets[cellId].staticColliderCount = 0;
+            mCellOffsets[cellId].dynamicCollidersOffset = 0;
+            mCellOffsets[cellId].dynamicCollidersCount = 0;
         }
 	}
 
@@ -87,7 +87,7 @@ namespace BlitzenEngine
 
             // Places index into collision cell
             colliderIndices[cellIndex].PushBack(IDX);
-            m_cellStaticOffsets[cellIndex].colliderCount++;
+            mCellOffsets[cellIndex].staticColliderCount++;
         }
 
         uint32_t offset = 0;
@@ -99,7 +99,7 @@ namespace BlitzenEngine
         for (auto& array : colliderIndices)
         {
             // For each array saves static offset and updates offset with the size of the array
-            m_cellStaticOffsets[cellIndex++].colliderOffset = offset;
+            mCellOffsets[cellIndex++].staticCollidersOffset = offset;
             offset += uint32_t(array.GetSize()); 
         }
 
@@ -115,7 +115,7 @@ namespace BlitzenEngine
             offset += uint32_t(array.GetSize());
         }
 
-        BLIT_ASSERT(m_cellStaticOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].colliderOffset + m_cellStaticOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].colliderCount == m_colliderIndicesTotal);
+        BLIT_ASSERT(mCellOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].staticCollidersOffset + mCellOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].staticColliderCount == m_colliderIndicesTotal);
 
         BLIT_INFO("%s: Ouf of collsion grid bounds object count: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, outOfBounds);
         BLIT_INFO("%s: Bad grid index calculation: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, badLogic);
@@ -123,11 +123,13 @@ namespace BlitzenEngine
 
     void CollisionGrid::PlaceDynamics(BlitzenEngine::WVTransform* transformArr, uint32_t count)
     {
-        for (auto& cellOffsets : m_cellDynamicOffsets)
+        // Resets all collider counts from previous frame
+        for (auto& cellOffsets : mCellOffsets)
         {
-            cellOffsets.colliderCount = 0;
+            cellOffsets.dynamicCollidersCount = 0;
         }
 
+        // Goes through all World Variables. Since only World Varialbes can move, they are the ones who will make collsion happen
         for (uint32_t IDX = 0; IDX < count; ++IDX)
         {
             auto& transform{ transformArr[IDX] };
@@ -135,31 +137,50 @@ namespace BlitzenEngine
             // Not making a check. I should make sure that dynamic transforms that are outside the grid get discarded or changed
             // CPU cannot afford these checks
 
-            BlitML::float3 positionGridSpace = BlitML::float3(transform.position - m_minBounds);
+            // This might change, but for now the grid does not have a position.
+            // Instead every object is placed inside grid space by incrementing to grid bounds
+            BlitML::float3 positionGridSpace = BlitML::float3(transform.position - (float)m_minBounds);
 
-            uint32_t cellPosX = BlitML::UMin(uint32_t(transform.position.x) / GCCollisionCellExtent, GCCollsionFlatCount);
-            uint32_t cellPosZ = BlitML::UMin(uint32_t(transform.position.z) / GCCollisionCellExtent, GCCollsionFlatCount);
+            // Gets the grid space position, finds its position on the x and z axis.
+            // Finally, uses that position to create a flat index to find the correct cell for the resident
+            uint32_t cellPosX = BlitML::UMin(uint32_t(positionGridSpace.x) / GCCollisionCellExtent, GCCollsionFlatCount);
+            uint32_t cellPosZ = BlitML::UMin(uint32_t(positionGridSpace.z) / GCCollisionCellExtent, GCCollsionFlatCount);
             uint32_t cellIndex = cellPosX + cellPosZ * GCCollsionFlatCount;
 
+            // Saves the cell Index for the final stage
             transform.targetIdx = cellIndex;
-            m_cellDynamicOffsets[cellIndex].colliderCount++;
+            // Saves the collider count for the next stage (offset stage)
+            mCellOffsets[cellIndex].dynamicCollidersCount++;
         }
         
+        // Keeps global offset and iterate over every cell
         uint32_t globalOffset = 0;
-        for (auto& cellOffsets : m_cellDynamicOffsets)
+        for (auto& cellOffsets : mCellOffsets)
         {
-            cellOffsets.colliderOffset = globalOffset;
-            globalOffset += cellOffsets.colliderCount;
-            cellOffsets.colliderCount = 0;
+            // Uses each cell's count to create an offset for the next cell.
+            // Saves the previous offset created by the previous cell
+            cellOffsets.dynamicCollidersOffset = globalOffset;
+            globalOffset += cellOffsets.dynamicCollidersCount;
+
+            // The collider count is reset so that collider indices can be placed in a flat array
+            // The offset and the count will be used to access that array
+            cellOffsets.dynamicCollidersCount = 0;
         }
 
+        // This should always be true. The literal reason these steps are taken is that we do not overshoot and broad phase is precise in terms of count
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(globalOffset == BLIT_MAX_WORLD_VARIABLE_COUNT);
+
+        // Goes over world variables one last time
         for (uint32_t IDX = 0; IDX < count; ++IDX)
         {
+            // Retrieves the old cell index and accesses the resident's cell
             uint32_t cellIndex = transformArr[IDX].targetIdx;
-            auto& cell = m_cellDynamicOffsets[cellIndex];
+            auto& cell = mCellOffsets[cellIndex];
 
-            m_dynamicColliderIndices[cell.colliderOffset + cell.colliderCount] = IDX;
-            cell.colliderCount++;
+            // Using collider offset and collider count, the resident's index is written to the flat array.
+            WVColliderIndices[cell.dynamicCollidersOffset + cell.dynamicCollidersCount] = IDX;
+            // Collider count gets incremented back to what was calculated earlier.
+            cell.dynamicCollidersCount++;
         }
     }
 
@@ -222,38 +243,7 @@ namespace BlitzenEngine
 
     void CollisionGrid::FindCollisionsNarrow(BoundingSphere* boundsArr)
     {
-        for (uint32_t IDX = 0; IDX < CE_COLLISION_GRID_CELL_COUNT; IDX++)
-        {
-            auto& dynamics = m_cellDynamicOffsets[IDX];
-            auto& statics = m_cellStaticOffsets[IDX];
-
-            for (uint32_t dynamicID = dynamics.colliderOffset; dynamicID < dynamics.colliderCount; ++dynamicID)
-            {
-                uint32_t impactingBoundsID = m_dynamicColliderIndices[dynamicID];
-
-                for (uint32_t staticID = statics.colliderOffset; staticID < statics.colliderCount; ++staticID)
-                {
-                    if (CheckSphereCollision(boundsArr[impactingBoundsID], boundsArr[m_colliderIndices[staticID]]))
-                    {
-                        // Create collision event message
-                    }
-                }
-
-                for (uint32_t dynamicID = dynamics.colliderOffset; dynamicID < dynamics.colliderCount; ++dynamicID)
-                {
-                    uint32_t receiverBoundsID = m_dynamicColliderIndices[dynamicID];
-                    if (impactingBoundsID == receiverBoundsID)
-                    {
-                        continue;
-                    }
-
-                    if (CheckSphereCollision(boundsArr[impactingBoundsID], boundsArr[receiverBoundsID]))
-                    {
-                        // CreateCollision message
-                    }
-                }
-            }
-        }
+        
     }
 
     void CollisionGrid::BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(WVColliderResponse* colliderArr)
@@ -261,11 +251,21 @@ namespace BlitzenEngine
         
     }
 
+    void CollisionGrid::AllocDynamicIndices()
+    {
+        WVColliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, BLIT_MAX_WORLD_VARIABLE_COUNT * sizeof(uint32_t)));
+    }
+
     CollisionGrid::~CollisionGrid()
     {
         if (m_colliderIndices)
         {
             BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, m_colliderIndices, m_colliderIndicesTotal * sizeof(uint32_t));
+        }
+
+        if (WVColliderIndices)
+        {
+            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, WVColliderIndices, BLIT_MAX_WORLD_VARIABLE_COUNT * sizeof(uint32_t));
         }
     }
 }

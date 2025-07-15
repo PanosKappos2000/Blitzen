@@ -35,13 +35,12 @@ namespace BlitzenEngine
 		int32_t m_minBounds;
 		int32_t m_maxBounds;
 
-		GridCellOffsets m_cellStaticOffsets[CE_COLLISION_GRID_CELL_COUNT];
-		GridCellOffsets m_cellDynamicOffsets[CE_COLLISION_GRID_CELL_COUNT];
+		GridCellOffsets mCellOffsets[CE_COLLISION_GRID_CELL_COUNT];
 		uint32_t* m_colliderIndices{ nullptr };
 		uint32_t m_colliderIndicesTotal{ 0 };
-		uint32_t m_dynamicColliderIndices[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		uint32_t* WVColliderIndices{ nullptr };
 
-		CollisionMessage m_events[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		CollisionMessage* m_events{ nullptr };
 		uint32_t m_count{ 0 };
 
 		void DefineGrid(uint32_t origin);
@@ -55,13 +54,17 @@ namespace BlitzenEngine
 
 		void PlaceDynamics(BlitzenEngine::WVTransform* transformArr, uint32_t count);
 
-		// Helper function for PlaceStatics. 
-		// Once the static object count is known, it allocates a pool of indices
-		void AllocStatics(uint32_t count, uint32_t* data); 
-
 		void FindCollisionsNarrow(BoundingSphere* boundsArr);
 
 		void BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(WVColliderResponse* colliderArr);
+
+		void AllocStatics(uint32_t count, uint32_t* data);
+
+		void AllocDynamicIndices();
+
+		void ClearStaticIndices();
+
+		void ClearDynamicIndices();
 
 		~CollisionGrid();
 	};

@@ -10,5 +10,5 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
         return;
     }
     
-    rw_Cells[objId].colliderCount = 0;
+    rw_Cells[objId].dynamicColliderCount = 0;
 }

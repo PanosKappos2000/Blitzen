@@ -70,15 +70,15 @@ namespace BlitzenDX12
     {
         SSBO GPUSSBOWorldVariableTransform{}; // BlitzenEngine::WVTransform -> float3 + float3 + uint32 ID + uint32 flag
 
-        SSBO UAVGridCellWorldVariableOffsets{}; // BlitzenEngine::GridCellOffsets -> 2 uint32 | Collision with BMPR(Any mode) only. Otherwise not created
-        SSBO UAVGridCellStaticOffsets{}; // BlitzenEngine::GridCellOffsets -> uint32 | Narrow Phase Collision with BMPR only. Otherwise not created
+        SSBO UAVGridCellOffsets{}; // BlitzenEngine::GridCellOffsets -> 4 uint32 | Collision with BMPR(Any mode) only. Otherwise not created
         SSBO UAVGlobalColliderIDXOffset{}; // 1 uint32 | Collision with BMPR(Any mode) only. Otherwise not created
-        SSBO UAVColliderIndices{}; // uint32 | Collision with BMPR(Any mode) only. Size depends on narrow phase or No narrow phase
+        SSBO UAVColliderIndices{}; // uint32 | Collision with BMPR(Any mode) only. 
         SSBO SRVColliderAMaxRad{}; // BlitzenEngine::ColliderAMaxRad -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
         SSBO SRVColliderBMinType{}; // BlitzenEngine::ColliderBMinType -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
         SSBO UAVTransformColliderAMaxRad{}; // BlitzenEngine::ColliderAMaxRad -> float4 | Will hold transformed version of the above AMaxRad buffer
         SSBO UAVTransformColliderBMinType{};// BlitzenEngine::ColliderBMinType -> float4 | Will hold transformed version of the other BMinType buffer
 
+        SSBO SRVStaticColliderIndices{};
         SSBO UAVNarrowPhaseIndirectCommands{};
         SSBO UAVCollisionMessageCounter{};
         SSBO UAVCollisionMessages{};
@@ -302,6 +302,9 @@ namespace BlitzenDX12
         STAGING<BlitzenEngine::MeshTransform> m_transformStaging;
         STAGING<BlitzenEngine::WVTransform> m_cpuTransformStaging;
         STAGING<BlitzenEngine::BoundingSphere> m_boundingSpheresStaging;
+        STAGING<BlitzenEngine::ColliderAMaxRad> mColliderAMaxRadStaging;
+        STAGING<BlitzenEngine::ColliderBMinType> mColliderBMinTypeStaging;
+        STAGING<BlitzenEngine::GridCellOffsets> mGridCellStaging;
     };
 }
 

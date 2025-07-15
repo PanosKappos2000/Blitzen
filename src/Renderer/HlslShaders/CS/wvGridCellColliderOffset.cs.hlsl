@@ -11,7 +11,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     }
     
     uint offset;
-    InterlockedAdd(rwssbo_CurrentColliderOffset[0], rw_Cells[objId].colliderCount, offset);
-    rw_Cells[objId].colliderOffset = offset;
-    rw_Cells[objId].colliderCount = 0;
+    InterlockedAdd(rwssbo_CurrentColliderOffset[0], rw_Cells[objId].dynamicColliderCount, offset);
+    rw_Cells[objId].dynamicColliderOffset = offset;
+    rw_Cells[objId].dynamicColliderCount = 0;
 }

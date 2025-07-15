@@ -131,7 +131,7 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
-			descriptorContext.mInstanceCullParameterID = opaqueDrawRootParams.GetSize();
+			descriptorContext.mInstanceCullParameterID = (UINT)opaqueDrawRootParams.GetSize();
 		}
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
@@ -766,18 +766,9 @@ namespace BlitzenDX12
 
 		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
 		{
-			if (!CreateSSBO<BlitzenEngine::GridCellOffsets>(device, resources.UAVGridCellWorldVariableOffsets, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			if (!CreateSSBO<BlitzenEngine::GridCellOffsets>(device, resources.UAVGridCellOffsets, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
 				BLIT_ERROR("%s: Failed to create world variable grid cell offsets buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
-				return 0;
-			}
-		}
-
-		if constexpr (BLITGCNarrowPhaseCollisionBumper)
-		{
-			if (!CreateSSBO<BlitzenEngine::GridCellOffsets>(device, resources.UAVGridCellStaticOffsets, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-			{
-				BLIT_ERROR("%s: Failed to create static grid cell offsets buffer resource", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}
