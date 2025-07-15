@@ -76,6 +76,18 @@ namespace BlitzenEngine
 
     void RotateResidentAttachedCamera(Camera& camera, float deltaTime)
     {
+        constexpr float DeltaTimeAlreadyOnPass1 = 1.f;
+
+        constexpr float SavePitch = 89.f;
+
+        float yawMovement = BlitML::Radians(camera.transformData.yawMovement * deltaTime);
+        float pitchMovement = BlitML::Radians(camera.transformData.pitchMovement * deltaTime);
+
+        camera.transformData.yawRotation += yawMovement;
+        camera.transformData.pitchRotation += pitchMovement;
+
+        camera.transformData.pitchRotation = BlitML::FClamp(camera.transformData.pitchRotation, BlitML::Radians(-SavePitch), BlitML::Radians(SavePitch));
+
         if (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS ||
             (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::NO_VELOCITY && 
                 BlitzenEngine::CheckResidentVelocity(camera.attachmentSettings.attachmentID) != 0.f))
@@ -86,23 +98,13 @@ namespace BlitzenEngine
             }
             else
             {
-                BlitzenEngine::RotateResidentYaw(camera.attachmentSettings.attachmentID, camera.transformData.yawMovement, deltaTime);
+                BlitzenEngine::RotateResidentYaw(camera.attachmentSettings.attachmentID, yawMovement, DeltaTimeAlreadyOnPass1);
             }
         }
 
         if (camera.transformData.yawMovement == 0.f && camera.transformData.pitchMovement == 0.f)
         {
             return;
-        }
-
-        constexpr float SavePitch = 89.f;
-
-        camera.transformData.yawRotation += camera.transformData.yawMovement * deltaTime;
-        camera.transformData.pitchRotation += camera.transformData.pitchMovement * deltaTime;
-
-        if (camera.transformData.pitchRotation > SavePitch)
-        {
-            camera.transformData.pitchRotation = SavePitch;
         }
 
         // New yaw pitch quat and rotation update
