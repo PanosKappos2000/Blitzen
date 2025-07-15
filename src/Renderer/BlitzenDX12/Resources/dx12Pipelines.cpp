@@ -525,6 +525,53 @@ namespace BlitzenDX12
         return 1;
     }
 
+    uint8_t CreateBMPRDrivenCollisionComputeShaders(ID3D12Device* device, PipelineContext& ctx)
+    {
+        if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+        {
+            // First this shader will go over all grid cells, and reset their count
+            if (!CreateComputeShaderProgram(device, ctx.m_cullRoot.Get(), ctx.MCellsColliderCountResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/wvGridCellReset.cs.hlsl.bin"))
+            {
+                BLIT_ERROR("%s: Failed to create wvGridCellReset.cs.hlsl compute shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+                return 0;
+            }
+
+            // Then this shader will go over all world variables and get a flat index from their position on the x and z axis
+            // That index will place them inside the appropriate grid by incrementing the grid count and having the resident point to it
+            if (!CreateComputeShaderProgram(device, ctx.m_cullRoot.Get(), ctx.MCellsColliderCountPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/wvGridCellColliderCount.cs.hlsl.bin"))
+            {
+                BLIT_ERROR("%s: Failed to create wvGridCellColliderCount.cs.hlsl compute shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+                return 0;
+            }
+
+            // Goes over colliders again, this time checks their count and gives them an offset for the collider index array, using a global counter. Their count is reset
+            if (!CreateComputeShaderProgram(device, ctx.m_cullRoot.Get(), ctx.MCellsColliderOffsetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/wvGridCellColliderOffset.cs.hlsl.bin"))
+            {
+                BLIT_ERROR("%s: Failed to create wvGridCellColliderOffset.cs.hlsl compute shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+                return 0;
+            }
+
+            if (!CreateComputeShaderProgram(device, ctx.m_cullRoot.Get(), ctx.MColliderIDXsPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/wvColliderIndices.cs.hlsl.bin"))
+            {
+                BLIT_ERROR("%s: Failed to create wvColliderIndices.cs.hlsl compute shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+                return 0;
+            }
+
+            if (!CreateComputeShaderProgram(device, ctx.m_cullRoot.Get(), ctx.MColliderTransformPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/wvColliderTransform.cs.hlsl.bin"))
+            {
+                BLIT_ERROR("%s: Failed to create wvColliderTransform.cs.hlsl.bin compute shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+                return 0;
+            }
+        }
+
+        if constexpr (BLITGCNarrowPhaseCollisionBumper)
+        {
+
+        }
+
+        return 1;
+    }
+
     uint8_t CreateComputeShaderProgram(ID3D12Device* device, ID3D12RootSignature* root, ID3D12PipelineState** pso, const char* filename)
     {
         BlitCL::String csBytes;

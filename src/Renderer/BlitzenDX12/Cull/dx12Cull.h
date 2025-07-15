@@ -8,7 +8,7 @@ namespace BlitzenDX12
 
 	inline void SetupStateForBroadPhaseCollisionShaders(ID3D12GraphicsCommandList* cmdList, ID3D12RootSignature* root, PipelineContext& pipelineContext, DescriptorContext& descriptorContext, UINT frame)
 	{
-		cmdList->SetComputeRootDescriptorTable(GCCollisionSupportParameterID, descriptorContext.mCollisionSupportTableHandle);
+		cmdList->SetComputeRootDescriptorTable(descriptorContext.mCollisionSupportParameterID, descriptorContext.mCollisionSupportTableHandle);
 		cmdList->SetComputeRootDescriptorTable(GCGlobalDescriptorsRootParameterIDCompute, descriptorContext.mGlobalDescriptorsTableHandle[frame]);
 	}
 }

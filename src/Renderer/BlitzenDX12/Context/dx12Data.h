@@ -111,15 +111,30 @@ namespace BlitzenDX12
     constexpr UINT CE_CULL_CLUSTERS_CONES_ID = 7;
 
     // DESCRIPTORS FOR BROAD PHASE COLLISION
-    constexpr UINT GCCollisionSupportRangeCount = 5;
+    constexpr UINT GCCollisionSupportRangeCount = 7;
     constexpr UINT GCCollisionSupportGridCellRangeID = 0;
     constexpr UINT GCCollisionSupportColliderIDXsRangeID = 1;
     constexpr UINT GCCollisionSupportGlobalColliderIDXsOffsetRangeID = 2;
-    constexpr UINT GCCollisionSupportColliderFloat3AMaxRadRangeID = 3;
-    constexpr UINT GCCollisionSupportColliderFloat3BMinTypeRangeID = 4;
+    constexpr UINT GCCollisionSupportColliderAMaxRadRangeID = 3;
+    constexpr UINT GCCollisionSupportColliderBMinTypeRangeID = 4;
+    constexpr UINT GCCollisionSupportTransformColliderAMaxRadRangeID = 5;
+    constexpr UINT GCCollisionSupportTransformColliderBMinTypeRangeID = 6;
+
+    // DESCRIPTORS FOR BROAD AND NARROW PHASE COLLISION
+    constexpr UINT GCCollisionResolveRangeCount = 10;
+    constexpr UINT GCCollisionResolveGridCellRangeID = 0;
+    constexpr UINT GCCollisionResolveColliderIDXsRangeID = 1;
+    constexpr UINT GCCollisionResolveGlobalColliderIDXsOffsetRangeID = 3;
+    constexpr UINT GCCollisionResolveColliderAMaxRadRangeID = 3;
+    constexpr UINT GCCollisionResolveColliderBMinTypeRangeID = 4;
+    constexpr UINT GCCollisionResolveTransformColliderAMaxRadRangeID = 5;
+    constexpr UINT GCCollisionResolveTransformColliderBMinTypeRangeID = 6;
+    constexpr UINT GCCollisionResolveNarrowPhaseCMDRangeID = 7;
+    constexpr UINT GCCollisionResolveCollisionMessageRangeID = 8;
+    constexpr UINT GCCollisionResolveCollisionCounterRangeID = 9;
 
     // CULLING ROOT PARAMETERS
-    constexpr uint32_t CE_CULL_ROOT_PARAMETER_COUNT = 8;
+    constexpr uint32_t CE_CULL_ROOT_PARAMETER_COUNT = 7;
     constexpr UINT GCGlobalDescriptorsRootParameterIDCompute = 0;
     constexpr UINT CE_CULL_ROOT_CULL_GLOBAL_ID = 1;
     constexpr UINT CE_CULL_ROOT_STATIC_TABLE_ID = 2;
@@ -127,9 +142,10 @@ namespace BlitzenDX12
     constexpr UINT CE_CULL_ROOT_HI_Z_MAP_ID = 4;
     constexpr UINT CE_CULL_ROOT_DYNAMIC_TABLE_ID = 5;
     constexpr UINT CE_CULL_ROOT_DYNAMIC_WORK_CONSTANT_ID = 6;
-    constexpr UINT GCCollisionSupportParameterID = 7;
 
     constexpr UINT CE_CULL_WORK_COUNT_CONSTANT_32_BIT_COUNT = 1;
+    constexpr UINT GCBMPRCollisionWorkCountContant32BitCount = 3;
+    constexpr UINT GCBMPRCollisionIndirectCellIndex32BitCount = 1;
 
 	// HI Z MAP DESCRIPTORS
     constexpr UINT CE_HI_Z_MAP_ROOT_COUNT = 3;

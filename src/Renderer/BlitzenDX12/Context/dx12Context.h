@@ -74,8 +74,10 @@ namespace BlitzenDX12
         SSBO UAVGridCellStaticOffsets{}; // BlitzenEngine::GridCellOffsets -> uint32 | Narrow Phase Collision with BMPR only. Otherwise not created
         SSBO UAVGlobalColliderIDXOffset{}; // 1 uint32 | Collision with BMPR(Any mode) only. Otherwise not created
         SSBO UAVColliderIndices{}; // uint32 | Collision with BMPR(Any mode) only. Size depends on narrow phase or No narrow phase
-        SSBO UAVColliderAMaxRad{}; // BlitzenEngine::ColliderAMaxRad -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
-        SSBO UAVColliderBMinType{}; // BlitzenEngine::ColliderBMinType -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
+        SSBO SRVColliderAMaxRad{}; // BlitzenEngine::ColliderAMaxRad -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
+        SSBO SRVColliderBMinType{}; // BlitzenEngine::ColliderBMinType -> float4 | Collision with BMPR only. Size depends on narrow phase or No narrow phase
+        SSBO UAVTransformColliderAMaxRad{}; // BlitzenEngine::ColliderAMaxRad -> float4 | Will hold transformed version of the above AMaxRad buffer
+        SSBO UAVTransformColliderBMinType{};// BlitzenEngine::ColliderBMinType -> float4 | Will hold transformed version of the other BMinType buffer
 
         SSBO UAVNarrowPhaseIndirectCommands{};
         SSBO UAVCollisionMessageCounter{};
@@ -116,14 +118,25 @@ namespace BlitzenDX12
         SIZE_T m_cullODTableOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_cullODTableHandle[ce_framesInFlight];
 
-		SIZE_T m_cullInstTableOffset[ce_framesInFlight];
-		D3D12_GPU_DESCRIPTOR_HANDLE m_cullInstTableHandle[ce_framesInFlight];
+		SIZE_T mInstanceCullTableOffset[ce_framesInFlight];
+		D3D12_GPU_DESCRIPTOR_HANDLE mInstanceCullTableHandle[ce_framesInFlight];
+        UINT mInstanceCullParameterID;
+        UINT mInstanceCullRootConstantID;
 
-        SIZE_T m_cullClusterTableOffset[ce_framesInFlight];
-        D3D12_GPU_DESCRIPTOR_HANDLE m_cullClusterTableHandle[ce_framesInFlight];
+        SIZE_T mClusterCullTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE mClusterCullTableHandle[ce_framesInFlight];
+        UINT mClusterCullParameterID;
+        UINT mClusterCullRootConstantID;
 
         SIZE_T mCollisionSupportTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE mCollisionSupportTableHandle;
+        UINT mCollisionSupportParameterID;
+        UINT mCollisionSupportRootConstantID;
+
+        SIZE_T mCollisionResolveTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE mCollisionResolveTableHandle;
+        UINT mCollisionResolveParameterID;
+        UINT mCollisionResolveCellIndexConstantID;
 
         SIZE_T m_cullOCCDPTableOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_cullOCCDPTableHandle[ce_framesInFlight];
@@ -186,10 +199,6 @@ namespace BlitzenDX12
 	struct PipelineContext
 	{
         DX12WRAPPER<ID3D12RootSignature> m_cullRoot;
-        UINT m_cullInstTableRootID;
-        UINT m_cullInstWorkRootID;
-        UINT m_clusterCullTableRootID;
-        UINT m_clusterCullWorkRootID;
 
         DX12WRAPPER<ID3D12PipelineState> m_staticCullPso;
         DX12WRAPPER<ID3D12PipelineState> m_drawOccTemporalPso;

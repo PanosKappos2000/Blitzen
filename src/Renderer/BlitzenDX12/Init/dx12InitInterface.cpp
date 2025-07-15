@@ -113,7 +113,7 @@ namespace BlitzenEngine
             return 0;
         }
 
-        if (!BlitzenDX12::CreateRootSignatures(pRenderer->m_device.Get(), pRenderer->m_pipelineContext))
+        if (!BlitzenDX12::CreateRootSignatures(pRenderer->m_device.Get(), pRenderer->m_pipelineContext, pRenderer->m_descriptorContext))
         {
             BLIT_ERROR("%s: Failed to create root signatures", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;

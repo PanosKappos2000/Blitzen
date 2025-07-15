@@ -108,8 +108,8 @@
 	constexpr uint BLIT_HLSL_WVTRANSFORM_BUFFER_REGISTER = 14;
 	constexpr uint BLIT_HLSL_GRID_CELLS_REGISTER = 15;
 	constexpr uint BLIT_HLSL_COLLIDER_IDXs_REGISTER = 16;
-	constexpr uint BLIT_HLSL_COLLIDER_FLOAT3_AMAXRAD_REGISTER = 17;
-	constexpr uint BLIT_HLSL_COLLIDER_FLOAT3_BMINTYPE_REGISTER = 18;
+	constexpr uint BLIT_HLSL_TRANSFORMED_COLLIDER_AMAXRAD_REGISTER = 17;
+	constexpr uint BLIT_HLSL_TRANSFORMED_COLLIDER_BMINTYPE_REGISTER = 18;
 	constexpr uint BLIT_HLSL_GLOBAL_COLLIDER_IDXs_OFFSET_REGISTER = 19;
 
 	constexpr uint BLIT_HLSL_RENDER_BUFFER_REGISTER = 0;
@@ -129,7 +129,9 @@
 	constexpr uint BLIT_HLSL_HI_Z_INPUT_REGISTER = 14;
 	constexpr uint BLIT_HLSL_INSTANCED_RENDERS_REGISTER = 15;
 	constexpr uint BLIT_HLSL_TERRAIN_VERTEX_POSITIONS_REGISTER = 16;
-	constexpr uint BLIT_HLSL_TEXTURE_DESCRIPTORS_REGISTER = 17;
+	constexpr uint BLIT_HLSL_COLLIDER_AMAXRAD_REGISTER = 17;
+	constexpr uint BLIT_HLSL_COLLIDER_BMINTYPE_REGISTER = 18;
+	constexpr uint BLIT_HLSL_TEXTURE_DESCRIPTORS_REGISTER = 19;
 
 	constexpr uint BLIT_HLSL_VIEW_DATA_REGISTER = 0;
 	constexpr uint BLIT_HLSL_OPAQUE_STATIC_COUNT_CONSTANT_REGISTER = 1;
@@ -141,6 +143,8 @@
 	constexpr uint BLIT_HLSL_CLUSTER_OBJID_REGISTER = 7;
 	constexpr uint BLIT_HLSL_CLUSTER_WORK_COUNT_CONSTANT_REGISTER = 8;
 	constexpr uint BLIT_HLSL_INSTANCE_WORK_COUNT_REGISTER = 9;
+	constexpr uint BLIT_HLSL_BMPR_COLLISION_WORK_COUNT_REGISTER = 10;
+	constexpr uint BLIT_HLSL_BMPR_COLLISION_INDIRECT_CELL_IDX_REGISTER = 11;
 
 	constexpr uint BLIT_HLSL_TEX_SAMPLER_REGISTER = 0;
 
@@ -160,13 +164,12 @@ enum BLIT_RESIDENT_MOVEMENT_FLAG_BITS
 	BLIT_RESIDENT_MOVEMENT_VELOCITY_YAXIS_BIT = 1 << 7,
 };
 
-enum BlitColliderType
-{
-	BlitzenColliderTypeAABB,
-	BlitzenColliderTypeCapsule,
-	BlitzenColliderTypeSphere,
-};
+#define BlitzenColliderTypeSphere			0.f
+#define BlitzenColliderTypeAABB				1.f
+#define BlitzenColliderTypeCapsule			2.f
+
 #ifdef __cplusplus
+	using BlitColliderType = float;
 	static_assert(sizeof(BlitColliderType) == 4);
 #endif
 

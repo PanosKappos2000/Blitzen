@@ -628,9 +628,9 @@ namespace BlitzenDX12
 		{
 			for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
 			{
-				ctx.m_cullInstTableOffset[frame] = ctx.m_viewHeapCurrentOffset;
-				ctx.m_cullInstTableHandle[frame] = ctx.m_viewHeapHandle;
-				ctx.m_cullInstTableHandle[frame].ptr += ctx.m_cullInstTableOffset[frame] * ctx.m_viewHeapIncrement;
+				ctx.mInstanceCullTableOffset[frame] = ctx.m_viewHeapCurrentOffset;
+				ctx.mInstanceCullTableHandle[frame] = ctx.m_viewHeapHandle;
+				ctx.mInstanceCullTableHandle[frame].ptr += ctx.mInstanceCullTableOffset[frame] * ctx.m_viewHeapIncrement;
 
 				auto& rwResources{ rwResourcesArray[frame] };
 
@@ -663,9 +663,9 @@ namespace BlitzenDX12
 			{
 				auto& rwResources{ rwResourcesArray[i] };
 
-				ctx.m_cullClusterTableOffset[i] = ctx.m_viewHeapCurrentOffset;
-				ctx.m_cullClusterTableHandle[i] = ctx.m_viewHeapHandle;
-				ctx.m_cullClusterTableHandle[i].ptr += ctx.m_cullClusterTableOffset[i] * ctx.m_viewHeapIncrement;
+				ctx.mClusterCullTableOffset[i] = ctx.m_viewHeapCurrentOffset;
+				ctx.mClusterCullTableHandle[i] = ctx.m_viewHeapHandle;
+				ctx.mClusterCullTableHandle[i].ptr += ctx.mClusterCullTableOffset[i] * ctx.m_viewHeapIncrement;
 
 				CreateBufferUnorderedAccessView(device, ctx, rwResources.m_clusterDrawCmdBuffer.buffer.Get(), rwResources.m_clusterDrawCounter.buffer.Get(),
 					BLIT_MAX_DYNAMIC_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);
@@ -685,6 +685,14 @@ namespace BlitzenDX12
 
 				CreateBufferShaderResourceView(device, roResources.m_clusterConesBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::ClusterCone));
 			}
+		}
+		if constexpr (BLITGCNarrowPhaseCollisionBumper)
+		{
+
+		}
+		else if constexpr (BLITGCBroadPhaseCollisionBumper)
+		{
+
 		}
 
 		// HI_Z_MAP DESCRIPTORS

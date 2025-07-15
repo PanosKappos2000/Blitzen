@@ -303,8 +303,7 @@ namespace BlitzenWorld
 
         pWORLD->m_collisionGrid.DefineGrid(0);
         pWORLD->m_collisionGrid.CreateCells();
-        pWORLD->m_collisionGrid.PlaceStatics(&pWORLD->m_residents.m_renders.m_renders[BLIT_OPAQUE_STATIC_RENDER_OFFSET], pWORLD->m_residents.m_transforms.m_staticTransformCount,
-            pWORLD->m_residents.m_transforms.m_transforms);
+        pWORLD->m_collisionGrid.PlaceStatics(pWORLD->m_residents.m_transforms.m_transforms, pWORLD->m_residents.m_transforms.m_staticTransformCount);
 
         BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pRenderingResources->m_terrainContainer));
 

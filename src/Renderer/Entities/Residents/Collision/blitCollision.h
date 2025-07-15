@@ -13,7 +13,7 @@ namespace BlitzenEngine
 
 	constexpr uint32_t GCCollisionCellExtent = BLIT_COLLISION_GRID_CELL_EXTENT;
 
-	constexpr uint32_t CE_COLLISION_GRID_CELL_FLAT_COUNT = BLIT_COLLISION_GRID_CELL_FLAT_COUNT;
+	constexpr uint32_t GCCollsionFlatCount = BLIT_COLLISION_GRID_CELL_FLAT_COUNT;
 
 	constexpr uint32_t CE_COLLISION_GRID_CELL_COUNT = BLIT_COLLISION_GRID_CELL_COUNT;
 	constexpr uint32_t CE_OBJECTS_PER_COLLISION_GRID_CELL = BLIT_COLLISION_GRID_CELL_EXTENT;
@@ -50,12 +50,14 @@ namespace BlitzenEngine
 
 		// When a scene's static residents are set, this is called to place them in the correct cell.
 		// This is supposed to be saved in a scene configuration file, and will not be called again after this scene is fully packaged.
-		// Dynamic allocations fully allowed here.
-		void PlaceStatics(BlitzenEngine::RenderObject* renderArr, uint32_t count, BlitzenEngine::MeshTransform* transformArr);
+		// Dynamic allocations fully allowed here. The transform array should be the full array, the offsets are placed inside
+		void PlaceStatics(BlitzenEngine::MeshTransform* transformArr, uint32_t count);
+
+		void PlaceDynamics(BlitzenEngine::WVTransform* transformArr, uint32_t count);
 
 		// Helper function for PlaceStatics. 
 		// Once the static object count is known, it allocates a pool of indices
-		void AllocStatics(uint32_t count, uint32_t* data);
+		void AllocStatics(uint32_t count, uint32_t* data); 
 
 		void FindCollisionsNarrow(BoundingSphere* boundsArr);
 

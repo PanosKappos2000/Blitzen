@@ -6,6 +6,15 @@
 
 namespace BlitzenEngine
 {
+    void DispatchCollisionResolve(CollisionGrid* pGrid, const COLLISION_RESOLVE_CONTEXT& context)
+    {
+        if constexpr (!BLITGCBroadPhaseCollisionBumper && !BLITGCBroadPhaseCollisionBumper)
+        {
+            BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(context.WVTransformArr != 0);
+            pGrid->PlaceDynamics(context.WVTransformArr, context.mTransformCount);
+        }
+    }
+
 	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds)
 	{
 		BlitML::vec3 delta = firstBounds.m_center - secondBounds.m_center;
@@ -32,7 +41,7 @@ namespace BlitzenEngine
         }
 	}
 
-    void CollisionGrid::PlaceStatics(BlitzenEngine::RenderObject* renderArr, uint32_t count, BlitzenEngine::MeshTransform* transformArr)
+    void CollisionGrid::PlaceStatics(BlitzenEngine::MeshTransform* transformArr, uint32_t count)
     {
         uint32_t outOfBounds = 0;
         uint32_t badLogic = 0;
@@ -44,7 +53,8 @@ namespace BlitzenEngine
         
         for (uint32_t i = 0; i < count; ++i)
         {
-            BlitML::float3 position = transformArr[renderArr[i].transformId].pos;
+            uint32_t IDX = i + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
+            BlitML::float3 position = transformArr[IDX].pos;
 
             // Residents that are not inside the grid, cannot be placed inside a cell.
             if ((int32_t)position.x > m_maxBounds || (int32_t)position.x < m_minBounds || (int32_t)position.z > m_maxBounds || (int32_t)position.z < m_minBounds)
@@ -61,12 +71,12 @@ namespace BlitzenEngine
 
             // Creates an index for each axis based on resident position.
             // The id should not be above the cell's extent
-            uint32_t cellPosX = BlitML::UMin(uint32_t(position.x / GCCollisionCellExtent), CE_COLLISION_GRID_CELL_FLAT_COUNT - 1);
-            uint32_t cellPosZ = BlitML::UMin(uint32_t(position.z / GCCollisionCellExtent), CE_COLLISION_GRID_CELL_FLAT_COUNT - 1);
+            uint32_t cellPosX = BlitML::UMin(uint32_t(position.x / GCCollisionCellExtent), GCCollsionFlatCount - 1);
+            uint32_t cellPosZ = BlitML::UMin(uint32_t(position.z / GCCollisionCellExtent), GCCollsionFlatCount - 1);
 
             // The flat index is retrieved by turning 2D to 1D
             // The xAxis is kept as it is and the Z is multiplied by the cell count on each axis (flat count)
-            uint32_t cellIndex = cellPosX + cellPosZ * CE_COLLISION_GRID_CELL_FLAT_COUNT;
+            uint32_t cellIndex = cellPosX + cellPosZ * GCCollsionFlatCount;
 
             // Something wrong with indexing logic
             if (cellIndex >= CE_COLLISION_GRID_CELL_COUNT)
@@ -76,7 +86,7 @@ namespace BlitzenEngine
             }
 
             // Places index into collision cell
-            colliderIndices[cellIndex].PushBack(i);
+            colliderIndices[cellIndex].PushBack(IDX);
             m_cellStaticOffsets[cellIndex].colliderCount++;
         }
 
@@ -109,6 +119,48 @@ namespace BlitzenEngine
 
         BLIT_INFO("%s: Ouf of collsion grid bounds object count: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, outOfBounds);
         BLIT_INFO("%s: Bad grid index calculation: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, badLogic);
+    }
+
+    void CollisionGrid::PlaceDynamics(BlitzenEngine::WVTransform* transformArr, uint32_t count)
+    {
+        for (auto& cellOffsets : m_cellDynamicOffsets)
+        {
+            cellOffsets.colliderCount = 0;
+        }
+
+        for (uint32_t IDX = 0; IDX < count; ++IDX)
+        {
+            auto& transform{ transformArr[IDX] };
+
+            // Not making a check. I should make sure that dynamic transforms that are outside the grid get discarded or changed
+            // CPU cannot afford these checks
+
+            BlitML::float3 positionGridSpace = BlitML::float3(transform.position - m_minBounds);
+
+            uint32_t cellPosX = BlitML::UMin(uint32_t(transform.position.x) / GCCollisionCellExtent, GCCollsionFlatCount);
+            uint32_t cellPosZ = BlitML::UMin(uint32_t(transform.position.z) / GCCollisionCellExtent, GCCollsionFlatCount);
+            uint32_t cellIndex = cellPosX + cellPosZ * GCCollsionFlatCount;
+
+            transform.targetIdx = cellIndex;
+            m_cellDynamicOffsets[cellIndex].colliderCount++;
+        }
+        
+        uint32_t globalOffset = 0;
+        for (auto& cellOffsets : m_cellDynamicOffsets)
+        {
+            cellOffsets.colliderOffset = globalOffset;
+            globalOffset += cellOffsets.colliderCount;
+            cellOffsets.colliderCount = 0;
+        }
+
+        for (uint32_t IDX = 0; IDX < count; ++IDX)
+        {
+            uint32_t cellIndex = transformArr[IDX].targetIdx;
+            auto& cell = m_cellDynamicOffsets[cellIndex];
+
+            m_dynamicColliderIndices[cell.colliderOffset + cell.colliderCount] = IDX;
+            cell.colliderCount++;
+        }
     }
 
     void CollisionGrid::AllocStatics(uint32_t count, uint32_t* data)

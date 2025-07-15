@@ -1,5 +1,3 @@
-RWBuffer<uint> rwssbo_CurrentColliderCounter : register(u21);
-
 #include "../Headers/wvCollision.hlsl"
 #include "../../Resources/blitShaderShared.h"
 
@@ -13,7 +11,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     }
     
     uint offset;
-    InterlockedAdd(rwssbo_CurrentColliderCounter[0], rw_Cells[objId].colliderCount, offset);
+    InterlockedAdd(rwssbo_CurrentColliderOffset[0], rw_Cells[objId].colliderCount, offset);
     rw_Cells[objId].colliderOffset = offset;
     rw_Cells[objId].colliderCount = 0;
 }

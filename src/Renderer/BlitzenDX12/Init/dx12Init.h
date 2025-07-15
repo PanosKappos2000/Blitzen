@@ -13,7 +13,7 @@ namespace BlitzenDX12
 
 	uint8_t CreateDebugController(ID3D12Debug* pDebugController, DX12WRAPPER<ID3D12Debug1>& debugController1, ID3D12Device* device);
 
-	uint8_t CreateRootSignatures(ID3D12Device* device, PipelineContext& context);
+	uint8_t CreateRootSignatures(ID3D12Device* device, PipelineContext& context, DescriptorContext& descriptorContext);
 
 	uint8_t CreateCmdSignatures(ID3D12Device* device, PipelineContext& ctx);
 

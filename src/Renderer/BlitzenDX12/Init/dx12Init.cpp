@@ -85,7 +85,7 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateRootSignatures(ID3D12Device* device, PipelineContext& context)
+    uint8_t CreateRootSignatures(ID3D12Device* device, PipelineContext& context, DescriptorContext& descriptorContext)
     {
 		// Range for descriptor table for SRVs that are allocated in the exclusive region of the heap for this root
 		D3D12_DESCRIPTOR_RANGE opaqueSrvRanges[CE_VERTEX_ODS_RANGE_COUNT]{};
@@ -131,7 +131,7 @@ namespace BlitzenDX12
 
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
-			
+			descriptorContext.mInstanceCullParameterID = opaqueDrawRootParams.GetSize();
 		}
 
 		if constexpr (BlitzenCore::Ce_BuildClusters)
@@ -187,14 +187,31 @@ namespace BlitzenDX12
 		CreateRootParameterPushConstants(drawCullRootParameters[CE_CULL_ROOT_DYNAMIC_WORK_CONSTANT_ID], BLIT_HLSL_OPAQUE_DYNAMIC_COUNT_CONSTANT_REGISTER, 0, CE_CULL_WORK_COUNT_CONSTANT_32_BIT_COUNT,
 			D3D12_SHADER_VISIBILITY_ALL);
 
-		D3D12_DESCRIPTOR_RANGE collisionSupportRootParameterRange[GCCollisionSupportRangeCount]{};
-		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportGridCellRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_GRID_CELLS_REGISTER);
-		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderIDXsRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_IDXs_REGISTER);
-		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportGlobalColliderIDXsOffsetRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_GLOBAL_COLLIDER_IDXs_OFFSET_REGISTER);
-		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderFloat3AMaxRadRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_FLOAT3_AMAXRAD_REGISTER);
-		CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderFloat3BMinTypeRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_FLOAT3_BMINTYPE_REGISTER);
+		if constexpr (BLITGCNarrowPhaseCollisionBumper)
+		{
+			descriptorContext.mCollisionResolveParameterID = (UINT)drawCullRootParameters.GetSize();
+		}
+		else if constexpr (BLITGCBroadPhaseCollisionBumper)
+		{
+			descriptorContext.mCollisionResolveParameterID = (UINT)drawCullRootParameters.GetSize();
 
-		CreateRootParameterDescriptorTable(drawCullRootParameters[GCCollisionSupportParameterID], collisionSupportRootParameterRange, GCCollisionSupportRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			D3D12_DESCRIPTOR_RANGE collisionSupportRootParameterRange[GCCollisionSupportRangeCount]{};
+			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportGridCellRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_GRID_CELLS_REGISTER);
+			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderIDXsRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_IDXs_REGISTER);
+			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportGlobalColliderIDXsOffsetRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_GLOBAL_COLLIDER_IDXs_OFFSET_REGISTER);
+			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderAMaxRadRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_COLLIDER_AMAXRAD_REGISTER);
+			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportColliderBMinTypeRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_COLLIDER_BMINTYPE_REGISTER);
+			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportTransformColliderAMaxRadRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_TRANSFORMED_COLLIDER_AMAXRAD_REGISTER);
+			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportTransformColliderBMinTypeRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_TRANSFORMED_COLLIDER_BMINTYPE_REGISTER);
+
+			D3D12_ROOT_PARAMETER collisionSupportSingleRootParameter{};
+			CreateRootParameterDescriptorTable(collisionSupportSingleRootParameter, collisionSupportRootParameterRange, GCCollisionSupportRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+			drawCullRootParameters.PushBack(collisionSupportSingleRootParameter);
+
+			D3D12_ROOT_PARAMETER collisionSupportWorkCountParameter{};
+			CreateRootParameterPushConstants(collisionSupportWorkCountParameter, BLIT_HLSL_BMPR_COLLISION_WORK_COUNT_REGISTER, 0, GCBMPRCollisionWorkCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);
+			drawCullRootParameters.PushBack(collisionSupportWorkCountParameter);
+		}
 
 		if constexpr (BlitzenCore::Ce_InstanceCulling)
 		{
@@ -206,13 +223,13 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER cullInstRangeParameter{};
 			CreateRootParameterDescriptorTable(cullInstRangeParameter, cullInstRanges, CE_CULL_INST_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
 			drawCullRootParameters.PushBack(cullInstRangeParameter);
-			context.m_cullInstTableRootID = (UINT)drawCullRootParameters.GetSize();
+			descriptorContext.mInstanceCullParameterID = (UINT)drawCullRootParameters.GetSize();
 
 			D3D12_ROOT_PARAMETER cullInstWorkParameter{};
 			CreateRootParameterPushConstants(cullInstWorkParameter, BLIT_HLSL_OPAQUE_INSTANCED_OBJID_REGISTER, 0, CE_CULL_WORK_COUNT_CONSTANT_32_BIT_COUNT,
 				D3D12_SHADER_VISIBILITY_ALL);
 			drawCullRootParameters.PushBack(cullInstWorkParameter);
-			context.m_cullInstWorkRootID = (UINT)drawCullRootParameters.GetSize();
+			descriptorContext.mInstanceCullRootConstantID = (UINT)drawCullRootParameters.GetSize();
 		}
 
 		// DOUBLE PASS OCCLUSION
@@ -236,13 +253,13 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER clusterRangeParameter{};
 			CreateRootParameterDescriptorTable(clusterRangeParameter, clusterRanges, CE_CULL_CLUSTERS_RANGE_COUNT, D3D12_SHADER_VISIBILITY_ALL);
 			drawCullRootParameters.PushBack(clusterRangeParameter);
-			context.m_clusterCullTableRootID = (UINT)drawCullRootParameters.GetSize();
+			descriptorContext.mClusterCullParameterID = (UINT)drawCullRootParameters.GetSize();
 
 			D3D12_ROOT_PARAMETER clusterContantParameter{};
 			CreateRootParameterPushConstants(clusterContantParameter, BLIT_HLSL_CLUSTER_WORK_COUNT_CONSTANT_REGISTER, 0, CE_CULL_WORK_COUNT_CONSTANT_32_BIT_COUNT,
 				D3D12_SHADER_VISIBILITY_ALL);
 			drawCullRootParameters.PushBack(clusterContantParameter);
-			context.m_clusterCullWorkRootID = (UINT)drawCullRootParameters.GetSize();
+			descriptorContext.mClusterCullRootConstantID = (UINT)drawCullRootParameters.GetSize();
 		}
 
 		// DRAW CULL ROOT
@@ -481,6 +498,12 @@ namespace BlitzenDX12
 				BLIT_ERROR("%s: Failed to create clusterCullBatch.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
+		}
+
+		if (!CreateBMPRDrivenCollisionComputeShaders(device, context))
+		{
+			BLIT_ERROR("%s: Failed to create Collision Compute Shaders", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
 		}
 
 #if !defined(NDEBUG)
@@ -785,36 +808,29 @@ namespace BlitzenDX12
 			}
 		}
 
-		if constexpr (BLITGCNarrowPhaseCollisionBumper)
+		if constexpr (BLITGCNarrowPhaseCollisionBumper || BLITGCBroadPhaseCollisionBumper)
 		{
-			if (!CreateSSBO<BlitzenEngine::ColliderAMaxRad>(device, resources.UAVColliderAMaxRad, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			if (!CreateSSBO<BlitzenEngine::ColliderAMaxRad>(device, resources.SRVColliderAMaxRad, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT))
 			{
 				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule A, AABB Max - float: Capsule Radius, Sphere Radius", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
-		}
-		else if constexpr (BLITGCBroadPhaseCollisionBumper)
-		{
-			if (!CreateSSBO<BlitzenEngine::ColliderAMaxRad>(device, resources.UAVColliderAMaxRad, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-			{
-				BLIT_ERROR("%s: Failed to create world variable collider 16-byte union data (float3: Capsule A, AABB Max - float: Capsule Radius, Sphere Radius", BlitzenCore::CE_DX12_SYSTEM_NAME);
-				return 0;
-			}
-		}
 
-		if constexpr (BLITGCNarrowPhaseCollisionBumper)
-		{
-			if (!CreateSSBO<BlitzenEngine::ColliderBMinType>(device, resources.UAVColliderBMinType, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			if (!CreateSSBO<BlitzenEngine::ColliderBMinType>(device, resources.SRVColliderBMinType, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT))
 			{
 				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule B, AABB Min - float(as uint): Collider type)", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
-		}
-		else if constexpr (BLITGCBroadPhaseCollisionBumper)
-		{
-			if (!CreateSSBO<BlitzenEngine::ColliderBMinType>(device, resources.UAVColliderBMinType, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+
+			if (!CreateSSBO<BlitzenEngine::ColliderAMaxRad>(device, resources.UAVTransformColliderAMaxRad, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
 			{
-				BLIT_ERROR("%s: Failed to create world variable collider 16-byte union data (float3: Capsule B, AABB Min - float(as uint): Collider type)", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule A, AABB Max - float: Capsule Radius, Sphere Radius", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (!CreateSSBO<BlitzenEngine::ColliderBMinType>(device, resources.UAVTransformColliderBMinType, BLIT_MAX_WORLD_VARIABLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+			{
+				BLIT_ERROR("%s: Failed to create collider 16-byte union data (float3: Capsule B, AABB Min - float(as uint): Collider type)", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
 		}

@@ -213,7 +213,7 @@ namespace BlitzenEngine
 				commandList->ResourceBarrier(1, &dispatchResetBarrier);
 
 				// Descriptors
-				commandList->SetComputeRootDescriptorTable(pipelineContext.m_clusterCullTableRootID, descriptorContext.m_cullClusterTableHandle[frame]);
+				commandList->SetComputeRootDescriptorTable(descriptorContext.mClusterCullParameterID, descriptorContext.mClusterCullTableHandle[frame]);
 
 				// Pipeline
 				commandList->SetPipelineState(pipelineContext.m_clusterCullCmdResetPso.Get());
@@ -234,7 +234,7 @@ namespace BlitzenEngine
 
 				// Pipelines and constants
 				commandList->SetPipelineState(pipelineContext.m_clusterCullDispatchPso.Get());
-				commandList->SetComputeRoot32BitConstant(pipelineContext.m_clusterCullWorkRootID, cullContext.m_workCount, 0);
+				commandList->SetComputeRoot32BitConstant(descriptorContext.mClusterCullRootConstantID, cullContext.m_workCount, 0);
 
 				// CULL DRAWS
 				commandList->Dispatch(BlitML::GetComputeShaderGroupSize(cullContext.m_workCount, 64), 1, 1);
@@ -268,7 +268,7 @@ namespace BlitzenEngine
 					D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 				commandList->ResourceBarrier(1, &resetBarrier);
 
-				commandList->SetComputeRootDescriptorTable(pipelineContext.m_clusterCullTableRootID, descriptorContext.m_cullClusterTableHandle[frame]);
+				commandList->SetComputeRootDescriptorTable(descriptorContext.mClusterCullParameterID, descriptorContext.mClusterCullTableHandle[frame]);
 
 				commandList->SetPipelineState(pipelineContext.m_opaqueDynamicCountResetPso.Get());
 

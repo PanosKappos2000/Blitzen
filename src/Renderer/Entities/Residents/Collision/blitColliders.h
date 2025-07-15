@@ -17,6 +17,17 @@ namespace BlitzenEngine
     };
     static_assert(sizeof(Collider) % 16 == 0);
 
+	struct COLLISION_RESOLVE_CONTEXT
+	{
+		WVTransform* WVTransformArr{ nullptr };
+		uint32_t mTransformCount{ 0 };
+		ColliderAMaxRad* MColliderAMaxRadArr{ nullptr };
+		ColliderBMinType* MColliderBMinTypeArr{ nullptr };
+		uint32_t mColliderCount{ 0 };
+		CollisionMessage* MBMPRReadyMessagesArr{ nullptr };
+		uint32_t mBMPRReadyMessagesCounter{ 0 };
+	};
+
 	class ColliderContainer
 	{
 	public:
@@ -38,5 +49,7 @@ namespace BlitzenEngine
 		void AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, RENDER_OBJECT_TYPE objectType);
 
 		bool LogResidentForCollision(Resident resident, SplitColliderDataPair& data, WVColliderResponse behavior = {BlitzenCollisionFlagsBlock, BlitzenCollisionFlagsBlock});
+
+		void DispatchCollisionResolve(CollisionGrid* pGrid, const COLLISION_RESOLVE_CONTEXT& context);
 	};
 }

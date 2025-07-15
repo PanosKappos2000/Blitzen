@@ -302,7 +302,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
                             BLIT_GDEV_EDT # Activates standard main
-                            BLIT_ASSERTIONS_ENABLED
+                            BLIT_ASSERTIONS_ENABLED # Better not close this
                             BLIT_CONSOLE_LOGGER
                             BLIT_CPU_SIMD_SAVIOR
 
