@@ -436,15 +436,11 @@ namespace BlitzenCore
 
     static BlitEventType OnMouseButtonClickTest(BlitzenEngine::Resident resident, float deltaTime, int16_t mouseX, int16_t mouseY)
     {
-        BLIT_INFO("Mouse button clicked at %d, %d", mouseX, mouseY);
-
         return BlitEventType::MaxTypes;
     }
 
     static BlitEventType OnMouseButtonReleaseTest(BlitzenEngine::Resident resident, float deltaTime, int16_t mouseX, int16_t mouseY)
     {
-        BLIT_INFO("Mouse button released at %d, %d", mouseX, mouseY);
-
         return BlitEventType::MaxTypes;
     }
 

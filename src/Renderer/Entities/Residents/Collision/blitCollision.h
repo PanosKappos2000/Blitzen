@@ -58,7 +58,7 @@ namespace BlitzenEngine
 
 		void BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(WVColliderResponse* colliderArr);
 
-		void AllocStatics(uint32_t count, uint32_t* data);
+		void AllocStatics(uint32_t count);
 
 		void AllocDynamicIndices();
 

@@ -1138,8 +1138,8 @@ namespace BlitzenVulkan
         VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
         VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
 
-        newSwapchain.m_extent.width = BlitML::Clamp(newSwapchain.m_extent.width, maxExtent.width, minExtent.width);
-        newSwapchain.m_extent.height = BlitML::Clamp(newSwapchain.m_extent.height, maxExtent.height, minExtent.height);
+        newSwapchain.m_extent.width = BlitML::UClamp(newSwapchain.m_extent.width, maxExtent.width, minExtent.width);
+        newSwapchain.m_extent.height = BlitML::UClamp(newSwapchain.m_extent.height, maxExtent.height, minExtent.height);
 
         info.imageExtent = newSwapchain.m_extent;
 

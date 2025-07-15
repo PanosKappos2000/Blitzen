@@ -156,6 +156,12 @@ namespace BlitML
         inline vec4(const vec4& copy) : x{copy.x}, y{copy.y}, z{copy.z}, w{copy.w} {} 
 
         inline vec3 xyz() const { return vec3(x, y, z); }
+        inline void WriteXYZ(BlitML::vec3 vector)
+        {
+            this->x = vector.x;
+            this->y = vector.y;
+            this->z = vector.z;
+        }
     };
 
     inline vec4 operator + (const vec4& v1, const vec4 v2) { return vec4(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z, v1.w + v2.w); }

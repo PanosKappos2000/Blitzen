@@ -13,12 +13,12 @@
 
 namespace BlitML
 {
-    constexpr float blit_pi = 3.14159265358979323846f;
-    constexpr float blit_pi2 = 2.f * blit_pi;
-    constexpr float blit_halfPi = 0.5f * blit_pi;
-    constexpr float blit_quarterPi = 0.25f * blit_pi;
-    constexpr float blit_oneOverPi = 1.f / blit_pi;
-    constexpr float blit_oneOverTwoPi = 1.f / blit_pi2;
+    constexpr float GCBlitPi = 3.14159265358979323846f;
+    constexpr float blit_pi2 = 2.f * GCBlitPi;
+    constexpr float blit_halfPi = 0.5f * GCBlitPi;
+    constexpr float blit_quarterPi = 0.25f * GCBlitPi;
+    constexpr float blit_oneOverPi = 1.f / GCBlitPi;
+    constexpr float blit_oneOverTwoPi = 1.f / GCBlitPi;
 
 
     constexpr float blit_sqrtTwo = 1.41421356237309504880f;
@@ -27,8 +27,8 @@ namespace BlitML
     constexpr float blit_sqrtOneOverThree = 0.57735026918962576450f;
 
 
-    constexpr float ce_degreesToRadiansMultiplier = blit_pi / 180.f;
-    constexpr float ce_radiansToDegreesMultiplier = 180.f / blit_pi;
+    constexpr float GCDegreesToRadiansMultipler = GCBlitPi / 180.f;
+    constexpr float GCRadiansToDegreesMultiplier = 180.f / GCBlitPi;
 
     /* ------------------------------------------
         General math functions
@@ -63,9 +63,19 @@ namespace BlitML
         return first < second ? first : second;
     }
 
-    inline uint32_t Clamp(uint32_t initial, uint32_t upper, uint32_t lower) 
+    inline float FClamp(float initial, float lower, float upper)
+    {
+        return lower > initial ? lower : upper < initial ? upper : initial;
+    }
+
+    inline uint32_t UClamp(uint32_t initial, uint32_t upper, uint32_t lower) 
     { 
         return (initial >= upper) ? upper : (initial <= lower) ? lower : initial; 
+    }
+
+    inline float FFloor(float toFloor)
+    {
+        return (float)floor(toFloor);
     }
 
     inline uint8_t IsPowerOf2(uint64_t value) { return (value != 0) && ((value & (value - 1)) == 0); }
@@ -746,7 +756,6 @@ namespace BlitML
         return vec + 2.f * Cross(qt.xyz(), Cross(qt.xyz(), vec) + qt.w * vec);
     }
 
-    // Could make these constexpr functions, but there might be some functionality with the field of view in the future that does not allow them to be
-    inline float Radians(float degrees) { return degrees * ce_degreesToRadiansMultiplier; }  
-    inline float Degrees(float radians) {return radians * ce_radiansToDegreesMultiplier; }
+    inline float Radians(float degrees) { return degrees * GCDegreesToRadiansMultipler; }  
+    inline float Degrees(float radians) {return radians * GCRadiansToDegreesMultiplier; }
 }

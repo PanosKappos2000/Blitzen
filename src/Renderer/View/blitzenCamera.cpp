@@ -116,6 +116,24 @@ namespace BlitzenEngine
 
     void UpdateCamera(Camera& camera, float deltaTime)
     {
+        constexpr float SavePitch = 89.f;
+
+        float yawMovement = BlitML::Radians(camera.transformData.yawMovement * deltaTime);
+        float pitchMovement = BlitML::Radians(camera.transformData.pitchMovement * deltaTime);
+
+        camera.transformData.yawRotation += yawMovement;
+        camera.transformData.pitchRotation += pitchMovement;
+
+        camera.transformData.pitchRotation = BlitML::FClamp(camera.transformData.pitchRotation, BlitML::Radians(-SavePitch), BlitML::Radians(SavePitch));
+
+        // New yaw pitch quat and rotation update
+        auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0.f, -1.f, 0.f), camera.transformData.yawRotation, 0);
+        auto pitchOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(-1.f, 0.f, 0.f), camera.transformData.pitchRotation, 0);
+        BlitzenEngine::CreateRotationMatrixFromPitchAndYawQuaternion(pitchOrientation, yawOrientation, camera.transformData.rotation);
+
+        camera.transformData.yawMovement = 0.f;
+        camera.transformData.pitchMovement = 0.f;
+
         camera.transformData.translation = BlitML::Translate(camera.viewData.position);
 
         // Recreation of view matrix

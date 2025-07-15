@@ -48,7 +48,8 @@ namespace BlitzenEngine
 		// Adds bounding sphere for render object. If the render object is static, the sphere is pre transformed
 		void AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, RENDER_OBJECT_TYPE objectType);
 
-		bool LogResidentForCollision(Resident resident, SplitColliderDataPair& data, WVColliderResponse behavior = {BlitzenCollisionFlagsBlock, BlitzenCollisionFlagsBlock});
+		bool LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform,
+			WVColliderResponse behavior = {BlitzenCollisionFlagsBlock, BlitzenCollisionFlagsBlock});
 
 		void DispatchCollisionResolve(CollisionGrid* pGrid, const COLLISION_RESOLVE_CONTEXT& context);
 	};

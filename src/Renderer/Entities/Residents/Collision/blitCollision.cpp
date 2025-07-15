@@ -46,28 +46,38 @@ namespace BlitzenEngine
         uint32_t outOfBounds = 0;
         uint32_t badLogic = 0;
 
-        // Array of arrays.
-        // Mother array represents all the cells
-        // Children arrays represent the indices that each cell holds
-        BlitCL::DynamicArray<BlitCL::DynamicArray<uint32_t>> colliderIndices{ CE_COLLISION_GRID_CELL_COUNT, {} };
-        
+        // Temporary array that holds the cell index for each object inside the grid after the first pass
+        BlitCL::DynamicArray<int32_t> gridCellIndices{ BLIT_MAX_WORLD_RENDERS, -1};
+        uint32_t validColliderCount = 0;
         for (uint32_t i = 0; i < count; ++i)
         {
+            // Gets true index using offset, and accesses position
             uint32_t IDX = i + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
             BlitML::float3 position = transformArr[IDX].pos;
 
-            // Residents that are not inside the grid, cannot be placed inside a cell.
-            if ((int32_t)position.x > m_maxBounds || (int32_t)position.x < m_minBounds || (int32_t)position.z > m_maxBounds || (int32_t)position.z < m_minBounds)
+            // Rejects residents outside of the grid bounds. 
+            // In the future such residents should not appear or should be rare edge cases that get handled in an appropriate manner.
+            // For example the could be moved to a different grid and warn the user that this happened.
+            if (position.x > (float)m_maxBounds || position.x < (float)m_minBounds || position.z > (float)m_maxBounds || position.z < (float)m_minBounds)
             {
                 outOfBounds++;
                 continue;
             }
 
-            // Moves world coordinates to [0, GRID_EXTENT]
+            // Promotes the object's position to grid coordinates [0, GRID_EXTENT]. 
+            // This step is done so that the resulting index is between 0 and cell count.
+            // The regular transform might give negative values or values starting from a number larger than 0.
             position -= BlitML::float3(float(m_minBounds));
 
-            // Sanity. The first check should have removed such objects. If not, I am doing something wrong
-            BLIT_ASSERT_MESSAGE(position > 0.f || position < GCCollisionGridExtent, "Something went wrong with collision grid calculations");
+            if (position.x == GCCollisionGridExtent || position.z == (float)GCCollisionGridExtent)
+            {
+                BLIT_INFO("HIT");
+            }
+
+            // Sanity. The first check should have removed such objects. If not, I am doing something wrong.
+            // I might leave it here indefinitely as this is the static function and it should not be called at runtime
+            BLIT_ASSERT_MESSAGE(position.x > 0.f && position.z > 0.f && position.x < (float)GCCollisionGridExtent && position.z < (float)GCCollisionGridExtent, 
+                "Something went wrong with collision grid calculations");
 
             // Creates an index for each axis based on resident position.
             // The id should not be above the cell's extent
@@ -86,36 +96,41 @@ namespace BlitzenEngine
             }
 
             // Places index into collision cell
-            colliderIndices[cellIndex].PushBack(IDX);
+            gridCellIndices[IDX] = cellIndex;
             mCellOffsets[cellIndex].staticColliderCount++;
+            validColliderCount++;
         }
 
-        uint32_t offset = 0;
-        uint32_t cellIndex = 0;
-        uint32_t finalCount = 0;
-        // Flat array translator for the 2D dynamic array from before
-        BlitCL::DynamicArray<uint32_t> inLineIndices{ BLIT_MAX_WORLD_RESIDENTS };
-
-        for (auto& array : colliderIndices)
+        // Second pass saves offset and resets count so that indices can be placed properly after
+        uint32_t globalOffset = 0;
+        for (auto& cell : mCellOffsets)
         {
-            // For each array saves static offset and updates offset with the size of the array
-            mCellOffsets[cellIndex++].staticCollidersOffset = offset;
-            offset += uint32_t(array.GetSize()); 
+            cell.staticCollidersOffset = globalOffset;
+            globalOffset += cell.staticColliderCount;
+            cell.staticColliderCount = 0;
         }
 
-        // The offset will be the full count of all objects in the grid by the end of the above loop
-        // It's used to allocate space for all indices
-        AllocStatics(offset, inLineIndices.Data());
-
-        // Copies the dynamic array to the raw pointer style array
-        offset = 0;
-        for (auto& array : colliderIndices)
+        // Allocates the collider index array if it has not been allocated already
+        if (m_colliderIndices == nullptr)
         {
-            BlitzenCore::MANUAL_COPY(&m_colliderIndices[offset], array.Data(), array.GetSize() * sizeof(uint32_t));
-            offset += uint32_t(array.GetSize());
+            AllocStatics(validColliderCount);
         }
 
-        BLIT_ASSERT(mCellOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].staticCollidersOffset + mCellOffsets[CE_COLLISION_GRID_CELL_COUNT - 1].staticColliderCount == m_colliderIndicesTotal);
+        // Goes through static objects again. 
+        // This time it uses the temporary array to get the cell index for simplicity.
+        // The collider count is set again
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            uint32_t IDX = i + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
+            if (gridCellIndices[IDX] == -1)
+            {
+                continue;
+            }
+            auto& cell = mCellOffsets[gridCellIndices[IDX]];
+
+            m_colliderIndices[cell.staticCollidersOffset + cell.staticColliderCount] = IDX;
+            cell.staticColliderCount++;
+        }
 
         BLIT_INFO("%s: Ouf of collsion grid bounds object count: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, outOfBounds);
         BLIT_INFO("%s: Bad grid index calculation: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, badLogic);
@@ -184,7 +199,7 @@ namespace BlitzenEngine
         }
     }
 
-    void CollisionGrid::AllocStatics(uint32_t count, uint32_t* data)
+    void CollisionGrid::AllocStatics(uint32_t count)
     {
         BLIT_ASSERT(m_colliderIndices == nullptr);
 
@@ -205,7 +220,7 @@ namespace BlitzenEngine
 		}
     }
 
-    bool ColliderContainer::LogResidentForCollision(Resident resident, SplitColliderDataPair& data, WVColliderResponse behavior)
+    bool ColliderContainer::LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform, WVColliderResponse behavior)
     {
         if (MWorldColliderCount >= CE_MAX_WORLD_COLLIDER_COUNT)
         {
@@ -213,22 +228,33 @@ namespace BlitzenEngine
             return false;
         }
 
-        BlitzenCore::BlitMemCopy(&MColliderAMaxRad[resident], &data.AMaxRad, sizeof(BlitML::float4));
-        BlitzenCore::BlitMemCopy(&MColliderBMinType[resident], &data.BMinType, sizeof(BlitML::float4));
+        auto& colliderAMaxRad = MColliderAMaxRad[resident];
+        auto& colliderBMinType = MColliderBMinType[resident];
 
+        colliderAMaxRad.data.WriteXYZ(data.AMaxRad.data.xyz());
+        colliderAMaxRad.data.w = data.AMaxRad.data.w;
+
+        colliderBMinType.data.WriteXYZ(data.BMinType.data.xyz());
+        colliderBMinType.data.w = data.BMinType.data.w;
+
+        // Bake the transform to the collider for static objects
         if (IS_RESIDENT_STATIC(resident))
         {
-            if ((uint32_t)data.BMinType.data.w == BlitzenColliderTypeSphere)
+            if (colliderBMinType.data.w == BlitzenColliderTypeSphere)
             {
-                // transform sphere
+                colliderAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                colliderAMaxRad.data.w *= residentTransform.scale;
             }
-            else if ((uint32_t)data.BMinType.data.w == BlitzenColliderTypeAABB)
+            else if (colliderBMinType.data.w == BlitzenColliderTypeAABB)
             {
-                // tranform AABB
+                colliderAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                colliderBMinType.data.WriteXYZ(BlitML::RotateQuat(colliderBMinType.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
             }
-            else if ((uint32_t)data.BMinType.data.w == BlitzenColliderTypeCapsule)
+            else if (colliderBMinType.data.w == BlitzenColliderTypeCapsule)
             {
-                // transform Capsule
+                colliderAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                colliderBMinType.data.WriteXYZ(BlitML::RotateQuat(colliderBMinType.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                colliderAMaxRad.data.w *= residentTransform.scale;
             }
         }
         else

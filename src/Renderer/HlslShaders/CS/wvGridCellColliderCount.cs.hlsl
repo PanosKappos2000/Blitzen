@@ -23,7 +23,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
 
     // Do not test residents outside of this grid
     // This check might be removed later as objects outside the grid should not be loaded at all
-    if ((int) position.x > maxBounds || (int) position.x < minBounds || (int) position.z > maxBounds || (int) position.z < minBounds)
+    if (position.x > (float) maxBounds || position.x < (float) minBounds || position.z > (float) maxBounds || position.z < (float) minBounds)
     {
         return;
     }

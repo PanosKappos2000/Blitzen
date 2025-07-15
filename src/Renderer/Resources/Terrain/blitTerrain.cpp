@@ -1,8 +1,27 @@
 #include "blitTerrain.h"
 #include "Core/blitMemory.h"
+#include "Core/DbLog/blitAssert.h"
+#include "BlitzenMathLibrary/blitML.h"
 
 namespace BlitzenEngine
 {
+	inline TerrainContainer* GSTrerrainContainer = nullptr;
+
+	void ResidentSnapDown(BlitzenEngine::MeshTransform& transform, float radius)
+	{
+		if (transform.pos.x >= 0 && transform.pos.x < BLIT_TERRAIN_GRID_SIZE_TEMP && transform.pos.z >= 0 && transform.pos.z < BLIT_TERRAIN_GRID_SIZE_TEMP)
+		{
+			int32_t gridX = (int32_t)BlitML::FFloor(transform.pos.x);
+			int32_t gridZ = (int32_t)BlitML::FFloor(transform.pos.z);
+			int heightDataIndex = gridX + gridZ * BLIT_TERRAIN_GRID_SIZE_TEMP;
+			transform.pos.y = GSTrerrainContainer->m_heightBufferData[heightDataIndex] + radius * transform.scale;
+		}
+		else
+		{
+			transform.pos.y = BLIT_TERRAIN_HEIGHT_TEST_VALUE + radius * transform.scale;
+		}
+	}
+
 	bool TerrainContainer::AppendVertices(BlitzenEngine::VtxPos* vertices, uint32_t vertexCount)
 	{
 		if(vertexCount == 0 || vertices == nullptr || terrainVertexCount + vertexCount > CE_MAX_TERRAIN_VERTICES || terrainVertices == nullptr)
@@ -65,5 +84,12 @@ namespace BlitzenEngine
 	TerrainContainer::~TerrainContainer()
 	{
 		CLEAR();
+	}
+
+	void InitializeTerrainContainerPtr(TerrainContainer* ptr)
+	{
+		BLIT_ASSERT_MESSAGE(GSTrerrainContainer == nullptr, "Tried to reinitialize global terrain pointer");
+
+		GSTrerrainContainer = ptr;
 	}
 }

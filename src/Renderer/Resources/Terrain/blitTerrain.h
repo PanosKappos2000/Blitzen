@@ -30,6 +30,10 @@ namespace BlitzenEngine
 		void CLEAR();
 		~TerrainContainer();
 	};
+
+	void InitializeTerrainContainerPtr(TerrainContainer* ptr);
+
+	void ResidentSnapDown(BlitzenEngine::MeshTransform& transform, float radius);
 }
 
 namespace BlitGenerator

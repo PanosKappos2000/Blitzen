@@ -7,6 +7,7 @@
 #include "BlitCL/blitDynamicArr.h"
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
 #include "BlitzenMathLibrary/blitMLSIMD.h"
+#include "Renderer/Resources/Terrain/blitTerrain.h"
 
 namespace BlitzenEngine
 {
@@ -40,6 +41,8 @@ namespace BlitzenEngine
 		// Gets the visibility bounding sphere. Will get its transform baked for static objects
 		auto bounds{ GetVisibilityBoundingSphereFromMeshPrimitive(ctx.m_resourceID) };
 
+		//ResidentSnapDown(m_transforms.m_transforms[transformID], bounds.m_radius);
+
 		// Chooses render object type
 		RENDER_OBJECT_CREATE_CONTEXT renderContext{};
 		renderContext.m_type = ctx.m_isMoveable ? RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC : RENDER_OBJECT_TYPE::OPAQUE_STATIC;
@@ -70,7 +73,7 @@ namespace BlitzenEngine
 		if (!(ctx.m_flags & RESIDENT_CREATE_NO_COLLISION))
 		{
 			auto& collider = GetColliderFromMeshPrimitive(ctx.m_resourceID);
-			if (!MColliders.LogResidentForCollision(transformID, collider))
+			if (!MColliders.LogResidentForCollision(transformID, collider, m_transforms.m_transforms[transformID]))
 			{
 				return RESIDENT_CREATE_RES::COLLIDER_CREATION_FAILED;
 			}

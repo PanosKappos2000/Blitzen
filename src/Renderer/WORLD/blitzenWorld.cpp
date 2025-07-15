@@ -31,8 +31,8 @@ namespace BlitzenWorld
         float yaw = movementX > 0.f ? 0.5f : movementX < 0.f ? -0.5f : 0.f;
         float pitch = movementY > 0.f ? 0.5f : movementY < 0.f ? -0.5f : 0.f;
 
-        camera.transformData.yawMovement = yaw * 2.5f;
-        camera.transformData.pitchMovement = pitch * 2.5f;
+        camera.transformData.yawMovement = yaw * 100.f;
+        camera.transformData.pitchMovement = pitch * 100.f;
     }
 
     void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen)
@@ -221,6 +221,7 @@ namespace BlitzenWorld
         pResources->m_terrainContainer.ALLOC();
 
         BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
+        BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
 
         // Success
         return true;
@@ -287,6 +288,16 @@ namespace BlitzenWorld
         sceneCtx.m_sceneArr = scenes.Data();
         sceneCtx.m_sceneCount = (uint32_t)scenes.GetSize();
 
+        BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pRenderingResources->m_terrainContainer));
+
+        //BlitzenEngine::MESH_PRIMITIVE_CREATE_CONTEXT meshPrimitiveCtx{};
+        //meshPrimitiveCtx.m_indexCount = pRenderingResources->m_terrainContainer.terrainIndexCount;
+        //meshPrimitiveCtx.m_indices = pRenderingResources->m_terrainContainer.terrainIndices;
+        //meshPrimitiveCtx.m_materialID = 0;
+        //meshPrimitiveCtx.m_vertexCount = pRenderingResources->m_terrainContainer.terrainVertexCount;
+        //meshPrimitiveCtx.m_vertices = pRenderingResources->m_terrainContainer.terrainVertices;
+        //pRenderingResources->m_meshContext.m_meshPrimitives.GenerateSurface(pRenderingResources->m_meshContext.m_triangles, pRenderingResources->m_meshContext.m_clusters, meshPrimitiveCtx);
+
         auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx, loadingContextMesh) };
 
         BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
@@ -304,16 +315,6 @@ namespace BlitzenWorld
         pWORLD->m_collisionGrid.DefineGrid(0);
         pWORLD->m_collisionGrid.CreateCells();
         pWORLD->m_collisionGrid.PlaceStatics(pWORLD->m_residents.m_transforms.m_transforms, pWORLD->m_residents.m_transforms.m_staticTransformCount);
-
-        BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pRenderingResources->m_terrainContainer));
-
-        //BlitzenEngine::MESH_PRIMITIVE_CREATE_CONTEXT meshPrimitiveCtx{};
-        //meshPrimitiveCtx.m_indexCount = pRenderingResources->m_terrainContainer.terrainIndexCount;
-        //meshPrimitiveCtx.m_indices = pRenderingResources->m_terrainContainer.terrainIndices;
-        //meshPrimitiveCtx.m_materialID = 0;
-        //meshPrimitiveCtx.m_vertexCount = pRenderingResources->m_terrainContainer.terrainVertexCount;
-        //meshPrimitiveCtx.m_vertices = pRenderingResources->m_terrainContainer.terrainVertices;
-        //pRenderingResources->m_meshContext.m_meshPrimitives.GenerateSurface(pRenderingResources->m_meshContext.m_triangles, pRenderingResources->m_meshContext.m_clusters, meshPrimitiveCtx);
 
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 
