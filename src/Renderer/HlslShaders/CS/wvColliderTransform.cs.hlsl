@@ -13,15 +13,14 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
         return;
     }
     
-    float type = ssbo_ColliderAMaxRad[objID].w;
+    float type = ssbo_ColliderBMinType[objID].w;
     if (type == BlitzenColliderTypeSphere)
     {
         rwssbo_TransformedColliderAMaxRad[objID].xyz = RotateQuat(ssbo_ColliderAMaxRad[objID].xyz, ssbo_Transforms[objID].orientation) * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;
-        rwssbo_TransformedColliderAMaxRad[objID].w *= ssbo_Transforms[objID].scale;
+        rwssbo_TransformedColliderAMaxRad[objID].w = ssbo_ColliderAMaxRad[objID].w * ssbo_Transforms[objID].scale;
     }
     else if (type == BlitzenColliderTypeAABB)
     {
-    
         rwssbo_TransformedColliderAMaxRad[objID].xyz = RotateQuat(ssbo_ColliderAMaxRad[objID].xyz, ssbo_Transforms[objID].orientation) * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;
         rwssbo_TransformedColliderBMinType[objID].xyz = RotateQuat(ssbo_ColliderBMinType[objID].xyz, ssbo_Transforms[objID].orientation) * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;
     }
@@ -29,6 +28,6 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         rwssbo_TransformedColliderAMaxRad[objID].xyz = RotateQuat(ssbo_ColliderAMaxRad[objID].xyz, ssbo_Transforms[objID].orientation) * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;
         rwssbo_TransformedColliderBMinType[objID].xyz = RotateQuat(ssbo_ColliderBMinType[objID].xyz, ssbo_Transforms[objID].orientation) * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;
-        rwssbo_TransformedColliderAMaxRad[objID].w *= ssbo_Transforms[objID].scale;
+        rwssbo_TransformedColliderAMaxRad[objID].w = ssbo_ColliderAMaxRad[objID].w * ssbo_Transforms[objID].scale;
     }
 }
