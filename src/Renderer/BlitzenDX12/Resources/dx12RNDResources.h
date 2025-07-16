@@ -25,13 +25,36 @@ namespace BlitzenDX12
 
     uint8_t AddBlitzenLogoDescriptor(ID3D12Device* device, ReadOnlyResources& readOnlies, DescriptorContext& context);
 
-    // Puts a readback buffer on copy dest for common. Introduces safety. Ideal for one time transitions on readback buffers, which is the proper design anyway
+    // Puts a readback buffer on copy dest from common. Mostly for safety checks. Ideal for one time transitions on readback buffers, which is the proper design anyway
     template<typename DATA>
     void PutReadBackBufferOnFinalState(READBACK_BUFFER<DATA>& readback, D3D12_RESOURCE_BARRIER* barrier, UINT barrierIDX, UINT64 barrierArrSize)
     {
         BLIT_RUNTIME_TEST_CHECK_ASSERT(readback.IsValid() && barrierArrSize > barrierIDX);
 
         CreateResourcesTransitionBarrier(barrier[barrierIDX], readback.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+    }
+
+    // Puts a SSBO to copy dest from common. Mostly for safety checks. 
+    inline void PutSSBOBufferToCopyDestState(SSBO& ssbo, D3D12_RESOURCE_BARRIER* barrierArr, UINT barrierIDX, UINT64 barrierArrSize)
+    {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(ssbo.IsValid() && barrierArrSize > barrierIDX);
+
+        CreateResourcesTransitionBarrier(barrierArr[barrierIDX], ssbo.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+    }
+
+    inline void ChangeSSBOStateWithValidation(SSBO& ssbo, D3D12_RESOURCE_BARRIER* barrierArr, UINT barrierIDX, UINT64 barrierArrSize, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+    {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(ssbo.IsValid() && barrierArrSize > barrierIDX);
+
+        CreateResourcesTransitionBarrier(barrierArr[barrierIDX], ssbo.buffer.Get(), before, after);
+    }
+
+    template<typename DATA>
+    void PutStagingBufferToCopySrcState(STAGING<DATA> staging, D3D12_RESOURCE_BARRIER* barrierArr, UINT barrierIDX, UINT64 barrierArrSize)
+    {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(staging.IsValid() && barrierArrSize > barrierIDX);
+
+        CreateResourcesTransitionBarrier(barrierArr[barrierIDX], staging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
     }
 
     template<typename DATA>

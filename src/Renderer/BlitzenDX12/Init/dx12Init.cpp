@@ -193,7 +193,7 @@ namespace BlitzenDX12
 		}
 		else if constexpr (BLITGCBroadPhaseCollisionBumper)
 		{
-			descriptorContext.mCollisionResolveParameterID = (UINT)drawCullRootParameters.GetSize();
+			descriptorContext.mCollisionSupportParameterID = (UINT)drawCullRootParameters.GetSize();
 
 			D3D12_DESCRIPTOR_RANGE collisionSupportRootParameterRange[GCCollisionSupportRangeCount]{};
 			CreateDescriptorRange(collisionSupportRootParameterRange[GCCollisionSupportGridCellRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_GRID_CELLS_REGISTER);
@@ -207,6 +207,8 @@ namespace BlitzenDX12
 			D3D12_ROOT_PARAMETER collisionSupportSingleRootParameter{};
 			CreateRootParameterDescriptorTable(collisionSupportSingleRootParameter, collisionSupportRootParameterRange, GCCollisionSupportRangeCount, D3D12_SHADER_VISIBILITY_ALL);
 			drawCullRootParameters.PushBack(collisionSupportSingleRootParameter);
+
+			descriptorContext.mCollisionSupportRootConstantID = (UINT)drawCullRootParameters.GetSize();
 
 			D3D12_ROOT_PARAMETER collisionSupportWorkCountParameter{};
 			CreateRootParameterPushConstants(collisionSupportWorkCountParameter, BLIT_HLSL_BMPR_COLLISION_WORK_COUNT_REGISTER, 0, GCBMPRCollisionWorkCountContant32BitCount, D3D12_SHADER_VISIBILITY_ALL);

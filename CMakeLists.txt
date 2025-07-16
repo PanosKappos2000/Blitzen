@@ -246,7 +246,7 @@ add_executable(BlitzenEngine
                 
                 "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
                 "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/Renderer/BlitzenDX12/Cull/dx12PhysicsSupport.cpp")
+                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/Renderer/BlitzenDX12/Cull/dx12PhysicsSupport.cpp" "src/Renderer/WORLD/blitWorldReq.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

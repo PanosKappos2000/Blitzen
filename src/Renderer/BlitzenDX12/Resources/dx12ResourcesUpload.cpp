@@ -6,6 +6,7 @@
 #include "BlitCL/blitDynamicArr.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Renderer/WORLD/blitWorldReq.h"
 
 namespace BlitzenDX12
 {
@@ -114,7 +115,7 @@ namespace BlitzenDX12
 	} 
 
 	uint8_t UploadResourcesToBuffers(ID3D12Device* device, const BlitzenEngine::DrawContext& drawContext, ReadOnlyResources& roResources, ReadWriteResources* rwResourcesArr, 
-		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh)
+		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh, LoadingContextRenderObjects& loadingContextObj)
 	{
 
 		/******************************************************************************************************
@@ -405,6 +406,17 @@ namespace BlitzenDX12
 			copyDestBarriers.PushBack(clusterIdxBarrier);
 		}
 
+		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		{
+			D3D12_RESOURCE_BARRIER colliderAMaxRadBufferBarrier{};
+			PutSSBOBufferToCopyDestState(cpuLogicBuffers.SRVColliderAMaxRad, &colliderAMaxRadBufferBarrier, 0, 1);
+			copyDestBarriers.PushBack(colliderAMaxRadBufferBarrier);
+
+			D3D12_RESOURCE_BARRIER colliderBMinTypeBufferBarrier{};
+			PutSSBOBufferToCopyDestState(cpuLogicBuffers.SRVColliderBMinType, &colliderBMinTypeBufferBarrier, 0, 1);
+			copyDestBarriers.PushBack(colliderBMinTypeBufferBarrier);
+		}
+
 		// execute
 		roResources.BUFFER_COUNT = (UINT(copyDestBarriers.GetSize()));
 		cmdContext.m_copyCmdList->ResourceBarrier(roResources.BUFFER_COUNT, copyDestBarriers.Data());
@@ -473,6 +485,17 @@ namespace BlitzenDX12
 			copySourceBarriers.PushBack(clusterIdxsStagingBarrier);
 		}
 
+		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		{
+			D3D12_RESOURCE_BARRIER colliderAMaxRadBarrier{};
+			PutStagingBufferToCopySrcState(loadingContextObj.mColliderAMaxRadStaging, &colliderAMaxRadBarrier, 0, 1);
+			copySourceBarriers.PushBack(colliderAMaxRadBarrier);
+
+			D3D12_RESOURCE_BARRIER colliderBMinTypeBarrier{};
+			PutStagingBufferToCopySrcState(loadingContextObj.mColliderBMinTypeStaging, &colliderBMinTypeBarrier, 0, 1);
+			copySourceBarriers.PushBack(colliderBMinTypeBarrier);
+		}
+
 		if (copySourceBarriers.GetSize() != roResources.BUFFER_COUNT)
 		{
 			BLIT_ERROR("SRC and DEST read only buffer count difference");
@@ -513,6 +536,14 @@ namespace BlitzenDX12
 			cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_clusterIdxBuffer.m_buffer.Get(), 0, clusterIdxStaging.m_buffer.Get(), 0, clusterIdxStaging.m_dataSize);
 		}
 
+		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		{
+			cmdContext.m_copyCmdList->CopyBufferRegion(cpuLogicBuffers.SRVColliderAMaxRad.buffer.Get(), 0, loadingContextObj.mColliderAMaxRadStaging.m_buffer.Get(), 0,
+				sizeof(BlitzenEngine::ColliderAMaxRad) * loadingContextObj.mColliderAMaxRadStaging.m_validDataIndex);
+			cmdContext.m_copyCmdList->CopyBufferRegion(cpuLogicBuffers.SRVColliderBMinType.buffer.Get(), 0, loadingContextObj.mColliderBMinTypeStaging.m_buffer.Get(), 0,
+				sizeof(BlitzenEngine::ColliderBMinType) * loadingContextObj.mColliderBMinTypeStaging.m_validDataIndex);
+		}
+
 		cmdContext.m_copyCmdList->Close();
 		ID3D12CommandList* commandLists[] = { cmdContext.m_copyCmdList.Get() };
 		commandQueue->ExecuteCommandLists(1, commandLists);
@@ -524,7 +555,7 @@ namespace BlitzenDX12
 	}
 
 	void CreateResourceViews(ID3D12Device* device, DescriptorContext& ctx, CmdContext& cmdContext, ID3D12CommandQueue* queue, ReadOnlyResources& roResources, 
-		ReadWriteResources* rwResourcesArray, CPU_LOGIC_BUFFERS& gameLogicBuffers, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight,
+		ReadWriteResources* rwResourcesArray, CPU_LOGIC_BUFFERS& cpuLogicBuffers, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, UINT drawWidth, UINT drawHeight,
 		LoadingContextMesh& loadingContextMesh)
 	{
 		BLIT_ASSERT(context.m_meshes.m_triangles.m_mapVtxCount == loadingContextMesh.m_vtxPosStaging.m_validDataIndex);
@@ -617,7 +648,7 @@ namespace BlitzenDX12
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
-			CreateBufferUnorderedAccessView(device, ctx, gameLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount, 
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount,
 				sizeof(BlitzenEngine::WVTransform), 0);
 
 			CreateBufferShaderResourceView(device, roResources.m_terrainHeightBuffer.buffer.Get(), ctx, context.m_pTerrain->m_heightDataCount, sizeof(float));
@@ -686,13 +717,28 @@ namespace BlitzenDX12
 				CreateBufferShaderResourceView(device, roResources.m_clusterConesBuffer.buffer.Get(), ctx, context.m_meshes.m_clusters.m_clusterCount, sizeof(BlitzenEngine::ClusterCone));
 			}
 		}
+
 		if constexpr (BLITGCNarrowPhaseCollisionBumper)
 		{
 
 		}
 		else if constexpr (BLITGCBroadPhaseCollisionBumper)
 		{
+			ctx.mCollisionSupportTableOffset = ctx.m_viewHeapCurrentOffset;
+			ctx.mCollisionSupportTableHandle = ctx.m_viewHeapHandle;
+			ctx.mCollisionSupportTableHandle.ptr += ctx.mCollisionSupportTableOffset * ctx.m_viewHeapIncrement;
 
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVGridCellOffsets.buffer.Get(), nullptr, BLIT_COLLISION_GRID_CELL_COUNT, sizeof(BlitzenEngine::GridCellOffsets), 0);
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVColliderIndices.buffer.Get(), nullptr, BlitzenWorld::GetCurrentWorldVariableCount(), sizeof(uint32_t), 0);
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVGlobalColliderIDXOffset.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+			CreateBufferShaderResourceView(device, cpuLogicBuffers.SRVColliderAMaxRad.buffer.Get(), ctx, BlitzenWorld::GetCurrentColliderCount(),
+				sizeof(BlitzenEngine::ColliderAMaxRad));
+			CreateBufferShaderResourceView(device, cpuLogicBuffers.SRVColliderBMinType.buffer.Get(), ctx, BlitzenWorld::GetCurrentColliderCount(),
+				sizeof(BlitzenEngine::ColliderBMinType));
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVTransformColliderAMaxRad.buffer.Get(), nullptr, BlitzenWorld::GetCurrentWorldVariableCount(),
+				sizeof(BlitzenEngine::ColliderAMaxRad), 0);
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVTransformColliderBMinType.buffer.Get(), nullptr, BlitzenWorld::GetCurrentWorldVariableCount(),
+				sizeof(BlitzenEngine::ColliderBMinType), 0);
 		}
 
 		// HI_Z_MAP DESCRIPTORS

@@ -53,7 +53,7 @@ namespace BlitzenEngine
 
     // Post-loading function. CPU side resources passed to GPU side buffers (or whichever type of handle is used)
     // Views for resources also placed
-    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext, RenderingLoadingContextMesh& loadingContextMesh);
+    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext, RenderingLoadingContextMesh& loadingContextMesh, RenderingLoadingContextRenderObjects& loadingContextObj);
 
     // Singular texture upload
     uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData, const char* filepath);
@@ -90,11 +90,20 @@ namespace BlitzenEngine
     uint8_t UploadToWorldTransformStagingBuffer(RenderingLoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount);
     uint8_t UploadToCPUTransformStagingBuffer(RenderingLoadingContextRenderObjects& ctx, WVTransform* transforms, uint32_t transformCount);
 
+    // Uploads render object data to staging buffer. Count should not have sizeof(type) included. Creates staging buffer inside, staging buffer should be uninitialized
     uint8_t UploadToRenderObjectStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
+    // Uploads dynamic render object data to staging buffer. Count should not have sizeof(type) included. Creates staging buffer inside, staging buffer should be uninitialized
     uint8_t UploadToDynamicRenderObjectStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount);
+    // Uploads transform data to staging buffer. Count should not have sizeof(type) included. Creates staging buffer inside, staging buffer should be uninitialized
     uint8_t UploadToWorldTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, MeshTransform* transforms, uint32_t transformCount);
+    // Uploads World Variable Transform data to staging buffer. Count should not have sizeof(type) included. Creates staging buffer inside, staging buffer should be uninitialized.
     uint8_t UploadToCPUTransformStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, WVTransform* transforms, uint32_t transformCount);
+    // Uploads bounding sphere data to staging buffer. Count should not have sizeof(type) included. Creates staging buffer inside, staging buffer should be uninitialized
 	uint8_t UploadToBoundingSphereStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, BoundingSphere* boundingSpheres, uint32_t sphereCount);
+    // Uploads collider data (1st 16bytes | AMaxRad) to staging buffer. Count should not have sizeof(type) included. Creates staging buffer inside, staging buffer should be uninitialized
+    uint8_t UploadToColliderAMaxRadStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, ColliderAMaxRad* data, uint32_t count);
+    // Uploads collider data (last 16bytes | BMinType) to staging buffer. Count should not have sizeof(type) included. Creates staging buffer inside, staging buffer should be uninitialized
+    uint8_t UploadToColliderBMinTypeStagingBuffer_MKII(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx, ColliderBMinType* data, uint32_t count);
 
     uint8_t UploadNewGeometryDataToSSBOs(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& instanceData, RenderingLoadingContextMesh& resourceData);
 
@@ -128,6 +137,9 @@ namespace BlitzenEngine
 
     // Gives new camera values to the shader. Static object culling can be dispatched after this
     void UpdateRendererView(RendererPtrType pRenderer, CameraViewData& camera, bool isFrustumFrozen);
+
+    // This function can be called before compute shaders to take care of some bindings
+    void BindGeneralComputeDescriptors(RendererPtrType pRenderer);
     
     // Generates a Hierarchical depth buffer by copying the depth target. Allow for occlusion culling. Should be called before transparent object are drawn
     void GenerateHI_Z_MAP(RendererPtrType pRenderer);
@@ -153,7 +165,7 @@ namespace BlitzenEngine
     // Culls a group of renders using compute shader. Prepares draw commands for rendering
     void DispatchCullingShaders(RendererPtrType pRenderer, const CULL_CONTEXT& cullContext);
 
-    void BMPRDispatchBroadPhaseCollision(RendererPtrType pRenderer);
+    void BMPRDispatchBroadPhaseCollision(RendererPtrType pRenderer, CollisionWorkConstant* pPushConstantSource);
 
     // Needs to be called before the first render pass to define vieport
     void SetupForFirstRenderPass(RendererPtrType pRenderer);

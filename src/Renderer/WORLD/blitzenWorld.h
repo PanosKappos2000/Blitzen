@@ -19,7 +19,7 @@ namespace BlitzenWorld
         BlitzenEngine::SceneContext m_scenes[10]{};
         uint32_t m_sceneCount{ 0 };
 
-        BlitzenEngine::Renderer P_RENDERER{};
+        BlitzenEngine::Renderer BMPR{};
         BlitzenEngine::DrawContext m_drawContext;
 
         // World residents
@@ -29,6 +29,7 @@ namespace BlitzenWorld
         BlitzenEngine::Resident m_mainCharacter = 0;
         BlitzenEngine::Camera m_cameras[BlitzenCore::CE_STARTING_CONTROLLER_COUNT]{};
         uint32_t m_activeCameraIDX = BlitzenCore::CE_ENGINE_CONTROLLER_ID;
+        BlitzenEngine::CollisionWorkConstant MBmprCollisionWorkConstant;
 
         float deltaTime{0.f};
 

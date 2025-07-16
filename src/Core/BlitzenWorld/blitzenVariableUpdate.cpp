@@ -50,7 +50,7 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
 		{
-			BlitzenEngine::PrepareRendererForRuntime(context.pWORLD->P_RENDERER.Data());
+			BlitzenEngine::PrepareRendererForRuntime(context.pWORLD->BMPR.Data());
 
 			context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
 

@@ -257,9 +257,15 @@ namespace BlitzenDX12
         DATA* pData{ nullptr };
     };
 
-    struct SSBO
+    class SSBO
     {
+    public:
         DX12WRAPPER<ID3D12Resource> buffer{ nullptr };
+
+        inline uint8_t IsValid()
+        {
+            return buffer != nullptr;
+        }
     };
 
     template<class DATA>

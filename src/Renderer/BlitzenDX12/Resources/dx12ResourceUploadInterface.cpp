@@ -8,7 +8,8 @@
 
 namespace BlitzenEngine
 {
-	uint8_t UploadResourcesToGPU(BlitzenDX12::Dx12Renderer* pRenderer, DrawContext& drawContext, BlitzenDX12::LoadingContextMesh& loadingContextMesh)
+	uint8_t UploadResourcesToGPU(BlitzenDX12::Dx12Renderer* pRenderer, DrawContext& drawContext, BlitzenDX12::LoadingContextMesh& loadingContextMesh, 
+		BlitzenDX12::LoadingContextRenderObjects& loadingContextObj)
 	{
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
@@ -20,7 +21,7 @@ namespace BlitzenEngine
 		}
 
 		if (!BlitzenDX12::UploadResourcesToBuffers(pRenderer->m_device.Get(), drawContext, pRenderer->m_roResources, pRenderer->m_rwResources, pRenderer->MCpuLogicBuffers, pRenderer->m_cmdContext[0], 
-			pRenderer->m_transferCommandQueue.Get(), loadingContextMesh))
+			pRenderer->m_transferCommandQueue.Get(), loadingContextMesh, loadingContextObj))
 		{
 			BLIT_ERROR("%s: Failed to upload resources to GPU buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -414,19 +415,31 @@ namespace BlitzenEngine
 			return 0;
 		}
 
-if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (MeshTransform*)nullptr))
-{
-	BLIT_FATAL("%s: Failed to allocate world transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-	return 0;
-}
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (MeshTransform*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate world transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+		
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (WVTransform*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
 
-if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_cpuTransformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (WVTransform*)nullptr))
-{
-	BLIT_FATAL("%s: Failed to allocate CPU_DATA transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-	return 0;
-}
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.mColliderAMaxRadStaging, CE_MAX_WORLD_COLLIDER_COUNT, (ColliderAMaxRad*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate 16 byte Collider data 1st part staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
 
-return 1;
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.mColliderBMinTypeStaging, CE_MAX_WORLD_COLLIDER_COUNT, (ColliderBMinType*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate 16 byte Collider data 2nd part staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+		
+		return 1;
 	}
 
 	uint8_t UploadToRenderObjectStagingBuffer(BlitzenDX12::LoadingContextRenderObjects& ctx, RenderObject* renderObjects, uint32_t renderCount)
@@ -553,7 +566,7 @@ return 1;
 		return 1;
 	}
 
-	uint8_t UploadToBoundingSpheresStagingBuffer(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, BoundingSphere* spheres, uint32_t count)
+	uint8_t UploadToBoundingSpheresStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& ctx, BoundingSphere* spheres, uint32_t count)
 	{
 		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_boundingSpheresStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, (BoundingSphere*)nullptr))
 		{
@@ -575,6 +588,61 @@ return 1;
 
 		ctx.m_boundingSpheresStaging.m_validDataIndex += count;
 
+		return 1;
+	}
+
+	uint8_t UploadToColliderAMaxRadStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, RenderingLoadingContextRenderObjects& ctx, ColliderAMaxRad* data, uint32_t count)
+	{
+		using InnerFunctionType = ColliderAMaxRad;
+
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.mColliderAMaxRadStaging, CE_MAX_WORLD_COLLIDER_COUNT, (InnerFunctionType*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate Collider data (1st 16bytes | AMaxRad) staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		SIZE_T copySize{ sizeof(InnerFunctionType) * count};
+		if (sizeof(InnerFunctionType) * ctx.mColliderAMaxRadStaging.m_validDataIndex + copySize > ctx.mColliderAMaxRadStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: Collider data AMaxRad staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(data != nullptr, "Invalid array handle for Collider Data AMaxRad (STAGING BUFFER UPLOAD)");
+
+		auto pDest{ &ctx.mColliderAMaxRadStaging.m_pMapped[ctx.mColliderAMaxRadStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, data, copySize);
+
+		ctx.mColliderAMaxRadStaging.m_validDataIndex += count;
+
+		return 1;
+	}
+
+	uint8_t UploadToColliderBMinTypeStagingBuffer_MKII(BlitzenDX12::Dx12Renderer* pRenderer, RenderingLoadingContextRenderObjects& ctx, ColliderBMinType* data, uint32_t count)
+	{
+		using InnerFunctionType = ColliderBMinType;
+
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.mColliderBMinTypeStaging, CE_MAX_WORLD_COLLIDER_COUNT, (InnerFunctionType*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to allocate Collider data (2nd 16bytes | BMinType) staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		SIZE_T copySize{ sizeof(InnerFunctionType) * count };
+		if (sizeof(InnerFunctionType) * ctx.mColliderBMinTypeStaging.m_validDataIndex + copySize > ctx.mColliderBMinTypeStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: Collider data BMinType staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(data != nullptr, "Invalid array handle for Collider Data BMinType (STAGING BUFFER UPLOAD)");
+
+		auto pDest{ &ctx.mColliderBMinTypeStaging.m_pMapped[ctx.mColliderBMinTypeStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, data, copySize);
+
+		ctx.mColliderBMinTypeStaging.m_validDataIndex += count;
+
+		return 1;
 		return 1;
 	}
 

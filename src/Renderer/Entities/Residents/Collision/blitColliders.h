@@ -34,13 +34,14 @@ namespace BlitzenEngine
 		BoundingSphere m_boundingSpheres[CE_MAX_WORLD_BOUNDING_SPHERE_COUNT];
 		ColliderAMaxRad MColliderAMaxRad[CE_MAX_WORLD_COLLIDER_COUNT];// Holds data for capsule A or AABB max on xyz, capsule or sphere radius on w
 		ColliderBMinType MColliderBMinType[CE_MAX_WORLD_COLLIDER_COUNT];// Holds data for capsule B or AABB min on xyz, collider type on w
-		uint32_t MWorldColliderCount{ 0 };
+		uint32_t mStaticColliderCount{ 0 };
 
 		// Non world variable residents are assumed to have predictable, blocking collision.
 		// If something needs specialized collision, a world variable needs to be created
 		// For example, a weapon or a bullet, and probably even destructibles need to be world variables
 		// If this system becomes heavy, there could exist a resident that is one level below a world variable
 		WVColliderResponse WVColliderHitData[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		uint32_t mWorldVariableColliderCount{ 0 };
 
 		// Possible different for event collisions
 		BLIT_STRAIGHTHANDLE event_collision_placeholder_unused;

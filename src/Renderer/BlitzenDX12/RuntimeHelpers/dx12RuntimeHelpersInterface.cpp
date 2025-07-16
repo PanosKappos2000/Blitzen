@@ -232,64 +232,95 @@ namespace BlitzenEngine
 		cmdContext.m_graphicsCmdList->Reset(cmdContext.m_graphicsCmdAlloc.Get(), nullptr);
 
 		// READ ONLY BARRIERS
-		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> staticBufferBarriers{ pRenderer->m_roResources.BUFFER_COUNT, {} };
+		constexpr uint32_t StaticBufferBuggage = 50;
+		uint32_t trueStaticBufferCount = 0;
+		BLIT_ASSERT(roResources.BUFFER_COUNT < StaticBufferBuggage);
+		D3D12_RESOURCE_BARRIER staticBufferBarriers[StaticBufferBuggage]{};
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_VtxPosStagingBufferIndex], roResources.m_vtxPosBuffer.buffer.Get(), 
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_vtxPosBuffer.buffer.Get(), 
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_VtxNrmStagingBufferIndex], roResources.m_vtxNrmBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_vtxNrmBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_VtxTangentsStagingBufferIndex], roResources.m_vtxTangentBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_vtxTangentBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_VtxTexCoordStagingBufferIndex], roResources.m_vtxTexCoordBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_vtxTexCoordBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_IndexStagingBufferIndex], roResources.m_idxBuffer.m_buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_idxBuffer.m_buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_SurfaceStagingBufferIndex], roResources.m_surfaceBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_surfaceBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_RenderStagingBufferIndex], roResources.m_renderBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_renderBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_LodStagingIndex], roResources.m_LODBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_LODBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_MaterialStagingIndex], roResources.m_matBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_matBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_BoundingSphereBoundingIndex], roResources.m_boundingSpheres.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_boundingSpheres.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_TERRAIN_VERTEX_SSBO_STAGING_IDX], roResources.m_terrainVtxBuffer.buffer.Get(), 
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_terrainVtxBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_TERRAIN_VTX_IDX_SSBO_STAGING_IDX], roResources.m_terrainIdxBuffer.m_buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_terrainIdxBuffer.m_buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_TERRAIN_HEIGHT_DATA_SSBO_STAGING_IDX], roResources.m_terrainHeightBuffer.buffer.Get(),
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], roResources.m_terrainHeightBuffer.buffer.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::CE_WORLD_VARIABLE_TRANSFORM_STAGING_IDX], pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 
+		BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], pRenderer->MCpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(),
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
-		if (BlitzenCore::Ce_BuildClusters)
+		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
-			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_ClusterVtxsStagingIndex], pRenderer->m_roResources.m_clusterVtxsBuffer.buffer.Get(),
+			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], pRenderer->m_roResources.m_clusterVtxsBuffer.buffer.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_ClusterSpheresStagingIndex], pRenderer->m_roResources.m_clusterSpheresBuffer.buffer.Get(),
+			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], pRenderer->m_roResources.m_clusterSpheresBuffer.buffer.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[BlitzenDX12::Ce_ClusterConesStagingIndex], pRenderer->m_roResources.m_clusterConesBuffer.buffer.Get(),
+			BlitzenDX12::CreateResourcesTransitionBarrier(staticBufferBarriers[trueStaticBufferCount++], pRenderer->m_roResources.m_clusterConesBuffer.buffer.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 
+		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		{
+			BlitzenDX12::ChangeSSBOStateWithValidation(pRenderer->MCpuLogicBuffers.SRVColliderAMaxRad, staticBufferBarriers, trueStaticBufferCount, StaticBufferBuggage, 
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			trueStaticBufferCount++;
+
+			BlitzenDX12::ChangeSSBOStateWithValidation(pRenderer->MCpuLogicBuffers.SRVColliderBMinType, staticBufferBarriers, trueStaticBufferCount, StaticBufferBuggage, 
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			trueStaticBufferCount++;
+
+			BlitzenDX12::ChangeSSBOStateWithValidation(pRenderer->MCpuLogicBuffers.UAVTransformColliderAMaxRad, staticBufferBarriers, trueStaticBufferCount, StaticBufferBuggage,
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			trueStaticBufferCount++;
+
+			BlitzenDX12::ChangeSSBOStateWithValidation(pRenderer->MCpuLogicBuffers.UAVTransformColliderBMinType, staticBufferBarriers, trueStaticBufferCount, StaticBufferBuggage,
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			trueStaticBufferCount++;
+		}
+
+		if constexpr (BLITGCBroadPhaseCollisionBumper)
+		{
+			BlitzenDX12::PutReadBackBufferOnFinalState(pRenderer->MCpuLogicBuffers.RDBColliderFloatAMaxRad, staticBufferBarriers, trueStaticBufferCount, StaticBufferBuggage);
+			trueStaticBufferCount++;
+
+			BlitzenDX12::PutReadBackBufferOnFinalState(pRenderer->MCpuLogicBuffers.RDBColliderFloatBMinType, staticBufferBarriers, trueStaticBufferCount, StaticBufferBuggage);
+			trueStaticBufferCount++;
+		}
+
 		// EXECUTE
-		cmdContext.m_graphicsCmdList->ResourceBarrier(pRenderer->m_roResources.BUFFER_COUNT, staticBufferBarriers.Data());
+		cmdContext.m_graphicsCmdList->ResourceBarrier(trueStaticBufferCount++, staticBufferBarriers);
 
 		D3D12_RESOURCE_BARRIER CPU_COMMUNICATION_BUFFERS[2]{};
 		BlitzenDX12::CreateResourcesTransitionBarrier(CPU_COMMUNICATION_BUFFERS[0], pRenderer->MCpuLogicBuffers.CPURWWorldVariableTransforms.m_buffer.Get(), 

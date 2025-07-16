@@ -14,7 +14,7 @@ namespace BlitzenWorld
     void LoadingLoop(int argc, char** argv, BLITZEN_SYSTEM_CONTEXT& context, BlitzenEngine::DrawContext& drawContext)
     {
 		BlitzenEngine::RenderingLoadingContextMesh loadingMeshContext{};
-        BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->P_RENDERER.Data(), loadingMeshContext));
+        BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->BMPR.Data(), loadingMeshContext));
 
         BlitzenPlatform::MakeWindowVisible(context.pPlatform);
         context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::LOADING;

@@ -17,10 +17,6 @@ namespace BlitzenEngine
 		auto& pipelineContext{ pRenderer->m_pipelineContext };
 		auto& descriptorContext{ pRenderer->m_descriptorContext };
 
-		commandList->SetComputeRootSignature(pipelineContext.m_cullRoot.Get());
-		commandList->SetComputeRootDescriptorTable(BlitzenDX12::GCGlobalDescriptorsRootParameterIDCompute, descriptorContext.mGlobalDescriptorsTableHandle[frame]);
-		commandList->SetComputeRootDescriptorTable(BlitzenDX12::CE_CULL_ROOT_CULL_GLOBAL_ID, descriptorContext.m_cullGlobalTableHandle[frame]);
-
 		switch (cullContext.m_cullType)
 		{
 			case BLIT_CULL_TYPE::DRAW_CULL_DEFAULT:
@@ -377,6 +373,16 @@ namespace BlitzenEngine
 		D3D12_RESOURCE_BARRIER cullingBarrier{};
 		BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarrier, rwResources.m_HI_Z.pyramid.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		commandList->ResourceBarrier(1, &cullingBarrier);
+	}
+
+	void BindGeneralComputeDescriptors(BlitzenDX12::Dx12Renderer* pRenderer)
+	{
+		UINT frame = pRenderer->m_currentFrame;
+		auto commandList = pRenderer->m_cmdContext[frame].m_computeCmdList.Get();
+
+		commandList->SetComputeRootSignature(pRenderer->m_pipelineContext.m_cullRoot.Get());
+		commandList->SetComputeRootDescriptorTable(BlitzenDX12::GCGlobalDescriptorsRootParameterIDCompute, pRenderer->m_descriptorContext.mGlobalDescriptorsTableHandle[frame]);
+		commandList->SetComputeRootDescriptorTable(BlitzenDX12::CE_CULL_ROOT_CULL_GLOBAL_ID, pRenderer->m_descriptorContext.m_cullGlobalTableHandle[frame]);
 	}
 }
 

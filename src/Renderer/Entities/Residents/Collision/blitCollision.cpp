@@ -222,7 +222,7 @@ namespace BlitzenEngine
 
     bool ColliderContainer::LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform, WVColliderResponse behavior)
     {
-        if (MWorldColliderCount >= CE_MAX_WORLD_COLLIDER_COUNT)
+        if (mStaticColliderCount >= CE_MAX_WORLD_COLLIDER_COUNT)
         {
             BLIT_ERROR("%s: Max Collider count exceeded", BlitzenCore::GCCollisionSystemName)
             return false;
@@ -256,13 +256,18 @@ namespace BlitzenEngine
                 colliderBMinType.data.WriteXYZ(BlitML::RotateQuat(colliderBMinType.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
                 colliderAMaxRad.data.w *= residentTransform.scale;
             }
+            else
+            {
+                BLIT_ASSERT_MESSAGE(false, "Unrecognized collider enumeration");
+            }
+
+            mStaticColliderCount++;
         }
         else
         {
             WVColliderHitData[resident] = behavior;
+            mWorldVariableColliderCount++;
         }
-
-        MWorldColliderCount++;
 
         return true;
     }

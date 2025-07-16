@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     WORLD.Make(renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);
     WORLD->m_drawContext.m_pTerrain = &renderingResources->m_terrainContainer;
     WORLD->m_drawContext.m_pResidents = &WORLD->m_residents;
-    WORLD->P_RENDERER.Make();
+    WORLD->BMPR.Make();
     SYSTEM.pWORLD = WORLD.Data();
 
     BlitzenEngine::SetupCamera(SYSTEM.pWORLD->m_cameras[BlitzenCore::CE_INITIAL_CONTROLLER_ID]);
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
     BlitzenCore::Dasher dasher;
     SYSTEM.pDasher = &dasher;
 
-    BlitzenPlatform::PlatformArgs platformArgs{&platform, &SYSTEM, WORLD->P_RENDERER.Data(), &dasher};
+    BlitzenPlatform::PlatformArgs platformArgs{&platform, &SYSTEM, WORLD->BMPR.Data(), &dasher};
     BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
 
     // LOADING RESOURCES

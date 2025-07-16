@@ -205,6 +205,13 @@ namespace BlitzenEngine
         ColliderBMinType BMinType;
     };
 
+    struct CollisionWorkConstant
+    {
+        uint32_t workCount;
+        uint32_t maxBounds;
+        uint32_t minBounds;
+    };
+
     struct BMPR_NARROW_PHASE_DRIVER
     {
         uint32_t cellIndex;

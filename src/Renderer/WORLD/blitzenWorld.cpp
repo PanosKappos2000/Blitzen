@@ -120,6 +120,26 @@ namespace BlitzenWorld
         camera.transformData.translation = BlitML::Translate(GSBlitzenWorld->m_residents.m_transforms.m_transforms[GSBlitzenWorld->m_mainCharacter].pos);
     }
 
+    uint32_t GetCurrentWorldVariableCount()
+    {
+        return GSBlitzenWorld->m_residents.MWorldVariableCount;
+    }
+
+    uint32_t GetCurrentColliderCount()
+    {
+        return GSBlitzenWorld->m_residents.MColliders.mStaticColliderCount + BLIT_MAX_WORLD_VARIABLE_COUNT;
+    }
+
+    uint32_t GetStaticColliderCount()
+    {
+        return GSBlitzenWorld->m_residents.MColliders.mStaticColliderCount;
+    }
+
+    uint32_t GetCurrentWorldVariableColliderCount()
+    {
+        return GSBlitzenWorld->m_residents.MColliders.mWorldVariableColliderCount;
+    }
+
     bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::MeshResources* pMeshes, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh)
     {
         BlitzenEngine::HLSL_VTX_CONTEXT hlslVertices{};
@@ -270,7 +290,7 @@ namespace BlitzenWorld
     {
 
         BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
-        sceneCtx.pRenderer = pWORLD->P_RENDERER.Data();
+        sceneCtx.pRenderer = pWORLD->BMPR.Data();
         sceneCtx.pResidents = &pWORLD->m_residents;
         sceneCtx.pResources = pRenderingResources;
 
@@ -341,7 +361,21 @@ namespace BlitzenWorld
         BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
         if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)sceneRes))
         {
-            BLIT_ERROR("%s: Error while loading scenes. Received error message: %s", BlitzenCore::CE_BLITZEN_LOADING_LOOP_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(sceneRes));
+            BLIT_ERROR("%s: Error while loading scenes. Received error message: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(sceneRes));
+            BLIT_ASSERT(false);
+        }
+
+        BlitzenEngine::RenderingLoadingContextRenderObjects loadingContextObj{};
+        if (!BlitzenEngine::UploadToColliderAMaxRadStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->m_residents.MColliders.MColliderAMaxRad, 
+            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->m_residents.MColliders.mStaticColliderCount))
+        {
+            BLIT_ERROR("%s: Failed to upload AMaxRad collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            BLIT_ASSERT(false);
+        }
+        if (!BlitzenEngine::UploadToColliderBMinTypeStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->m_residents.MColliders.MColliderBMinType,
+            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->m_residents.MColliders.mStaticColliderCount))
+        {
+            BLIT_ERROR("%s: Failed to upload BMinType collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             BLIT_ASSERT(false);
         }
 
@@ -350,15 +384,19 @@ namespace BlitzenWorld
         BlitzenWorld::SetupCameraAttachment(pWORLD->m_mainCharacter, BlitML::float3(0.f, 2.f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
 #endif
 
-        pWORLD->m_collisionGrid.DefineGrid(0);
+        constexpr uint32_t CollisionGridOrigin = 0;
+        pWORLD->m_collisionGrid.DefineGrid(CollisionGridOrigin);
         pWORLD->m_collisionGrid.CreateCells();
         pWORLD->m_collisionGrid.PlaceStatics(pWORLD->m_residents.m_transforms.m_transforms, pWORLD->m_residents.m_transforms.m_staticTransformCount);
+        pWORLD->MBmprCollisionWorkConstant.workCount = pWORLD->m_residents.MWorldVariableCount;
+        pWORLD->MBmprCollisionWorkConstant.minBounds = pWORLD->m_collisionGrid.m_minBounds;
+        pWORLD->MBmprCollisionWorkConstant.maxBounds = pWORLD->m_collisionGrid.m_maxBounds;
 
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 
 #else
 
-        if (!BlitzenEngine::UploadResourcesToGPU(pWORLD->P_RENDERER.Data(), pWORLD->m_drawContext, loadingContextMesh))
+        if (!BlitzenEngine::UploadResourcesToGPU(pWORLD->BMPR.Data(), pWORLD->m_drawContext, loadingContextMesh, loadingContextObj))
         {
             BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
             BLIT_ASSERT(false);
