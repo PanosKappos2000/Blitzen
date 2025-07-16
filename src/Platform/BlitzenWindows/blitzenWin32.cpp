@@ -266,17 +266,7 @@ namespace BlitzenPlatform
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             case WM_KEYUP:
-            //case WM_SYSKEYUP: 
-            //{
-            //    // press or release
-            //    BlitzenCore::FAT_BOOL bPressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) ? BlitzenCore::FAT_TRUE : BlitzenCore::FAT_FALSE;
-            //
-            //    auto key = BlitzenCore::BlitKey(wparam);
-            //
-            //    BlitzenCore::InputProcessKey(SYSTEM, key, bPressed);
-            //
-            //    break;
-            //}
+                break;
 
             case WM_INPUT:
             {
@@ -303,10 +293,9 @@ namespace BlitzenPlatform
                 case RIM_TYPEMOUSE:
                 {
                     // Extract relative movement
-                    int32_t mouseDX = raw->data.mouse.lLastX;  
-                    int32_t mouseDY = raw->data.mouse.lLastY;  
+                    SYSTEM->mMouseDeltaXAxis += raw->data.mouse.lLastX;  
+                    SYSTEM->mMouseDeltaYAxis += raw->data.mouse.lLastY;
 
-                    BlitzenCore::DispatchRawInput_MOUSE_MOVED(SYSTEM, mouseDX, mouseDY);
                     break;
                 }
                 case RIM_TYPEKEYBOARD:
@@ -375,7 +364,9 @@ namespace BlitzenPlatform
                 }
 
                 break;
-            } 
+            }
+            default:
+                break;
         }
         return DefWindowProcA(hwnd, msg, wparam, lparam); 
     }

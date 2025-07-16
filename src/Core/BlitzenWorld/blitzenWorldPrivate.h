@@ -44,6 +44,8 @@ namespace BlitzenWorld
 
         // EVENTS
         EventCallback m_eventCallbacks[uint32_t(BlitzenCore::BlitEventType::MaxTypes)]{};
+        int32_t mMouseDeltaXAxis{ 0 };
+        int32_t mMouseDeltaYAxis{ 0 };
         BlitzenCore::Controller* m_controllers;
         uint32_t m_activeControllerIDX{ BlitzenCore::CE_INITIAL_CONTROLLER_ID };
         uint32_t m_controllerCount{ BlitzenCore::CE_STARTING_CONTROLLER_COUNT };

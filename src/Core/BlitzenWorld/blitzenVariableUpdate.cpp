@@ -1,6 +1,7 @@
 #pragma once
 #include "blitzenWorldPrivate.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Core/Events/blitEvents.h"
 
 namespace BlitzenWorld
 {
@@ -21,7 +22,16 @@ namespace BlitzenWorld
 		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f && camera.viewData.deltaTime <= BlitzenCore::GCMaxTimeStep);
 
 		BlitzenPlatform::DispatchEvents(context.pPlatform);
+		BlitzenCore::DispatchUserEvents(&context);
 		context.m_controllers[context.m_activeControllerIDX].DispatchHeldDownKeyEvents(pWORLD->deltaTime);
+		if (context.m_controllerState != ControllerState::Game)
+		{
+			BlitzenEngine::UpdateCamera(context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX], context.pWORLD->deltaTime);
+		}
+		else
+		{
+			BlitzenEngine::UpdateResidentAttachedCamera(context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX], context.pWORLD->deltaTime);
+		}
 
 		switch (context.BLITZEN_ENGINE.m_state)
 		{

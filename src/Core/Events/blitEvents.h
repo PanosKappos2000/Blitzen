@@ -3,6 +3,8 @@
 
 namespace BlitzenCore
 {
+    void DispatchUserEvents(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM);
+
     void ZeroInitializeEventFunctionPointers(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM);
 
     // Passes the logic to be called when a speicific key is pressed

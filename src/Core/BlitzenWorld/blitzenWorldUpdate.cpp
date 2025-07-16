@@ -6,15 +6,6 @@ namespace BlitzenWorld
 	{
 		if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::RUNNING)
 		{
-			if (context.m_controllerState != ControllerState::Game)
-			{
-				BlitzenEngine::UpdateCamera(context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX], context.pWORLD->deltaTime);
-			}
-			else
-			{
-				BlitzenEngine::UpdateResidentAttachedCamera(context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX], context.pWORLD->deltaTime);
-			}
-
 			context.pWORLD->m_residents.UpdateFallingResidents(context.pWORLD->deltaTime);
 		}
 	}

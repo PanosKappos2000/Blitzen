@@ -4,6 +4,19 @@
 
 namespace BlitzenCore
 {
+    void DispatchUserEvents(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM)
+    {
+        if (SYSTEM->BLITZEN_ENGINE.m_state == EngineState::RUNNING)
+        {
+            if (SYSTEM->mMouseDeltaXAxis != 0 || SYSTEM->mMouseDeltaYAxis != 0)
+            {
+                DispatchRawInput_MOUSE_MOVED(SYSTEM, SYSTEM->mMouseDeltaXAxis, SYSTEM->mMouseDeltaYAxis);
+                SYSTEM->mMouseDeltaXAxis = 0;
+                SYSTEM->mMouseDeltaYAxis = 0;
+            }
+        }
+    }
+
     void ZeroInitializeEventFunctionPointers(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM)
     {
         for (uint32_t i = 0; i < uint8_t(BlitEventType::MaxTypes); ++i)
@@ -299,6 +312,7 @@ namespace BlitzenCore
     static BlitEventType ForwardTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
         BlitzenEngine::AddResidentVelocityZAxis(resident, deltaTime);
+        //BlitzenWorld::RequestGameCameraRotation(resident, 0, 1);
 
         return BlitEventType::MaxTypes;
     }
@@ -306,6 +320,7 @@ namespace BlitzenCore
     static BlitEventType BackwardTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
         BlitzenEngine::AddResidentVelocityZAxisNegative(resident, deltaTime);
+        //BlitzenWorld::RequestGameCameraRotation(resident, 0, -1);
 
         return BlitEventType::MaxTypes;
     }
@@ -320,6 +335,7 @@ namespace BlitzenCore
     static BlitEventType LeftTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
         BlitzenEngine::AddResidentVelocityXAxisNegative(resident, deltaTime);
+        //BlitzenWorld::RequestGameCameraRotation(resident, -1, 0);
 
         return BlitEventType::MaxTypes;
     }
@@ -327,6 +343,7 @@ namespace BlitzenCore
     static BlitEventType RightTestCallback(BlitzenEngine::Resident resident, float deltaTime)
     {
         BlitzenEngine::AddResidentVelocityXAxis(resident, deltaTime);
+        //BlitzenWorld::RequestGameCameraRotation(resident, 1, 0);
 
         return BlitEventType::MaxTypes;
     }
@@ -431,6 +448,7 @@ namespace BlitzenCore
     static BlitEventType OnMouseMove(BlitzenEngine::Resident resident, float deltaTime, int32_t xAxisMovement, int32_t yAxisMovement)
     {
         BlitzenWorld::RequestGameCameraRotation(resident, xAxisMovement, yAxisMovement);
+        //BlitzenEngine::AddResidentVelocityXAxis(resident, deltaTime);
         return BlitEventType::MaxTypes;
     }
 

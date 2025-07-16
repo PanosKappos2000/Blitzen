@@ -28,11 +28,49 @@ namespace BlitzenWorld
         auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
         float deltaTime = GSBlitzenWorld->deltaTime;
 
-        float yaw = movementX > 0.f ? 0.5f : movementX < 0.f ? -0.5f : 0.f;
-        float pitch = movementY > 0.f ? 0.5f : movementY < 0.f ? -0.5f : 0.f;
+        constexpr float CameraSensitivity = 0.1f;// To be placed in settings struct
+        constexpr int32_t CameraDeadzone = 1;
+        constexpr float FineRadians = 0.0001f;
 
-        camera.transformData.yawMovement = yaw * 100.f;
-        camera.transformData.pitchMovement = pitch * 100.f;
+        // Filter out small mouse movement
+        if (abs(movementX) < CameraDeadzone)
+        {
+            movementX = 0;
+        }
+        if (abs(movementY) < CameraDeadzone)
+        {
+            movementY = 0;
+        }
+
+        // Do not create radians for 0 movement
+        if (movementX != 0)
+        {
+            camera.transformData.yawMovement = BlitML::Radians((float)movementX * CameraSensitivity);
+        }
+        else
+        {
+            camera.transformData.yawMovement = 0.f;
+        }
+        if (movementY != 0)
+        {
+            camera.transformData.pitchMovement = BlitML::Radians((float)movementY * CameraSensitivity);
+        }
+        else
+        {
+            camera.transformData.pitchMovement = 0.f;
+        }
+
+        if (fabs(camera.transformData.pitchMovement) <= FineRadians)
+        {
+            camera.transformData.pitchMovement = 0.f;
+        }
+        if (fabs(camera.transformData.yawMovement) <= FineRadians)
+        {
+            camera.transformData.yawMovement = 0.f;
+        }
+
+        camera.transformData.yawRotation += camera.transformData.yawMovement;
+        camera.transformData.pitchRotation += camera.transformData.pitchMovement;
     }
 
     void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen)
