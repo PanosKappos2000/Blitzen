@@ -2,7 +2,7 @@
 
 namespace BlitzenWorld
 {
-	static void DispatchBumper(BlitzenEngine::RendererPtrType pRenderer, BlitzenWorld::WORLD_blit* WORLD, BlitzenEngine::Camera& camera, uint32_t terrainCount)
+	static void DispatchBumper(BlitzenEngine::RendererPtrType pRenderer, BlitzenWorld::BLITZEN_WORLD* WORLD, BlitzenEngine::Camera& camera, uint32_t terrainCount)
 	{
 		// To avoid the double fence, I have to split the camera data.
 		BlitzenEngine::PlaceRendererFence(pRenderer, BlitzenEngine::RENDERER_FENCE_TYPE::COMPUTE);
@@ -23,8 +23,8 @@ namespace BlitzenWorld
 		BlitzenEngine::CULL_CONTEXT cullContext{};
 		cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::DRAW_CULL_TEMPORAL_OCCLUSION;
 		cullContext.m_workType = BlitzenEngine::RENDER_OBJECT_TYPE::OPAQUE_STATIC;
-		cullContext.m_workCount = WORLD->m_residents.m_renders.m_opaqueStaticCount;
-		cullContext.m_pResidents = &WORLD->m_residents;// IS THIS NEEDED?
+		cullContext.m_workCount = WORLD->mResidents.m_renders.m_opaqueStaticCount;
+		cullContext.m_pResidents = &WORLD->mResidents;// IS THIS NEEDED?
 		BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 		// End compute commands here, so that the fence can be signaled
 		BlitzenEngine::EndGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
@@ -44,14 +44,14 @@ namespace BlitzenWorld
 		
 		// Starts transfer commands. The function blocks the culling shader, until the dynamic transforms are updated
 		BlitzenEngine::BeginGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::TRANSFER);
-		BlitzenEngine::UpdateRendererTransforms(pRenderer, WORLD->m_residents.m_transforms.WVWithMovement, WORLD->m_residents.m_transforms.m_moveableCount);
+		BlitzenEngine::UpdateRendererTransforms(pRenderer, WORLD->mResidents.WVTransforms, WORLD->mResidents.mWorldVariableCount);
 
 		// Start transforming and culling dynamic objects
 		BlitzenEngine::BeginGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
 		BlitzenEngine::BindGeneralComputeDescriptors(pRenderer);
 		cullContext.m_cullType = BlitzenEngine::BLIT_CULL_TYPE::DRAW_CULL_TEMPORAL_OCCLUSION;
 		cullContext.m_workType = BlitzenEngine::RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
-		cullContext.m_workCount = WORLD->m_residents.m_renders.m_opaqueDynamicCount;
+		cullContext.m_workCount = WORLD->mResidents.m_renders.m_opaqueDynamicCount;
 		BlitzenEngine::DispatchCullingShaders(pRenderer, cullContext);
 
 		if constexpr (BLITGCNarrowPhaseCollisionBumper)
@@ -78,8 +78,8 @@ namespace BlitzenWorld
 
 		// Pass data back to the CPU for logic updates
 		BlitzenEngine::SHADER_GAME_LOGIC_UPDATES shaderDataReadback{};
-		shaderDataReadback.m_transformCount = WORLD->m_residents.m_transforms.m_moveableCount;
-		shaderDataReadback.pGpuTransorms = WORLD->m_residents.m_transforms.WVWithMovement;
+		shaderDataReadback.m_transformCount = WORLD->mResidents.mWorldVariableCount;
+		shaderDataReadback.pGpuTransorms = WORLD->mResidents.WVTransforms;
 		BlitzenEngine::RequestGameLogicUpdatesFromShader(pRenderer, shaderDataReadback);
 		BlitzenEngine::EndGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
 	}
@@ -87,7 +87,7 @@ namespace BlitzenWorld
 	void BMPR_DRIVE(BLITZEN_SYSTEM_CONTEXT& context)
 	{
 		BlitzenEngine::RendererPtrType pRenderer = context.pWORLD->BMPR.Data();
-		BlitzenEngine::WORLD_RESIDENTS& RESIDENTS = context.pWORLD->m_residents;
+		BlitzenEngine::WORLD_RESIDENTS& RESIDENTS = context.pWORLD->mResidents;
 		auto& camera = context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX];
 
 		switch (context.BLITZEN_ENGINE.m_state)

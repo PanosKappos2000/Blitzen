@@ -214,7 +214,7 @@ namespace BlitzenVulkan
         for (size_t i = 0; i < renderCount; ++i)
         {
             const auto& object = context.m_pResidents->m_renders.m_renders[i];
-            const auto& transform = context.m_pResidents->m_transforms.m_transforms[object.transformId];
+            const auto& transform = context.m_pResidents->mTransforms.m_transforms[object.transformId];
             const auto& surface = context.m_meshes.m_meshPrimitives.m_meshPrimitives[object.surfaceId];
 
             // Casts the orientation quat to a matrix

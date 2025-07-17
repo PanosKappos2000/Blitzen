@@ -11,4 +11,8 @@ namespace BlitzenWorld
 	uint32_t GetCurrentWorldVariableColliderCount();
 
 	uint32_t GetStaticColliderCount();
+
+	uint32_t GetCurrentTransformCount();
+
+	uint32_t GetStaticTransformCount();
 }

@@ -411,7 +411,7 @@ namespace BlitzenCore
     static uint8_t ResizeEventCallback(BLIT_STRAIGHTHANDLE sysHandle, BlitzenCore::BlitEventType eventType)
     {
 		auto SYSTEM{ reinterpret_cast<BlitzenWorld::BLITZEN_SYSTEM_CONTEXT*>(sysHandle) };
-        auto pWORLD = reinterpret_cast<BlitzenWorld::WORLD_blit*>(SYSTEM->pWORLD);
+        auto pWORLD = reinterpret_cast<BlitzenWorld::BLITZEN_WORLD*>(SYSTEM->pWORLD);
         auto& camera{ pWORLD->m_cameras[pWORLD->m_activeCameraIDX]};
 
         if (SYSTEM->BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::LOADING)

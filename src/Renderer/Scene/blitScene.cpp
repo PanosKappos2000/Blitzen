@@ -278,7 +278,7 @@ namespace BlitzenEngine
             // Randomize Transform
             WVTransform randomTransform;
             RandomizeTransform(&randomTransform, transformMultiplier);
-            wvCtx.residentCtx.m_transformInfo.cpu_pTransform = &randomTransform;
+            wvCtx.residentCtx.pWorldVariableTransform = &randomTransform;
             
             MeshTransform randomTransform_gpu;
             RandomizeTransform(&randomTransform_gpu, transformMultiplier, WV_ROTATING_KITTEN_SCALE);

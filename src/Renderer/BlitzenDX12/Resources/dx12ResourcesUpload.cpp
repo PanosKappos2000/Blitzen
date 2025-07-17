@@ -126,8 +126,7 @@ namespace BlitzenDX12
 			auto& rwResources{ rwResourcesArr[frame] };
 
 			STAGING<BlitzenEngine::MeshTransform> transformStaging;
-			if (!CreateStaging(device, transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, 
-				drawContext.m_pResidents->m_transforms.m_transforms))
+			if (!CreateStaging(device, transformStaging, BLIT_MAX_WORLD_TRANSFORM_COUNT, drawContext.m_pResidents->mTransforms.m_transforms))
 			{
 				BLIT_ERROR("%s: Failed to create transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
@@ -313,7 +312,7 @@ namespace BlitzenDX12
 		}
 
 		STAGING<BlitzenEngine::WVTransform> worldVariableTransformStaging{ nullptr };
-		if (!CreateStaging(device, worldVariableTransformStaging, drawContext.m_pResidents->m_transforms.m_moveableCount, drawContext.m_pResidents->m_transforms.WVWithMovement))
+		if (!CreateStaging(device, worldVariableTransformStaging, drawContext.m_pResidents->mWorldVariableCount, drawContext.m_pResidents->WVTransforms))
 		{
 			BLIT_ERROR("%s: Failed to create world variable transform staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -648,7 +647,7 @@ namespace BlitzenDX12
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.m_dynamicDrawCmdCounter.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 
-			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), nullptr, context.m_pResidents->m_transforms.m_moveableCount,
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), nullptr, context.m_pResidents->mWorldVariableCount,
 				sizeof(BlitzenEngine::WVTransform), 0);
 
 			CreateBufferShaderResourceView(device, roResources.m_terrainHeightBuffer.buffer.Get(), ctx, context.m_pTerrain->m_heightDataCount, sizeof(float));

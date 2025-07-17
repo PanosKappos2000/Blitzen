@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef __cplusplus
+	#include <cstdint>
 	using uint = uint32_t;
 #endif
 

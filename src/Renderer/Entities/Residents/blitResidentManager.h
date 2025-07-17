@@ -1,11 +1,12 @@
 #pragma once
-#include "blitResident.h"
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
 #include "Collision/blitColliders.h"
 
 namespace BlitzenEngine
 {
+	constexpr uint32_t GCWorldVariableTransformErrorCode = BLIT_MAX_WORLD_VARIABLE_COUNT;
+
 	using RESIDENT_CREATE_CONTEXT_FLAGS = uint64_t;
 	enum RESIDENT_CREATE_FLAGS : uint64_t
 	{
@@ -49,6 +50,7 @@ namespace BlitzenEngine
 		uint32_t m_resourceID;
 		TRANSFORM_CREATE_CONTEXT m_transformInfo{};
 		BlitzenCore::FAT_BOOL m_isMoveable{ BlitzenCore::FAT_FALSE };
+		WVTransform* pWorldVariableTransform{ nullptr };
 	};
 
 	struct WORLD_VARIABLE_CREATE_CONTEXT
@@ -68,29 +70,32 @@ namespace BlitzenEngine
 		// The elements from 0 to BLIT_MAX_WORLD_VARIABLE_COUNT are assumed to be the world varialbes and should not have any static residents inside
 		Resident mResidents[BLIT_MAX_WORLD_RESIDENTS];
 		uint32_t mResidentCount{ 0 };
+		RenderContainer m_renders;
+		WorldTransformContainer mTransforms;
+		ColliderContainer MColliders;
 
 		// Every member variable with WV as a prefix is a world variable
 		// World Variables are a subset of Blitzen World residents, that have unpredictable logic applied to them
 		// Their components are meant to be highly compatible with shaders and they are designed around crowding
 		WORLD_VARIABLE MWorldVariables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t MWorldVariableCount{ 0 };
-		WVGravity WVGravityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t WVWithGravityIDXs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t WVWithGravityCount{ 0 };
+		WVTransform WVTransforms[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		WVVelocity WVVelocityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-
-		// The render is an index to the resource that will be used when rendering a resident(if the resident can be rendered)
-		RenderContainer m_renders;
-		WorldTransformContainer m_transforms;
-		ColliderContainer MColliders;
-
+		WVGravity WVGravityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint32_t mWorldVariableCount{ 0 };
+		Resident WVWithGravityIDXs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint32_t WVWithGravityCount{ 0 };
+		Resident WVWithVelocity[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint32_t WVWithVelocityCount{ 0 };
+		
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
-
 		RESIDENT_CREATE_RES AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx);
 
 		void UpdateMovingResidents(float deltaTime);
-
 		void UpdateFallingResidents(float deltaTime);
+
+	private:
+		// CPU side transform for world variables, since they need to be updated by game logic
+		uint32_t CreateWorldVariableTransform(WVTransform* pWVTransform, float scale);
 	};
 
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr);

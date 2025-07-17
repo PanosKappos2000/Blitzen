@@ -1,6 +1,6 @@
 #pragma once
-#include "Renderer/Entities/Residents/blitResident.h"
 #include "Renderer/Resources/blitShaderShared.h"
+#include "Renderer/Resources/blitShaderResources.h"
 #include "BlitCL/blitPfn.h"
 
 namespace BlitzenCore

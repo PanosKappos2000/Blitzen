@@ -98,7 +98,7 @@ namespace BlitzenVulkan
             auto& readWrites{ pRWResourcesArray[frame] };
             auto commandBuffer{ cmdContext.m_transferCmdB };
 
-            if (!drawContext.m_pResidents->m_transforms.m_transforms)
+            if (!drawContext.m_pResidents->mTransforms.m_transforms)
             {
                 BLIT_ERROR("%s: No transform data found", BLIT_VK_SYSTEM);
                 return 0;
@@ -106,7 +106,7 @@ namespace BlitzenVulkan
 
             BUFFER_STAGING_CONTEXT<BlitzenEngine::MeshTransform> transformStagingContext{};
             transformStagingContext.elementCount = BLIT_MAX_WORLD_TRANSFORM_COUNT;
-            transformStagingContext.pData = &drawContext.m_pResidents->m_transforms.m_transforms[BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET];
+            transformStagingContext.pData = &drawContext.m_pResidents->mTransforms.m_transforms[BlitzenEngine::CE_STATIC_TRANSFORM_OFFSET];
             if (!CreateStaging(vma, device, transformStagingContext))
             {
                 BLIT_ERROR("%s: Failed to create static transform staging buffer resource");

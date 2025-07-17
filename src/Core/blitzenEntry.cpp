@@ -6,8 +6,7 @@
 #include <thread>
 
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
-using ComponentSystemMemory = BlitCL::SmartPointer<BlitzenEngine::ComponentSystem, BlitzenCore::AllocationType::Entity>;
-using WorldSystemMemory = BlitCL::SmartPointer<BlitzenWorld::WORLD_blit, BlitzenCore::AllocationType::Entity>;
+using WorldSystemMemory = BlitCL::SmartPointer<BlitzenWorld::BLITZEN_WORLD, BlitzenCore::AllocationType::Entity>;
 using ControllerSystemMemory = BlitCL::SmartPointer<BlitzenCore::ControllerContainer, BlitzenCore::AllocationType::Engine>;
 
 #if defined(BLIT_GDEV_EDT)
@@ -27,10 +26,6 @@ int main(int argc, char* argv[])
     BlitzenCore::WorldTimeManager blitzenClock;
     SYSTEM.pClock = &blitzenClock;
 
-    ComponentSystemMemory blitzenComponentSystem;
-    blitzenComponentSystem.Make();
-    SYSTEM.pComponents = blitzenComponentSystem.Data();
-
     RndResourcesMemory renderingResources;
     renderingResources.Make();
     SYSTEM.pRenderingResources = renderingResources.Data();
@@ -41,7 +36,7 @@ int main(int argc, char* argv[])
     WorldSystemMemory WORLD;
     WORLD.Make(renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);
     WORLD->m_drawContext.m_pTerrain = &renderingResources->m_terrainContainer;
-    WORLD->m_drawContext.m_pResidents = &WORLD->m_residents;
+    WORLD->m_drawContext.m_pResidents = &WORLD->mResidents;
     WORLD->BMPR.Make();
     SYSTEM.pWORLD = WORLD.Data();
 

@@ -6,11 +6,11 @@
 
 namespace BlitzenEngine
 {
-    void DispatchCollisionResolve(CollisionGrid* pGrid, const COLLISION_RESOLVE_CONTEXT& context)
+    void ColliderContainer::DispatchCollisionResolve(CollisionGrid* pGrid, const COLLISION_RESOLVE_CONTEXT& context)
     {
         if constexpr (!BLITGCBroadPhaseCollisionBumper && !BLITGCBroadPhaseCollisionBumper)
         {
-            BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(context.WVTransformArr != 0);
+            BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(context.WVTransformArr != nullptr);
             pGrid->PlaceDynamics(context.WVTransformArr, context.mTransformCount);
         }
     }
@@ -68,11 +68,6 @@ namespace BlitzenEngine
             // This step is done so that the resulting index is between 0 and cell count.
             // The regular transform might give negative values or values starting from a number larger than 0.
             position -= BlitML::float3(float(m_minBounds));
-
-            if (position.x == GCCollisionGridExtent || position.z == (float)GCCollisionGridExtent)
-            {
-                BLIT_INFO("HIT");
-            }
 
             // Sanity. The first check should have removed such objects. If not, I am doing something wrong.
             // I might leave it here indefinitely as this is the static function and it should not be called at runtime

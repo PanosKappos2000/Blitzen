@@ -22,6 +22,8 @@ namespace BlitzenCore
     {
     public:
         void Generate(WorldTimeManager* pClock);
+        // Uses inline pointer to Time Manager
+        void GenerateInner();
         double Startup();
         double End();
         void Reset();

@@ -6,7 +6,8 @@ namespace BlitzenWorld
 	{
 		if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::RUNNING)
 		{
-			context.pWORLD->m_residents.UpdateFallingResidents(context.pWORLD->deltaTime);
+			context.pWORLD->mResidents.UpdateFallingResidents(context.pWORLD->deltaTime);
+			BlitzenWorld::DispatchCollisionSystems(context.pWORLD);
 		}
 	}
 }

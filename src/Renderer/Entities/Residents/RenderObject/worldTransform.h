@@ -6,7 +6,7 @@ namespace BlitzenEngine
 {
 	constexpr uint32_t CE_DYNAMIC_TRANSFORM_OFFSET = 0;
 	constexpr uint32_t CE_STATIC_TRANSFORM_OFFSET = BLIT_MAX_WORLD_VARIABLE_COUNT;
-	constexpr uint32_t CE_MAX_STATIC_TRANSFORM_COUNT = BLIT_MAX_WORLD_STATIC_RESIDENTS;
+	constexpr uint32_t GCMaxStaticTransformCount = BLIT_MAX_WORLD_STATIC_RESIDENTS;
 	constexpr uint32_t CE_TRANSPARENT_OFFSET = BLIT_TRANSPARENT_RENDER_OFFSET;
 	constexpr uint32_t GCTransformCreateErrorCode = BLIT_MAX_WORLD_TRANSFORM_COUNT;
 
@@ -21,7 +21,6 @@ namespace BlitzenEngine
 	{
 		WorldTransformType m_type{ WorldTransformType::STATIC };
 		MeshTransform* m_pTransform{ nullptr };
-		WVTransform* cpu_pTransform{ nullptr };
 	};
 
 	class WorldTransformContainer
@@ -32,13 +31,10 @@ namespace BlitzenEngine
 		uint32_t m_transformCount{ 0 };
 		uint32_t m_staticTransformCount{ 0 };
 
-		WVTransform WVWithMovement[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t m_moveableCount{ 0 };
-
 		uint32_t m_transparentCount{ 0 };
 
 		// Creates transform and returns its index in the transform list
-		uint32_t CreateTransform(const TRANSFORM_CREATE_CONTEXT& transform);
+		uint32_t CreateTransformStatic(const TRANSFORM_CREATE_CONTEXT& transform);
 	};
 
 	void RandomizeTransform(MeshTransform* pTransform, float multiplier, float scale);

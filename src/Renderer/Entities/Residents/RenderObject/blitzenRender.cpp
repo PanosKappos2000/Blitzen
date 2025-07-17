@@ -81,14 +81,8 @@ namespace BlitzenEngine
         return GCRenderObjectCreationErrorCode;
     }
 
-    uint32_t WorldTransformContainer::CreateTransform(const TRANSFORM_CREATE_CONTEXT& context)
+    uint32_t WorldTransformContainer::CreateTransformStatic(const TRANSFORM_CREATE_CONTEXT& context)
     {
-        if (m_transformCount >= BLIT_MAX_WORLD_TRANSFORM_COUNT)
-        {
-            BLIT_ERROR("%s: Exceeded max world transform count", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-            return GCTransformCreateErrorCode;
-        }
-
         if (context.m_pTransform == nullptr)
         {
             BLIT_ERROR("%s: No GPU data given for transform", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
@@ -103,45 +97,18 @@ namespace BlitzenEngine
 			return GCTransformCreateErrorCode;
         }
 
-        // Transforms for world variables (possible dynamic logic)
+        // Dynamic transform should not be passed here
         if (context.m_type == WorldTransformType::DYNAMIC)
         {
-            //-------------------------------------------------------------------------------------------------------------------------------
-            // CPU data. Helps communicate with the GPU about game logic, without loading the CPU with heavy computations like quats
-            //-------------------------------------------------------------------------------------------------------------------------------
-            if (m_moveableCount >= BLIT_MAX_WORLD_VARIABLE_COUNT)
-            {
-                BLIT_ERROR("%s: Exeeded max dynamic transform count", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                return GCTransformCreateErrorCode;
-            }
-            if (context.cpu_pTransform == nullptr)
-            {
-                BLIT_ERROR("%s: Dynamic transform requested but no CPU transform data passed", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
-                return GCTransformCreateErrorCode;
-            }
-            BlitzenCore::BlitMemCopy(&WVWithMovement[m_moveableCount], context.cpu_pTransform, sizeof(WVTransform));
-
-            // GPU data, checked for null before the if block.
-            BlitzenCore::BlitMemCopy(&m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount], context.m_pTransform, sizeof(MeshTransform));
-            // Sync position.
-			context.cpu_pTransform->position = context.m_pTransform->pos;
-            // Sync orientation (quat gen)
-            auto& transform{ m_transforms[CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount] };
-            BlitML::quat orientationYaw = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(0.f, -1.f, 0.f), context.cpu_pTransform->eulerAngles.x);
-            BlitML::quat orientationPitch = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(1.f, 0.f, 0.f), context.cpu_pTransform->eulerAngles.y);
-            transform.orientation = BlitML::MulitplyQuat(orientationYaw, orientationPitch);
-
-            // Success, increment general and dynamic
-            m_transformCount++;
-            return CE_DYNAMIC_TRANSFORM_OFFSET + m_moveableCount++;
+            BLIT_ASSERT_MESSAGE(false, "SENT WORLD VARIABLE TRANSFORM TO WORLD VARIABLE CREATION");
         }
 
         // STATIC TRANSFORMS
         else if (context.m_type == WorldTransformType::STATIC)
         {
-            if (m_staticTransformCount >= CE_MAX_STATIC_TRANSFORM_COUNT)
+            if (m_staticTransformCount >= GCMaxStaticTransformCount)
             {
-                BLIT_ERROR("Exceeded max static transform count");
+                BLIT_ERROR("%s: Exceeded max world transform count", BlitzenCore::CE_RESIDENT_SYSTEM_NAME);
                 return GCTransformCreateErrorCode;
             }
 

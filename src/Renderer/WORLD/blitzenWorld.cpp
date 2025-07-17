@@ -5,15 +5,29 @@
 
 namespace BlitzenWorld
 {
-    inline WORLD_blit* GSBlitzenWorld = nullptr;
+    inline BLITZEN_WORLD* GSBlitzenWorld = nullptr;
 
-    void WORLD_blit::DispatchFrameEvents(float deltaTime)
+    void BLITZEN_WORLD::DispatchFrameEvents(float deltaTime)
     {
         for (uint32_t event = 0; event < m_frameEvents.m_frameEventCount; ++event)
         {
             auto& frameEvent = m_frameEvents.m_frameEvents[event];
             frameEvent.m_function(frameEvent.m_resident, deltaTime);
         }
+    }
+
+    void DispatchCollisionSystems(BLITZEN_WORLD* pWORLD)
+    {
+        BlitzenCore::BlitPerformanceCounter counter;
+        counter.GenerateInner();
+        double broadPhaseEnd = 0;
+        double broadPhaseState = counter.Startup();
+        BlitzenEngine::COLLISION_RESOLVE_CONTEXT collisionResolveContext{};
+        collisionResolveContext.WVTransformArr = pWORLD->mResidents.WVTransforms;
+        collisionResolveContext.mTransformCount = pWORLD->mResidents.mWorldVariableCount;
+        pWORLD->mResidents.MColliders.DispatchCollisionResolve(&pWORLD->mCollisionGrid, collisionResolveContext);
+        broadPhaseEnd = counter.End();
+        counter.Reset();
     }
 
     void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function)
@@ -23,7 +37,7 @@ namespace BlitzenWorld
 
     void RequestGameCameraRotation(BlitzenEngine::Resident resident, int32_t movementX, int32_t movementY)
     {
-        BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSBlitzenWorld->m_residents.m_transforms.m_moveableCount);
+        BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSBlitzenWorld->mResidents.mWorldVariableCount);
 
         auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
         float deltaTime = GSBlitzenWorld->deltaTime;
@@ -84,8 +98,11 @@ namespace BlitzenWorld
         // The camera starts off at the position of the resident
         camera.viewData.position = BlitzenEngine::GetResidentPosition(residentID);
 
-        // Fixes resident basic orientation (euler angles)
-        GSBlitzenWorld->m_residents.m_transforms.WVWithMovement[residentID].eulerAngles = BlitML::fRotation(camera.transformData.pitchRotation, camera.transformData.yawRotation, 0.f);
+        // Fixes player orientation
+        GSBlitzenWorld->mResidents.WVTransforms[residentID].eulerAngles = BlitML::fRotation(camera.transformData.pitchRotation, camera.transformData.yawRotation, 0.f);
+        BlitML::quat orientationYaw = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(0.f, -1.f, 0.f), GSBlitzenWorld->mResidents.WVTransforms[residentID].eulerAngles.x);
+        BlitML::quat orientationPitch = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(1.f, 0.f, 0.f), GSBlitzenWorld->mResidents.WVTransforms[residentID].eulerAngles.y);
+        GSBlitzenWorld->mResidents.mTransforms.m_transforms[residentID].orientation = BlitML::MulitplyQuat(orientationYaw, orientationPitch);
 
 		// Rotates the additional padding so that the camera is placed correctly even when the resident is rotated
         float offsetX = paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
@@ -117,27 +134,37 @@ namespace BlitzenWorld
     {
         auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
         
-        camera.transformData.translation = BlitML::Translate(GSBlitzenWorld->m_residents.m_transforms.m_transforms[GSBlitzenWorld->m_mainCharacter].pos);
+        camera.transformData.translation = BlitML::Translate(GSBlitzenWorld->mResidents.mTransforms.m_transforms[GSBlitzenWorld->m_mainCharacter].pos);
     }
 
     uint32_t GetCurrentWorldVariableCount()
     {
-        return GSBlitzenWorld->m_residents.MWorldVariableCount;
+        return GSBlitzenWorld->mResidents.mWorldVariableCount;
     }
 
     uint32_t GetCurrentColliderCount()
     {
-        return GSBlitzenWorld->m_residents.MColliders.mStaticColliderCount + BLIT_MAX_WORLD_VARIABLE_COUNT;
+        return GSBlitzenWorld->mResidents.MColliders.mStaticColliderCount + BLIT_MAX_WORLD_VARIABLE_COUNT;
     }
 
     uint32_t GetStaticColliderCount()
     {
-        return GSBlitzenWorld->m_residents.MColliders.mStaticColliderCount;
+        return GSBlitzenWorld->mResidents.MColliders.mStaticColliderCount;
     }
 
     uint32_t GetCurrentWorldVariableColliderCount()
     {
-        return GSBlitzenWorld->m_residents.MColliders.mWorldVariableColliderCount;
+        return GSBlitzenWorld->mResidents.MColliders.mWorldVariableColliderCount;
+    }
+
+    uint32_t GetCurrentTransformCount()
+    {
+        return GSBlitzenWorld->mResidents.mTransforms.m_staticTransformCount + BLIT_MAX_WORLD_VARIABLE_COUNT;
+    }
+
+    uint32_t GetStaticTransformCount()
+    {
+        return GSBlitzenWorld->mResidents.mTransforms.m_staticTransformCount;
     }
 
     bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::MeshResources* pMeshes, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh)
@@ -285,13 +312,13 @@ namespace BlitzenWorld
         return true;
     }
 
-    void LOAD_RESOURCES_MK_BLIT_MINUS(WORLD_blit* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh,
+    void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh,
         int argc, char** argv)
     {
 
         BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
         sceneCtx.pRenderer = pWORLD->BMPR.Data();
-        sceneCtx.pResidents = &pWORLD->m_residents;
+        sceneCtx.pResidents = &pWORLD->mResidents;
         sceneCtx.pResources = pRenderingResources;
 
         BlitCL::DynamicArray<BlitzenEngine::SceneContext> scenes{};
@@ -366,14 +393,14 @@ namespace BlitzenWorld
         }
 
         BlitzenEngine::RenderingLoadingContextRenderObjects loadingContextObj{};
-        if (!BlitzenEngine::UploadToColliderAMaxRadStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->m_residents.MColliders.MColliderAMaxRad, 
-            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->m_residents.MColliders.mStaticColliderCount))
+        if (!BlitzenEngine::UploadToColliderAMaxRadStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderAMaxRad,
+            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
         {
             BLIT_ERROR("%s: Failed to upload AMaxRad collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             BLIT_ASSERT(false);
         }
-        if (!BlitzenEngine::UploadToColliderBMinTypeStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->m_residents.MColliders.MColliderBMinType,
-            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->m_residents.MColliders.mStaticColliderCount))
+        if (!BlitzenEngine::UploadToColliderBMinTypeStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderBMinType,
+            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
         {
             BLIT_ERROR("%s: Failed to upload BMinType collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             BLIT_ASSERT(false);
@@ -385,12 +412,13 @@ namespace BlitzenWorld
 #endif
 
         constexpr uint32_t CollisionGridOrigin = 0;
-        pWORLD->m_collisionGrid.DefineGrid(CollisionGridOrigin);
-        pWORLD->m_collisionGrid.CreateCells();
-        pWORLD->m_collisionGrid.PlaceStatics(pWORLD->m_residents.m_transforms.m_transforms, pWORLD->m_residents.m_transforms.m_staticTransformCount);
-        pWORLD->MBmprCollisionWorkConstant.workCount = pWORLD->m_residents.MWorldVariableCount;
-        pWORLD->MBmprCollisionWorkConstant.minBounds = pWORLD->m_collisionGrid.m_minBounds;
-        pWORLD->MBmprCollisionWorkConstant.maxBounds = pWORLD->m_collisionGrid.m_maxBounds;
+        pWORLD->mCollisionGrid.DefineGrid(CollisionGridOrigin);
+        pWORLD->mCollisionGrid.CreateCells();
+        pWORLD->mCollisionGrid.PlaceStatics(pWORLD->mResidents.mTransforms.m_transforms, pWORLD->mResidents.mTransforms.m_staticTransformCount);
+        pWORLD->MBmprCollisionWorkConstant.workCount = pWORLD->mResidents.mWorldVariableCount;
+        pWORLD->MBmprCollisionWorkConstant.minBounds = pWORLD->mCollisionGrid.m_minBounds;
+        pWORLD->MBmprCollisionWorkConstant.maxBounds = pWORLD->mCollisionGrid.m_maxBounds;
+        pWORLD->mCollisionGrid.AllocDynamicIndices();
 
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 
@@ -408,7 +436,7 @@ namespace BlitzenWorld
         pRenderingResources->m_meshContext.m_clusters.CLEAN();
     }
 
-    void INITIALIZE_WORLD_POINTER(WORLD_blit* ptr)
+    void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr)
     {
         BLIT_ASSERT_MESSAGE(GSBlitzenWorld == nullptr, "Tried to reinitialize WORLD pointer");
         GSBlitzenWorld = ptr;

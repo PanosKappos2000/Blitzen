@@ -1,8 +1,6 @@
 #pragma once
 #include "Renderer/Resources/blitShaderResources.h"
-#include "Renderer/Entities/Residents/blitResident.h"
 #include "BlitCL/blitPfn.h"
-#include "blitCollisionFlags.h"
 #include "Renderer/Resources/blitShaderShared.h"
 #include "Renderer/Entities/Residents/RenderObject/blitRender.h"
 #include "BlitzenMathLibrary/blitMLLight.h"

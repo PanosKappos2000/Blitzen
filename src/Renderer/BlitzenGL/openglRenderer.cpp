@@ -131,7 +131,8 @@ namespace BlitzenGL
         glGenBuffers(1, &m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_transformBuffer.handle);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 
-            sizeof(BlitzenEngine::MeshTransform) * context.m_pResidents->m_transforms.m_transformCount, context.m_pResidents->m_transforms.m_transforms, GL_STATIC_READ);
+            sizeof(BlitzenEngine::MeshTransform) * context.m_pResidents->mTransforms.m_staticTransformCount + BLIT_MAX_WORLD_VARIABLE_COUNT, 
+            context.m_pResidents->mTransforms.m_transforms, GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_transformBuffer.handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 

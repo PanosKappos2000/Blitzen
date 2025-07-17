@@ -1,8 +1,6 @@
 #pragma once
 #include "Core/Dasher/Interface/dasherInterface.h"
 #include "Renderer/WORLD/blitzenWorld.h"
-#include "Renderer/Entities/Interface/blitComponents.h"
-#include "WorldVariables/wvData.h"
 #include "Core/Events/blitKeys.h"
 #include "Core/Events/blitController.h"
 #include "Core/Events/blitEditorEvents.h"
@@ -34,13 +32,12 @@ namespace BlitzenWorld
         
         // SYSTEMS
         BlitzenEngine::RenderingResources* pRenderingResources{ nullptr };
-        BlitzenEngine::ComponentSystem* pComponents{ nullptr };
         BlitzenPlatform::PlatformContext* pPlatform{ nullptr };
         BlitzenCore::Dasher* pDasher{ nullptr };
         BlitzenCore::WorldTimeManager* pClock;
 
         // WORLD
-        WORLD_blit* pWORLD{ nullptr };
+        BLITZEN_WORLD* pWORLD{ nullptr };
 
         // EVENTS
         EventCallback m_eventCallbacks[uint32_t(BlitzenCore::BlitEventType::MaxTypes)]{};

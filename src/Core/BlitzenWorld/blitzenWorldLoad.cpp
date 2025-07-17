@@ -19,8 +19,7 @@ namespace BlitzenWorld
         BlitzenPlatform::MakeWindowVisible(context.pPlatform);
         context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::LOADING;
 
-        BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->m_residents);
-        BlitzenEngine::InitializeComponentSystemPointer_STATIC_ACCESS(context.pComponents);
+        BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->mResidents);
         INITIALIZE_WORLD_POINTER(context.pWORLD);
 
         JobDriverQueue driver;

@@ -3,10 +3,13 @@
 
 namespace BlitzenCore
 {
+    inline WorldTimeManager* GSClock{ nullptr };
+
     WorldTimeManager::WorldTimeManager() :
         mElapsedTime{ 0.0 }, mPreviousTime{ 0.0 }, mDeltaTime{0.0}
 	{
         BlitzenPlatform::PlatfrormSetupClock(this);
+        GSClock = this;
     }
 
     void WorldTimeManager::Startup()
@@ -29,6 +32,11 @@ namespace BlitzenCore
     void BlitPerformanceCounter::Generate(WorldTimeManager* pClock)
     {
         mClockFrequency = pClock->mClockFrequency;
+    }
+
+    void BlitPerformanceCounter::GenerateInner()
+    {
+        mClockFrequency = GSClock->mClockFrequency;
     }
 
     double BlitPerformanceCounter::Startup()

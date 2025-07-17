@@ -138,27 +138,27 @@ add_executable(BlitzenEngine
                 "src/Renderer/View/blitzenCamera.cpp"
 
                 # ENTITIES
-                "src/Renderer/Entities/Interface/blitComponents.h"
-                "src/Renderer/Entities/Interface/blitComponents.cpp"
+                
+                
                 "src/Renderer/Entities/Physics/blitGravity.h"
-                "src/Renderer/Entities/Interface/blitWVComponents.h"
+                
                 
 
                 # RESIDENTS
                 "src/Renderer/Entities/Residents/Collision/blitCollision.h"
                 "src/Renderer/Entities/Residents/Collision/blitColliders.h"
-                "src/Renderer/Entities/Residents/blitWV.h"
-                "src/Renderer/Entities/Residents/blitResident.h"
+                
+                
                 "src/Renderer/Entities/Residents/blitResidentManager.h"
                 "src/Renderer/Entities/Residents/RenderObject/blitRender.h"
                 "src/Renderer/Entities/Residents/RenderObject/blitzenRender.cpp"
                 "src/Renderer/Entities/Residents/blitResident.cpp"
-                "src/Renderer/Entities/Residents/blitWV.cpp"
+                
                 "src/Renderer/Entities/Residents/RenderObject/worldTransform.h"
                 
                 
                 "src/Renderer/Entities/Residents/Collision/blitCollision.cpp"
-                "src/Renderer/Entities/Residents/Collision/blitCollisionFlags.h" 
+                 
                 "src/Renderer/Entities/Residents/Collision/blitWorldVariableCollision.h"
                  
 
@@ -244,9 +244,9 @@ add_executable(BlitzenEngine
                 
                 
                 
-                "ClientTest/Src/WorldVariables/WVRotatingKitten.h"   
-                "ClientTest/Src/WorldVariables/wvData.h"
-                "ClientTest/Src/WorldVariables/wvRotatingKitten.cpp" "src/Renderer/BlitzenDX12/Cull/dx12PhysicsSupport.cpp" "src/Renderer/WORLD/blitWorldReq.h")
+                   
+                
+                 "src/Renderer/BlitzenDX12/Cull/dx12PhysicsSupport.cpp" "src/Renderer/WORLD/blitWorldReq.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -307,7 +307,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_CPU_SIMD_SAVIOR
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
-                            #RENDERER_STRESS_TEST
+                            RENDERER_STRESS_TEST
                             MOVING_RESIDENT_TEST
                             #DEFAULT_GLTF_SCENE_TEST
                             LOAD_CMD_ARG_GLTF_FILEPATHS
