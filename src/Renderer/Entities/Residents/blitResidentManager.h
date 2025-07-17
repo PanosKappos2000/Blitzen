@@ -83,9 +83,10 @@ namespace BlitzenEngine
 		WVGravity WVGravityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t mWorldVariableCount{ 0 };
 		Resident WVWithGravityIDXs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t WVWithGravityCount{ 0 };
-		Resident WVWithVelocity[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t WVWithVelocityCount{ 0 };
+		uint32_t mWithGravityCount{ 0 };
+		WVMovementIntent WVWithVelocity[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		BlitML::vec3 WVForward[BLIT_MAX_WORLD_VARIABLE_COUNT]{ 0.f };
+		uint32_t mWithVelocityCount{ 0 };
 		
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 		RESIDENT_CREATE_RES AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx);

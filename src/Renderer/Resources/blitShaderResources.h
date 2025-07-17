@@ -118,6 +118,12 @@ namespace BlitzenEngine
         uint32_t targetIdx;
     };
 
+    struct WVMovementIntent
+    {
+        Resident resident;
+        BlitML::float3 intent;
+    };
+
     struct RenderObject
     {
         uint32_t transformId;

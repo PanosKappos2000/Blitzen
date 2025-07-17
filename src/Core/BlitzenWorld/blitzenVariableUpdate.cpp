@@ -33,6 +33,18 @@ namespace BlitzenWorld
 			BlitzenEngine::UpdateResidentAttachedCamera(context.pWORLD->m_cameras[context.pWORLD->m_activeCameraIDX], context.pWORLD->deltaTime);
 		}
 
+		if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::RUNNING)
+		{
+			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
+			context.pWORLD->mResidents.UpdateFallingResidents(context.pWORLD->deltaTime);
+			BlitzenWorld::DispatchCollisionSystems(context.pWORLD);
+		}
+		else if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::SETUP_AFTER_LOAD)
+		{
+			BlitzenEngine::PrepareRendererForRuntime(context.pWORLD->BMPR.Data());
+			context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
+		}
+
 		switch (context.BLITZEN_ENGINE.m_state)
 		{
 		case BlitzenCore::EngineState::LOADING:
@@ -41,7 +53,7 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::RUNNING:
 		{
-			pWORLD->DispatchFrameEvents(pWORLD->deltaTime);
+			
 			break;
 		}
 		case BlitzenCore::EngineState::SUSPENDED:
@@ -50,9 +62,7 @@ namespace BlitzenWorld
 		}
 		case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
 		{
-			BlitzenEngine::PrepareRendererForRuntime(context.pWORLD->BMPR.Data());
-
-			context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
+			
 
 			break;
 		}

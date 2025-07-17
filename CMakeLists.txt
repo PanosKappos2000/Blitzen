@@ -33,7 +33,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/WORLD/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 "src/Core/BlitzenWorld/blitzenWorldLoad.cpp"
-                "src/Core/BlitzenWorld/blitzenWorldUpdate.cpp"
+                
                 "src/Renderer/WORLD/blitzenWorld.cpp"
                 "src/Core/blitzenWorld/blitzenVariableUpdate.cpp"
                 "src/Core/BlitzenWorld/blitzenSystemDispatcher.h"
@@ -307,7 +307,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_CPU_SIMD_SAVIOR
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
-                            RENDERER_STRESS_TEST
+                            #RENDERER_STRESS_TEST
                             MOVING_RESIDENT_TEST
                             #DEFAULT_GLTF_SCENE_TEST
                             LOAD_CMD_ARG_GLTF_FILEPATHS

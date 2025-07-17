@@ -56,5 +56,7 @@ namespace BlitzenWorld
 
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr);
 
+    void DispatchBumper(BlitzenWorld::BLITZEN_WORLD* WORLD, uint32_t terrainCount);
+
     void SNAP_MAIN();
 }

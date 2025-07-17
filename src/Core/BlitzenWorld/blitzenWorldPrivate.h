@@ -55,9 +55,5 @@ namespace BlitzenWorld
 
     void BMPR_DRIVE(BLITZEN_SYSTEM_CONTEXT& context);
 
-    void WV_DRIVE(BLITZEN_SYSTEM_CONTEXT& context);
-
     void WorldLoop(BLITZEN_SYSTEM_CONTEXT& context);
-
-    void S_WORLD_UPDATE_RESIDENT_MOVED(uint32_t id);
 }

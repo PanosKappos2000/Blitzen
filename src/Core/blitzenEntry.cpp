@@ -72,8 +72,6 @@ int main(int argc, char* argv[])
 
         BlitzenWorld::BMPR_DRIVE(SYSTEM);
 
-        BlitzenWorld::WV_DRIVE(SYSTEM);
-
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
         // Using IMGUI for the editor requires some extra care for event handling
         BlitzenCore::UpdateInput(&SYSTEM, blitzenClock.mDeltaTime);

@@ -758,4 +758,15 @@ namespace BlitML
 
     inline float Radians(float degrees) { return degrees * GCDegreesToRadiansMultipler; }  
     inline float Degrees(float radians) {return radians * GCRadiansToDegreesMultiplier; }
+
+    // Small helper for fixed size arrays that have specific active elements.
+    // This should not be called if everything in the array is inactive (count already zero)
+    template <class TYPE>
+    void DisableStaticArrayElement(TYPE* arr, uint32_t IDX, uint32_t& count)
+    {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(IDX < count && count != 0);
+
+        arr[IDX] = arr[count - 1];
+        count--;
+    }
 }

@@ -137,12 +137,22 @@ namespace BlitzenEngine
 
 	void WORLD_RESIDENTS::UpdateMovingResidents(float deltaTime)
 	{
-		
+		//for (uint32_t id = 0; id < mWithVelocityCount; ++id)
+		//{
+		//	Resident resident = WVWithVelocity[mWithVelocityCount].resident;
+		//
+		//	auto& velocityData = WVVelocityData[resident];
+		//	velocityData.currentSpeed = BlitML::FMin(velocityData.acceleration + velocityData.currentSpeed, velocityData.maxSpeed);
+		//	velocityData.currentSpeed *= deltaTime;
+		//
+		//	
+		//	WVTransforms[resident].position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(WVForward[resident]), BlitML::float4(0.f, 0.f, velocity, 0.f)));
+		//}
 	}
 
 	void WORLD_RESIDENTS::UpdateFallingResidents(float deltaTime)
 	{
-		for (uint32_t wv = 0; wv < WVWithGravityCount; wv++)
+		for (uint32_t wv = 0; wv < mWithGravityCount; wv++)
 		{
 			uint32_t IDX = WVWithGravityIDXs[wv];
 			auto& gravityData = WVGravityData[IDX];
@@ -374,7 +384,7 @@ namespace BlitzenEngine
 		BLIT_ASSERT(resident < BLIT_MAX_WORLD_VARIABLE_COUNT);
 
 		GSWorldResidents->WVTransforms[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
-		GSWorldResidents->WVWithGravityIDXs[GSWorldResidents->WVWithGravityCount++] = resident;
+		GSWorldResidents->WVWithGravityIDXs[GSWorldResidents->mWithGravityCount++] = resident;
 		GSWorldResidents->WVGravityData[resident].maxSpeed = maxSpeed;
 	}
 }
