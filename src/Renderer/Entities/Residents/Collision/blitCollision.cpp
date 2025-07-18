@@ -3,25 +3,307 @@
 #include "Core/DbLog/blitAssert.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "BlitCL/blitDynamicArr.h"
+#include "BlitzenMathLibrary/blitMLSIMD.h"
+#include "Core/BlitzenWorld/blitzenUserInterface.h"
 
 namespace BlitzenEngine
 {
-    void ColliderContainer::DispatchCollisionResolve(CollisionGrid* pGrid, const COLLISION_RESOLVE_CONTEXT& context)
+    void ColliderContainer::CheckCapsuleColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices)
     {
-        if constexpr (!BLITGCBroadPhaseCollisionBumper && !BLITGCBroadPhaseCollisionBumper)
+        auto& hitterAMaxRad = MColliderAMaxRad[hitter].data;
+        auto& hitterBMinType = MColliderBMinType[hitter].data;
+
+        if constexpr (GCBlitzenSimd)
         {
-            BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(context.WVTransformArr != nullptr);
-            pGrid->PlaceDynamics(context.WVTransformArr, context.mTransformCount);
+
+        }
+        else
+        {
+            Resident* staticColliderIndicesArr = &indices[cell.staticCollidersOffset];
+
+            for (uint32_t id = 0; id < cell.staticColliderCount; ++id)
+            {
+                Resident receiver = staticColliderIndicesArr[id];
+
+                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MColliderBMinType[receiver].data;
+
+                BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
+                switch (colliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    if (BCPSS::CheckCollisionCapsuleToCapsule(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    if (BCPSS::CheckCollisionCapsuleToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    if (BCPSS::CheckCollisionCapusleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+                default:
+                    BLIT_ERROR("%s: Unexpected shape during narrow phase checks", BlitzenCore::GCCollisionSystemName);
+                    break;
+                }
+            }
+
+            Resident* dynamicColliderIndicesArr = &indices[cell.dynamicCollidersOffset];
+
+            for (uint32_t id = 0; id < cell.dynamicCollidersCount; ++id)
+            {
+                Resident receiver = dynamicColliderIndicesArr[id];
+                if (hitter == receiver) continue;
+
+                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MColliderBMinType[receiver].data;
+
+                BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
+                switch (colliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    if (BCPSS::CheckCollisionCapsuleToCapsule(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    if (BCPSS::CheckCollisionCapsuleToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    if (BCPSS::CheckCollisionCapusleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+                default:
+                    BLIT_ERROR("%s: Unexpected shape during narrow phase checks", BlitzenCore::GCCollisionSystemName);
+                    break;
+                }
+            }
         }
     }
 
-	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds)
-	{
-		BlitML::vec3 delta = firstBounds.m_center - secondBounds.m_center;
-		float distSq = BlitML::LengthSquared(delta);  // or delta.LengthSquared() if you have it
-		float radiusSum = firstBounds.m_radius + secondBounds.m_radius;
-		return distSq <= (radiusSum * radiusSum);
-	}
+    void ColliderContainer::CheckAABBColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices)
+    {
+        auto& hitterAMaxRad = MColliderAMaxRad[hitter].data;
+        auto& hitterBMinType = MColliderBMinType[hitter].data;
+
+        if constexpr (GCBlitzenSimd)
+        {
+
+        }
+        else
+        {
+            Resident* staticColliderIndicesArr = &indices[cell.staticCollidersOffset];
+
+            for (uint32_t id = 0; id < cell.staticColliderCount; ++id)
+            {
+                Resident receiver = staticColliderIndicesArr[id];
+
+                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MColliderBMinType[receiver].data;
+
+                BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
+                switch (colliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    if (BCPSS::CheckCollisionCapsuleToAABB(receiverAMaxRad, receiverBMinType, hitterAMaxRad, hitterBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    if (BCPSS::CheckCollisionAABBToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    if (BCPSS::CheckCollisionAABBToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+                default:
+                    BLIT_ERROR("%s: Unexpected shape during narrow phase checks", BlitzenCore::GCCollisionSystemName);
+                    break;
+                }
+            }
+
+            Resident* dynamicColliderIndicesArr = &indices[cell.dynamicCollidersOffset];
+
+            for (uint32_t id = 0; id < cell.dynamicCollidersCount; ++id)
+            {
+                Resident receiver = dynamicColliderIndicesArr[id];
+                if (hitter == receiver) continue;
+
+                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MColliderBMinType[receiver].data;
+
+                BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
+                switch (colliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    if (BCPSS::CheckCollisionCapsuleToAABB(receiverAMaxRad, receiverBMinType, hitterAMaxRad, hitterBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    if (BCPSS::CheckCollisionAABBToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    if (BCPSS::CheckCollisionAABBToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+                default:
+                    BLIT_ERROR("%s: Unexpected shape during narrow phase checks", BlitzenCore::GCCollisionSystemName);
+                    break;
+                }
+            }
+        }
+    }
+
+    void ColliderContainer::CheckSphereColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices)
+    {
+        auto& hitterAMaxRad = MColliderAMaxRad[hitter].data;
+
+        if constexpr (GCBlitzenSimd)
+        {
+
+        }
+        else
+        {
+
+            Resident* staticColliderIndicesArr = &indices[cell.staticCollidersOffset];
+
+            for (uint32_t id = 0; id < cell.staticColliderCount; ++id)
+            {
+                Resident receiver = staticColliderIndicesArr[id];
+
+                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MColliderBMinType[receiver].data;
+
+                BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
+                switch (colliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    if (BCPSS::CheckCollisionCapusleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    if (BCPSS::CheckCollisionAABBToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    if (BCPSS::CheckCollisionSphereToSphere(hitterAMaxRad, receiverAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                    }
+                    break;
+                default:
+                    BLIT_ERROR("%s: Unexpected shape during narrow phase checks", BlitzenCore::GCCollisionSystemName);
+                    break;
+                }
+            }
+
+            Resident* dynamicColliderIndicesArr = &indices[cell.dynamicCollidersOffset];
+
+            for (uint32_t id = 0; id < cell.dynamicCollidersCount; ++id)
+            {
+                Resident receiver = dynamicColliderIndicesArr[id];
+                if (hitter == receiver) continue;
+
+                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MColliderBMinType[receiver].data;
+
+                BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
+                switch (colliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    if (BCPSS::CheckCollisionCapusleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    if (BCPSS::CheckCollisionAABBToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    if (BCPSS::CheckCollisionSphereToSphere(hitterAMaxRad, receiverAMaxRad))
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        // Adds event both ways, unless the receiver has velocity. 
+                        // If the receiver has velocity, they will create it themselves
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                    }
+                    break;
+                default:
+                    BLIT_ERROR("%s: Unexpected shape during narrow phase checks", BlitzenCore::GCCollisionSystemName);
+                    break;
+                }
+            }
+        }
+    }
 
     void CollisionGrid::DefineGrid(uint32_t origin)
     {
@@ -194,12 +476,44 @@ namespace BlitzenEngine
         }
     }
 
-    void CollisionGrid::AllocStatics(uint32_t count)
+    void ColliderContainer::TransformCollidersWithoutBMPR(Resident* movingResidentArr, uint32_t movingResidentCount, WVTransform* transformArr, MeshTransform* gpuTransformArr)
     {
-        BLIT_ASSERT(m_colliderIndices == nullptr);
+        for (uint32_t id = 0; id < movingResidentCount; ++id)
+        {
+            Resident resident = movingResidentArr[id];
+            auto& transform = transformArr[resident];
+            float scale = gpuTransformArr[resident].scale;
+            auto& aMaxRad = MColliderAMaxRad[resident];
+            auto& bMinType = MColliderBMinType[resident];
+            auto& transformedAMaxRad = MTransformedColliderAMaxRad[resident];
+            auto& transformedBMinType = MTransformedColliderBMinType[resident];
 
-        m_colliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, count * sizeof(uint32_t)));
-        m_colliderIndicesTotal += count;
+            //---------------------------------------------------------------------------------------------------------
+            // NOTE: This is hard without using BMPR with the current design, because BMPR owns dynamic quaternions
+            // - For now colliders will only receive movement and scale
+            // - This means that only moving residents will be checked and updated
+            // - The BMPR version will probably be more advanced
+            //---------------------------------------------------------------------------------------------------------
+            uint32_t type = uint32_t(bMinType.data.w);
+            switch (type)
+            {
+            case BlitzenColliderTypeSphere:
+                transformedAMaxRad.data.WriteXYZ(aMaxRad.data.xyz() * scale + transform.position);
+                transformedAMaxRad.data.w = aMaxRad.data.w * scale;
+                break;
+
+            case BlitzenColliderTypeAABB:
+                transformedAMaxRad.data.WriteXYZ(aMaxRad.data.xyz() * scale + transform.position);
+                transformedBMinType.data.WriteXYZ(bMinType.data.xyz() * scale + transform.position);
+                break;
+
+            case BlitzenColliderTypeCapsule:
+                transformedAMaxRad.data.WriteXYZ(aMaxRad.data.xyz() * scale + transform.position);
+                transformedBMinType.data.WriteXYZ(bMinType.data.xyz() * scale + transform.position);
+                transformedAMaxRad.data.w = aMaxRad.data.w * scale;
+
+            }
+        }
     }
 
     void ColliderContainer::AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, RENDER_OBJECT_TYPE type)
@@ -225,16 +539,23 @@ namespace BlitzenEngine
 
         auto& colliderAMaxRad = MColliderAMaxRad[resident];
         auto& colliderBMinType = MColliderBMinType[resident];
+        auto& transformedAMaxRad = MColliderAMaxRad[resident];
+        auto& transformedBMinType = MColliderBMinType[resident];
 
+        // Write AMaxRad
         colliderAMaxRad.data.WriteXYZ(data.AMaxRad.data.xyz());
         colliderAMaxRad.data.w = data.AMaxRad.data.w;
 
+        // Write BMinType. Type does not change so it is written to the transformed version as well
         colliderBMinType.data.WriteXYZ(data.BMinType.data.xyz());
         colliderBMinType.data.w = data.BMinType.data.w;
+        transformedBMinType.data.w = colliderBMinType.data.w;
+
+        uint32_t type = uint32_t(colliderBMinType.data.w);
 
         // Bake the transform to the collider for static objects
         if (IS_RESIDENT_STATIC(resident))
-        {
+        { 
             if (colliderBMinType.data.w == BlitzenColliderTypeSphere)
             {
                 colliderAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
@@ -255,11 +576,27 @@ namespace BlitzenEngine
             {
                 BLIT_ASSERT_MESSAGE(false, "Unrecognized collider enumeration");
             }
-
             mStaticColliderCount++;
         }
+        // For dynamics write transforms to transformed array, keep the other ones in the original state
         else
         {
+            if (colliderBMinType.data.w == BlitzenColliderTypeSphere)
+            {
+                transformedAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                transformedAMaxRad.data.w = colliderAMaxRad.data.w * residentTransform.scale;
+            }
+            else if (colliderBMinType.data.w == BlitzenColliderTypeAABB)
+            {
+                transformedAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                transformedBMinType.data.WriteXYZ(BlitML::RotateQuat(colliderBMinType.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+            }
+            else if (colliderBMinType.data.w == BlitzenColliderTypeCapsule)
+            {
+                transformedAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                transformedBMinType.data.WriteXYZ(BlitML::RotateQuat(colliderBMinType.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                transformedAMaxRad.data.w = colliderAMaxRad.data.w * residentTransform.scale;
+            }
             WVColliderHitData[resident] = behavior;
             mWorldVariableColliderCount++;
         }
@@ -280,6 +617,14 @@ namespace BlitzenEngine
     void CollisionGrid::AllocDynamicIndices()
     {
         WVColliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, BLIT_MAX_WORLD_VARIABLE_COUNT * sizeof(uint32_t)));
+    }
+
+    void CollisionGrid::AllocStatics(uint32_t count)
+    {
+        BLIT_ASSERT(m_colliderIndices == nullptr);
+
+        m_colliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, count * sizeof(uint32_t)));
+        m_colliderIndicesTotal += count;
     }
 
     CollisionGrid::~CollisionGrid()

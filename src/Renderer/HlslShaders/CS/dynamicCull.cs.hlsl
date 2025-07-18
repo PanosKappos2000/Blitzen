@@ -27,14 +27,17 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     float scale = ssbo_Transforms[objId].scale;
     float radius = ssbo_BoundingSpheres[objId].radius * scale;
     
-    // Updates only the yaw for objects that are set to orient themselves to their direction
-    if ((wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT) && // Orientation follows direction ?
-        (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_VELOCITY_BIT)) // Has movement ?
+    // Checks if the resident should have orientation to direction
+    if (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT)
     {
-        float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
-        float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), wvtransform.euler.y);
-        orientation = MultiplyQuat(orientation, orientationYaw);
-        ssbo_Transforms[obj.transformId].orientation = orientation;
+        // Only checks if resident is moving
+        if (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_VELOCITY_BIT)
+        { 
+            float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
+            float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), wvtransform.euler.y);
+            orientation = MultiplyQuat(orientation, orientationYaw);
+            ssbo_Transforms[obj.transformId].orientation = orientation;
+        }
     }
     // Else check for free rotation
     else if ((wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT) || (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT))

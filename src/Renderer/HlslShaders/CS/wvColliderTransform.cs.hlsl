@@ -13,7 +13,7 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
         return;
     }
     
-    float type = ssbo_ColliderBMinType[objID].w;
+    uint type = (uint) ssbo_ColliderBMinType[objID].w;
     if (type == BlitzenColliderTypeSphere)
     {
         rwssbo_TransformedColliderAMaxRad[objID].xyz = RotateQuat(ssbo_ColliderAMaxRad[objID].xyz, ssbo_Transforms[objID].orientation) * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;

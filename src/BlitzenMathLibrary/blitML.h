@@ -152,7 +152,6 @@ namespace BlitML
         return mipLevels;
     }
 
-
     /*-----------------------
         Vector operations
     ------------------------*/

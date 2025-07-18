@@ -38,9 +38,6 @@ namespace BlitzenEngine
 		uint32_t m_colliderIndicesTotal{ 0 };
 		uint32_t* WVColliderIndices{ nullptr };
 
-		CollisionMessage* m_events{ nullptr };
-		uint32_t m_count{ 0 };
-
 		void DefineGrid(uint32_t origin);
 
 		void CreateCells();

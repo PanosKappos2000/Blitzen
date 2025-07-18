@@ -164,13 +164,15 @@ enum BLIT_RESIDENT_MOVEMENT_FLAG_BITS
 	BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT = 1 << 6,
 };
 
-#define BlitzenColliderTypeSphere			0.f
-#define BlitzenColliderTypeAABB				1.f
-#define BlitzenColliderTypeCapsule			2.f
+enum BlitzenColliderType
+{
+	BlitzenColliderTypeSphere = 0,
+	BlitzenColliderTypeAABB = 1,
+	BlitzenColliderTypeCapsule = 2,
+};
 
 #ifdef __cplusplus
-	using BlitColliderType = float;
-	static_assert(sizeof(BlitColliderType) == 4);
+	static_assert(sizeof(BlitzenColliderType) == 4);
 #endif
 
 #ifdef __cplusplus

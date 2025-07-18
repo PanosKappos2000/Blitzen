@@ -19,16 +19,47 @@ namespace BlitzenWorld
 
     void DispatchCollisionSystems(BLITZEN_WORLD* pWORLD)
     {
-        BlitzenCore::BlitPerformanceCounter counter;
-        counter.GenerateInner();
-        double broadPhaseEnd = 0;
-        double broadPhaseState = counter.Startup();
-        BlitzenEngine::COLLISION_RESOLVE_CONTEXT collisionResolveContext{};
-        collisionResolveContext.WVTransformArr = pWORLD->mResidents.WVTransforms;
-        collisionResolveContext.mTransformCount = pWORLD->mResidents.mWorldVariableCount;
-        pWORLD->mResidents.MColliders.DispatchCollisionResolve(&pWORLD->mCollisionGrid, collisionResolveContext);
-        broadPhaseEnd = counter.End();
-        counter.Reset();
+        
+
+        if constexpr (!BLITGCBroadPhaseCollisionBumper && !BLITGCBroadPhaseCollisionBumper)
+        {
+            BlitzenCore::BlitPerformanceCounter counter;
+            counter.GenerateInner();
+            double broadPhaseEnd = 0;
+            double broadPhaseState = counter.Startup();
+            // Broad phase. Collects the colliders inside cells. 
+            // Dynamic colliders point to their cell. 
+            // Each Cell points at an offset an indices array which points back to the colliders
+            pWORLD->mCollisionGrid.PlaceDynamics(pWORLD->mResidents.WVTransforms, pWORLD->mResidents.mWorldVariableCount);
+            broadPhaseEnd = counter.End();
+            counter.Reset();
+
+            // Transform collider shapes to world space.
+            pWORLD->mResidents.MColliders.TransformCollidersWithoutBMPR(pWORLD->mResidents.WVWithVelocity, pWORLD->mResidents.mWithVelocityCount, pWORLD->mResidents.WVTransforms,
+                pWORLD->mResidents.mTransforms.m_transforms);
+
+            // Narrow phase loop. Only dynamics become hitters
+            for (uint32_t id = 0; id < pWORLD->mResidents.mWithVelocityCount; ++id)
+            {
+                BlitzenEngine::Resident hitter = pWORLD->mResidents.mResidents[id];
+                BlitzenColliderType hitterColliderType = (BlitzenColliderType)pWORLD->mResidents.MColliders.MTransformedColliderBMinType[hitter].data.w;
+                auto& cell = pWORLD->mCollisionGrid.mCellOffsets[pWORLD->mResidents.WVTransforms[hitter].targetIdx];
+
+                switch (hitterColliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    pWORLD->mResidents.MColliders.CheckCapsuleColliderInsideGridCell(hitter, cell, pWORLD->mCollisionGrid.m_colliderIndices);
+                    break;
+                case BlitzenColliderTypeAABB:
+                    pWORLD->mResidents.MColliders.CheckAABBColliderInsideGridCell(hitter, cell, pWORLD->mCollisionGrid.m_colliderIndices);
+                    break;
+                case BlitzenColliderTypeSphere:
+                    pWORLD->mResidents.MColliders.CheckSphereColliderInsideGridCell(hitter, cell, pWORLD->mCollisionGrid.m_colliderIndices);
+                    break;
+                }
+                
+            }
+        }
     }
 
     void DispatchBumper(BlitzenWorld::BLITZEN_WORLD* WORLD, uint32_t terrainCount)

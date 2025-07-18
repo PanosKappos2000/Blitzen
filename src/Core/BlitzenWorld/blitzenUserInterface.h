@@ -20,7 +20,7 @@ namespace BlitzenEngine
 
 	// Creates collider for resident. This collider will be used to check it against other residents
 	// Residents that have never called this (or future extensions) will be invincible
-	void LogResidentForCollision(Resident resident, BlitColliderType type);
+	void LogResidentForCollision(Resident resident, BlitzenColliderType type);
 
 	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint32_t rotationFlags);
 

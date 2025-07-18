@@ -10,23 +10,12 @@ namespace BlitzenEngine
 	// Had some constructor trouble with unions that is why this struct is ugly as hell
     struct Collider
     {
-        BlitColliderType type;
+        BlitzenColliderType type;
 		BlitML::vec3 CAPSULEPONE_AABBMIN_SPHEREC;
 		BlitML::vec3 CAPSULEPTWO_AABBMAX;
 		float CAPSULERAD_SPHERERAD;
     };
     static_assert(sizeof(Collider) % 16 == 0);
-
-	struct COLLISION_RESOLVE_CONTEXT
-	{
-		WVTransform* WVTransformArr{ nullptr };
-		uint32_t mTransformCount{ 0 };
-		ColliderAMaxRad* MColliderAMaxRadArr{ nullptr };
-		ColliderBMinType* MColliderBMinTypeArr{ nullptr };
-		uint32_t mColliderCount{ 0 };
-		CollisionMessage* MBMPRReadyMessagesArr{ nullptr };
-		uint32_t mBMPRReadyMessagesCounter{ 0 };
-	};
 
 	class ColliderContainer
 	{
@@ -41,10 +30,15 @@ namespace BlitzenEngine
 		// For example, a weapon or a bullet, and probably even destructibles need to be world variables
 		// If this system becomes heavy, there could exist a resident that is one level below a world variable
 		WVColliderResponse WVColliderHitData[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		ColliderAMaxRad MTransformedColliderAMaxRad[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		ColliderBMinType MTransformedColliderBMinType[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		uint32_t mWorldVariableColliderCount{ 0 };
 
 		// Possible different for event collisions
 		BLIT_STRAIGHTHANDLE event_collision_placeholder_unused;
+
+		CollisionMessage* MCollsionMessage{ nullptr };
+		uint32_t mCollisionMessageCount{ 0 };
 
 		// Adds bounding sphere for render object. If the render object is static, the sphere is pre transformed
 		void AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, RENDER_OBJECT_TYPE objectType);
@@ -52,6 +46,14 @@ namespace BlitzenEngine
 		bool LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform,
 			WVColliderResponse behavior = {BlitzenCollisionFlagsBlock, BlitzenCollisionFlagsBlock});
 
-		void DispatchCollisionResolve(CollisionGrid* pGrid, const COLLISION_RESOLVE_CONTEXT& context);
+		void TransformCollidersWithoutBMPR(Resident* movingResidentArr, uint32_t movingResidentCount, WVTransform* transformArr, MeshTransform* gpuTransformArr);
+
+		void CheckCapsuleColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices);
+
+		void CheckAABBColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices);
+
+		void CheckSphereColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices);
 	};
+
+	
 }

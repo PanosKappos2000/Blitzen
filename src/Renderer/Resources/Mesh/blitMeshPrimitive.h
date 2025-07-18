@@ -49,7 +49,7 @@ namespace BlitzenEngine
 		uint32_t m_indexCount{ 0 };
 		MESH_PRIMITIVE_SPECIAL_FLAGS m_specialFlags{ MESH_PRIMITIVE_SPECIAL_NONE };
 		uint32_t m_materialID{ 0 };
-		BlitColliderType mColliderType{ BlitzenColliderTypeSphere };
+		BlitzenColliderType mColliderType{ BlitzenColliderTypeSphere };
 	};
 
 	struct MESH_PRIMITIVE_LOD_CREATE_CONTEXT
@@ -76,7 +76,7 @@ namespace BlitzenEngine
 		uint32_t m_indexCount{ 0 };
 		MESH_PRIMITIVE_SPECIAL_FLAGS m_specialFlags{ MESH_PRIMITIVE_SPECIAL_NONE };
 		uint32_t m_materialID{ 0 };
-		BlitColliderType mColliderType{ BlitzenColliderTypeSphere };
+		BlitzenColliderType mColliderType{ BlitzenColliderTypeSphere };
 	};
 
 	struct MESH_PRIMITIVE_LOD_GENERATE_CONTEXT
