@@ -57,6 +57,8 @@ namespace BlitzenEngine
 	{
 		RESIDENT_CREATE_CONTEXT residentCtx{};
 		uint32_t m_worldVariableID{ 0 };
+		DirectionInfluencer directionInfluencer{ DirectionInfluencer::Camera };
+		uint32_t residentMovementFlags{ 0 };
 	};
 
 	using WORLD_VARIABLE = uint32_t;
@@ -84,8 +86,8 @@ namespace BlitzenEngine
 		uint32_t mWorldVariableCount{ 0 };
 		Resident WVWithGravityIDXs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t mWithGravityCount{ 0 };
-		WVMovementIntent WVWithVelocity[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		BlitML::vec3 WVForward[BLIT_MAX_WORLD_VARIABLE_COUNT]{ 0.f };
+		Resident WVWithVelocity[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		WVMovementIntent WVDirectionData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t mWithVelocityCount{ 0 };
 		
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);

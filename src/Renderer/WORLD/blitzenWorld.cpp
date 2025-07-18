@@ -2,6 +2,7 @@
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
+#include "BlitzenMathLibrary/blitMLSIMD.h"
 
 namespace BlitzenWorld
 {
@@ -172,13 +173,13 @@ namespace BlitzenWorld
         camera.transformData.pitchRotation += camera.transformData.pitchMovement;
     }
 
-    void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, BlitzenEngine::CAMERA_FREE_ROTATION_SETTING freeRotationWhen)
+    void SetupCameraAttachment(uint32_t residentID, BlitML::float3 paddingFromAttachment, bool residentDirectionEffectFlag)
     {
         auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
 
-        camera.attachmentSettings.attachmentID = residentID;
-        camera.attachmentSettings.paddingFromAttachment = paddingFromAttachment;
-        camera.attachmentSettings.attachmentFreeRotationFlag = freeRotationWhen;
+        camera.attachmentSettings.residentID = residentID;
+        camera.attachmentSettings.paddingFromResident = paddingFromAttachment;
+        camera.attachmentSettings.residentForwardEffectFlag = residentDirectionEffectFlag;
 
         // The camera starts off at the position of the resident
         camera.viewData.position = BlitzenEngine::GetResidentPosition(residentID);
@@ -204,6 +205,34 @@ namespace BlitzenWorld
 
         // View matrix
         camera.viewData.viewMatrix = BlitML::Mat4Inverse(camera.transformData.translation * camera.transformData.rotation);
+    }
+
+    BlitML::fDirection GetResidentForward(BlitzenEngine::Resident resident)
+    {
+        switch (GSBlitzenWorld->mResidents.WVDirectionData[resident].directionInfluencer)
+        {
+        case BlitzenEngine::DirectionInfluencer::Camera:
+        {
+            auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
+
+            //transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
+            BlitML::fDirection worldDirection = 
+                BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(camera.transformData.yawRotation), BlitML::float4(GSBlitzenWorld->mResidents.WVDirectionData[resident].intent, 0.f)));
+            BlitML::Normalize(worldDirection);
+
+            if (GSBlitzenWorld->mResidents.WVTransforms[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT)
+            {
+                BlitzenEngine::SetResidentYaw(resident, BlitML::ATan2Float(worldDirection.x, worldDirection.z));
+            }
+
+            return worldDirection;
+        }
+        
+        default:
+        {
+            return BlitML::fDirection(0.f);
+        }
+        }
     }
 
     void MoveCameraReleased(BlitML::float3 movement)
@@ -493,7 +522,7 @@ namespace BlitzenWorld
 
 #if defined(BLIT_GAME_TEST)
         pWORLD->m_activeCameraIDX = 1;
-        BlitzenWorld::SetupCameraAttachment(pWORLD->m_mainCharacter, BlitML::float3(0.f, 2.f, -4.f), BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS);
+        BlitzenWorld::SetupCameraAttachment(pWORLD->m_mainCharacter, BlitML::float3(0.f, 2.f, -4.f), true);
 #endif
 
         constexpr uint32_t CollisionGridOrigin = 0;

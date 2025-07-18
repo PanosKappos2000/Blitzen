@@ -118,10 +118,16 @@ namespace BlitzenEngine
         uint32_t targetIdx;
     };
 
+    enum class DirectionInfluencer : uint32_t
+    {
+        Camera, 
+        Target
+    };
+
     struct WVMovementIntent
     {
-        Resident resident;
-        BlitML::float3 intent;
+        DirectionInfluencer directionInfluencer;
+        BlitML::fDirection intent;
     };
 
     struct RenderObject

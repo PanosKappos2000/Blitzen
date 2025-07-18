@@ -286,6 +286,11 @@ namespace BlitzenEngine
 
             wvCtx.residentCtx.m_transformInfo.m_type = WorldTransformType::DYNAMIC;
 
+            if (wv == 0)
+            {
+                wvCtx.residentMovementFlags |= BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT;
+            }
+
             wvCtx.m_worldVariableID = wv;
 
             auto movingRes{ pResidents->AddWorldVariable(wvCtx)};

@@ -27,27 +27,38 @@ void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID 
     float scale = ssbo_Transforms[objId].scale;
     float radius = ssbo_BoundingSpheres[objId].radius * scale;
     
-    // Starts with identity quaternion
-    float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
-
-    if(wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
+    // Updates only the yaw for objects that are set to orient themselves to their direction
+    if ((wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT) && // Orientation follows direction ?
+        (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_VELOCITY_BIT)) // Has movement ?
     {
+        float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
         float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), wvtransform.euler.y);
         orientation = MultiplyQuat(orientation, orientationYaw);
+        ssbo_Transforms[obj.transformId].orientation = orientation;
     }
-    
-    if (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
+    // Else check for free rotation
+    else if ((wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT) || (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT))
     {
-        float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), wvtransform.euler.x);
-        orientation = MultiplyQuat(orientation, orientationPitch);
-    }
+        float4 orientation = float4(0.f, 0.f, 0.f, 1.f);
+        
+        // Checks yaw separately
+        if (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT)
+        {
+            float4 orientationYaw = NormalizedQuatFromAngleAxis(float3(0.f, 1.f, 0.f), wvtransform.euler.y);
+            orientation = MultiplyQuat(orientation, orientationYaw);
+        }
+        
+        // Checks pitch separately
+        if (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT)
+        {
+            float4 orientationPitch = NormalizedQuatFromAngleAxis(float3(1.f, 0.f, 0.f), wvtransform.euler.x);
+            orientation = MultiplyQuat(orientation, orientationPitch);
+        }
 
-    //float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
-    //orientation = MultiplyQuat(orientation, orientationRoll);
-    
-    // Only update orientation if rotation happened
-    if ((wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_YAW_BIT) || (wvtransform.movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATING_PITCH_BIT))
-    {
+        //float4 orientationRoll = NormalizedQuatFromAngleAxis(float3(0.f, 0.f, 1.f), movement.rotation.z);
+        //orientation = MultiplyQuat(orientation, orientationRoll);
+        
+        // Final update
         ssbo_Transforms[obj.transformId].orientation = orientation;
     }
     

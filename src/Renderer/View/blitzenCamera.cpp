@@ -56,11 +56,11 @@ namespace BlitzenEngine
         // Receive the resident's current position. Since the camera is attached to it, it will use it for translation
         // The resident is assumed to have already taken care of direction
         // In the future, this design might need to be improved upon
-        BlitML::vec3 position = GetResidentPosition(camera.attachmentSettings.attachmentID);
+        BlitML::vec3 position = GetResidentPosition(camera.attachmentSettings.residentID);
 
-        float offsetX = camera.attachmentSettings.paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
-        float offsetZ = camera.attachmentSettings.paddingFromAttachment.z * BlitML::Cos(camera.transformData.yawRotation);
-		BlitML::vec3 finalPosition = position + BlitML::vec3{ offsetX, camera.attachmentSettings.paddingFromAttachment.y, offsetZ };
+        float offsetX = camera.attachmentSettings.paddingFromResident.z * BlitML::Sin(camera.transformData.yawRotation);
+        float offsetZ = camera.attachmentSettings.paddingFromResident.z * BlitML::Cos(camera.transformData.yawRotation);
+		BlitML::vec3 finalPosition = position + BlitML::vec3{ offsetX, camera.attachmentSettings.paddingFromResident.y, offsetZ };
 
         camera.viewData.position = BlitML::ToVec3(finalPosition);
 
@@ -81,20 +81,6 @@ namespace BlitzenEngine
         constexpr float SavePitch = 89.f;
 
         camera.transformData.pitchRotation = BlitML::FClamp(camera.transformData.pitchRotation, BlitML::Radians(-SavePitch), BlitML::Radians(SavePitch));
-
-        if (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::ALWAYS ||
-            (camera.attachmentSettings.attachmentFreeRotationFlag == BlitzenEngine::CAMERA_FREE_ROTATION_SETTING::NO_VELOCITY && 
-                BlitzenEngine::CheckResidentVelocity(camera.attachmentSettings.attachmentID) != 0.f))
-        {
-            if(camera.transformData.yawMovement == 0.f)
-            { 
-                BlitzenEngine::KillResidentYawRotation(camera.attachmentSettings.attachmentID);
-            }
-            else
-            {
-                BlitzenEngine::RotateResidentYaw(camera.attachmentSettings.attachmentID, camera.transformData.yawMovement, DeltaTimeAlreadyOnPass1);
-            }
-        }
 
         // New yaw pitch quat and rotation update
         auto yawOrientation = BlitML::QuatFromAngleAxis(BlitML::vec3(0.f, -1.f, 0.f), camera.transformData.yawRotation, 0);

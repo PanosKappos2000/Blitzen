@@ -84,18 +84,11 @@ namespace BlitzenEngine
         BlitML::mat4 clipCoordinates;
     };
 
-    enum class CAMERA_FREE_ROTATION_SETTING : uint32_t
-    {
-        ALWAYS,
-        NO_VELOCITY,
-        NEVER
-    };
-
     struct CameraAttachmentSettings
     {
-        uint32_t attachmentID = 0;
-        BlitML::float3 paddingFromAttachment{ 0.f };
-        CAMERA_FREE_ROTATION_SETTING attachmentFreeRotationFlag{ CAMERA_FREE_ROTATION_SETTING::ALWAYS };
+        uint32_t residentID = 0;
+        BlitML::float3 paddingFromResident{ 0.f };
+        bool residentForwardEffectFlag = true;
     };
 
     struct Camera

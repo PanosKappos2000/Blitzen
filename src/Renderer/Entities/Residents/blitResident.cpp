@@ -129,25 +129,46 @@ namespace BlitzenEngine
 			return baseResidentResidentRes;
 		}
 
+		Resident resident = mWorldVariableCount;
+
 		MWorldVariables[mWorldVariableCount] = ctx.m_worldVariableID;
 		mWorldVariableCount++;
+
+		SetResidentDirectionInfluence(resident, ctx.directionInfluencer);
+
+		WVTransforms[resident].movementFlags |= ctx.residentMovementFlags;
 
 		return RESIDENT_CREATE_RES::SUCCESS;
 	}
 
 	void WORLD_RESIDENTS::UpdateMovingResidents(float deltaTime)
 	{
-		//for (uint32_t id = 0; id < mWithVelocityCount; ++id)
-		//{
-		//	Resident resident = WVWithVelocity[mWithVelocityCount].resident;
-		//
-		//	auto& velocityData = WVVelocityData[resident];
-		//	velocityData.currentSpeed = BlitML::FMin(velocityData.acceleration + velocityData.currentSpeed, velocityData.maxSpeed);
-		//	velocityData.currentSpeed *= deltaTime;
-		//
-		//	
-		//	WVTransforms[resident].position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(WVForward[resident]), BlitML::float4(0.f, 0.f, velocity, 0.f)));
-		//}
+		for (uint32_t id = 0; id < mWithVelocityCount; ++id)
+		{
+			Resident resident = WVWithVelocity[id];
+			auto& transform = WVTransforms[resident];
+			auto& intent = WVDirectionData[resident];
+
+			if (intent.intent.x == 0.f && intent.intent.z == 0.f)
+			{
+				// Could improve this for deceleration
+				BlitML::DisableStaticArrayElement(WVWithVelocity, resident, mWithVelocityCount);
+				WVVelocityData[resident].currentSpeed = 0.f;
+				transform.movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_VELOCITY_BIT);
+			}
+			else
+			{
+				BlitML::fDirection directionalMovement = BlitzenWorld::GetResidentForward(resident);
+
+				auto& accelerationData = WVVelocityData[resident];
+				accelerationData.currentSpeed += accelerationData.acceleration;
+				float velocity = BlitML::FMin(accelerationData.currentSpeed, accelerationData.maxSpeed);
+				velocity *= deltaTime;
+
+				transform.position += directionalMovement * velocity;
+				transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_BIT;
+			}
+		}
 	}
 
 	void WORLD_RESIDENTS::UpdateFallingResidents(float deltaTime)
@@ -182,12 +203,25 @@ namespace BlitzenEngine
 		return GSWorldResidents->AddResident(ctx);
 	}
 
-	void RotateEntity(uint32_t residentID, const BlitML::fRotation& rotation, float deltaTime, uint32_t rotationFlags)
+	void SetResidentYaw(Resident resident, float yaw)
 	{
-		auto& rotating{ GSWorldResidents->WVTransforms[residentID] };
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		rotating.movementFlags |= rotationFlags;
-		rotating.eulerAngles += rotation * deltaTime;
+		GSWorldResidents->WVTransforms[resident].eulerAngles = yaw;
+	}
+
+	void SetResidentRotationToFollowDirection(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
+
+		GSWorldResidents->WVTransforms[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT;
+	}
+
+	void StopResidentRotationFromFollowingDirection(Resident resident)
+	{
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
+
+		GSWorldResidents->WVTransforms[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT);
 	}
 
 	void RotateResidentYaw(Resident resident, float yaw, float deltaTime)
@@ -221,93 +255,73 @@ namespace BlitzenEngine
 		GSWorldResidents->WVTransforms[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_ROTATING_ROLL_BIT;
 	}
 
-	void AddResidentVelocity(Resident resident, const BlitML::fVelocity& velocity, float deltaTime)
+	void SetResidentDirectionInfluence(Resident resident, DirectionInfluencer directionInfluencer)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		auto& residentData = GSWorldResidents->WVTransforms[resident];
-
-		BlitML::float3 worldMove = BlitML::ToVec3(BlitML::Mat4EulerY(residentData.eulerAngles.y) * BlitML::vec4{ velocity, 0.0f });
-
-		GSWorldResidents->WVTransforms[resident].position += worldMove * 0.01f;
+		GSWorldResidents->WVDirectionData[resident].directionInfluencer = directionInfluencer;
 	}
 
 	void AddResidentVelocityZAxis(Resident resident, float deltaTime)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
-		auto& transform = GSWorldResidents->WVTransforms[resident];
+		GSWorldResidents->WVDirectionData[resident].intent.z = 1.f;
 
-		float velocity = BlitML::FMax(accelerationData.currentSpeed + accelerationData.acceleration, accelerationData.maxSpeed);
-		velocity *= deltaTime;
-		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
-		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(0.f, 0.f, velocity, 0.f)));
-		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_ZAXIS_BIT;
+		if (!CheckResidentVelocity(resident))
+		{
+			GSWorldResidents->WVWithVelocity[GSWorldResidents->mWithVelocityCount++] = resident;
+		}
 	}
 
 	void AddResidentVelocityZAxisNegative(Resident resident, float deltaTime)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
-		auto& transform = GSWorldResidents->WVTransforms[resident];
+		GSWorldResidents->WVDirectionData[resident].intent.z = -1.f;
 
-		float velocity = BlitML::FMin(accelerationData.currentSpeed - accelerationData.acceleration, -accelerationData.maxSpeed);
-		velocity *= deltaTime;
-		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
-		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(0.f, 0.f, velocity, 0.f)));
-		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_ZAXIS_BIT;
+		if (!CheckResidentVelocity(resident))
+		{
+			GSWorldResidents->WVWithVelocity[GSWorldResidents->mWithVelocityCount++] = resident;
+		}
 	}
 
 	void KillResidentVelocityZAxis(Resident resident)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		GSWorldResidents->WVTransforms[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_VELOCITY_ZAXIS_BIT);
-		if (!(GSWorldResidents->WVTransforms[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_VELOCITY_XAXIS_BIT))
-		{
-			GSWorldResidents->WVVelocityData[resident].currentSpeed = 0.f;
-		}
+		GSWorldResidents->WVDirectionData[resident].intent.z = 0.f;
 	}
 
 	void AddResidentVelocityXAxis(Resident resident, float deltaTime)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
-		auto& transform = GSWorldResidents->WVTransforms[resident];
+		GSWorldResidents->WVDirectionData[resident].intent.x = 1.f;
 
-		float velocity = BlitML::FMax(accelerationData.currentSpeed + accelerationData.acceleration, accelerationData.maxSpeed);
-		velocity *= deltaTime;
-		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ velocity, 0.f, 0.f, 0.0f });
-		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(velocity, 0.f, 0.f, 0.f)));
-		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_XAXIS_BIT;
+		if (!CheckResidentVelocity(resident))
+		{
+			GSWorldResidents->WVWithVelocity[GSWorldResidents->mWithVelocityCount++] = resident;
+		}
 	}
 
 	void AddResidentVelocityXAxisNegative(Resident resident, float deltaTime)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		auto& accelerationData = GSWorldResidents->WVVelocityData[resident];
-		auto& transform = GSWorldResidents->WVTransforms[resident];
+		GSWorldResidents->WVDirectionData[resident].intent.x = -1.f;
 
-		float velocity = BlitML::FMin(accelerationData.currentSpeed - accelerationData.acceleration, -accelerationData.maxSpeed);
-		velocity *= deltaTime;
-		//transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ velocity, 0.f, 0.f, 0.0f });
-		transform.position += BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(transform.eulerAngles.y), BlitML::float4(velocity, 0.f, 0.f, 0.f)));
-		transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_XAXIS_BIT;
+		if (!CheckResidentVelocity(resident))
+		{
+			GSWorldResidents->WVWithVelocity[GSWorldResidents->mWithVelocityCount++] = resident;
+		}
 	}
 
 	void KillResidentVelocityXAxis(Resident resident)
 	{
 		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(resident < GSWorldResidents->mWorldVariableCount);
 
-		GSWorldResidents->WVTransforms[resident].movementFlags &= ~(BLIT_RESIDENT_MOVEMENT_VELOCITY_XAXIS_BIT);
-		if (!(GSWorldResidents->WVTransforms[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_VELOCITY_ZAXIS_BIT))
-		{
-			GSWorldResidents->WVVelocityData[resident].currentSpeed = 0.f;
-		}
+		GSWorldResidents->WVDirectionData[resident].intent.x = 0.f;
 	}
 
 	void SetResidentAcceleration(Resident resident, float acceleration)
@@ -354,10 +368,7 @@ namespace BlitzenEngine
 
 	bool CheckResidentVelocity(Resident resident)
 	{
-		if (resident > GSWorldResidents->mWorldVariableCount)
-		{
-			return false;
-		}
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(resident < GSWorldResidents->mWorldVariableCount);
 
 		return GSWorldResidents->WVVelocityData[resident].currentSpeed != 0.f;
 	}

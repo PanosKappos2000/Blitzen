@@ -72,6 +72,7 @@ namespace BlitML
     using float3 = vec3;
     using fRotation = vec3;
     using fVelocity = vec3;
+    using fDirection = vec3;
 
     inline bool operator == (const vec3& first, const vec3& second) { return (first.x == second.x) && (first.y == second.y) && (first.z == second.z); }
     inline bool operator == (const vec3& vec, float scalar) { return (vec.x == scalar) && (vec.y == scalar) && (vec.z == scalar); }

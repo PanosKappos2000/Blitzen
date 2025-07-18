@@ -33,10 +33,26 @@ namespace BlitML
     /* ------------------------------------------
         General math functions
     ------------------------------------------ */
-    inline float Sin(float x) {return sinf(x);}
-    inline float Cos(float x) {return cosf(x);}
-    inline float Tan(float x) {return tanf(x);}
-    inline float Acos(float x) {return acosf(x);}
+    inline float Sin(float x) 
+    {
+        return sinf(x);
+    }
+    inline float Cos(float x) 
+    {
+        return cosf(x);
+    }
+    inline float Tan(float x) 
+    {
+        return tanf(x);
+    }
+    inline float ATan2Float(float one, float two)
+    {
+        return atan2f(one, two);
+    }
+    inline float Acos(float x) 
+    {
+        return acosf(x);
+    }
     inline float Abs(float x) {return fabsf(x);}
 
     // Not based solely on overload for clarity
