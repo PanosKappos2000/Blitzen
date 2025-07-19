@@ -110,9 +110,16 @@ namespace BlitzenEngine
             return SurfaceCreateRes::LOD_GENERATION_FAILED;
         }
 
-        // Generates bounding sphere for surface, will be taken later by any render object using this surface
-        // This might be potentially wasteful when it come to memory, but accessing the vertices of a surface, outside of this funtion, to generate the sphere, would be a bit of a pain
-        GenerateBoundingSphere(newSurface, m_boundingSpheres[m_meshPrimitivesCount], context);
+        BlitzenEngine::HLSL_VTX_CONTEXT hlslVertices{};
+        hlslVertices.m_vtxPosArr = primitives.m_vertexPositions;
+        hlslVertices.m_vtxNrmArr = primitives.m_vertexNormals;
+        hlslVertices.m_vtxTngArr = primitives.m_vertexTangents;
+        hlslVertices.m_texCoordArr = primitives.m_vertexUVs;
+        BlitzenEngine::ConvertClassicVerticesToHlslFormat(hlslVertices, primitives.m_vertices, primitives.m_vertexCount);
+
+        BlitML::vec4 visibilityBoundingSphereData = BlitML::GenerateBoundingSphereFromVertices(primitives.m_vertexPositions, context.m_vertexCount);
+        m_boundingSpheres[m_meshPrimitivesCount].m_center = visibilityBoundingSphereData.xyz();
+        m_boundingSpheres[m_meshPrimitivesCount].m_radius = visibilityBoundingSphereData.w;
 
         if (context.mColliderType == BlitzenColliderTypeSphere)
         {
@@ -122,7 +129,7 @@ namespace BlitzenEngine
         {
 
         }
-        else
+        else if (context.mColliderType == BlitzenColliderTypeAABB)
         {
 
         }
@@ -469,9 +476,9 @@ namespace BlitzenEngine
             return SurfaceCreateRes::LOD_GENERATION_FAILED;
         }
 
-        // Generates bounding sphere for surface, will be taken later by any render object using this surface
-        // This might be potentially wasteful when it come to memory, but accessing the vertices of a surface, outside of this funtion, to generate the sphere, would be a bit of a pain
-        GenerateBoundingSphere(m_boundingSpheres[m_meshPrimitivesCount], context.m_pVertexContext->m_vtxPosArr, context.m_vertexCount);
+        BlitML::vec4 visibilityBoundingSphereData = BlitML::GenerateBoundingSphereFromVertices(context.m_pVertexContext->m_vtxPosArr, context.m_vertexCount);
+        m_boundingSpheres[m_meshPrimitivesCount].m_center = visibilityBoundingSphereData.xyz();
+        m_boundingSpheres[m_meshPrimitivesCount].m_radius = visibilityBoundingSphereData.w;
 
         newSurface.materialId = context.m_materialID;
 

@@ -13,7 +13,8 @@ namespace BlitzenCore
         FreezeFrustum = 5,
         HI_Z_MAP_levelDescrease = 6,
         HI_Z_MAP_levelIncrease = 7,
+        SwitchToColliderDraw = 8,
 
-        MaxTypes = 8
+        MaxTypes = 127,
     };
 }

@@ -226,6 +226,7 @@ namespace BlitzenEngine
         meshopt_optimizeVertexCache(indices.Data(), indices.Data(), indexCount, vertexCount);
         meshopt_optimizeVertexFetch(vertices.Data(), indices.Data(), indexCount, vertices.Data(), vertexCount, sizeof(Vertex));
 
+        // I am slowly fully converting to this format. The main block is meshoptmizer
         HLSL_VTX_CONTEXT hlslVerticesContext{};
         hlslVerticesContext.m_vtxPosArr = context.m_triangles.m_vertexPositions;
         hlslVerticesContext.m_vtxNrmArr = context.m_triangles.m_vertexNormals;

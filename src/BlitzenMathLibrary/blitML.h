@@ -784,4 +784,26 @@ namespace BlitML
         arr[IDX] = arr[count - 1];
         count--;
     }
+
+    // Takes an array of vertices and generates a center and radius for a bounding sphere
+    // Returned as vec4 / float4 with the xyz components being the center and the w component being the raidus
+    inline vec4 GenerateBoundingSphereFromVertices(BlitML::vec3* vtxPosArr, uint32_t vtxCount)
+    {
+        BlitML::vec3 center{ 0.f };
+        for (size_t i = 0; i < vtxCount; ++i)
+        {
+            center = center + vtxPosArr[i];
+        }
+        center = center / float(vtxCount);
+
+        // Bounding sphere radius
+        float radius = 0;
+        for (size_t i = 0; i < vtxCount; ++i)
+        {
+            const auto& pos = vtxPosArr[i];
+            radius = BlitML::FMax(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
+        }
+        
+        return vec4{ center, radius };
+    }
 }

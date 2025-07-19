@@ -5,6 +5,11 @@ cbuffer cb_MoveCount : register(b10)
     uint minBounds;
 };
 
+cbuffer cb_HittingColliderIDX : register(b11)
+{
+    uint hitterID;
+}
+
 struct GRID_CELL
 {
     uint staticColliderOffset;

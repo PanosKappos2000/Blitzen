@@ -7,6 +7,8 @@ constexpr bool GCBlitzenSimd = true;
 constexpr bool GCBlitzenSimd = false;
 #endif
 
+constexpr uint32_t GCSIMDCollisionDataMaxElementCount = 8;
+
 namespace BCPSS
 {
 	// SIMD version of Matrix 4x4 and 4 component vector multiplication.
@@ -105,7 +107,7 @@ namespace BCPSS
 		return false;
 	}
 
-	inline bool CheckCollisionCapusleToSphere(const BlitML::float4& aMaxRadCapsule, const BlitML::float4& bMinTypeCapsule, const BlitML::float4& aMaxRadSphere)
+	inline bool CheckCollisionCapsuleToSphere(const BlitML::float4& aMaxRadCapsule, const BlitML::float4& bMinTypeCapsule, const BlitML::float4& aMaxRadSphere)
 	{
 		return false;
 	}
@@ -115,55 +117,55 @@ namespace BCPSS
 		return false;
 	}
 
-	inline void CheckCapsuleCollisionOnMultipleCapsules(const BlitML::float4& hitterAMaxRad, const BlitML::mat4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr,
+	inline void CheckCapsuleCollisionOnMultipleCapsules(const BlitML::float4& hitterAMaxRad, const BlitML::float4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr,
 		uint32_t receiverCount, BlitzenCore::FAT_BOOL* results)
 	{
 		
 	}
 
-	inline void CheckCapsuleCollisionOnMultipleAABBs(const BlitML::float4& hitterAMaxRad, const BlitML::mat4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr, 
+	inline void CheckCapsuleCollisionOnMultipleAABBs(const BlitML::float4& hitterAMaxRad, const BlitML::float4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr,
 		uint32_t receiverCount, BlitzenCore::FAT_BOOL* results)
 	{
 
 	}
 
-	inline void CheckCapsuleCollisionOnMultipleSpheres(const BlitML::float4& hitterAMaxRad, const BlitML::mat4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, uint32_t receiverCount,
+	inline void CheckCapsuleCollisionOnMultipleSpheres(const BlitML::float4& hitterAMaxRad, const BlitML::float4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, uint32_t receiverCount,
 		BlitzenCore::FAT_BOOL* results)
 	{
 
 	}
 
-	inline void CheckAABBCollisionOnMultipleCapsules(const BlitML::float4& hitterAMaxRad, const BlitML::mat4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr,
+	inline void CheckAABBCollisionOnMultipleCapsules(const BlitML::float4& hitterAMaxRad, const BlitML::float4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr,
 		uint32_t receiverCount, BlitzenCore::FAT_BOOL* results)
 	{
 
 	}
 
-	inline void CheckAABBCollisionOnMultipleAABBs(const BlitML::float4& hitterAMaxRad, const BlitML::mat4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr,
+	inline void CheckAABBCollisionOnMultipleAABBs(const BlitML::float4& hitterAMaxRad, const BlitML::float4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr,
 		uint32_t receiverCount, BlitzenCore::FAT_BOOL* results)
 	{
 
 	}
 
-	inline void CheckAABBCollisionOnMultipleSpheres(const BlitML::float4& hitterAMaxRad, const BlitML::mat4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, uint32_t receiverCount,
+	inline void CheckAABBCollisionOnMultipleSpheres(const BlitML::float4& hitterAMaxRad, const BlitML::float4& hitterBMinType, BlitML::float4* receiverAMaxRadArr, uint32_t receiverCount,
 		BlitzenCore::FAT_BOOL* results)
 	{
 
 	}
 
-	inline void CheckSphereCollsionOnMutlipleCapsules(const BlitML::float4& hitterAMaxRad, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr, uint32_t receiverCount,
+	inline void CheckSphereCollisionOnMutlipleCapsules(const BlitML::float4& hitterAMaxRad, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr, uint32_t receiverCount,
 		BlitzenCore::FAT_BOOL* results)
 	{
 
 	}
 
-	inline void CheckSphereCollsionOnMutlipleAABBs(const BlitML::float4& hitterAMaxRad, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr, uint32_t receiverCount,
+	inline void CheckSphereCollisionOnMultipleAABBs(const BlitML::float4& hitterAMaxRad, BlitML::float4* receiverAMaxRadArr, BlitML::float4* receiverBMinTypeArr, uint32_t receiverCount,
 		BlitzenCore::FAT_BOOL* results)
 	{
 
 	}
 
-	inline void CheckSphereCollisionOnMultpleSpheres(const BlitML::float4& hitterAMaxRad, BlitML::float4* receiverAMaxRadArr, uint32_t receiverCount, BlitzenCore::FAT_BOOL* results)
+	inline void CheckSphereCollisionOnMultipleSpheres(const BlitML::float4& hitterAMaxRad, BlitML::float4* receiverAMaxRadArr, uint32_t receiverCount, BlitzenCore::FAT_BOOL* results)
 	{
 
 	}

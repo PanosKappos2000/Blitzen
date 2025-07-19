@@ -146,3 +146,36 @@ float3 CalculateDirectionalLighting(float3 normal, float4 tangent, float3 normal
     float3 sunDirection = normalize(float3(-1, 1, -1));
     return max(dot(nrm, sunDirection), 0.0);
 }
+
+inline bool CheckCollisionSphereToSphere(float4 aMaxRadOne, float4 aMaxRadTwo)
+{
+    float3 delta = aMaxRadOne.xyz - aMaxRadTwo.xyz;
+    float distanceSquared = dot(delta, delta);
+    float radiusSum = aMaxRadOne.w + aMaxRadTwo.w;
+	return distanceSquared <= (radiusSum * radiusSum);
+}
+
+inline bool CheckCollisionCapsuleToCapsule(float4 aMaxRadOne, float4 bMinTypeOne, float4 aMaxRadTwo, float4 bMinTypeTwo)
+{
+	return false;
+}
+
+inline bool CheckCollisionAABBToAABB(float4 aMaxRadOne, float4 bMinTypeOne, float4 aMaxRadTwo, float4 bMinTypeTwo)
+{
+	return false;
+}
+
+inline bool CheckCollisionCapsuleToAABB(float4 aMaxRadCapsule, float4 bMinTypeCapsule, float4 aMaxRadAABB, float4 bMinTypeAABB)
+{
+	return false;
+}
+
+inline bool CheckCollisionCapsuleToSphere(float4 aMaxRadCapsule, float4 bMinTypeCapsule, float4 aMaxRadSphere)
+{
+	return false;
+}
+
+inline bool CheckCollisionAABBToSphere(float4 aMaxRadAABB, float4 bMinTypeAABB, float4 aMaxRadSphere)
+{
+	return false;
+}

@@ -8,6 +8,11 @@ namespace BlitzenWorld
 {
     constexpr uint32_t CE_MAIN_CHARACTER_ID = 0;
 
+    struct WorldDebugData
+    {
+        bool drawCollidersFlag = false;
+    };
+
     // WORLD variable. Represent the idea of world interaction
     class BLITZEN_WORLD
     {
@@ -32,6 +37,10 @@ namespace BlitzenWorld
         BlitzenEngine::CollisionWorkConstant MBmprCollisionWorkConstant;
 
         float deltaTime{0.f};
+
+#if !defined (NDEBUG)
+        WorldDebugData mDbgData;
+#endif
 
         inline BLITZEN_WORLD(BlitzenEngine::MeshResources& meshes, BlitzenEngine::TextureManager& textureManager, BlitzenPlatform::PlatformContext* pPlatform)
             :m_drawContext{ m_cameras[1], meshes, textureManager, pPlatform}

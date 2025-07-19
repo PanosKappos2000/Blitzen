@@ -8,14 +8,139 @@
 
 namespace BlitzenEngine
 {
+#if defined(BLIT_SIMD_COLLISION_RESOLVE)
+    constexpr bool GCSIMDCollisionResolveFlag = true;
+#else
+    constexpr bool GCSIMDCollisionResolveFlag = false;
+#endif
     void ColliderContainer::CheckCapsuleColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices)
     {
-        auto& hitterAMaxRad = MColliderAMaxRad[hitter].data;
-        auto& hitterBMinType = MColliderBMinType[hitter].data;
+        auto& hitterAMaxRad = MTransformedColliderAMaxRad[hitter].data;
+        auto& hitterBMinType = MTransformedColliderBMinType[hitter].data;
 
-        if constexpr (GCBlitzenSimd)
+        if constexpr (GCBlitzenSimd && GCSIMDCollisionResolveFlag)
         {
+            Resident* staticColliderIndicesArr = &indices[cell.staticCollidersOffset];
 
+            uint32_t id = 0;
+            while ( id < cell.staticColliderCount)
+            {
+                Resident firstReceiver = staticColliderIndicesArr[id];
+                BlitzenColliderType previousColliderType = (BlitzenColliderType)MColliderBMinType[firstReceiver].data.w;
+                BlitML::float4 receiverAMaxRadArr[GCSIMDCollisionDataMaxElementCount];
+                BlitML::float4 receiverBMinTypeArr[GCSIMDCollisionDataMaxElementCount];
+                BlitzenCore::FAT_BOOL collisionBatchResults[GCSIMDCollisionDataMaxElementCount];
+                Resident receiverArr[GCSIMDCollisionDataMaxElementCount];
+                uint32_t batchCount = 0;
+
+                // Batches mutliple colliders of the same type in the same array for optimal SIMD
+                // Maximum is GCSIMDCollisionDataMaxElementCount
+                while (id < cell.staticColliderCount && batchCount < GCSIMDCollisionDataMaxElementCount)
+                {
+                    Resident currentReceiver = staticColliderIndicesArr[id];
+                    BlitML::float4& currentReceiverAMaxRad = MColliderAMaxRad[currentReceiver].data;
+                    BlitML::float4& currentReceiverBMinType = MColliderBMinType[currentReceiver].data;
+                    BlitzenColliderType colliderType = (BlitzenColliderType)currentReceiverBMinType.w;
+
+                    if (colliderType == previousColliderType)
+                    {
+                        receiverArr[batchCount] = currentReceiver;
+                        receiverAMaxRadArr[batchCount] = currentReceiverAMaxRad;
+                        receiverBMinTypeArr[batchCount] = currentReceiverBMinType;
+                        batchCount++;
+                        id++;
+                        previousColliderType = colliderType;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Dispatches actual check on the batch
+                switch (previousColliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    BCPSS::CheckCapsuleCollisionOnMultipleCapsules(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    BCPSS::CheckCapsuleCollisionOnMultipleAABBs(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    BCPSS::CheckCapsuleCollisionOnMultipleSpheres(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, batchCount, collisionBatchResults);
+                    break;
+                }
+
+                for (uint32_t res = 0; res < batchCount; res++)
+                {
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                }
+            }
+
+            Resident* dynamicColliderIndicesArr = &indices[cell.dynamicCollidersOffset];
+
+            id = 0;
+            while (id < cell.dynamicCollidersCount)
+            {
+                Resident firstReceiver = dynamicColliderIndicesArr[id];
+                BlitzenColliderType previousColliderType = (BlitzenColliderType)MColliderBMinType[firstReceiver].data.w;
+                BlitML::float4 receiverAMaxRadArr[GCSIMDCollisionDataMaxElementCount];
+                BlitML::float4 receiverBMinTypeArr[GCSIMDCollisionDataMaxElementCount];
+                BlitzenCore::FAT_BOOL collisionBatchResults[GCSIMDCollisionDataMaxElementCount];
+                Resident receiverArr[GCSIMDCollisionDataMaxElementCount];
+                uint32_t batchCount = 0;
+
+                // Batches mutliple colliders of the same type in the same array for optimal SIMD
+                // Maximum is GCSIMDCollisionDataMaxElementCount
+                while (id < cell.dynamicCollidersCount && batchCount < GCSIMDCollisionDataMaxElementCount)
+                {
+                    Resident currentReceiver = dynamicColliderIndicesArr[id];
+                    BlitML::float4& currentReceiverAMaxRad = MTransformedColliderAMaxRad[currentReceiver].data;
+                    BlitML::float4& currentReceiverBMinType = MTransformedColliderBMinType[currentReceiver].data;
+                    BlitzenColliderType colliderType = (BlitzenColliderType)currentReceiverBMinType.w;
+
+                    if (colliderType == previousColliderType)
+                    {
+                        receiverArr[batchCount] = currentReceiver;
+                        receiverAMaxRadArr[batchCount] = currentReceiverAMaxRad;
+                        receiverBMinTypeArr[batchCount] = currentReceiverBMinType;
+                        batchCount++;
+                        id++;
+                        previousColliderType = colliderType;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Dispatches actual check on the batch
+                switch (previousColliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    BCPSS::CheckCapsuleCollisionOnMultipleCapsules(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    BCPSS::CheckCapsuleCollisionOnMultipleAABBs(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    BCPSS::CheckCapsuleCollisionOnMultipleSpheres(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, batchCount, collisionBatchResults);
+                    break;
+                }
+
+                for (uint32_t res = 0; res < batchCount; res++)
+                {
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE)
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessage[mCollisionMessageCount++] = { receiverArr[res], hitter };
+                    }
+                }
+            }
         }
         else
         {
@@ -46,7 +171,7 @@ namespace BlitzenEngine
                     break;
 
                 case BlitzenColliderTypeSphere:
-                    if (BCPSS::CheckCollisionCapusleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
+                    if (BCPSS::CheckCollisionCapsuleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
                     {
                         MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
                     }
@@ -64,8 +189,8 @@ namespace BlitzenEngine
                 Resident receiver = dynamicColliderIndicesArr[id];
                 if (hitter == receiver) continue;
 
-                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
-                auto& receiverBMinType = MColliderBMinType[receiver].data;
+                auto& receiverAMaxRad = MTransformedColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MTransformedColliderBMinType[receiver].data;
 
                 BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
                 switch (colliderType)
@@ -91,7 +216,7 @@ namespace BlitzenEngine
                     break;
 
                 case BlitzenColliderTypeSphere:
-                    if (BCPSS::CheckCollisionCapusleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
+                    if (BCPSS::CheckCollisionCapsuleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
                     {
                         MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
@@ -109,12 +234,132 @@ namespace BlitzenEngine
 
     void ColliderContainer::CheckAABBColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices)
     {
-        auto& hitterAMaxRad = MColliderAMaxRad[hitter].data;
-        auto& hitterBMinType = MColliderBMinType[hitter].data;
+        BlitML::float4& hitterAMaxRad = MTransformedColliderAMaxRad[hitter].data;
+        BlitML::float4& hitterBMinType = MTransformedColliderBMinType[hitter].data;
 
-        if constexpr (GCBlitzenSimd)
+        if constexpr (GCBlitzenSimd && GCSIMDCollisionResolveFlag)
         {
+            Resident* staticColliderIndicesArr = &indices[cell.staticCollidersOffset];
 
+            uint32_t id = 0;
+            while (id < cell.staticColliderCount)
+            {
+                Resident firstReceiver = staticColliderIndicesArr[id];
+                BlitzenColliderType previousColliderType = (BlitzenColliderType)MColliderBMinType[firstReceiver].data.w;
+                BlitML::float4 receiverAMaxRadArr[GCSIMDCollisionDataMaxElementCount];
+                BlitML::float4 receiverBMinTypeArr[GCSIMDCollisionDataMaxElementCount];
+                BlitzenCore::FAT_BOOL collisionBatchResults[GCSIMDCollisionDataMaxElementCount];
+                Resident receiverArr[GCSIMDCollisionDataMaxElementCount];
+                uint32_t batchCount = 0;
+
+                // Batches mutliple colliders of the same type in the same array for optimal SIMD
+                // Maximum is GCSIMDCollisionDataMaxElementCount
+                while (id < cell.staticColliderCount && batchCount < GCSIMDCollisionDataMaxElementCount)
+                {
+                    Resident currentReceiver = staticColliderIndicesArr[id];
+                    BlitML::float4& currentReceiverAMaxRad = MColliderAMaxRad[currentReceiver].data;
+                    BlitML::float4& currentReceiverBMinType = MColliderBMinType[currentReceiver].data;
+                    BlitzenColliderType colliderType = (BlitzenColliderType)currentReceiverBMinType.w;
+
+                    if (colliderType == previousColliderType)
+                    {
+                        receiverArr[batchCount] = currentReceiver;
+                        receiverAMaxRadArr[batchCount] = currentReceiverAMaxRad;
+                        receiverBMinTypeArr[batchCount] = currentReceiverBMinType;
+                        batchCount++;
+                        id++;
+                        previousColliderType = colliderType;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Dispatches actual check on the batch
+                switch (previousColliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    BCPSS::CheckAABBCollisionOnMultipleCapsules(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    BCPSS::CheckAABBCollisionOnMultipleAABBs(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    BCPSS::CheckAABBCollisionOnMultipleSpheres(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, batchCount, collisionBatchResults);
+                    break;
+                }
+
+                for (uint32_t res = 0; res < batchCount; res++)
+                {
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                }
+            }
+
+            Resident* dynamicColliderIndicesArr = &indices[cell.dynamicCollidersOffset];
+
+            id = 0;
+            while (id < cell.dynamicCollidersCount)
+            {
+                Resident firstReceiver = dynamicColliderIndicesArr[id];
+                BlitzenColliderType previousColliderType = (BlitzenColliderType)MColliderBMinType[firstReceiver].data.w;
+                BlitML::float4 receiverAMaxRadArr[GCSIMDCollisionDataMaxElementCount];
+                BlitML::float4 receiverBMinTypeArr[GCSIMDCollisionDataMaxElementCount];
+                BlitzenCore::FAT_BOOL collisionBatchResults[GCSIMDCollisionDataMaxElementCount];
+                Resident receiverArr[GCSIMDCollisionDataMaxElementCount];
+                uint32_t batchCount = 0;
+
+                // Batches mutliple colliders of the same type in the same array for optimal SIMD
+                // Maximum is GCSIMDCollisionDataMaxElementCount
+                while (id < cell.dynamicCollidersCount && batchCount < GCSIMDCollisionDataMaxElementCount)
+                {
+                    Resident currentReceiver = dynamicColliderIndicesArr[id];
+                    BlitML::float4 currentReceiverAMaxRad = MTransformedColliderAMaxRad[currentReceiver].data;
+                    BlitML::float4 currentReceiverBMinType = MTransformedColliderBMinType[currentReceiver].data;
+                    BlitzenColliderType colliderType = (BlitzenColliderType)currentReceiverBMinType.w;
+
+                    if (colliderType == previousColliderType)
+                    {
+                        receiverArr[batchCount] = currentReceiver;
+                        receiverAMaxRadArr[batchCount] = currentReceiverAMaxRad;
+                        receiverBMinTypeArr[batchCount] = currentReceiverBMinType;
+                        batchCount++;
+                        id++;
+                        previousColliderType = colliderType;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Dispatches actual check on the batch
+                switch (previousColliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    BCPSS::CheckAABBCollisionOnMultipleCapsules(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    BCPSS::CheckAABBCollisionOnMultipleAABBs(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    BCPSS::CheckAABBCollisionOnMultipleSpheres(hitterAMaxRad, hitterBMinType, receiverAMaxRadArr, batchCount, collisionBatchResults);
+                    break;
+                }
+
+                for (uint32_t res = 0; res < batchCount; res++)
+                {
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE)
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessage[mCollisionMessageCount++] = { receiverArr[res], hitter };
+                    }
+                }
+            }
         }
         else
         {
@@ -163,8 +408,8 @@ namespace BlitzenEngine
                 Resident receiver = dynamicColliderIndicesArr[id];
                 if (hitter == receiver) continue;
 
-                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
-                auto& receiverBMinType = MColliderBMinType[receiver].data;
+                auto& receiverAMaxRad = MTransformedColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MTransformedColliderBMinType[receiver].data;
 
                 BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
                 switch (colliderType)
@@ -210,9 +455,129 @@ namespace BlitzenEngine
     {
         auto& hitterAMaxRad = MColliderAMaxRad[hitter].data;
 
-        if constexpr (GCBlitzenSimd)
+        if constexpr (GCBlitzenSimd && GCSIMDCollisionResolveFlag)
         {
+            Resident* staticColliderIndicesArr = &indices[cell.staticCollidersOffset];
 
+            uint32_t id = 0;
+            while (id < cell.staticColliderCount)
+            {
+                Resident firstReceiver = staticColliderIndicesArr[id];
+                BlitzenColliderType previousColliderType = (BlitzenColliderType)MColliderBMinType[firstReceiver].data.w;
+                BlitML::float4 receiverAMaxRadArr[GCSIMDCollisionDataMaxElementCount];
+                BlitML::float4 receiverBMinTypeArr[GCSIMDCollisionDataMaxElementCount];
+                BlitzenCore::FAT_BOOL collisionBatchResults[GCSIMDCollisionDataMaxElementCount];
+                Resident receiverArr[GCSIMDCollisionDataMaxElementCount];
+                uint32_t batchCount = 0;
+
+                // Batches mutliple colliders of the same type in the same array for optimal SIMD
+                // Maximum is GCSIMDCollisionDataMaxElementCount
+                while (id < cell.staticColliderCount && batchCount < GCSIMDCollisionDataMaxElementCount)
+                {
+                    Resident currentReceiver = staticColliderIndicesArr[id];
+                    BlitML::float4& currentReceiverAMaxRad = MColliderAMaxRad[currentReceiver].data;
+                    BlitML::float4& currentReceiverBMinType = MColliderBMinType[currentReceiver].data;
+                    BlitzenColliderType colliderType = (BlitzenColliderType)currentReceiverBMinType.w;
+
+                    if (colliderType == previousColliderType)
+                    {
+                        receiverArr[batchCount] = currentReceiver;
+                        receiverAMaxRadArr[batchCount] = currentReceiverAMaxRad;
+                        receiverBMinTypeArr[batchCount] = currentReceiverBMinType;
+                        batchCount++;
+                        id++;
+                        previousColliderType = colliderType;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Dispatches actual check on the batch
+                switch (previousColliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    BCPSS::CheckSphereCollisionOnMutlipleCapsules(hitterAMaxRad, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    BCPSS::CheckSphereCollisionOnMultipleAABBs(hitterAMaxRad, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    BCPSS::CheckSphereCollisionOnMultipleSpheres(hitterAMaxRad, receiverAMaxRadArr, batchCount, collisionBatchResults);
+                    break;
+                }
+
+                for (uint32_t res = 0; res < batchCount; res++)
+                {
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                }
+            }
+
+            Resident* dynamicColliderIndicesArr = &indices[cell.dynamicCollidersOffset];
+
+            id = 0;
+            while (id < cell.dynamicCollidersCount)
+            {
+                Resident firstReceiver = dynamicColliderIndicesArr[id];
+                BlitzenColliderType previousColliderType = (BlitzenColliderType)MColliderBMinType[firstReceiver].data.w;
+                BlitML::float4 receiverAMaxRadArr[GCSIMDCollisionDataMaxElementCount];
+                BlitML::float4 receiverBMinTypeArr[GCSIMDCollisionDataMaxElementCount];
+                BlitzenCore::FAT_BOOL collisionBatchResults[GCSIMDCollisionDataMaxElementCount];
+                Resident receiverArr[GCSIMDCollisionDataMaxElementCount];
+                uint32_t batchCount = 0;
+
+                // Batches mutliple colliders of the same type in the same array for optimal SIMD
+                // Maximum is GCSIMDCollisionDataMaxElementCount
+                while (id < cell.dynamicCollidersCount && batchCount < GCSIMDCollisionDataMaxElementCount)
+                {
+                    Resident currentReceiver = dynamicColliderIndicesArr[id];
+                    BlitML::float4& currentReceiverAMaxRad = MTransformedColliderAMaxRad[currentReceiver].data;
+                    BlitML::float4& currentReceiverBMinType = MTransformedColliderBMinType[currentReceiver].data;
+                    BlitzenColliderType colliderType = (BlitzenColliderType)currentReceiverBMinType.w;
+
+                    if (colliderType == previousColliderType)
+                    {
+                        receiverArr[batchCount] = currentReceiver;
+                        receiverAMaxRadArr[batchCount] = currentReceiverAMaxRad;
+                        receiverBMinTypeArr[batchCount] = currentReceiverBMinType;
+                        batchCount++;
+                        id++;
+                        previousColliderType = colliderType;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Dispatches actual check on the batch
+                switch (previousColliderType)
+                {
+                case BlitzenColliderTypeCapsule:
+                    BCPSS::CheckSphereCollisionOnMutlipleCapsules(hitterAMaxRad, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeAABB:
+                    BCPSS::CheckSphereCollisionOnMultipleAABBs(hitterAMaxRad, receiverAMaxRadArr, receiverBMinTypeArr, batchCount, collisionBatchResults);
+                    break;
+
+                case BlitzenColliderTypeSphere:
+                    BCPSS::CheckSphereCollisionOnMultipleSpheres(hitterAMaxRad, receiverAMaxRadArr, batchCount, collisionBatchResults);
+                    break;
+                }
+
+                for (uint32_t res = 0; res < batchCount; res++)
+                {
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE)
+                    {
+                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessage[mCollisionMessageCount++] = { receiverArr[res], hitter };
+                    }
+                }
+            }
         }
         else
         {
@@ -230,7 +595,7 @@ namespace BlitzenEngine
                 switch (colliderType)
                 {
                 case BlitzenColliderTypeCapsule:
-                    if (BCPSS::CheckCollisionCapusleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
+                    if (BCPSS::CheckCollisionCapsuleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
                     {
                         MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
                     }
@@ -262,14 +627,14 @@ namespace BlitzenEngine
                 Resident receiver = dynamicColliderIndicesArr[id];
                 if (hitter == receiver) continue;
 
-                auto& receiverAMaxRad = MColliderAMaxRad[receiver].data;
-                auto& receiverBMinType = MColliderBMinType[receiver].data;
+                auto& receiverAMaxRad = MTransformedColliderAMaxRad[receiver].data;
+                auto& receiverBMinType = MTransformedColliderBMinType[receiver].data;
 
                 BlitzenColliderType colliderType = (BlitzenColliderType)receiverBMinType.w;
                 switch (colliderType)
                 {
                 case BlitzenColliderTypeCapsule:
-                    if (BCPSS::CheckCollisionCapusleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
+                    if (BCPSS::CheckCollisionCapsuleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
                     {
                         MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
