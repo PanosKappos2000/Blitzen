@@ -37,7 +37,7 @@ namespace BlitzenEngine
 		// Possible different for event collisions
 		BLIT_STRAIGHTHANDLE event_collision_placeholder_unused;
 
-		CollisionMessage* MCollsionMessage{ nullptr };
+		CollisionMessage* MCollsionMessages{ nullptr };
 		uint32_t mCollisionMessageCount{ 0 };
 
 		// Adds bounding sphere for render object. If the render object is static, the sphere is pre transformed
@@ -53,6 +53,10 @@ namespace BlitzenEngine
 		void CheckAABBColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices);
 
 		void CheckSphereColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices);
+
+		void ALLOC_MSG();
+
+		~ColliderContainer();
 	};
 
 	

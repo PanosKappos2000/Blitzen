@@ -67,6 +67,20 @@ namespace BlitML
         inline vec3(float first, float second, float third) : x{ first }, y{ second }, z{ third } {}
         inline vec3(const vec2& partial, float third) : x{ partial.x }, y{ partial.y }, z{ third } {}
         inline vec3(const vec3& copy) : x{ copy.x }, y{ copy.y }, z{ copy.z } {}
+
+        // WARNING: UNPROTECTED: Do not use this if you do not absolutely have to
+        // NOTE: Do not use this for performance sensitive code with loops. Access through components instead.
+        // This is meant for specific cases where the component that needs to be accessed is not known.
+        BLIT_OFFLINE_FUNC
+        inline float& operator[](uint32_t i) 
+        {
+            return (&x)[i];
+        }
+        BLIT_OFFLINE_FUNC
+        const float& operator[](size_t i) const 
+        {
+            return (&x)[i];
+        }
     };
 
     using float3 = vec3;

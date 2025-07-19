@@ -143,27 +143,6 @@ namespace BlitzenEngine
         uint32_t renderOffset;
     };
 
-    struct BoundingSphere
-    {
-        BlitML::vec3 m_center;
-        float m_radius;
-    };
-    static_assert(sizeof(BoundingSphere) % 16 == 0);
-
-    struct AABB
-    {
-        BlitML::vec3 m_minBounds;
-        BlitML::vec3 m_maxBounds;
-        BlitML::float2 m_padding;
-    };
-    static_assert(sizeof(AABB) % 16 == 0);
-
-    struct AABB_NOALIGN
-    {
-        BlitML::vec3 m_minBounds;
-        BlitML::vec3 m_maxBounds;
-    };
-
     struct WVGravity
     {
         float currentSpeed = 0.f;
@@ -215,6 +194,34 @@ namespace BlitzenEngine
     {
         ColliderAMaxRad AMaxRad;
         ColliderBMinType BMinType;
+    };
+
+    struct BoundingSphere
+    {
+        BlitML::vec3 m_center;
+        float m_radius;
+    };
+    static_assert(sizeof(BoundingSphere) % 16 == 0);
+
+    struct AABB
+    {
+        BlitML::vec3 m_minBounds;
+        BlitML::vec3 m_maxBounds;
+        BlitML::float2 m_padding;
+    };
+    static_assert(sizeof(AABB) % 16 == 0);
+
+    struct AABB_NOALIGN
+    {
+        BlitML::vec3 m_minBounds;
+        BlitML::vec3 m_maxBounds;
+    };
+
+    struct CapsuleNOALIGN
+    {
+        BlitML::vec3 a;
+        BlitML::vec3 b;
+        float radius;
     };
 
     struct CollisionWorkConstant

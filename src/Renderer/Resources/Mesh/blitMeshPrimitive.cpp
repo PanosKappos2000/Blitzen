@@ -110,6 +110,7 @@ namespace BlitzenEngine
             return SurfaceCreateRes::LOD_GENERATION_FAILED;
         }
 
+        // Converts vertices to split attribute format
         BlitzenEngine::HLSL_VTX_CONTEXT hlslVertices{};
         hlslVertices.m_vtxPosArr = primitives.m_vertexPositions;
         hlslVertices.m_vtxNrmArr = primitives.m_vertexNormals;
@@ -124,14 +125,24 @@ namespace BlitzenEngine
         if (context.mColliderType == BlitzenColliderTypeSphere)
         {
             BlitzenCore::BlitMemCopy(&mColliders[m_meshPrimitivesCount], &m_boundingSpheres[m_meshPrimitivesCount], sizeof(BlitML::float4));
+            mColliders[m_meshPrimitivesCount].BMinType.data.w = BlitzenColliderTypeSphere;
         }
         else if (context.mColliderType == BlitzenColliderTypeCapsule)
         {
-
+            BlitzenEngine::CapsuleNOALIGN capsuleData;
+            BlitML::GenerateCapsuleFromVertices(primitives.m_vertexPositions, primitives.m_vertexCount, capsuleData.a, capsuleData.b, capsuleData.radius);
+            mColliders[m_meshPrimitivesCount].AMaxRad.data.WriteXYZ(capsuleData.a);
+            mColliders[m_meshPrimitivesCount].AMaxRad.data.w = capsuleData.radius;
+            mColliders[m_meshPrimitivesCount].BMinType.data.WriteXYZ(capsuleData.b);
+            mColliders[m_meshPrimitivesCount].BMinType.data.w = BlitzenColliderTypeCapsule;
         }
         else if (context.mColliderType == BlitzenColliderTypeAABB)
         {
-
+            BlitzenEngine::AABB_NOALIGN aabbData;
+            BlitML::GenerateAABBFromVertices(primitives.m_vertexPositions, primitives.m_vertexCount, aabbData.m_maxBounds, aabbData.m_minBounds);
+            mColliders[m_meshPrimitivesCount].AMaxRad.data.WriteXYZ(aabbData.m_maxBounds);
+            mColliders[m_meshPrimitivesCount].BMinType.data.WriteXYZ(aabbData.m_minBounds);
+            mColliders[m_meshPrimitivesCount].BMinType.data.w = BlitzenColliderTypeAABB;
         }
 
         newSurface.materialId = context.m_materialID;
@@ -377,26 +388,6 @@ namespace BlitzenEngine
         return (uint32_t)meshop_meshlets.GetSize();
     }
 
-    void MeshPrimitivesContainer::GenerateBoundingSphere(PrimitiveSurface& surface, BoundingSphere& surfaceBounds, MESH_PRIMITIVE_CREATE_CONTEXT& context)
-    {
-        BlitML::vec3 center{ 0.f };
-        for (size_t i = 0; i < context.m_vertexCount; ++i)
-        {
-            center = center + context.m_vertices[i].position;
-        }
-        center = center / float(context.m_vertexCount);
-
-        // Bounding sphere radius
-        float radius = 0;
-        for (size_t i = 0; i < context.m_vertexCount; ++i)
-        {
-            const auto& pos = context.m_vertices[i].position;
-            radius = BlitML::FMax(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
-        }
-        surfaceBounds.m_center = center;
-        surfaceBounds.m_radius = radius;
-    }
-
     void MeshPrimitivesContainer::GenerateTangents(MESH_PRIMITIVE_CREATE_CONTEXT& context)
     {
         for (size_t i = 0; i < context.m_indexCount; i += 3)
@@ -623,25 +614,5 @@ namespace BlitzenEngine
         }
 
         return true;
-    }
-
-    void MeshPrimitivesContainer::GenerateBoundingSphere(BoundingSphere& surfaceBounds, BlitML::vec3* vtxPosArr, uint32_t vtxCount)
-    {
-        BlitML::vec3 center{ 0.f };
-        for (size_t i = 0; i < vtxCount; ++i)
-        {
-            center = center + vtxPosArr[i];
-        }
-        center = center / float(vtxCount);
-
-        // Bounding sphere radius
-        float radius = 0;
-        for (size_t i = 0; i < vtxCount; ++i)
-        {
-            const auto& pos = vtxPosArr[i];
-            radius = BlitML::FMax(radius, BlitML::Distance(center, BlitML::vec3(pos.x, pos.y, pos.z)));
-        }
-        surfaceBounds.m_center = center;
-        surfaceBounds.m_radius = radius;
     }
 }

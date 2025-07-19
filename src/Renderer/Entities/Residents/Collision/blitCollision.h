@@ -34,9 +34,8 @@ namespace BlitzenEngine
 		int32_t m_maxBounds;
 
 		GridCellOffsets mCellOffsets[CE_COLLISION_GRID_CELL_COUNT];
-		uint32_t* m_colliderIndices{ nullptr };
+		uint32_t* mColliderIndices{ nullptr };
 		uint32_t m_colliderIndicesTotal{ 0 };
-		uint32_t* WVColliderIndices{ nullptr };
 
 		void DefineGrid(uint32_t origin);
 
@@ -45,24 +44,16 @@ namespace BlitzenEngine
 		// When a scene's static residents are set, this is called to place them in the correct cell.
 		// This is supposed to be saved in a scene configuration file, and will not be called again after this scene is fully packaged.
 		// Dynamic allocations fully allowed here. The transform array should be the full array, the offsets are placed inside
+		BLIT_OFFLINE_FUNC
 		void PlaceStatics(BlitzenEngine::MeshTransform* transformArr, uint32_t count);
 
 		void PlaceDynamics(BlitzenEngine::WVTransform* transformArr, uint32_t count);
 
-		void FindCollisionsNarrow(BoundingSphere* boundsArr);
+		BLIT_OFFLINE_FUNC
+		void GenerateGridCellDrawData(BlitML::float3* vertices);
 
-		void BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(WVColliderResponse* colliderArr);
-
-		void AllocStatics(uint32_t count);
-
-		void AllocDynamicIndices();
-
-		void ClearStaticIndices();
-
-		void ClearDynamicIndices();
+		void ALLOC_IDX();
 
 		~CollisionGrid();
 	};
-
-	bool CheckSphereCollision(const BoundingSphere& firstBounds, const BoundingSphere& secondBounds);
 }

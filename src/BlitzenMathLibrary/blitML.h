@@ -13,6 +13,8 @@
 
 namespace BlitML
 {
+    constexpr uint32_t GCQuadVertexCount = 6;
+
     constexpr float GCBlitPi = 3.14159265358979323846f;
     constexpr float blit_pi2 = 2.f * GCBlitPi;
     constexpr float blit_halfPi = 0.5f * GCBlitPi;
@@ -805,5 +807,87 @@ namespace BlitML
         }
         
         return vec4{ center, radius };
+    }
+
+    // Generates an axis-aligned bounding box (AABB) from a vertex array.
+    // outMin: smallest x/y/z values across all vertices
+    // outMax: largest x/y/z values across all vertices
+    inline void GenerateAABBFromVertices(const BlitML::vec3* vtxPosArr, uint32_t vtxCount, BlitML::vec3& outMin, BlitML::vec3& outMax)
+    {
+        if (vtxCount == 0)
+        {
+            outMin = BlitML::vec3(0.f);
+            outMax = BlitML::vec3(0.f);
+            return;
+        }
+
+        outMin = vtxPosArr[0];
+        outMax = vtxPosArr[0];
+
+        for (uint32_t i = 1; i < vtxCount; ++i)
+        {
+            const auto& pos = vtxPosArr[i];
+
+            outMin.x = BlitML::FMin(outMin.x, pos.x);
+            outMin.y = BlitML::FMin(outMin.y, pos.y);
+            outMin.z = BlitML::FMin(outMin.z, pos.z);
+
+            outMax.x = BlitML::FMax(outMax.x, pos.x);
+            outMax.y = BlitML::FMax(outMax.y, pos.y);
+            outMax.z = BlitML::FMax(outMax.z, pos.z);
+        }
+    }
+
+    inline void GenerateCapsuleFromVertices(const BlitML::vec3* vtxPosArr, uint32_t vtxCount, BlitML::vec3& outA, BlitML::vec3& outB, float& outRad)
+    {
+        if (vtxCount == 0)
+        {
+            outA = outB = BlitML::vec3(0.f);
+            outRad = 0.f;
+            return;
+        }
+
+        // Step 1: Compute AABB
+        BlitML::vec3 min = vtxPosArr[0];
+        BlitML::vec3 max = vtxPosArr[0];
+
+        for (uint32_t i = 1; i < vtxCount; ++i)
+        {
+            const BlitML::vec3& v = vtxPosArr[i];
+            min.x = BlitML::FMin(min.x, v.x);
+            min.y = BlitML::FMin(min.y, v.y);
+            min.z = BlitML::FMin(min.z, v.z);
+
+            max.x = BlitML::FMax(max.x, v.x);
+            max.y = BlitML::FMax(max.y, v.y);
+            max.z = BlitML::FMax(max.z, v.z);
+        }
+
+        // Step 2: Find dominant axis
+        BlitML::vec3 diag = max - min;
+        int axis = 0; // 0 = x, 1 = y, 2 = z
+        if (diag.y > diag.x) axis = 1;
+        if (diag.z > diag[axis]) axis = 2;
+
+        // Step 3: Define capsule line segment A -> B along dominant axis
+        outA = min;
+        outB = max;
+        outA[axis] = min[axis];
+        outB[axis] = max[axis];
+
+        // Step 4: Compute max orthogonal distance to AB
+        BlitML::vec3 ab = outB - outA;
+        float abLenSquared = BlitML::Dot(ab, ab);
+        outRad = 0.f;
+
+        for (uint32_t i = 0; i < vtxCount; ++i)
+        {
+            BlitML::vec3 ap = vtxPosArr[i] - outA;
+            float t = (abLenSquared > 0.f) ? BlitML::Dot(ap, ab) / abLenSquared : 0.f;
+            t = BlitML::FClamp(t, 0.f, 1.f);
+            BlitML::vec3 closestPoint = outA + ab * t;
+            float dist = BlitML::Distance(vtxPosArr[i], closestPoint);
+            outRad = BlitML::FMax(outRad, dist);
+        }
     }
 }

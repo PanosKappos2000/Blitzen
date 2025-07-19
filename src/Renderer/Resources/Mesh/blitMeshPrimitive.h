@@ -118,11 +118,6 @@ namespace BlitzenEngine
 		// Generates clusters for a given array of vertices and indices
 		uint32_t GenerateClusters(LOD_CLUSTERS_CREATE_CONTEXT&  context, uint32_t vertexOffset, ClusterContainer* pClusters);
 
-		// Generates bounding sphere for primitive based on given vertices and indices
-		void GenerateBoundingSphere(PrimitiveSurface& surface, BoundingSphere& surfaceBounds, MESH_PRIMITIVE_CREATE_CONTEXT& context);
-
-		void GenerateBoundingSphere(BoundingSphere& surfaceBounds, BlitML::vec3* vtxPosArr, uint32_t vtxCount);
-
 		void GenerateTangents(MESH_PRIMITIVE_CREATE_CONTEXT& context);
 	};
 }

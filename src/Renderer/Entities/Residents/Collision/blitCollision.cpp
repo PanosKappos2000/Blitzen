@@ -13,6 +13,9 @@ namespace BlitzenEngine
 #else
     constexpr bool GCSIMDCollisionResolveFlag = false;
 #endif
+
+    uint32_t constexpr GCSafeMsgAlloc = 10'000;
+
     void ColliderContainer::CheckCapsuleColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices)
     {
         auto& hitterAMaxRad = MTransformedColliderAMaxRad[hitter].data;
@@ -75,7 +78,7 @@ namespace BlitzenEngine
 
                 for (uint32_t res = 0; res < batchCount; res++)
                 {
-                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessages[mCollisionMessageCount++] = { hitter, receiverArr[res] };
                 }
             }
 
@@ -136,8 +139,8 @@ namespace BlitzenEngine
                 {
                     if (collisionBatchResults[res] == BLIT_FAT_TRUE)
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
-                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessage[mCollisionMessageCount++] = { receiverArr[res], hitter };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessages[mCollisionMessageCount++] = { receiverArr[res], hitter };
                     }
                 }
             }
@@ -159,21 +162,21 @@ namespace BlitzenEngine
                 case BlitzenColliderTypeCapsule:
                     if (BCPSS::CheckCollisionCapsuleToCapsule(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
 
                 case BlitzenColliderTypeAABB:
                     if (BCPSS::CheckCollisionCapsuleToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
 
                 case BlitzenColliderTypeSphere:
                     if (BCPSS::CheckCollisionCapsuleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
                 default:
@@ -198,30 +201,30 @@ namespace BlitzenEngine
                 case BlitzenColliderTypeCapsule:
                     if (BCPSS::CheckCollisionCapsuleToCapsule(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
 
                 case BlitzenColliderTypeAABB:
                     if (BCPSS::CheckCollisionCapsuleToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
 
                 case BlitzenColliderTypeSphere:
                     if (BCPSS::CheckCollisionCapsuleToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
                 default:
@@ -294,7 +297,7 @@ namespace BlitzenEngine
 
                 for (uint32_t res = 0; res < batchCount; res++)
                 {
-                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessages[mCollisionMessageCount++] = { hitter, receiverArr[res] };
                 }
             }
 
@@ -355,8 +358,8 @@ namespace BlitzenEngine
                 {
                     if (collisionBatchResults[res] == BLIT_FAT_TRUE)
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
-                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessage[mCollisionMessageCount++] = { receiverArr[res], hitter };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessages[mCollisionMessageCount++] = { receiverArr[res], hitter };
                     }
                 }
             }
@@ -378,21 +381,21 @@ namespace BlitzenEngine
                 case BlitzenColliderTypeCapsule:
                     if (BCPSS::CheckCollisionCapsuleToAABB(receiverAMaxRad, receiverBMinType, hitterAMaxRad, hitterBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
 
                 case BlitzenColliderTypeAABB:
                     if (BCPSS::CheckCollisionAABBToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
 
                 case BlitzenColliderTypeSphere:
                     if (BCPSS::CheckCollisionAABBToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
                 default:
@@ -417,30 +420,30 @@ namespace BlitzenEngine
                 case BlitzenColliderTypeCapsule:
                     if (BCPSS::CheckCollisionCapsuleToAABB(receiverAMaxRad, receiverBMinType, hitterAMaxRad, hitterBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
 
                 case BlitzenColliderTypeAABB:
                     if (BCPSS::CheckCollisionAABBToAABB(hitterAMaxRad, hitterBMinType, receiverAMaxRad, receiverBMinType))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
 
                 case BlitzenColliderTypeSphere:
                     if (BCPSS::CheckCollisionAABBToSphere(hitterAMaxRad, hitterBMinType, receiverAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
                 default:
@@ -512,7 +515,7 @@ namespace BlitzenEngine
 
                 for (uint32_t res = 0; res < batchCount; res++)
                 {
-                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                    if (collisionBatchResults[res] == BLIT_FAT_TRUE) MCollsionMessages[mCollisionMessageCount++] = { hitter, receiverArr[res] };
                 }
             }
 
@@ -573,8 +576,8 @@ namespace BlitzenEngine
                 {
                     if (collisionBatchResults[res] == BLIT_FAT_TRUE)
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiverArr[res] };
-                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessage[mCollisionMessageCount++] = { receiverArr[res], hitter };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiverArr[res] };
+                        if (!CheckResidentVelocity(receiverArr[res])) MCollsionMessages[mCollisionMessageCount++] = { receiverArr[res], hitter };
                     }
                 }
             }
@@ -597,21 +600,21 @@ namespace BlitzenEngine
                 case BlitzenColliderTypeCapsule:
                     if (BCPSS::CheckCollisionCapsuleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
 
                 case BlitzenColliderTypeAABB:
                     if (BCPSS::CheckCollisionAABBToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
 
                 case BlitzenColliderTypeSphere:
                     if (BCPSS::CheckCollisionSphereToSphere(hitterAMaxRad, receiverAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                     }
                     break;
                 default:
@@ -636,30 +639,30 @@ namespace BlitzenEngine
                 case BlitzenColliderTypeCapsule:
                     if (BCPSS::CheckCollisionCapsuleToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
 
                 case BlitzenColliderTypeAABB:
                     if (BCPSS::CheckCollisionAABBToSphere(receiverAMaxRad, receiverBMinType, hitterAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
 
                 case BlitzenColliderTypeSphere:
                     if (BCPSS::CheckCollisionSphereToSphere(hitterAMaxRad, receiverAMaxRad))
                     {
-                        MCollsionMessage[mCollisionMessageCount++] = { hitter, receiver };
+                        MCollsionMessages[mCollisionMessageCount++] = { hitter, receiver };
                         // Adds event both ways, unless the receiver has velocity. 
                         // If the receiver has velocity, they will create it themselves
-                        if (!CheckResidentVelocity(receiver)) MCollsionMessage[mCollisionMessageCount++] = { receiver, hitter };
+                        if (!CheckResidentVelocity(receiver)) MCollsionMessages[mCollisionMessageCount++] = { receiver, hitter };
                     }
                     break;
                 default:
@@ -681,7 +684,7 @@ namespace BlitzenEngine
 	{
         for (uint32_t cellId = 0; cellId < CE_COLLISION_GRID_CELL_COUNT; ++cellId)
         {
-            mCellOffsets[cellId].staticCollidersOffset= 0;
+            mCellOffsets[cellId].staticCollidersOffset = BLIT_OPAQUE_STATIC_RENDER_OFFSET;// static colliders start after the offset
             mCellOffsets[cellId].staticColliderCount = 0;
             mCellOffsets[cellId].dynamicCollidersOffset = 0;
             mCellOffsets[cellId].dynamicCollidersCount = 0;
@@ -692,6 +695,12 @@ namespace BlitzenEngine
     {
         uint32_t outOfBounds = 0;
         uint32_t badLogic = 0;
+
+        // Allocates the collider index array if it has not been allocated already
+        if (mColliderIndices == nullptr)
+        {
+            ALLOC_IDX();
+        }
 
         // Temporary array that holds the cell index for each object inside the grid after the first pass
         BlitCL::DynamicArray<int32_t> gridCellIndices{ BLIT_MAX_WORLD_RENDERS, -1};
@@ -744,18 +753,12 @@ namespace BlitzenEngine
         }
 
         // Second pass saves offset and resets count so that indices can be placed properly after
-        uint32_t globalOffset = 0;
+        uint32_t globalOffset = BLIT_OPAQUE_STATIC_RENDER_OFFSET;
         for (auto& cell : mCellOffsets)
         {
             cell.staticCollidersOffset = globalOffset;
             globalOffset += cell.staticColliderCount;
             cell.staticColliderCount = 0;
-        }
-
-        // Allocates the collider index array if it has not been allocated already
-        if (m_colliderIndices == nullptr)
-        {
-            AllocStatics(validColliderCount);
         }
 
         // Goes through static objects again. 
@@ -770,8 +773,13 @@ namespace BlitzenEngine
             }
             auto& cell = mCellOffsets[gridCellIndices[IDX]];
 
-            m_colliderIndices[cell.staticCollidersOffset + cell.staticColliderCount] = IDX;
+            mColliderIndices[cell.staticCollidersOffset + cell.staticColliderCount] = IDX;
             cell.staticColliderCount++;
+        }
+
+        for (auto& grid : mCellOffsets)
+        {
+            BLIT_ASSERT(grid.staticCollidersOffset >= BLIT_OPAQUE_STATIC_RENDER_OFFSET);
         }
 
         BLIT_INFO("%s: Ouf of collsion grid bounds object count: %u", BlitzenCore::CE_RESIDENT_SYSTEM_NAME, outOfBounds);
@@ -835,7 +843,7 @@ namespace BlitzenEngine
             auto& cell = mCellOffsets[cellIndex];
 
             // Using collider offset and collider count, the resident's index is written to the flat array.
-            WVColliderIndices[cell.dynamicCollidersOffset + cell.dynamicCollidersCount] = IDX;
+            mColliderIndices[cell.dynamicCollidersOffset + cell.dynamicCollidersCount] = IDX;
             // Collider count gets incremented back to what was calculated earlier.
             cell.dynamicCollidersCount++;
         }
@@ -969,39 +977,48 @@ namespace BlitzenEngine
         return true;
     }
 
-    void CollisionGrid::FindCollisionsNarrow(BoundingSphere* boundsArr)
+    void CollisionGrid::GenerateGridCellDrawData(BlitML::float3* vertices)
     {
-        
+        const BlitML::float3 quadVerts[6] = {{ -0.5f, 0.0f, -0.5f }, {  0.5f, 0.0f, -0.5f }, { -0.5f, 0.0f,  0.5f }, {  0.5f, 0.0f, -0.5f }, {  0.5f, 0.0f,  0.5f }, { -0.5f, 0.0f,  0.5f }};
+
+        for (uint32_t cell = 0; cell < BLIT_COLLISION_GRID_CELL_COUNT; ++cell)
+        {
+            BlitML::float3 worldPos;
+            worldPos.y = 0;
+            worldPos.x = (cell % BLIT_COLLISION_GRID_CELL_FLAT_COUNT) * GCCollisionCellExtent;
+            worldPos.z = (cell / BLIT_COLLISION_GRID_CELL_FLAT_COUNT) * GCCollisionCellExtent;
+
+            for (uint32_t vert = 0; vert < 6; ++vert)
+            {
+                vertices[cell * 6 + vert] = worldPos + quadVerts[vert] * GCCollisionCellExtent;
+            }
+        }
     }
 
-    void CollisionGrid::BLITZEN_RESOLVE_RESIDENT_COLLISION_EVENTS(WVColliderResponse* colliderArr)
+    void CollisionGrid::ALLOC_IDX()
     {
-        
-    }
-
-    void CollisionGrid::AllocDynamicIndices()
-    {
-        WVColliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, BLIT_MAX_WORLD_VARIABLE_COUNT * sizeof(uint32_t)));
-    }
-
-    void CollisionGrid::AllocStatics(uint32_t count)
-    {
-        BLIT_ASSERT(m_colliderIndices == nullptr);
-
-        m_colliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, count * sizeof(uint32_t)));
-        m_colliderIndicesTotal += count;
+        mColliderIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, BLIT_MAX_WORLD_RENDERS * sizeof(uint32_t)));
+        m_colliderIndicesTotal = BLIT_MAX_WORLD_RENDERS;
     }
 
     CollisionGrid::~CollisionGrid()
     {
-        if (m_colliderIndices)
+        if (mColliderIndices)
         {
-            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, m_colliderIndices, m_colliderIndicesTotal * sizeof(uint32_t));
+            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, mColliderIndices, m_colliderIndicesTotal * sizeof(uint32_t));
         }
+    }
 
-        if (WVColliderIndices)
+    void ColliderContainer::ALLOC_MSG()
+    {
+        MCollsionMessages = reinterpret_cast<CollisionMessage*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Messages, GCSafeMsgAlloc * sizeof(CollisionMessage)));
+    }
+
+    ColliderContainer::~ColliderContainer()
+    {
+        if (MCollsionMessages)
         {
-            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, WVColliderIndices, BLIT_MAX_WORLD_VARIABLE_COUNT * sizeof(uint32_t));
+            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Messages, MCollsionMessages, GCSafeMsgAlloc * sizeof(CollisionMessage));
         }
     }
 }

@@ -5,6 +5,12 @@
 
 namespace BlitzenCore
 {
+#if defined(BLIT_OFFLINE_BUILD)
+    #define BLIT_OFFLINE_FUNC 
+#else
+    #define BLIT_OFFLINE_FUNC [[deprecated("This function is for offline use only.")]]
+#endif
+
     constexpr const char* CE_BLITZEN = "Blitzen.v0";
     constexpr uint32_t Ce_BlitzenMajor = 0;
     constexpr const char* Ce_HostedApp = "Blitzen Client";
@@ -121,6 +127,7 @@ namespace BlitzenCore
         TRIANGLE = 13,
         Texture = 14,
         Terrain = 15,
+        Messages = 16,
 
         MaxTypes = 100
     };

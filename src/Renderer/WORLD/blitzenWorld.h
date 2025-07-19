@@ -11,6 +11,7 @@ namespace BlitzenWorld
     struct WorldDebugData
     {
         bool drawCollidersFlag = false;
+        BlitML::float3* collisionGridVertices = nullptr;
     };
 
     // WORLD variable. Represent the idea of world interaction
@@ -47,6 +48,8 @@ namespace BlitzenWorld
         {
 
         }
+
+        ~BLITZEN_WORLD();
     };
 
 	// Initializes some basic rendering resources, for the renderer to work out of the box.
@@ -62,6 +65,8 @@ namespace BlitzenWorld
     void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function);
 
     void DispatchCollisionSystems(BLITZEN_WORLD* pWORLD);
+
+    void ResolveCollisionEvents(BlitzenEngine::ColliderContainer& colliders);
 
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr);
 

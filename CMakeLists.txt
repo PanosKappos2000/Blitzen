@@ -306,6 +306,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             BLIT_CONSOLE_LOGGER
                             BLIT_CPU_SIMD_SAVIOR
                             #BLIT_SIMD_COLLISION_RESOLVE
+                            BLIT_OFFLINE_BUILD
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
                             RENDERER_STRESS_TEST

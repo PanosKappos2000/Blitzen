@@ -22,6 +22,9 @@ namespace BlitzenWorld
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->mResidents);
         INITIALIZE_WORLD_POINTER(context.pWORLD);
 
+        context.pWORLD->mCollisionGrid.ALLOC_IDX();
+        context.pWORLD->mResidents.MColliders.ALLOC_MSG();
+
         JobDriverQueue driver;
         StartJobSystem(&driver);
 
