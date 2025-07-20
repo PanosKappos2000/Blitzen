@@ -79,15 +79,12 @@ namespace BlitzenEngine
 		if (!(ctx.m_flags & RESIDENT_CREATE_NO_COLLISION))
 		{
 			auto& collider = GetColliderFromMeshPrimitive(ctx.m_resourceID);
-			if (!MColliders.LogResidentForCollision(transformID, collider, mTransforms.m_transforms[transformID]))
+			ColliderWorldEffectsContext colliderWorldEffectsContext;
+			if (!MColliders.LogResidentForCollision(transformID, collider, mTransforms.m_transforms[transformID], colliderWorldEffectsContext))
 			{
 				return RESIDENT_CREATE_RES::COLLIDER_CREATION_FAILED;
 			}
 		}
-
-		// This is a weird one since all arrays should be parallel.
-		// Added check above to avoid unexpected behaviour
-		mResidents[mResidentCount++] = renderObjectId;
 
 		return RESIDENT_CREATE_RES::SUCCESS;
 	}
@@ -131,7 +128,8 @@ namespace BlitzenEngine
 
 		Resident resident = mWorldVariableCount;
 
-		MWorldVariables[mWorldVariableCount] = ctx.m_worldVariableID;
+		// FALSE!!, Left is a placeholder
+		MWorldVariables[mWorldVariableCount].typeID = ctx.m_worldVariableID;
 		mWorldVariableCount++;
 
 		SetResidentDirectionInfluence(resident, ctx.directionInfluencer);

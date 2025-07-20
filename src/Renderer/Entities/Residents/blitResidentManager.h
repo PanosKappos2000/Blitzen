@@ -61,8 +61,13 @@ namespace BlitzenEngine
 		uint32_t residentMovementFlags{ 0 };
 	};
 
-	using WORLD_VARIABLE = uint32_t;
+	struct WORLD_VARIABLE
+	{
+		WorldVariableType typeID;
+		WVTransform* attachments;
+	};
 	using BEWV = WORLD_VARIABLE;
+	using WV = WORLD_VARIABLE;
 
 	class WORLD_RESIDENTS
 	{
@@ -70,7 +75,6 @@ namespace BlitzenEngine
 		// Everything that can be considered to have an impact on the world (rendering, gameplay, events) is a resident
 		// A resident is an index that can access base components
 		// The elements from 0 to BLIT_MAX_WORLD_VARIABLE_COUNT are assumed to be the world varialbes and should not have any static residents inside
-		Resident mResidents[BLIT_MAX_WORLD_RESIDENTS];
 		uint32_t mResidentCount{ 0 };
 		RenderContainer m_renders;
 		WorldTransformContainer mTransforms;

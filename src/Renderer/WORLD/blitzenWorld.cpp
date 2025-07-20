@@ -167,9 +167,9 @@ namespace BlitzenWorld
         BlitzenEngine::EndGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
     }
 
-    void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function)
+    void RegisterFrameEvent(BlitzenEngine::Resident resident, BlitzenCore::FrameEventPfn function)
     {
-        GSBlitzenWorld->m_frameEvents.RegisterFrameEvent(worldVariable, function);
+        GSBlitzenWorld->m_frameEvents.RegisterFrameEvent(resident, function);
     }
 
     void RequestGameCameraRotation(BlitzenEngine::Resident resident, int32_t movementX, int32_t movementY)

@@ -102,9 +102,9 @@
 	constexpr uint BLIT_HLSL_CLUSTER_VISIBILITY_BUFFER_REGISTER = 7;
 	constexpr uint BLIT_HLSL_CLUSTER_CMD_BUFFER_REGISTER = 8;
 	constexpr uint BLIT_HLSL_CLUSTER_CMD_COUNTER_REGISTER = 9;
-	constexpr uint BLIT_HLSL_OCCDP_VISIBILITY_REGISTER = 10;
-	constexpr uint BLIT_HLSL_VISIBLE_COUNTER_REGISTER = 11;// Compute + vertex
-	constexpr uint BLIT_HLSL_CLUSTER_VISIBILITY_REGISTER = 12; // Compute
+	constexpr uint BLIT_HLSL_MAX_CLUSTER_COUNT_REIGSTER = 10; // Compute
+	constexpr uint BLIT_HLSL_OCCDP_VISIBILITY_REGISTER = 11;
+	constexpr uint BLIT_HLSL_VISIBLE_COUNTER_REGISTER = 12;// Compute + vertex
 	constexpr uint BLIT_HLSL_HI_Z_OUTPUT_REGISTER = 13;// Compute
 	constexpr uint BLIT_HLSL_WVTRANSFORM_BUFFER_REGISTER = 14;// Compute
 	constexpr uint BLIT_HLSL_GRID_CELLS_REGISTER = 15;
@@ -177,21 +177,6 @@ enum BlitzenColliderType
 
 #ifdef __cplusplus
 	static_assert(sizeof(BlitzenColliderType) == 4);
-#endif
-
-#ifdef __cplusplus
-	enum BLITZEN_COLLISION_IDENTIFIER : uint64_t
-	{
-		BlitzenCollisionFlagsIgnore = 0x0,
-		BlitzenCollisionFlagsBlock = 0x1
-	};
-
-	enum WORLD_VARIABLE_CATEGORY : uint64_t
-	{
-		BLITZEN_WORLD_VARIABLE_UNSPECIFIED = 0x0,
-	};
-
-	using WORLD_VARIABLE_IDENTIFIER = uint32_t;
 #endif
 
 #define BMPR_DRIVE_BROAD_PHASE_COLLISION				0

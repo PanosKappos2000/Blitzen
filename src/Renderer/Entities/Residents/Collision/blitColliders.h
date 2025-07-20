@@ -17,6 +17,11 @@ namespace BlitzenEngine
     };
     static_assert(sizeof(Collider) % 16 == 0);
 
+	struct ColliderWorldEffectsContext
+	{
+		uint32_t strikeTemporalCounter = 0;
+	};
+
 	class ColliderContainer
 	{
 	public:
@@ -29,7 +34,7 @@ namespace BlitzenEngine
 		// If something needs specialized collision, a world variable needs to be created
 		// For example, a weapon or a bullet, and probably even destructibles need to be world variables
 		// If this system becomes heavy, there could exist a resident that is one level below a world variable
-		WVColliderResponse WVColliderHitData[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		ColliderWorldEffects WVColliderHitData[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		ColliderAMaxRad MTransformedColliderAMaxRad[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		ColliderBMinType MTransformedColliderBMinType[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		uint32_t mWorldVariableColliderCount{ 0 };
@@ -43,8 +48,7 @@ namespace BlitzenEngine
 		// Adds bounding sphere for render object. If the render object is static, the sphere is pre transformed
 		void AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, RENDER_OBJECT_TYPE objectType);
 
-		bool LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform,
-			WVColliderResponse behavior = {BlitzenCollisionFlagsBlock, BlitzenCollisionFlagsBlock});
+		bool LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform, ColliderWorldEffectsContext& colliderWorldEffectsContext);
 
 		// Takes an array of residents and moves their colliders. Have to handle multiple cases, but allows for batching
 		void TransformCollidersWithoutBMPR(Resident* movingResidentArr, uint32_t movingResidentCount, WVTransform* transformArr, MeshTransform* gpuTransformArr);

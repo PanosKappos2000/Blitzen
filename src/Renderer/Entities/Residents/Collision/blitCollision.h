@@ -15,12 +15,6 @@ namespace BlitzenEngine
 
 	constexpr uint32_t GCCollisionCellCount = BLIT_COLLISION_GRID_CELL_COUNT;
 
-	struct WVColliderResponse
-	{
-		BLITZEN_COLLISION_IDENTIFIER m_impactFlag{ BlitzenCollisionFlagsIgnore };
-		uint64_t m_reactionFlags = 0;
-	};
-
 	class CollisionGrid
 	{
 	public:

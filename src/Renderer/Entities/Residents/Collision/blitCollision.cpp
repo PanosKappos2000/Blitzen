@@ -930,7 +930,7 @@ namespace BlitzenEngine
 		}
     }
 
-    bool ColliderContainer::LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform, WVColliderResponse behavior)
+    bool ColliderContainer::LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform, ColliderWorldEffectsContext& colliderWorldEffectsContext)
     {
         if (mStaticColliderCount >= CE_MAX_WORLD_COLLIDER_COUNT)
         {
@@ -998,7 +998,7 @@ namespace BlitzenEngine
                 transformedBMinType.data.WriteXYZ(BlitML::RotateQuat(colliderBMinType.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
                 transformedAMaxRad.data.w = colliderAMaxRad.data.w * residentTransform.scale;
             }
-            WVColliderHitData[resident] = behavior;
+            //WVColliderHitData[resident] = behavior;
             mWorldVariableColliderCount++;
         }
 
@@ -1049,6 +1049,14 @@ namespace BlitzenEngine
         if (MCollsionMessages)
         {
             BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Messages, MCollsionMessages, GCSafeMsgAlloc * sizeof(CollisionMessage));
+        }
+    }
+
+    ColliderWorldEffects::~ColliderWorldEffects()
+    {
+        if (temporalData != nullptr)
+        {
+            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, temporalData, sizeof(Resident) * allowedTemporalDataCount);
         }
     }
 }

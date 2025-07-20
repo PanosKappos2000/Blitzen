@@ -62,7 +62,7 @@ namespace BlitzenWorld
     void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh,
         int argc, char** argv);
 
-    void RegisterFrameEvent(BlitzenEngine::WORLD_VARIABLE worldVariable, BlitzenCore::FrameEventPfn function);
+    void RegisterFrameEvent(BlitzenEngine::Resident resident, BlitzenCore::FrameEventPfn function);
 
     void DispatchCollisionSystems(BLITZEN_WORLD* pWORLD);
 

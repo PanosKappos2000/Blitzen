@@ -5,6 +5,7 @@
 namespace BlitzenEngine
 {
     using Resident = uint32_t;
+    using WorldVariableType = uint32_t;
 
     struct Mesh
     {
@@ -244,4 +245,49 @@ namespace BlitzenEngine
         Resident m_impactingObject;
         Resident m_reactingResident;
     };
+
+    enum class CollisionHighLevelFlags : uint32_t
+    {
+        IGNORE_BIT = 0,
+        OVERLAP_BIT = 1 << 0, 
+        BLOCK_BIT = 1 << 1,
+        STRIKE_BIT = 1 << 2,
+    };
+
+    enum class CollisionStrikeFlags : uint32_t
+    {
+        DESTROY_BIT = 1 << 0,
+        WORLD_VARIABLE_EFFECT_BIT = 1 << 1,
+    };
+
+    enum class CollisionOverlapFlags : uint32_t
+    {
+        APPLY_FORCE_BIT = 1 << 0,
+        WORLD_VARIABLE_EFFECT_BIT = 1 << 1,
+    };
+
+    enum class CollisionBlockFlags : uint32_t
+    {
+        BLOCK_ALL = 1 << 0,
+        BLOCK_CONDITIONAL = 1 << 1,
+        BLOCK_SOFT = 1 << 2,
+    };
+
+    class ColliderWorldEffects
+    {
+    public:
+        uint32_t highLevelFlags = 0;
+        uint32_t collisionStrikeFlags = 0;
+        uint32_t collisionOverlapFlags = 0;
+        uint32_t collisionBlockFlags = 0;
+        CollisionStrikeFlags strikeReactionType;
+        CollisionOverlapFlags overlapReactionType;
+        CollisionBlockFlags blockReactionType;
+        Resident* temporalData = nullptr;
+        uint32_t allowedTemporalDataCount = 0;
+
+        ~ColliderWorldEffects();
+    };
+
+    
 }
