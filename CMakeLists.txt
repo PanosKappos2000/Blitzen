@@ -33,7 +33,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/WORLD/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 "src/Core/BlitzenWorld/blitzenWorldLoad.cpp"
-                
+                "src/Renderer/WORLD/blitWorldReq.h"
                 "src/Renderer/WORLD/blitzenWorld.cpp"
                 "src/Core/blitzenWorld/blitzenVariableUpdate.cpp"
                 "src/Core/BlitzenWorld/blitzenSystemDispatcher.h"
@@ -138,22 +138,17 @@ add_executable(BlitzenEngine
                 "src/Renderer/View/blitzenCamera.cpp"
 
                 # ENTITIES
-                
-                
                 "src/Renderer/Entities/Physics/blitGravity.h"
                 
                 
 
                 # RESIDENTS
                 "src/Renderer/Entities/Residents/Collision/blitCollision.h"
-                "src/Renderer/Entities/Residents/Collision/blitColliders.h"
-                
-                
+                "src/Renderer/Entities/Residents/Collision/blitColliders.h" 
                 "src/Renderer/Entities/Residents/blitResidentManager.h"
                 "src/Renderer/Entities/Residents/RenderObject/blitRender.h"
                 "src/Renderer/Entities/Residents/RenderObject/blitzenRender.cpp"
                 "src/Renderer/Entities/Residents/blitResident.cpp"
-                
                 "src/Renderer/Entities/Residents/RenderObject/worldTransform.h"
                 
                 
@@ -230,6 +225,7 @@ add_executable(BlitzenEngine
                 "src/Renderer/BlitzenDX12/Cull/dx12CullInterface.cpp"
                 "src/Renderer/BlitzenDX12/Cull/dx12Cull.h"
                 "src/Renderer/BlitzenDX12/Render/dx12DrawInterface.cpp"
+                "src/Renderer/BlitzenDX12/Cull/dx12PhysicsSupport.cpp"
 
                 # vendor
                 "src/VendorCode/fast_obj.h"
@@ -240,13 +236,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h"                   
-                
-                
-                
-                   
-                
-                 "src/Renderer/BlitzenDX12/Cull/dx12PhysicsSupport.cpp" "src/Renderer/WORLD/blitWorldReq.h")
+                "src/VendorCode/Cgltf/cgltf.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

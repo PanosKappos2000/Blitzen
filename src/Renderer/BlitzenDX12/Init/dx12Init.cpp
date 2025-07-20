@@ -287,6 +287,22 @@ namespace BlitzenDX12
 			descriptorContext.mClusterCullRootConstantID = (UINT)drawCullRootParameters.GetSize();
 		}
 
+#if defined(BLIT_VISUAL_DEBUG)
+		D3D12_DESCRIPTOR_RANGE colliderDebugCullRange[GCColliderDebugCmdRangeCount]{};
+		CreateDescriptorRange(colliderDebugCullRange[GCColliderDebugCmdRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_DEBUG_DRAW_CMD);
+		CreateDescriptorRange(colliderDebugCullRange[GCColliderDebugCounterRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_COLLIDER_DEBUG_DRAW_CMD_COUNTER);
+
+		descriptorContext.mColliderDebugCmdParameterID = (UINT)drawCullRootParameters.GetSize();
+		D3D12_ROOT_PARAMETER colliderDebugCullParameter{};
+		CreateRootParameterDescriptorTable(colliderDebugCullParameter, colliderDebugCullRange, GCColliderDebugCmdRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		drawCullRootParameters.PushBack(colliderDebugCullParameter);
+
+		descriptorContext.mColliderDebugCullDataParameterID = (UINT)drawCullRootParameters.GetSize();
+		D3D12_ROOT_PARAMETER colliderDebugDataParameter{};
+		CreateRootParameterDescriptorTable(colliderDebugDataParameter, visualDebugColliderRanges, GCColliderDebugRangeCount, D3D12_SHADER_VISIBILITY_ALL);
+		drawCullRootParameters.PushBack(colliderDebugDataParameter);
+#endif
+
 		// DRAW CULL ROOT
 		if (!CreateRootSignature(device, context.m_cullRoot.ReleaseAndGetAddressOf(), (UINT)drawCullRootParameters.GetSize(), drawCullRootParameters.Data()))
 		{
@@ -322,7 +338,7 @@ namespace BlitzenDX12
 		return 1;
     }
 
-	uint8_t CreateCmdSignatures(ID3D12Device* device, PipelineContext& ctx)
+	uint8_t CreateCmdSignatures(ID3D12Device* device, PipelineContext& ctx, DescriptorContext& descriptorContext)
 	{
 		// Draw command
 		D3D12_INDIRECT_ARGUMENT_DESC indirectDescs[2]{};
@@ -348,6 +364,7 @@ namespace BlitzenDX12
 			return LOG_ERROR_MESSAGE_AND_RETURN(opaqueCmdRes);
 		}
 
+		// The only difference is the root parameter index for the root constant
 		indirectDescs[0].Constant.RootParameterIndex = CE_GRAPHICS_ODS_DYNAMIC_OBJIDX_ID;
 		HRESULT dynamicCmdRes{ device->CreateCommandSignature(&sigDesc, ctx.m_graphicsRoot.Get(), IID_PPV_ARGS(ctx.m_dynamicDrawCmdSignature.ReleaseAndGetAddressOf())) };
 		if (FAILED(dynamicCmdRes))
@@ -396,6 +413,18 @@ namespace BlitzenDX12
 				return LOG_ERROR_MESSAGE_AND_RETURN(clusterDispatchCmdRes);
 			}
 		}
+
+#if defined(BLIT_VISUAL_DEBUG)
+
+		// The only difference is the root parameter index for the root constant
+		indirectDescs[0].Constant.RootParameterIndex = descriptorContext.mColliderDebugRootConstantParameterID;
+		HRESULT colliderDebugDrawCmdRes{ device->CreateCommandSignature(&sigDesc, ctx.m_graphicsRoot.Get(), IID_PPV_ARGS(ctx.mColliderCmdSignature.ReleaseAndGetAddressOf())) };
+		if (FAILED(colliderDebugDrawCmdRes))
+		{
+			BLIT_ERROR("%s: Failed to create collider debug draw command signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return LOG_ERROR_MESSAGE_AND_RETURN(colliderDebugDrawCmdRes);
+		}
+#endif
 
 		// success
 		return 1;
@@ -521,6 +550,12 @@ namespace BlitzenDX12
 		if(!CreateColliderVisualDebugPipelines(device, context))
 		{
 			BLIT_ERROR("%s: Failed to create bounding sphere debug draw pipeline", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!CreateComputeShaderProgram(device, context.m_cullRoot.Get(), context.mColliderCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/colliderDebugCull.cs.hlsl.bin"))
+		{
+			BLIT_ERROR("%s: Filaed to create colliderDebugCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 #endif
@@ -650,6 +685,20 @@ namespace BlitzenDX12
 					return 0;
 				}
 			}
+
+#if defined(BLIT_VISUAL_DEBUG)
+			if (CreateSSBO<IndirectDrawCmd>(device, rwResources.UAVColliderDrawCmdBuffer, BLIT_MAX_DYNAMIC_DRAW_COMMANDS + BLIT_MAX_STATIC_DRAW_COMMANDS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) == 0)
+			{
+				BLIT_ERROR("%s: Failed to create collider draw command buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+
+			if (CreateSSBO<uint32_t>(device, rwResources.UAVColliderDrawCmdCounterBuffer, 1, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) == 0)
+			{
+				BLIT_ERROR("%s: Failed to create collider draw command counter buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
+				return 0;
+			}
+#endif 
 		}
 		// Success
 		return 1;

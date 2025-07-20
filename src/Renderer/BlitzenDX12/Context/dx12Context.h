@@ -68,6 +68,11 @@ namespace BlitzenDX12
         CBUFFER<BlitzenEngine::CameraViewData> m_viewBuffer;
 
         HI_Z_MAP m_HI_Z;
+
+#if defined(BLIT_VISUAL_DEBUG)
+        SSBO UAVColliderDrawCmdBuffer{};
+        SSBO UAVColliderDrawCmdCounterBuffer{};
+#endif
     };
 
     struct CPU_LOGIC_BUFFERS
@@ -144,7 +149,12 @@ namespace BlitzenDX12
 
 #if defined(BLIT_VISUAL_DEBUG)
         UINT mColliderDebugParameterID;
+        UINT mColliderDebugCmdParameterID;
+        UINT mColliderDebugCullDataParameterID;
         UINT mColliderDebugRootConstantParameterID;
+
+        SIZE_T mColliderDebugCullTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE mColliderDebugCullTableHandle;
 
         SIZE_T mGridCellDebugTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE mGridCellDebugTableHandle;
@@ -251,6 +261,8 @@ namespace BlitzenDX12
 #if defined(BLIT_VISUAL_DEBUG)
         DX12WRAPPER<ID3D12PipelineState> mGridCellDrawPso;
         DX12WRAPPER<ID3D12PipelineState> mColliderDrawPso;
+        DX12WRAPPER<ID3D12CommandSignature> mColliderCmdSignature;
+        DX12WRAPPER<ID3D12PipelineState> mColliderCullPso;
 #endif
 
         DX12WRAPPER<ID3D12RootSignature> m_graphicsRoot;

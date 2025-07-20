@@ -15,7 +15,7 @@ namespace BlitzenDX12
 
 	uint8_t CreateRootSignatures(ID3D12Device* device, PipelineContext& context, DescriptorContext& descriptorContext);
 
-	uint8_t CreateCmdSignatures(ID3D12Device* device, PipelineContext& ctx);
+	uint8_t CreateCmdSignatures(ID3D12Device* device, PipelineContext& ctx, DescriptorContext& descriptorContext);
 
 	uint8_t CreatePipelines(ID3D12Device* device, PipelineContext& context);
 

@@ -180,6 +180,10 @@ namespace BlitzenDX12
     constexpr UINT GCColliderDebugTransformedAMaxRadRangeID = 2;
     constexpr UINT GCColliderDebugTransformedBMinTypeRangeID = 3;
 
+    constexpr UINT GCColliderDebugCmdRangeCount = 2;
+    constexpr UINT GCColliderDebugCmdRangeID = 0;
+    constexpr UINT GCColliderDebugCounterRangeID = 1;
+
     constexpr UINT GCColliderDebugRootConstant32BitValueCount = 1;
 
     // ROOT PARAMETERS FOR GRAPHICS

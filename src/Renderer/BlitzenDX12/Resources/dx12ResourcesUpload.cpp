@@ -741,6 +741,22 @@ namespace BlitzenDX12
 			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVGlobalColliderIDXOffset.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 		}
 
+#if defined(BLIT_VISUAL_DEBUG)
+		for (uint32_t f = 0; f < ce_framesInFlight; ++f)
+		{
+			auto& rwResources{ rwResourcesArray[f] };
+
+			ctx.mColliderDebugCullTableOffset = ctx.m_viewHeapCurrentOffset;
+			ctx.mColliderDebugCullTableHandle = ctx.m_viewHeapHandle;
+			ctx.mColliderDebugCullTableHandle.ptr += ctx.mColliderDebugCullTableOffset * ctx.m_viewHeapIncrement;
+
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.UAVColliderDrawCmdBuffer.buffer.Get(), rwResources.UAVColliderDrawCmdCounterBuffer.buffer.Get(), 
+				BLIT_MAX_STATIC_DRAW_COMMANDS + BLIT_MAX_DYNAMIC_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);
+
+			CreateBufferUnorderedAccessView(device, ctx, rwResources.UAVColliderDrawCmdCounterBuffer.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
+		}
+#endif
+
 		// HI_Z_MAP DESCRIPTORS
 		if constexpr (BlitzenCore::Ce_Build_HI_Z)
 		{
