@@ -8,6 +8,15 @@
 
 namespace BlitzenEngine
 {
+    constexpr const char* GCSphereShapeMeshName = "BlitSphere";
+    constexpr const char* GCCubeShapeMeshName = "BlitCube";
+    constexpr const char* GCCapsuleShapeMeshName = "BlitCapsule";
+    constexpr const char* GCDefaultMeshName = "bunny";
+    constexpr const char* GCDefaultDragonMeshName = "Stanford Dragon";
+    constexpr const char* GCDefaultHumanMeshName = "Base Human";
+    constexpr const char* GCDefaultKittenMeshName = "Kitten";
+    constexpr const char* Ce_MeshDoNotAddToTable = "BLIT_DO_NOT_ADD_TO_MESH_TABLE";
+
     class MeshResources
     {
     public:

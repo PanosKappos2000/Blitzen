@@ -112,10 +112,10 @@ namespace BlitzenEngine
 
         BLIT_WARN("Loading Renderer Stress test with %i objects", totalCount);
 
-        pScene->m_meshRefArr[0] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultMeshName];
-        pScene->m_meshRefArr[1] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName];
-        pScene->m_meshRefArr[2] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultDragonMeshName];
-        pScene->m_meshRefArr[3] = &pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultHumanMeshname];
+        pScene->m_meshRefArr[0] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultMeshName];
+        pScene->m_meshRefArr[1] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultKittenMeshName];
+        pScene->m_meshRefArr[2] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultDragonMeshName];
+        pScene->m_meshRefArr[3] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultHumanMeshName];
 
         uint32_t start = pResidents->m_renders.RENDER_COUNT;
 
@@ -124,7 +124,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultMeshName].firstSurface;
+            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultMeshName].firstSurface;
 
             // RandomizeTransform
             MeshTransform randomTransform;
@@ -149,7 +149,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName].firstSurface;
+            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultKittenMeshName].firstSurface;
 
             // Randomize transform
             MeshTransform randomTransform;
@@ -174,7 +174,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultDragonMeshName].firstSurface;
+            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultDragonMeshName].firstSurface;
 
             // Randomize transform
             MeshTransform randomTransform;
@@ -199,7 +199,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultHumanMeshname].firstSurface;
+            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultHumanMeshName].firstSurface;
 
             // Randomize transform
             MeshTransform randomTransform;
@@ -232,7 +232,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName].firstSurface;
+            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultKittenMeshName].firstSurface;
 
             // Randomize transform
             MeshTransform randomTransform;
@@ -270,7 +270,7 @@ namespace BlitzenEngine
         {
             WORLD_VARIABLE_CREATE_CONTEXT wvCtx{};
             wvCtx.residentCtx.m_flags = RESIDENT_CREATE_WORLD_VARIABLE;
-            wvCtx.residentCtx.m_resourceID = RequestMeshResources_STATIC_ACCESS(BlitzenCore::Ce_DefaultKittenMeshName).firstSurface;
+            wvCtx.residentCtx.m_resourceID = RequestMeshResources_STATIC_ACCESS(BlitzenEngine::GCDefaultKittenMeshName).firstSurface;
 
             RENDER_OBJECT_TYPE renderType = RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
             wvCtx.residentCtx.m_isMoveable = BLIT_FAT_TRUE;
@@ -321,7 +321,7 @@ namespace BlitzenEngine
     {
         auto pMeshContainer{ &pResources->m_meshContext };
 
-        uint32_t meshID = LoadObjFileMeshToDisk(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenCore::Ce_DefaultKittenMeshName);
+        uint32_t meshID = LoadObjFileMeshToDisk(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenEngine::GCDefaultKittenMeshName);
         if (meshID == BlitzenCore::Ce_MaxMeshCount)
         {
             return SCENE_CREATE_RES::FAILED_TO_LOAD_OBJ_MESH_TO_DISK;
@@ -373,7 +373,7 @@ namespace BlitzenEngine
 
         RESIDENT_CREATE_CONTEXT residentCtx{};
         residentCtx.m_flags = 0;
-        residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenCore::Ce_DefaultKittenMeshName].firstSurface;
+        residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultKittenMeshName].firstSurface;
 
         // Randomize transform
         MeshTransform randomTransform;

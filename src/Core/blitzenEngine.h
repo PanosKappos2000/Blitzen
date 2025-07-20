@@ -209,11 +209,6 @@ namespace BlitzenCore
 
     constexpr uint32_t Ce_MaxMeshCount = 10'000;
     constexpr uint32_t Ce_EngineDefaultMeshesCount = 4;
-    constexpr const char* Ce_DefaultMeshName = "bunny";
-    constexpr const char* Ce_DefaultDragonMeshName = "Stanford Dragon";
-    constexpr const char* Ce_DefaultHumanMeshname = "Base Human";
-    constexpr const char* Ce_DefaultKittenMeshName = "Kitten";
-    constexpr const char* Ce_MeshDoNotAddToTable = "BLIT_DO_NOT_ADD_TO_MESH_TABLE";
 
     constexpr uint32_t Ce_MaxMeshPrimitivesCount = 10'000;
 

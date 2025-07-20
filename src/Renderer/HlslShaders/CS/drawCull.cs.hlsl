@@ -8,7 +8,7 @@
 #include "../../Resources/blitShaderShared.h"
 
 [numthreads(64, 1, 1)]
-void csMain(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 dispatchGroupID : SV_GroupID)
+void csMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint objId = dispatchThreadID.x + BLIT_OPAQUE_STATIC_RENDER_OFFSET;
     

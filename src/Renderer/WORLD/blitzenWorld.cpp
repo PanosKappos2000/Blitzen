@@ -409,7 +409,7 @@ namespace BlitzenWorld
 #else
         BlitzenEngine::AllocateLoadingContextMesh(pRenderer, loadingContextMesh);
 
-        uint32_t bunnyMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenCore::Ce_DefaultMeshName) };
+        uint32_t bunnyMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenEngine::GCDefaultMeshName) };
         if (bunnyMeshId == BlitzenCore::Ce_MaxMeshCount)
         {
             BLIT_ERROR("Failed to load default bunny mesh");
@@ -422,7 +422,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        uint32_t kittenMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenCore::Ce_DefaultKittenMeshName) };
+        uint32_t kittenMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenEngine::GCDefaultKittenMeshName) };
         if (kittenMeshId == BlitzenCore::Ce_MaxMeshCount)
         {
             BLIT_ERROR("Failed to load default kitten mesh");
@@ -435,7 +435,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        uint32_t dragonMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/dragon.obj", BlitzenCore::Ce_DefaultDragonMeshName) };
+        uint32_t dragonMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/dragon.obj", BlitzenEngine::GCDefaultDragonMeshName) };
         if (dragonMeshId == BlitzenCore::Ce_MaxMeshCount)
         {
             BLIT_ERROR("Failed to load default dragon mesh");
@@ -448,7 +448,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        uint32_t humanMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/FinalBaseMesh.obj", BlitzenCore::Ce_DefaultHumanMeshname) };
+        uint32_t humanMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/FinalBaseMesh.obj", BlitzenEngine::GCDefaultHumanMeshName) };
         if (humanMeshId == BlitzenCore::Ce_MaxMeshCount)
         {
             BLIT_ERROR("Failed to load default human mesh");
@@ -460,6 +460,34 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for human mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
+#endif
+
+#if defined(BLIT_VISUAL_DEBUG)
+        BLIT_ASSERT_MESSAGE(pResources->m_meshContext.m_meshCount == BLIT_HLSL_COLLIDER_RESOURCE_OFFSET, "Collider shapes should be loaded starting from the 4th mesh for now");
+
+        uint32_t sphereMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/sphere.obj", BlitzenEngine::GCSphereShapeMeshName) };
+        if (sphereMeshID == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("%s: Failed to load sphere shape mesh resource", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        uint32_t cubeMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/cube.obj", BlitzenEngine::GCCubeShapeMeshName) };
+        if (cubeMeshID == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("%s: Failed to load cube shape mesh resources", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        uint32_t capsuleMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/capsule.obj", BlitzenEngine::GCCapsuleShapeMeshName) };
+        if (capsuleMeshID == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("%s: Failed to load capsule shape mesh resources", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        BLIT_ASSERT_MESSAGE(sphereMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeSphere && capsuleMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeCapsule && 
+            cubeMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeAABB, "Collider shape IDs should match offset for debug compute shader");
 #endif
 
         pResources->m_terrainContainer.ALLOC();

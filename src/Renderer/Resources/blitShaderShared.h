@@ -5,6 +5,34 @@
 	using uint = uint32_t;
 #endif
 
+// TEMPORARILY DEFINING THESE HERE UNTIL I TUNE CMAKE OR BUILD A CUSTOM TOOL
+#if !defined(NDEBUG)
+#define BLITZEN_CONFIGURATION_ENGINE_DEV
+#else 
+#define BLITZEN_CONFIGURATION_GAME_EDITOR
+#endif
+
+#if defined(BLITZEN_CONFIGURATION_ENGINE_DEV) || defined(BLITZEN_CONFIGURATION_GAME_EDITOR)
+#define BLIT_OFFLINE_BUILD
+#define BLIT_VISUAL_DEBUG
+#endif
+
+#if defined(BLITZEN_CONFIGURATION_ENGINE_DEV) || defined(BLITZEN_CONFIGURATION_GAME_EDITOR) || defined(BLITZEN_CONFIGURATION_GAME_TEST)
+#define BLIT_ASSERTIONS_ENABLED
+#endif
+
+#if defined(BLIT_OFFLINE_BUILD)
+#define BLIT_OFFLINE_FUNC 
+#else
+#define BLIT_OFFLINE_FUNC [[deprecated("This function is for offline use only.")]]
+#endif
+
+#if defined(BLIT_VISUAL_DEBUG)
+#define BLIT_VISUAL_DEBUG_FUNC
+#else
+#define BLIT_VISUAL_DEBUG_FUNC [[deprecated("Application should not ship with a visual debug function")]]
+#endif
+
 /****************************************************************************************************************************************************************************************
 * THE MACROS IN THIS FILE ARE NOT TO BE CONVERTED TO CONSTEXPR AS THE FILE NEEDS TO BE INCLUDED IN SHADERS AS WELL																	    *
 *****************************************************************************************************************************************************************************************/
@@ -88,6 +116,8 @@
 #define BLIT_GRAVITATIONAL_ACCELERATION														0.1f
 #define BLIT_TERRAIN_HEIGHT_TEST_VALUE														0.f
 
+#define BLIT_HLSL_COLLIDER_RESOURCE_OFFSET													4
+
 /************************************************************************************************************************************************
 * DX12 REGISTERS																																*
 *************************************************************************************************************************************************/
@@ -114,6 +144,8 @@
 	constexpr uint BLIT_HLSL_GLOBAL_COLLIDER_IDXs_OFFSET_REGISTER = 19;
 	constexpr uint BLIT_HLSL_INSTANCED_CMD_BUFFER_REGISTER = 20;
 	constexpr uint BLIT_HLSL_INSTANCED_CMD_COUNTER_REGISTER = 21;
+	constexpr uint BLIT_HLSL_COLLIDER_DEBUG_DRAW_CMD = 22;
+	constexpr uint BLIT_HLSL_COLLIDER_DEBUG_DRAW_CMD_COUNTER = 23;
 
 	constexpr uint BLIT_HLSL_RENDER_BUFFER_REGISTER = 0;// Compute + Vertex
 	constexpr uint BLIT_HLSL_BOUNDING_SPHERE_REGISTER = 1;// Compute 
@@ -173,6 +205,7 @@ enum BlitzenColliderType
 	BlitzenColliderTypeSphere = 0,
 	BlitzenColliderTypeAABB = 1,
 	BlitzenColliderTypeCapsule = 2,
+	BlitzenColliderTypeMax = 3,
 };
 
 #ifdef __cplusplus

@@ -66,6 +66,11 @@ struct DrawCmd
     RWBuffer<uint> rwb_DrawCmdCounter : register(u9);
 #endif
 
+#ifdef COLLIDER_CULL
+    RWStructuredBuffer<DrawCmd> ssbo_DrawCmd : register(u22);
+    RWBuffer<uint> rwb_DrawCmdCount : register(u23);
+#endif
+
 #ifndef INSTANCED_CULL
 void PrepareDrawCmd(uint lodId, uint objId)
 {
