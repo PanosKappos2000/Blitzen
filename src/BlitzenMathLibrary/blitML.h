@@ -789,7 +789,7 @@ namespace BlitML
 
     // Takes an array of vertices and generates a center and radius for a bounding sphere
     // Returned as vec4 / float4 with the xyz components being the center and the w component being the raidus
-    inline vec4 GenerateBoundingSphereFromVertices(BlitML::vec3* vtxPosArr, uint32_t vtxCount)
+    BLIT_OFFLINE_FUNC inline vec4 GenerateBoundingSphereFromVertices(BlitML::vec3* vtxPosArr, uint32_t vtxCount)
     {
         BlitML::vec3 center{ 0.f };
         for (size_t i = 0; i < vtxCount; ++i)
@@ -812,7 +812,7 @@ namespace BlitML
     // Generates an axis-aligned bounding box (AABB) from a vertex array.
     // outMin: smallest x/y/z values across all vertices
     // outMax: largest x/y/z values across all vertices
-    inline void GenerateAABBFromVertices(const BlitML::vec3* vtxPosArr, uint32_t vtxCount, BlitML::vec3& outMin, BlitML::vec3& outMax)
+    BLIT_OFFLINE_FUNC inline void GenerateAABBFromVertices(const BlitML::vec3* vtxPosArr, uint32_t vtxCount, BlitML::vec3& outMin, BlitML::vec3& outMax)
     {
         if (vtxCount == 0)
         {
@@ -838,7 +838,7 @@ namespace BlitML
         }
     }
 
-    inline void GenerateCapsuleFromVertices(const BlitML::vec3* vtxPosArr, uint32_t vtxCount, BlitML::vec3& outA, BlitML::vec3& outB, float& outRad)
+    BLIT_OFFLINE_FUNC inline void GenerateCapsuleFromVertices(const BlitML::vec3* vtxPosArr, uint32_t vtxCount, BlitML::vec3& outA, BlitML::vec3& outB, float& outRad)
     {
         if (vtxCount == 0)
         {

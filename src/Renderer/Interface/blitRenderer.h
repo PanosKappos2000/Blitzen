@@ -200,9 +200,11 @@ namespace BlitzenEngine
 
     // Active only during debug mode, when the world drawColliderFlag is active.
     // Draws colliders that surround objects for debug purposes. Uses the same indirect Buffer as RenderObjects
-    void BMPRDrawColliders(RendererPtrType pRenderer, RENDER_CONTEXT& renderContext);
+    BLIT_VISUAL_DEBUG_FUNC void BMPRDrawColliders(RendererPtrType pRenderer, RENDER_CONTEXT& renderContext);
 
     void RenderTerrain(RendererPtrType pRenderer, uint32_t terrainCount);
+
+    BLIT_VISUAL_DEBUG_FUNC void BMPRDrawColliderGridCells(RendererPtrType pRenderer);
 
 #if !defined(NDEBUG)
     void RENDER_BOUNDING_SPHERES_DEBUG(RendererPtrType pRenderer);

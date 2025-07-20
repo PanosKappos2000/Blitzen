@@ -456,7 +456,7 @@ namespace BlitzenEngine
 
     void ColliderContainer::CheckSphereColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices)
     {
-        auto& hitterAMaxRad = MColliderAMaxRad[hitter].data;
+        auto& hitterAMaxRad = MTransformedColliderAMaxRad[hitter].data;
 
         if constexpr (GCBlitzenSimd && GCSIMDCollisionResolveFlag)
         {
@@ -682,7 +682,7 @@ namespace BlitzenEngine
 
 	void CollisionGrid::CreateCells()
 	{
-        for (uint32_t cellId = 0; cellId < CE_COLLISION_GRID_CELL_COUNT; ++cellId)
+        for (uint32_t cellId = 0; cellId < GCCollisionCellCount; ++cellId)
         {
             mCellOffsets[cellId].staticCollidersOffset = BLIT_OPAQUE_STATIC_RENDER_OFFSET;// static colliders start after the offset
             mCellOffsets[cellId].staticColliderCount = 0;
@@ -740,7 +740,7 @@ namespace BlitzenEngine
             uint32_t cellIndex = cellPosX + cellPosZ * GCCollsionFlatCount;
 
             // Something wrong with indexing logic
-            if (cellIndex >= CE_COLLISION_GRID_CELL_COUNT)
+            if (cellIndex >= GCCollisionCellCount)
             {
                 badLogic++;
                 continue;
@@ -884,8 +884,36 @@ namespace BlitzenEngine
                 transformedAMaxRad.data.WriteXYZ(aMaxRad.data.xyz() * scale + transform.position);
                 transformedBMinType.data.WriteXYZ(bMinType.data.xyz() * scale + transform.position);
                 transformedAMaxRad.data.w = aMaxRad.data.w * scale;
-
+                break;
             }
+        }
+    }
+
+    void ColliderContainer::TransformSingleColliderWithoutBMPR(Resident resident, const WVTransform& transform, const MeshTransform& gpuTransform)
+    {
+        auto& aMaxRad = MColliderAMaxRad[resident];
+        auto& bMinType = MColliderBMinType[resident];
+        auto& transformedAMaxRad = MTransformedColliderAMaxRad[resident];
+        auto& transformedBMinType = MTransformedColliderBMinType[resident];
+
+        uint32_t type = uint32_t(bMinType.data.w);
+        switch (type)
+        {
+        case BlitzenColliderTypeSphere:
+            transformedAMaxRad.data.WriteXYZ(aMaxRad.data.xyz() * gpuTransform.scale + transform.position);
+            transformedAMaxRad.data.w = aMaxRad.data.w * gpuTransform.scale;
+            break;
+
+        case BlitzenColliderTypeAABB:
+            transformedAMaxRad.data.WriteXYZ(aMaxRad.data.xyz() * gpuTransform.scale + transform.position);
+            transformedBMinType.data.WriteXYZ(bMinType.data.xyz() * gpuTransform.scale + transform.position);
+            break;
+
+        case BlitzenColliderTypeCapsule:
+            transformedAMaxRad.data.WriteXYZ(aMaxRad.data.xyz() * gpuTransform.scale + transform.position);
+            transformedBMinType.data.WriteXYZ(bMinType.data.xyz() * gpuTransform.scale + transform.position);
+            transformedAMaxRad.data.w = aMaxRad.data.w * gpuTransform.scale;
+            break;
         }
     }
 
@@ -979,20 +1007,22 @@ namespace BlitzenEngine
 
     void CollisionGrid::GenerateGridCellDrawData(BlitML::float3* vertices)
     {
+#if defined(BLIT_VISUAL_DEBUG)
         const BlitML::float3 quadVerts[6] = {{ -0.5f, 0.0f, -0.5f }, {  0.5f, 0.0f, -0.5f }, { -0.5f, 0.0f,  0.5f }, {  0.5f, 0.0f, -0.5f }, {  0.5f, 0.0f,  0.5f }, { -0.5f, 0.0f,  0.5f }};
 
-        for (uint32_t cell = 0; cell < BLIT_COLLISION_GRID_CELL_COUNT; ++cell)
+        for (uint32_t cell = 0; cell < GCCollisionCellCount; ++cell)
         {
             BlitML::float3 worldPos;
-            worldPos.y = 0;
-            worldPos.x = (cell % BLIT_COLLISION_GRID_CELL_FLAT_COUNT) * GCCollisionCellExtent;
-            worldPos.z = (cell / BLIT_COLLISION_GRID_CELL_FLAT_COUNT) * GCCollisionCellExtent;
+            worldPos.y = 0.f;
+            worldPos.x = float((cell % BLIT_COLLISION_GRID_CELL_FLAT_COUNT) * GCCollisionCellExtent);
+            worldPos.z = float((cell / BLIT_COLLISION_GRID_CELL_FLAT_COUNT) * GCCollisionCellExtent);
 
             for (uint32_t vert = 0; vert < 6; ++vert)
             {
                 vertices[cell * 6 + vert] = worldPos + quadVerts[vert] * GCCollisionCellExtent;
             }
         }
+#endif
     }
 
     void CollisionGrid::ALLOC_IDX()

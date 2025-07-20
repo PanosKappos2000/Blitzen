@@ -46,7 +46,11 @@ namespace BlitzenEngine
 		bool LogResidentForCollision(Resident resident, SplitColliderDataPair& data, MeshTransform& residentTransform,
 			WVColliderResponse behavior = {BlitzenCollisionFlagsBlock, BlitzenCollisionFlagsBlock});
 
+		// Takes an array of residents and moves their colliders. Have to handle multiple cases, but allows for batching
 		void TransformCollidersWithoutBMPR(Resident* movingResidentArr, uint32_t movingResidentCount, WVTransform* transformArr, MeshTransform* gpuTransformArr);
+
+		// Instantly transforms single resident. Easier logic, harder to batch
+		void TransformSingleColliderWithoutBMPR(Resident resident, const WVTransform& transform, const MeshTransform& gpuTransform);
 
 		void CheckCapsuleColliderInsideGridCell(Resident hitter, GridCellOffsets& cell, Resident* indices);
 

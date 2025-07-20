@@ -36,6 +36,10 @@ namespace BlitzenDX12
 
         SSBO m_instancedRenders;
 
+#if defined BLIT_VISUAL_DEBUG
+        SSBO SRVGridCellQuadBuffer{};
+#endif
+
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
     };
@@ -78,8 +82,8 @@ namespace BlitzenDX12
         SSBO UAVTransformColliderAMaxRad{}; // BlitzenEngine::ColliderAMaxRad -> float4 | Will hold transformed version of the above AMaxRad buffer
         SSBO UAVTransformColliderBMinType{};// BlitzenEngine::ColliderBMinType -> float4 | Will hold transformed version of the other BMinType buffer
 
-        SSBO SRVStaticColliderIndices{};
         SSBO UAVNarrowPhaseIndirectCommands{};
+        SSBO UAVNarrowPhaseCounter{};
         SSBO UAVCollisionMessageCounter{};
         SSBO UAVCollisionMessages{};
 
@@ -137,6 +141,15 @@ namespace BlitzenDX12
         D3D12_GPU_DESCRIPTOR_HANDLE mCollisionResolveTableHandle;
         UINT mCollisionResolveParameterID;
         UINT mCollisionResolveCellIndexConstantID;
+
+#if defined(BLIT_VISUAL_DEBUG)
+        UINT mColliderDebugParameterID;
+        UINT mColliderDebugRootConstantParameterID;
+
+        SIZE_T mGridCellDebugTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE mGridCellDebugTableHandle;
+        UINT mGridCellDebugParameterID;
+#endif
 
         SIZE_T m_cullOCCDPTableOffset[ce_framesInFlight];
         D3D12_GPU_DESCRIPTOR_HANDLE m_cullOCCDPTableHandle[ce_framesInFlight];
@@ -235,8 +248,10 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12RootSignature> m_triangleRoot;
         DX12WRAPPER<ID3D12PipelineState> m_trianglePso;
 
-		DX12WRAPPER<ID3D12RootSignature> m_boundingSphereRoot;
-		DX12WRAPPER<ID3D12PipelineState> m_boundingSpherePso;
+#if defined(BLIT_VISUAL_DEBUG)
+        DX12WRAPPER<ID3D12PipelineState> mGridCellDrawPso;
+        DX12WRAPPER<ID3D12PipelineState> mColliderDrawPso;
+#endif
 
         DX12WRAPPER<ID3D12RootSignature> m_graphicsRoot;
         UINT m_clusterObjidxContantRootID;

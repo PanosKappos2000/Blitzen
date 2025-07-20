@@ -55,6 +55,7 @@ namespace BlitzenDX12
         return S_OK;
     }
 
+    constexpr size_t GCGetShaderBytesErrorCode = 0;
     static size_t GetShaderBytes(ID3D12Device* device, const char* filepath, BlitCL::String& bytes)
     {
         BlitzenPlatform::C_FILE_SCOPE scopedFILE;
@@ -62,14 +63,14 @@ namespace BlitzenDX12
         if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
         {
             BLIT_ERROR("Failed to open shader file");
-            return 0;
+            return GCGetShaderBytesErrorCode;
         }
 
         size_t filesize = 0;
         if (!BlitzenPlatform::FilesystemReadAllBytes(scopedFILE, bytes, &filesize))
         {
             BLIT_ERROR("Failed to read shader file");
-            return 0;
+            return GCGetShaderBytesErrorCode;
         }
 
         return filesize;
@@ -423,15 +424,16 @@ namespace BlitzenDX12
         return 1;
     }
 
-    uint8_t CreateBoundingSphereDebugDrawPipeline(ID3D12Device* device, PipelineContext& ctx)
+    uint8_t CreateColliderVisualDebugPipelines(ID3D12Device* device, PipelineContext& ctx)
     {
+#if defined(BLIT_VISUAL_DEBUG)
         BlitCL::String vsBytes;
         size_t vsSize{ 0 };
 
-        vsSize = GetShaderBytes(device, "HlslShaders/VS/boundingSphere.vs.hlsl.bin", vsBytes);
-        if (!vsSize)
+        vsSize = GetShaderBytes(device, "HlslShaders/VS/colliderDraw.vs.hlsl.bin", vsBytes);
+        if (vsSize == GCGetShaderBytesErrorCode)
         {
-            BLIT_ERROR("%s: Failed to create bounding sphere debug  vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to create collider visual debug  vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
         D3D12_SHADER_BYTECODE vsCode{};
@@ -439,10 +441,10 @@ namespace BlitzenDX12
         vsCode.pShaderBytecode = vsBytes.Data();
 
         BlitCL::String psBytes;
-        size_t psSize{ GetShaderBytes(device, "HlslShaders/PS/boundingSphere.ps.hlsl.bin", psBytes) };
-        if (!psSize)
+        size_t psSize{ GetShaderBytes(device, "HlslShaders/PS/colliderDraw.ps.hlsl.bin", psBytes) };
+        if (psSize == GCGetShaderBytesErrorCode)
         {
-            BLIT_ERROR("%s: Failed to create bounding sphere debug pixel shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to create collider visual debug pixel shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return 0;
         }
         D3D12_SHADER_BYTECODE psCode{};
@@ -451,18 +453,56 @@ namespace BlitzenDX12
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
         CreateDefaultPsoDescription(psoDesc);
-        psoDesc.pRootSignature = ctx.m_boundingSphereRoot.Get();
+        psoDesc.pRootSignature = ctx.m_graphicsRoot.Get();
         psoDesc.VS = vsCode;
         psoDesc.PS = psCode;
 
-        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.m_boundingSpherePso.ReleaseAndGetAddressOf()));
+        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.mColliderDrawPso.ReleaseAndGetAddressOf()));
         if (FAILED(psoResult))
         {
-            BLIT_ERROR("%s: Failed to create bounding sphere debug pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to create collider visual debug pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
+        }
+
+        vsBytes.Clear();
+        vsSize = 0;
+        vsSize = GetShaderBytes(device, "HlslShaders/VS/gridCellDraw.vs.hlsl.bin", vsBytes);
+        if (vsSize == GCGetShaderBytesErrorCode)
+        {
+            BLIT_ERROR("%s: Failed to create grid cell visual debug vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        psBytes.Clear();
+        psSize = 0;
+        psSize = GetShaderBytes(device, "HlslShaders/PS/gridCellDraw.ps.hlsl.bin", psBytes);
+        if (psSize == GCGetShaderBytesErrorCode)
+        {
+            BLIT_ERROR("%s: Failed to create grid cell visual debug pixel shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        D3D12_SHADER_BYTECODE gridCellVSDesc{};
+        gridCellVSDesc.BytecodeLength = vsSize;
+        gridCellVSDesc.pShaderBytecode = vsBytes.Data();
+        D3D12_SHADER_BYTECODE gridCellPSDesc{};
+        gridCellPSDesc.BytecodeLength = psSize;
+        gridCellPSDesc.pShaderBytecode = psBytes.Data();
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC gridCellPsoDesc{};
+        CreateDefaultPsoDescription(gridCellPsoDesc);
+        gridCellPsoDesc.pRootSignature = ctx.m_graphicsRoot.Get();
+        gridCellPsoDesc.VS = gridCellVSDesc;
+        gridCellPsoDesc.PS = gridCellPSDesc;
+
+        HRESULT gridCellPsoResult = device->CreateGraphicsPipelineState(&gridCellPsoDesc, IID_PPV_ARGS(ctx.mGridCellDrawPso.ReleaseAndGetAddressOf()));
+        if (FAILED(psoResult))
+        {
+            BLIT_ERROR("%s: Failed to create grid cell visual debug pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
             return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
         }
 
         return 1;
+#endif
     }
 
     uint8_t CreateBlitzenLogoPipeline(ID3D12Device* device, PipelineContext& ctx)

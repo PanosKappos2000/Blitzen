@@ -39,7 +39,7 @@ namespace BlitzenWorld
 
         float deltaTime{0.f};
 
-#if !defined (NDEBUG)
+#if defined (BLIT_VISUAL_DEBUG)
         WorldDebugData mDbgData;
 #endif
 

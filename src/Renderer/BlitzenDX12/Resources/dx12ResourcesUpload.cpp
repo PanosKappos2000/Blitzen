@@ -405,7 +405,7 @@ namespace BlitzenDX12
 			copyDestBarriers.PushBack(clusterIdxBarrier);
 		}
 
-		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		if constexpr (GCBlitGpuColliderFlag)
 		{
 			D3D12_RESOURCE_BARRIER colliderAMaxRadBufferBarrier{};
 			PutSSBOBufferToCopyDestState(cpuLogicBuffers.SRVColliderAMaxRad, &colliderAMaxRadBufferBarrier, 0, 1);
@@ -484,7 +484,7 @@ namespace BlitzenDX12
 			copySourceBarriers.PushBack(clusterIdxsStagingBarrier);
 		}
 
-		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		if constexpr (GCBlitGpuColliderFlag)
 		{
 			D3D12_RESOURCE_BARRIER colliderAMaxRadBarrier{};
 			PutStagingBufferToCopySrcState(loadingContextObj.mColliderAMaxRadStaging, &colliderAMaxRadBarrier, 0, 1);
@@ -535,7 +535,7 @@ namespace BlitzenDX12
 			cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_clusterIdxBuffer.m_buffer.Get(), 0, clusterIdxStaging.m_buffer.Get(), 0, clusterIdxStaging.m_dataSize);
 		}
 
-		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		if constexpr (GCBlitGpuColliderFlag)
 		{
 			cmdContext.m_copyCmdList->CopyBufferRegion(cpuLogicBuffers.SRVColliderAMaxRad.buffer.Get(), 0, loadingContextObj.mColliderAMaxRadStaging.m_buffer.Get(), 0,
 				sizeof(BlitzenEngine::ColliderAMaxRad) * loadingContextObj.mColliderAMaxRadStaging.m_validDataIndex);
@@ -717,19 +717,13 @@ namespace BlitzenDX12
 			}
 		}
 
-		if constexpr (BLITGCNarrowPhaseCollisionBumper)
-		{
-
-		}
-		else if constexpr (BLITGCBroadPhaseCollisionBumper)
+		// Colliders can be given to GPU for debug reasons or to actually use them to resolve collisions
+		if constexpr (GCBlitGpuColliderFlag)
 		{
 			ctx.mCollisionSupportTableOffset = ctx.m_viewHeapCurrentOffset;
 			ctx.mCollisionSupportTableHandle = ctx.m_viewHeapHandle;
 			ctx.mCollisionSupportTableHandle.ptr += ctx.mCollisionSupportTableOffset * ctx.m_viewHeapIncrement;
 
-			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVGridCellOffsets.buffer.Get(), nullptr, BLIT_COLLISION_GRID_CELL_COUNT, sizeof(BlitzenEngine::GridCellOffsets), 0);
-			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVColliderIndices.buffer.Get(), nullptr, BlitzenWorld::GetCurrentWorldVariableCount(), sizeof(uint32_t), 0);
-			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVGlobalColliderIDXOffset.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 			CreateBufferShaderResourceView(device, cpuLogicBuffers.SRVColliderAMaxRad.buffer.Get(), ctx, BlitzenWorld::GetCurrentColliderCount(),
 				sizeof(BlitzenEngine::ColliderAMaxRad));
 			CreateBufferShaderResourceView(device, cpuLogicBuffers.SRVColliderBMinType.buffer.Get(), ctx, BlitzenWorld::GetCurrentColliderCount(),
@@ -738,6 +732,13 @@ namespace BlitzenDX12
 				sizeof(BlitzenEngine::ColliderAMaxRad), 0);
 			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVTransformColliderBMinType.buffer.Get(), nullptr, BlitzenWorld::GetCurrentWorldVariableCount(),
 				sizeof(BlitzenEngine::ColliderBMinType), 0);
+		}
+		// In the case where the GPU is tasked with collisions, more colliders need to be attached to the above heap offset
+		if constexpr (BLITGCBroadPhaseCollisionBumper)
+		{
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVGridCellOffsets.buffer.Get(), nullptr, BLIT_COLLISION_GRID_CELL_COUNT, sizeof(BlitzenEngine::GridCellOffsets), 0);
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVColliderIndices.buffer.Get(), nullptr, BlitzenWorld::GetCurrentWorldVariableCount(), sizeof(uint32_t), 0);
+			CreateBufferUnorderedAccessView(device, ctx, cpuLogicBuffers.UAVGlobalColliderIDXOffset.buffer.Get(), nullptr, 1, sizeof(uint32_t), 0);
 		}
 
 		// HI_Z_MAP DESCRIPTORS

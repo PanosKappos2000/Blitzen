@@ -40,7 +40,7 @@ namespace BlitzenDX12
 
     uint8_t CreateBMPRDrivenCollisionComputeShaders(ID3D12Device* device, PipelineContext& ctx);
 
-    uint8_t CreateBoundingSphereDebugDrawPipeline(ID3D12Device* device, PipelineContext& ctx);
+    BLIT_VISUAL_DEBUG_FUNC uint8_t CreateColliderVisualDebugPipelines(ID3D12Device* device, PipelineContext& ctx);
 
     uint8_t CreateBlitzenLogoPipeline(ID3D12Device* device, PipelineContext& ctx);
 

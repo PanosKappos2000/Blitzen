@@ -114,12 +114,20 @@ namespace BlitzenEngine
 		// DRAW
 		cmdList->DrawIndexedInstanced(terrainCount, 1, 0, 0, 0);
 	}
-#if !defined(NDEBUG)
-	void RENDER_BOUNDING_SPHERES_DEBUG(BlitzenDX12::Dx12Renderer* pRenderer)
+
+	void BMPRDrawColliders(BlitzenDX12::Dx12Renderer* pRenderer, RENDER_CONTEXT& renderContext)
 	{
-		auto cmdList = pRenderer->m_cmdContext[pRenderer->m_currentFrame].m_graphicsCmdList;
-	}
+#if defined(BLIT_VISUAL_DEBUG)
+
 #endif
+	}
+
+	void BMPRDrawColliderGridCells(BlitzenDX12::Dx12Renderer* pRenderer)
+	{
+#if defined(BLIT_VISUAL_DEBUG)
+
+#endif
+	}
 
 	void RendererWorkIdle(BlitzenDX12::Dx12Renderer* pRenderer, RENDERER_IDLE_MODE mode)
 	{

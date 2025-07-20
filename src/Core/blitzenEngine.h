@@ -5,10 +5,37 @@
 
 namespace BlitzenCore
 {
+    //#define BLITZEN_CONFIGURATION_ENGINE_DEV
+    //#define BLITZEN_CONFIGURATION_GAME_EDITOR
+    //#define BLITZEN_CONFIGURATION_GAME_SIMULATION
+    //#define BLITZEN_CONFIGURATION_GAME_TEST
+    //#define BLITZEN_CONFIGURATION_GAME_RELEASE
+
+#if !defined(NDEBUG)
+    #define BLITZEN_CONFIGURATION_ENGINE_DEV
+#else 
+    #define BLITZEN_CONFIGURATION_GAME_EDITOR
+#endif
+
+#if defined(BLITZEN_CONFIGURATION_ENGINE_DEV) || defined(BLITZEN_CONFIGURATION_GAME_EDITOR)
+    #define BLIT_OFFLINE_BUILD
+    #define BLIT_VISUAL_DEBUG
+#endif
+
+#if defined(BLITZEN_CONFIGURATION_ENGINE_DEV) || defined(BLITZEN_CONFIGURATION_GAME_EDITOR) || defined(BLITZEN_CONFIGURATION_GAME_TEST)
+    #define BLIT_ASSERTIONS_ENABLED
+#endif
+
 #if defined(BLIT_OFFLINE_BUILD)
     #define BLIT_OFFLINE_FUNC 
 #else
     #define BLIT_OFFLINE_FUNC [[deprecated("This function is for offline use only.")]]
+#endif
+
+#if defined(BLIT_VISUAL_DEBUG)
+    #define BLIT_VISUAL_DEBUG_FUNC
+#else
+    #define BLIT_VISUAL_DEBUG_FUNC [[deprecated("Application should not ship with a visual debug function")]]
 #endif
 
     constexpr const char* CE_BLITZEN = "Blitzen.v0";

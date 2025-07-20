@@ -291,7 +291,7 @@ namespace BlitzenEngine
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 
-		if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)
+		if constexpr (GCBlitGpuColliderFlag)
 		{
 			BlitzenDX12::ChangeSSBOStateWithValidation(pRenderer->MCpuLogicBuffers.SRVColliderAMaxRad, staticBufferBarriers, trueStaticBufferCount, StaticBufferBuggage, 
 				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

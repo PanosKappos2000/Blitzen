@@ -6,7 +6,7 @@ struct VSOutput
     float4 position : SV_POSITION;
 };
 
-StructuredBuffer<float3> vertices : register(t10);
+StructuredBuffer<float3> vertices : register(t19);
 
 VSOutput main(uint vertexIndex : SV_VERTEXID)
 {

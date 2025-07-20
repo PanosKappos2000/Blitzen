@@ -144,6 +144,29 @@ namespace BlitzenDX12
 			context.m_clusterObjidxContantRootID = (UINT)opaqueDrawRootParams.GetSize();
 		}
 
+#if defined(BLIT_VISUAL_DEBUG)
+		D3D12_DESCRIPTOR_RANGE visualDebugColliderRanges[GCColliderDebugRangeCount]{};
+		CreateDescriptorRange(visualDebugColliderRanges[GCColliderDebugAMaxRadRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_COLLIDER_AMAXRAD_REGISTER);
+		CreateDescriptorRange(visualDebugColliderRanges[GCColliderDebugBMinTypeRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, BLIT_HLSL_COLLIDER_BMINTYPE_REGISTER);
+		CreateDescriptorRange(visualDebugColliderRanges[GCColliderDebugTransformedAMaxRadRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_TRANSFORMED_COLLIDER_AMAXRAD_REGISTER);
+		CreateDescriptorRange(visualDebugColliderRanges[GCColliderDebugTransformedBMinTypeRangeID], D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, BLIT_HLSL_TRANSFORMED_COLLIDER_BMINTYPE_REGISTER);
+
+		descriptorContext.mColliderDebugParameterID = (UINT)opaqueDrawRootParams.GetSize();
+		D3D12_ROOT_PARAMETER visualDebugColliderParameter{};
+		CreateRootParameterDescriptorTable(visualDebugColliderParameter, visualDebugColliderRanges, GCColliderDebugRangeCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		opaqueDrawRootParams.PushBack(visualDebugColliderParameter);
+
+		descriptorContext.mColliderDebugRootConstantParameterID = (UINT)opaqueDrawRootParams.GetSize();
+		D3D12_ROOT_PARAMETER visualDebugRootConstantParameter{};
+		CreateRootParameterPushConstants(visualDebugRootConstantParameter, BLIT_HLSL_COLLIDER_DEBUG_CONSTANT_REGISTER, 0, GCColliderDebugRootConstant32BitValueCount, D3D12_SHADER_VISIBILITY_VERTEX);
+		opaqueDrawRootParams.PushBack(visualDebugRootConstantParameter);
+
+		descriptorContext.mGridCellDebugParameterID = (UINT)opaqueDrawRootParams.GetSize();
+		D3D12_ROOT_PARAMETER visualDebugGridCellParameter{};
+		CreateRootParameterSrv(visualDebugGridCellParameter, BLIT_HLSL_GRID_CELL_VISUAL_DEBUG_QUAD_REGISTER, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		opaqueDrawRootParams.PushBack(visualDebugGridCellParameter);
+#endif
+
 		// OPAQUE DRAW ROOT
 		if (!CreateRootSignature(device, context.m_graphicsRoot.ReleaseAndGetAddressOf(), (UINT)opaqueDrawRootParams.GetSize(), opaqueDrawRootParams.Data(),
 			D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED))
@@ -294,20 +317,6 @@ namespace BlitzenDX12
 				return 0;
 			}
 		}
-
-#if !defined(NDEBUG)
-		D3D12_ROOT_PARAMETER boundingSphereRootParameters[Ce_BoundingSphereRootParameterCount]{};
-		CreateRootParameterSrv(boundingSphereRootParameters[Ce_BoundingSphereSphereRootParameterID], Ce_BoundingSphereSphereSRVRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterCBV(boundingSphereRootParameters[Ce_BoundingSphereViewDataRootParameterID], Ce_BoundingSphereViewDataCBVRegister, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-		CreateRootParameterPushConstants(boundingSphereRootParameters[Ce_BoundingSphereObjectIDRootParameterID], Ce_BoundingSphereObjectIDConstantRegister, 0, Ce_BoundingSphereObjectIDConstant32BitCount,
-			D3D12_SHADER_VISIBILITY_VERTEX);
-
-		if (!CreateRootSignature(device, context.m_boundingSphereRoot.ReleaseAndGetAddressOf(), Ce_BoundingSphereRootParameterCount, boundingSphereRootParameters))
-		{
-			BLIT_ERROR("%s: Failed to create bounding sphere root signature", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-#endif
 
 		// success
 		return 1;
@@ -508,8 +517,8 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-#if !defined(NDEBUG)
-		if(!CreateBoundingSphereDebugDrawPipeline(device, context))
+#if defined(BLIT_VISUAL_DEBUG)
+		if(!CreateColliderVisualDebugPipelines(device, context))
 		{
 			BLIT_ERROR("%s: Failed to create bounding sphere debug draw pipeline", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -754,6 +763,14 @@ namespace BlitzenDX12
 			}
 		}
 
+#if defined(BLIT_VISUAL_DEBUG)
+		if (CreateSSBO<BlitML::float3>(device, roResources.SRVGridCellQuadBuffer, BlitML::GCQuadVertexCount * BLIT_COLLISION_GRID_CELL_COUNT) == 0)
+		{
+			BLIT_ERROR("%s: Failed to create grid cell quad buffer for debug draw", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+#endif
+
 		// Success
 		return 1;
 	}
@@ -801,7 +818,7 @@ namespace BlitzenDX12
 			}
 		}
 
-		if constexpr (BLITGCNarrowPhaseCollisionBumper || BLITGCBroadPhaseCollisionBumper)
+		if constexpr (GCBlitGpuColliderFlag)
 		{
 			if (!CreateSSBO<BlitzenEngine::ColliderAMaxRad>(device, resources.SRVColliderAMaxRad, BlitzenEngine::CE_MAX_WORLD_COLLIDER_COUNT))
 			{

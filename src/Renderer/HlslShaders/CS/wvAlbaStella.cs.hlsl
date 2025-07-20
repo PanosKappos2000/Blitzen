@@ -1,6 +1,7 @@
 #include "../Headers/dynamicCull.hlsl"
 #include "../Headers/hlslMath.hlsl"
 #include "../Headers/wvCollision.hlsl"
+#include "../Headers/colliders.hlsl"
 #include "../../Resources/blitShaderShared.h"
 
 [numthreads(64, 1, 1)]

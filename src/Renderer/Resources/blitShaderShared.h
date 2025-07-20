@@ -103,36 +103,39 @@
 	constexpr uint BLIT_HLSL_CLUSTER_CMD_BUFFER_REGISTER = 8;
 	constexpr uint BLIT_HLSL_CLUSTER_CMD_COUNTER_REGISTER = 9;
 	constexpr uint BLIT_HLSL_OCCDP_VISIBILITY_REGISTER = 10;
-	constexpr uint BLIT_HLSL_INSTANCED_CMD_BUFFER_REGISTER = 11;
-	constexpr uint BLIT_HLSL_INSTANCED_CMD_COUNTER_REGISTER = 12;
-	constexpr uint BLIT_HLSL_HI_Z_OUTPUT_REGISTER = 13;
-	constexpr uint BLIT_HLSL_WVTRANSFORM_BUFFER_REGISTER = 14;
+	constexpr uint BLIT_HLSL_VISIBLE_COUNTER_REGISTER = 11;// Compute + vertex
+	constexpr uint BLIT_HLSL_CLUSTER_VISIBILITY_REGISTER = 12; // Compute
+	constexpr uint BLIT_HLSL_HI_Z_OUTPUT_REGISTER = 13;// Compute
+	constexpr uint BLIT_HLSL_WVTRANSFORM_BUFFER_REGISTER = 14;// Compute
 	constexpr uint BLIT_HLSL_GRID_CELLS_REGISTER = 15;
 	constexpr uint BLIT_HLSL_COLLIDER_IDXs_REGISTER = 16;
 	constexpr uint BLIT_HLSL_TRANSFORMED_COLLIDER_AMAXRAD_REGISTER = 17;
 	constexpr uint BLIT_HLSL_TRANSFORMED_COLLIDER_BMINTYPE_REGISTER = 18;
 	constexpr uint BLIT_HLSL_GLOBAL_COLLIDER_IDXs_OFFSET_REGISTER = 19;
+	constexpr uint BLIT_HLSL_INSTANCED_CMD_BUFFER_REGISTER = 20;
+	constexpr uint BLIT_HLSL_INSTANCED_CMD_COUNTER_REGISTER = 21;
 
-	constexpr uint BLIT_HLSL_RENDER_BUFFER_REGISTER = 0;
-	constexpr uint BLIT_HLSL_BOUNDING_SPHERE_REGISTER = 1;
-	constexpr uint BLIT_HLSL_SURFACE_BUFFER_REGISTER = 2;
-	constexpr uint BLIT_HLSL_TERRAIN_HEIGHT_BUFFER_REGISTER = 3;
-	constexpr uint BLIT_HLSL_LOD_BUFFER_REGISTER = 4;
-	constexpr uint BLIT_HLSL_HI_Z_MAP_REGISTER = 5;
-	constexpr uint BLIT_HLSL_CLUSTER_VTXS_REGISTER = 6;
-	constexpr uint BLIT_HLSL_CLUSTER_SPHERES_REGISTER = 7;
-	constexpr uint BLIT_HLSL_CLUSTER_CONES_REGISTER = 8;
-	constexpr uint BLIT_HLSL_VTX_POSITIONS_REGISTER = 9;
-	constexpr uint BLIT_HLSL_VTX_NORMALS_REGISTER = 10;
-	constexpr uint BLIT_HLSL_VTX_TANGENTS_REGISTER = 11;
-	constexpr uint BLIT_HLSL_VTX_TEXCOORDS_REGISTER = 12;
-	constexpr uint BLIT_HLSL_MATERIAL_BUFFER_REGISTER = 13;
-	constexpr uint BLIT_HLSL_HI_Z_INPUT_REGISTER = 14;
-	constexpr uint BLIT_HLSL_INSTANCED_RENDERS_REGISTER = 15;
-	constexpr uint BLIT_HLSL_TERRAIN_VERTEX_POSITIONS_REGISTER = 16;
-	constexpr uint BLIT_HLSL_COLLIDER_AMAXRAD_REGISTER = 17;
-	constexpr uint BLIT_HLSL_COLLIDER_BMINTYPE_REGISTER = 18;
-	constexpr uint BLIT_HLSL_TEXTURE_DESCRIPTORS_REGISTER = 19;
+	constexpr uint BLIT_HLSL_RENDER_BUFFER_REGISTER = 0;// Compute + Vertex
+	constexpr uint BLIT_HLSL_BOUNDING_SPHERE_REGISTER = 1;// Compute 
+	constexpr uint BLIT_HLSL_SURFACE_BUFFER_REGISTER = 2;// Compute + Vertex
+	constexpr uint BLIT_HLSL_TERRAIN_HEIGHT_BUFFER_REGISTER = 3;// Compute(might remove from shaders)
+	constexpr uint BLIT_HLSL_LOD_BUFFER_REGISTER = 4;// Compute
+	constexpr uint BLIT_HLSL_HI_Z_MAP_REGISTER = 5;// Compute
+	constexpr uint BLIT_HLSL_CLUSTER_VTXS_REGISTER = 6;// Compute
+	constexpr uint BLIT_HLSL_CLUSTER_SPHERES_REGISTER = 7;// Compute
+	constexpr uint BLIT_HLSL_CLUSTER_CONES_REGISTER = 8;// Compute
+	constexpr uint BLIT_HLSL_VTX_POSITIONS_REGISTER = 9;// Vertex
+	constexpr uint BLIT_HLSL_VTX_NORMALS_REGISTER = 10;// Vertex
+	constexpr uint BLIT_HLSL_VTX_TANGENTS_REGISTER = 11;// Vertex
+	constexpr uint BLIT_HLSL_VTX_TEXCOORDS_REGISTER = 12;// Vertex
+	constexpr uint BLIT_HLSL_MATERIAL_BUFFER_REGISTER = 13;// Pixel
+	constexpr uint BLIT_HLSL_HI_Z_INPUT_REGISTER = 14;// Compute
+	constexpr uint BLIT_HLSL_INSTANCED_RENDERS_REGISTER = 15;// Compute
+	constexpr uint BLIT_HLSL_TERRAIN_VERTEX_POSITIONS_REGISTER = 16;// Vertex
+	constexpr uint BLIT_HLSL_COLLIDER_AMAXRAD_REGISTER = 17;// Compute + Vertex(debug)
+	constexpr uint BLIT_HLSL_COLLIDER_BMINTYPE_REGISTER = 18;// Compute + Vertex(debug)
+	constexpr uint BLIT_HLSL_GRID_CELL_VISUAL_DEBUG_QUAD_REGISTER = 19; // Vetex(debug)
+	constexpr uint BLIT_HLSL_TEXTURE_DESCRIPTORS_REGISTER = 20;// Vertex NOTE: Should always be the last register
 
 	constexpr uint BLIT_HLSL_VIEW_DATA_REGISTER = 0;
 	constexpr uint BLIT_HLSL_OPAQUE_STATIC_COUNT_CONSTANT_REGISTER = 1;
@@ -146,6 +149,7 @@
 	constexpr uint BLIT_HLSL_INSTANCE_WORK_COUNT_REGISTER = 9;
 	constexpr uint BLIT_HLSL_BMPR_COLLISION_WORK_COUNT_REGISTER = 10;
 	constexpr uint BLIT_HLSL_BMPR_COLLISION_INDIRECT_CELL_IDX_REGISTER = 11;
+	constexpr uint BLIT_HLSL_COLLIDER_DEBUG_CONSTANT_REGISTER = 12;
 
 	constexpr uint BLIT_HLSL_TEX_SAMPLER_REGISTER = 0;
 
@@ -202,5 +206,10 @@ enum BlitzenColliderType
 		constexpr uint8_t BLITGCNarrowPhaseCollisionBumper = 0;
 	#else 
 			constexpr uint8_t BLITGCNarrowPhaseCollisionBumper = 1;
+	#endif
+	#if  defined(BLITZEN_CONFIGURATION_ENGINE_DEV) || (BMPR_DRIVE_NARROW_PHASE_COLLISION != 0)
+		constexpr bool GCBlitGpuColliderFlag = 1;
+	#else 
+		constexpr bool GCBlitGpuCollidersFlag = 0;
 	#endif
 #endif

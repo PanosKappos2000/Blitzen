@@ -18,9 +18,9 @@ namespace BlitzenDX12
 
     constexpr const char* BLIT_DX12_SYSTEM = BlitzenCore::CE_DX12_SYSTEM_NAME;
 
-    #if !defined(NDEBUG)
+    #if defined(BLITZEN_CONFIGURATION_ENGINE_DEV)
         constexpr uint8_t ce_bDebugController = 1;
-        #if defined(DX12_ENABLE_GPU_BASED_VALIDATION)
+        #if defined(DX12_ENABLE_GPU_BASED_VALIDATION) 
             constexpr uint8_t Ce_GPUValidationRequested = 1;
         #else
             constexpr uint8_t Ce_GPUValidationRequested = 0;
@@ -112,23 +112,23 @@ namespace BlitzenDX12
 
     // DESCRIPTORS FOR BROAD PHASE COLLISION
     constexpr UINT GCCollisionSupportRangeCount = 7;
-    constexpr UINT GCCollisionSupportGridCellRangeID = 0;
-    constexpr UINT GCCollisionSupportColliderIDXsRangeID = 1;
-    constexpr UINT GCCollisionSupportGlobalColliderIDXsOffsetRangeID = 2;
-    constexpr UINT GCCollisionSupportColliderAMaxRadRangeID = 3;
-    constexpr UINT GCCollisionSupportColliderBMinTypeRangeID = 4;
-    constexpr UINT GCCollisionSupportTransformColliderAMaxRadRangeID = 5;
-    constexpr UINT GCCollisionSupportTransformColliderBMinTypeRangeID = 6;
+    constexpr UINT GCCollisionSupportColliderAMaxRadRangeID = 0;
+    constexpr UINT GCCollisionSupportColliderBMinTypeRangeID = 1;
+    constexpr UINT GCCollisionSupportTransformColliderAMaxRadRangeID = 2;
+    constexpr UINT GCCollisionSupportTransformColliderBMinTypeRangeID = 3;
+    constexpr UINT GCCollisionSupportGridCellRangeID = 4;
+    constexpr UINT GCCollisionSupportColliderIDXsRangeID = 5;
+    constexpr UINT GCCollisionSupportGlobalColliderIDXsOffsetRangeID = 6;
 
     // DESCRIPTORS FOR BROAD AND NARROW PHASE COLLISION
     constexpr UINT GCCollisionResolveRangeCount = 10;
-    constexpr UINT GCCollisionResolveGridCellRangeID = 0;
-    constexpr UINT GCCollisionResolveColliderIDXsRangeID = 1;
-    constexpr UINT GCCollisionResolveGlobalColliderIDXsOffsetRangeID = 3;
-    constexpr UINT GCCollisionResolveColliderAMaxRadRangeID = 3;
-    constexpr UINT GCCollisionResolveColliderBMinTypeRangeID = 4;
-    constexpr UINT GCCollisionResolveTransformColliderAMaxRadRangeID = 5;
-    constexpr UINT GCCollisionResolveTransformColliderBMinTypeRangeID = 6;
+    constexpr UINT GCCollisionResolveColliderAMaxRadRangeID = 0;
+    constexpr UINT GCCollisionResolveColliderBMinTypeRangeID = 1;
+    constexpr UINT GCCollisionResolveTransformColliderAMaxRadRangeID = 2;
+    constexpr UINT GCCollisionResolveTransformColliderBMinTypeRangeID = 3;
+    constexpr UINT GCCollisionResolveGridCellRangeID = 4;
+    constexpr UINT GCCollisionResolveColliderIDXsRangeID = 5;
+    constexpr UINT GCCollisionResolveGlobalColliderIDXsOffsetRangeID = 6;
     constexpr UINT GCCollisionResolveNarrowPhaseCMDRangeID = 7;
     constexpr UINT GCCollisionResolveCollisionMessageRangeID = 8;
     constexpr UINT GCCollisionResolveCollisionCounterRangeID = 9;
@@ -172,6 +172,15 @@ namespace BlitzenDX12
     constexpr UINT CE_DRAW_OBJ_ID_32_BIT_COUNT = 1;
 
     constexpr UINT CE_TEXTURE_DESCRIPTOR_COUNT = BLIT_MAX_WORLD_TEXTURE_RESOURCES;
+
+    // DESCRIPTORS FOR COLLIDER DEBUG VISUAL
+    constexpr UINT GCColliderDebugRangeCount = 4;
+    constexpr UINT GCColliderDebugAMaxRadRangeID = 0;
+    constexpr UINT GCColliderDebugBMinTypeRangeID = 1;
+    constexpr UINT GCColliderDebugTransformedAMaxRadRangeID = 2;
+    constexpr UINT GCColliderDebugTransformedBMinTypeRangeID = 3;
+
+    constexpr UINT GCColliderDebugRootConstant32BitValueCount = 1;
 
     // ROOT PARAMETERS FOR GRAPHICS
     constexpr UINT CE_GRAPHICS_ODS_ROOT_COUNT = 8;

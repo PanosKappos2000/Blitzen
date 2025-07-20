@@ -1,6 +1,7 @@
 #include "../Headers/sharedBuffers.hlsl"
 #include "../Headers/dynamicCull.hlsl"
 #include "../Headers/wvCollision.hlsl"
+#include "../Headers/colliders.hlsl"
 #include "../Headers/hlslMath.hlsl"
 #include "../../Resources/blitShaderShared.h"
 

@@ -32,9 +32,9 @@ namespace BlitzenWorld
             broadPhaseEnd = counter.End();
             counter.Reset();
         
-            // Transform collider shapes to world space.
-            pWORLD->mResidents.MColliders.TransformCollidersWithoutBMPR(pWORLD->mResidents.WVWithVelocity, pWORLD->mResidents.mWithVelocityCount, pWORLD->mResidents.WVTransforms,
-                pWORLD->mResidents.mTransforms.m_transforms);
+            // Transform collider shapes to world space. Doing this per transform for now for ease of use. 
+            //pWORLD->mResidents.MColliders.TransformCollidersWithoutBMPR(pWORLD->mResidents.WVWithVelocity, pWORLD->mResidents.mWithVelocityCount, pWORLD->mResidents.WVTransforms,
+            //    pWORLD->mResidents.mTransforms.m_transforms);
         
             // Narrow phase loop. Only dynamics become hitters
             for (uint32_t id = 0; id < pWORLD->mResidents.mWithVelocityCount; ++id)
@@ -474,9 +474,11 @@ namespace BlitzenWorld
     void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh,
         int argc, char** argv)
     {
-#if !defined(NDEBUG)
+#if defined(BLIT_VISUAL_DEBUG)
         pWORLD->mDbgData.collisionGridVertices = reinterpret_cast<BlitML::float3*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE,
-            sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellExtent * BlitML::GCQuadVertexCount));
+            sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellCount * BlitML::GCQuadVertexCount));
+
+        pWORLD->mCollisionGrid.GenerateGridCellDrawData(pWORLD->mDbgData.collisionGridVertices);
 #endif
 
         BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
@@ -556,17 +558,20 @@ namespace BlitzenWorld
         }
 
         BlitzenEngine::RenderingLoadingContextRenderObjects loadingContextObj{};
-        if (!BlitzenEngine::UploadToColliderAMaxRadStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderAMaxRad,
-            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
+        if constexpr (GCBlitGpuColliderFlag)
         {
-            BLIT_ERROR("%s: Failed to upload AMaxRad collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            BLIT_ASSERT(false);
-        }
-        if (!BlitzenEngine::UploadToColliderBMinTypeStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderBMinType,
-            BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
-        {
-            BLIT_ERROR("%s: Failed to upload BMinType collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            BLIT_ASSERT(false);
+            if (!BlitzenEngine::UploadToColliderAMaxRadStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderAMaxRad,
+                BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
+            {
+                BLIT_ERROR("%s: Failed to upload AMaxRad collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+                BLIT_ASSERT(false);
+            }
+            if (!BlitzenEngine::UploadToColliderBMinTypeStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderBMinType,
+                BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
+            {
+                BLIT_ERROR("%s: Failed to upload BMinType collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+                BLIT_ASSERT(false);
+            }
         }
 
 #if defined(BLIT_GAME_TEST)
@@ -606,10 +611,10 @@ namespace BlitzenWorld
 
     BLITZEN_WORLD::~BLITZEN_WORLD()
     {
-#if !defined(NDEBUG)
+#if defined(BLIT_VISUAL_DEBUG)
         if (mDbgData.collisionGridVertices != nullptr)
         {
-            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, mDbgData.collisionGridVertices, sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellExtent * BlitML::GCQuadVertexCount);
+            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, mDbgData.collisionGridVertices, sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellCount * BlitML::GCQuadVertexCount);
         }
 #endif
     }

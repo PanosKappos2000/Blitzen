@@ -302,14 +302,12 @@ target_compile_definitions(BlitzenEngine PUBLIC
 
                             BLIT_REIN_SANT_ENG # Defines that the application is indeed Blitzen Engine (this should only be removed for tests)
                             BLIT_GDEV_EDT # Activates standard main
-                            BLIT_ASSERTIONS_ENABLED # Better not close this
                             BLIT_CONSOLE_LOGGER
                             BLIT_CPU_SIMD_SAVIOR
                             #BLIT_SIMD_COLLISION_RESOLVE
-                            BLIT_OFFLINE_BUILD
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
-                            RENDERER_STRESS_TEST
+                            #RENDERER_STRESS_TEST
                             MOVING_RESIDENT_TEST
                             #DEFAULT_GLTF_SCENE_TEST
                             LOAD_CMD_ARG_GLTF_FILEPATHS
