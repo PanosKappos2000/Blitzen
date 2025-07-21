@@ -27,9 +27,20 @@ void csMain(uint dispatchGroupID : SV_DispatchThreadID)
     
     Surface surface = ssbo_Surfaces[type + BLIT_HLSL_COLLIDER_RESOURCE_OFFSET];
 
+    float3 center;
+    float radius;
     // Bounding sphere to view coordinates
-    float3 center = mul(viewMatrix, float4(ssbo_BoundingSpheres[objID].center, 1)).xyz;
-    float radius = ssbo_BoundingSpheres[objID].radius;
+    if (objID < BLIT_MAX_WORLD_OPAQUE_DYNAMIC_RENDERS)
+    {
+        center = ssbo_BoundingSpheres[objID].center * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;
+        center = mul(viewMatrix, float4(center, 1)).xyz;
+        radius = ssbo_BoundingSpheres[objID].radius * ssbo_Transforms[objID].scale;
+    }
+    else
+    {
+        center = mul(viewMatrix, float4(ssbo_BoundingSpheres[objID].center, 1)).xyz;
+        radius = ssbo_BoundingSpheres[objID].radius;
+    }
 
     // Frustum culling
     if (!FrustumCheck(center, radius, frustumRight, frustumLeft, frustumTop, frustumBottom, zNear, zFar))
@@ -38,5 +49,5 @@ void csMain(uint dispatchGroupID : SV_DispatchThreadID)
     }
     
     // No LODs
-    PrepareDrawCmd(COLLIDER_SHAPE_FIRST_LOD, objID);
+    PrepareDrawCmd(COLLIDER_SHAPE_FIRST_LOD + surface.lodOffset, objID);
 }

@@ -115,10 +115,73 @@ namespace BlitzenEngine
 		cmdList->DrawIndexedInstanced(terrainCount, 1, 0, 0, 0);
 	}
 
-	void BMPRDrawColliders(BlitzenDX12::Dx12Renderer* pRenderer, RENDER_CONTEXT& renderContext)
+	void BMPRDrawColliders(BlitzenDX12::Dx12Renderer* pRenderer, const CULL_CONTEXT& cullContext)
 	{
 #if defined(BLIT_VISUAL_DEBUG)
+		BlitzenEngine::BeginGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::COMPUTE);
+		BlitzenEngine::BindGeneralComputeDescriptors(pRenderer);
 
+		auto& rwResources = pRenderer->m_rwResources[pRenderer->m_currentFrame];
+		auto computeList = pRenderer->m_cmdContext[pRenderer->m_currentFrame].m_computeCmdList.Get();
+		auto graphicsList = pRenderer->m_cmdContext[pRenderer->m_currentFrame].m_graphicsCmdList.Get();
+		
+		// BARRIER ON COUNTER BEFORE RESET
+		D3D12_RESOURCE_BARRIER resetBarrier{};
+		BlitzenDX12::CreateResourcesTransitionBarrier(resetBarrier, rwResources.UAVColliderDrawCmdCounterBuffer.buffer.Get(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		computeList->ResourceBarrier(1, &resetBarrier);
+
+		computeList->SetComputeRootDescriptorTable(pRenderer->m_descriptorContext.mColliderDebugCmdParameterID, pRenderer->m_descriptorContext.mColliderDebugCullTableHandle[pRenderer->m_currentFrame]);
+
+		computeList->SetPipelineState(pRenderer->m_pipelineContext.mColliderCullResetPso.Get());
+
+		// RESET 
+		computeList->Dispatch(1, 1, 1);
+
+		// Culling barrier, waits for draw count reset and draw command read
+		D3D12_RESOURCE_BARRIER cullingBarriers[2]{};
+		// Count reset barrier 
+		BlitzenDX12::CreateResourceUAVBarrier(cullingBarriers[0], rwResources.UAVColliderDrawCmdCounterBuffer.buffer.Get());
+		// Command read barrier
+		BlitzenDX12::CreateResourcesTransitionBarrier(cullingBarriers[1], rwResources.UAVColliderDrawCmdBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		// execute
+		computeList->ResourceBarrier(BLIT_ARRAY_SIZE(cullingBarriers), cullingBarriers);
+
+		computeList->SetComputeRootDescriptorTable(BlitzenDX12::CE_CULL_ROOT_HI_Z_MAP_ID, pRenderer->m_descriptorContext.m_HI_Z_MAP_cullHandle[pRenderer->m_currentFrame]);
+		computeList->SetComputeRootDescriptorTable(pRenderer->m_descriptorContext.mColliderDebugCullDataParameterID, pRenderer->m_descriptorContext.mCollisionSupportTableHandle);
+
+		// Pipeline + constants
+		computeList->SetPipelineState(pRenderer->m_pipelineContext.mColliderCullPso.Get());
+		computeList->SetComputeRoot32BitConstant(BlitzenDX12::CE_CULL_ROOT_DYNAMIC_WORK_CONSTANT_ID, cullContext.m_workCount, 0);
+
+		// CULL
+		computeList->Dispatch(BlitML::GetComputeShaderGroupSize(cullContext.m_workCount, 64), 1, 1);
+
+		// Block graphics, should wait for command and count write
+		D3D12_RESOURCE_BARRIER graphicsBarriers[2]{};
+		// Command write
+		BlitzenDX12::CreateResourcesTransitionBarrier(graphicsBarriers[0], rwResources.UAVColliderDrawCmdBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		// Counter write
+		BlitzenDX12::CreateResourcesTransitionBarrier(graphicsBarriers[1], rwResources.UAVColliderDrawCmdCounterBuffer.buffer.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+		// execute
+		computeList->ResourceBarrier(BLIT_ARRAY_SIZE(graphicsBarriers), graphicsBarriers);
+
+		// Block graphics, should wait for command and count write
+		EndGPUCommands(pRenderer, BMPR_COMMAND_LIST_TYPE::COMPUTE);
+		PlaceRendererFence(pRenderer, RENDERER_FENCE_TYPE::COMPUTE);
+
+		// Pipeline
+		graphicsList->SetGraphicsRootDescriptorTable(pRenderer->m_descriptorContext.mColliderDebugParameterID, pRenderer->m_descriptorContext.mCollisionSupportTableHandle);
+		graphicsList->SetPipelineState(pRenderer->m_pipelineContext.mColliderDrawPso.Get());
+		// Primitives
+		graphicsList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		// Index buffer
+		graphicsList->IASetIndexBuffer(&pRenderer->m_roResources.m_idxBuffer.m_view);
+		// DRAW
+		graphicsList->ExecuteIndirect(pRenderer->m_pipelineContext.mColliderCmdSignature.Get(), BLIT_MAX_DYNAMIC_DRAW_COMMANDS + BLIT_MAX_STATIC_DRAW_COMMANDS, 
+			rwResources.UAVColliderDrawCmdBuffer.buffer.Get(), 0, rwResources.UAVColliderDrawCmdCounterBuffer.buffer.Get(), 0);
 #endif
 	}
 

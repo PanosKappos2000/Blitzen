@@ -330,7 +330,9 @@ namespace BlitzenEngine
 
 		constexpr uint32_t CE_RW_BUFFER_INITIAL_COUNT = 6 * BlitzenDX12::ce_framesInFlight;
 
-		// RW BUFFERS
+		//-----------------------------------------------------------
+		// READ WRITE BUFFER BARRIERS
+		//-----------------------------------------------------------
 		uint32_t rwID{ 0 };
 		BlitCL::DynamicArray<D3D12_RESOURCE_BARRIER> rwBuffersFinal{ CE_RW_BUFFER_INITIAL_COUNT };
 
@@ -441,6 +443,21 @@ namespace BlitzenEngine
 				rwBuffersFinal.PushBack(clusterGroupDataBarrier);
 			}
 		}
+
+#if defined(BLIT_VISUAL_DEBUG)
+		for (uint32_t f = 0; f < BlitzenDX12::ce_framesInFlight; ++f)
+		{
+			auto& rwResources{ pRenderer->m_rwResources[f] };
+
+			D3D12_RESOURCE_BARRIER colliderDebugCmdBarrier[2]{};
+			BlitzenDX12::ChangeSSBOStateWithValidation(rwResources.UAVColliderDrawCmdBuffer, colliderDebugCmdBarrier, 0, BLIT_ARRAY_SIZE(colliderDebugCmdBarrier), 
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+			rwBuffersFinal.PushBack(colliderDebugCmdBarrier[0]);
+			BlitzenDX12::ChangeSSBOStateWithValidation(rwResources.UAVColliderDrawCmdCounterBuffer, colliderDebugCmdBarrier, 1, BLIT_ARRAY_SIZE(colliderDebugCmdBarrier),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+			rwBuffersFinal.PushBack(colliderDebugCmdBarrier[1]);
+		}
+#endif
 
 		// EXECUTE
 		cmdContext.m_graphicsCmdList->ResourceBarrier((UINT)rwBuffersFinal.GetSize(), rwBuffersFinal.Data());

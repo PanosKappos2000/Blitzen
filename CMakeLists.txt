@@ -236,7 +236,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

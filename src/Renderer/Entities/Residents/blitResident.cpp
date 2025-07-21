@@ -166,7 +166,7 @@ namespace BlitzenEngine
 				transform.position += directionalMovement * velocity;
 				transform.movementFlags |= BLIT_RESIDENT_MOVEMENT_VELOCITY_BIT;
 
-				MColliders.TransformSingleColliderWithoutBMPR(resident, transform, mTransforms.m_transforms[resident]);
+				//MColliders.TransformSingleColliderWithoutBMPR(resident, transform, mTransforms.m_transforms[resident]);
 			}
 		}
 	}
@@ -186,7 +186,7 @@ namespace BlitzenEngine
 				// TEMP
 				gravityData.currentSpeed = BlitML::FMax(gravityData.maxSpeed, gravityData.currentSpeed + BLIT_GRAVITATIONAL_ACCELERATION);
 
-				MColliders.TransformSingleColliderWithoutBMPR(resident, transform, mTransforms.m_transforms[resident]);
+				//MColliders.TransformSingleColliderWithoutBMPR(resident, transform, mTransforms.m_transforms[resident]);
 			}
 			else
 			{

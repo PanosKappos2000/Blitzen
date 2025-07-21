@@ -33,8 +33,8 @@ namespace BlitzenWorld
             counter.Reset();
         
             // Transform collider shapes to world space. Doing this per transform for now for ease of use. 
-            //pWORLD->mResidents.MColliders.TransformCollidersWithoutBMPR(pWORLD->mResidents.WVWithVelocity, pWORLD->mResidents.mWithVelocityCount, pWORLD->mResidents.WVTransforms,
-            //    pWORLD->mResidents.mTransforms.m_transforms);
+            pWORLD->mResidents.MColliders.TransformCollidersWithoutBMPR(pWORLD->mResidents.mWorldVariableCount, pWORLD->mResidents.WVTransforms,
+                pWORLD->mResidents.mTransforms.m_transforms);
         
             // Narrow phase loop. Only dynamics become hitters
             for (uint32_t id = 0; id < pWORLD->mResidents.mWithVelocityCount; ++id)
@@ -59,13 +59,17 @@ namespace BlitzenWorld
             }
 
             ResolveCollisionEvents(pWORLD->mResidents.MColliders);
+            BLIT_DBLOG("CELL: %u", pWORLD->mResidents.WVTransforms[0].targetIdx);
+            uint32_t cellIndex = pWORLD->mResidents.WVTransforms[0].targetIdx;
+            auto& cell = pWORLD->mCollisionGrid.mCellOffsets[cellIndex];
+            cell.
         }
     }
 
     void ResolveCollisionEvents(BlitzenEngine::ColliderContainer& colliders)
     {
         uint32_t count = colliders.mCollisionMessageCount;
-        BLIT_DBLOG("count: %u", colliders.mCollisionMessageCount);
+        if(colliders.mCollisionMessageCount != 0) BLIT_DBLOG("count: %u", colliders.mCollisionMessageCount);
         colliders.mCollisionMessageCount = 0;
     }
 
@@ -111,12 +115,6 @@ namespace BlitzenWorld
         BlitzenEngine::RENDER_CONTEXT staticRenderContext{};
         staticRenderContext.m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_OPAQUE;
         BlitzenEngine::RenderObjects(pRenderer, staticRenderContext);
-#if !defined(NDEBUG)
-        if (WORLD->mDbgData.drawCollidersFlag)
-        {
-            // BMPRDrawColliders
-        }
-#endif
 
         // Starts transfer commands. The function blocks the culling shader, until the dynamic transforms are updated
         BlitzenEngine::BeginGPUCommands(pRenderer, BlitzenEngine::BMPR_COMMAND_LIST_TYPE::TRANSFER);
@@ -149,10 +147,13 @@ namespace BlitzenWorld
         BlitzenEngine::RENDER_CONTEXT dynamicRenderContext{};
         dynamicRenderContext.m_renderType = BlitzenEngine::BLIT_RENDER_TYPE::RENDER_DYNAMIC;
         BlitzenEngine::RenderObjects(pRenderer, dynamicRenderContext);
-#if !defined(NDEBUG)
+
+#if defined(BLIT_VISUAL_DEBUG)
         if (WORLD->mDbgData.drawCollidersFlag)
         {
-            // BMPRDrawColliders
+            BlitzenEngine::CULL_CONTEXT colliderDebugCullContext{};
+            colliderDebugCullContext.m_workCount = WORLD->mResidents.m_renders.m_opaqueStaticCount + WORLD->mResidents.m_renders.m_opaqueDynamicCount;
+            BlitzenEngine::BMPRDrawColliders(pRenderer, colliderDebugCullContext);
         }
 #endif
 
@@ -472,6 +473,12 @@ namespace BlitzenWorld
             return false;
         }
 
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
+        {
+            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for sphere shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
         uint32_t cubeMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/cube.obj", BlitzenEngine::GCCubeShapeMeshName) };
         if (cubeMeshID == BlitzenCore::Ce_MaxMeshCount)
         {
@@ -479,10 +486,22 @@ namespace BlitzenWorld
             return false;
         }
 
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
+        {
+            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for cube shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
         uint32_t capsuleMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/capsule.obj", BlitzenEngine::GCCapsuleShapeMeshName) };
         if (capsuleMeshID == BlitzenCore::Ce_MaxMeshCount)
         {
             BLIT_ERROR("%s: Failed to load capsule shape mesh resources", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
+        {
+            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for capsule shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 

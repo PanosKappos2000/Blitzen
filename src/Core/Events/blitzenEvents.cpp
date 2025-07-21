@@ -95,6 +95,13 @@ namespace BlitzenCore
             SYSTEM->pWORLD->m_cameras[SYSTEM->pWORLD->m_activeCameraIDX].transformData.bFreezeFrustum = !SYSTEM->pWORLD->m_cameras[SYSTEM->pWORLD->m_activeCameraIDX].transformData.bFreezeFrustum;
             return true;
         }
+        case BlitEventType::SwitchToColliderDraw:
+        {
+#if defined(BLIT_VISUAL_DEBUG)
+            SYSTEM->pWORLD->mDbgData.drawCollidersFlag = !SYSTEM->pWORLD->mDbgData.drawCollidersFlag;
+            return true;
+#endif
+        }
         default:
         {
             return false;
@@ -469,6 +476,11 @@ namespace BlitzenCore
         return BlitEventType::MaxTypes;
     }
 
+    static BlitEventType ToggleColliderDraw(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        return BlitEventType::SwitchToColliderDraw;
+    }
+
     void RegisterDefaultEvents(BlitzenWorld::BLITZEN_SYSTEM_CONTEXT* SYSTEM)
     {
         BlitzenCore::RegisterEvent(SYSTEM, BlitzenCore::BlitEventType::EngineShutdown, OnShutdown);
@@ -506,6 +518,7 @@ namespace BlitzenCore
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, 1, KeyCallbackType::PRESS);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F2, ToggleColliderDraw, 1, KeyCallbackType::PRESS);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
 

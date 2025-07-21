@@ -13,6 +13,20 @@ VSOutput main(uint vertexIndex : SV_VertexID)
     VSOutput output;
     
     uint type = (uint) ssbo_ColliderBMinType[objID].w;
+    float scale = 0.f;
+    switch (type)
+    {
+        case BlitzenColliderTypeSphere:
+            scale = ssbo_Transforms[objID].scale * ssbo_ColliderAMaxRad[objID].w;
+            break;
+        case BlitzenColliderTypeCapsule:
+            scale = ssbo_Transforms[objID].scale * ssbo_ColliderAMaxRad[objID].w;
+            break;
+        case BlitzenColliderTypeAABB:
+            scale = 1.f;
+            break;
+
+    }
 
     // Position
     float3 modelPos = ssbo_VtxPositions[vertexIndex] * ssbo_Transforms[objID].scale + ssbo_Transforms[objID].position;

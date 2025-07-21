@@ -125,15 +125,15 @@ namespace BlitzenEngine
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
             residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultMeshName].firstSurface;
-
+        
             // RandomizeTransform
             MeshTransform randomTransform;
             RandomizeTransform(&randomTransform, transformMultiplier, BunnyScale);
             residentCtx.m_transformInfo.m_pTransform = &randomTransform;
-
+        
             RENDER_OBJECT_TYPE renderType{ RENDER_OBJECT_TYPE::OPAQUE_STATIC };
             residentCtx.m_isMoveable = BLIT_FAT_FALSE;
-
+        
             auto bunnyRes{ pResidents->AddResident(residentCtx) };
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)bunnyRes))
             {
@@ -263,7 +263,7 @@ namespace BlitzenEngine
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier)
     {
-        constexpr uint32_t WV_ROTATING_KITTEN_COUNT = 5'000;
+        constexpr uint32_t WV_ROTATING_KITTEN_COUNT = 500;
         constexpr float WV_ROTATING_KITTEN_SCALE = 1.f;
 
         for (uint32_t wv = 0; wv < WV_ROTATING_KITTEN_COUNT; ++wv)

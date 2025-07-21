@@ -723,7 +723,6 @@ namespace BlitzenDX12
 			ctx.mCollisionSupportTableOffset = ctx.m_viewHeapCurrentOffset;
 			ctx.mCollisionSupportTableHandle = ctx.m_viewHeapHandle;
 			ctx.mCollisionSupportTableHandle.ptr += ctx.mCollisionSupportTableOffset * ctx.m_viewHeapIncrement;
-
 			CreateBufferShaderResourceView(device, cpuLogicBuffers.SRVColliderAMaxRad.buffer.Get(), ctx, BlitzenWorld::GetCurrentColliderCount(),
 				sizeof(BlitzenEngine::ColliderAMaxRad));
 			CreateBufferShaderResourceView(device, cpuLogicBuffers.SRVColliderBMinType.buffer.Get(), ctx, BlitzenWorld::GetCurrentColliderCount(),
@@ -746,9 +745,9 @@ namespace BlitzenDX12
 		{
 			auto& rwResources{ rwResourcesArray[f] };
 
-			ctx.mColliderDebugCullTableOffset = ctx.m_viewHeapCurrentOffset;
-			ctx.mColliderDebugCullTableHandle = ctx.m_viewHeapHandle;
-			ctx.mColliderDebugCullTableHandle.ptr += ctx.mColliderDebugCullTableOffset * ctx.m_viewHeapIncrement;
+			ctx.mColliderDebugCullTableOffset[f] = ctx.m_viewHeapCurrentOffset;
+			ctx.mColliderDebugCullTableHandle[f] = ctx.m_viewHeapHandle;
+			ctx.mColliderDebugCullTableHandle[f].ptr += ctx.mColliderDebugCullTableOffset[f] * ctx.m_viewHeapIncrement;
 
 			CreateBufferUnorderedAccessView(device, ctx, rwResources.UAVColliderDrawCmdBuffer.buffer.Get(), rwResources.UAVColliderDrawCmdCounterBuffer.buffer.Get(), 
 				BLIT_MAX_STATIC_DRAW_COMMANDS + BLIT_MAX_DYNAMIC_DRAW_COMMANDS, sizeof(IndirectDrawCmd), 0);

@@ -153,8 +153,8 @@ namespace BlitzenDX12
         UINT mColliderDebugCullDataParameterID;
         UINT mColliderDebugRootConstantParameterID;
 
-        SIZE_T mColliderDebugCullTableOffset;
-        D3D12_GPU_DESCRIPTOR_HANDLE mColliderDebugCullTableHandle;
+        SIZE_T mColliderDebugCullTableOffset[ce_framesInFlight];
+        D3D12_GPU_DESCRIPTOR_HANDLE mColliderDebugCullTableHandle[ce_framesInFlight];
 
         SIZE_T mGridCellDebugTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE mGridCellDebugTableHandle;
@@ -263,6 +263,7 @@ namespace BlitzenDX12
         DX12WRAPPER<ID3D12PipelineState> mColliderDrawPso;
         DX12WRAPPER<ID3D12CommandSignature> mColliderCmdSignature;
         DX12WRAPPER<ID3D12PipelineState> mColliderCullPso;
+        DX12WRAPPER<ID3D12PipelineState> mColliderCullResetPso;
 #endif
 
         DX12WRAPPER<ID3D12RootSignature> m_graphicsRoot;

@@ -833,7 +833,7 @@ namespace BlitzenEngine
         }
 
         // This should always be true. The literal reason these steps are taken is that we do not overshoot and broad phase is precise in terms of count
-        BLIT_RUNTIME_TEST_CHECK_ASSERT(globalOffset == BLIT_MAX_WORLD_VARIABLE_COUNT);
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(globalOffset == count);
 
         // Goes over world variables one last time
         for (uint32_t IDX = 0; IDX < count; ++IDX)
@@ -849,11 +849,11 @@ namespace BlitzenEngine
         }
     }
 
-    void ColliderContainer::TransformCollidersWithoutBMPR(Resident* movingResidentArr, uint32_t movingResidentCount, WVTransform* transformArr, MeshTransform* gpuTransformArr)
+    void ColliderContainer::TransformCollidersWithoutBMPR(uint32_t worldVariableCount, WVTransform* transformArr, MeshTransform* gpuTransformArr)
     {
-        for (uint32_t id = 0; id < movingResidentCount; ++id)
+        for (uint32_t id = 0; id < worldVariableCount; ++id)
         {
-            Resident resident = movingResidentArr[id];
+            Resident resident = id;
             auto& transform = transformArr[resident];
             float scale = gpuTransformArr[resident].scale;
             auto& aMaxRad = MColliderAMaxRad[resident];
@@ -984,7 +984,7 @@ namespace BlitzenEngine
         {
             if (colliderBMinType.data.w == BlitzenColliderTypeSphere)
             {
-                transformedAMaxRad.data.WriteXYZ(BlitML::RotateQuat(colliderAMaxRad.data.xyz(), residentTransform.orientation) * residentTransform.scale + residentTransform.pos);
+                transformedAMaxRad.data.WriteXYZ(colliderAMaxRad.data.xyz() * residentTransform.scale + residentTransform.pos);
                 transformedAMaxRad.data.w = colliderAMaxRad.data.w * residentTransform.scale;
             }
             else if (colliderBMinType.data.w == BlitzenColliderTypeAABB)

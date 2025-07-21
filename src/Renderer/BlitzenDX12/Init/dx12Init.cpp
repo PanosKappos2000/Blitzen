@@ -555,7 +555,13 @@ namespace BlitzenDX12
 
 		if (!CreateComputeShaderProgram(device, context.m_cullRoot.Get(), context.mColliderCullPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/colliderDebugCull.cs.hlsl.bin"))
 		{
-			BLIT_ERROR("%s: Filaed to create colliderDebugCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			BLIT_ERROR("%s: Failed to create colliderDebugCull.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		if (!CreateComputeShaderProgram(device, context.m_cullRoot.Get(), context.mColliderCullResetPso.ReleaseAndGetAddressOf(), "HlslShaders/CS/colliderDebugCullReset.cs.hlsl.bin"))
+		{
+			BLIT_ERROR("%s: Failed to create colliderDebugCullReset.cs shader program", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 #endif
