@@ -147,18 +147,18 @@ BlitML is Blitzen’s custom math library. It focuses on compatibility with GPU-
 
 Blitzen would not be possible without the following open source projects and the people behind them. Deep gratitude to the developers who share their tools and knowledge freely with the community.
 
-    cgltf {https://github.com/jkuhlmann/cgltf}
+    [cgltf](https://github.com/jkuhlmann/cgltf)
     A single-file GLTF 2.0 loader by Johannes Kuhlmann. Lightweight, dependency-free, and a great fit for Blitzen’s custom resource handling.
 
-    fast_obj {https://github.com/thisistherk/fast_obj}
+    [fast_obj](https://github.com/thisistherk/fast_obj)
     A simple and fast Wavefront OBJ loader. Ideal for lightweight mesh import and fast integration.
 
-    Dear ImGui {https://github.com/ocornut/imgui}
+    [Dear ImGui](https://github.com/ocornut/imgui)
     An immediate-mode GUI toolkit by Omar Cornut. Currently used in Blitzen’s editor for debugging and visualization.
 
-    meshoptimizer {https://github.com/zeux/meshoptimizer}
+    [meshoptimizer](https://github.com/zeux/meshoptimizer)
     A mesh processing and LOD generation library by Arseny Kapoulkine. Blitzen uses this to improve GPU vertex cache performance and LOD generation for loaded meshes.
 
-# Special Thanks
+Special Thanks
 
 A personal thanks to Arseny Kapoulkine for making performance-focused graphics accessible. His work on meshoptimizer, alongside his blog posts and open source efforts, had a significant impact on Blitzen’s rendering direction and its aspirations for GPU-driven design.
