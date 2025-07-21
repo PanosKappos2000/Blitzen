@@ -62,7 +62,7 @@ namespace BlitzenWorld
             BLIT_DBLOG("CELL: %u", pWORLD->mResidents.WVTransforms[0].targetIdx);
             uint32_t cellIndex = pWORLD->mResidents.WVTransforms[0].targetIdx;
             auto& cell = pWORLD->mCollisionGrid.mCellOffsets[cellIndex];
-            cell.
+            //cell.
         }
     }
 

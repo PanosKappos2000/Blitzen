@@ -263,7 +263,7 @@ namespace BlitzenEngine
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier)
     {
-        constexpr uint32_t WV_ROTATING_KITTEN_COUNT = 500;
+        constexpr uint32_t WV_ROTATING_KITTEN_COUNT = 5'000;
         constexpr float WV_ROTATING_KITTEN_SCALE = 1.f;
 
         for (uint32_t wv = 0; wv < WV_ROTATING_KITTEN_COUNT; ++wv)

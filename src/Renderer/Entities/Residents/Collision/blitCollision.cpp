@@ -940,8 +940,8 @@ namespace BlitzenEngine
 
         auto& colliderAMaxRad = MColliderAMaxRad[resident];
         auto& colliderBMinType = MColliderBMinType[resident];
-        auto& transformedAMaxRad = MColliderAMaxRad[resident];
-        auto& transformedBMinType = MColliderBMinType[resident];
+        auto& transformedAMaxRad = MTransformedColliderAMaxRad[resident];
+        auto& transformedBMinType = MTransformedColliderBMinType[resident];
 
         // Write AMaxRad
         colliderAMaxRad.data.WriteXYZ(data.AMaxRad.data.xyz());
