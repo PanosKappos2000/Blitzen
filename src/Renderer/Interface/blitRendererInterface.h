@@ -1,9 +1,11 @@
 #pragma once
 #include "Core/blitzenEngine.h"
 #include "Renderer/Entities/Residents/blitResidentManager.h"
-#include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/View/blitCamera.h"
 #include "Platform/blitPlatformContext.h"
+#include "Renderer/Resources/Mesh/blitMeshes.h"
+#include "Renderer/Resources/Terrain/blitTerrain.h"
+#include "Renderer/Resources/Textures/blitTextures.h"
 
 namespace BlitzenEngine
 {

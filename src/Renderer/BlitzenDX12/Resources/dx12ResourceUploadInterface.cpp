@@ -76,31 +76,31 @@ namespace BlitzenEngine
 			return 0;
 		}
 
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxPosStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxPos*)nullptr))
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxPosStaging, BlitzenEngine::Ce_MaxWorldVertexCount, (VtxPos*)nullptr))
 		{
 			BLIT_FATAL("%s: Failed to create Vertex Positions Staging Buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxNrmStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxNormals*)nullptr))
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxNrmStaging, BlitzenEngine::Ce_MaxWorldVertexCount, (VtxNormals*)nullptr))
 		{
 			BLIT_FATAL("%s: Failed to create Vertex Normals Staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxTngStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxTangents*)nullptr))
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxTngStaging, BlitzenEngine::Ce_MaxWorldVertexCount, (VtxTangents*)nullptr))
 		{
 			BLIT_FATAL("%s: Failed to create Vertex Tangents Staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxTexCoordStaging, BlitzenCore::Ce_MaxWorldVertexCount, (VtxTexCoords*)nullptr))
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxTexCoordStaging, BlitzenEngine::Ce_MaxWorldVertexCount, (VtxTexCoords*)nullptr))
 		{
 			BLIT_FATAL("%s: Failed to create Vertex Texture Coordinates staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxIdxStaging, BlitzenCore::Ce_MaxWorldVertexIndicesCount, (uint32_t*)nullptr))
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_vtxIdxStaging, BlitzenEngine::Ce_MaxWorldVertexIndicesCount, (uint32_t*)nullptr))
 		{
 			BLIT_FATAL("%s: Failed to create Vertex Indices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -126,7 +126,7 @@ namespace BlitzenEngine
 				return 0;
 			}
 
-			if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_clusterIdxStaging, BlitzenCore::Ce_MaxWorldVertexIndicesCount, (uint32_t*)nullptr))
+			if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.m_clusterIdxStaging, BlitzenEngine::Ce_MaxWorldVertexIndicesCount, (uint32_t*)nullptr))
 			{
 				BLIT_FATAL("%s: Failed to create Cluster Indices staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;

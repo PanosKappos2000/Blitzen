@@ -940,8 +940,6 @@ namespace BlitzenEngine
 
         auto& colliderAMaxRad = MColliderAMaxRad[resident];
         auto& colliderBMinType = MColliderBMinType[resident];
-        auto& transformedAMaxRad = MTransformedColliderAMaxRad[resident];
-        auto& transformedBMinType = MTransformedColliderBMinType[resident];
 
         // Write AMaxRad
         colliderAMaxRad.data.WriteXYZ(data.AMaxRad.data.xyz());
@@ -950,7 +948,6 @@ namespace BlitzenEngine
         // Write BMinType. Type does not change so it is written to the transformed version as well
         colliderBMinType.data.WriteXYZ(data.BMinType.data.xyz());
         colliderBMinType.data.w = data.BMinType.data.w;
-        transformedBMinType.data.w = colliderBMinType.data.w;
 
         uint32_t type = uint32_t(colliderBMinType.data.w);
 
@@ -982,6 +979,10 @@ namespace BlitzenEngine
         // For dynamics write transforms to transformed array, keep the other ones in the original state
         else
         {
+            auto& transformedAMaxRad = MTransformedColliderAMaxRad[resident];
+            auto& transformedBMinType = MTransformedColliderBMinType[resident];
+            transformedBMinType.data.w = colliderBMinType.data.w;
+
             if (colliderBMinType.data.w == BlitzenColliderTypeSphere)
             {
                 transformedAMaxRad.data.WriteXYZ(colliderAMaxRad.data.xyz() * residentTransform.scale + residentTransform.pos);

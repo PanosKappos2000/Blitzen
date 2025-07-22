@@ -51,6 +51,7 @@ namespace BlitzenEngine
 		TRANSFORM_CREATE_CONTEXT m_transformInfo{};
 		BlitzenCore::FAT_BOOL m_isMoveable{ BlitzenCore::FAT_FALSE };
 		WVTransform* pWorldVariableTransform{ nullptr };
+		float snapDownOffset = 0.f;
 	};
 
 	struct WORLD_VARIABLE_CREATE_CONTEXT

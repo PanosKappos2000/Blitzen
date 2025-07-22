@@ -37,9 +37,10 @@ namespace BlitzenPlatform
         }
 
         // MAPPING VIEW
-        m_pFileView = MapViewOfFile(m_pMapping, FILE_MAP_ALL_ACCESS, 0, 0, m_fileSize);
+        m_pFileView = MapViewOfFile(m_pMapping, FILE_MAP_READ, 0, 0, m_fileSize);
         if (!m_pFileView)
         {
+            DWORD error = GetLastError();
             return BLIT_MMF_RES::FILE_MAPPING_VIEW_NULL;
         }
 
@@ -85,7 +86,7 @@ namespace BlitzenPlatform
         }
 
         // Map the file to memory
-        m_pFileView = MapViewOfFile(m_pMapping, FILE_MAP_ALL_ACCESS, 0, 0, m_fileSize);
+        m_pFileView = MapViewOfFile(m_pMapping, FILE_MAP_WRITE, 0, 0, m_fileSize);
         if (!m_pFileView)
         {
             return BLIT_MMF_RES::FILE_MAPPING_VIEW_NULL;

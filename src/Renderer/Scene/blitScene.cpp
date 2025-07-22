@@ -119,12 +119,28 @@ namespace BlitzenEngine
 
         uint32_t start = pResidents->m_renders.RENDER_COUNT;
 
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mmf;
+        auto bunnyMeshRes{ LoadMeshFromDisk(BlitzenEngine::GCDefaultMeshName, mmf, pResources->m_meshContext) };
+        BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)bunnyMeshRes));
+        if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(bunnyMeshRes)))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_RESOURCE_FROM_DISK;
+        }
+
+        uint32_t bunnyID = pResources->m_meshContext.m_meshPrimitives.m_meshPrimitivesCount - 1;
+
+        if(!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
+        {
+            BLIT_ERROR("%s: Failed to upload bunny mesh resources to staging buffer", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_MESH_PRIMITIVES_TO_STAGING_BUFFER;
+        }
+
         // Bunnies
         for (uint32_t i = start; i < start + bunnyCount; ++i)
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultMeshName].firstSurface;
+            residentCtx.m_resourceID = bunnyID;
         
             // RandomizeTransform
             MeshTransform randomTransform;
@@ -138,7 +154,6 @@ namespace BlitzenEngine
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)bunnyRes))
             {
                 BLIT_ERROR("%s: Renderer Stress Test Scene-> Failed to create bunny residents", BlitzenCore::CE_SCENE_SYSTEM_NAME);
-                BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_RESIDENT_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(bunnyRes));
                 return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
             }
         }
@@ -163,7 +178,6 @@ namespace BlitzenEngine
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)kittenRes))
             {
                 BLIT_ERROR("%s: Renderer Stress Test Scene-> Failed to create kitten residents", BlitzenCore::CE_SCENE_SYSTEM_NAME);
-                BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_RESIDENT_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(kittenRes));
                 return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
             }
         }
@@ -188,7 +202,6 @@ namespace BlitzenEngine
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)dragonRes))
             {
                 BLIT_ERROR("%s: Renderer Stress Test Scene-> Failed to create Dragon residents", BlitzenCore::CE_SCENE_SYSTEM_NAME);
-                BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_RESIDENT_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(dragonRes));
                 return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
             }
         }
@@ -213,7 +226,6 @@ namespace BlitzenEngine
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)humanRes))
             {
                 BLIT_ERROR("%s: Renderer Stress Test Scene-> Failed to create kitten residents", BlitzenCore::CE_SCENE_SYSTEM_NAME);
-                BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_RESIDENT_SYSTEM_NAME, GET_RESIDENT_CREATE_RES_STRING(humanRes));
                 return SCENE_CREATE_RES::SCENE_RESIDENTS_FAILURE;
             }
         }

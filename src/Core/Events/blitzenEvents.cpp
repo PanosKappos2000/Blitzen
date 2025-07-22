@@ -519,6 +519,7 @@ namespace BlitzenCore
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F1, FreezeFrustumOnF1KeyPressCallback, 1, KeyCallbackType::PRESS);
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F2, ToggleColliderDraw, 1, KeyCallbackType::PRESS);
+        BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F2, ToggleColliderDraw, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
 
         BlitzenCore::RegisterKeyEvent(SYSTEM, BlitzenCore::BlitKey::__F3, ChangePyramidLevelOnF3ReleaseCallback, BlitzenCore::CE_INITIAL_CONTROLLER_ID, KeyCallbackType::PRESS);
 

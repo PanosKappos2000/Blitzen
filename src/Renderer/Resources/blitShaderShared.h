@@ -116,7 +116,7 @@
 #define BLIT_GRAVITATIONAL_ACCELERATION														0.1f
 #define BLIT_TERRAIN_HEIGHT_TEST_VALUE														0.f
 
-#define BLIT_HLSL_COLLIDER_RESOURCE_OFFSET													4
+#define BLIT_HLSL_COLLIDER_RESOURCE_OFFSET													0
 
 /************************************************************************************************************************************************
 * DX12 REGISTERS																																*

@@ -13,8 +13,7 @@ namespace BlitzenWorld
 
     void LoadingLoop(int argc, char** argv, BLITZEN_SYSTEM_CONTEXT& context, BlitzenEngine::DrawContext& drawContext)
     {
-		BlitzenEngine::RenderingLoadingContextMesh loadingMeshContext{};
-        BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->BMPR.Data(), loadingMeshContext));
+        BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->BMPR.Data()));
 
         BlitzenPlatform::MakeWindowVisible(context.pPlatform);
         context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::LOADING;
@@ -35,7 +34,7 @@ namespace BlitzenWorld
                 continue;
             }
 
-            BlitzenWorld::LOAD_RESOURCES_MK_BLIT_MINUS(context.pWORLD, context.pRenderingResources, loadingMeshContext, argc, argv);
+            BlitzenWorld::LOAD_RESOURCES_MK_BLIT_MINUS(context.pWORLD, context.pRenderingResources, argc, argv);
 
             // Testing, this should be done another way.
 #if defined(BLIT_GAME_TEST)

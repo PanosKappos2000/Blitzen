@@ -47,7 +47,14 @@ namespace BlitzenEngine
 		// Gets the visibility bounding sphere. Will get its transform baked for static objects
 		auto bounds{ GetVisibilityBoundingSphereFromMeshPrimitive(ctx.m_resourceID) };
 
-		ResidentSnapDown(mTransforms.m_transforms[transformID], bounds.m_radius);
+		if (ctx.snapDownOffset == 0.f)
+		{
+			ResidentSnapDown(mTransforms.m_transforms[transformID], bounds.m_radius);
+		}
+		else
+		{
+			// TODO
+		}
 
 		// Chooses render object type
 		RENDER_OBJECT_CREATE_CONTEXT renderContext{};

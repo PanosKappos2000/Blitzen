@@ -1,3 +1,4 @@
+#pragma once
 #include "Renderer/Resources/blitShaderResources.h"
 #include "Renderer/Resources/blitShaderShared.h"
 #include "Renderer/Resources/Mesh/blitTriangle.h"

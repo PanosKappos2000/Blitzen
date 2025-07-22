@@ -1524,7 +1524,7 @@ namespace BlitzenVulkan
         uint32_t geometryRtFlags = bRT ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT : 0;
 
         VkDeviceSize vertexPosBufferSize{ CreateSSBO<BlitzenEngine::VtxPos>(vma, device, readOnlies.m_vtxPosBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenEngine::Ce_MaxWorldVertexCount) };
         if (vertexPosBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create vertex positions buffer", BLIT_VK_SYSTEM);
@@ -1532,7 +1532,7 @@ namespace BlitzenVulkan
         }
 
         VkDeviceSize vertexNrmBufferSize{ CreateSSBO<BlitzenEngine::VtxNormals>(vma, device, readOnlies.m_vtxNrmBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenEngine::Ce_MaxWorldVertexCount) };
         if (vertexNrmBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create vertex normals buffer", BLIT_VK_SYSTEM);
@@ -1540,7 +1540,7 @@ namespace BlitzenVulkan
         }
 
         VkDeviceSize vertexTngBufferSize{ CreateSSBO<BlitzenEngine::VtxTangents>(vma, device, readOnlies.m_vtxTngBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenEngine::Ce_MaxWorldVertexCount) };
         if (vertexTngBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create vertex tangents buffer", BLIT_VK_SYSTEM);
@@ -1548,14 +1548,14 @@ namespace BlitzenVulkan
         }
 
         VkDeviceSize vertexTexCoordBufferSize{ CreateSSBO<BlitzenEngine::VtxTexCoords>(vma, device, readOnlies.m_vtxTexCoordBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenCore::Ce_MaxWorldVertexCount) };
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | geometryRtFlags, BlitzenEngine::Ce_MaxWorldVertexCount) };
         {
             BLIT_ERROR("%s: Failed to create vertex texture coordinates buffer", BLIT_VK_SYSTEM);
             return 0;
         }
 
         VkDeviceSize indexBufferSize{ CreateSSBO<uint32_t>(vma, device, readOnlies.m_idxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-            BlitzenCore::Ce_MaxWorldVertexIndicesCount) };
+            BlitzenEngine::Ce_MaxWorldVertexIndicesCount) };
         if (indexBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create index buffer", BLIT_VK_SYSTEM);
@@ -1632,7 +1632,7 @@ namespace BlitzenVulkan
             }
 
             VkDeviceSize clusterIndexBufferSize = CreateSSBO<uint32_t>(vma, device, readOnlies.m_clusterIdxBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                BlitzenCore::Ce_MaxWorldVertexIndicesCount);
+                BlitzenEngine::Ce_MaxWorldVertexIndicesCount);
             if (clusterIndexBufferSize == 0)
             {
                 BLIT_ERROR("%s: Failed to create cluster indices buffer", BLIT_VK_SYSTEM);

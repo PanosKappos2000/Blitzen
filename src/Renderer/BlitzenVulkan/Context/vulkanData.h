@@ -3,7 +3,6 @@
 #include <vma/vk_mem_alloc.h>
 #include "Core/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitMLTypes.h"
-#include "Renderer/Resources/blitRenderingResources.h"
 #include "Renderer/Entities/Residents/RenderObject/blitRender.h"
 
 // My math library seems to be fine now but I am keeping this to compare values when needed

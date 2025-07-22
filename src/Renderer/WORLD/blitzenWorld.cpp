@@ -59,10 +59,6 @@ namespace BlitzenWorld
             }
 
             ResolveCollisionEvents(pWORLD->mResidents.MColliders);
-            BLIT_DBLOG("CELL: %u", pWORLD->mResidents.WVTransforms[0].targetIdx);
-            uint32_t cellIndex = pWORLD->mResidents.WVTransforms[0].targetIdx;
-            auto& cell = pWORLD->mCollisionGrid.mCellOffsets[cellIndex];
-            //cell.
         }
     }
 
@@ -267,11 +263,11 @@ namespace BlitzenWorld
         {
             auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
 
-            //transform.position += BlitML::ToVec3(BlitML::Mat4EulerY(transform.eulerAngles.y) * BlitML::vec4{ 0.f, 0.f, velocity, 0.0f });
             BlitML::fDirection worldDirection = 
                 BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(camera.transformData.yawRotation), BlitML::float4(GSBlitzenWorld->mResidents.WVDirectionData[resident].intent, 0.f)));
             BlitML::Normalize(worldDirection);
 
+            // Rotates resident to face towards direction
             if (GSBlitzenWorld->mResidents.WVTransforms[resident].movementFlags & BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT)
             {
                 BlitzenEngine::SetResidentYaw(resident, BlitML::ATan2Float(worldDirection.x, worldDirection.z));
@@ -333,49 +329,7 @@ namespace BlitzenWorld
         return GSBlitzenWorld->mResidents.mTransforms.m_staticTransformCount;
     }
 
-    bool CopyMeshResourcesToStagingBuffer(BlitzenEngine::MeshResources* pMeshes, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh)
-    {
-        if (!BlitzenEngine::UploadToVertexPositionsStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexPositions, pMeshes->m_triangles.m_vertexCount))
-        {
-            BLIT_ERROR("%s: Failed to upload vertex positions to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        if (!BlitzenEngine::UploadToVertexNormalsStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexNormals, pMeshes->m_triangles.m_vertexCount))
-        {
-            BLIT_ERROR("%s: Failed to upload vertex normals to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        if (!BlitzenEngine::UploadToVertexTangentsStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexTangents, pMeshes->m_triangles.m_vertexCount))
-        {
-            BLIT_ERROR("%s: Failed to upload vertex tangents to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        if (!BlitzenEngine::UploadToVertexTextureCoordinatesStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexUVs, pMeshes->m_triangles.m_vertexCount))
-        {
-            BLIT_ERROR("%s: Failed to upload vertex texture coordinates to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        if (!BlitzenEngine::UploadToVertexIndicesStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_indices, pMeshes->m_triangles.m_vtxIdxCount))
-        {
-            BLIT_ERROR("%s: Failed to upload vertex indices to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        // Restart mesh vertices but save mesh vertex count for offsets
-        pMeshes->m_triangles.m_mapIdxCount += pMeshes->m_triangles.m_vtxIdxCount;
-        pMeshes->m_triangles.m_vtxIdxCount = 0;
-        pMeshes->m_triangles.m_mapVtxCount += pMeshes->m_triangles.m_vertexCount;
-        pMeshes->m_triangles.m_vertexCount = 0;
-
-        // success
-        return true;
-    }
-
-    bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh)
+    bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
         pResources->m_textureManager.ALLOC();
         if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->m_textureManager.m_singleTextureHandle, "Assets/Textures/BlitzenLSV1.dds"))
@@ -405,64 +359,12 @@ namespace BlitzenWorld
         pResources->m_meshContext.m_triangles.ALLOC();
         pResources->m_meshContext.m_clusters.ALLOC();
 
-#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
-        // Skip hardcoded load
-#else
-        BlitzenEngine::AllocateLoadingContextMesh(pRenderer, loadingContextMesh);
+        // Allocates staging buffer that will temporarily hold map resource context, until everything is ready to be uploaded to the GPU
+        BlitzenEngine::AllocateLoadingContextMesh(pRenderer, pResources->mLoadingContextMesh);
 
-        uint32_t bunnyMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenEngine::GCDefaultMeshName) };
-        if (bunnyMeshId == BlitzenCore::Ce_MaxMeshCount)
-        {
-            BLIT_ERROR("Failed to load default bunny mesh");
-            return false;
-        }
-
-        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
-        {
-            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for bunny mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        uint32_t kittenMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenEngine::GCDefaultKittenMeshName) };
-        if (kittenMeshId == BlitzenCore::Ce_MaxMeshCount)
-        {
-            BLIT_ERROR("Failed to load default kitten mesh");
-            return false;
-        }
-
-        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
-        {
-            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for kitten mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        uint32_t dragonMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/dragon.obj", BlitzenEngine::GCDefaultDragonMeshName) };
-        if (dragonMeshId == BlitzenCore::Ce_MaxMeshCount)
-        {
-            BLIT_ERROR("Failed to load default dragon mesh");
-            return false;
-        }
-
-        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
-        {
-            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for dragon mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        uint32_t humanMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/FinalBaseMesh.obj", BlitzenEngine::GCDefaultHumanMeshName) };
-        if (humanMeshId == BlitzenCore::Ce_MaxMeshCount)
-        {
-            BLIT_ERROR("Failed to load default human mesh");
-            return false;
-        }
-
-        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
-        {
-            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for human mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-#endif
-
+        //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        // Some configurations allow visual debug toggling, which requires collider shape resources to be uploaded
+        //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #if defined(BLIT_VISUAL_DEBUG)
         BLIT_ASSERT_MESSAGE(pResources->m_meshContext.m_meshCount == BLIT_HLSL_COLLIDER_RESOURCE_OFFSET, "Collider shapes should be loaded starting from the 4th mesh for now");
 
@@ -473,7 +375,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
         {
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for sphere shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -486,7 +388,7 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
         {
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for cube shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -499,15 +401,67 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
         {
             BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for capsule shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        BLIT_ASSERT_MESSAGE(sphereMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeSphere && capsuleMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeCapsule && 
+        BLIT_ASSERT_MESSAGE(sphereMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeSphere && capsuleMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeCapsule &&
             cubeMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeAABB, "Collider shape IDs should match offset for debug compute shader");
 #endif
+
+        uint32_t bunnyMeshId{ BlitzenEngine::LoadObjFileMeshToDisk(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenEngine::GCDefaultMeshName) };
+        if (bunnyMeshId == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("Failed to load default bunny mesh");
+            return false;
+        }
+
+        //if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, loadingContextMesh))
+        //{
+        //    BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for bunny mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+        //    return false;
+        //}
+
+        uint32_t kittenMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenEngine::GCDefaultKittenMeshName) };
+        if (kittenMeshId == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("Failed to load default kitten mesh");
+            return false;
+        }
+
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
+        {
+            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for kitten mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        uint32_t dragonMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/dragon.obj", BlitzenEngine::GCDefaultDragonMeshName) };
+        if (dragonMeshId == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("Failed to load default dragon mesh");
+            return false;
+        }
+
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
+        {
+            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for dragon mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        uint32_t humanMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/FinalBaseMesh.obj", BlitzenEngine::GCDefaultHumanMeshName) };
+        if (humanMeshId == BlitzenCore::Ce_MaxMeshCount)
+        {
+            BLIT_ERROR("Failed to load default human mesh");
+            return false;
+        }
+
+        if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
+        {
+            BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for human mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
 
         pResources->m_terrainContainer.ALLOC();
 
@@ -518,8 +472,7 @@ namespace BlitzenWorld
         return true;
     }
 
-    void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, BlitzenEngine::RenderingLoadingContextMesh& loadingContextMesh,
-        int argc, char** argv)
+    void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, int argc, char** argv)
     {
 #if defined(BLIT_VISUAL_DEBUG)
         pWORLD->mDbgData.collisionGridVertices = reinterpret_cast<BlitML::float3*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE,
@@ -595,7 +548,7 @@ namespace BlitzenWorld
         //meshPrimitiveCtx.m_vertices = pRenderingResources->m_terrainContainer.terrainVertices;
         //pRenderingResources->m_meshContext.m_meshPrimitives.GenerateSurface(pRenderingResources->m_meshContext.m_triangles, pRenderingResources->m_meshContext.m_clusters, meshPrimitiveCtx);
 
-        auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx, loadingContextMesh) };
+        auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx, pRenderingResources->mLoadingContextMesh) };
 
         BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
         if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)sceneRes))
@@ -638,7 +591,7 @@ namespace BlitzenWorld
 
 #else
 
-        if (!BlitzenEngine::UploadResourcesToGPU(pWORLD->BMPR.Data(), pWORLD->m_drawContext, loadingContextMesh, loadingContextObj))
+        if (!BlitzenEngine::UploadResourcesToGPU(pWORLD->BMPR.Data(), pWORLD->m_drawContext, pRenderingResources->mLoadingContextMesh, loadingContextObj))
         {
             BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
             BLIT_ASSERT(false);

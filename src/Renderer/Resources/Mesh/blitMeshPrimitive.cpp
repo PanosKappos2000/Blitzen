@@ -9,30 +9,65 @@
 
 namespace BlitzenEngine
 {
+    uint32_t MeshPrimitivesContainer::AddSurfaceToMap()
+    {
+        if (m_meshPrimitivesCount >= BlitzenCore::Ce_MaxMeshPrimitivesCount)
+        {
+            BLIT_ERROR("%s: Max allowed mesh primitives in map reached", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return GCAddSurfaceToMapErrorCode;
+        }
+        
+        return m_meshPrimitivesCount++;
+    }
+
     bool PrimitiveContainer::AddVertices(Vertex* vertices, uint32_t count)
     {
-        if (m_vertexCount + count > BlitzenCore::Ce_MaxWorldVertexCount)
+        if (m_vertexCount != 0)
+        {
+            BLIT_ERROR("%s: Current vertex count should be 0 when vertices are appended", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return false;
+        }
+
+        if (m_mapVtxCount + count > Ce_MaxWorldVertexCount)
         {
             BLIT_ERROR("%s: Exceeded max world vertex count", BlitzenCore::CE_MESH_SYSTEM_NAME);
             return false;
         }
 
+        if (count > GCMaxVertexCountInMeshResource)
+        {
+            BLIT_ERROR("%s: Exceeded max allowed vertex count in mesh resource", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return false;
+        }
+
         BlitzenCore::BlitMemCopy(&m_vertices[m_vertexCount], vertices, count * sizeof(Vertex));
-        m_vertexCount += count;
+        m_vertexCount = count;
 
         return true;
     }
 
     bool PrimitiveContainer::AddIndices(uint32_t* indices, uint32_t count)
     {
-        if (m_vtxIdxCount + count > BlitzenCore::Ce_MaxWorldVertexIndicesCount)
+        if (m_vtxIdxCount != 0)
+        {
+            BLIT_ERROR("%s: Current vertex count should be zero when indices are appended", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return false;
+        }
+
+        if (m_mapIdxCount + count > Ce_MaxWorldVertexIndicesCount)
         {
             BLIT_ERROR("%s: Surpassed max world vertex indices count", BlitzenCore::CE_MESH_SYSTEM_NAME);
             return false;
         }
 
+        if (count > GCMaxVertexIndicesInMeshResource)
+        {
+            BLIT_ERROR("%s: Surpassed max mesh vertex indices count", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return false;
+        }
+
         BlitzenCore::BlitMemCopy(&m_indices[m_vtxIdxCount], indices, sizeof(uint32_t) * count);
-        m_vtxIdxCount += count;
+        m_vtxIdxCount = count;
 
         return true;
     }
@@ -161,8 +196,88 @@ namespace BlitzenEngine
         return SurfaceCreateRes::SUCCESS;
 	}
 
+    SurfaceCreateRes MeshPrimitivesContainer::GenerateMeshPrimitive(PrimitiveContainer& primitives, ClusterContainer clusters, MESH_PRIMITIVE_GENERATE_CONTEXT& context)
+    {
+        if (m_meshPrimitivesCount >= BlitzenCore::Ce_MaxMeshPrimitivesCount)
+        {
+            BLIT_ERROR("%s: Exceeded max allowed mesh primitive count", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return SurfaceCreateRes::MAX_SURFACE_COUNT_REACHED;
+        }
+
+        // Adds vertex offset and vertex count
+        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset = primitives.m_vertexCount;
+        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexCount = context.m_vertexCount;
+
+        auto& newSurface{ m_meshPrimitives[m_meshPrimitivesCount] };
+
+        MESH_PRIMITIVE_LOD_GENERATE_CONTEXT lodContext{};
+        lodContext.m_pClusters = &clusters;
+        lodContext.m_pMeshPrimitiveInfo = &context;
+        lodContext.m_pPrimitives = &primitives;
+        lodContext.m_vertexOffset = m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset;
+        if (!GenerateMeshPrimitiveLODIndices(newSurface, lodContext))
+        {
+            return SurfaceCreateRes::LOD_GENERATION_FAILED;
+        }
+
+        BlitML::vec4 visibilityBoundingSphereData = BlitML::GenerateBoundingSphereFromVertices(primitives.m_vertexPositions, context.m_vertexCount);
+        m_boundingSpheres[m_meshPrimitivesCount].m_center = visibilityBoundingSphereData.xyz();
+        m_boundingSpheres[m_meshPrimitivesCount].m_radius = visibilityBoundingSphereData.w;
+
+        if (context.mColliderType == BlitzenColliderTypeSphere)
+        {
+            BlitzenCore::BlitMemCopy(&mColliders[m_meshPrimitivesCount], &m_boundingSpheres[m_meshPrimitivesCount], sizeof(BlitML::float4));
+            mColliders[m_meshPrimitivesCount].BMinType.data.w = BlitzenColliderTypeSphere;
+        }
+        else if (context.mColliderType == BlitzenColliderTypeCapsule)
+        {
+            BlitzenEngine::CapsuleNOALIGN capsuleData;
+            BlitML::GenerateCapsuleFromVertices(primitives.m_vertexPositions, primitives.m_vertexCount, capsuleData.a, capsuleData.b, capsuleData.radius);
+            mColliders[m_meshPrimitivesCount].AMaxRad.data.WriteXYZ(capsuleData.a);
+            mColliders[m_meshPrimitivesCount].AMaxRad.data.w = capsuleData.radius;
+            mColliders[m_meshPrimitivesCount].BMinType.data.WriteXYZ(capsuleData.b);
+            mColliders[m_meshPrimitivesCount].BMinType.data.w = BlitzenColliderTypeCapsule;
+        }
+        else if (context.mColliderType == BlitzenColliderTypeAABB)
+        {
+            BlitzenEngine::AABB_NOALIGN aabbData;
+            BlitML::GenerateAABBFromVertices(primitives.m_vertexPositions, primitives.m_vertexCount, aabbData.m_maxBounds, aabbData.m_minBounds);
+            mColliders[m_meshPrimitivesCount].AMaxRad.data.WriteXYZ(aabbData.m_maxBounds);
+            mColliders[m_meshPrimitivesCount].BMinType.data.WriteXYZ(aabbData.m_minBounds);
+            mColliders[m_meshPrimitivesCount].BMinType.data.w = BlitzenColliderTypeAABB;
+        }
+
+        newSurface.materialId = context.m_materialID;
+
+        if (context.m_specialFlags & MESH_PRIMITIVE_SPECIAL_TRANSPARENT)
+        {
+            m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveTransparencyFlags = BlitzenCore::BB_TRUE;
+        }
+        else
+        {
+            m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveTransparencyFlags = BlitzenCore::BB_FALSE;
+        }
+
+        m_meshPrimitivesCount++;
+
+        return SurfaceCreateRes::SUCCESS;
+    }
+
     bool MeshPrimitivesContainer::GenerateLODs(PrimitiveSurface& surface, MESH_PRIMITIVE_LOD_CREATE_CONTEXT& context)
     {
+        if (mMapLodCount >= CE_MAX_LOD_COUNT)
+        {
+            BLIT_ERROR("%s: Max world lod count has already been reached", BlitzenCore::CE_MESH_SYSTEM_NAME);
+            return false;
+        }
+
+        uint32_t maxGenAllowed = BlitzenCore::Ce_MaxLodCountPerSurface;
+        if (mMapLodCount + BlitzenCore::Ce_MaxLodCountPerSurface > CE_MAX_LOD_COUNT)
+        {
+            maxGenAllowed = CE_MAX_LOD_COUNT - mMapLodCount;
+            BLIT_WARN("%s: Multiple LODs already generated for this map. Current mesh has a reduced max of %u", BlitzenCore::CE_MESH_SYSTEM_NAME, maxGenAllowed);
+        }
+
         // Automatic LOD generation helpers
         BlitCL::DynamicArray<BlitML::vec3> normals{ context.m_pMeshPrimitiveInfo->m_vertexCount };
         for (size_t i = 0; i < normals.GetSize(); ++i)
@@ -186,21 +301,18 @@ namespace BlitzenEngine
         BlitCL::DynamicArray<uint32_t> allLodIndices;
 
         // First LOD for this surface
-        surface.lodOffset = m_LODCount;
+        surface.lodOffset = 0;
 
-        while (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
+        while (surface.lodCount < maxGenAllowed)
         {
-            if (m_LODCount >= CE_MAX_LOD_COUNT)
-            {
-                BLIT_ERROR("%s: Max world LOD count has been reached / exceeded", BlitzenCore::CE_MESH_SYSTEM_NAME);
-                return false;
-            }
+            // Mesh primitives access LODs. With every LOD added, the surface will own one more element in the general array
+            uint32_t IDX = surface.lodCount++;
+            m_LODCount = surface.lodCount;
 
-            surface.lodCount++;
-
-            auto& lod{m_LODs[m_LODCount++]};
-            lod.firstIndex = context.m_pPrimitives->m_mapIdxCount + (uint32_t)allLodIndices.GetSize();
-            lod.indexCount = uint32_t(lodIndices.GetSize());
+            // LODs access indices. With every LOD added, the additional degraded indices will 
+            auto& lod{m_LODs[IDX]};
+            lod.firstIndex = (uint32_t)allLodIndices.GetSize();// All loaded indices so far as the offset
+            lod.indexCount = uint32_t(lodIndices.GetSize());// Current indices as the count
 
             // CLUSTER OFFSET
             lod.clusterOffset = context.m_pClusters->m_clusterCount;
@@ -228,7 +340,7 @@ namespace BlitzenEngine
             allLodIndices.AppendArray(lodIndices);
 
             // Starts generating the next level of detail
-            if (surface.lodCount < BlitzenCore::Ce_MaxLodCountPerSurface)
+            if (surface.lodCount < maxGenAllowed)
             {
                 size_t nextIndicesTarget = static_cast<size_t>((double(lodIndices.GetSize()) * 0.65) / 3) * 3;
                 const float maxError = 1e-1f;
@@ -285,15 +397,10 @@ namespace BlitzenEngine
             }
         }
 
-        if (surface.lodCount > BlitzenCore::Ce_MaxLodCountPerSurface)
+        if (surface.lodCount > maxGenAllowed)
         {
-            BLIT_ERROR("A surface has loaded too many LODs");
+            BLIT_ERROR("%s: A surface has loaded too many LODs", BlitzenCore::CE_MESH_SYSTEM_NAME);
             return false;
-        }
-
-        for (uint32_t& idx : allLodIndices)
-        {
-            idx += context.m_vertexOffset;
         }
 
         if (!context.m_pPrimitives->AddIndices(allLodIndices.Data(), uint32_t(allLodIndices.GetSize())))
@@ -347,7 +454,7 @@ namespace BlitzenEngine
 
             uint32_t dataOffset = pClusters->m_clusterIndicesCount;
 
-            if (pClusters->m_clusterIndicesCount + meshlet.triangle_count * 3 > BlitzenCore::Ce_MaxWorldVertexIndicesCount)
+            if (pClusters->m_clusterIndicesCount + meshlet.triangle_count * 3 > Ce_MaxWorldVertexIndicesCount)
             {
                 BLIT_ERROR("%s: Surpassed max vertex indices count while generating cluster", BlitzenCore::CE_MESH_SYSTEM_NAME);
                 return CE_MAX_WORLD_CLUSTER_COUNT;
@@ -441,50 +548,6 @@ namespace BlitzenEngine
             context.m_vertices[i2].tangentZ = uint8_t(t4.z * 127.f + 127.5f);
             context.m_vertices[i2].tangentW = uint8_t(t4.w * 127.f + 127.5f);
         }
-    }
-
-    SurfaceCreateRes MeshPrimitivesContainer::GenerateMeshPrimitive(PrimitiveContainer& primitives, ClusterContainer clusters, MESH_PRIMITIVE_GENERATE_CONTEXT& context)
-    {
-        if (m_meshPrimitivesCount >= BlitzenCore::Ce_MaxMeshPrimitivesCount)
-        {
-            BLIT_ERROR("%s: Exceeded max allowed mesh primitive count", BlitzenCore::CE_MESH_SYSTEM_NAME);
-            return SurfaceCreateRes::MAX_SURFACE_COUNT_REACHED;
-        }
-        
-        // Adds vertex offset and vertex count
-        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset = primitives.m_vertexCount;
-        m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexCount = context.m_vertexCount;
-
-        auto& newSurface{ m_meshPrimitives[m_meshPrimitivesCount] };
-
-        MESH_PRIMITIVE_LOD_GENERATE_CONTEXT lodContext{};
-        lodContext.m_pClusters = &clusters;
-        lodContext.m_pMeshPrimitiveInfo = &context;
-        lodContext.m_pPrimitives = &primitives;
-        lodContext.m_vertexOffset = m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveVertexOffset;
-        if (!GenerateMeshPrimitiveLODIndices(newSurface, lodContext))
-        {
-            return SurfaceCreateRes::LOD_GENERATION_FAILED;
-        }
-
-        BlitML::vec4 visibilityBoundingSphereData = BlitML::GenerateBoundingSphereFromVertices(context.m_pVertexContext->m_vtxPosArr, context.m_vertexCount);
-        m_boundingSpheres[m_meshPrimitivesCount].m_center = visibilityBoundingSphereData.xyz();
-        m_boundingSpheres[m_meshPrimitivesCount].m_radius = visibilityBoundingSphereData.w;
-
-        newSurface.materialId = context.m_materialID;
-
-        if (context.m_specialFlags & MESH_PRIMITIVE_SPECIAL_TRANSPARENT)
-        {
-            m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveTransparencyFlags = BlitzenCore::BB_TRUE;
-        }
-        else
-        {
-            m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveTransparencyFlags = BlitzenCore::BB_FALSE;
-        }
-
-        m_meshPrimitivesCount++;
-
-        return SurfaceCreateRes::SUCCESS;
     }
 
     bool MeshPrimitivesContainer::GenerateMeshPrimitiveLODIndices(PrimitiveSurface& surface, MESH_PRIMITIVE_LOD_GENERATE_CONTEXT& context)

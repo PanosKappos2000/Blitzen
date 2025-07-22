@@ -2,14 +2,15 @@
 #include "Core/BlitzenEngine.h"
 #include "Platform/Common/blitMappedFile.h"
 #include "Renderer/Resources/blitShaderResources.h"
+#include "BlitCL/blitString.h"
 
 namespace BlitzenEngine
 {
-	constexpr const char* CE_BLITZEN_RAPID_MESH_FILE_EXTENSION = ".blitMesh";
-	constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_SIZE_THRESHOLD = 1024 * 1024 * 10; // 10 MB (Probably too much but oh well, it's just for checking)
-    constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_HEADER_SIZE = 1000;
+	constexpr const char* GcRapidMeshFileExtension = ".blitMesh";
+	constexpr size_t GcRapidMeshFileSizeThreshold = 1024 * 1024 * 10; // 10 MB (Probably too much but oh well, it's just for checking)
+    constexpr size_t GcRapidMeshFileHeaderSize = 1000;
     constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_PADDING_SIZE = 1000;
-    constexpr const char* CE_BLITZEN_RAPID_MESH_DIRECTORY_PATH = "Assets/BlitzenRapidMeshes/";
+    constexpr const char* GCRapidMeshDirectoryPath = "Assets/BlitzenRapidMeshes/";
 
     // Straight enum for ease of use
     enum BLIT_RPF_MESH_FILE_HEADER_IDS
@@ -28,10 +29,10 @@ namespace BlitzenEngine
         BLIT_RPF_MESH_FILE_HEADER_CLUSTER_CONES_DATA_ID = 11,
         BLIT_RPF_MESH_FILE_HEADER_CLUSTER_IDXS_DATA_ID = 12
     };
-    constexpr uint32_t CE_BLIT_RPF_MESH_FILE_HEADER_ELEMENT_COUNT = 13;
-    static_assert(CE_BLIT_RPF_MESH_FILE_HEADER_ELEMENT_COUNT * sizeof(size_t) < CE_BLITZEN_RAPID_MESH_FILE_HEADER_SIZE);
+    constexpr uint32_t GCRapidMeshFileHeaderElementCount = 13;
+    static_assert(GCRapidMeshFileHeaderElementCount * sizeof(size_t) < GcRapidMeshFileHeaderSize);
 
-    using BLIT_RPF_MESH_FILE_HEADER_ARR = size_t[CE_BLIT_RPF_MESH_FILE_HEADER_ELEMENT_COUNT];
+    using BLIT_RPF_MESH_FILE_HEADER_ARR = size_t[GCRapidMeshFileHeaderElementCount];
 
     struct UPLOAD_MESH_RPF_CONTEXT
     {
@@ -57,16 +58,20 @@ namespace BlitzenEngine
         uint32_t m_clusterCount;
     };
 
-    constexpr size_t CE_GET_RPF_MESH_SIZE_ERROR_RETURN_CODE = CE_BLITZEN_RAPID_MESH_FILE_SIZE_THRESHOLD;
+    constexpr size_t CE_GET_RPF_MESH_SIZE_ERROR_RETURN_CODE = GcRapidMeshFileSizeThreshold;
 	size_t GetRpfMeshSize(UPLOAD_MESH_RPF_CONTEXT& rpfCtx);
 
-    // FOR FUTURE REFERENCE
+    // Receives a string container to hold the contents and returns the path based on the mesh's name
+    // The return is what the container will be holding by the end of the function
+    const char* GetRpfMeshPath(const char* meshName, BlitCL::String& stringContainer);
+
+    // FOR FUTURE REFERENCE. Probably v2
     struct MeshRpfOffsetAccessor
     {
         size_t m_offset;
         size_t m_count;
     };
-    using BLIT_RPF_MESH_FILE_OFFSETS_ARR = MeshRpfOffsetAccessor[CE_BLIT_RPF_MESH_FILE_HEADER_ELEMENT_COUNT];
+    using BLIT_RPF_MESH_FILE_OFFSETS_ARR = MeshRpfOffsetAccessor[GCRapidMeshFileHeaderElementCount];
 
     constexpr const char* CE_RPF_MESH_CONTEXT_FILE_NAME = "Assets/BlitzenRapidMeshes/context.blitMesh";
     constexpr const char* CE_RPF_MESH_OFFSETS_FILE_NAME = "Assets/BlitzenRapidMeshes/offsets.blitMesh";

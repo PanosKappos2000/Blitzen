@@ -202,27 +202,12 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxMaterialCount = 10'000;
 	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
-    constexpr uint32_t CE_TRIANGLE_VERTICES = 3;
-    constexpr uint32_t Ce_MaxWorldVertexCount = 30'000'000;
-    constexpr uint32_t Ce_MaxWorldVertexIndicesCount = Ce_MaxWorldVertexCount * CE_TRIANGLE_VERTICES;
-    static_assert(Ce_MaxWorldVertexCount <= Ce_MaxWorldVertexIndicesCount);
-
     constexpr uint32_t Ce_MaxMeshCount = 10'000;
     constexpr uint32_t Ce_EngineDefaultMeshesCount = 4;
 
     constexpr uint32_t Ce_MaxMeshPrimitivesCount = 10'000;
 
     constexpr uint8_t Ce_MaxLodCountPerSurface = 8;
-
-#if defined(BLIT_DYNAMIC_OBJECT_TEST)
-
-    constexpr uint8_t Ce_LoadDynamicObjectTest = 1;
-
-#else
-
-    constexpr uint8_t Ce_LoadDynamicObjectTest = 0;
-
-#endif
 
 #if defined(BLITZEN_CLUSTER_CULLING)
 

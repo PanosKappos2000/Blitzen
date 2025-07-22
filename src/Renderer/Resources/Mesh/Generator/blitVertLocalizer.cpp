@@ -378,4 +378,9 @@ namespace BlitGenerator
 
 		return ~0u;
 	}
+
+	uint32_t GenerateVtxIndices(uint32_t* destination, uint32_t indexCount, BlitzenEngine::VtxPos* vtxArr, uint32_t vertexCount)
+	{
+		return 0;
+	}
 }

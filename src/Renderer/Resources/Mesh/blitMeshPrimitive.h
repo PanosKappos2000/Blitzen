@@ -95,6 +95,8 @@ namespace BlitzenEngine
 		uint32_t m_indicesCount{ 0 };
 	};
 
+	constexpr uint32_t GCAddSurfaceToMapErrorCode = BlitzenCore::Ce_MaxMeshPrimitivesCount;
+
 	class MeshPrimitivesContainer
 	{
 	public:
@@ -106,6 +108,7 @@ namespace BlitzenEngine
 
 		LodData m_LODs[CE_MAX_LOD_COUNT]{};
 		uint32_t m_LODCount{ 0 };
+		uint32_t mMapLodCount{ 0 };
 
 		SurfaceCreateRes GenerateSurface(PrimitiveContainer& primitives, ClusterContainer& clusters, MESH_PRIMITIVE_CREATE_CONTEXT& context);
 
@@ -119,6 +122,8 @@ namespace BlitzenEngine
 		uint32_t GenerateClusters(LOD_CLUSTERS_CREATE_CONTEXT&  context, uint32_t vertexOffset, ClusterContainer* pClusters);
 
 		void GenerateTangents(MESH_PRIMITIVE_CREATE_CONTEXT& context);
+
+		uint32_t AddSurfaceToMap();
 	};
 }
 

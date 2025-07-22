@@ -3,8 +3,16 @@
 
 namespace BlitzenEngine
 {
-	constexpr uint32_t CE_MAX_MESH_PRIMITIVE_VERTEX_COUNT = BlitzenCore::Ce_MaxWorldVertexCount;
-	constexpr uint32_t CE_MAX_MESH_PRIMITIVE_INDEX_COUNT = BlitzenCore::Ce_MaxWorldVertexIndicesCount;
+	constexpr uint32_t GCTriangleVertices = 3;
+	constexpr uint32_t Ce_MaxWorldVertexCount = 30'000'000;
+	constexpr uint32_t Ce_MaxWorldVertexIndicesCount = Ce_MaxWorldVertexCount * GCTriangleVertices;
+	static_assert(Ce_MaxWorldVertexCount <= Ce_MaxWorldVertexIndicesCount);
+	constexpr uint32_t CE_MAX_MESH_PRIMITIVE_VERTEX_COUNT = Ce_MaxWorldVertexCount;
+	constexpr uint32_t CE_MAX_MESH_PRIMITIVE_INDEX_COUNT = Ce_MaxWorldVertexIndicesCount;
+
+	constexpr uint32_t GCMaxVertexCountInMeshResource = 3'000'000;
+	constexpr uint32_t GCMaxVertexIndicesInMeshResource = 3'000'000;
+	static_assert(GCMaxVertexCountInMeshResource <= GCMaxVertexIndicesInMeshResource);
 
 	class PrimitiveContainer
 	{
@@ -48,6 +56,9 @@ namespace BlitzenEngine
 
 namespace BlitGenerator
 {
+	constexpr uint32_t GCGenerateVtxIndicesErrorCode = BlitzenEngine::GCMaxVertexIndicesInMeshResource;
+	uint32_t GenerateVtxIndices(uint32_t* destination, uint32_t inedexCount, BlitzenEngine::VtxPos* vtxArr, uint32_t vertexCount);
+
 	struct VTXIDX_OPTIMIZATION_CONTEXT
 	{
 		uint32_t m_vtxCount{ 0 };

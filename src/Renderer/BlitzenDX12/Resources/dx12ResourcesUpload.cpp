@@ -297,13 +297,6 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		STAGING<BlitzenEngine::LodData> lodStaging{ nullptr };
-		if (!CreateStaging(device, lodStaging, drawContext.m_meshes.m_meshPrimitives.m_LODCount, drawContext.m_meshes.m_meshPrimitives.m_LODs))
-		{
-			BLIT_ERROR("%s: Failed to create LOD staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
 		STAGING<BlitzenEngine::Material> materialStaging{ nullptr };
 		if (!CreateStaging(device, materialStaging, drawContext.m_textures.m_materialCount, drawContext.m_textures.m_materials))
 		{
@@ -447,8 +440,7 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_BoundingSphereBoundingIndex], boundingSphereStaging.m_buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_LodStagingIndex], lodStaging.m_buffer.Get(), 
-			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		PutStagingBufferToCopySrcState(loadingContextMesh.m_lodDataStaging, copySourceBarriers.Data(), Ce_LodStagingIndex, copySourceBarriers.GetSize());
 
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_MaterialStagingIndex], materialStaging.m_buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -514,17 +506,18 @@ namespace BlitzenDX12
 			sizeof(BlitzenEngine::VtxTexCoords) * loadingContextMesh.m_vtxTexCoordStaging.m_validDataIndex);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_idxBuffer.m_buffer.Get(), 0, loadingContextMesh.m_vtxIdxStaging.m_buffer.Get(), 0, 
 			sizeof(uint32_t) * loadingContextMesh.m_vtxIdxStaging.m_validDataIndex);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_LODBuffer.buffer.Get(), 0, loadingContextMesh.m_lodDataStaging.m_buffer.Get(), 0,
+			sizeof(BlitzenEngine::LodData)* loadingContextMesh.m_lodDataStaging.m_validDataIndex);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, surfaceStagingBuffer.m_buffer.Get(), 0, surfaceStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainVtxBuffer.buffer.Get(), 0, terrainVtxPosStagingBuffer.m_buffer.Get(), 0, 
 			terrainVtxPosStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainIdxBuffer.m_buffer.Get(), 0, terrainVtxIdxStagingBuffer.m_buffer.Get(), 0,
 			terrainVtxIdxStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainHeightBuffer.buffer.Get(), 0, terrainHeightStaging.m_buffer.Get(), 0,
 			terrainHeightStaging.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, surfaceStagingBuffer.m_buffer.Get(), 0, surfaceStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_renderBuffer.buffer.Get(), 0, 
 			renderStaging.m_buffer.Get(), 0, renderStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_boundingSpheres.buffer.Get(), 0, boundingSphereStaging.m_buffer.Get(), 0, boundingSphereStaging.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_LODBuffer.buffer.Get(), 0, lodStaging.m_buffer.Get(), 0, lodStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_matBuffer.buffer.Get(), 0, materialStaging.m_buffer.Get(), 0, materialStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(cpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 0, worldVariableTransformStaging.m_buffer.Get(), 0, worldVariableTransformStaging.m_dataSize);
 		if constexpr (BlitzenCore::Ce_BuildClusters)
@@ -613,7 +606,7 @@ namespace BlitzenDX12
 
 			auto& rwResources{ rwResourcesArray[frame] };
 
-			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.m_LODCount, sizeof(BlitzenEngine::LodData));
+			CreateBufferShaderResourceView(device, roResources.m_LODBuffer.buffer.Get(), ctx, context.m_meshes.m_meshPrimitives.mMapLodCount, sizeof(BlitzenEngine::LodData));
 
 			CreateBufferShaderResourceView(device, roResources.m_boundingSpheres.buffer.Get(), ctx, BLIT_MAX_WORLD_RENDERS, sizeof(BlitzenEngine::BoundingSphere));
 		}

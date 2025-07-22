@@ -8,28 +8,28 @@ namespace BlitzenEngine
 {
 	void PrimitiveContainer::ALLOC()
 	{
-		m_vertices = reinterpret_cast<Vertex*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(Vertex)));
-		m_indices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t)));
+		m_vertices = reinterpret_cast<Vertex*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(Vertex)));
+		m_indices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t)));
 
-		m_vertexPositions = reinterpret_cast<VtxPos*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxPos)));
-		m_vertexUVs = reinterpret_cast<VtxTexCoords*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTexCoords)));
-		m_vertexNormals = reinterpret_cast<VtxNormals*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxNormals)));
-		m_vertexTangents = reinterpret_cast<VtxTangents*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTangents)));
+		m_vertexPositions = reinterpret_cast<VtxPos*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxPos)));
+		m_vertexUVs = reinterpret_cast<VtxTexCoords*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxTexCoords)));
+		m_vertexNormals = reinterpret_cast<VtxNormals*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxNormals)));
+		m_vertexTangents = reinterpret_cast<VtxTangents*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxTangents)));
 	}
 
 	void PrimitiveContainer::CLEAN()
 	{
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertices, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(Vertex));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertices, Ce_MaxWorldVertexCount * sizeof(Vertex));
 		m_vertices = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_indices, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_indices, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
 		m_indices = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexPositions, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxPos));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexPositions, Ce_MaxWorldVertexCount * sizeof(VtxPos));
 		m_vertexPositions = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexUVs, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTexCoords));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexUVs, Ce_MaxWorldVertexCount * sizeof(VtxTexCoords));
 		m_vertexUVs = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexNormals, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxNormals));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexNormals, Ce_MaxWorldVertexCount * sizeof(VtxNormals));
 		m_vertexNormals = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexTangents, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTangents));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexTangents, Ce_MaxWorldVertexCount * sizeof(VtxTangents));
 		m_vertexTangents = nullptr;
 	}
 
@@ -37,32 +37,32 @@ namespace BlitzenEngine
 	{
 		if (m_vertices)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertices, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(Vertex));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertices, Ce_MaxWorldVertexCount * sizeof(Vertex));
 		}
 
 		if (m_indices)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_indices, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_indices, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
 		}
 
 		if (m_vertexPositions)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexPositions, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxPos));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexPositions, Ce_MaxWorldVertexCount * sizeof(VtxPos));
 		}
 
 		if (m_vertexUVs)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexUVs, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTexCoords));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexUVs, Ce_MaxWorldVertexCount * sizeof(VtxTexCoords));
 		}
 
 		if (m_vertexNormals)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexNormals, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxNormals));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexNormals, Ce_MaxWorldVertexCount * sizeof(VtxNormals));
 		}
 
 		if (m_vertexTangents)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexTangents, BlitzenCore::Ce_MaxWorldVertexCount * sizeof(VtxTangents));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexTangents, Ce_MaxWorldVertexCount * sizeof(VtxTangents));
 		}
 	}
 
@@ -73,7 +73,7 @@ namespace BlitzenEngine
 		m_clusterCones = reinterpret_cast<ClusterCone*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(ClusterSphere)));
 
 		m_clusters = reinterpret_cast<Cluster*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(Cluster)));
-		m_clusterIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t)));
+		m_clusterIndices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t)));
 	}
 
 	void ClusterContainer::CLEAN()
@@ -88,7 +88,7 @@ namespace BlitzenEngine
 			m_clusterCones = nullptr;
 			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusters, CE_MAX_WORLD_CLUSTER_COUNT * sizeof(Cluster));
 			m_clusters = nullptr;
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterIndices, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterIndices, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
 			m_clusterIndices = nullptr;
 		}
 	}
@@ -117,7 +117,7 @@ namespace BlitzenEngine
 
 		if (m_clusterIndices)
 		{
-			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterIndices, BlitzenCore::Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
+			BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_clusterIndices, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
 		}
 	}
 

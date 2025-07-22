@@ -712,31 +712,31 @@ namespace BlitzenDX12
 
 	uint8_t CreateROResources(ID3D12Device* device, ReadOnlyResources& roResources)
 	{
-		if (CreateSSBO<BlitzenEngine::VtxPos>(device, roResources.m_vtxPosBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		if (CreateSSBO<BlitzenEngine::VtxPos>(device, roResources.m_vtxPosBuffer, BlitzenEngine::Ce_MaxWorldVertexCount) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create vertex positions buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (CreateSSBO<BlitzenEngine::VtxNormals>(device, roResources.m_vtxNrmBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		if (CreateSSBO<BlitzenEngine::VtxNormals>(device, roResources.m_vtxNrmBuffer, BlitzenEngine::Ce_MaxWorldVertexCount) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create vertex normals buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (CreateSSBO<BlitzenEngine::VtxTangents>(device, roResources.m_vtxTangentBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		if (CreateSSBO<BlitzenEngine::VtxTangents>(device, roResources.m_vtxTangentBuffer, BlitzenEngine::Ce_MaxWorldVertexCount) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create vertex tangents buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (CreateSSBO<BlitzenEngine::VtxTexCoords>(device, roResources.m_vtxTexCoordBuffer, BlitzenCore::Ce_MaxWorldVertexCount) == 0)
+		if (CreateSSBO<BlitzenEngine::VtxTexCoords>(device, roResources.m_vtxTexCoordBuffer, BlitzenEngine::Ce_MaxWorldVertexCount) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create vertex tex coords buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		if (CreateIndexBuffer(device, roResources.m_idxBuffer, BlitzenCore::Ce_MaxWorldVertexIndicesCount) == 0)
+		if (CreateIndexBuffer(device, roResources.m_idxBuffer, BlitzenEngine::Ce_MaxWorldVertexIndicesCount) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create index buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -811,7 +811,7 @@ namespace BlitzenDX12
 				return 0;
 			}
 
-			if (CreateIndexBuffer(device, roResources.m_clusterIdxBuffer, BlitzenCore::Ce_MaxWorldVertexIndicesCount) == 0)
+			if (CreateIndexBuffer(device, roResources.m_clusterIdxBuffer, BlitzenEngine::Ce_MaxWorldVertexIndicesCount) == 0)
 			{
 				BLIT_ERROR("%s: Failed to create cluster indices buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;

@@ -295,7 +295,7 @@ namespace BlitzenEngine
                 return BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_SCENE_SYSTEM_NAME, MESH_PRIMITIVE_CREATE_RES_TO_STRING(meshPrimitiveRes));
             }
 
-            if (!BlitzenWorld::CopyMeshResourcesToStagingBuffer(&meshContext, loadingContextMesh))
+            if (!CopyMeshResourcesToStagingBuffer(&meshContext, loadingContextMesh))
             {
                 BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for gltf mesh primitive number: (%u)", BlitzenCore::CE_SCENE_SYSTEM_NAME, j);
                 return false;
@@ -363,6 +363,7 @@ namespace BlitzenEngine
                 float matrix[16];
                 cgltf_node_transform_world(node, matrix);
 
+                // Switches to split world transform by decomposing the matrix.
                 float translation[3];
                 float rotation[4];
                 float scale[3];
@@ -385,6 +386,7 @@ namespace BlitzenEngine
                     nodeContext.m_flags = 0;
                     nodeContext.m_resourceID = primID + mesh.firstSurface;
                     nodeContext.m_transformInfo.m_pTransform = &transform;
+                    nodeContext.snapDownOffset = 1.f;// Temp to disable snap down, while I think of how to solve this
 
                     uint32_t surfaceOffset{ meshContext.m_meshes[meshIdx].firstSurface };
                     nodeContext.m_isMoveable = BLIT_FAT_FALSE;
