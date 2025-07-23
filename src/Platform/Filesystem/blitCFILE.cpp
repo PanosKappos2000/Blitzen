@@ -116,6 +116,7 @@ namespace BlitzenPlatform
     {
         if (handle.m_pHandle) 
         {
+            // Writes the text to the file
             int32_t result = fputs(text, handle.m_pHandle);
             if (result != EOF) 
             {

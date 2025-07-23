@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
+message(STATUS "BLITZEN_START_NEW = ${BLITZEN_START_NEW}")
+
 project (BlitzenEngine VERSION 0 LANGUAGES C CXX)
 
 set (CMAKE_CXX_STANDARD 17)
@@ -236,7 +238,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h" "src/Core/WrldFileManager/blitFileManager.h" "src/Core/WrldFileManager/blitFileManager.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

@@ -38,6 +38,8 @@ namespace BlitzenCore
     #define BLIT_VISUAL_DEBUG_FUNC [[deprecated("Application should not ship with a visual debug function")]]
 #endif
 
+    constexpr const char* GCClientBlitProjectName = "TestWorld";
+
     constexpr const char* CE_BLITZEN = "Blitzen.v0";
     constexpr uint32_t Ce_BlitzenMajor = 0;
     constexpr const char* Ce_HostedApp = "Blitzen Client";
