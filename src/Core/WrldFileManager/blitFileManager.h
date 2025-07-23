@@ -7,4 +7,6 @@ namespace BlitzenCore
 	constexpr const char* GCBlitWRLDFileVersion = "0.0.1";
 
 	BLIT_OFFLINE_FUNC bool StartNewWRLDFile();
+
+	bool ReadWRLDFile();
 }

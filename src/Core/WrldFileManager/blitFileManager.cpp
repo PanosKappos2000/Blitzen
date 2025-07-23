@@ -1,6 +1,9 @@
 #include "blitFileManager.h"
 #include "BlitCL/blitString.h"
 #include "Platform/Filesystem/blitCFILE.h"
+#include "Platform/Common/blitMappedFile.h"
+#include "Core/DbLog/blitAssert.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenCore
 {
@@ -35,14 +38,34 @@ namespace BlitzenCore
 		}
 
 		// Creates the standard map data accessor
-		BlitCL::String blitMinusMapData{ "blit_minus: " };
-		blitMinusMapData.Append("test");
+		BlitCL::String blitMinusMapData{ "blit_minus-> " };
+		blitMinusMapData.Append("BlitzenDemoScene");
 		if (!BlitzenPlatform::FilesystemWriteLine(scopedFile, blitMinusMapData.GetClassic()))
+		{
+			return false;
+		}
+
+		pathToProject.Append("MapFiles");
+		if (!BlitzenPlatform::CreateDirectoryIfMissing(pathToProject.GetClassic()))
 		{
 			return false;
 		}
 
 		return true;
 #endif
+	}
+
+	bool ReadWRLDFile()
+	{
+		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE scopedFile{};
+
+		auto fileOpenRes = scopedFile.OpenRead(GCClientBlitProjectName);
+		BLIT_ASSERT_MESSAGE(BLIT_CHECK_FATAL((int64_t)fileOpenRes), BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(fileOpenRes));
+
+		if (BLIT_CHECK_FAIL((int64_t)fileOpenRes))
+		{
+			BLIT_ERROR("%s: Failed to open WRLD(client project) file: Received Platform Message: ", GCWRLDSystemName, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(fileOpenRes));
+			return false;
+		}
 	}
 }

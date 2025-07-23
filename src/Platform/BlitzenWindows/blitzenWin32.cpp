@@ -10,6 +10,7 @@
 #include "Core/Events/blitEvents.h"
 #include "backends/imgui_impl_win32.h"
 #include "Core/Dasher/Interface/dasherInterface.h"
+#include <direct.h>
 
 // Needs to make sure that IMGUI callback does not get overriden
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
@@ -374,6 +375,11 @@ namespace BlitzenPlatform
     void DearDasherUpdate()
     {
         ImGui_ImplWin32_NewFrame();
+    }
+
+    bool CreateDirectoryIfMissing(const char* path)
+    {
+        return _mkdir(path) == 0 || errno == EEXIST;
     }
 
     static void PlatformShutdown(PlatformContext* P_HANDLE)

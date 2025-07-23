@@ -31,4 +31,8 @@ namespace BlitzenPlatform
     void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
 
     void* PlatformMemSet(void* pDst, int32_t value, size_t size);
+
+    // Creates directory with the specified path
+    // Returns true if created or already exists. False means actual failure.
+    bool CreateDirectoryIfMissing(const char* path);
 }

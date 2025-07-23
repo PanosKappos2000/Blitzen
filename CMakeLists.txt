@@ -238,7 +238,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h" "src/Core/WrldFileManager/blitFileManager.h" "src/Core/WrldFileManager/blitFileManager.cpp")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h" "src/Core/WrldFileManager/blitFileManager.h" "src/Core/WrldFileManager/blitFileManager.cpp" "src/Renderer/WORLD/blitWorldMap.h" "src/Renderer/WORLD/blitWorldMap.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC

@@ -15,6 +15,8 @@
 #include "Platform/blitPlatformContext.h"
 #include "Core/Events/blitEvents.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 
 
 namespace BlitzenPlatform
@@ -568,6 +570,11 @@ namespace BlitzenPlatform
                     return BlitzenCore::BlitKey::MAX_KEYS;
             }
 
+        }
+
+        bool CreateDirectoryIfMissing(const char* path)
+        {
+            return mkdir(path, 0755) == 0 || errno == EEXIST;
         }
 
         static void PlatformShutdown(PlatformContext* P_HANDLE)

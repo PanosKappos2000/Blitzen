@@ -82,4 +82,9 @@ namespace BlitCL
             }
         }
     };
+
+    inline int32_t StringHash(const char* str)
+    {
+        return 0;
+    }
 }
