@@ -13,13 +13,13 @@ namespace BlitzenWorld
 
     void LoadingLoop(int argc, char** argv, BLITZEN_SYSTEM_CONTEXT& context, BlitzenEngine::DrawContext& drawContext)
     {
+        INITIALIZE_WORLD_POINTER(context.pWORLD);
         BLIT_ASSERT(RenderingResourcesInit(context.pRenderingResources, context.pWORLD->BMPR.Data()));
 
         BlitzenPlatform::MakeWindowVisible(context.pPlatform);
         context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::LOADING;
 
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&context.pWORLD->mResidents);
-        INITIALIZE_WORLD_POINTER(context.pWORLD);
 
         context.pWORLD->mCollisionGrid.ALLOC_IDX();
         context.pWORLD->mResidents.MColliders.ALLOC_MSG();

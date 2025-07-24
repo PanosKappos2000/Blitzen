@@ -10,7 +10,7 @@ namespace BlitzenEngine
 	constexpr size_t GcRapidMeshFileSizeThreshold = 1024 * 1024 * 10; // 10 MB (Probably too much but oh well, it's just for checking)
     constexpr size_t GcRapidMeshFileHeaderSize = 1000;
     constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_PADDING_SIZE = 1000;
-    constexpr const char* GCRapidMeshDirectoryPath = "Assets/BlitzenRapidMeshes/";
+    constexpr const char* GCRapidMeshDirectoryPath = BLITZEN_CLIENT_RPFMESH_DIRECTORY;
 
     // Straight enum for ease of use
     enum BLIT_RPF_MESH_FILE_HEADER_IDS

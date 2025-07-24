@@ -18,8 +18,15 @@ def run_build(project_name):
     if not os.path.exists(project_dir):
         print(f"[Bilbo] Project folder '{project_name}' not found. Creating...")
         os.makedirs(project_dir)
-        cmake_cmd.append("-DBLITZEN_START_NEW=1") # CMake receives BLITZEN_START_NEW
+        cmake_cmd.append("-DBLITZEN_START_NEW=1 ") # CMake receives BLITZEN_START_NEW
+    else:
+        cmake_cmd.append("-DBLITZEN_START_NEW=0")
 
+    cmake_cmd.append(f"-DBLITZEN_CLIENT_NAME={project_name}")
+    cmake_cmd.append(f"-DBLITZEN_CLIENT_WRLD_FILEPATH=../{project_name}/{project_name}.bwrld")
+    cmake_cmd.append(f"-DBLITZEN_CLIENT_RPFMESH_DIRECTORY=../{project_name}/WorldResources/")
+    cmake_cmd.append(f"-DBLITZEN_CLIENT_WORLDMAPS_DIRECTORY=../{project_name}/WorldMaps")
+    
     # Run CMake configuration step
     result = subprocess.run(cmake_cmd, cwd=build_dir)
 

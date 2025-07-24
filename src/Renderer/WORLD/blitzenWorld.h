@@ -3,6 +3,7 @@
 #include "Renderer/Scene/blitScene.h"
 #include "Core/Events/blitFrameEvents.h"
 #include "Renderer/View/blitCamera.h"
+#include "Core/WrldFileManager/blitFileManager.h"
 
 namespace BlitzenWorld
 {
@@ -36,6 +37,8 @@ namespace BlitzenWorld
         BlitzenEngine::Camera m_cameras[BlitzenCore::CE_STARTING_CONTROLLER_COUNT]{};
         uint32_t m_activeCameraIDX = BlitzenCore::CE_ENGINE_CONTROLLER_ID;
         BlitzenEngine::CollisionWorkConstant MBmprCollisionWorkConstant;
+
+        const char* mActiveMapName;
 
         float deltaTime{0.f};
 

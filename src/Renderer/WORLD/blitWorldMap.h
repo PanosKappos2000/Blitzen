@@ -3,6 +3,9 @@
 
 namespace BlitzenEngine
 {
+	constexpr const char* GCDefaultWorldMapName = "BlitzenDemoMap";
+	constexpr const char* GCClientWorldMapDirectory = BLITZEN_CLIENT_WORLDMAPS_DIRECTORY;
+
 	enum class LOAD_WRLD_MAP_RES : int64_t
 	{
 		SUCCESS = BlitzenCore::CE_BLITZEN_SUCCESS,
@@ -14,6 +17,8 @@ namespace BlitzenEngine
 	{
 		SUCCESS = BlitzenCore::CE_BLITZEN_SUCCESS,
 		FATAL = BlitzenCore::CE_BLITZEN_FATAL,
+
+		ERROR_OPENING_FILE = -1,
 	};
 	UPLOAD_WRLD_MAP_RES UploadWORLDMapToDisk(const char* filepath, WORLD_RESIDENTS* pWorldResidents);
 

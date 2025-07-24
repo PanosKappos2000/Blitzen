@@ -87,4 +87,6 @@ namespace BlitCL
     {
         return 0;
     }
+
+    //inline const char*
 }

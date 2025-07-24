@@ -11,6 +11,8 @@ namespace BlitzenCore
     //#define BLITZEN_CONFIGURATION_GAME_TEST
     //#define BLITZEN_CONFIGURATION_GAME_RELEASE
 
+    constexpr const char* GCBlitzenClientName = BLITZEN_CLIENT_NAME;
+
 #if !defined(NDEBUG)
     #define BLITZEN_CONFIGURATION_ENGINE_DEV
 #else 
@@ -37,8 +39,6 @@ namespace BlitzenCore
 #else
     #define BLIT_VISUAL_DEBUG_FUNC [[deprecated("Application should not ship with a visual debug function")]]
 #endif
-
-    constexpr const char* GCClientBlitProjectName = "TestWorld";
 
     constexpr const char* CE_BLITZEN = "Blitzen.v0";
     constexpr uint32_t Ce_BlitzenMajor = 0;

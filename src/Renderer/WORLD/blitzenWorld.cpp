@@ -4,6 +4,7 @@
 #include "Core/BlitzenWorld/blitzenUserInterface.h"
 #include "BlitzenMathLibrary/blitMLSIMD.h"
 #include "Core/WrldFileManager/blitFileManager.h"
+#include "blitWorldMap.h"
 
 namespace BlitzenWorld
 {
@@ -412,7 +413,11 @@ namespace BlitzenWorld
             cubeMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeAABB, "Collider shape IDs should match offset for debug compute shader");
 #endif
 
-#if 1 //BLITZEN_START_NEW 
+#if defined(BLITZEN_START_NEW)
+
+        BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
+        GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
+        BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
 
         uint32_t bunnyMeshId{ BlitzenEngine::LoadObjFileMeshToDisk(pResources->m_meshContext, "Assets/Meshes/bunny.obj", BlitzenEngine::GCDefaultMeshName) };
         if (bunnyMeshId == BlitzenCore::Ce_MaxMeshCount)
@@ -421,9 +426,10 @@ namespace BlitzenWorld
             return false;
         }
 
-        BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
+#else
 
 #endif
+
 
         uint32_t kittenMeshId{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/kitten.obj", BlitzenEngine::GCDefaultKittenMeshName) };
         if (kittenMeshId == BlitzenCore::Ce_MaxMeshCount)

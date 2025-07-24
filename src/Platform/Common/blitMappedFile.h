@@ -44,6 +44,7 @@ namespace BlitzenPlatform
 		}
 	}
 
+    // Returns true if the value of mmfResult means error
     inline bool CHECK_BLIT_MMF_RES_FOR_ERROR(BLIT_MMF_RES mmfResult)
     {
         return mmfResult != BLIT_MMF_RES::SUCCESS && mmfResult != BLIT_MMF_RES::SUCCESS_FALLBACK;

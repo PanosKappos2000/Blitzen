@@ -35,8 +35,6 @@ add_executable(BlitzenEngine
                 "src/Renderer/WORLD/blitzenWorld.h"
                 "src/Core/BlitzenWorld/blitzenWorldPrivate.h"
                 "src/Core/BlitzenWorld/blitzenWorldLoad.cpp"
-                "src/Renderer/WORLD/blitWorldReq.h"
-                "src/Renderer/WORLD/blitzenWorld.cpp"
                 "src/Core/blitzenWorld/blitzenVariableUpdate.cpp"
                 "src/Core/BlitzenWorld/blitzenSystemDispatcher.h"
                 "src/Core/BlitzenWorld/blitzenSystemDispatcher.cpp"
@@ -50,6 +48,9 @@ add_executable(BlitzenEngine
                 "src/Core/Dasher/DearDasher/dearDasherVK.cpp"
                 "src/Core/Dasher/DearDasher/dearDasherDX12.h" 
                 "src/Core/Dasher/DearDasher/dearDasherDX12.cpp"
+
+                "src/Core/WrldFileManager/blitFileManager.h" 
+                "src/Core/WrldFileManager/blitFileManager.cpp"
                 
 
                 # BLITZEN CONTAINER LIBRARY
@@ -103,6 +104,10 @@ add_executable(BlitzenEngine
                 "src/Renderer/Resources/blitzenRenderingResources.cpp"
                 "src/Renderer/Resources/RapidFile/blitResourceRPF.h" 
                 "src/Renderer/Resources/RapidFile/blitResourceRPF.cpp"
+
+                "src/Renderer/WORLD/blitWorldReq.h"
+                "src/Renderer/WORLD/blitzenWorld.cpp"
+                "src/Renderer/WORLD/blitWorldMap.h"
 
                 # TEXTURES
                 "src/Renderer/Resources/Textures/blitTextures.h"
@@ -238,7 +243,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h" "src/Core/WrldFileManager/blitFileManager.h" "src/Core/WrldFileManager/blitFileManager.cpp" "src/Renderer/WORLD/blitWorldMap.h" "src/Renderer/WORLD/blitWorldMap.cpp")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h"   "src/Renderer/WORLD/blitWorldMap.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -333,6 +338,14 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #DX12_ENABLE_GPU_BASED_VALIDATION # Activates Debug1 (might break api initialization)
                             #DX12_OCCLUSION_DRAW_CULL # Activates occlusion culling, with pre-pass
                             )
+
+add_compile_definitions(BLITZEN_CLIENT_NAME="${BLITZEN_CLIENT_NAME}")
+add_compile_definitions(BLITZEN_CLIENT_WRLD_FILEPATH="${BLITZEN_CLIENT_WRLD_FILEPATH}")
+add_compile_definitions(BLITZEN_CLIENT_RPFMESH_DIRECTORY="${BLITZEN_CLIENT_RPFMESH_DIRECTORY}")
+add_compile_definitions(BLITZEN_CLIENT_WORLDMAPS_DIRECTORY="${BLITZEN_CLIENT_WORLDMAPS_DIRECTORY}")
+if (BLITZEN_START_NEW)
+    add_compile_definitions(BLITZEN_START_NEW)
+endif()
 
 
 
