@@ -1,11 +1,13 @@
 #pragma once
 #include "Core/blitzenEngine.h"
 #include "Renderer/Entities/Residents/blitResidentManager.h"
+#include "BlitCL/blitString.h"
 
 namespace BlitzenEngine
 {
 	constexpr const char* GCDefaultWorldMapName = "BlitzenDemoMap";
 	constexpr const char* GCWorldMapFileExtension = ".blitMap";
+	constexpr const char* GCWorldMapResourceNamesFileExtension = ".bmstr";
 	constexpr const char* GCClientWorldMapDirectory = BLITZEN_CLIENT_WORLDMAPS_DIRECTORY;
 	constexpr uint32_t GCResourceNameMaxSize = 100;
 	constexpr uint32_t GCResourceNameMaxCount = 1000;
@@ -48,6 +50,8 @@ namespace BlitzenEngine
 	};
 	LOAD_WORLD_MAP_RES LoadWORLDMapFromDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
 
+	bool LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* sizes);
+
 	enum class UPLOAD_WORLD_MAP_RES : int64_t
 	{
 		SUCCESS = BlitzenCore::CE_BLITZEN_SUCCESS,
@@ -69,6 +73,8 @@ namespace BlitzenEngine
 		ERROR_WRITING_HEADER = -14
 	};
 	UPLOAD_WORLD_MAP_RES UploadWORLDMapToDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
+
+	BLIT_OFFLINE_FUNC bool UploadWORLDMapResourceNamesToDisk(const char* mapName, const BlitCL::String* names, uint32_t nameCount);
 
 	BLIT_OFFLINE_FUNC bool UpdateWorldMapResources(const char* filepath);
 

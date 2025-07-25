@@ -93,23 +93,25 @@ namespace BlitzenPlatform
 
     bool FilesystemReadLine(C_FILE_SCOPE& handle, size_t maxLength, char** lineBuffer, size_t* pLength)
     {
-        if (handle.m_pHandle && lineBuffer && pLength && maxLength > 0) 
+        if (!handle.m_pHandle || !lineBuffer || !*lineBuffer || !pLength || maxLength == 0) return false;
+
+        char* buffer = *lineBuffer;
+
+        // Reads line, returns false if handle has reached end
+        if (!fgets(buffer, (int)maxLength, handle.m_pHandle)) return false;
+
+        // Saves length to out length
+        size_t len = strlen(buffer);
+
+        // Trim trailing newline and carriage return
+        while (len > 0 && (buffer[len - 1] == '\n' || buffer[len - 1] == '\r'))
         {
-            char* buffer = *lineBuffer;
-
-            if (!buffer)
-            {
-                BLIT_ERROR("Line Buffer empty");
-                return 0;
-            }
-
-            if (fgets(buffer, int32_t(maxLength), handle.m_pHandle) != 0) 
-            {
-                *pLength = strlen(*lineBuffer);
-                return 1;
-            }
+            buffer[--len] = '\0';
         }
-        return 0;
+
+        *pLength = len;
+
+        return true;
     }
 
     bool FilesystemWriteLine(C_FILE_SCOPE& handle, const char* text)

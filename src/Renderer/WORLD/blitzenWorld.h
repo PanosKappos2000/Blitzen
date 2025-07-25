@@ -4,6 +4,7 @@
 #include "Core/Events/blitFrameEvents.h"
 #include "Renderer/View/blitCamera.h"
 #include "Core/WrldFileManager/blitFileManager.h"
+#include "blitWorldMap.h"
 
 namespace BlitzenWorld
 {
@@ -39,6 +40,8 @@ namespace BlitzenWorld
         BlitzenEngine::CollisionWorkConstant MBmprCollisionWorkConstant;
 
         const char* mActiveMapName;
+        BlitCL::String mResourceNames[BlitzenEngine::GCResourceNameMaxCount];
+        uint32_t mResourceNameCount = 0;
 
         float deltaTime{0.f};
 

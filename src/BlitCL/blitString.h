@@ -114,7 +114,7 @@ namespace BlitCL
             return m_data[idx]; 
         }
 
-        inline const char* GetClassic() const 
+        inline const char* GetClassic() const
         { 
             return m_data; 
         }
@@ -124,7 +124,7 @@ namespace BlitCL
             return m_data; 
         }
 
-        inline char** GetDataPointer() 
+        inline char** GetDataPointer()
         { 
             return &m_data; 
         }

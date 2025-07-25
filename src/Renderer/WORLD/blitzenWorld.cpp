@@ -426,6 +426,23 @@ namespace BlitzenWorld
             return false;
         }
 
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCSphereShapeMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCCubeShapeMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCCapsuleShapeMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCDefaultMeshName));
+
+        if (!BlitzenEngine::UploadWORLDMapResourceNamesToDisk(BlitzenEngine::GCDefaultWorldMapName, GSBlitzenWorld->mResourceNames, GSBlitzenWorld->mResourceNameCount))
+        {
+            BLIT_ERROR("%s: Failed to load resource names to map files", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        size_t temp[10];
+        if (!BlitzenEngine::LoadWORLDMapResourceNamesFromDisk(BlitzenEngine::GCDefaultWorldMapName, GSBlitzenWorld->mResourceNames, temp))
+        {
+            return false;
+        }
+
 #else
 
 #endif
