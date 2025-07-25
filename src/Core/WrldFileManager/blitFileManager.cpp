@@ -30,23 +30,25 @@ namespace BlitzenCore
 		}
 		headerArr[WRLD_HEADER_INDICES_VERSION_ID].dataOffset = offset;
 		headerArr[WRLD_HEADER_INDICES_VERSION_ID].dataSize = firstLineHeader.GetSize();
-		offset += firstLineHeader.GetSize();
+		offset += (uint32_t)firstLineHeader.GetSize();
 
 		char* currentMapName = "None";
-		uint32_t currentMapSize = strlen(currentMapName);
-		if (!BlitzenPlatform::WriteMemoryMappedFile(scopedFile, offset, currentMapSize, currentMapName))
+		size_t currentMapSize = strlen(currentMapName);
+		if (!BlitzenPlatform::WriteMemoryMappedFile(scopedFile, offset, (uint32_t)currentMapSize, currentMapName))
 		{
 			return false;
 		}
 		headerArr[WRLD_HEADER_INDICES_CURRENT_MAP_ID].dataOffset = offset;
 		headerArr[WRLD_HEADER_INDICES_CURRENT_MAP_ID].dataSize = currentMapSize;
-		offset += currentMapSize;
+		offset += (uint32_t)currentMapSize;
 
 		constexpr uint32_t LCStartOfFile = 0;
 		if (!BlitzenPlatform::WriteMemoryMappedFile(scopedFile, LCStartOfFile, GCWrldFileDataArrElementCount * sizeof(WrldFileHeaderData), headerArr))
 		{
 			return false;
 		}
+
+		return true;
 	}
 
 	bool StartNewWRLDFile()
@@ -92,5 +94,7 @@ namespace BlitzenCore
 			BLIT_ERROR("%s: Failed to open WRLD(client project) file: Received Platform Message: ", GCWRLDSystemName, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(fileOpenRes));
 			return false;
 		}
+
+		return true;
 	}
 }

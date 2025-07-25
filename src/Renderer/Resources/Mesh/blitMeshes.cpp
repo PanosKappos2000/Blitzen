@@ -295,7 +295,7 @@ namespace BlitzenEngine
         auto mmfRes{ memoryMappedFile.OpenRead(meshPath) };
         if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(mmfRes))
         {
-            BLIT_FATAL("%s: Filaed to open Rapid Resource File for mesh read. Received Platform Error: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(mmfRes));
+            BLIT_FATAL("%s: Failed to open Rapid Resource File for mesh read. Received Platform Error: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(mmfRes));
             return LOAD_MESH_FROM_DISK_RES::FAILED_TO_OPEN_FILE;
         }
 

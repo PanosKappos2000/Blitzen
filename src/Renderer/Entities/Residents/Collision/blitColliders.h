@@ -6,6 +6,7 @@ namespace BlitzenEngine
 {
 	constexpr uint32_t CE_MAX_WORLD_BOUNDING_SPHERE_COUNT = BLIT_MAX_WORLD_RENDERS;
 	constexpr uint32_t CE_MAX_WORLD_COLLIDER_COUNT = CE_MAX_WORLD_BOUNDING_SPHERE_COUNT;
+	constexpr uint32_t GCMinColliderTemporalIndexCount = 8;
 
 	// Had some constructor trouble with unions that is why this struct is ugly as hell
     struct Collider
@@ -35,6 +36,7 @@ namespace BlitzenEngine
 		// For example, a weapon or a bullet, and probably even destructibles need to be world variables
 		// If this system becomes heavy, there could exist a resident that is one level below a world variable
 		ColliderWorldEffects WVColliderHitData[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		uint32_t wvAllowedTemporalCount[BLIT_MAX_WORLD_VARIABLE_COUNT]{ GCMinColliderTemporalIndexCount };
 		ColliderAMaxRad MTransformedColliderAMaxRad[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		ColliderBMinType MTransformedColliderBMinType[BLIT_MAX_WORLD_VARIABLE_COUNT];
 		uint32_t mWorldVariableColliderCount{ 0 };
@@ -44,6 +46,7 @@ namespace BlitzenEngine
 
 		CollisionMessage* MCollsionMessages{ nullptr };
 		uint32_t mCollisionMessageCount{ 0 };
+		Resident* wvColliderTemporalIndices[BLIT_MAX_WORLD_VARIABLE_COUNT]{ nullptr };
 
 		// Adds bounding sphere for render object. If the render object is static, the sphere is pre transformed
 		void AddRenderObjectBoundingSphere(BoundingSphere* pSphere, MeshTransform& transform, uint32_t renderObjectID, RENDER_OBJECT_TYPE objectType);

@@ -10,6 +10,8 @@
 
 #endif
 
+constexpr size_t GCBlitStartOfFileOffset = 0;
+
 namespace BlitzenPlatform
 {
     enum class BLIT_MMF_RES : uint8_t

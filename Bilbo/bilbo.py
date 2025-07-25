@@ -25,7 +25,7 @@ def run_build(project_name):
     cmake_cmd.append(f"-DBLITZEN_CLIENT_NAME={project_name}")
     cmake_cmd.append(f"-DBLITZEN_CLIENT_WRLD_FILEPATH=../{project_name}/{project_name}.bwrld")
     cmake_cmd.append(f"-DBLITZEN_CLIENT_RPFMESH_DIRECTORY=../{project_name}/WorldResources/")
-    cmake_cmd.append(f"-DBLITZEN_CLIENT_WORLDMAPS_DIRECTORY=../{project_name}/WorldMaps")
+    cmake_cmd.append(f"-DBLITZEN_CLIENT_WORLDMAPS_DIRECTORY=../{project_name}/WorldMaps/")
     
     # Run CMake configuration step
     result = subprocess.run(cmake_cmd, cwd=build_dir)

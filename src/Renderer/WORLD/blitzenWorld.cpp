@@ -594,6 +594,14 @@ namespace BlitzenWorld
         pWORLD->MBmprCollisionWorkConstant.minBounds = pWORLD->mCollisionGrid.m_minBounds;
         pWORLD->MBmprCollisionWorkConstant.maxBounds = pWORLD->mCollisionGrid.m_maxBounds;
 
+        auto worldMapRes = BlitzenEngine::UploadWORLDMapToDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
+		BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)worldMapRes), BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
+        if(BlitzenCore::BLIT_CHECK_FAIL((int64_t)worldMapRes))
+        {
+            BLIT_ERROR("%s: Failed to upload world map to disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
+            BLIT_ASSERT(false);
+		}
+
 #if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
 
 #else

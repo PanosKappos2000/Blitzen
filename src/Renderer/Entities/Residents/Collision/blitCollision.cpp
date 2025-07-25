@@ -1051,13 +1051,10 @@ namespace BlitzenEngine
         {
             BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Messages, MCollsionMessages, GCSafeMsgAlloc * sizeof(CollisionMessage));
         }
-    }
 
-    ColliderWorldEffects::~ColliderWorldEffects()
-    {
-        if (temporalData != nullptr)
+        for (auto temporalData : wvColliderTemporalIndices)
         {
-            BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, temporalData, sizeof(Resident) * allowedTemporalDataCount);
+            if (temporalData != nullptr) BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Entity, temporalData, GCMinColliderTemporalIndexCount);
         }
     }
 }

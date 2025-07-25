@@ -273,9 +273,8 @@ namespace BlitzenEngine
         BLOCK_SOFT = 1 << 2,
     };
 
-    class ColliderWorldEffects
+    struct ColliderWorldEffects
     {
-    public:
         uint32_t highLevelFlags = 0;
         uint32_t collisionStrikeFlags = 0;
         uint32_t collisionOverlapFlags = 0;
@@ -283,10 +282,6 @@ namespace BlitzenEngine
         CollisionStrikeFlags strikeReactionType;
         CollisionOverlapFlags overlapReactionType;
         CollisionBlockFlags blockReactionType;
-        Resident* temporalData = nullptr;
-        uint32_t allowedTemporalDataCount = 0;
-
-        ~ColliderWorldEffects();
     };
 
     

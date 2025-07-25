@@ -28,7 +28,6 @@ namespace BlitzenEngine
 	public:
 
 		RenderObject m_renders[BLIT_MAX_WORLD_RENDERS];
-		BoundingSphere m_boundingSpheres[BLIT_MAX_WORLD_RENDERS];
 
 		uint32_t m_opaqueDynamicCount{ 0 };
 		uint32_t m_transparentStaticCount{ 0 };
