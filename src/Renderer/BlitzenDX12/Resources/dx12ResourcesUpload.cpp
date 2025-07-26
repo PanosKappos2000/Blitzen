@@ -276,13 +276,6 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		STAGING<BlitzenEngine::PrimitiveSurface> surfaceStagingBuffer{ };
-		if (!CreateStaging(device, surfaceStagingBuffer, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitivesCount, drawContext.m_meshes.m_meshPrimitives.m_meshPrimitives))
-		{
-			BLIT_ERROR("%s: Failed to create surface buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
 		STAGING<BlitzenEngine::RenderObject> renderStaging{ nullptr };
 		if (!CreateStaging(device, renderStaging, BLIT_MAX_WORLD_RENDERS, drawContext.m_pResidents->m_renders.m_renders))
 		{
@@ -431,7 +424,7 @@ namespace BlitzenDX12
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_IndexStagingBufferIndex], loadingContextMesh.m_vtxIdxStaging.m_buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_SurfaceStagingBufferIndex], surfaceStagingBuffer.m_buffer.Get(), 
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_SurfaceStagingBufferIndex], loadingContextMesh.m_meshPrimStaging.m_buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_RenderStagingBufferIndex], renderStaging.m_buffer.Get(), 
@@ -508,7 +501,8 @@ namespace BlitzenDX12
 			sizeof(uint32_t) * loadingContextMesh.m_vtxIdxStaging.m_validDataIndex);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_LODBuffer.buffer.Get(), 0, loadingContextMesh.m_lodDataStaging.m_buffer.Get(), 0,
 			sizeof(BlitzenEngine::LodData)* loadingContextMesh.m_lodDataStaging.m_validDataIndex);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, surfaceStagingBuffer.m_buffer.Get(), 0, surfaceStagingBuffer.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_surfaceBuffer.buffer.Get(), 0, loadingContextMesh.m_meshPrimStaging.m_buffer.Get(), 0, 
+			sizeof(BlitzenEngine::PrimitiveSurface) * loadingContextMesh.m_meshPrimStaging.m_validDataIndex);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainVtxBuffer.buffer.Get(), 0, terrainVtxPosStagingBuffer.m_buffer.Get(), 0, 
 			terrainVtxPosStagingBuffer.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_terrainIdxBuffer.m_buffer.Get(), 0, terrainVtxIdxStagingBuffer.m_buffer.Get(), 0,

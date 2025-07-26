@@ -21,8 +21,11 @@ namespace BlitzenWorld
 
 		BLIT_ASSERT(camera.viewData.deltaTime >= 0.f && camera.viewData.deltaTime <= BlitzenCore::GCMaxTimeStep);
 
+		// Collects platform messages
 		BlitzenPlatform::DispatchEvents(context.pPlatform);
+		// Dispatches event callbacks based on the platform messages
 		BlitzenCore::DispatchUserEvents(&context);
+		// Checks for held down keys
 		context.m_controllers[context.m_activeControllerIDX].DispatchHeldDownKeyEvents(pWORLD->deltaTime);
 		if (context.m_controllerState != ControllerState::Game)
 		{

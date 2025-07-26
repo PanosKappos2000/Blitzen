@@ -331,6 +331,11 @@ namespace BlitzenWorld
         return GSBlitzenWorld->mResidents.mTransforms.m_staticTransformCount;
     }
 
+    void AddResourceNameToWORLD(const char* resourceName)
+    {
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(resourceName));
+    }
+
     bool LoadWorldMapResources(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
     {
         size_t resourceNameSizeArr[1000];
@@ -348,13 +353,14 @@ namespace BlitzenWorld
             auto loadMeshFromDiskRes = BlitzenEngine::LoadMeshFromDisk(pWORLD->mResourceNames[n].GetClassic(), mappedFile, pRenderingResources->m_meshContext);
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)loadMeshFromDiskRes))
             {
-                BLIT_FATAL("%s: Failed to load mesh from disk. Error code: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::LOAD_MESH_FROM_STRING_RES_TO_STRING(loadMeshFromDiskRes));
+                BLIT_FATAL("%s: Failed to load mesh from file: %s. Error code: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mResourceNames[n].GetClassic(), 
+                    BlitzenEngine::LOAD_MESH_FROM_STRING_RES_TO_STRING(loadMeshFromDiskRes));
                 return false;
             }
 
             if (!BlitzenEngine::CopyMeshResourcesToStagingBuffer(&pRenderingResources->m_meshContext, pRenderingResources->mLoadingContextMesh))
             {
-                BLIT_ERROR("%s: Failed to upload bunny mesh resources to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+                BLIT_ERROR("%s: Failed to upload resources to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
                 return false;
             }
         }
@@ -362,7 +368,7 @@ namespace BlitzenWorld
         return true;
     }
 
-    bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
+    bool RenderingResourcesInit(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
         // Loads blitzen logo texture for engine load screen
         pResources->m_textureManager.ALLOC();
@@ -400,55 +406,6 @@ namespace BlitzenWorld
         BlitzenEngine::AllocateLoadingContextMesh(pRenderer, pResources->mLoadingContextMesh);
 
         BLIT_DBLOG("CHECKPOINT ALLOC");
-
-        //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        // Some configurations allow visual debug toggling, which requires collider shape resources to be uploaded
-        //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#if defined(BLIT_VISUAL_DEBUG)
-        //BLIT_ASSERT_MESSAGE(pResources->m_meshContext.m_meshCount == BLIT_HLSL_COLLIDER_RESOURCE_OFFSET, "Collider shapes should be loaded starting from the 4th mesh for now");
-        //
-        //uint32_t sphereMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/sphere.obj", BlitzenEngine::GCSphereShapeMeshName) };
-        //if (sphereMeshID == BlitzenCore::Ce_MaxMeshCount)
-        //{
-        //    BLIT_ERROR("%s: Failed to load sphere shape mesh resource", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
-        //
-        //if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
-        //{
-        //    BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for sphere shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
-        //
-        //uint32_t cubeMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/cube.obj", BlitzenEngine::GCCubeShapeMeshName) };
-        //if (cubeMeshID == BlitzenCore::Ce_MaxMeshCount)
-        //{
-        //    BLIT_ERROR("%s: Failed to load cube shape mesh resources", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
-        //
-        //if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
-        //{
-        //    BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for cube shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
-        //
-        //uint32_t capsuleMeshID{ LoadMeshFromObj(pResources->m_meshContext, "Assets/Meshes/capsule.obj", BlitzenEngine::GCCapsuleShapeMeshName) };
-        //if (capsuleMeshID == BlitzenCore::Ce_MaxMeshCount)
-        //{
-        //    BLIT_ERROR("%s: Failed to load capsule shape mesh resources", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
-        //
-        //if (!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
-        //{
-        //    BLIT_ERROR("%s: Failed to copy mesh resources to staging buffer for capsule shape mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
-        //
-        //BLIT_ASSERT_MESSAGE(sphereMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeSphere && capsuleMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeCapsule &&
-        //    cubeMeshID - BLIT_HLSL_COLLIDER_RESOURCE_OFFSET == BlitzenColliderTypeAABB, "Collider shape IDs should match offset for debug compute shader");
-#endif
 
         GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
 
@@ -525,6 +482,15 @@ namespace BlitzenWorld
         }
         GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCDefaultHumanMeshName));
 
+        // Global residents pointer
+        BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&pWORLD->mResidents);
+        // Grid Collider indices
+        pWORLD->mCollisionGrid.ALLOC_IDX();
+        // Collision Message allocation
+        pWORLD->mResidents.MColliders.ALLOC_MSG();
+        BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
+        BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
+
         // Upload resource names to map file
         if (!BlitzenEngine::UploadWORLDMapResourceNamesToDisk(BlitzenEngine::GCDefaultWorldMapName, GSBlitzenWorld->mResourceNames, GSBlitzenWorld->mResourceNameCount))
         {
@@ -532,40 +498,19 @@ namespace BlitzenWorld
             return false;
         }
 
-#else
+        pResources->m_terrainContainer.ALLOC();
+        BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
 
-#endif
-
-        // Loads the resources from the map
+        //Loads the resources from the map
         if (!LoadWorldMapResources(GSBlitzenWorld, pResources))
         {
             return false;
         }
 
-        BLIT_DBLOG("CHECKPOINT RESOURCES");
-
-        pResources->m_terrainContainer.ALLOC();
-
-        BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
-        BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
-
-        // Success
-        return true;
-    }
-
-    void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, int argc, char** argv)
-    {
-#if defined(BLIT_VISUAL_DEBUG)
-        pWORLD->mDbgData.collisionGridVertices = reinterpret_cast<BlitML::float3*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE,
-            sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellCount * BlitML::GCQuadVertexCount));
-
-        pWORLD->mCollisionGrid.GenerateGridCellDrawData(pWORLD->mDbgData.collisionGridVertices);
-#endif
-
         BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
         sceneCtx.pRenderer = pWORLD->BMPR.Data();
         sceneCtx.pResidents = &pWORLD->mResidents;
-        sceneCtx.pResources = pRenderingResources;
+        sceneCtx.pResources = pResources;
 
         BlitCL::DynamicArray<BlitzenEngine::SceneContext> scenes{};
 
@@ -583,28 +528,16 @@ namespace BlitzenWorld
 
 #if defined(LOAD_CMD_ARG_GLTF_FILEPATHS)
 
-        if (argc > 1)
-        {
-            BlitzenEngine::SceneContext defaultGltf{};
-            defaultGltf.m_name = argv[1];
-            defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
-            scenes.PushBack(defaultGltf);
-        }
+        const char* gltfFilepath = "gltfFilepath";
+        BlitzenEngine::SceneContext defaultGltf{};
+        defaultGltf.m_name = gltfFilepath;
+        defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
+        scenes.PushBack(defaultGltf);
 #endif
         sceneCtx.m_sceneArr = scenes.Data();
         sceneCtx.m_sceneCount = (uint32_t)scenes.GetSize();
 
-        BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pRenderingResources->m_terrainContainer));
-
-        //BlitzenEngine::MESH_PRIMITIVE_CREATE_CONTEXT meshPrimitiveCtx{};
-        //meshPrimitiveCtx.m_indexCount = pRenderingResources->m_terrainContainer.terrainIndexCount;
-        //meshPrimitiveCtx.m_indices = pRenderingResources->m_terrainContainer.terrainIndices;
-        //meshPrimitiveCtx.m_materialID = 0;
-        //meshPrimitiveCtx.m_vertexCount = pRenderingResources->m_terrainContainer.terrainVertexCount;
-        //meshPrimitiveCtx.m_vertices = pRenderingResources->m_terrainContainer.terrainVertices;
-        //pRenderingResources->m_meshContext.m_meshPrimitives.GenerateSurface(pRenderingResources->m_meshContext.m_triangles, pRenderingResources->m_meshContext.m_clusters, meshPrimitiveCtx);
-
-        auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx, pRenderingResources->mLoadingContextMesh) };
+        auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx, pResources->mLoadingContextMesh) };
 
         BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
         if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)sceneRes))
@@ -613,27 +546,43 @@ namespace BlitzenWorld
             BLIT_ASSERT(false);
         }
 
-        BlitzenEngine::RenderingLoadingContextRenderObjects loadingContextObj{};
-        if constexpr (GCBlitGpuColliderFlag)
+        // Finally uploads to map
+        auto worldMapRes = BlitzenEngine::UploadWORLDMapToDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)worldMapRes), BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
+        if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)worldMapRes))
         {
-            if (!BlitzenEngine::UploadToColliderAMaxRadStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderAMaxRad,
-                BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
-            {
-                BLIT_ERROR("%s: Failed to upload AMaxRad collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-                BLIT_ASSERT(false);
-            }
-            if (!BlitzenEngine::UploadToColliderBMinTypeStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderBMinType,
-                BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
-            {
-                BLIT_ERROR("%s: Failed to upload BMinType collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-                BLIT_ASSERT(false);
-            }
+            BLIT_ERROR("%s: Failed to upload world map to disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
+            BLIT_ASSERT(false);
         }
 
-#if defined(BLIT_GAME_TEST)
-        pWORLD->m_activeCameraIDX = 1;
-        BlitzenWorld::SetupCameraAttachment(pWORLD->m_mainCharacter, BlitML::float3(0.f, 2.f, -4.f), true);
-#endif
+#else
+        GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
+        // Global residents pointer
+        BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&pWORLD->mResidents);
+        // Grid Collider indices
+        pWORLD->mCollisionGrid.ALLOC_IDX();
+        // Collision Message allocation
+        pWORLD->mResidents.MColliders.ALLOC_MSG();
+        BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
+        BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
+
+        pResources->m_terrainContainer.ALLOC();
+        BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
+
+        //Loads the resources from the map
+        if (!LoadWorldMapResources(GSBlitzenWorld, pResources))
+        {
+                return false;
+        }
+
+        #if defined(BLIT_VISUAL_DEBUG)
+
+            pWORLD->mDbgData.collisionGridVertices = reinterpret_cast<BlitML::float3*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE,
+                sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellCount * BlitML::GCQuadVertexCount));
+
+            pWORLD->mCollisionGrid.GenerateGridCellDrawData(pWORLD->mDbgData.collisionGridVertices);
+
+        #endif
 
         constexpr uint32_t CollisionGridOrigin = 0;
         pWORLD->mCollisionGrid.DefineGrid(CollisionGridOrigin);
@@ -643,30 +592,57 @@ namespace BlitzenWorld
         pWORLD->MBmprCollisionWorkConstant.minBounds = pWORLD->mCollisionGrid.m_minBounds;
         pWORLD->MBmprCollisionWorkConstant.maxBounds = pWORLD->mCollisionGrid.m_maxBounds;
 
+        // Finally uploads to map
         auto worldMapRes = BlitzenEngine::UploadWORLDMapToDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
-		BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)worldMapRes), BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)worldMapRes), BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
         if(BlitzenCore::BLIT_CHECK_FAIL((int64_t)worldMapRes))
         {
             BLIT_ERROR("%s: Failed to upload world map to disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
             BLIT_ASSERT(false);
-		}
-
-#if defined(CUSTOM_FILE_TEST) && !defined(MOVING_RESIDENT_TEST) && !defined(DEFAULT_GLTF_SCENE_TEST) && !defined(LOAD_CMD_ARG_GLTF_FILEPATHS) && !defined(RENDERER_STRESS_TEST)
-
-#else
-
-        if (!BlitzenEngine::UploadResourcesToGPU(pWORLD->BMPR.Data(), pWORLD->m_drawContext, pRenderingResources->mLoadingContextMesh, loadingContextObj))
-        {
-            BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
-            BLIT_ASSERT(false);
-            return;
         }
 
-        BLIT_DBLOG("GPU");
-
 #endif
-        pRenderingResources->m_meshContext.m_triangles.CLEAN();
-        pRenderingResources->m_meshContext.m_clusters.CLEAN();
+        BlitzenEngine::RenderingLoadingContextRenderObjects loadingContextObj{};
+        if constexpr (GCBlitGpuColliderFlag)
+        {
+            if (!BlitzenEngine::UploadToColliderAMaxRadStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderAMaxRad,
+                BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
+            {
+                BLIT_ERROR("%s: Failed to upload AMaxRad collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+                BLIT_ASSERT(false);
+                return false;
+            }
+            if (!BlitzenEngine::UploadToColliderBMinTypeStagingBuffer_MKII(pWORLD->BMPR.Data(), loadingContextObj, pWORLD->mResidents.MColliders.MColliderBMinType,
+                BLIT_MAX_WORLD_VARIABLE_COUNT + pWORLD->mResidents.MColliders.mStaticColliderCount))
+            {
+                BLIT_ERROR("%s: Failed to upload BMinType collider data", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+                BLIT_ASSERT(false);
+                return false;
+            }
+        }
+
+        if (!BlitzenEngine::UploadResourcesToGPU(pWORLD->BMPR.Data(), pWORLD->m_drawContext, pResources->mLoadingContextMesh, loadingContextObj))
+        {
+            BLIT_FATAL("Renderer failed to setup, Blitzen shutting down");
+            return false;
+        }
+
+        pResources->m_meshContext.m_triangles.CLEAN();
+        pResources->m_meshContext.m_clusters.CLEAN();
+
+        // Use game like logic, instead of free flight logic
+        #if defined(BLIT_GAME_TEST)
+            pWORLD->m_activeCameraIDX = 1;
+            BlitzenWorld::SetupCameraAttachment(pWORLD->m_mainCharacter, BlitML::float3(0.f, 2.f, -4.f), true);
+        #endif
+
+        // Success
+        return true;
+    }
+
+    void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, int argc, char** argv)
+    {
+        
     }
 
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr)

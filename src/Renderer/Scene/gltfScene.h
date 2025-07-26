@@ -29,7 +29,7 @@ namespace BlitzenEngine
         RenderingLoadingContextMesh& loadingContextMesh);
 
     bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, const CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, uint32_t previousMaterialCount, 
-        RenderingLoadingContextMesh& loadingContextMesh);
+        RenderingLoadingContextMesh& loadingContextMesh, uint32_t& meshNum);
 
     bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, const CgltfScope& cgltfScope, const BlitCL::DynamicArray<uint32_t>& meshIndices);
 }

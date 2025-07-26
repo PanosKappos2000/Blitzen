@@ -10,6 +10,7 @@
 #include "BlitzenMathLibrary/blitML.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Renderer/Resources/RapidFile/blitResourceRPF.h"
 
 namespace BlitzenEngine
 {
@@ -255,38 +256,14 @@ namespace BlitzenEngine
 
         uint32_t meshID = context.m_meshCount;
 
-        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mmf{};
-        UPLOAD_MESH_RPF_CONTEXT rpfCtx{};
-        rpfCtx.pMesh = &context.m_meshes[meshID];
-        rpfCtx.m_surfaceArray = &context.m_meshPrimitives.m_meshPrimitives[0];
-        rpfCtx.m_meshPrimitiveData = &context.m_meshPrimitives.m_meshPrimitiveData[0];
-        rpfCtx.m_meshPrimitiveCount = 1;
-        rpfCtx.m_lodDataArr = context.m_meshPrimitives.m_LODs;
-        rpfCtx.m_lodCount = context.m_meshPrimitives.m_LODCount;
-        rpfCtx.m_boundsArr = &context.m_meshPrimitives.m_boundingSpheres[0];
-        rpfCtx.m_vtxIdxArr = context.m_triangles.m_indices;
-        rpfCtx.m_idxCount = context.m_triangles.m_vtxIdxCount;
-        rpfCtx.m_clusterIdxArr = nullptr;
-        rpfCtx.m_vtxPosArr = context.m_triangles.m_vertexPositions;
-        rpfCtx.m_vtxNormalsArr = context.m_triangles.m_vertexNormals;
-        rpfCtx.m_vtxTangArr = context.m_triangles.m_vertexNormals;
-        rpfCtx.m_vtxTexCoordArr = context.m_triangles.m_vertexUVs;
-        rpfCtx.m_vtxCount = context.m_triangles.m_vertexCount;
-        rpfCtx.m_colliderAMaxRad = &context.m_meshPrimitives.mColliders[0].AMaxRad;
-        rpfCtx.m_colliderBMinType = &context.m_meshPrimitives.mColliders[0].BMinType;
-        rpfCtx.m_clustersBuiltFlag = false;
-        rpfCtx.m_clusterVtxArr = nullptr;
-        rpfCtx.m_clusterSphereArr = nullptr;
-        rpfCtx.m_clusterConeArr = nullptr;
-        uint32_t m_clusterCount = 0;
-        auto uploadRes{ UploadMeshToDisk(meshName, mmf, rpfCtx) };
+		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile;
+        auto uploadRes{ UploadMeshToDisk(meshName, memoryMappedFile, context, false) };
         BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL(int64_t(uploadRes)), UPLOAD_MESH_TO_DISK_RES_TO_STRING(uploadRes))
         if(BlitzenCore::BLIT_CHECK_FAIL(int64_t(uploadRes)))
         {
             BLIT_ERROR("%s: Failed to upload mesh resource to disk. Received error: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, UPLOAD_MESH_TO_DISK_RES_TO_STRING(uploadRes));
             return false;
         }
-
         context.ResetMeshContext();
 
         return true;
@@ -434,15 +411,16 @@ namespace BlitzenEngine
         return LOAD_MESH_FROM_DISK_RES::SUCCESS;
     }
 
-    UPLOAD_MESH_TO_DISK_RES UploadMeshToDisk(const char* meshName, BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& memoryMappedFile, UPLOAD_MESH_RPF_CONTEXT& rpfCtx)
+    UPLOAD_MESH_TO_DISK_RES UploadMeshToDisk(const char* meshName, BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& memoryMappedFile, MeshResources& context, bool clustersBuildFlag)
     {
         BlitCL::String stringContainer;
         const char* meshPath = GetRpfMeshPath(meshName, stringContainer);
 
         constexpr size_t LCStartOfRPFOffset = 0;
+        constexpr size_t LCMeshPrimitiveCountPerRPF = 1;
 
         // Gets the required file size for the current resource
-        size_t writeSize{ GetRpfMeshSize(rpfCtx) };
+        size_t writeSize{ GetRpfMeshSize(context, clustersBuildFlag) };
         if (writeSize == CE_GET_RPF_MESH_SIZE_ERROR_RETURN_CODE)
         {
             return UPLOAD_MESH_TO_DISK_RES::UPLOAD_SIZE_TOO_BIG;
@@ -462,101 +440,112 @@ namespace BlitzenEngine
         fileOffset += GcRapidMeshFileHeaderSize;
         BLIT_RPF_MESH_FILE_HEADER_ARR headerArr{ 0 };
         // Opens memory mapped file for writing
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_meshPrimitiveCount * sizeof(PrimitiveSurface), rpfCtx.m_surfaceArray))
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, LCMeshPrimitiveCountPerRPF * sizeof(PrimitiveSurface), &context.m_meshPrimitives.m_meshPrimitives[0]))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_MESH_PRIMITIVES;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_MESH_PRIMITIVE_ID] = fileOffset;
-        fileOffset += rpfCtx.m_meshPrimitiveCount * sizeof(PrimitiveSurface);
+        fileOffset += LCMeshPrimitiveCountPerRPF * sizeof(PrimitiveSurface);
 
         // Mesh primitives (head of data)
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_meshPrimitiveCount * sizeof(MeshPrimitiveData), rpfCtx.m_meshPrimitiveData))
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, LCMeshPrimitiveCountPerRPF * sizeof(MeshPrimitiveData), &context.m_meshPrimitives.m_meshPrimitiveData[0]))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_MESH_PRIMITIVE_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_MESH_PRIMITIVE_DATA_ID] = fileOffset;
-        fileOffset += rpfCtx.m_meshPrimitiveCount * sizeof(MeshPrimitiveData);
+        fileOffset += LCMeshPrimitiveCountPerRPF * sizeof(MeshPrimitiveData);
 
         // Mesh primitive has one or more levels of detail
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_lodCount * sizeof(LodData), rpfCtx.m_lodDataArr))
+		size_t lodDataSize = context.m_meshPrimitives.m_LODCount * sizeof(LodData);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, lodDataSize, &context.m_meshPrimitives.m_LODs))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_LOD_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_LOD_DATA_ID] = fileOffset;
-        fileOffset += rpfCtx.m_lodCount * sizeof(LodData);
+        fileOffset += lodDataSize;
 
         // Mesh primitive can generate bounding sphere based on its vertices
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_meshPrimitiveCount * sizeof(BoundingSphere), rpfCtx.m_boundsArr))
+		size_t boundingSphereDataSize = LCMeshPrimitiveCountPerRPF * sizeof(BoundingSphere);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, boundingSphereDataSize, &context.m_meshPrimitives.m_boundingSpheres[0]))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_BOUNDING_SPHERE_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_BOUNDING_SPHERE_ID] = fileOffset;
-        fileOffset += rpfCtx.m_meshPrimitiveCount * sizeof(BoundingSphere);
+        fileOffset += boundingSphereDataSize;
 
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_vtxCount * sizeof(VtxPos), rpfCtx.m_vtxPosArr))
+		size_t vertexPositionsDataSize = context.m_triangles.m_vertexCount * sizeof(VtxPos);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, vertexPositionsDataSize, context.m_triangles.m_vertexPositions))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_VERTEX_POSITIONS_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_VTX_POS_DATA_ID] = fileOffset;
-        fileOffset += rpfCtx.m_vtxCount * sizeof(VtxPos);
+        fileOffset += vertexPositionsDataSize;
 
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_vtxCount * sizeof(VtxNormals), rpfCtx.m_vtxNormalsArr))
+		size_t vertexNormalsDataSize = context.m_triangles.m_vertexCount * sizeof(VtxNormals);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, vertexNormalsDataSize, context.m_triangles.m_vertexNormals))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_VERTEX_NORMALS_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_VTX_NRM_DATA_ID] = fileOffset;
-        fileOffset += rpfCtx.m_vtxCount * sizeof(VtxNormals);
+        fileOffset += vertexNormalsDataSize;
 
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_vtxCount * sizeof(VtxTangents), rpfCtx.m_vtxTangArr))
+		size_t vertexTangentsDataSize = context.m_triangles.m_vertexCount * sizeof(VtxTangents);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, vertexTangentsDataSize, context.m_triangles.m_vertexTangents))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_VERTEX_TANGENTS_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_VTX_TNG_DATA_ID] = fileOffset;
-        fileOffset += rpfCtx.m_vtxCount * sizeof(VtxTangents);
+        fileOffset += vertexTangentsDataSize;
 
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_vtxCount * sizeof(VtxTexCoords), rpfCtx.m_vtxTexCoordArr))
+		size_t vertexTexCoordsDataSize = context.m_triangles.m_vertexCount * sizeof(VtxTexCoords);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, vertexTexCoordsDataSize,context.m_triangles.m_vertexUVs))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_VERTEX_TEXTURE_COORDINATES_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_VTX_COORD_DATA_ID] = fileOffset;
-        fileOffset += rpfCtx.m_vtxCount * sizeof(VtxTexCoords);
+        fileOffset += vertexTexCoordsDataSize;
 
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_idxCount * sizeof(uint32_t), rpfCtx.m_vtxIdxArr))
+		size_t vertexIndicesDataSize = context.m_triangles.m_vtxIdxCount * sizeof(uint32_t);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, vertexIndicesDataSize, context.m_triangles.m_indices))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_VERTEX_INDICES;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_VTX_IDXS_DATA_ID] = fileOffset;
-        fileOffset += rpfCtx.m_idxCount * sizeof(uint32_t);
+        fileOffset += vertexIndicesDataSize;
 
-        if (rpfCtx.m_clustersBuiltFlag)
+        if (clustersBuildFlag)
         {
-            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_clusterCount * sizeof(ClusterVertices), rpfCtx.m_clusterVtxArr))
+			size_t clusterVerticesDataSize = context.m_clusters.m_clusterCount * sizeof(ClusterVertices);
+            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, clusterVerticesDataSize, context.m_clusters.m_clusterVertices))
             {
                 return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_VERTEX_DATA;
             }
             headerArr[BLIT_RPF_MESH_FILE_HEADER_CLUSTER_VTXS_DATA_ID] = fileOffset;
-            fileOffset += rpfCtx.m_clusterCount * sizeof(ClusterVertices);
+            fileOffset += clusterVerticesDataSize;
 
-            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_clusterCount * sizeof(ClusterSphere), rpfCtx.m_clusterSphereArr))
+			size_t clusterSpheresDataSize = context.m_clusters.m_clusterCount * sizeof(ClusterSphere);
+            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, clusterSpheresDataSize, context.m_clusters.m_clusterSpheres))
             {
                 return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_SPHERES;
             }
             headerArr[BLIT_RPF_MESH_FILE_HEADER_CLUSTER_SPHERES_DATA_ID] = fileOffset;
-            fileOffset += rpfCtx.m_clusterCount * sizeof(ClusterSphere);
+            fileOffset += clusterSpheresDataSize;
 
-            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_clusterCount * sizeof(ClusterCone), rpfCtx.m_clusterConeArr))
+			size_t clusterConesDataSize = context.m_clusters.m_clusterCount * sizeof(ClusterCone);
+            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, clusterConesDataSize, context.m_clusters.m_clusterCones))
             {
                 return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_CONES;
             }
             headerArr[BLIT_RPF_MESH_FILE_HEADER_CLUSTER_CONES_DATA_ID] = fileOffset;
-            fileOffset += rpfCtx.m_clusterCount * sizeof(ClusterCone);
+            fileOffset += clusterConesDataSize;
 
-            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, rpfCtx.m_idxCount * sizeof(uint32_t), rpfCtx.m_clusterIdxArr))
+			size_t clusterIdxDataSize = context.m_triangles.m_vtxIdxCount * sizeof(uint32_t);
+            if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, clusterIdxDataSize, context.m_clusters.m_clusterIndices))
             {
                 return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_CLUSTER_INDICES;
             }
             headerArr[BLIT_RPF_MESH_FILE_HEADER_CLUSTER_IDXS_DATA_ID] = fileOffset;
-            fileOffset += rpfCtx.m_idxCount * sizeof(uint32_t);
+            fileOffset += clusterIdxDataSize;
         }
         else
         {
@@ -566,19 +555,21 @@ namespace BlitzenEngine
             headerArr[BLIT_RPF_MESH_FILE_HEADER_CLUSTER_IDXS_DATA_ID] = 0;
         }
 
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, sizeof(ColliderAMaxRad), rpfCtx.m_colliderAMaxRad))
+		size_t colliderAMaxRadDataSize = LCMeshPrimitiveCountPerRPF * sizeof(ColliderAMaxRad);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, colliderAMaxRadDataSize, &context.m_meshPrimitives.mColliders[0].AMaxRad))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_COLLIDER_AMAXRAD_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_COLLIDER_AMAXRAD_DATA_ID] = fileOffset;
-        fileOffset += sizeof(ColliderAMaxRad);
+        fileOffset += colliderAMaxRadDataSize;
 
-        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, sizeof(ColliderBMinType), rpfCtx.m_colliderBMinType))
+        size_t colliderBMinTypeDataSize = LCMeshPrimitiveCountPerRPF * sizeof(ColliderBMinType);
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, colliderBMinTypeDataSize, &context.m_meshPrimitives.mColliders[0].BMinType))
         {
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_UPLOAD_COLLIDER_BMINTYPE_DATA;
         }
         headerArr[BLIT_RPF_MESH_FILE_HEADER_COLLIDER_BMINTYPE_DATA_ID] = fileOffset;
-        fileOffset += sizeof(ColliderBMinType);
+        fileOffset += colliderBMinTypeDataSize;
 
         // Write to the head at the end
         if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, LCStartOfRPFOffset, GCRapidMeshFileHeaderElementCount * sizeof(size_t), headerArr))

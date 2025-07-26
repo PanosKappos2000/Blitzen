@@ -643,7 +643,6 @@ namespace BlitzenEngine
 		ctx.mColliderBMinTypeStaging.m_validDataIndex += count;
 
 		return 1;
-		return 1;
 	}
 
 	uint8_t UploadNewGeometryDataToSSBOs(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextRenderObjects& instanceData, BlitzenDX12::LoadingContextMesh& resourceData)

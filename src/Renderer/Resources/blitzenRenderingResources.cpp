@@ -54,7 +54,7 @@ namespace BlitzenEngine
 
         pMeshes->m_meshPrimitives.m_meshPrimitives[pMeshes->m_meshPrimitives.m_meshPrimitivesCount - 1].lodOffset += pMeshes->m_meshPrimitives.mMapLodCount;
 
-        if (!UploadToMeshPrimitiveStagingBuffer(loadingContextMesh, pMeshes->m_meshPrimitives.m_meshPrimitives, 1))
+        if (!UploadToMeshPrimitiveStagingBuffer(loadingContextMesh, &pMeshes->m_meshPrimitives.m_meshPrimitives[pMeshes->m_meshPrimitives.m_meshPrimitivesCount - 1], 1))
         {
             BLIT_ERROR("%s: Failed to upload level of Detail data to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;

@@ -103,7 +103,7 @@ namespace BlitCL
 
         inline ~String()
 		{
-			if (m_capacity)
+			if (m_capacity != 0)
 			{
 				BlitzenCore::BlitFree<char>(StrAlloc, m_data, m_capacity);
 			}

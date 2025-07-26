@@ -3,15 +3,19 @@
 
 namespace BlitzenEngine
 {
-	size_t GetRpfMeshSize(UPLOAD_MESH_RPF_CONTEXT& rpfCtx)
+	size_t GetRpfMeshSize(MeshResources& context, bool clustersBuildFlag)
 	{
-        size_t writeSize = rpfCtx.m_idxCount * sizeof(uint32_t) + rpfCtx.m_meshPrimitiveCount * sizeof(PrimitiveSurface) + rpfCtx.m_lodCount * sizeof(LodData)
-            + rpfCtx.m_vtxCount * sizeof(VtxPos) + rpfCtx.m_vtxCount * sizeof(VtxNormals) + rpfCtx.m_vtxCount * sizeof(VtxTangents) + rpfCtx.m_vtxCount * sizeof(VtxTexCoords) +
-            GcRapidMeshFileHeaderSize + CE_BLITZEN_RAPID_MESH_FILE_PADDING_SIZE;// Finally adds header size and padding
+        constexpr uint32_t LCMeshPrimitiveCountPerRpfMeshFile = 1;
+        size_t writeSize = LCMeshPrimitiveCountPerRpfMeshFile * sizeof(PrimitiveSurface) + LCMeshPrimitiveCountPerRpfMeshFile * sizeof(BoundingSphere) 
+			+ LCMeshPrimitiveCountPerRpfMeshFile * sizeof(MeshPrimitiveData) + LCMeshPrimitiveCountPerRpfMeshFile * sizeof(ColliderAMaxRad) + LCMeshPrimitiveCountPerRpfMeshFile * sizeof(ColliderBMinType) +
+            + context.m_meshPrimitives.m_LODCount * sizeof(LodData) + context.m_triangles.m_vertexCount * sizeof(VtxPos) + context.m_triangles.m_vertexCount * sizeof(VtxNormals) 
+            + context.m_triangles.m_vertexCount * sizeof(VtxTangents) + context.m_triangles.m_vertexCount * sizeof(VtxTexCoords) + context.m_triangles.m_vtxIdxCount * sizeof(uint32_t) 
+            + GcRapidMeshFileHeaderSize + CE_BLITZEN_RAPID_MESH_FILE_PADDING_SIZE;// Finally adds header size and padding
         // Adds cluster if they are requested for this mesh
-        if (rpfCtx.m_clustersBuiltFlag)
+        if (clustersBuildFlag)
         {
-            writeSize += rpfCtx.m_clusterCount * sizeof(ClusterVertices) + rpfCtx.m_clusterCount * sizeof(ClusterSphere) + rpfCtx.m_clusterCount * sizeof(ClusterCone) + rpfCtx.m_idxCount * sizeof(uint32_t);
+            writeSize += context.m_clusters.m_clusterCount * sizeof(ClusterVertices) + context.m_clusters.m_clusterCount * sizeof(ClusterSphere) + context.m_clusters.m_clusterCount * sizeof(ClusterCone) + 
+                context.m_clusters.m_clusterCount * sizeof(uint32_t);
         }
 
         if (writeSize > GcRapidMeshFileSizeThreshold)
