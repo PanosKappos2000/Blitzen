@@ -191,8 +191,6 @@ namespace BlitzenEngine
             m_meshPrimitiveData[m_meshPrimitivesCount].m_primitiveTransparencyFlags = BlitzenCore::BB_FALSE;
         }
 
-        m_meshPrimitivesCount++;
-
         return SurfaceCreateRes::SUCCESS;
 	}
 

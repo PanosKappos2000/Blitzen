@@ -184,7 +184,7 @@ namespace BlitzenEngine
 		return UPLOAD_WORLD_MAP_RES::SUCCESS;
 	}
 
-	bool LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths)
+	uint32_t LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths)
 	{
 		BlitCL::String stringContainer;
 		const char* filepath = BuildWorldMapResourceNamesFilepath(stringContainer, mapName);
@@ -193,25 +193,65 @@ namespace BlitzenEngine
 		if (!BlitzenPlatform::FilepathExists(filepath))
 		{
 			BLIT_ERROR("%s: Filepath for map resource names was never created", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-			return false;
+			return GCResourceNameMaxCount;
 		}
 
 		constexpr bool LCBinaryFileFlag = false;
 		if (!scopedFile.Open(filepath, BlitzenPlatform::FileModes::Read, LCBinaryFileFlag))
 		{
 			BLIT_ERROR("%s: Failed to load file for map resource names read", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-			return false;
+			return GCResourceNameMaxCount;
 		}
 
 		size_t tempLength = 0;
 		uint32_t index = 0;
+		if (!scopedFile.m_pHandle || !names[index].GetDataPointer() || !*names[index].GetDataPointer()) return GCResourceNameMaxCount;
+
 		while (BlitzenPlatform::FilesystemReadLine(scopedFile, GCResourceNameMaxSize, names[index].GetDataPointer(), &tempLength))
 		{
 			nameLengths[index++] = tempLength;
+			names[index].Append("");
 		}
 
-		return true;
+		return index;
 
+	}
+
+	uint32_t GetResourceIDFromWORLDMapResourceFile(const char* resourceName, const char* mapName)
+	{
+		BlitCL::String nameBuffer{ GCResourceNameMaxSize };
+
+		BlitCL::String stringContainer;
+		const char* filepath = BuildWorldMapResourceNamesFilepath(stringContainer, mapName);
+
+		BlitzenPlatform::C_FILE_SCOPE scopedFile;
+		if (!BlitzenPlatform::FilepathExists(filepath))
+		{
+			return GCGetResourceIDFromWORLDMapResourceFileErrorCode;
+		}
+
+		constexpr bool LCBinaryFileFlag = false;
+		if (!scopedFile.Open(filepath, BlitzenPlatform::FileModes::Read, BlitzenPlatform::GCFileBinaryFlagFalse))
+		{
+			return GCGetResourceIDFromWORLDMapResourceFileErrorCode;
+		}
+
+		size_t length = 0;
+		uint32_t IDX = 0;
+		// Goes through all lines 
+		while (BlitzenPlatform::FilesystemReadLine(scopedFile, GCResourceNameMaxSize, nameBuffer.GetDataPointer(), &length))
+		{
+			// Returns line id if it finds the name
+			if (strcmp(nameBuffer.GetClassic(), resourceName) == 0)
+			{
+				return IDX;
+			}
+			// Increments line id otherwise
+			IDX++;
+		}
+
+		// Error if file ends
+		return GCGetResourceIDFromWORLDMapResourceFileErrorCode;
 	}
 
 	bool UploadWORLDMapResourceNamesToDisk(const char* mapName, const BlitCL::String* names, uint32_t nameCount)

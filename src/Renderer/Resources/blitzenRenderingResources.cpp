@@ -60,13 +60,8 @@ namespace BlitzenEngine
             return false;
         }
 
-        // Restart mesh vertices but save mesh vertex count for offsets
-        pMeshes->m_meshPrimitives.mMapLodCount += pMeshes->m_meshPrimitives.m_LODCount;
-        pMeshes->m_triangles.m_mapVtxCount += pMeshes->m_triangles.m_vertexCount;
-        pMeshes->m_triangles.m_mapIdxCount += pMeshes->m_triangles.m_vtxIdxCount;
-        pMeshes->m_triangles.m_vtxIdxCount = 0;
-        pMeshes->m_triangles.m_vertexCount = 0;
-        pMeshes->m_meshPrimitives.m_LODCount = 0;
+        pMeshes->UpdateMapMeshContext();
+        pMeshes->ResetMeshContext();
 
         // success
         return true;

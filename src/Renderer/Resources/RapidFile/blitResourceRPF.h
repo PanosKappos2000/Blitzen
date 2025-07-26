@@ -27,9 +27,13 @@ namespace BlitzenEngine
         BLIT_RPF_MESH_FILE_HEADER_CLUSTER_VTXS_DATA_ID = 9,
         BLIT_RPF_MESH_FILE_HEADER_CLUSTER_SPHERES_DATA_ID = 10,
         BLIT_RPF_MESH_FILE_HEADER_CLUSTER_CONES_DATA_ID = 11,
-        BLIT_RPF_MESH_FILE_HEADER_CLUSTER_IDXS_DATA_ID = 12
+        BLIT_RPF_MESH_FILE_HEADER_CLUSTER_IDXS_DATA_ID = 12,
+        BLIT_RPF_MESH_FILE_HEADER_COLLIDER_AMAXRAD_DATA_ID = 13,
+        BLIT_RPF_MESH_FILE_HEADER_COLLIDER_BMINTYPE_DATA_ID = 14,
+
+        BLIT_RPF_MESH_FILE_HEADER_MAX = 15
     };
-    constexpr uint32_t GCRapidMeshFileHeaderElementCount = 13;
+    constexpr uint32_t GCRapidMeshFileHeaderElementCount = BLIT_RPF_MESH_FILE_HEADER_MAX;
     static_assert(GCRapidMeshFileHeaderElementCount * sizeof(size_t) < GcRapidMeshFileHeaderSize);
 
     using BLIT_RPF_MESH_FILE_HEADER_ARR = size_t[GCRapidMeshFileHeaderElementCount];
@@ -43,6 +47,8 @@ namespace BlitzenEngine
         LodData* m_lodDataArr;
         uint32_t m_lodCount;
         BoundingSphere* m_boundsArr;
+        ColliderAMaxRad* m_colliderAMaxRad;
+        ColliderBMinType* m_colliderBMinType;
         uint32_t* m_vtxIdxArr;
         uint32_t m_idxCount;
         uint32_t* m_clusterIdxArr;

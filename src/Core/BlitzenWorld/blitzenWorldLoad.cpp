@@ -41,6 +41,7 @@ namespace BlitzenWorld
             context.m_activeControllerIDX = 1;
             context.m_controllerState = ControllerState::Game;
 #endif
+            BLIT_DBLOG("OUT");
             
             context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
 

@@ -50,7 +50,11 @@ namespace BlitzenEngine
 	};
 	LOAD_WORLD_MAP_RES LoadWORLDMapFromDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
 
-	bool LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* sizes);
+	constexpr uint32_t GCLoadWORLDMapResourcenamesFromDiskErrorCode = GCResourceNameMaxCount;
+	uint32_t LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* sizes);
+
+	constexpr uint32_t GCGetResourceIDFromWORLDMapResourceFileErrorCode = GCResourceNameMaxCount;
+	uint32_t GetResourceIDFromWORLDMapResourceFile(const char* resourceName, const char* mapName);
 
 	enum class UPLOAD_WORLD_MAP_RES : int64_t
 	{

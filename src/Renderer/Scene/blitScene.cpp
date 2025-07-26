@@ -34,13 +34,13 @@ namespace BlitzenEngine
             {
             case SceneType::GltfSceneTest:
             {
-                auto res{ ManageGltf(scene.m_name, sceneContext.pResources, sceneContext.pResidents, sceneContext.pRenderer, &scene, loadingContextMesh) };
-                BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading gltf scene");
-                if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(res)))
-                {
-                    BLIT_ERROR("%s: Failed to create gltf scene", BlitzenCore::CE_SCENE_SYSTEM_NAME);
-                    return res;
-                }
+                //auto res{ ManageGltf(scene.m_name, sceneContext.pResources, sceneContext.pResidents, sceneContext.pRenderer, &scene, loadingContextMesh) };
+                //BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading gltf scene");
+                //if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(res)))
+                //{
+                //    BLIT_ERROR("%s: Failed to create gltf scene", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+                //    return res;
+                //}
                 break;
             }
             case SceneType::RendererStressTest:
@@ -119,20 +119,28 @@ namespace BlitzenEngine
 
         uint32_t start = pResidents->m_renders.RENDER_COUNT;
 
-        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mmf;
-        auto bunnyMeshRes{ LoadMeshFromDisk(BlitzenEngine::GCDefaultMeshName, mmf, pResources->m_meshContext) };
-        BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)bunnyMeshRes));
-        if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(bunnyMeshRes)))
+        uint32_t bunnyID = GetResourceIDFromWORLDMapResourceFile(BlitzenEngine::GCDefaultMeshName, GCDefaultWorldMapName);
+        if (bunnyID == GCGetResourceIDFromWORLDMapResourceFileErrorCode)
         {
             return SCENE_CREATE_RES::FAILED_TO_LOAD_RESOURCE_FROM_DISK;
         }
 
-        uint32_t bunnyID = pResources->m_meshContext.m_meshPrimitives.m_meshPrimitivesCount - 1;
-
-        if(!CopyMeshResourcesToStagingBuffer(&pResources->m_meshContext, pResources->mLoadingContextMesh))
+        uint32_t kittenID = GetResourceIDFromWORLDMapResourceFile(BlitzenEngine::GCDefaultKittenMeshName, GCDefaultWorldMapName);
+        if (kittenID == GCGetResourceIDFromWORLDMapResourceFileErrorCode)
         {
-            BLIT_ERROR("%s: Failed to upload bunny mesh resources to staging buffer", BlitzenCore::CE_SCENE_SYSTEM_NAME);
-            return SCENE_CREATE_RES::FAILED_TO_UPLOAD_MESH_PRIMITIVES_TO_STAGING_BUFFER;
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_RESOURCE_FROM_DISK;
+        }
+
+        uint32_t dragonID = GetResourceIDFromWORLDMapResourceFile(BlitzenEngine::GCDefaultDragonMeshName, GCDefaultWorldMapName);
+        if (dragonID == GCGetResourceIDFromWORLDMapResourceFileErrorCode)
+        {
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_RESOURCE_FROM_DISK;
+        }
+
+        uint32_t humanID = GetResourceIDFromWORLDMapResourceFile(BlitzenEngine::GCDefaultHumanMeshName, GCDefaultWorldMapName);
+        if (humanID == GCGetResourceIDFromWORLDMapResourceFileErrorCode)
+        {
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_RESOURCE_FROM_DISK;
         }
 
         // Bunnies
@@ -164,7 +172,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultKittenMeshName].firstSurface;
+            residentCtx.m_resourceID = kittenID;
 
             // Randomize transform
             MeshTransform randomTransform;
@@ -188,7 +196,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultDragonMeshName].firstSurface;
+            residentCtx.m_resourceID = dragonID;
 
             // Randomize transform
             MeshTransform randomTransform;
@@ -212,7 +220,7 @@ namespace BlitzenEngine
         {
             RESIDENT_CREATE_CONTEXT residentCtx{};
             residentCtx.m_flags = 0;
-            residentCtx.m_resourceID = pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultHumanMeshName].firstSurface;
+            residentCtx.m_resourceID = humanID;
 
             // Randomize transform
             MeshTransform randomTransform;
@@ -278,11 +286,17 @@ namespace BlitzenEngine
         constexpr uint32_t WV_ROTATING_KITTEN_COUNT = 5'000;
         constexpr float WV_ROTATING_KITTEN_SCALE = 1.f;
 
+        uint32_t kittenID = GetResourceIDFromWORLDMapResourceFile(BlitzenEngine::GCDefaultKittenMeshName, GCDefaultWorldMapName);
+        if (kittenID == GCGetResourceIDFromWORLDMapResourceFileErrorCode)
+        {
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_RESOURCE_FROM_DISK;
+        }
+
         for (uint32_t wv = 0; wv < WV_ROTATING_KITTEN_COUNT; ++wv)
         {
             WORLD_VARIABLE_CREATE_CONTEXT wvCtx{};
             wvCtx.residentCtx.m_flags = RESIDENT_CREATE_WORLD_VARIABLE;
-            wvCtx.residentCtx.m_resourceID = RequestMeshResources_STATIC_ACCESS(BlitzenEngine::GCDefaultKittenMeshName).firstSurface;
+            wvCtx.residentCtx.m_resourceID = kittenID;
 
             RENDER_OBJECT_TYPE renderType = RENDER_OBJECT_TYPE::OPAQUE_DYNAMIC;
             wvCtx.residentCtx.m_isMoveable = BLIT_FAT_TRUE;

@@ -49,6 +49,8 @@ int main(int argc, char* argv[])
     BlitzenPlatform::PlatformArgs platformArgs{&platform, &SYSTEM, WORLD->BMPR.Data(), &dasher};
     BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
 
+    //BlitzenWorld::LoadingLoop(argc, argv, SYSTEM, WORLD->m_drawContext);
+
     // LOADING RESOURCES
     std::thread loadingThread
     {

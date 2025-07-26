@@ -42,35 +42,10 @@ namespace BlitzenWorld
 		}
 		else if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::SETUP_AFTER_LOAD)
 		{
+			BLIT_DBLOG("Prepare");
 			BlitzenEngine::PrepareRendererForRuntime(context.pWORLD->BMPR.Data());
+			BLIT_DBLOG("Out of prepare");
 			context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::RUNNING;
-		}
-
-		switch (context.BLITZEN_ENGINE.m_state)
-		{
-		case BlitzenCore::EngineState::LOADING:
-		{
-			break;
-		}
-		case BlitzenCore::EngineState::RUNNING:
-		{
-			
-			break;
-		}
-		case BlitzenCore::EngineState::SUSPENDED:
-		{
-			break;
-		}
-		case BlitzenCore::EngineState::SETUP_AFTER_LOAD:
-		{
-			
-
-			break;
-		}
-		default:
-		{
-			break;
-		}
 		}
 	}
 }

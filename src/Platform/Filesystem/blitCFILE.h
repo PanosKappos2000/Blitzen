@@ -11,6 +11,9 @@ namespace BlitzenPlatform
         NONE = 0x3
     };
 
+    constexpr bool GCFileBinaryFlagFalse = false;
+    constexpr bool GCFileBinaryFlagTrue = true;
+
     class C_FILE_SCOPE
     {
     public:

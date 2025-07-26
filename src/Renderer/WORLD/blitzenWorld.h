@@ -40,7 +40,7 @@ namespace BlitzenWorld
         BlitzenEngine::CollisionWorkConstant MBmprCollisionWorkConstant;
 
         const char* mActiveMapName;
-        BlitCL::String mResourceNames[BlitzenEngine::GCResourceNameMaxCount];
+        BlitCL::String mResourceNames[BlitzenEngine::GCResourceNameMaxCount]{""};
         uint32_t mResourceNameCount = 0;
 
         float deltaTime{0.f};
@@ -62,6 +62,9 @@ namespace BlitzenWorld
     bool RenderingResourcesInit(BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer);
 
     void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, int argc, char** argv);
+
+    // Takes the names of the resources needed by a map from the .bmstr file and load them to the staging buffers held by loadingContextMesh
+    bool LoadWorldMapResources(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
 
     void RegisterFrameEvent(BlitzenEngine::Resident resident, BlitzenCore::FrameEventPfn function);
 
