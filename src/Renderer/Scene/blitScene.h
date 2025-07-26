@@ -5,6 +5,9 @@
 
 namespace BlitzenEngine
 {
+    constexpr float GCRenderingStressTestRandomTransformMultiplier = 3'000.f;
+    constexpr float GCMovingResidentTestRandomTransformMultiplier = 100.f;
+
     enum class SceneType
     {
         RendererStressTest = 0,
@@ -112,7 +115,7 @@ namespace BlitzenEngine
 
     SCENE_CREATE_RES CreateScene(SCENE_CREATE_CONTEXT& sceneCtx, RenderingLoadingContextMesh& loadingContextMesh);
 
-    SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier, BlitzenEngine::SceneContext* pScene);
+    SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier);
 
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier);
 

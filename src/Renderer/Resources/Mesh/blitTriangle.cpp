@@ -8,13 +8,13 @@ namespace BlitzenEngine
 {
 	void PrimitiveContainer::ALLOC()
 	{
-		m_vertices = reinterpret_cast<Vertex*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(Vertex)));
-		m_indices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t)));
+		m_vertices = reinterpret_cast<Vertex*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, GCMaxVertexCountInMeshResource * sizeof(Vertex)));
+		m_indices = reinterpret_cast<uint32_t*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, GCMaxVertexIndicesInMeshResource * sizeof(uint32_t)));
 
-		m_vertexPositions = reinterpret_cast<VtxPos*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxPos)));
-		m_vertexUVs = reinterpret_cast<VtxTexCoords*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxTexCoords)));
-		m_vertexNormals = reinterpret_cast<VtxNormals*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxNormals)));
-		m_vertexTangents = reinterpret_cast<VtxTangents*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, Ce_MaxWorldVertexCount * sizeof(VtxTangents)));
+		m_vertexPositions = reinterpret_cast<VtxPos*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, GCMaxVertexCountInMeshResource * sizeof(VtxPos)));
+		m_vertexUVs = reinterpret_cast<VtxTexCoords*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, GCMaxVertexCountInMeshResource * sizeof(VtxTexCoords)));
+		m_vertexNormals = reinterpret_cast<VtxNormals*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, GCMaxVertexCountInMeshResource * sizeof(VtxNormals)));
+		m_vertexTangents = reinterpret_cast<VtxTangents*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE, GCMaxVertexCountInMeshResource * sizeof(VtxTangents)));
 	}
 
 	void PrimitiveContainer::CLEAN()

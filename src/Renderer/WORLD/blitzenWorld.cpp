@@ -370,7 +370,9 @@ namespace BlitzenWorld
 
     bool RenderingResourcesInit(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
-        // Loads blitzen logo texture for engine load screen
+        // Calls the renderer's texture loading
+        // As the default texture adds the Blitzen logo
+        // This is fixed behavior for now
         pResources->m_textureManager.ALLOC();
         if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->m_textureManager.m_singleTextureHandle, "Assets/Textures/BlitzenLSV1.dds"))
         {
@@ -378,42 +380,61 @@ namespace BlitzenWorld
             return false;
         }
 
-        // Configures renderer to show texture during loading
+        // Configures idle work for renderer.
+        // Loading is done in a separate thread.
+        // The renderer can show a loading screen as it happens
         if (!BlitzenEngine::UploadRendererIdleWorkResources(pRenderer, BlitzenEngine::RENDERER_IDLE_MODE::BLITZEN_LOGO))
         {
             BLIT_ERROR("%s: Failed to put renderer on Idle Work Mode", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        BLIT_DBLOG("CHECKPOINT LOGO");
-
-        // Does not return false by design, might change later.
+        // Adds the texture to the cpu side texture manager.
+        // This does not mean anything for now.
+        // But I will probably want to couple textures with resources and maps / grid partitions
         if (!pResources->m_textureManager.AddTexture(BlitzenCore::Ce_DefaultTextureName))
         {
             BLIT_ERROR("%s: Something went wrong with texture map", BlitzenCore::CE_WORLD_SYSTEM_NAME);
         }
-
+        
+        // Adds a default material.
+        // Materials are loaded directly.
+        // They do not have a binary format yet.
         if (!pResources->m_textureManager.AddMaterial(0, 0, 0, 0, BlitzenCore::Ce_DefaultMaterialName))
         {
             BLIT_ERROR("Rendering resources failed");
             return false;
         }
 
+        // Allocates space for vertices and indices
         pResources->m_meshContext.m_triangles.ALLOC();
         pResources->m_meshContext.m_clusters.ALLOC();
 
-        // Allocates staging buffer that will temporarily hold map resource context, until everything is ready to be uploaded to the GPU
+        // Allocates staging buffers for mesh resources
+        // When a resource is loaded the staging buffers will be invoked to hold on to it
+        // Once everything in the map is ready, they will be uploaded to GPU side buffers
         BlitzenEngine::AllocateLoadingContextMesh(pRenderer, pResources->mLoadingContextMesh);
 
-        BLIT_DBLOG("CHECKPOINT ALLOC");
-
+        // Gives an active map to the WORLD structure
+        // For now, I only have the default map, 
+        // But this is supposed to be read from the WRLD file
         GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
 
+        // This is supposed to only be defined by the build system on first load
+        // Right now it does not work very well 
 #if defined(BLITZEN_START_NEW)
+
+        // Creates the WRLD(project) file, for the first time.
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
         BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
-
+        // Safety assertion for visual debug mesh resources
         BLIT_ASSERT(pResources->m_meshContext.m_meshCount == BLIT_HLSL_COLLIDER_RESOURCE_OFFSET);
+
+        //------------------------------------------------------------------------------------------------
+        // Default resources from OBJs and GLTFs are loaded for the first time below.
+        // Each one is loaded to their own rpf file
+        // Resource names are also added to the map files, so that the map know what it needs.
+        //------------------------------------------------------------------------------------------------
 
         // Loads sphere mesh obj for collider debug view
         // Converts it to binary format file (.blitMesh on project folder)
@@ -482,31 +503,33 @@ namespace BlitzenWorld
         }
         GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCDefaultHumanMeshName));
 
-        // Global residents pointer
+        // Static access pointers
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&pWORLD->mResidents);
-        // Grid Collider indices
         pWORLD->mCollisionGrid.ALLOC_IDX();
-        // Collision Message allocation
         pWORLD->mResidents.MColliders.ALLOC_MSG();
         BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
         BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
 
-        // Upload resource names to map file
+        // All resource names are uploaded to the WORLD file
         if (!BlitzenEngine::UploadWORLDMapResourceNamesToDisk(BlitzenEngine::GCDefaultWorldMapName, GSBlitzenWorld->mResourceNames, GSBlitzenWorld->mResourceNameCount))
         {
             BLIT_ERROR("%s: Failed to load resource names to map files", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
+        // Terrain generation.
+        // For now terrain is completely decoupled. 
+        // But it will probably be a more sensible part of the pipeline in the future.
         pResources->m_terrainContainer.ALLOC();
         BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
 
-        //Loads the resources from the map
+        // Loads back the resources whose names were written in the map file
         if (!LoadWorldMapResources(GSBlitzenWorld, pResources))
         {
             return false;
         }
 
+        // Popullates resident system 
         BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
         sceneCtx.pRenderer = pWORLD->BMPR.Data();
         sceneCtx.pResidents = &pWORLD->mResidents;
@@ -516,35 +539,35 @@ namespace BlitzenWorld
 
 #if defined(RENDERER_STRESS_TEST)
 
-        BlitzenEngine::SceneContext stress{};
-        stress.m_type = BlitzenEngine::SceneType::RendererStressTest;
-        scenes.PushBack(stress);
-
-#endif
-
-        BlitzenEngine::SceneContext moving{};
-        moving.m_type = BlitzenEngine::SceneType::MovingResidentTest;
-        scenes.PushBack(moving);
-
-#if defined(LOAD_CMD_ARG_GLTF_FILEPATHS)
-
-        const char* gltfFilepath = "gltfFilepath";
-        BlitzenEngine::SceneContext defaultGltf{};
-        defaultGltf.m_name = gltfFilepath;
-        defaultGltf.m_type = BlitzenEngine::SceneType::GltfSceneTest;
-        scenes.PushBack(defaultGltf);
-#endif
-        sceneCtx.m_sceneArr = scenes.Data();
-        sceneCtx.m_sceneCount = (uint32_t)scenes.GetSize();
-
-        auto sceneRes{ BlitzenEngine::CreateScene(sceneCtx, pResources->mLoadingContextMesh) };
-
-        BLIT_ASSERT(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)sceneRes));
-        if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)sceneRes))
+        // Loads the stress test
+        auto geometryStressTest{ BlitzenEngine::LoadGeometryStressTest(&pWORLD->mResidents, pResources, BlitzenEngine::GCRenderingStressTestRandomTransformMultiplier) };
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)geometryStressTest), "Fatal error encountered while loading renderer stress test scene");
+        if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(geometryStressTest)))
         {
-            BLIT_ERROR("%s: Error while loading scenes. Received error message: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(sceneRes));
-            BLIT_ASSERT(false);
+            BLIT_ERROR("%s: Failed to create rendering stress test scene. Received error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(geometryStressTest));
+            return false;
         }
+
+#endif
+
+        // Loads the moving residents
+        auto movingResidentTestRes{ BlitzenEngine::LoadMovingResidentTest(&pWORLD->mResidents, BlitzenEngine::GCMovingResidentTestRandomTransformMultiplier) };
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)movingResidentTestRes), "Fatal error encountered while loading moving resident test scene");
+        if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(movingResidentTestRes)))
+        {
+            BLIT_ERROR("%s: Failed to create moving resident test scene. Received error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(movingResidentTestRes));
+            return false;
+        }
+        
+        // Creates a grid that will be used to split residents in cells based on their position on the x and z axis
+        // This position is used to lighten the load on the collision systems
+        constexpr uint32_t CollisionGridOrigin = 0;
+        pWORLD->mCollisionGrid.DefineGrid(CollisionGridOrigin);
+        pWORLD->mCollisionGrid.CreateCells();
+        pWORLD->mCollisionGrid.PlaceStatics(pWORLD->mResidents.mTransforms.m_transforms, pWORLD->mResidents.mTransforms.m_staticTransformCount);
+        pWORLD->MBmprCollisionWorkConstant.workCount = pWORLD->mResidents.mWorldVariableCount;
+        pWORLD->MBmprCollisionWorkConstant.minBounds = pWORLD->mCollisionGrid.m_minBounds;
+        pWORLD->MBmprCollisionWorkConstant.maxBounds = pWORLD->mCollisionGrid.m_maxBounds;
 
         // Finally uploads to map
         auto worldMapRes = BlitzenEngine::UploadWORLDMapToDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
@@ -554,6 +577,9 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Failed to upload world map to disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
             BLIT_ASSERT(false);
         }
+
+        //auto loadWorldMapRes = BlitzenEngine::LoadWORLDMapFromDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
+        //BLIT_ASSERT_MESSAGE
 
 #else
         GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
@@ -565,14 +591,13 @@ namespace BlitzenWorld
         pWORLD->mResidents.MColliders.ALLOC_MSG();
         BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
         BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
-
         pResources->m_terrainContainer.ALLOC();
         BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
 
         //Loads the resources from the map
         if (!LoadWorldMapResources(GSBlitzenWorld, pResources))
         {
-                return false;
+            return false;
         }
 
         #if defined(BLIT_VISUAL_DEBUG)

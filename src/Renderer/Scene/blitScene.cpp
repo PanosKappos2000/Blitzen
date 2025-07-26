@@ -22,8 +22,6 @@ namespace BlitzenEngine
             return SCENE_CREATE_RES::INVALID_RENDERING_RESOURCES_HANDLE;
         }
 
-        constexpr float RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER = 3'000.f;
-		constexpr float MOVING_RESIDENT_TEST_RANDOM_TRANSFORM_MULTIPLIER = 100.f;
         constexpr float CUSTOM_FILE_TEST_RANDOM_TRANSFORM_MULTIPLIER = 2'000.f;
         constexpr float COLLISION_TEST_MULTIPLIER = 2'000.f;
 
@@ -45,7 +43,7 @@ namespace BlitzenEngine
             }
             case SceneType::RendererStressTest:
             {
-                auto res{ LoadGeometryStressTest(sceneContext.pResidents, sceneContext.pResources, RENDERING_STRESS_TEST_RANDOM_TRANSFORM_MULTIPLIER, &scene) };
+                auto res{ LoadGeometryStressTest(sceneContext.pResidents, sceneContext.pResources, GCRenderingStressTestRandomTransformMultiplier) };
                 BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading renderer stress test scene");
                 if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(res)))
                 {
@@ -56,7 +54,7 @@ namespace BlitzenEngine
             }
             case SceneType::MovingResidentTest:
             {
-                auto res{ LoadMovingResidentTest(sceneContext.pResidents, MOVING_RESIDENT_TEST_RANDOM_TRANSFORM_MULTIPLIER) };
+                auto res{ LoadMovingResidentTest(sceneContext.pResidents, GCMovingResidentTestRandomTransformMultiplier) };
                 BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)res), "Fatal error encountered while loading moving resident test scene");
                 if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(res)))
                 {
@@ -97,7 +95,7 @@ namespace BlitzenEngine
         return SCENE_CREATE_RES::SUCCESS;
     }
 
-    SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier, BlitzenEngine::SceneContext* pScene)
+    SCENE_CREATE_RES LoadGeometryStressTest(WORLD_RESIDENTS* pResidents, BlitzenEngine::RenderingResources* pResources, float transformMultiplier)
     {
         constexpr uint32_t bunnyCount = 2'500'000;
         constexpr uint32_t kittenCount = 1'500'000;
@@ -111,11 +109,6 @@ namespace BlitzenEngine
         constexpr float DragonScale = 0.5f;
 
         BLIT_WARN("Loading Renderer Stress test with %i objects", totalCount);
-
-        pScene->m_meshRefArr[0] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultMeshName];
-        pScene->m_meshRefArr[1] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultKittenMeshName];
-        pScene->m_meshRefArr[2] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultDragonMeshName];
-        pScene->m_meshRefArr[3] = &pResources->m_meshContext.m_meshMap[BlitzenEngine::GCDefaultHumanMeshName];
 
         uint32_t start = pResidents->m_renders.RENDER_COUNT;
 
