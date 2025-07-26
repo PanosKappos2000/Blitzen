@@ -575,10 +575,16 @@ namespace BlitzenWorld
         if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)worldMapRes))
         {
             BLIT_ERROR("%s: Failed to upload world map to disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
-            BLIT_ASSERT(false);
+            return false;
         }
 
-        //auto loadWorldMapRes = BlitzenEngine::LoadWORLDMapFromDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
+        auto loadWorldMapRes = BlitzenEngine::LoadWORLDMapFromDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)loadWorldMapRes), BlitzenEngine::GET_LOAD_WRLD_MAP_RES_ENUM_STRING(loadWorldMapRes));
+        if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)loadWorldMapRes))
+        {
+            BLIT_ERROR("%s: Failed to load world map from disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_LOAD_WRLD_MAP_RES_ENUM_STRING(loadWorldMapRes));
+            return false;
+        }
         //BLIT_ASSERT_MESSAGE
 
 #else

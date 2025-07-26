@@ -50,6 +50,91 @@ namespace BlitzenEngine
 			return LOAD_WORLD_MAP_RES::ERROR_OPENING_FILE;
 		}
 
+		WorldMapHeader worldMapHeader;
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, GCBlitStartOfFileOffset, sizeof(size_t) * GCMapFileHeaderElementCount, worldMapHeader))
+		{
+			return LOAD_WORLD_MAP_RES::FAILED_TO_LOAD_HEADER;
+		}
+
+		pWorldResidents->mResidentCount = (uint32_t)worldMapHeader[WorldMapHeaderResidentCount];
+		pWorldResidents->mWorldVariableCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariableCount];
+		pWorldResidents->m_renders.m_transparentStaticCount = (uint32_t)worldMapHeader[WorldMapHeaderTransparentRenderCount];
+		pWorldResidents->m_renders.m_opaqueStaticCount = (uint32_t)worldMapHeader[WorldMapHeaderStaticRenderCount];
+		pWorldResidents->mWithVelocityCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariablesWithVelocityCount];
+		pWorldResidents->mWithGravityCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariablesWithGravityCount];
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderRenderObjectsID], 
+			sizeof(RenderObject) * (BLIT_MAX_WORLD_VARIABLE_COUNT + pWorldResidents->m_renders.m_opaqueStaticCount), pWorldResidents->m_renders.m_renders))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_RENDER_OBJECT_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldTransformsID],
+			sizeof(MeshTransform) * (BLIT_MAX_WORLD_VARIABLE_COUNT + pWorldResidents->m_renders.m_opaqueStaticCount), pWorldResidents->mTransforms.m_transforms))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_TRANSFORM_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldVariableTransformsID],
+			sizeof(WVTransform) * pWorldResidents->mWorldVariableCount, pWorldResidents->WVTransforms))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_VARIABLE_TRANSFORM_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldVariablesDataID],
+			sizeof(WORLD_VARIABLE) * pWorldResidents->mWorldVariableCount, pWorldResidents->MWorldVariables))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_VARIABLE_TYPEID_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldVariableVelocitiesID],
+			sizeof(WVVelocity) * pWorldResidents->mWithGravityCount, pWorldResidents->WVVelocityData))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_VARIABLE_VELOCITIES_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderVisibilityBoundingSpheresID],
+			sizeof(BoundingSphere) * (BLIT_MAX_WORLD_VARIABLE_COUNT + pWorldResidents->m_renders.m_opaqueStaticCount), pWorldResidents->MColliders.m_boundingSpheres))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_VISIBILITY_BOUNDING_SPHERE_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderCollidersAMaxRadID],
+			sizeof(ColliderAMaxRad) * (BLIT_MAX_WORLD_VARIABLE_COUNT + pWorldResidents->mTransforms.m_staticTransformCount), pWorldResidents->MColliders.MColliderAMaxRad))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_COLLIDER_AMAXRAD_DATA_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderCollidersBMinTypeID],
+			sizeof(ColliderBMinType) * (BLIT_MAX_WORLD_VARIABLE_COUNT + pWorldResidents->mTransforms.m_staticTransformCount), pWorldResidents->MColliders.MColliderBMinType))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_COLLIDER_BMINTYPE_DATA_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderCollidersTransformedAMaxRadID],
+			sizeof(ColliderAMaxRad) * pWorldResidents->mWorldVariableCount, pWorldResidents->MColliders.MTransformedColliderAMaxRad))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_TRANSFORMED_COLLIDER_AMAXRAD_DATA_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderCollidersTransformedBMinTypeID],
+			sizeof(ColliderBMinType) * pWorldResidents->mWorldVariableCount, pWorldResidents->MColliders.MTransformedColliderBMinType))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_TRANSFORMED_COLLIDER_BMINTYPE_DATA_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderCollidersWorldEffectsID],
+			sizeof(ColliderWorldEffects) * pWorldResidents->mWorldVariableCount, pWorldResidents->MColliders.WVColliderHitData))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_COLLIDER_WORLD_EFFECTS_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapheaderCollidersTemporalDataCountersID],
+			sizeof(uint32_t) * pWorldResidents->mWorldVariableCount, pWorldResidents->MColliders.wvAllowedTemporalCount))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_COLLIDER_TEMPORAL_COUNTERS_ARRAY;
+		}
+
 		return LOAD_WORLD_MAP_RES::SUCCESS;
 	}
 
