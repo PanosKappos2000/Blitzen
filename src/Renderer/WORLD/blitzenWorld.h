@@ -42,6 +42,8 @@ namespace BlitzenWorld
         const char* mActiveMapName;
         BlitCL::String mResourceNames[BlitzenEngine::GCResourceNameMaxCount];
         uint32_t mResourceNameCount = 0;
+        BlitCL::String mSceneNames[BlitzenEngine::GCSceneNameMaxCount];
+        uint32_t mSceneNameCount = 0;
 
         float deltaTime{0.f};
 
@@ -71,6 +73,8 @@ namespace BlitzenWorld
     void DispatchCollisionSystems(BLITZEN_WORLD* pWORLD);
 
     void ResolveCollisionEvents(BlitzenEngine::ColliderContainer& colliders);
+
+    void InitializeMapContext(BLITZEN_WORLD* pWORLD);
 
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr);
 

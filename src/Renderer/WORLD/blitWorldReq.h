@@ -16,5 +16,6 @@ namespace BlitzenWorld
 
 	uint32_t GetStaticTransformCount();
 
-	void AddResourceNameToWORLD(const char* resourceName);
+	// Adds new name to WORLD map
+	void UpdateWORLDMapResourceNames(const char* newResourceName);
 }

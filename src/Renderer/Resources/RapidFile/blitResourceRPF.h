@@ -12,6 +12,8 @@ namespace BlitzenEngine
     constexpr size_t GcRapidMeshFileHeaderSize = 1000;
     constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_PADDING_SIZE = 1000;
     constexpr const char* GCRapidMeshDirectoryPath = BLITZEN_CLIENT_RPFMESH_DIRECTORY;
+    constexpr uint32_t GCImportedSceneNodesHeaderElementCount = 4;
+    constexpr const char* GCImportedSceneNodesFileName = "nodes.blitnr";
 
     // Straight enum for ease of use
     enum BLIT_RPF_MESH_FILE_HEADER_IDS
@@ -154,6 +156,25 @@ namespace BlitzenEngine
         default: return "UPLOAD_MESH_TO_DISK_RES::UNKNOWN";
         }
     }
+
+    enum BLIT_RPF_IMPORTED_SCENE_NODES_HEADER
+    {
+        BlitRpfImportedSceneNodesHeaderNodeCountID = 0,
+        BlitRpfImportedSceneNodesHeaderResourceCountID = 1,
+        BlitRpfImportedSceneNodesHeaderRenderObjectsID = 2,
+        BlitRpfImportedSceneNodesHeaderTransformsID = 3,
+
+        BlitRpfImportedSceneNodesHeaderMax = 4
+    };
+    static_assert(BlitRpfImportedSceneNodesHeaderMax == GCImportedSceneNodesHeaderElementCount);
+
+    using ImportedSceneNodesHeaderArr = size_t[GCImportedSceneNodesHeaderElementCount];
+
+    // Takes resident data that is unique to an imported scene and uploads it to disk
+    // This allows for Blitzen to keep the scene within its context on disk and update it when loading.
+    BLIT_OFFLINE_FUNC bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, RenderObject* renderObjects, MeshTransform* meshTransforms);
+
+    const char* BuildImportedSceneNodesFilepath(const char* sceneName, BlitCL::String& stringContainer);
 
     // FOR FUTURE REFERENCE. Probably v2
     struct MeshRpfOffsetAccessor

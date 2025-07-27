@@ -11,6 +11,8 @@ namespace BlitzenEngine
 	constexpr const char* GCClientWorldMapDirectory = BLITZEN_CLIENT_WORLDMAPS_DIRECTORY;
 	constexpr uint32_t GCResourceNameMaxSize = 100;
 	constexpr uint32_t GCResourceNameMaxCount = 1000;
+	constexpr uint32_t GCSceneNameMaxCount = 100;
+	constexpr uint32_t GCSceneNameMaxSize = 100;
 	constexpr uint32_t GCMapFileHeaderElementCount = 20;
 
 	enum WorldMapHeaderIndices : uint32_t
@@ -67,11 +69,14 @@ namespace BlitzenEngine
 	};
 	LOAD_WORLD_MAP_RES LoadWORLDMapFromDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
 
-	constexpr uint32_t GCLoadWORLDMapResourcenamesFromDiskErrorCode = GCResourceNameMaxCount;
-	uint32_t LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* sizes);
+	constexpr uint32_t GCLoadWORLDMapResourceNamesFromDiskErrorCode = GCResourceNameMaxCount;
+	uint32_t LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths);
 
 	constexpr uint32_t GCGetResourceIDFromWORLDMapResourceFileErrorCode = GCResourceNameMaxCount;
 	uint32_t GetResourceIDFromWORLDMapResourceFile(const char* resourceName, const char* mapName);
+
+	constexpr uint32_t GCLoadWORLDMapSceneNamesFromDiskErrorCode = GCSceneNameMaxCount;
+	uint32_t LoadWORLDMapSceneNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths);
 
 	enum class UPLOAD_WORLD_MAP_RES : int64_t
 	{
@@ -97,7 +102,11 @@ namespace BlitzenEngine
 	};
 	UPLOAD_WORLD_MAP_RES UploadWORLDMapToDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
 
+	// Uploads single resource names to the bmst file that will be responsible for finding resources during load
 	BLIT_OFFLINE_FUNC bool UploadWORLDMapResourceNamesToDisk(const char* mapName, const BlitCL::String* names, uint32_t nameCount);
+
+	// Uploads scene names to the bmstr file that will be responsible for finding scene resources during load
+	BLIT_OFFLINE_FUNC bool UploadWORLDMapSceneNamesToDisk(const char* mapName, const BlitCL::String* names, uint32_t nameCount);
 
 	BLIT_OFFLINE_FUNC bool UpdateWorldMapResources(const char* filepath);
 

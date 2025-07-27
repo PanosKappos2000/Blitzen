@@ -5,6 +5,7 @@
 #include "BlitzenMathLibrary/blitMLSIMD.h"
 #include "Core/WrldFileManager/blitFileManager.h"
 #include "blitWorldMap.h"
+#include "Renderer/Scene/gltfScene.h"
 
 namespace BlitzenWorld
 {
@@ -331,17 +332,45 @@ namespace BlitzenWorld
         return GSBlitzenWorld->mResidents.mTransforms.m_staticTransformCount;
     }
 
-    void AddResourceNameToWORLD(const char* resourceName)
+    void UpdateWORLDMapResourceNames(const char* newResourceName)
     {
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(resourceName));
+        BLIT_ASSERT(GSBlitzenWorld->mResourceNameCount < BlitzenEngine::GCResourceNameMaxCount);
+        BLIT_ASSERT(strlen(newResourceName) <= BlitzenEngine::GCResourceNameMaxSize);
+
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(newResourceName);
+    }
+
+    static void UpdateWORLDMapResourceNames(BLITZEN_WORLD* pWORLD, const char* newResourceName)
+    {
+        BLIT_ASSERT(pWORLD->mResourceNameCount < BlitzenEngine::GCResourceNameMaxCount);
+        BLIT_ASSERT(strlen(newResourceName) <= BlitzenEngine::GCResourceNameMaxSize);
+
+        pWORLD->mResourceNames[pWORLD->mResourceNameCount++].CopyString(newResourceName);
+    }
+
+    static bool UpdateWORLDMapSceneNames(BLITZEN_WORLD* pWORLD, const char* newSceneName)
+    {
+        if (pWORLD->mSceneNameCount >= BlitzenEngine::GCSceneNameMaxCount)
+        {
+            BLIT_ERROR("Max scene count for map has been reached");
+            return false;
+        }
+
+        if (strlen(newSceneName) > BlitzenEngine::GCSceneNameMaxSize)
+        {
+            BLIT_ERROR("Scene name too long");
+            return false;
+        }
+
+        pWORLD->mSceneNames[pWORLD->mSceneNameCount++].CopyString(newSceneName);
     }
 
     bool LoadWorldMapResources(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
     {
-        size_t resourceNameSizeArr[1000];
+        size_t resourceNameSizeArr[BlitzenEngine::GCResourceNameMaxCount];
         pWORLD->mResourceNameCount = BlitzenEngine::LoadWORLDMapResourceNamesFromDisk(pWORLD->mActiveMapName, pWORLD->mResourceNames, resourceNameSizeArr);
 
-        if(pWORLD->mResourceNameCount == BlitzenEngine::GCLoadWORLDMapResourcenamesFromDiskErrorCode)
+        if(pWORLD->mResourceNameCount == BlitzenEngine::GCLoadWORLDMapResourceNamesFromDiskErrorCode)
         {
             BLIT_FATAL("%s: Failed to get resource names from map file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -363,6 +392,23 @@ namespace BlitzenWorld
                 BLIT_ERROR("%s: Failed to upload resources to staging buffer", BlitzenCore::CE_WORLD_SYSTEM_NAME);
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    bool LoadWorldMapScenes(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
+    {
+        size_t sceneNameSizeArr[BlitzenEngine::GCSceneNameMaxCount];
+        pWORLD->mSceneNameCount = BlitzenEngine::LoadWORLDMapSceneNamesFromDisk(pWORLD->mActiveMapName, pWORLD->mSceneNames, sceneNameSizeArr);
+
+        for (uint32_t n = 0; n < pWORLD->mSceneNameCount; ++n)
+        {
+            // Load resources from disk
+            // Load scene nodes from disk
+            // Update to current map context
+            // Upload resources to staging buffer
+            // Probably
         }
 
         return true;
@@ -418,11 +464,13 @@ namespace BlitzenWorld
         // Gives an active map to the WORLD structure
         // For now, I only have the default map, 
         // But this is supposed to be read from the WRLD file
-        GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
+        pWORLD->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
+
+        InitializeMapContext(pWORLD);
 
         // This is supposed to only be defined by the build system on first load
         // Right now it does not work very well 
-#if defined(CUS)
+#if defined(BLITZEN_START_NEW)
 
         // Creates the WRLD(project) file, for the first time.
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
@@ -444,7 +492,7 @@ namespace BlitzenWorld
             return false;
         }
         // Adds resource name to the world object
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCSphereShapeMeshName));
+        pWORLD->mResourceNames[pWORLD->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCSphereShapeMeshName));
 
         // Loads cube mesh obj for collilder debug view
         // Converts it to binary format file (.blitMesh on project folder)
@@ -517,6 +565,21 @@ namespace BlitzenWorld
             return false;
         }
 
+        auto gltfSceneTestRes{ BlitzenEngine::ManageGltf("../../GltfTestScenes/Scenes/Sponza/scene.gltf", "sponza", pResources, &pWORLD->mResidents, pRenderer) };
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)gltfSceneTestRes), "Fatal error encountered while loading gltf scene");
+        if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(gltfSceneTestRes)))
+        {
+            BLIT_ERROR("%s: Failed to create gltf scene", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+        UpdateWORLDMapSceneNames(pWORLD, "sponza");
+
+        if (!BlitzenEngine::UploadWORLDMapSceneNamesToDisk(BlitzenEngine::GCDefaultWorldMapName, pWORLD->mSceneNames, pWORLD->mSceneNameCount))
+        {
+            BLIT_ERROR("%s: Failed to load resource names to map files", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
         // Terrain generation.
         // For now terrain is completely decoupled. 
         // But it will probably be a more sensible part of the pipeline in the future.
@@ -524,7 +587,12 @@ namespace BlitzenWorld
         BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
 
         // Loads back the resources whose names were written in the map file
-        if (!LoadWorldMapResources(GSBlitzenWorld, pResources))
+        if (!LoadWorldMapResources(pWORLD, pResources))
+        {
+            return false;
+        }
+
+        if (!LoadWorldMapScenes(pWORLD, pResources))
         {
             return false;
         }
@@ -677,16 +745,26 @@ namespace BlitzenWorld
         
     }
 
+    void InitializeMapContext(BLITZEN_WORLD* pWORLD)
+    {
+        // Makes space for WORLD map resource names
+        for (auto& strContainer : pWORLD->mResourceNames)
+        {
+            strContainer.Resize(BlitzenEngine::GCResourceNameMaxCount);
+        }
+
+        for (auto& strContainer : pWORLD->mSceneNames)
+        {
+            strContainer.Resize(BlitzenEngine::GCSceneNameMaxCount);
+        }
+    }
+
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr)
     {
         BLIT_ASSERT_MESSAGE(GSBlitzenWorld == nullptr, "Tried to reinitialize WORLD pointer");
         GSBlitzenWorld = ptr;
 
-        // Makes space for WORLD map resource names
-        for (auto& strContainer : ptr->mResourceNames)
-        {
-            strContainer.Resize(BlitzenEngine::GCResourceNameMaxCount);
-        }
+        
     }
 
     BLITZEN_WORLD::~BLITZEN_WORLD()

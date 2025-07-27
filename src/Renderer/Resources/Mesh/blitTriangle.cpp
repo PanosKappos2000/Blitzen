@@ -19,17 +19,17 @@ namespace BlitzenEngine
 
 	void PrimitiveContainer::CLEAN()
 	{
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertices, Ce_MaxWorldVertexCount * sizeof(Vertex));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertices, GCMaxVertexCountInMeshResource * sizeof(Vertex));
 		m_vertices = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_indices, Ce_MaxWorldVertexIndicesCount * sizeof(uint32_t));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_indices, GCMaxVertexIndicesInMeshResource * sizeof(uint32_t));
 		m_indices = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexPositions, Ce_MaxWorldVertexCount * sizeof(VtxPos));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexPositions, GCMaxVertexCountInMeshResource * sizeof(VtxPos));
 		m_vertexPositions = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexUVs, Ce_MaxWorldVertexCount * sizeof(VtxTexCoords));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexUVs, GCMaxVertexCountInMeshResource * sizeof(VtxTexCoords));
 		m_vertexUVs = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexNormals, Ce_MaxWorldVertexCount * sizeof(VtxNormals));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexNormals, GCMaxVertexCountInMeshResource * sizeof(VtxNormals));
 		m_vertexNormals = nullptr;
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexTangents, Ce_MaxWorldVertexCount * sizeof(VtxTangents));
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::TRIANGLE, m_vertexTangents, GCMaxVertexCountInMeshResource * sizeof(VtxTangents));
 		m_vertexTangents = nullptr;
 	}
 

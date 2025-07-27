@@ -39,4 +39,16 @@ namespace BlitzenEngine
 
         return stringContainer.GetClassic();
     }
+
+    const char* BuildImportedSceneNodesFilepath(const char* sceneName, BlitCL::String& stringContainer)
+    {
+        if (stringContainer.GetSize() != 0) stringContainer.Clear();
+
+        stringContainer.CopyString(GCRapidMeshDirectoryPath);
+        stringContainer.Append(const_cast<char*>(sceneName));
+        stringContainer.Append("/");
+        stringContainer.Append(const_cast<char*>(GCImportedSceneNodesFileName));
+
+        return stringContainer.GetClassic();
+    }
 }

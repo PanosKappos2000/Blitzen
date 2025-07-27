@@ -579,4 +579,55 @@ namespace BlitzenEngine
 
         return UPLOAD_MESH_TO_DISK_RES::SUCCESS;
     }
+
+    bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, RenderObject* renderObjects, MeshTransform* meshTransforms)
+    {
+        BlitCL::String stringContainer;
+        const char* filePath = BuildImportedSceneNodesFilepath(sceneName, stringContainer);
+
+        size_t headerWriteSize = GCImportedSceneNodesHeaderElementCount * sizeof(size_t);
+        size_t nodesWriteSize = nodesCount * sizeof(RenderObject);
+        size_t transformsWriteSize = nodesCount * sizeof(MeshTransform);
+
+        size_t predictedSize = headerWriteSize + nodesWriteSize + transformsWriteSize;
+
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile;
+        auto openWriteRes = memoryMappedFile.OpenWrite(filePath, (uint32_t)predictedSize);
+        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(openWriteRes))
+        {
+            BLIT_ERROR("%s: Failed to open memory mapped file for imported scene nodes write", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+
+        ImportedSceneNodesHeaderArr headerArr;
+
+        headerArr[BlitRpfImportedSceneNodesHeaderResourceCountID] = resourceCount;
+        headerArr[BlitRpfImportedSceneNodesHeaderNodeCountID] = nodesCount;
+
+        size_t fileOffset = headerWriteSize;
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, nodesWriteSize, renderObjects))
+        {
+            BLIT_ERROR("%s: Failed to upload render objects imported scene nodes file", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+        headerArr[BlitRpfImportedSceneNodesHeaderRenderObjectsID] = fileOffset;
+        fileOffset += nodesWriteSize;
+
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, transformsWriteSize, meshTransforms))
+        {
+            BLIT_ERROR("%s: Failed to upload world transforms imported scene nodes file", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+        headerArr[BlitRpfImportedSceneNodesHeaderRenderObjectsID] = fileOffset;
+        fileOffset += transformsWriteSize;
+
+        const uint32_t StartOfFile = 0;
+        if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, StartOfFile, headerWriteSize, headerArr))
+        {
+            BLIT_ERROR("%s: Failed to upload header for imported scene nodes file");
+            return false;
+        }
+
+        return true;
+    }
 }

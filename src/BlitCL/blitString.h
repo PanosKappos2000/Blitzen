@@ -149,7 +149,7 @@ namespace BlitCL
 			m_size = size;
 		}
 
-        inline void Append(char* str)
+        inline void Append(const char* str)
         {
 			size_t strSize = strlen(str);
             size_t newSize = strSize + m_size;

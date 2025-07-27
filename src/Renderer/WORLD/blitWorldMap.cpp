@@ -33,6 +33,22 @@ namespace BlitzenEngine
 		return container.GetClassic();
 	}
 
+	static const char* BuildWorldMapSceneNamesFilepath(BlitCL::String& container, const char* mapName)
+	{
+		if (container.GetSize() != 0)
+		{
+			BLIT_WARN("%s: The string container passed for bmstr filepath was not empty", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			container.Clear();
+		}
+
+		container.Append(const_cast<char*>(GCClientWorldMapDirectory));
+		container.Append(const_cast<char*>(mapName));
+		container.Append("Scenes");
+		container.Append(const_cast<char*>(GCWorldMapResourceNamesFileExtension));
+
+		return container.GetClassic();
+	}
+
 	LOAD_WORLD_MAP_RES LoadWORLDMapFromDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents)
 	{
 		BlitCL::String mapContainer;
@@ -309,19 +325,19 @@ namespace BlitzenEngine
 		if (!BlitzenPlatform::FilepathExists(filepath))
 		{
 			BLIT_ERROR("%s: Filepath for map resource names was never created", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-			return GCResourceNameMaxCount;
+			return GCLoadWORLDMapResourceNamesFromDiskErrorCode;
 		}
 
 		constexpr bool LCBinaryFileFlag = false;
 		if (!scopedFile.Open(filepath, BlitzenPlatform::FileModes::Read, LCBinaryFileFlag))
 		{
 			BLIT_ERROR("%s: Failed to load file for map resource names read", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-			return GCResourceNameMaxCount;
+			return GCLoadWORLDMapResourceNamesFromDiskErrorCode;
 		}
 
 		size_t tempLength = 0;
 		uint32_t index = 0;
-		if (!scopedFile.m_pHandle || !names[index].GetDataPointer() || !*names[index].GetDataPointer()) return GCResourceNameMaxCount;
+		if (!scopedFile.m_pHandle || !names[index].GetDataPointer() || !*names[index].GetDataPointer()) return GCLoadWORLDMapResourceNamesFromDiskErrorCode;
 
 		while (BlitzenPlatform::FilesystemReadLine(scopedFile, GCResourceNameMaxSize, names[index].GetDataPointer(), &tempLength))
 		{
@@ -330,7 +346,36 @@ namespace BlitzenEngine
 		}
 
 		return index;
+	}
 
+	uint32_t LoadWORLDMapSceneNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths)
+	{
+		BlitCL::String stringContainer;
+		const char* filepath = BuildWorldMapSceneNamesFilepath(stringContainer, mapName);
+
+		BlitzenPlatform::C_FILE_SCOPE scopedFile;
+		if (!BlitzenPlatform::FilepathExists(filepath))
+		{
+			BLIT_ERROR("%s: Filepath for map scene names was never created", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return GCLoadWORLDMapSceneNamesFromDiskErrorCode;
+		}
+
+		if (!scopedFile.Open(filepath, BlitzenPlatform::FileModes::Read, BlitzenPlatform::GCFileBinaryFlagFalse))
+		{
+			BLIT_ERROR("%s: Failed to load file for map scene names read", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return GCLoadWORLDMapSceneNamesFromDiskErrorCode;
+		}
+
+		size_t tempLength = 0;
+		uint32_t index = 0;
+		if (!scopedFile.m_pHandle || !names[index].GetDataPointer() || !*names[index].GetDataPointer()) return GCLoadWORLDMapSceneNamesFromDiskErrorCode;
+
+		while (BlitzenPlatform::FilesystemReadLine(scopedFile, GCSceneNameMaxSize, names[index].GetDataPointer(), &tempLength))
+		{
+			nameLengths[index++] = tempLength;
+		}
+
+		return index;
 	}
 
 	uint32_t GetResourceIDFromWORLDMapResourceFile(const char* resourceName, const char* mapName)
@@ -378,6 +423,28 @@ namespace BlitzenEngine
 		BlitzenPlatform::C_FILE_SCOPE scopedFile;
 		constexpr bool LCBinaryFileFlag = false;
 		if (!scopedFile.Open(filepath, BlitzenPlatform::FileModes::Write, LCBinaryFileFlag))
+		{
+			return false;
+		}
+
+		for (uint32_t f = 0; f < nameCount; ++f)
+		{
+			if (!BlitzenPlatform::FilesystemWriteLine(scopedFile, names[f].GetClassic()))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	bool UploadWORLDMapSceneNamesToDisk(const char* mapName, const BlitCL::String* names, uint32_t nameCount)
+	{
+		BlitCL::String stringContainer;
+		const char* filepath = BuildWorldMapSceneNamesFilepath(stringContainer, mapName);
+
+		BlitzenPlatform::C_FILE_SCOPE scopedFile;
+		if (!scopedFile.Open(filepath, BlitzenPlatform::FileModes::Write, BlitzenPlatform::GCFileBinaryFlagFalse))
 		{
 			return false;
 		}
