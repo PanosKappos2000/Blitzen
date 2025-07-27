@@ -60,6 +60,9 @@ namespace BlitzenEngine
 		pWorldResidents->mWorldVariableCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariableCount];
 		pWorldResidents->m_renders.m_transparentStaticCount = (uint32_t)worldMapHeader[WorldMapHeaderTransparentRenderCount];
 		pWorldResidents->m_renders.m_opaqueStaticCount = (uint32_t)worldMapHeader[WorldMapHeaderStaticRenderCount];
+		pWorldResidents->m_renders.m_opaqueDynamicCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariableCount];
+		pWorldResidents->MColliders.mStaticColliderCount = (uint32_t)worldMapHeader[WorldMapHeaderStaticRenderCount];
+		pWorldResidents->MColliders.mWorldVariableColliderCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariableCount];
 		pWorldResidents->mWithVelocityCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariablesWithVelocityCount];
 		pWorldResidents->mWithGravityCount = (uint32_t)worldMapHeader[WorldMapHeaderWorldVariablesWithGravityCount];
 
@@ -88,9 +91,21 @@ namespace BlitzenEngine
 		}
 
 		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldVariableVelocitiesID],
-			sizeof(WVVelocity) * pWorldResidents->mWithGravityCount, pWorldResidents->WVVelocityData))
+			sizeof(WVVelocity) * pWorldResidents->mWorldVariableCount, pWorldResidents->WVVelocityData))
 		{
 			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_VARIABLE_VELOCITIES_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldVariableGravityDataID],
+			sizeof(WVGravity) * pWorldResidents->mWithGravityCount, pWorldResidents->WVGravityData))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_VARIABLE_GRAVITY_DATA_ARRAY;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldVariablesWithGravityIndicesID],
+			sizeof(Resident) * pWorldResidents->mWithGravityCount, pWorldResidents->WVWithGravityIDXs))
+		{
+			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_VARIABLES_WITH_GRAVITY_INDICES_ARRAY;
 		}
 
 		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderVisibilityBoundingSpheresID],
@@ -195,13 +210,29 @@ namespace BlitzenEngine
 		worldMapHeader[WorldMapHeaderWorldVariablesDataID] = offset;
 		offset += worldVariableDataWriteSize;
 		
-		size_t worldVariableVelocitiesWriteSize = sizeof(WVVelocity) * pWorldResidents->mWithGravityCount;
+		size_t worldVariableVelocitiesWriteSize = sizeof(WVVelocity) * pWorldResidents->mWorldVariableCount;
 		if (!BlitzenPlatform::WriteMemoryMappedFile(worldMapFile, offset, worldVariableVelocitiesWriteSize, pWorldResidents->WVVelocityData))
 		{
 			return UPLOAD_WORLD_MAP_RES::ERROR_WRITING_WORLD_VARIABLE_VELOCITIES_STRUCTURE_OF_ARRAYS;
 		}
 		worldMapHeader[WorldMapHeaderWorldVariableVelocitiesID] = offset;
 		offset += worldVariableVelocitiesWriteSize;
+
+		size_t worldVariableGravityDataWriteSize = sizeof(WVGravity) * pWorldResidents->mWithGravityCount;
+		if (!BlitzenPlatform::WriteMemoryMappedFile(worldMapFile, offset, worldVariableGravityDataWriteSize, pWorldResidents->WVGravityData))
+		{
+			return UPLOAD_WORLD_MAP_RES::ERROR_WRITING_WORLD_VARIABLE_GRAVITY_DATA_ARRAY;
+		}
+		worldMapHeader[WorldMapHeaderWorldVariableGravityDataID] = offset;
+		offset += worldVariableGravityDataWriteSize;
+
+		size_t worldVariablesWithGravityIndicesWriteSize = sizeof(Resident) * pWorldResidents->mWithGravityCount;
+		if (!BlitzenPlatform::WriteMemoryMappedFile(worldMapFile, offset, worldVariablesWithGravityIndicesWriteSize, pWorldResidents->WVWithGravityIDXs))
+		{
+			return UPLOAD_WORLD_MAP_RES::ERROR_WRITING_WORLD_VARIABLES_WITH_GRAVITY_INDICES_ARRAY;
+		}
+		worldMapHeader[WorldMapHeaderWorldVariablesWithGravityIndicesID] = offset;
+		offset += worldVariablesWithGravityIndicesWriteSize;
 
 		size_t visibilityBoundingSpheresWriteSize = sizeof(BoundingSphere) * (BLIT_MAX_WORLD_VARIABLE_COUNT + pWorldResidents->m_renders.m_opaqueStaticCount);
 		if (!BlitzenPlatform::WriteMemoryMappedFile(worldMapFile, offset, visibilityBoundingSpheresWriteSize, pWorldResidents->MColliders.m_boundingSpheres))
@@ -295,7 +326,7 @@ namespace BlitzenEngine
 		while (BlitzenPlatform::FilesystemReadLine(scopedFile, GCResourceNameMaxSize, names[index].GetDataPointer(), &tempLength))
 		{
 			nameLengths[index++] = tempLength;
-			names[index].Append("");
+			names[index].CopyString("");
 		}
 
 		return index;

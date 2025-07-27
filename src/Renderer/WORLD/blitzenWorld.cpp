@@ -422,7 +422,7 @@ namespace BlitzenWorld
 
         // This is supposed to only be defined by the build system on first load
         // Right now it does not work very well 
-#if defined(BLITZEN_START_NEW)
+#if defined(CUS)
 
         // Creates the WRLD(project) file, for the first time.
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
@@ -444,7 +444,7 @@ namespace BlitzenWorld
             return false;
         }
         // Adds resource name to the world object
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCSphereShapeMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCSphereShapeMeshName));
 
         // Loads cube mesh obj for collilder debug view
         // Converts it to binary format file (.blitMesh on project folder)
@@ -453,7 +453,7 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Failed to load cube shape mesh resources", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCCubeShapeMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCCubeShapeMeshName));
 
         // Loads capsule mesh obj for collider debug view
         // Converts it to binary format file (.blitMesh on project folder)
@@ -463,7 +463,7 @@ namespace BlitzenWorld
             return false;
         }
         // Adds resource name to the world object
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCCapsuleShapeMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCCapsuleShapeMeshName));
 
         // Loads bunny mesh obj.
         // Converts it to binary format file (.blitMesh on project folder)
@@ -473,7 +473,7 @@ namespace BlitzenWorld
             return false;
         }
         // Adds resource name to the world object
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCDefaultMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCDefaultMeshName));
 
         // Loads kitten mesh obj.
         // Converts it to binary format file (.blitMesh on project folder)
@@ -483,7 +483,7 @@ namespace BlitzenWorld
             return false;
         }
         // Adds resource name to the world object
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCDefaultKittenMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCDefaultKittenMeshName));
 
         // Loads dragon mesh obj.
         // Converts it to binary format file (.blitMesh on project folder)
@@ -492,7 +492,7 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Failed to load default dragon mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCDefaultDragonMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCDefaultDragonMeshName));
 
         // Loads dragon mesh obj.
         // Converts it to binary format file (.blitMesh on project folder)
@@ -501,7 +501,7 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Failed to load default human mesh", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
-        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].Append(const_cast<char*>(BlitzenEngine::GCDefaultHumanMeshName));
+        GSBlitzenWorld->mResourceNames[GSBlitzenWorld->mResourceNameCount++].CopyString(const_cast<char*>(BlitzenEngine::GCDefaultHumanMeshName));
 
         // Static access pointers
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&pWORLD->mResidents);
@@ -585,7 +585,6 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Failed to load world map from disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_LOAD_WRLD_MAP_RES_ENUM_STRING(loadWorldMapRes));
             return false;
         }
-        //BLIT_ASSERT_MESSAGE
 
 #else
         GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
@@ -597,6 +596,7 @@ namespace BlitzenWorld
         pWORLD->mResidents.MColliders.ALLOC_MSG();
         BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
         BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
+
         pResources->m_terrainContainer.ALLOC();
         BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
 
@@ -606,15 +606,16 @@ namespace BlitzenWorld
             return false;
         }
 
-        #if defined(BLIT_VISUAL_DEBUG)
+        auto loadWorldMapRes = BlitzenEngine::LoadWORLDMapFromDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)loadWorldMapRes), BlitzenEngine::GET_LOAD_WRLD_MAP_RES_ENUM_STRING(loadWorldMapRes));
+        if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)loadWorldMapRes))
+        {
+            BLIT_ERROR("%s: Failed to load world map from disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_LOAD_WRLD_MAP_RES_ENUM_STRING(loadWorldMapRes));
+            return false;
+        }
 
-            pWORLD->mDbgData.collisionGridVertices = reinterpret_cast<BlitML::float3*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE,
-                sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellCount * BlitML::GCQuadVertexCount));
-
-            pWORLD->mCollisionGrid.GenerateGridCellDrawData(pWORLD->mDbgData.collisionGridVertices);
-
-        #endif
-
+        // Places static objects inside the grid cells after loading the resident system
+        // The static placements will be loaded to the map files as well
         constexpr uint32_t CollisionGridOrigin = 0;
         pWORLD->mCollisionGrid.DefineGrid(CollisionGridOrigin);
         pWORLD->mCollisionGrid.CreateCells();
@@ -623,14 +624,14 @@ namespace BlitzenWorld
         pWORLD->MBmprCollisionWorkConstant.minBounds = pWORLD->mCollisionGrid.m_minBounds;
         pWORLD->MBmprCollisionWorkConstant.maxBounds = pWORLD->mCollisionGrid.m_maxBounds;
 
-        // Finally uploads to map
-        auto worldMapRes = BlitzenEngine::UploadWORLDMapToDisk(GSBlitzenWorld->mActiveMapName, &pWORLD->mResidents);
-        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)worldMapRes), BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
-        if(BlitzenCore::BLIT_CHECK_FAIL((int64_t)worldMapRes))
-        {
-            BLIT_ERROR("%s: Failed to upload world map to disk. Error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_UPLOAD_WRLD_MAP_RES_ENUM_STRING(worldMapRes));
-            BLIT_ASSERT(false);
-        }
+#if defined(BLIT_VISUAL_DEBUG)
+
+        pWORLD->mDbgData.collisionGridVertices = reinterpret_cast<BlitML::float3*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::TRIANGLE,
+            sizeof(BlitML::float3) * BlitzenEngine::GCCollisionCellCount * BlitML::GCQuadVertexCount));
+
+        pWORLD->mCollisionGrid.GenerateGridCellDrawData(pWORLD->mDbgData.collisionGridVertices);
+
+#endif
 
 #endif
         BlitzenEngine::RenderingLoadingContextRenderObjects loadingContextObj{};
@@ -680,6 +681,12 @@ namespace BlitzenWorld
     {
         BLIT_ASSERT_MESSAGE(GSBlitzenWorld == nullptr, "Tried to reinitialize WORLD pointer");
         GSBlitzenWorld = ptr;
+
+        // Makes space for WORLD map resource names
+        for (auto& strContainer : ptr->mResourceNames)
+        {
+            strContainer.Resize(BlitzenEngine::GCResourceNameMaxCount);
+        }
     }
 
     BLITZEN_WORLD::~BLITZEN_WORLD()

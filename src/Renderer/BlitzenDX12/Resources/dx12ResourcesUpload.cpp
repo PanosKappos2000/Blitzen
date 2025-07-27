@@ -134,7 +134,7 @@ namespace BlitzenDX12
 
 			// DRAW OCC MODE
 			STAGING<uint32_t> drawVisibilityStaging{};
-			if constexpr (BlitzenCore::Ce_OcclusionCulling)
+			if constexpr (BlitzenCore::CE_OCCLUSION_DOUBLE_PASS)
 			{
 				BlitCL::DynamicArray<uint32_t> zeroData{ drawContext.m_pResidents->m_renders.RENDER_COUNT, 0 };
 
@@ -175,7 +175,7 @@ namespace BlitzenDX12
 			CreateResourcesTransitionBarrier(copyDestBarriers[0], rwResources.m_transformBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 			// DRAW OCC MODE VIS BUFFER (normally not needed for temporal occlusion)
-			if constexpr (BlitzenCore::Ce_OcclusionCulling)
+			if constexpr (BlitzenCore::CE_OCCLUSION_DOUBLE_PASS)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferDestBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferDestBarrier, rwResources.m_drawVisBuffer.buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -205,7 +205,7 @@ namespace BlitzenDX12
 
 			CreateResourcesTransitionBarrier(copySourceBarriers[0], transformStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-			if constexpr (BlitzenCore::Ce_OcclusionCulling)
+			if constexpr (BlitzenCore::CE_OCCLUSION_DOUBLE_PASS)
 			{
 				D3D12_RESOURCE_BARRIER visibilityBufferSourceBarrier{};
 				CreateResourcesTransitionBarrier(visibilityBufferSourceBarrier, drawVisibilityStaging.m_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -227,7 +227,7 @@ namespace BlitzenDX12
 			cmdContext.m_copyCmdList->ResourceBarrier(UINT(copySourceBarriers.GetSize()), copySourceBarriers.Data());
 
 			// visibilities zeroed
-			if constexpr (BlitzenCore::Ce_OcclusionCulling)
+			if constexpr (BlitzenCore::CE_OCCLUSION_DOUBLE_PASS)
 			{
 				cmdContext.m_copyCmdList->CopyBufferRegion(rwResources.m_drawVisBuffer.buffer.Get(), 0,  drawVisibilityStaging.m_buffer.Get(), 0, drawVisibilityStaging.m_dataSize);
 			}

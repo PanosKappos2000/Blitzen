@@ -40,7 +40,7 @@ namespace BlitzenWorld
         BlitzenEngine::CollisionWorkConstant MBmprCollisionWorkConstant;
 
         const char* mActiveMapName;
-        BlitCL::String mResourceNames[BlitzenEngine::GCResourceNameMaxCount]{""};
+        BlitCL::String mResourceNames[BlitzenEngine::GCResourceNameMaxCount];
         uint32_t mResourceNameCount = 0;
 
         float deltaTime{0.f};

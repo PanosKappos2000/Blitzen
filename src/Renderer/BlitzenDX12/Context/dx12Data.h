@@ -7,6 +7,7 @@
 #include <wrl/client.h>
 #include <d3d12sdklayers.h>
 #include <comdef.h>
+#include <crtdbg.h>
 #include "Core/blitzenEngine.h"
 #include "BlitzenMathLibrary/blitML.h"
 #include "Renderer/Resources/blitShaderShared.h"
@@ -403,6 +404,8 @@ namespace BlitzenDX12
 
     // If a dx12 functcion fails, it can calls this to log the result and return 0
     uint8_t LOG_ERROR_MESSAGE_AND_RETURN(HRESULT res);
+
+    void CheckCrtNum(UINT num);
 }
 
 #endif
