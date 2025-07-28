@@ -2,6 +2,7 @@
 #include "Core/blitzenEngine.h"
 #include "Renderer/Entities/Residents/blitResidentManager.h"
 #include "BlitCL/blitString.h"
+#include "Platform/Filesystem/blitCFILE.h"
 
 namespace BlitzenEngine
 {
@@ -41,7 +42,6 @@ namespace BlitzenEngine
 		WorldMapHeaderMax = 20,
 	};
 	static_assert(WorldMapHeaderMax == GCMapFileHeaderElementCount);
-
 	using WorldMapHeader = size_t[GCMapFileHeaderElementCount];
 
 	enum class LOAD_WORLD_MAP_RES : int64_t
@@ -67,15 +67,31 @@ namespace BlitzenEngine
 		ERROR_READING_WORLD_VARIABLE_GRAVITY_DATA_ARRAY = -16,
 		ERROR_READING_WORLD_VARIABLES_WITH_GRAVITY_INDICES_ARRAY = -17,
 	};
+	// Opens the file found at the filepath and maps its memory
+	// Each array inside is ready and place in the residents
 	LOAD_WORLD_MAP_RES LoadWORLDMapFromDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
 
 	constexpr uint32_t GCLoadWORLDMapResourceNamesFromDiskErrorCode = GCResourceNameMaxCount;
+	// Reads resource names for the given map. Returns the error code above is something goes wrong.
 	uint32_t LoadWORLDMapResourceNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths);
 
+	enum class LoadWorldMapResourceNameFromDiskRes
+	{
+		Read,
+		End,
+		Error,
+	};
+	// Loads the resource name found at the current index of the bmstrFile parameter
+	// Places it into the char** buffer. If something goes wrong it returns error.
+	// Read and End are both valid, but End means that there are no more resources.
+	LoadWorldMapResourceNameFromDiskRes LoadWorldMapResourceNameFromDisk(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, char** buffer);
+
 	constexpr uint32_t GCGetResourceIDFromWORLDMapResourceFileErrorCode = GCResourceNameMaxCount;
+	// Seeks resource name in map file. Returns index when it is found. Error code if it is never found.
 	uint32_t GetResourceIDFromWORLDMapResourceFile(const char* resourceName, const char* mapName);
 
 	constexpr uint32_t GCLoadWORLDMapSceneNamesFromDiskErrorCode = GCSceneNameMaxCount;
+	// Loads all scene names for a given map
 	uint32_t LoadWORLDMapSceneNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths);
 
 	enum class UPLOAD_WORLD_MAP_RES : int64_t
@@ -102,8 +118,14 @@ namespace BlitzenEngine
 	};
 	UPLOAD_WORLD_MAP_RES UploadWORLDMapToDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
 
+	bool OpenResourceNamesBMSTRFile(const char* mapName, BlitzenPlatform::C_FILE_SCOPE& file);
+
+	bool OpenWorldMapBmstrFileForResourceNameReadback(BlitzenPlatform::C_FILE_SCOPE& bmstFile, const char* mapName);
+
 	// Uploads single resource names to the bmst file that will be responsible for finding resources during load
 	BLIT_OFFLINE_FUNC bool UploadWORLDMapResourceNamesToDisk(const char* mapName, const BlitCL::String* names, uint32_t nameCount);
+
+	BLIT_OFFLINE_FUNC bool UploadWORLDMapResourceNameToDisk(const char* resourceName, BlitzenPlatform::C_FILE_SCOPE& file);
 
 	// Uploads scene names to the bmstr file that will be responsible for finding scene resources during load
 	BLIT_OFFLINE_FUNC bool UploadWORLDMapSceneNamesToDisk(const char* mapName, const BlitCL::String* names, uint32_t nameCount);
@@ -117,6 +139,9 @@ namespace BlitzenEngine
 		return sizeof(WORLD_RESIDENTS) + sizeof(GCResourceNameMaxSize) * GCResourceNameMaxCount + sizeof(size_t) * GCMapFileHeaderElementCount;
 	}
 
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+	// RESULT LOGGING
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 	inline const char* GET_LOAD_WRLD_MAP_RES_ENUM_STRING(LOAD_WORLD_MAP_RES res)
 	{
 		switch (res)

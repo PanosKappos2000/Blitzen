@@ -30,19 +30,18 @@ namespace BlitzenPlatform
 
         const char* modeStr{""};
 
-        // FILE MODE
-        if (((uint8_t)mode & (uint8_t)FileModes::Read) != 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) != 0)
-        {
-            modeStr = binary ? "w+b" : "w+";
-        }
-        else if (((uint8_t)mode & (uint8_t)FileModes::Read) != 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) == 0)
+        if (mode == FileModes::Read)
         {
             modeStr = binary ? "rb" : "r";
         }
-        else if (((uint8_t)mode & (uint8_t)FileModes::Read) == 0 && ((uint8_t)mode & (uint8_t)FileModes::Write) != 0)
+        else if (mode == FileModes::Write)
         {
             modeStr = binary ? "wb" : "w";
-        } 
+        }
+        else if (mode == FileModes::Append)
+        {
+            modeStr = binary ? "ab" : "a";
+        }
         else
         {
             BLIT_ERROR("Invalid mode passed while trying to open file: '%s'", path);

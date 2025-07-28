@@ -7,8 +7,7 @@ namespace BlitzenPlatform
     {
         Read = 0x1,
         Write = 0x2, 
-
-        NONE = 0x3
+        Append = 0x3,
     };
 
     constexpr bool GCFileBinaryFlagFalse = false;

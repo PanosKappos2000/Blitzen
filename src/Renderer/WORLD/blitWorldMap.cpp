@@ -49,6 +49,45 @@ namespace BlitzenEngine
 		return container.GetClassic();
 	}
 
+	bool OpenResourceNamesBMSTRFile(const char* mapName, BlitzenPlatform::C_FILE_SCOPE& file)
+	{
+		BlitCL::FatString nameContainer{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen(GCWorldMapResourceNamesFileExtension)};
+		nameContainer.Format("%s%s%s", GCClientWorldMapDirectory, mapName, GCWorldMapResourceNamesFileExtension);
+
+		if (!BlitzenPlatform::FilepathExists(nameContainer.Get()))
+		{
+			if (!file.Open(nameContainer.Get(), BlitzenPlatform::FileModes::Write, BlitzenPlatform::GCFileBinaryFlagFalse))
+			{
+				BLIT_ERROR("%s: Failed to open resource names file for map '%s'", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+				return false;
+			}
+
+			return true;
+		}
+
+		if (!file.Open(nameContainer.Get(), BlitzenPlatform::FileModes::Append, BlitzenPlatform::GCFileBinaryFlagFalse))
+		{
+			BLIT_ERROR("%s: Failed to open resource names file for map '%s'", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+			return false;
+		}
+
+		return true;
+	}
+
+	bool OpenWorldMapBmstrFileForResourceNameReadback(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, const char* mapName)
+	{
+		BlitCL::FatString nameContainer{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen(GCWorldMapResourceNamesFileExtension) };
+		nameContainer.Format("%s%s%s", GCClientWorldMapDirectory, mapName, GCWorldMapResourceNamesFileExtension);
+
+		if (!bmstrFile.Open(nameContainer.Get(), BlitzenPlatform::FileModes::Read, BlitzenPlatform::GCFileBinaryFlagFalse))
+		{
+			BLIT_ERROR("%s: Failed to open resource names file for map %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+			return false;
+		}
+
+		return true;
+	}
+
 	LOAD_WORLD_MAP_RES LoadWORLDMapFromDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents)
 	{
 		BlitCL::String mapContainer;
@@ -348,6 +387,18 @@ namespace BlitzenEngine
 		return index;
 	}
 
+	LoadWorldMapResourceNameFromDiskRes LoadWorldMapResourceNameFromDisk(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, char** buffer)
+	{
+		if (!bmstrFile.m_pHandle || !buffer || !*buffer) return LoadWorldMapResourceNameFromDiskRes::Error;
+		size_t size;
+		// Since other possible errors have been check this can only return false if it is the end of the line
+		if (!BlitzenPlatform::FilesystemReadLine(bmstrFile, GCResourceNameMaxSize, buffer, &size))
+		{
+			return LoadWorldMapResourceNameFromDiskRes::End;
+		}
+		return LoadWorldMapResourceNameFromDiskRes::Read;
+	}
+
 	uint32_t LoadWORLDMapSceneNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths)
 	{
 		BlitCL::String stringContainer;
@@ -433,6 +484,17 @@ namespace BlitzenEngine
 			{
 				return false;
 			}
+		}
+
+		return true;
+	}
+
+	BLIT_OFFLINE_FUNC bool UploadWORLDMapResourceNameToDisk(const char* resourceName, BlitzenPlatform::C_FILE_SCOPE& file)
+	{
+		if(!BlitzenPlatform::FilesystemWriteLine(file, resourceName))
+		{
+			BLIT_ERROR("%s: Failed to write resource name '%s' to file", BlitzenCore::CE_WORLD_SYSTEM_NAME, resourceName);
+			return false;
 		}
 
 		return true;

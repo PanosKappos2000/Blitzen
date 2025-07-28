@@ -249,9 +249,12 @@ namespace BlitCL
     class FatString
     {
     public:
+
+        // Creates the string with a fixed size.
+        // Null terminator is accounted for inside.
         inline FatString(size_t size)
         {
-            mSize = size;
+            mSize = size + 1;
             mStr = BlitzenCore::BlitAlloc<char>(StrAlloc, mSize);
         }
 
