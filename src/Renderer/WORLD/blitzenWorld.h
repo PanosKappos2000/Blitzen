@@ -45,6 +45,8 @@ namespace BlitzenWorld
         BlitCL::String mSceneNames[BlitzenEngine::GCSceneNameMaxCount];
         uint32_t mSceneNameCount = 0;
 
+        BlitzenPlatform::C_FILE_SCOPE mResourcesNamesFile;
+
         float deltaTime{0.f};
 
 #if defined (BLIT_VISUAL_DEBUG)
@@ -67,6 +69,20 @@ namespace BlitzenWorld
 
     // Takes the names of the resources needed by a map from the .bmstr file and load them to the staging buffers held by loadingContextMesh
     bool LoadWorldMapResources(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
+
+    bool LoadWorldMapSceneResources(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
+
+    // Takes the nodes from a scene and converts them to resident context
+    BLIT_OFFLINE_FUNC bool ConvertWorldMapSceneNodesToResidents(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
+
+    // Called When a world map receives new resources or new residents.
+    // It updates the files to access all the correct resources
+    // It also updates the residents to have all new residents be part of the map
+    BLIT_OFFLINE_FUNC bool AddSceneToWORLDMap(const char* sceneName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
+
+    BLIT_OFFLINE_FUNC bool ImportOBJFileMesh(const char* filename, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
+
+	BLIT_OFFLINE_FUNC bool ImportGLTFFileScene(const char* filename, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
 
     void RegisterFrameEvent(BlitzenEngine::Resident resident, BlitzenCore::FrameEventPfn function);
 

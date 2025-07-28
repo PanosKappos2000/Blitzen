@@ -103,7 +103,7 @@ namespace BlitCL
 
         inline ~String()
 		{
-			if (m_capacity != 0)
+			if (m_data)
 			{
 				BlitzenCore::BlitFree<char>(StrAlloc, m_data, m_capacity);
 			}
@@ -242,9 +242,40 @@ namespace BlitCL
 
     private:
         char* m_data;
-
         size_t m_capacity;
-
         size_t m_size;
+    };
+
+    class FatString
+    {
+    public:
+        inline FatString(size_t size)
+        {
+            mSize = size;
+            mStr = BlitzenCore::BlitAlloc<char>(StrAlloc, mSize);
+        }
+
+        inline const char* Get() const
+        {
+            return mStr;
+        }
+
+        template<typename...ARGS>
+        inline void Format(const char* formatString, ARGS... args)
+        {
+            snprintf(mStr, mSize, formatString, std::forward<ARGS>(args)...);
+        }
+
+        inline ~FatString()
+        {
+            if (mStr)
+            {
+                BlitzenCore::BlitFree<char>(StrAlloc, mStr, mSize);
+            }
+        }
+
+    private:
+        char* mStr;
+        size_t mSize;
     };
 }

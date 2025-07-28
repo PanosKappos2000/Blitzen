@@ -88,7 +88,7 @@ namespace BlitzenCore
 template<typename... ARGS>
 constexpr void BLIT_FATAL(const char* message, ARGS... args)
 {
-    BlitzenCore::BlitLog(BlitzenCore::LogLevel::FATAL, message, std::forward< ARGS>(args)...);
+    BlitzenCore::BlitLog(BlitzenCore::LogLevel::FATAL, message, std::forward<ARGS>(args)...);
 }
 #else
 #define BLIT_FATAL(message, ...)    ;

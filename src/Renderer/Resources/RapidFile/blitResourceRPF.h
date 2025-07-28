@@ -170,6 +170,12 @@ namespace BlitzenEngine
 
     using ImportedSceneNodesHeaderArr = size_t[GCImportedSceneNodesHeaderElementCount];
 
+    // Loads scene nodes form disk in scene context. 
+    // Also saves the scenes node and resource count to out parameters
+    // It expects the pointers to be valid offsets to an array
+    bool LoadImportedSceneNodesFromDisk(const char* sceneName, uint32_t& outResourceCount, uint32_t& outNodesCount, uint32_t resourceCountLimit, uint32_t nodesCountLimit,
+        BlitzenCore::BLIT_PTR& outRenderObjects, BlitzenCore::BLIT_PTR& outMeshTransforms);
+
     // Takes resident data that is unique to an imported scene and uploads it to disk
     // This allows for Blitzen to keep the scene within its context on disk and update it when loading.
     BLIT_OFFLINE_FUNC bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, RenderObject* renderObjects, MeshTransform* meshTransforms);

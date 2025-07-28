@@ -124,5 +124,4 @@ namespace BlitzenCore
     {
         BlitzenPlatform::PlatformMemZero(pBlock, sizeof(T) * size);
     }
-
 }

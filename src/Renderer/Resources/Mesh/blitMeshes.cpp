@@ -580,6 +580,67 @@ namespace BlitzenEngine
         return UPLOAD_MESH_TO_DISK_RES::SUCCESS;
     }
 
+    bool LoadImportedSceneNodesFromDisk(const char* sceneName, uint32_t& outResourceCount, uint32_t& outNodesCount, uint32_t resourceCountLimit, uint32_t nodesCountLimit,
+        BlitzenCore::BLIT_PTR& outRenderObjects, BlitzenCore::BLIT_PTR& outMeshTransforms)
+    {
+        BlitCL::String stringContainer;
+        const char* filePath = BuildImportedSceneNodesFilepath(sceneName, stringContainer);
+
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile;
+        auto openReadRes = memoryMappedFile.OpenRead(filePath);
+        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(openReadRes))
+        {
+            BLIT_ERROR("%s: Failed to open memory mapped file for imported scene nodes read", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+
+        ImportedSceneNodesHeaderArr headerArr;
+        const uint32_t StartOfFile = 0;
+        if (!BlitzenPlatform::ReadMemoryMappedFile(memoryMappedFile, StartOfFile, GCImportedSceneNodesHeaderElementCount * sizeof(size_t), headerArr))
+        {
+            BLIT_ERROR("%s: Failed to read header for imported scene nodes file", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+
+        outResourceCount = (uint32_t)headerArr[BlitRpfImportedSceneNodesHeaderResourceCountID];
+        if (outResourceCount > resourceCountLimit)
+        {
+			BLIT_ERROR("%s: Additional Resource count from scene \"%s\" exceeds the limit", BlitzenCore::CE_SCENE_SYSTEM_NAME, sceneName);
+            return false;
+        }
+
+        outNodesCount = (uint32_t)headerArr[BlitRpfImportedSceneNodesHeaderNodeCountID];
+        if (outNodesCount > nodesCountLimit)
+        {
+			BLIT_ERROR("%s: Additional Nodes count from scene \"%s\" exceeds the limit", BlitzenCore::CE_SCENE_SYSTEM_NAME, sceneName);
+            return false;
+        }
+
+        size_t renderObjectsOffset = headerArr[BlitRpfImportedSceneNodesHeaderRenderObjectsID];
+        size_t transformsOffset = headerArr[BlitRpfImportedSceneNodesHeaderTransformsID];
+        size_t renderObjectsSize = outNodesCount * sizeof(RenderObject);
+        size_t transformsSize = outNodesCount * sizeof(MeshTransform);
+        
+        outRenderObjects.Init(renderObjectsSize);
+		outMeshTransforms.Init(transformsSize);
+        auto renderObjectsPtr = reinterpret_cast<RenderObject*>(outRenderObjects.mPtr);
+		auto meshTransformsPtr = reinterpret_cast<MeshTransform*>(outMeshTransforms.mPtr);
+
+        if (!BlitzenPlatform::ReadMemoryMappedFile(memoryMappedFile, renderObjectsOffset, renderObjectsSize, renderObjectsPtr))
+        {
+            BLIT_ERROR("%s: Failed to read render objects from imported scene nodes file", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+
+        if (!BlitzenPlatform::ReadMemoryMappedFile(memoryMappedFile, transformsOffset, transformsSize, meshTransformsPtr))
+        {
+            BLIT_ERROR("%s: Failed to read mesh transforms from imported scene nodes file", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
+
+        return true;
+    }
+
     bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, RenderObject* renderObjects, MeshTransform* meshTransforms)
     {
         BlitCL::String stringContainer;
@@ -618,7 +679,7 @@ namespace BlitzenEngine
             BLIT_ERROR("%s: Failed to upload world transforms imported scene nodes file", BlitzenCore::CE_SCENE_SYSTEM_NAME);
             return false;
         }
-        headerArr[BlitRpfImportedSceneNodesHeaderRenderObjectsID] = fileOffset;
+        headerArr[BlitRpfImportedSceneNodesHeaderTransformsID] = fileOffset;
         fileOffset += transformsWriteSize;
 
         const uint32_t StartOfFile = 0;

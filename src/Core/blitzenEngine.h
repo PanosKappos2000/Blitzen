@@ -329,6 +329,20 @@ namespace BlitzenCore
 
 using BLIT_STRAIGHTHANDLE = void*;
 
+namespace BlitzenCore
+{
+    class BLIT_PTR
+    {
+    public:
+        BLIT_STRAIGHTHANDLE mPtr{ nullptr };
+        size_t mSize = 0;
+
+        void Init(size_t size);
+
+        ~BLIT_PTR();
+    };
+}
+
 /********************************************************************************************************************************************************
 * SECTION: CONTAINER LIBRARY CONSTANTS                                                                                                                  *
 *********************************************************************************************************************************************************/
