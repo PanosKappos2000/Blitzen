@@ -284,5 +284,13 @@ namespace BlitzenEngine
         CollisionBlockFlags blockReactionType;
     };
 
-    
+    //-----------------------------------------------------------
+    // UI Shader resources. Meant to work with dasher
+    //-----------------------------------------------------------
+    struct DSQuad
+    {
+        BlitML::vec2 position;
+        BlitML::vec2 scale;
+        BlitML::vec4 color;
+    };
 }

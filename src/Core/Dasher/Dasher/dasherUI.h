@@ -9,13 +9,6 @@ namespace BlitzenEngine
 		PLACEHOLDER
 	};
 
-	struct DSQuad
-	{
-		BlitML::vec2 position;
-		BlitML::vec2 scale;
-		BlitML::vec4 color;
-	};
-
 	struct DSButton
 	{
 		DSQuad render;
@@ -52,11 +45,13 @@ namespace BlitzenEngine
 	public:
 		BlitML::vec2 mWindowExtent;
 		BlitML::mat4 mProjection;
+		RenderingLoadingContextDSUI mLoadingContext;
 
 		BLIT_STRAIGHTHANDLE mAccessors = nullptr;
 		uint32_t mAccessorCount;
 
 		DSPanel mPanels[GCDasherMaxPanelCount];
+		DSQuad mPanelQuads[GCDasherMaxPanelCount];
 		uint32_t mPanelCount = 0;
 
 		DSTextField* mTextFields;
@@ -64,6 +59,8 @@ namespace BlitzenEngine
 		uint32_t textFieldCount;
 
 		DasherUI(uint32_t windowWidth, uint32_t windowHeight);
+
+		void AllocRenderingLoadingContext(RendererPtrType bmpr);
 
 		bool AllocPanel(const DSPanelContext& panelContext);
 	};

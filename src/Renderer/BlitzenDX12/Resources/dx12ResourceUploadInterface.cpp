@@ -5,6 +5,7 @@
 #include "Renderer/BlitzenDX12/Resources/dx12Pipelines.h"
 #include "Core/DbLog/blitLogger.h"
 #include "Core/DbLog/blitAssert.h"
+#include "Core/Dasher/Dasher/dasherUI.h"
 
 namespace BlitzenEngine
 {
@@ -358,6 +359,37 @@ namespace BlitzenEngine
 		return 1;
 	}
 
+	uint8_t AllocateLoadingStagingBufferDSUI(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextDSUI& ctx)
+	{
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.panelQuadsStaging, BlitzenEngine::GCDasherMaxPanelCount, (DSQuad*)nullptr))
+		{
+			BLIT_ERROR("%s: Failed to create allocate staging buffers for UI drawing", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		return 1;
+	}
+
+	uint8_t UploadPanelQuadsToStagingBuffer(BlitzenDX12::LoadingContextDSUI& ctx, DSQuad* uiQuads, uint32_t elementCount)
+	{
+		using TYPE = DSQuad;
+
+		SIZE_T copySize{ sizeof(TYPE) * elementCount };
+		if ((sizeof(TYPE) * ctx.panelQuadsStaging.m_validDataIndex) + copySize > ctx.panelQuadsStaging.m_dataSize)
+		{
+			BLIT_FATAL("%s: UI Quad staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_ASSERT_MESSAGE(uiQuads != nullptr, "Invalid array handle UIQuads staging buffer upload");
+
+		auto pDest{ &ctx.panelQuadsStaging.m_pMapped[ctx.panelQuadsStaging.m_validDataIndex] };
+		BlitzenCore::MANUAL_COPY(pDest, uiQuads, copySize);
+
+		ctx.panelQuadsStaging.m_validDataIndex += elementCount;
+
+		return 1;
+	}
 
 	// ... should have been templated
 	static uint8_t UploadMeshPrimitiveResourcesToStagingBuffer(BLIT_STRAIGHTHANDLE pDest, BLIT_STRAIGHTHANDLE pSrc, uint32_t offset, uint32_t count, SIZE_T dataSize, SIZE_T limit)

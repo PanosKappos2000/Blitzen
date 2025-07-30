@@ -4,6 +4,7 @@
 #include "Renderer/BlitzenDX12/Resources/dx12RNDResources.h"
 #include "Core/DbLog/blitLogger.h"
 #include "BlitCL/blitDynamicArr.h"
+#include "Core/Dasher/Dasher/dasherUI.h"
 
 namespace BlitzenDX12
 {
@@ -816,6 +817,13 @@ namespace BlitzenDX12
 				BLIT_ERROR("%s: Failed to create cluster indices buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 				return 0;
 			}
+		}
+
+		// Buffer that holds window coordinate transforms for ui quads
+		if (!BlitzenDX12::CreateSSBO<BlitzenEngine::DSQuad>(device, roResources.SRVUiQuads, BlitzenEngine::GCDasherMaxPanelCount))
+		{
+			BLIT_ERROR("%s: Failed to create ssbo buffer for ui quad transforms", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
 		}
 
 #if defined(BLIT_VISUAL_DEBUG)

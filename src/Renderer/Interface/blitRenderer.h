@@ -42,6 +42,8 @@ namespace BlitzenEngine
 
         using RenderingLoadingContextRenderObjects = BlitzenDX12::LoadingContextRenderObjects;
 
+        using RenderingLoadingContextDSUI = BlitzenDX12::LoadingContextDSUI;
+
     #else
 
         static_assert(true);
@@ -82,6 +84,12 @@ namespace BlitzenEngine
     uint8_t UploadToClusterConesStagingBuffer(RenderingLoadingContextMesh& ctx, ClusterCone* clusterCones, uint32_t count);
     // Copies a mesh's cluster indices to a staging buffer. Count shoud not have sizeof(type) include. It's done inside.
     uint8_t UploadToClusterIndicesStagingBuffer(RenderingLoadingContextMesh& ctx, uint32_t* clusterIndices, uint32_t count);
+
+    // Initial allocation for all staging buffers that have to with UI data
+    uint8_t AllocateLoadingStagingBufferDSUI(RendererPtrType pRenderer, RenderingLoadingContextDSUI& ctx);
+
+    // Uploads data to the buffer that will hold panel quads
+    uint8_t UploadPanelQuadsToStagingBuffer(RenderingLoadingContextDSUI& pRenderer, DSQuad* uiQuads, uint32_t elementCount);
 
     uint8_t AllocateLoadingContextRenderObjects(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx);
 

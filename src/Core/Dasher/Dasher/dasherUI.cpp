@@ -15,6 +15,11 @@ namespace BlitzenEngine
 		mProjection = BlitML::UIPixelProjection((float)windowWidth, (float)windowHeight);
 	}
 
+	void DasherUI::AllocRenderingLoadingContext(RendererPtrType bmpr)
+	{
+		BLIT_ASSERT(AllocateLoadingStagingBufferDSUI(bmpr, mLoadingContext));
+	}
+
 	bool DasherDefineEditor(RendererPtrType pRenderer, DasherUI* pDasher)
 	{
 		DSPanelContext topHorizontalPanelContext;
@@ -24,7 +29,7 @@ namespace BlitzenEngine
 		topHorizontalPanelContext.fatherQuad.scale = BlitML::vec2{ pDasher->mWindowExtent.x, pDasher->mWindowExtent.y * GCEditorTopHorizontalPanelHeightMultiplier };
 		if (!pDasher->AllocPanel(topHorizontalPanelContext))
 		{
-			BLIT_ERROR("%s: Failed to create editor top horizontal panel");
+			BLIT_ERROR("%s: Failed to create editor top horizontal panel", BlitzenCore::GCDasherEditorSystemName);
 			return false;
 		}
 
@@ -35,7 +40,13 @@ namespace BlitzenEngine
 		rightVerticalPanelContext.fatherQuad.scale = { pDasher->mWindowExtent.x / 5.0f, pDasher->mWindowExtent.y - (pDasher->mWindowExtent.y / 10.0f) };
 		if (!pDasher->AllocPanel(rightVerticalPanelContext))
 		{
-			BLIT_ERROR("%s: Failed to create editor right vertical panel");
+			BLIT_ERROR("%s: Failed to create editor right vertical panel", BlitzenCore::GCDasherEditorSystemName);
+			return false;
+		}
+
+		if (!UploadPanelQuadsToStagingBuffer(pDasher->mLoadingContext, pDasher->mPanelQuads, pDasher->mPanelCount))
+		{
+			BLIT_ERROR("%s: Renderer failed to copy ui quads to staging buffer", BlitzenCore::GCDasherEditorSystemName);
 			return false;
 		}
 
@@ -46,19 +57,20 @@ namespace BlitzenEngine
 	{
 		if (mPanelCount >= GCDasherMaxPanelCount)
 		{
-			BLIT_ERROR("%s: Cannot add any more panels for current UI context", BlitzenCore::GCDasherEditorSystemName);
+			BLIT_ERROR("%s: Cannot add any more panels for current UI context", BlitzenCore::GCDasherUISystemName);
 			return false;
 		}
 
+		mPanelQuads[mPanelCount] = panelContext.fatherQuad;
+
 		auto& panel = mPanels[mPanelCount];
-
-		panel.mFatherQuad = panelContext.fatherQuad;
-
 		if (panelContext.buttonCount != 0)
 		{
 			panel.mButtons = reinterpret_cast<DSButton*>(BlitzenCore::BlitAlloc<DSButton*>(BlitzenCore::AllocationType::DSUI, panelContext.buttonCount));
 			panel.mButtonCount = panelContext.buttonCount;
 		}
+
+		++mPanelCount;
 
 		return true;
 	}

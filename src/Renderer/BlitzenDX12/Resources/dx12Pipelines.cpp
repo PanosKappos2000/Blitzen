@@ -584,6 +584,49 @@ namespace BlitzenDX12
         return 1;
     }
 
+    uint8_t CreateUIQuadDrawPipeline(ID3D12Device* device, PipelineContext& ctx)
+    {
+        BlitCL::String vsBytes;
+        size_t vsSize{ GetShaderBytes(device, "HlslShaders/VS/uiQuadDraw.vs.hlsl.bin", vsBytes) };
+        if (vsSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create UI Quad draw vertex shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        D3D12_SHADER_BYTECODE vsCode{};
+        vsCode.BytecodeLength = vsSize;
+        vsCode.pShaderBytecode = vsBytes.Data();
+
+        BlitCL::String psBytes;
+        size_t psSize{ GetShaderBytes(device, "HlslShaders/PS/uiQuadDraw.ps.hlsl.bin", psBytes) };
+        if (psSize == 0)
+        {
+            BLIT_ERROR("%s: Failed to create blitzen logo draw pixel shader", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return 0;
+        }
+
+        D3D12_SHADER_BYTECODE psCode{};
+        psCode.BytecodeLength = psSize;
+        psCode.pShaderBytecode = psBytes.Data();
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+        CreateDefaultPsoDescription(psoDesc);
+        psoDesc.DepthStencilState = {};
+        psoDesc.pRootSignature = ctx.mUIRoot.Get();
+        psoDesc.VS = vsCode;
+        psoDesc.PS = psCode;
+
+        HRESULT psoResult = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(ctx.mUIQuadDraw.ReleaseAndGetAddressOf()));
+        if (FAILED(psoResult))
+        {
+            BLIT_ERROR("%s: Failed to create UI Quad draw pipeline state object", BlitzenCore::CE_DX12_SYSTEM_NAME);
+            return LOG_ERROR_MESSAGE_AND_RETURN(psoResult);
+        }
+
+        return 1;
+    }
+
     uint8_t CreateBMPRDrivenCollisionComputeShaders(ID3D12Device* device, PipelineContext& ctx)
     {
         if constexpr (BLITGCBroadPhaseCollisionBumper || BLITGCNarrowPhaseCollisionBumper)

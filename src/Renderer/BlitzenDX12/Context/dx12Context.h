@@ -42,6 +42,8 @@ namespace BlitzenDX12
 
         TEX2D m_drawTextures[BlitzenCore::Ce_MaxTextureCount];
         UINT m_textureCount{ 0 };
+
+        SSBO SRVUiQuads;
     };
 
     struct ReadWriteResources
@@ -136,6 +138,9 @@ namespace BlitzenDX12
         D3D12_GPU_DESCRIPTOR_HANDLE mClusterCullTableHandle[ce_framesInFlight];
         UINT mClusterCullParameterID;
         UINT mClusterCullRootConstantID;
+
+        SIZE_T mUIBuffersTableOffset;
+        D3D12_GPU_DESCRIPTOR_HANDLE mUIBuffersTableHandle;
 
         SIZE_T mCollisionSupportTableOffset;
         D3D12_GPU_DESCRIPTOR_HANDLE mCollisionSupportTableHandle;
@@ -289,6 +294,9 @@ namespace BlitzenDX12
 
         DX12WRAPPER<ID3D12PipelineState> m_blitzenLogoPipelineState;
         DX12WRAPPER<ID3D12RootSignature> m_blitzenLogoRoot;
+
+        DX12WRAPPER<ID3D12RootSignature> mUIRoot;
+        DX12WRAPPER <ID3D12PipelineState> mUIQuadDraw;
 	};
 
     struct CmdContext
@@ -333,6 +341,11 @@ namespace BlitzenDX12
         STAGING<BlitzenEngine::ColliderAMaxRad> mColliderAMaxRadStaging;
         STAGING<BlitzenEngine::ColliderBMinType> mColliderBMinTypeStaging;
         STAGING<BlitzenEngine::GridCellOffsets> mGridCellStaging;
+    };
+
+    struct LoadingContextDSUI
+    {
+        STAGING<BlitzenEngine::DSQuad> panelQuadsStaging;
     };
 }
 
