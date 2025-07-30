@@ -4,6 +4,7 @@
 #include "Core/Events/blitFrameEvents.h"
 #include "Renderer/View/blitCamera.h"
 #include "Core/WrldFileManager/blitFileManager.h"
+#include "Core/Dasher/Dasher/dasherUI.h"
 #include "blitWorldMap.h"
 
 namespace BlitzenWorld

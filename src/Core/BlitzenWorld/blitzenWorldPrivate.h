@@ -34,6 +34,7 @@ namespace BlitzenWorld
         BlitzenEngine::RenderingResources* pRenderingResources{ nullptr };
         BlitzenPlatform::PlatformContext* pPlatform{ nullptr };
         BlitzenCore::Dasher* pDasher{ nullptr };
+        BlitzenEngine::DasherUI* pDASHER{ nullptr };
         BlitzenCore::WorldTimeManager* pClock;
 
         // WORLD
@@ -52,6 +53,8 @@ namespace BlitzenWorld
     };
 
     void LoadingLoop(int argc, char** argv, BLITZEN_SYSTEM_CONTEXT& context, BlitzenEngine::DrawContext& drawContext);
+
+    void BlitzenSystemsInit(BLITZEN_SYSTEM_CONTEXT* pSYSTEM);
 
     void BMPR_DRIVE(BLITZEN_SYSTEM_CONTEXT& context);
 

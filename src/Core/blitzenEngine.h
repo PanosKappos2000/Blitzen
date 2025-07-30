@@ -116,7 +116,7 @@ namespace BlitzenCore
     constexpr const char* CE_DX12_SYSTEM_NAME = "BlitzenDX12";
     constexpr const char* CE_RENDERER_SYSTEM_NAME = "blit_renderer";
     constexpr const char* GCCollisionSystemName = "BlitzenCollision";
-    constexpr const char* CE_DASHER_EDITOR_SYSTEM_NAME = "dasher_editor";
+    constexpr const char* GCDasherEditorSystemName = "dasher_editor";
     constexpr const char* CE_DEAR_DASHER_EDITOR_SYSTEM_NAME = "dearDasher_editor";
 	constexpr const char* CE_BLITZEN_LOADING_LOOP_NAME = "BLITZEN_LOADING_LOOP";
     constexpr const char* GCWRLDSystemName = "BlitzenProjectFileManager";
@@ -158,6 +158,7 @@ namespace BlitzenCore
         Texture = 14,
         Terrain = 15,
         Messages = 16,
+        DSUI = 17,
 
         MaxTypes = 100
     };

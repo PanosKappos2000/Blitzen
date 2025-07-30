@@ -154,6 +154,8 @@ namespace BlitzenPlatform
 
 #endif
 
+        BlitzenWorld::BlitzenSystemsInit(SYSTEM);
+
         // Success
         return true;
     }

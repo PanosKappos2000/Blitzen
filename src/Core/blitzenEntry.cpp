@@ -8,6 +8,7 @@
 using RndResourcesMemory = BlitCL::SmartPointer<BlitzenEngine::RenderingResources, BlitzenCore::AllocationType::Renderer>;
 using WorldSystemMemory = BlitCL::SmartPointer<BlitzenWorld::BLITZEN_WORLD, BlitzenCore::AllocationType::Entity>;
 using ControllerSystemMemory = BlitCL::SmartPointer<BlitzenCore::ControllerContainer, BlitzenCore::AllocationType::Engine>;
+using DasherSystemMemory = BlitCL::SmartPointer<BlitzenEngine::DasherUI, BlitzenCore::AllocationType::DSUI>;
 
 #if defined(BLIT_GDEV_EDT)
 int main(int argc, char* argv[])
@@ -32,6 +33,10 @@ int main(int argc, char* argv[])
 
     BlitzenPlatform::PlatformContext platform{};
     SYSTEM.pPlatform = &platform;
+
+    DasherSystemMemory DASHERUI;
+    DASHERUI.Make(BlitzenCore::Ce_InitialWindowWidth, BlitzenCore::Ce_InitialWindowHeight);
+    SYSTEM.pDASHER = DASHERUI.Data();
 
     WorldSystemMemory WORLD;
     WORLD.Make(renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);

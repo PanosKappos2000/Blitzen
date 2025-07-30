@@ -390,12 +390,12 @@ namespace BlitML
     {
 	    float halfTanFov = 1.0f / tanf(fov / 2.0f);
         mat4 res(0);
+
         res.data[0] = halfTanFov / aspectRatio;
         res.data[5] = halfTanFov;
         res.data[11] = 1.0f;
         res.data[14] = znear;
         
-
         return res;
 
 	    /*return glm::mat4(
@@ -403,6 +403,21 @@ namespace BlitML
 		0.0f, f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, zNear, 0.0f); Reference to write this with my own types*/
+    }
+
+    inline mat4 UIPixelProjection(float width, float height)
+    {
+        mat4 res(0);
+
+        // Scale pixel coordinates into [-1, +1] range
+        res.data[0] = 2.0f / width;   // scale x
+        res.data[5] = -2.0f / height;  // scale y (flip Y for top-left origin)
+        res.data[10] = 1.0f;           // keep Z unchanged
+        res.data[12] = -1.0f;           // translate x
+        res.data[13] = 1.0f;           // translate y
+        res.data[15] = 1.0f;           // homogenous coord
+
+        return res;
     }
 
     // Creates and returns a look-at matrix, or a matrix looking at target from the perspective of position.

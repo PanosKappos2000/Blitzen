@@ -165,7 +165,7 @@ namespace BlitML
 
         inline vec4() : x{0.f}, y{0.f}, z{0.f}, w{0.f} {}
         inline vec4(float f) : x{f}, y{f}, z{f}, w{f} {}
-        inline vec4(float first, float second, float third, float fourth) : x{first}, y{second}, z{third}, w{fourth} {}
+        inline constexpr vec4(float first, float second, float third, float fourth) : x{first}, y{second}, z{third}, w{fourth} {}
         inline vec4(const vec2& partial , float third, float fourth) : x{partial.x}, y{partial.y}, z{third}, w{fourth} {}
         inline vec4(const vec3& partial, float fourth = 0.f) : x{partial.x}, y{partial.y}, z{partial.z}, w{fourth} {}
         inline vec4(const vec4& copy) : x{copy.x}, y{copy.y}, z{copy.z}, w{copy.w} {} 
