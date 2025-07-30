@@ -2,6 +2,7 @@
 #include "Platform/Common/blitMappedFile.h"
 #include "Core/DbLog/blitAssert.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Renderer/Resources/RapidFile/blitResourceRPF.h"
 
 namespace BlitzenEngine
 {
@@ -397,6 +398,23 @@ namespace BlitzenEngine
 			return LoadWorldMapResourceNameFromDiskRes::End;
 		}
 		return LoadWorldMapResourceNameFromDiskRes::Read;
+	}
+
+	bool AddSceneResourcesToWorldMapResourceBmstrFile(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, const char* sceneName, uint32_t resourceCount)
+	{
+		BlitCL::FatString stringContainer{ strlen(sceneName) + strlen("/") + strlen("mesh") + 16 };
+		for (uint32_t n = 0; n < resourceCount; n++)
+		{
+			stringContainer.Format("%s/mesh%u", sceneName, n);
+
+			if (!BlitzenPlatform::FilesystemWriteLine(bmstrFile, stringContainer.Get()))
+			{
+				BLIT_ERROR("%s: Failed to write resource name %u from scene %s to world map resource .bmstr file", BlitzenCore::CE_WORLD_SYSTEM_NAME, n, sceneName);
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	uint32_t LoadWORLDMapSceneNamesFromDisk(const char* mapName, BlitCL::String* names, size_t* nameLengths)

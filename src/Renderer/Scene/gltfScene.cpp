@@ -376,9 +376,12 @@ namespace BlitzenEngine
         for (size_t i = 0; i < cgltfScope.pData->nodes_count; ++i)
         {
             auto node = &cgltfScope.pData->nodes[i];
-
-            // Create render objects for mesh nodes
-            if (node->mesh) cgltfScope.residentCount++;
+            if (node->mesh)
+            {
+                uint32_t meshIdx = (uint32_t)cgltf_mesh_index(cgltfScope.pData, node->mesh);
+                uint32_t meshPrimitiveCount = (uint32_t)cgltfScope.pData->meshes[meshIdx].primitives_count;
+                for (uint32_t primID = 0; primID < meshPrimitiveCount; ++primID) cgltfScope.residentCount++;
+            }
         }
 
         cgltfScope.renderObjects = reinterpret_cast<RenderObject*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Entity, cgltfScope.residentCount * sizeof(RenderObject)));
@@ -418,9 +421,13 @@ namespace BlitzenEngine
                     cgltfScope.renderObjects[residentID].surfaceId = meshIdx + primID;
                     cgltfScope.renderObjects[residentID].transformId = residentID;
                     cgltfScope.meshTransforms[residentID] = transform;
+
+                    residentID++;
                 }
             }
         }
+
+        if (residentID != cgltfScope.residentCount) return false;
 
         if (!UploadImportedSceneNodesToDisk(cgltfScope.sceneName, cgltfScope.meshPrimitiveCount, cgltfScope.residentCount, cgltfScope.renderObjects, cgltfScope.meshTransforms))
         {

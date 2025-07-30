@@ -368,9 +368,7 @@ namespace BlitzenWorld
 
     bool AddSceneToWORLDMap(const char* sceneName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
     {
-		size_t sceneNameSizeArr[BlitzenEngine::GCResourceNameMaxCount];
-		//uint32_t mapResourceCount = BlitzenEngine::LoadWORLDMapResourceNamesFromDisk(pWORLD->mActiveMapName, pWORLD->mResourceNames, sceneNameSizeArr);
-        uint32_t mapResourceCount;
+        uint32_t previousResourceCount = pRenderingResources->m_meshContext.m_meshPrimitives.m_meshPrimitivesCount;
 
         // Starts off by retrieving the static node data which is loaded to the disk in scene context
         // This also saves the resource count for the scene and the amount of nodes / residents
@@ -379,9 +377,8 @@ namespace BlitzenWorld
         uint32_t nodesCount;
         BlitzenCore::BLIT_PTR renderObjects;
         BlitzenCore::BLIT_PTR meshTransforms;
-
         if (!BlitzenEngine::LoadImportedSceneNodesFromDisk(sceneName, resourceCount, nodesCount,
-            BlitzenCore::Ce_MaxMeshPrimitivesCount - mapResourceCount,
+            BlitzenCore::Ce_MaxMeshPrimitivesCount - previousResourceCount,
             BLIT_MAX_WORLD_OPAQUE_STATIC_RENDERS - pWORLD->mResidents.m_renders.m_opaqueStaticCount,
             renderObjects, meshTransforms))
         {
@@ -389,29 +386,24 @@ namespace BlitzenWorld
             return false;
         }
 
-        auto renderArr = reinterpret_cast<BlitzenEngine::RenderObject*>(renderObjects.mPtr);
-        auto transformArr = reinterpret_cast<BlitzenEngine::MeshTransform*>(meshTransforms.mPtr);
-
-        // Nodes are then adjusted to residents one by one
-        for (uint32_t n = 0; n < nodesCount; ++n)
+        // With the resource count retrieved, it can now use it to find all scene resource names
+        // It writes each one to the maps bmString file for resouce names
+        BlitCL::FatString stringContainer{ strlen(sceneName) + strlen("/") + strlen("mesh") + 16 };
+        for (uint32_t n = 0; n < resourceCount; n++)
         {
-            auto& render = renderArr[n];
+            stringContainer.Format("%s/mesh%u", sceneName, n);
 
-            render.transformId += pWORLD->mResidents.mTransforms.m_staticTransformCount + BLIT_MAX_WORLD_VARIABLE_COUNT;
-            render.surfaceId += mapResourceCount;
-        }
-
-        for (uint32_t r = 0; r < resourceCount; ++resourceCount)
-        {
-            BlitCL::FatString resourceName{ strlen(sceneName) + strlen("/") + strlen("mesh") + strlen(sceneName) + 1 + strlen(".blitMesh") };
-            resourceName.Format("%s/mesh%u.blitMesh", sceneName, resourceCount);
-            //UpdateWORLDMapResourceNames(resourceName.Get());
+            if (!BlitzenPlatform::FilesystemWriteLine(pWORLD->mResourcesNamesFile, stringContainer.Get()))
+            {
+                BLIT_ERROR("%s: Failed to write resource name %u from scene %s to world map resource .bmstr file", BlitzenCore::CE_WORLD_SYSTEM_NAME, n, sceneName);
+                return false;
+            }
 
             BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mappedFile;
-            auto loadMeshFromDiskRes = BlitzenEngine::LoadMeshFromDisk(resourceName.Get(), mappedFile, pRenderingResources->m_meshContext);
+            auto loadMeshFromDiskRes = BlitzenEngine::LoadMeshFromDisk(stringContainer.Get(), mappedFile, pRenderingResources->m_meshContext);
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)loadMeshFromDiskRes))
             {
-                BLIT_FATAL("%s: Failed to load mesh from file: %s. Error code: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, resourceName.Get(),
+                BLIT_FATAL("%s: Failed to load mesh from file: %s. Error code: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, stringContainer.Get(),
                     BlitzenEngine::LOAD_MESH_FROM_STRING_RES_TO_STRING(loadMeshFromDiskRes));
                 return false;
             }
@@ -423,29 +415,22 @@ namespace BlitzenWorld
             }
         }
 
-        // Saves resource names for the map
-        //if(!BlitzenEngine::UploadWORLDMapResourceNamesToDisk(pWORLD->mActiveMapName, pWORLD->mResourceNames, pWORLD->mResourceNameCount))
-        //{
-        //    BLIT_ERROR("%s: Failed to load resource names to map files", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-		//}
-
-        // Adds render objects to the resident system
+        auto renderArr = reinterpret_cast<BlitzenEngine::RenderObject*>(renderObjects.mPtr);
+        auto transformArr = reinterpret_cast<BlitzenEngine::MeshTransform*>(meshTransforms.mPtr);
+        //// Nodes are then adjusted to residents one by one
         for (uint32_t n = 0; n < nodesCount; ++n)
         {
-			BlitzenEngine::RESIDENT_CREATE_CONTEXT residentCreateContext{};
-            residentCreateContext.snapDownOffset = 0.f;
-            residentCreateContext.m_isMoveable = BLIT_FAT_FALSE;
-			residentCreateContext.m_resourceID = renderArr[n].surfaceId;
-			residentCreateContext.m_transformInfo.m_pTransform = &transformArr[n];
-            residentCreateContext.m_transformInfo.m_type = BlitzenEngine::WorldTransformType::STATIC;
+            auto& render = renderArr[n];
+        
+            render.transformId += pWORLD->mResidents.mTransforms.m_staticTransformCount + BLIT_MAX_WORLD_VARIABLE_COUNT;
+            render.surfaceId += previousResourceCount;
 
-			auto residentAddRes = pWORLD->mResidents.AddResident(residentCreateContext);
-            if(!BlitzenCore::BLIT_CHECK_FAIL((int64_t)residentAddRes))
-            {
-                BLIT_ERROR("%s: Failed to add resident for scene node %u", BlitzenCore::CE_WORLD_SYSTEM_NAME, n);
-                return false;
-			}
+            BlitzenEngine::RESIDENT_CREATE_CONTEXT residentContext;
+            residentContext.m_isMoveable = BLIT_FAT_FALSE;
+            residentContext.m_resourceID = render.surfaceId;
+            residentContext.m_transformInfo.m_pTransform = &transformArr[n];
+            residentContext.snapDownOffset = 1.f;// NOTE TO SELF: This is temporary, to avoid putting the snap down effect on GLTFs
+            auto residentRes = pWORLD->mResidents.AddResident(residentContext);
         }
 
         return true;
@@ -621,20 +606,13 @@ namespace BlitzenWorld
 
 		// Imports sponza scene from gltf file
         // Adds the sponza scene name to the map
-        //auto gltfSceneTestRes{ BlitzenEngine::ManageGltf("../../GltfTestScenes/Scenes/Sponza/scene.gltf", "sponza", pResources, &pWORLD->mResidents, pRenderer) };
-        //BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)gltfSceneTestRes), "Fatal error encountered while loading gltf scene");
-        //if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(gltfSceneTestRes)))
-        //{
-        //    BLIT_ERROR("%s: Failed to create gltf scene", BlitzenCore::CE_SCENE_SYSTEM_NAME);
-        //    return false;
-        //}
-        //if (!UpdateWORLDMapSceneNames(pWORLD, "sponza"))
-
-        //if (!BlitzenEngine::UploadWORLDMapSceneNamesToDisk(BlitzenEngine::GCDefaultWorldMapName, pWORLD->mSceneNames, pWORLD->mSceneNameCount))
-        //{
-        //    BLIT_ERROR("%s: Failed to load resource names to map files", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
+        auto gltfSceneTestRes{ BlitzenEngine::ManageGltf("../../GltfTestScenes/Scenes/Sponza/scene.gltf", "sponza", pResources, &pWORLD->mResidents, pRenderer) };
+        BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)gltfSceneTestRes), "Fatal error encountered while loading gltf scene");
+        if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(gltfSceneTestRes)))
+        {
+            BLIT_ERROR("%s: Failed to create gltf scene", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            return false;
+        }
 
         // Terrain generation.
         // For now terrain is completely decoupled. 
@@ -675,6 +653,11 @@ namespace BlitzenWorld
         if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(movingResidentTestRes)))
         {
             BLIT_ERROR("%s: Failed to create moving resident test scene. Received error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenEngine::GET_SCENE_CREATE_RES_STRING(movingResidentTestRes));
+            return false;
+        }
+
+        if (!AddSceneToWORLDMap("sponza", pWORLD, pResources))
+        {
             return false;
         }
         

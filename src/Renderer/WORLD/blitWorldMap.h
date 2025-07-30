@@ -85,6 +85,10 @@ namespace BlitzenEngine
 	// Places it into the char** buffer. If something goes wrong it returns error.
 	// Read and End are both valid, but End means that there are no more resources.
 	LoadWorldMapResourceNameFromDiskRes LoadWorldMapResourceNameFromDisk(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, char** buffer);
+	
+	// Finds all the resources inside a scene file and writes their names to the Bmstr file
+	// This lets a map load the scene's resources by just looking at the resources Bmstr file
+	bool AddSceneResourcesToWorldMapResourceBmstrFile(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, const char* sceneName, uint32_t resourceCount);
 
 	constexpr uint32_t GCGetResourceIDFromWORLDMapResourceFileErrorCode = GCResourceNameMaxCount;
 	// Seeks resource name in map file. Returns index when it is found. Error code if it is never found.

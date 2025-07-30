@@ -35,6 +35,7 @@ namespace BlitzenEngine
 
     SplitColliderDataPair& GetColliderFromMeshPrimitive(uint32_t resourceID)
     {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(resourceID < GSMeshResources->m_meshPrimitives.m_meshPrimitivesCount);
         return GSMeshResources->m_meshPrimitives.mColliders[resourceID];
     }
 
@@ -45,6 +46,7 @@ namespace BlitzenEngine
 
     BlitzenCore::FAT_BOOL GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(uint32_t surfaceID)
     {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(surfaceID < GSMeshResources->m_meshPrimitives.m_meshPrimitivesCount);
         return GSMeshResources->m_meshPrimitives.m_meshPrimitiveData[surfaceID].m_primitiveTransparencyFlags;
     }
 

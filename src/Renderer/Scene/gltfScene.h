@@ -12,8 +12,8 @@ namespace BlitzenEngine
     public:
         const char* sceneName;
         cgltf_data* pData;
-        uint32_t meshPrimitiveCount;
-        uint32_t residentCount;
+        uint32_t meshPrimitiveCount = 0;
+        uint32_t residentCount = 0;
         RenderObject* renderObjects;
         MeshTransform* meshTransforms;
 
