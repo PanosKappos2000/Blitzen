@@ -291,7 +291,7 @@ namespace BlitzenDX12
 		}
 
 		STAGING<BlitzenEngine::Material> materialStaging{ nullptr };
-		if (!CreateStaging(device, materialStaging, drawContext.m_textures.m_materialCount, drawContext.m_textures.m_materials))
+		if (!CreateStaging(device, materialStaging, drawContext.pMatManager->mMaterialCount, drawContext.pMatManager->mMaterials))
 		{
 			BLIT_ERROR("%s: Failed to create material staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -754,7 +754,7 @@ namespace BlitzenDX12
 		ctx.m_pixelODSTableHandle = ctx.m_viewHeapHandle;
 		ctx.m_pixelODSTableHandle.ptr += ctx.m_pixelODSTableOffset * ctx.m_viewHeapIncrement;
 
-		CreateBufferShaderResourceView(device, roResources.m_matBuffer.buffer.Get(), ctx, context.m_textures.m_materialCount, sizeof(BlitzenEngine::Material));
+		CreateBufferShaderResourceView(device, roResources.m_matBuffer.buffer.Get(), ctx, context.pMatManager->mMaterialCount, sizeof(BlitzenEngine::Material));
 
 		// TEXTURE DESCRIPTORS
 		ctx.m_texturesTableOffset = ctx.m_viewHeapCurrentOffset;

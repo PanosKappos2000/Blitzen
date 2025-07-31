@@ -4,6 +4,7 @@
 #include "RapidFile/blitResourceRPF.h"
 #include "Renderer/Resources/Terrain/blitTerrain.h"
 #include "Renderer/Interface/blitRenderer.h"
+#include "Materials/blitMaterial.h"
 
 namespace BlitzenEngine
 {
@@ -17,6 +18,7 @@ namespace BlitzenEngine
         MeshResources m_meshContext;
         TextureManager m_textureManager;
         TerrainContainer m_terrainContainer;
+        MaterialManager mMaterials;
 
         RenderingLoadingContextMesh mLoadingContextMesh;
 

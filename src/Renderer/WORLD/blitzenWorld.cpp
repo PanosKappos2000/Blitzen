@@ -482,12 +482,15 @@ namespace BlitzenWorld
             BLIT_ERROR("%s: Something went wrong with texture map", BlitzenCore::CE_WORLD_SYSTEM_NAME);
         }
         
-        // Adds a default material.
-        // Materials are loaded directly.
-        // They do not have a binary format yet.
-        if (!pResources->m_textureManager.AddMaterial(0, 0, 0, 0, BlitzenCore::Ce_DefaultMaterialName))
+        // Default material. NOTE TO SELF: Allocating 100 here by default. 
+        // This should allocated as many materials as the map needs.
+        // In dev mode re allocations are allowed, but later it will be allocated based on the maximum.
+        pResources->mMaterials.ALLOC(100);
+        BlitzenEngine::Material placeholderMaterial;
+        placeholderMaterial.albedoTag = 0;
+        if (!pResources->mMaterials.AddMaterial(BlitzenEngine::MaterialAlphaMode::Opaque, placeholderMaterial))
         {
-            BLIT_ERROR("Rendering resources failed");
+            BLIT_ERROR("%s: Something went wrong with materials", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
@@ -512,8 +515,6 @@ namespace BlitzenWorld
         // Creates the WRLD(project) file, for the first time.
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
         BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
-        // Safety assertion for visual debug mesh resources
-        BLIT_ASSERT(pResources->m_meshContext.m_meshCount == BLIT_HLSL_COLLIDER_RESOURCE_OFFSET);
 
         InitializeMapContext(pWORLD);
 

@@ -39,37 +39,10 @@ namespace BlitzenEngine
         return GSMeshResources->m_meshPrimitives.mColliders[resourceID];
     }
 
-    Mesh& RequestMeshResources_STATIC_ACCESS(const char* meshName)
-    {
-		return GSMeshResources->m_meshMap[meshName];
-    }
-
     BlitzenCore::FAT_BOOL GetMeshPrimitiveTransparencyFlag_STATIC_ACCESS(uint32_t surfaceID)
     {
         BLIT_RUNTIME_TEST_CHECK_ASSERT(surfaceID < GSMeshResources->m_meshPrimitives.m_meshPrimitivesCount);
         return GSMeshResources->m_meshPrimitives.m_meshPrimitiveData[surfaceID].m_primitiveTransparencyFlags;
-    }
-
-    uint32_t MeshResources::AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName /*="BLIT_DO_NOT_ADD_TO_MESH_TABLE"*/)
-    {
-        if (m_meshCount >= BlitzenCore::Ce_MaxMeshCount)
-        {
-            BLIT_ERROR("%s: Max mesh count: ( %i ) reached!", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenCore::Ce_MaxMeshCount);
-            return BlitzenCore::Ce_MaxMeshCount;
-        }
-
-        auto& mesh = m_meshes[m_meshCount];
-
-        mesh.firstSurface = firstSurface;
-        mesh.surfaceCount = surfaceCount;
-        mesh.meshId = uint32_t(m_meshCount);
-
-		if (meshName != "BLIT_DO_NOT_ADD_TO_MESH_TABLE")
-		{
-			m_meshMap.Insert(meshName, mesh);
-		}
-
-        return m_meshCount++;
     }
 
     void MeshResources::UpdateMapMeshContext()
@@ -94,13 +67,6 @@ namespace BlitzenEngine
 
     uint32_t LoadMeshFromObj(MeshResources& context, const char* filename, const char* meshName)
     {
-        // The function should return if the engine will go over the max allowed mesh assets
-        if (context.m_meshCount >= BlitzenCore::Ce_MaxMeshCount)
-        {
-            BLIT_ERROR("%s: Max mesh count: ( %i ) reached!", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenCore::Ce_MaxMeshCount);
-            return BlitzenCore::Ce_MaxMeshCount;
-        }
-
         // Get the current mesh and give it the size surface array as its first surface index
         uint32_t previousSurfaceCount{ context.m_meshPrimitives.m_meshPrimitivesCount };
 
@@ -171,14 +137,7 @@ namespace BlitzenEngine
 
         context.m_meshPrimitives.GenerateTangents(primitiveCreateCtx);
 
-        uint32_t meshId = context.AddMesh(previousSurfaceCount, uint32_t(context.m_meshPrimitives.m_meshPrimitivesCount - previousSurfaceCount), meshName);
-        if (meshId == BlitzenCore::Ce_MaxMeshCount)
-        {
-            BLIT_ERROR("%s: Retrieved error count from AddMesh function", BlitzenCore::CE_MESH_SYSTEM_NAME);
-            return BlitzenCore::Ce_MaxMeshCount;
-        }
-
-        return meshId;
+        return 0;
     }
 
     bool LoadObjFileMeshToDisk(MeshResources& context, const char* filename, const char* meshName)
@@ -255,8 +214,6 @@ namespace BlitzenEngine
             BlitzenCore::LOG_ERROR_MSG_AND_RETURN(BlitzenCore::CE_MESH_SYSTEM_NAME, MESH_PRIMITIVE_CREATE_RES_TO_STRING(meshPrimitiveGenRes));
             return false;
         }
-
-        uint32_t meshID = context.m_meshCount;
 
 		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile;
         auto uploadRes{ UploadMeshToDisk(meshName, memoryMappedFile, context, false) };

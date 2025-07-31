@@ -9,7 +9,7 @@ StructuredBuffer<DSQuad> PanelQuads : register(t20);
 struct VSOutput
 {
     float4 position : SV_Position;
-    float4 color : SV_Color;
+    float4 color : COLOR;
 };
 
 static const float2 QuadVertices[6] =

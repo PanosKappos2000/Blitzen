@@ -10,6 +10,7 @@
 #include "Core/DbLog/blitAssert.h"
 #include <cstring> // For strcmp
 #include "BlitzenMathLibrary/blitML.h"
+#include "Renderer/Resources/Materials/blitMaterial.h"
 
 namespace BlitzenVulkan
 {
@@ -1590,7 +1591,7 @@ namespace BlitzenVulkan
         }
 
         VkDeviceSize materialBufferSize{ CreateSSBO<BlitzenEngine::Material>(vma, device, readOnlies.m_matBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-            BlitzenCore::Ce_MaxMaterialCount) };
+            BlitzenEngine::GCMaxLoadedMaterialCount) };
         if (materialBufferSize == 0)
         {
             BLIT_ERROR("%s: Failed to create material buffer", BLIT_VK_SYSTEM);

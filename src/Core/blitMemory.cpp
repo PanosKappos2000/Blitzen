@@ -20,4 +20,19 @@ namespace BlitzenCore
             BlitzenPlatform::PlatformFree(mPtr, false);
         }
     }
+
+    void BlitReAdjustMemoryAllocation(BLIT_STRAIGHTHANDLE outBlock, size_t newSize, size_t oldSize, AllocationType allocType)
+    {
+#if defined(BLIT_OFFLINE_BUILD)
+        BLIT_STRAIGHTHANDLE pTemp = outBlock;
+
+        // Allocates new block, copies the previous data over, gives the new block pointer to the outBlock
+        BLIT_STRAIGHTHANDLE newBlock = MANUAL_ALLOC(allocType, newSize);
+        MANUAL_COPY(newBlock, outBlock, oldSize);
+        outBlock = newBlock;
+
+        // Frees the old memory
+        MANUAL_FREE(allocType, pTemp, oldSize);
+#endif
+    }
 }

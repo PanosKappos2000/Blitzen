@@ -6,6 +6,7 @@
 #include "Renderer/Resources/Mesh/blitMeshes.h"
 #include "Renderer/Resources/Terrain/blitTerrain.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
+#include "Renderer/Resources/Materials/blitMaterial.h"
 
 namespace BlitzenEngine
 {
@@ -14,6 +15,7 @@ namespace BlitzenEngine
         Camera& m_camera;
         MeshResources& m_meshes;
         WORLD_RESIDENTS* m_pResidents;
+        MaterialManager* pMatManager{ nullptr };
         TextureManager& m_textures;
 		BlitzenPlatform::PlatformContext* m_pPlatform{ nullptr };
         TerrainContainer* m_pTerrain{ nullptr };

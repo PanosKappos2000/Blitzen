@@ -25,6 +25,11 @@ namespace BlitzenPlatform
         return memcpy(pDst, pSrc, size);
     }
 
+    void* ConstMemCopy(void* pDst, const void* pSrc, size_t size)
+    {
+        return memcpy(pDst, pSrc, size);
+    }
+
     void* PlatformMemSet(void* pDst, int32_t value, size_t size)
     {
         return memset(pDst, value, size);

@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
     WORLD.Make(renderingResources->m_meshContext, renderingResources->m_textureManager, &platform);
     WORLD->m_drawContext.m_pTerrain = &renderingResources->m_terrainContainer;
     WORLD->m_drawContext.m_pResidents = &WORLD->mResidents;
+    WORLD->m_drawContext.pMatManager = &renderingResources->mMaterials;
     WORLD->BMPR.Make();
     SYSTEM.pWORLD = WORLD.Data();
 

@@ -15,20 +15,17 @@ namespace BlitzenEngine
     constexpr const char* GCDefaultHumanMeshName = "Base Human";
     constexpr const char* GCDefaultKittenMeshName = "Kitten";
     constexpr const char* Ce_MeshDoNotAddToTable = "BLIT_DO_NOT_ADD_TO_MESH_TABLE";
+    constexpr uint32_t GCMaxLoadedMeshes = 10'000;
 
     class MeshResources
     {
     public:
 
-        Mesh m_meshes[BlitzenCore::Ce_MaxMeshCount];
-        BlitCL::HashMap<Mesh> m_meshMap;
-        uint32_t m_meshCount = 0;
+        BlitzenCore::FAT_BOOL mMeshesLoadedFlags[GCMaxLoadedMeshes];
 
         MeshPrimitivesContainer m_meshPrimitives{};
         PrimitiveContainer m_triangles{};
         ClusterContainer m_clusters{};
-
-        uint32_t AddMesh(uint32_t firstSurface, uint32_t surfaceCount, const char* meshName = "BLIT_DO_NOT_ADD_TO_MESH_TABLE");
 
         void ResetMeshContext();
         void UpdateMapMeshContext();
@@ -40,8 +37,6 @@ namespace BlitzenEngine
     bool LoadObjFileMeshToDisk(MeshResources& context, const char* filename, const char* meshName);
 
     void InitializeMeshResourcesPointer_STATIC_ACCESS(MeshResources* ptr);
-
-	Mesh& RequestMeshResources_STATIC_ACCESS(const char* meshName);
 
     BoundingSphere* GetVisibilityBoundingSphereFromMesh(Mesh* pMesh);
 

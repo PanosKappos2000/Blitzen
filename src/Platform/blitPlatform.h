@@ -30,6 +30,8 @@ namespace BlitzenPlatform
 
     void* PlatformMemCopy(void* pDst, void* pSrc, size_t size);
 
+    void* ConstMemCopy(void* pDst, const void* pSrc, size_t size);
+
     void* PlatformMemSet(void* pDst, int32_t value, size_t size);
 
     // Creates directory with the specified path

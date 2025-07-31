@@ -16,37 +16,11 @@ namespace BlitzenEngine
 		return true;
 	}
 
-	bool TextureManager::AddMaterial(uint32_t albedoId, uint32_t normalId, uint32_t specularId, uint32_t emissiveId, const char* name /*="BLIT_DO_NOT_ADD_TO_MATERIAL_MAP"*/)
-	{
-		if (m_materialCount >= BlitzenCore::Ce_MaxMaterialCount)
-		{
-			BLIT_ERROR("Max Material count exceeded");
-			return false;
-		}
-
-		auto pMaterial = &m_materials[m_materialCount];
-
-		pMaterial->albedoTag = albedoId;
-		pMaterial->normalTag = normalId;
-		pMaterial->specularTag = specularId;
-		pMaterial->emissiveTag = emissiveId;
-
-		pMaterial->materialId = m_materialCount;
-
-		if (name != "BLIT_DO_NOT_ADD_TO_MATERIAL_MAP")
-		{
-			m_pMaterialTable.Insert(name, pMaterial);
-		}
-
-		m_materialCount++;
-		return true;
-	}
-
 	uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE)
 	{
 		if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
 		{
-			BLIT_ERROR("%s: Failed to open DDS texture file", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+			BLIT_ERROR("%s: Failed to open DDS texture file", BlitzenCore::GCRenderingResourceSystemName);
 			return 0;
 		}
 
@@ -57,7 +31,7 @@ namespace BlitzenEngine
 		// Reads and checks the DDS magic header to confirm the file is a valid DDS file
 		if (fread(&DDS_MAGIC_SIGNATURE, sizeof(DDS_MAGIC_SIGNATURE), 1, file) != 1 || DDS_MAGIC_SIGNATURE != FourCC("DDS "))
 		{
-			BLIT_ERROR("%s: Invalid DDS signature in file: %s", BlitzenCore::CE_RESOURCE_SYSTEM_NAME, filepath);
+			BLIT_ERROR("%s: Invalid DDS signature in file: %s", BlitzenCore::GCRenderingResourceSystemName, filepath);
 			return 0;
 		}
 
@@ -211,14 +185,14 @@ namespace BlitzenEngine
 	{
 		if (!OpenDDSImageFile(filepath, header, header10, scopedFILE))
 		{
-			BLIT_ERROR("%s: Failed to open texture file", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+			BLIT_ERROR("%s: Failed to open texture file", BlitzenCore::GCRenderingResourceSystemName);
 			return 0;
 		}
 
 		format = GetDDSFormat(header, header10);
 		if (format == BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_UNKNOWN)
 		{
-			BLIT_ERROR("%s: Unknown format retrieved from DDS image", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+			BLIT_ERROR("%s: Unknown format retrieved from DDS image", BlitzenCore::GCRenderingResourceSystemName);
 			return false;
 		}
 
@@ -231,12 +205,12 @@ namespace BlitzenEngine
 
 		if (!pData)
 		{
-			BLIT_ERROR("%s: Failed to read texture data", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+			BLIT_ERROR("%s: Failed to read texture data", BlitzenCore::GCRenderingResourceSystemName);
 			return CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE;
 		}
 		if (readSize != imageSize)
 		{
-			BLIT_ERROR("%s: Failed to read the correct amount of texture data. Expected: %u, Read: %u", BlitzenCore::CE_RESOURCE_SYSTEM_NAME, imageSize, readSize);
+			BLIT_ERROR("%s: Failed to read the correct amount of texture data. Expected: %u, Read: %u", BlitzenCore::GCRenderingResourceSystemName, imageSize, readSize);
 			return CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE;
 		}
 

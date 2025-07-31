@@ -64,19 +64,19 @@ namespace BlitGenerator
 
         if (!container.AppendVertices(terrainVertices.Data(), uint32_t(terrainVertices.GetSize())))
         {
-            BLIT_ERROR("%s: Failed to copy new terrain vertices to general terrain vertices array", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to copy new terrain vertices to general terrain vertices array", BlitzenCore::GCRenderingResourceSystemName);
             return false;
         }
 
         if (!container.AppendIndices(terrainIndices.Data(), uint32_t(terrainIndices.GetSize())))
         {
-            BLIT_ERROR("%s: Failed to copy new terrain indices to general terrain indices array", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to copy new terrain indices to general terrain indices array", BlitzenCore::GCRenderingResourceSystemName);
             return false;
         }
 
         if (!container.AppendHeightData(terrainHeightData.Data(), uint32_t(terrainHeightData.GetSize())))
         {
-            BLIT_ERROR("%s: Failed to copy new terrain height data to general terrain height data array", BlitzenCore::CE_RESOURCE_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to copy new terrain height data to general terrain height data array", BlitzenCore::GCRenderingResourceSystemName);
             return false;
         }
 

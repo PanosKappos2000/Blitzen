@@ -107,7 +107,7 @@ namespace BlitzenCore
     constexpr const char* CE_PLATFORM_SYSTEM_NAME = "blit_platform";
     constexpr const char* CE_MESH_SYSTEM_NAME = "MeshResources";
     constexpr const char* CE_MESH_DATA_GENERATOR_SYSTEM_NAME = "blit_mesh_data_generator";
-    constexpr const char* CE_RESOURCE_SYSTEM_NAME = "RenderingResourceSystem";
+    constexpr const char* GCRenderingResourceSystemName = "Rendering_resources";
     constexpr const char* CE_WORLD_SYSTEM_NAME = "WORLD";
     constexpr const char* CE_SCENE_SYSTEM_NAME = "SceneManager";
     constexpr const char* CE_RESIDENT_SYSTEM_NAME = "WORLD_RESIDENTS";
@@ -160,6 +160,7 @@ namespace BlitzenCore
         Terrain = 15,
         Messages = 16,
         DSUI = 17,
+        Material = 18,
 
         MaxTypes = 100
     };
@@ -204,7 +205,6 @@ namespace BlitzenCore
     constexpr uint32_t Ce_MaxTextureCount = 5'000;
     constexpr const char* Ce_DefaultTextureName = "BlitzenReindeer";
 
-    constexpr uint32_t Ce_MaxMaterialCount = 10'000;
 	constexpr const char* Ce_DefaultMaterialName = "BlitzenReindeerAlbedoMaterial";
 
     constexpr uint32_t Ce_MaxMeshCount = 10'000;
@@ -343,6 +343,8 @@ namespace BlitzenCore
 
         ~BLIT_PTR();
     };
+
+    BLIT_OFFLINE_FUNC void BlitReAdjustMemoryAllocation(BLIT_STRAIGHTHANDLE outBlock, size_t newSize, size_t oldSize, AllocationType allocType);
 }
 
 /********************************************************************************************************************************************************

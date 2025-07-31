@@ -6,6 +6,7 @@
 #include "vulkanRNDResources.h"
 #include "BlitCL/blitDynamicArr.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Renderer/Resources/Materials/blitMaterial.h"
 
 namespace BlitzenVulkan
 {
@@ -162,8 +163,8 @@ namespace BlitzenVulkan
         }
 
         BUFFER_STAGING_CONTEXT<BlitzenEngine::Material> matStagingContext{};
-        matStagingContext.elementCount = drawContext.m_textures.m_materialCount;
-        matStagingContext.pData = drawContext.m_textures.m_materials;
+        matStagingContext.elementCount = drawContext.pMatManager->mMaterialCount;
+        matStagingContext.pData = drawContext.pMatManager->mMaterials;
         if (!CreateStaging(vma, device, matStagingContext))
         {
             BLIT_ERROR("%s: Failed to create material staging buffer", BLIT_VK_SYSTEM);
@@ -301,7 +302,7 @@ namespace BlitzenVulkan
 
         descriptorContext.m_matDescInfo.buffer = roResources.m_matBuffer.m_buffer.m_handle;
         descriptorContext.m_matDescInfo.offset = 0;
-        descriptorContext.m_matDescInfo.range = drawContext.m_textures.m_materialCount * sizeof(BlitzenEngine::Material);
+        descriptorContext.m_matDescInfo.range = BlitzenEngine::GCMaxLoadedMaterialCount * sizeof(BlitzenEngine::Material);
         WriteBufferDescriptorSets(descriptorContext.m_pushDescriptorsGraphics[Ce_MatBufferGraphicsPushID], &descriptorContext.m_matDescInfo,
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, Ce_MatBufferDescriptorBinding, nullptr, VK_NULL_HANDLE, 1, 0);
 

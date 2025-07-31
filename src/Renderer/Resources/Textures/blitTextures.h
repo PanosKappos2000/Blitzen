@@ -10,10 +10,7 @@ namespace BlitzenEngine
     class TextureManager
     {
     public:
-        Material m_materials[BlitzenCore::Ce_MaxMaterialCount];
-        BlitCL::HashMap<Material*> m_pMaterialTable;
-        uint32_t m_materialCount;
-
+        
         BlitCL::HashMap<uint32_t> m_textureIDMap;
         uint32_t m_textureCount{ 0 };
 
@@ -24,8 +21,6 @@ namespace BlitzenEngine
         ~TextureManager();
 
         bool AddTexture(const char* textureName);
-
-        bool AddMaterial(uint32_t albedoId, uint32_t normalId, uint32_t specularId, uint32_t emissiveId, const char* name = "BLIT_DO_NOT_ADD_TO_MATERIAL_MAP");
     };
 
     inline unsigned int FourCC(const char (&str)[5])

@@ -4,6 +4,7 @@
 #include "Renderer/Resources/blitShaderResources.h"
 #include "BlitCL/blitString.h"
 #include "Renderer/Resources/Mesh/blitMeshes.h"
+#include "Renderer/Resources/Materials/blitMaterial.h"
 
 namespace BlitzenEngine
 {
@@ -14,6 +15,7 @@ namespace BlitzenEngine
     constexpr const char* GCRapidMeshDirectoryPath = BLITZEN_CLIENT_RPFMESH_DIRECTORY;
     constexpr uint32_t GCImportedSceneNodesHeaderElementCount = 4;
     constexpr const char* GCImportedSceneNodesFileName = "nodes.blitnr";
+    constexpr uint32_t GCMaterialHeaderElementCount = 3;
 
     // Straight enum for ease of use
     enum BLIT_RPF_MESH_FILE_HEADER_IDS
@@ -181,6 +183,19 @@ namespace BlitzenEngine
     BLIT_OFFLINE_FUNC bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, RenderObject* renderObjects, MeshTransform* meshTransforms);
 
     const char* BuildImportedSceneNodesFilepath(const char* sceneName, BlitCL::String& stringContainer);
+
+    enum BlitRpfMaterialHeaderIndices : uint32_t
+    {
+        BlitRpfMaterialCountID = 0,
+        BlitRpfMaterialOffsetID = 1,
+        BlitRpfMaterialDataOffsetID = 2,
+
+        BlitRpfMaterialMax = 3
+    };
+    using BlitRpfMaterialHeader = size_t[GCMaterialHeaderElementCount];
+    static_assert(GCMaterialHeaderElementCount == BlitRpfMaterialMax);
+
+    bool UploadMaterialsToDisk(const char* folderName, Material* matArray, MaterialData* matDataArray, uint32_t count);
 
     // FOR FUTURE REFERENCE. Probably v2
     struct MeshRpfOffsetAccessor

@@ -786,7 +786,7 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		if (CreateSSBO<BlitzenEngine::Material>(device, roResources.m_matBuffer, BlitzenCore::Ce_MaxMaterialCount) == 0)
+		if (CreateSSBO<BlitzenEngine::Material>(device, roResources.m_matBuffer, BlitzenEngine::GCMaxLoadedMaterialCount) == 0)
 		{
 			BLIT_ERROR("%s: Failed to create material buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;

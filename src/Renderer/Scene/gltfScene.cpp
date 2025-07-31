@@ -458,12 +458,6 @@ namespace BlitzenEngine
 
             uint32_t emissiveId = cgltfMaterial.emissive_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.emissive_texture.texture))
                 : 0;
-
-            if (!textureContext.AddMaterial(albedoId, normalId, specularId, emissiveId))
-            {
-                BLIT_ERROR("Failed to add GLTF material number: (%u)", i);
-                break;
-            }
         }
     }
 }

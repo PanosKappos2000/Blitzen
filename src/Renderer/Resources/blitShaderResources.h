@@ -77,10 +77,10 @@ namespace BlitzenEngine
 
     struct alignas(16) Material
     {
-        uint32_t albedoTag;
-        uint32_t normalTag;
-        uint32_t specularTag;
-        uint32_t emissiveTag;
+        uint32_t albedoTag = 0;
+        uint32_t normalTag = 0;
+        uint32_t specularTag = 0;
+        uint32_t emissiveTag = 0;
 
         uint32_t materialId;
         uint32_t padding0;
