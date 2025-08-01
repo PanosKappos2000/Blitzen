@@ -1,8 +1,56 @@
 #include "blitResourceRPF.h"
 #include "Renderer/Resources/blitShaderResources.h"
+#include "Core/DbLog/blitLogger.h"
 
 namespace BlitzenEngine
 {
+    bool UploadMaterialsToDisk(const char* folderName, Material* matArray, MaterialData* matDataArray, uint32_t count)
+    {
+        BlitCL::FatString filepath{ strlen(GCRapidMeshDirectoryPath) + strlen(folderName) + strlen("/") + strlen("matBatch.blitMat") };
+        filepath.Format("%s%s/matBatch.blitMat", GCRapidMeshDirectoryPath, folderName);
+
+        uint32_t headerWriteSize = GCMaterialHeaderElementCount * sizeof(size_t);
+        uint32_t materialWriteSize = count * sizeof(Material);
+        uint32_t materialDataWriteSize = count * sizeof(MaterialData);
+        uint32_t writeSize = materialWriteSize + materialDataWriteSize + headerWriteSize;
+
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE materialFile;
+        auto materialFileOpenRes = materialFile.OpenWrite(filepath.Get(), writeSize);
+        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(materialFileOpenRes))
+        {
+            BLIT_ERROR("%s: Could not open rpf file for material batch write", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+
+        BlitRpfMaterialHeader materialHeader{};
+
+        uint32_t offset = headerWriteSize;
+        if (!BlitzenPlatform::WriteMemoryMappedFile(materialFile, offset, materialWriteSize, matArray))
+        {
+            BLIT_ERROR("%s: Failed to write material texture indices to disk", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+        materialHeader[BlitRpfMaterialOffsetID] = offset;
+        offset += materialWriteSize;
+
+        if (!BlitzenPlatform::WriteMemoryMappedFile(materialFile, offset, materialDataWriteSize, matDataArray))
+        {
+            BLIT_ERROR("%s: Failed to write material data to disk", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+        materialHeader[BlitRpfMaterialDataOffsetID] = offset;
+        offset += materialDataWriteSize;
+
+        constexpr uint32_t LCStartOfFile = 0;
+        if (!BlitzenPlatform::WriteMemoryMappedFile(materialFile, LCStartOfFile, headerWriteSize, materialHeader))
+        {
+            BLIT_ERROR("%s: Fialed to write material header to disk", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+
+        return true;
+    }
+
 	size_t GetRpfMeshSize(MeshResources& context, bool clustersBuildFlag)
 	{
         constexpr uint32_t LCMeshPrimitiveCountPerRpfMeshFile = 1;

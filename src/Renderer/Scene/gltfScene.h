@@ -20,18 +20,18 @@ namespace BlitzenEngine
         ~CgltfScope();
     };
 
-    SCENE_CREATE_RES ManageGltf(const char* filepath, const char* sceneName, RenderingResources* pResources, WORLD_RESIDENTS* pWorldResidents, RendererPtrType pRenderer);
+    BLIT_OFFLINE_FUNC SCENE_CREATE_RES ManageGltf(const char* filepath, const char* sceneName, RenderingResources* pResources, WORLD_RESIDENTS* pWorldResidents, RendererPtrType pRenderer);
 
-	bool LoadGltfFile(const char* path, CgltfScope& cgltf);
+	BLIT_OFFLINE_FUNC bool LoadGltfFile(const char* path, CgltfScope& cgltf);
 
-    bool ModifyTextureFilepath(cgltf_texture* pTexture, const char* fullPath, std::string& texturePath);
+    BLIT_OFFLINE_FUNC bool ModifyTextureFilepath(cgltf_texture* pTexture, const char* fullPath, std::string& texturePath);
 
-    void LoadGltfMaterials(TextureManager& textureContext, CgltfScope& cgltfScope, uint32_t previousTextureCount);
+    BLIT_OFFLINE_FUNC bool LoadGltfMaterials(MaterialManager& materialManager, CgltfScope& cgltfScope);
 
-    bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, CgltfScope& cgltfScope, RenderingLoadingContextMesh& loadingContextMesh);
+    BLIT_OFFLINE_FUNC bool LoadGltfMeshes(MeshResources& meshContext, TextureManager& textureContext, CgltfScope& cgltfScope, RenderingLoadingContextMesh& loadingContextMesh);
 
-    bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, 
+    BLIT_OFFLINE_FUNC bool LoadGltfMeshPrimitives(MeshResources& meshContext, TextureManager& textureContext, CgltfScope& cgltfScope, const cgltf_mesh& gltfMesh, 
         RenderingLoadingContextMesh& loadingContextMesh, uint32_t meshID);
 
-    bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, CgltfScope& cgltfScope);
+    BLIT_OFFLINE_FUNC bool LoadGltfNodes(WORLD_RESIDENTS* pResidents, MeshResources& meshContext, CgltfScope& cgltfScope);
 }

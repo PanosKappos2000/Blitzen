@@ -5,6 +5,11 @@
 
 namespace BlitzenEngine
 {
+	void MaterialManager::ResetContext()
+	{
+		mMaterialCount = 0;
+	}
+
 	bool MaterialManager::AddMaterial(MaterialAlphaMode alphaMode, const Material& matIndices)
 	{
 #if defined(BLIT_OFFLINE_FUNC)

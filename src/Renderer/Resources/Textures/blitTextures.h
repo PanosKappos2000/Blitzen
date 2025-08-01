@@ -23,7 +23,9 @@ namespace BlitzenEngine
 
         void ALLOC(uint32_t textureCount);
         ~TextureManager();
+
         BLIT_OFFLINE_FUNC bool AddTexture(const char* textureName, const char* originalPath);
+        BLIT_OFFLINE_FUNC bool AddTextureResourceFromScene(const char* sceneName, const char* originalPath, uint32_t textureID);
     };
 
     inline unsigned int FourCC(const char (&str)[5])

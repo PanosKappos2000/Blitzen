@@ -39,6 +39,13 @@ namespace BlitzenEngine
             return SCENE_CREATE_RES::FAILED_TO_LOAD_GLTF_FILE;
         }
 
+        BlitCL::FatString sceneResourcesDirectoryPath{ strlen(BLITZEN_CLIENT_RPFMESH_DIRECTORY) + strlen(sceneName) };
+        sceneResourcesDirectoryPath.Format("%s%s", BLITZEN_CLIENT_RPFMESH_DIRECTORY, sceneName);
+        if (!BlitzenPlatform::CreateDirectoryIfMissing(sceneResourcesDirectoryPath.Get()))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_CREATE_SCENE_RESOURCE_DIRECTORY;
+        }
+
         // Textures (special care because they are directly managed by the renderer backend)
         BLIT_INFO("Loading textures for GLTF");
         for (size_t i = 0; i < cgltfScope.pData->textures_count; ++i)
@@ -50,11 +57,19 @@ namespace BlitzenEngine
             {
                 return SCENE_CREATE_RES::FAILED_TO_MODIFY_TEXTURE_FILEPATH_TO_DDS;
             }
+
+            if (!pResources->m_textureManager.AddTextureResourceFromScene(cgltfScope.sceneName, ddsFilepath.c_str(), i))
+            {
+                return SCENE_CREATE_RES::FAILED_TO_LOAD_TEXTURE;
+            }
         }
 
         // Materials
         BLIT_INFO("Loading materials for GLTF");
-        LoadGltfMaterials(textureContext, cgltfScope, 0);
+        if (!LoadGltfMaterials(pResources->mMaterials, cgltfScope))
+        {
+            return SCENE_CREATE_RES::FAILED_TO_LOAD_GLTF_MATERIALS;
+        }
 
         // Meshes
         BLIT_INFO("Loading meshes for GLTF");
@@ -424,25 +439,41 @@ namespace BlitzenEngine
         return true;
     }
 
-    void LoadGltfMaterials(TextureManager& textureContext, CgltfScope& cgltfScope, uint32_t previousTextureCount)
+    bool LoadGltfMaterials(MaterialManager& materialManager, CgltfScope& cgltfScope)
     {
         for (size_t i = 0; i < cgltfScope.pData->materials_count; ++i)
         {
             auto& cgltfMaterial = cgltfScope.pData->materials[i];
+            Material blitMaterial;
 
-            uint32_t albedoId =
-                cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture))
-                : cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture))
+            blitMaterial.albedoTag =
+                cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture))
+                : cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture))
                 : 0;
 
-            uint32_t normalId = cgltfMaterial.normal_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.normal_texture.texture)) : 0;
+            blitMaterial.normalTag = cgltfMaterial.normal_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.normal_texture.texture)) : 0;
 
-            uint32_t specularId =
-                cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture))
+            blitMaterial.specularTag =
+                cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture ? 
+                uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture))
                 : 0;
 
-            uint32_t emissiveId = cgltfMaterial.emissive_texture.texture ? uint32_t(previousTextureCount + cgltf_texture_index(cgltfScope.pData, cgltfMaterial.emissive_texture.texture))
+            blitMaterial.emissiveTag = cgltfMaterial.emissive_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.emissive_texture.texture))
                 : 0;
+
+            if (!materialManager.AddMaterial(cgltfMaterial.alpha_mode == cgltf_alpha_mode::cgltf_alpha_mode_opaque ? MaterialAlphaMode::Opaque : MaterialAlphaMode::Transparent, blitMaterial))
+            {
+                BLIT_ERROR("%s: Failed to load material no %u for scene %s", BlitzenCore::CE_SCENE_SYSTEM_NAME, i, cgltfScope.sceneName);
+                return false;
+            }
         }
+
+        if (!UploadMaterialsToDisk(cgltfScope.sceneName, materialManager.mMaterials, materialManager.mMatData, materialManager.mMaterialCount))
+        {
+            BLIT_ERROR("%s: Failed to load materials to disk for scene %s", BlitzenCore::CE_SCENE_SYSTEM_NAME, cgltfScope.sceneName);
+            return false;
+        }
+
+        return true;
     }
 }

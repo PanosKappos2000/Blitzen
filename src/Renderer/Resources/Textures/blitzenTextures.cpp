@@ -207,13 +207,28 @@ namespace BlitzenEngine
 
 	bool TextureManager::AddTexture(const char* textureName, const char* originalPath)
 	{
-		BlitCL::FatString filepath{ strlen(BLITZEN_CLIENT_RPFMESH_DIRECTORY) + strlen(GCRpfTextureSubfolder) + strlen("/")};
+		BlitCL::FatString filepath{ strlen(BLITZEN_CLIENT_RPFMESH_DIRECTORY) + strlen(GCRpfTextureSubfolder) + strlen("/") + strlen(textureName)};
 		filepath.Format("%s%s/%s", BLITZEN_CLIENT_RPFMESH_DIRECTORY, GCRpfTextureSubfolder, textureName);
 
 		constexpr bool LCFailIfExistsFlag = true;
 		if (!BlitzenPlatform::PlatformCopyFile(originalPath, filepath.Get(), LCFailIfExistsFlag))
 		{
 			BLIT_ERROR("%s: Failed to copy dds file over to project folder", BlitzenCore::GCRenderingResourceSystemName);
+			return false;
+		}
+
+		return true;
+	}
+
+	bool TextureManager::AddTextureResourceFromScene(const char* sceneName, const char* originalPath, uint32_t textureID)
+	{
+		BlitCL::FatString filepath{ strlen(BLITZEN_CLIENT_RPFMESH_DIRECTORY) + strlen(sceneName) + strlen("/") + strlen("texture") + 16 + strlen(".dds")};
+		filepath.Format("%s%s/texture%u.dds", BLITZEN_CLIENT_RPFMESH_DIRECTORY, sceneName, textureID);
+
+		constexpr bool LCFailIfDirectoryNotExistsFlag = true;
+		if (!BlitzenPlatform::PlatformCopyFile(originalPath, filepath.Get(), LCFailIfDirectoryNotExistsFlag))
+		{
+			BLIT_ERROR("%s: Failed to copy dds file no %u for scene %s", BlitzenCore::GCRenderingResourceSystemName, textureID, sceneName);
 			return false;
 		}
 

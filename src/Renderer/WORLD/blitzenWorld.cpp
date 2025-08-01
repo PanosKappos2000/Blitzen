@@ -510,12 +510,12 @@ namespace BlitzenWorld
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
         BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
 
-        //pResources->m_textureManager.ALLOC(100);
-        //if (!pResources->m_textureManager.AddTexture("BlitzenLogo.dds", "Assets/Textures/BlitzenLSV1.dds"))
-        //{
-        //    BLIT_ERROR("%s: Failed to add Blitzen Logo texture", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-        //    return false;
-        //}
+        pResources->m_textureManager.ALLOC(100);
+        if (!pResources->m_textureManager.AddTexture("BlitzenLogo.dds", "Assets/Textures/BlitzenLSV1.dds"))
+        {
+            BLIT_ERROR("%s: Failed to add Blitzen Logo texture", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
 
         InitializeMapContext(pWORLD);
 

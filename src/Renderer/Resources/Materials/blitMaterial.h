@@ -39,5 +39,7 @@ namespace BlitzenEngine
 		void ALLOC(uint32_t materialCount);
 
 		~MaterialManager();
+
+		void ResetContext();
 	};
 }
