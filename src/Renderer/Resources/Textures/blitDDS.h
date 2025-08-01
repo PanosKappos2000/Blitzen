@@ -65,4 +65,12 @@ namespace BlitzenEngine
 
         DXGI_FORMAT_UNKNOWN = 0
     };
+
+    struct DDSFileContext
+    {
+        DDS_HEADER mDDSHeader;
+        DDS_HEADER_DXT10 mDDSHeader10;
+        BLIT_DXGI_FORMAT_COPY mFormat;
+        size_t mBlockSize;
+    };
 }

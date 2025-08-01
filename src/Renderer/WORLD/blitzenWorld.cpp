@@ -455,11 +455,13 @@ namespace BlitzenWorld
 
     bool RenderingResourcesInit(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
-        // Calls the renderer's texture loading
-        // As the default texture adds the Blitzen logo
-        // This is fixed behavior for now
-        pResources->m_textureManager.ALLOC();
-        if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->m_textureManager.m_singleTextureHandle, "Assets/Textures/BlitzenLSV1.dds"))
+        if (!BlitzenEngine::AllocateLoadingStagingBufferMaterials(pWORLD->BMPR.Data(), pResources->mLoadingContextMaterial))
+        {
+            BLIT_ERROR("%s: Failed to allocate staging buffer for textures", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->mLoadingContextMaterial, "Assets/Textures/BlitzenLSV1.dds"))
         {
             BLIT_ERROR("%s: Rendering resources failed", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -472,14 +474,6 @@ namespace BlitzenWorld
         {
             BLIT_ERROR("%s: Failed to put renderer on Idle Work Mode", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
-        }
-
-        // Adds the texture to the cpu side texture manager.
-        // This does not mean anything for now.
-        // But I will probably want to couple textures with resources and maps / grid partitions
-        if (!pResources->m_textureManager.AddTexture(BlitzenCore::Ce_DefaultTextureName))
-        {
-            BLIT_ERROR("%s: Something went wrong with texture map", BlitzenCore::CE_WORLD_SYSTEM_NAME);
         }
         
         // Default material. NOTE TO SELF: Allocating 100 here by default. 
@@ -515,6 +509,13 @@ namespace BlitzenWorld
         // Creates the WRLD(project) file, for the first time.
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
         BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
+
+        //pResources->m_textureManager.ALLOC(100);
+        //if (!pResources->m_textureManager.AddTexture("BlitzenLogo.dds", "Assets/Textures/BlitzenLSV1.dds"))
+        //{
+        //    BLIT_ERROR("%s: Failed to add Blitzen Logo texture", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+        //    return false;
+        //}
 
         InitializeMapContext(pWORLD);
 

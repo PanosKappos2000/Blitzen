@@ -577,6 +577,45 @@ namespace BlitzenPlatform
             return mkdir(path, 0755) == 0 || errno == EEXIST;
         }
 
+        bool PlatformCopyFile(const char* source, const char* dest, bool overwriteFlag)
+        {
+            int32_t inFd = open(src, O_RDONLY);
+            if (inFd < 0) return false;
+
+            struct stat st {};
+            if (fstat(inFd, &st) < 0) 
+            { 
+                close(inFd); 
+                return false; 
+            }
+
+            int32_t outFlags = O_WRONLY | O_CREAT | (overwrite ? O_TRUNC : O_EXCL);
+            int32_t outFd = open(dst, outFlags, 0644);
+            if (outFd < 0) 
+            { 
+                close(inFd); 
+                return false; 
+            }
+
+            off_t offset = 0;
+            bool ok = true;
+            while (offset < st.st_size) 
+            {
+                ssize_t n = sendfile(outFd, inFd, &offset, size_t(st.st_size - offset));
+                if (n < 0) 
+                { 
+                    ok = false; 
+                    break; 
+                }
+
+                if (n == 0) break; // EOF
+            }
+
+            close(outFd);
+            close(inFd);
+            return ok && (offset == st.st_size);
+        }
+
         static void PlatformShutdown(PlatformContext* P_HANDLE)
         {
             // yeah... we got to turn this shit back on, because it's global for the OS

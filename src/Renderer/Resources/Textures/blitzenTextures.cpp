@@ -3,19 +3,6 @@
 
 namespace BlitzenEngine
 {
-	bool TextureManager::AddTexture(const char* textureName)
-	{
-		if (m_textureCount >= BlitzenCore::Ce_MaxTextureCount)
-		{
-			BLIT_ERROR("Max Texture count exceeded");
-			return false;
-		}
-
-		m_textureIDMap.Insert(textureName, m_textureCount);
-		m_textureCount++;
-		return true;
-	}
-
 	uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE)
 	{
 		if (!scopedFILE.Open(filepath, BlitzenPlatform::FileModes::Read, 1))
@@ -71,10 +58,10 @@ namespace BlitzenEngine
 		return 1;
 	}
 
-	size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize)
+	size_t GetDDSImageSizeBC(uint32_t width, uint32_t height, uint32_t levels, uint32_t blockSize)
 	{
 		size_t result = 0;
-		for (unsigned int i = 0; i < levels; ++i)
+		for (uint32_t i = 0; i < levels; ++i)
 		{
 			result += ((width + 3) / 4) * ((height + 3) / 4) * blockSize;
 			width = width > 1 ? width / 2 : 1;
@@ -181,16 +168,16 @@ namespace BlitzenEngine
 		return BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_UNKNOWN;
 	}
 
-	size_t LoadDDSImageData(DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, BLIT_DXGI_FORMAT_COPY& format, void* pData, uint32_t& blockSize, const char* filepath)
+	size_t LoadDDSImageData(DDSFileContext& context, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, void* pData, const char* filepath)
 	{
-		if (!OpenDDSImageFile(filepath, header, header10, scopedFILE))
+		if (!OpenDDSImageFile(filepath, context.mDDSHeader, context.mDDSHeader10, scopedFILE))
 		{
 			BLIT_ERROR("%s: Failed to open texture file", BlitzenCore::GCRenderingResourceSystemName);
 			return 0;
 		}
 
-		format = GetDDSFormat(header, header10);
-		if (format == BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_UNKNOWN)
+		context.mFormat = GetDDSFormat(context.mDDSHeader, context.mDDSHeader10);
+		if (context.mFormat == BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_UNKNOWN)
 		{
 			BLIT_ERROR("%s: Unknown format retrieved from DDS image", BlitzenCore::GCRenderingResourceSystemName);
 			return false;
@@ -198,8 +185,8 @@ namespace BlitzenEngine
 
 		FILE* file = scopedFILE.m_pHandle;
 
-		blockSize = GetDDSBlockSize(header, header10);
-		size_t imageSize = GetDDSImageSizeBC(header.dwWidth, header.dwHeight, header.dwMipMapCount, blockSize);
+		context.mBlockSize = GetDDSBlockSize(context.mDDSHeader, context.mDDSHeader10);
+		size_t imageSize = GetDDSImageSizeBC(context.mDDSHeader.dwWidth, context.mDDSHeader.dwHeight, context.mDDSHeader.dwMipMapCount, (uint32_t)context.mBlockSize);
 
 		size_t readSize = fread(pData, 1, imageSize, file);
 
@@ -218,13 +205,29 @@ namespace BlitzenEngine
 		return imageSize;
 	}
 
-	void TextureManager::ALLOC()
+	bool TextureManager::AddTexture(const char* textureName, const char* originalPath)
 	{
-		m_singleTextureHandle = BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Texture, BlitzenCore::CE_TEXTURE_DATA_HANDLE_SIZE);
+		BlitCL::FatString filepath{ strlen(BLITZEN_CLIENT_RPFMESH_DIRECTORY) + strlen(GCRpfTextureSubfolder) + strlen("/")};
+		filepath.Format("%s%s/%s", BLITZEN_CLIENT_RPFMESH_DIRECTORY, GCRpfTextureSubfolder, textureName);
+
+		constexpr bool LCFailIfExistsFlag = true;
+		if (!BlitzenPlatform::PlatformCopyFile(originalPath, filepath.Get(), LCFailIfExistsFlag))
+		{
+			BLIT_ERROR("%s: Failed to copy dds file over to project folder", BlitzenCore::GCRenderingResourceSystemName);
+			return false;
+		}
+
+		return true;
+	}
+
+	void TextureManager::ALLOC(uint32_t textureCount)
+	{
+		mTextureNames = reinterpret_cast<BlitCL::FatString*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Texture, textureCount * sizeof(BlitCL::FatString)));
+		mAllocatedCount = textureCount;
 	}
 
 	TextureManager::~TextureManager()
 	{
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Texture, m_singleTextureHandle, BlitzenCore::CE_TEXTURE_DATA_HANDLE_SIZE);
+		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Texture, mTextureNames, mAllocatedCount * sizeof(BlitCL::FatString));
 	}
 }

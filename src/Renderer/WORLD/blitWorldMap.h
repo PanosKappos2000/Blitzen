@@ -3,6 +3,7 @@
 #include "Renderer/Entities/Residents/blitResidentManager.h"
 #include "BlitCL/blitString.h"
 #include "Platform/Filesystem/blitCFILE.h"
+#include "Renderer/Resources/Textures/blitTextures.h"
 
 namespace BlitzenEngine
 {
@@ -197,4 +198,16 @@ namespace BlitzenEngine
 		default: 																						return "UPLOAD_WORLD_MAP_RES::UNKNOWN";
 		}
 	}
+
+	enum class BlitTextureFileHeaderIndices : uint32_t
+	{
+		BlitTextureCountID = 0,
+		BlitTextureNameSizesOffsetID = 1,
+		BlitTextureNamesOffsetID = 2,
+
+		BlitTextureFileHeaderMax = 3
+	};
+	using BlitTextureFileHeader = size_t[GCMaxLoadedTextureCount];
+
+	bool AddTextureToWorldMapTextureFile(const char* mapName, const char* textureName);
 }

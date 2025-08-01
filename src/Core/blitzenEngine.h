@@ -126,7 +126,6 @@ namespace BlitzenCore
 
 	constexpr size_t Ce_BlitLogOutputFileSize = 1024 * 1024 * 10; // 10 MB
     constexpr size_t CE_RAPID_RESOURCE_FILE_SIZE = 1024 * 1024 * 10; // 10 MB
-    constexpr size_t CE_TEXTURE_DATA_HANDLE_SIZE = 128 * 1024 * 1024;
 
     constexpr uint16_t Ce_KeyCallbackCount = 256;
     constexpr uint16_t Ce_MouseButtonPFNCount = 3;
@@ -330,6 +329,7 @@ namespace BlitzenCore
 #define BLIT_BB_FALSE   BlitzenCore::BB_FALSE
 
 using BLIT_STRAIGHTHANDLE = void*;
+#define BLIT_SIZE_OF_PTR     sizeof(BLIT_STRAIGHTHANDLE)
 
 namespace BlitzenCore
 {

@@ -39,9 +39,6 @@ namespace BlitzenEngine
             return SCENE_CREATE_RES::FAILED_TO_LOAD_GLTF_FILE;
         }
 
-        // Texture count saved for materials
-        uint32_t previousTextureCount = textureContext.m_textureCount;
-
         // Textures (special care because they are directly managed by the renderer backend)
         BLIT_INFO("Loading textures for GLTF");
         for (size_t i = 0; i < cgltfScope.pData->textures_count; ++i)
@@ -53,23 +50,11 @@ namespace BlitzenEngine
             {
                 return SCENE_CREATE_RES::FAILED_TO_MODIFY_TEXTURE_FILEPATH_TO_DDS;
             }
-
-            // Give to renderer
-            if (!UploadTextureToGPU(pRenderer, textureContext.m_singleTextureHandle, ddsFilepath.c_str()))
-            {
-                return SCENE_CREATE_RES::FAILED_TO_LOAD_TEXTURE_TO_GPU;
-            }
-
-            // Update textures (might want to return if this fails)
-            if (!textureContext.AddTexture(ddsFilepath.c_str()))
-            {
-                return SCENE_CREATE_RES::FAILED_TO_ADD_TEXTURE_TO_SYSTEM;
-            }
         }
 
         // Materials
         BLIT_INFO("Loading materials for GLTF");
-        LoadGltfMaterials(textureContext, cgltfScope, previousTextureCount);
+        LoadGltfMaterials(textureContext, cgltfScope, 0);
 
         // Meshes
         BLIT_INFO("Loading meshes for GLTF");

@@ -11,6 +11,7 @@
 #include "backends/imgui_impl_win32.h"
 #include "Core/Dasher/Interface/dasherInterface.h"
 #include <direct.h>
+#include <xstring>
 
 // Needs to make sure that IMGUI callback does not get overriden
 #if defined(DASHER_JOIN) && defined(DASHER_USE_DEAR)
@@ -382,6 +383,31 @@ namespace BlitzenPlatform
     bool CreateDirectoryIfMissing(const char* path)
     {
         return _mkdir(path) == 0 || errno == EEXIST;
+    }
+
+    static std::wstring WideFromUTF8(const char* s)
+    {
+        if (!s) return {};
+
+        int32_t wlen = MultiByteToWideChar(CP_UTF8, 0, s, -1, nullptr, 0);
+        if (wlen <= 0) return {};
+
+        std::wstring w;
+        w.resize(size_t(wlen - 1));
+        MultiByteToWideChar(CP_UTF8, 0, s, -1, w.data(), wlen);
+
+        return w;
+    }
+
+    bool PlatformCopyFile(const char* source, const char* dest, bool overwriteFlag)
+    {
+        std::wstring wsrc = WideFromUTF8(source);
+        std::wstring wdst = WideFromUTF8(dest);
+        if (wsrc.empty() || wdst.empty()) return false;
+
+        // CopyFileW third param: bFailIfExists (TRUE = do not overwrite)
+        const BOOL ok = CopyFileW(wsrc.c_str(), wdst.c_str(), overwriteFlag ? FALSE : TRUE);
+        return ok != 0;
     }
 
     static void PlatformShutdown(PlatformContext* P_HANDLE)

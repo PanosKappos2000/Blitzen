@@ -4,23 +4,26 @@
 #include "Platform/Filesystem/blitCFILE.h"
 #include "BlitCL/blitHashMap.h"
 #include "Renderer/Resources/blitShaderResources.h"
+#include "Renderer/Resources/blitShaderShared.h"
 
 namespace BlitzenEngine
 {
+    constexpr uint32_t GCMaxLoadedTextureCount = BLIT_MAX_WORLD_TEXTURE_RESOURCES;
+    constexpr const char* GCRpfTextureSubfolder = "DDSTextures";
+    constexpr size_t GCTextureHandleDataSize = 128 * 1024 * 1024;
+
     class TextureManager
     {
     public:
         
-        BlitCL::HashMap<uint32_t> m_textureIDMap;
-        uint32_t m_textureCount{ 0 };
+        BlitCL::FatString* mTextureNames;
+        uint32_t mTextureCount;
+        uint32_t mAllocatedCount;
+        uint32_t mNotLoadedCount;
 
-        BLIT_STRAIGHTHANDLE m_singleTextureHandle;
-
-        void ALLOC();
-
+        void ALLOC(uint32_t textureCount);
         ~TextureManager();
-
-        bool AddTexture(const char* textureName);
+        BLIT_OFFLINE_FUNC bool AddTexture(const char* textureName, const char* originalPath);
     };
 
     inline unsigned int FourCC(const char (&str)[5])
@@ -35,6 +38,6 @@ namespace BlitzenEngine
 
     uint32_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10);
 
-    constexpr size_t CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE = BlitzenCore::CE_TEXTURE_DATA_HANDLE_SIZE;
-    size_t LoadDDSImageData(DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, BLIT_DXGI_FORMAT_COPY& format, void* pData, uint32_t& blockSize, const char* filepath);
+    constexpr size_t CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE = GCTextureHandleDataSize;
+    size_t LoadDDSImageData(DDSFileContext& context, BlitzenPlatform::C_FILE_SCOPE& scopedFILE, void* pData, const char* filepath);
 }

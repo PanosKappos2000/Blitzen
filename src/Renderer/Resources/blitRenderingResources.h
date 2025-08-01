@@ -21,6 +21,7 @@ namespace BlitzenEngine
         MaterialManager mMaterials;
 
         RenderingLoadingContextMesh mLoadingContextMesh;
+        RenderingLoadingContextMaterial mLoadingContextMaterial;
 
         BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE m_mappedFile;
     };

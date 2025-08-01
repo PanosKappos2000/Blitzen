@@ -45,22 +45,30 @@ namespace BlitzenEngine
 		return 1;
 	}
 
-	uint8_t UploadTextureToGPU(BlitzenDX12::Dx12Renderer* pRenderer, void* pTextureData, const char* filepath)
+	uint8_t UploadTextureToGPU(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextMaterial& loadingContext, const char* filepath)
 	{
-		BlitzenEngine::DDS_HEADER header{};
-		BlitzenEngine::DDS_HEADER_DXT10 header10{};
+		DDSFileContext context;
 		BlitzenPlatform::C_FILE_SCOPE scopedFILE{};
-		BLIT_DXGI_FORMAT_COPY format{ BLIT_DXGI_FORMAT_COPY::DXGI_FORMAT_UNKNOWN };
-		uint32_t blockSize;
-
-		size_t imageSize = BlitzenEngine::LoadDDSImageData(header, header10, scopedFILE, format, pTextureData, blockSize, filepath);
+		size_t imageSize = BlitzenEngine::LoadDDSImageData(context, scopedFILE, loadingContext.textureDataStaging.m_pMapped, filepath);
 		if(imageSize == BlitzenEngine::CE_LOAD_DDS_IMAGE_DATA_ERROR_CODE)
 		{
 			BLIT_ERROR("%s: Failed to load DDS image", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
 		}
 
-		return pRenderer->UploadTexture(pTextureData, header, header10, imageSize, blockSize, (DXGI_FORMAT)format);
+		auto& tex2D{ pRenderer->m_roResources.m_drawTextures[pRenderer->m_roResources.m_textureCount] };
+		tex2D.format = (DXGI_FORMAT)context.mFormat;
+		tex2D.mipLevels = context.mDDSHeader.dwMipMapCount;
+		if (!BlitzenDX12::Create2DTexture(pRenderer->m_device.Get(), tex2D.resource, context.mDDSHeader.dwWidth, context.mDDSHeader.dwHeight, tex2D.mipLevels, tex2D.format, (UINT)context.mBlockSize,
+			pRenderer->m_cmdContext[pRenderer->m_currentFrame], pRenderer->m_transferCommandQueue.Get(), loadingContext.textureDataStaging.m_buffer))
+		{
+			BLIT_ERROR("%s: Failed to upload texture to GPU", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		pRenderer->m_roResources.m_textureCount++;
+
+		return 1;
 	}
 
 	uint8_t AllocateLoadingContextMesh(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextMesh& ctx)
@@ -387,6 +395,33 @@ namespace BlitzenEngine
 		BlitzenCore::MANUAL_COPY(pDest, uiQuads, copySize);
 
 		ctx.panelQuadsStaging.m_validDataIndex += elementCount;
+
+		return 1;
+	}
+
+	uint8_t AllocateLoadingStagingBufferMaterials(BlitzenDX12::Dx12Renderer* pRenderer, BlitzenDX12::LoadingContextMaterial& ctx)
+	{
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.textureDataStaging, GCTextureHandleDataSize, (uint8_t*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to create staging buffer for texture data", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		return 1;
+	}
+
+	uint8_t UploadTexturesToStagingBuffer(RenderingLoadingContextMaterial& loadingContext, void* pTextureData, size_t blockSize)
+	{
+		if (blockSize > GCTextureHandleDataSize)
+		{
+			BLIT_FATAL("%s: Texture staging buffer data overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(pTextureData != nullptr);
+
+		BlitzenCore::MANUAL_COPY(loadingContext.textureDataStaging.m_pMapped, pTextureData, blockSize);
+		loadingContext.textureDataStaging.m_dataSize = blockSize;
 
 		return 1;
 	}

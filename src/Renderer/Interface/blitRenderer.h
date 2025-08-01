@@ -42,6 +42,8 @@ namespace BlitzenEngine
 
         using RenderingLoadingContextRenderObjects = BlitzenDX12::LoadingContextRenderObjects;
 
+        using RenderingLoadingContextMaterial = BlitzenDX12::LoadingContextMaterial;
+
         using RenderingLoadingContextDSUI = BlitzenDX12::LoadingContextDSUI;
 
     #else
@@ -56,9 +58,6 @@ namespace BlitzenEngine
     // Post-loading function. CPU side resources passed to GPU side buffers (or whichever type of handle is used)
     // Views for resources also placed
     uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext, RenderingLoadingContextMesh& loadingContextMesh, RenderingLoadingContextRenderObjects& loadingContextObj);
-
-    // Singular texture upload
-    uint8_t UploadTextureToGPU(RendererPtrType pRenderer, void* pTextureData, const char* filepath);
 
     uint8_t AllocateLoadingContextMesh(RendererPtrType pRenderer ,RenderingLoadingContextMesh& ctx);
 
@@ -85,11 +84,19 @@ namespace BlitzenEngine
     // Copies a mesh's cluster indices to a staging buffer. Count shoud not have sizeof(type) include. It's done inside.
     uint8_t UploadToClusterIndicesStagingBuffer(RenderingLoadingContextMesh& ctx, uint32_t* clusterIndices, uint32_t count);
 
-    // Initial allocation for all staging buffers that have to with UI data
+    // Initial allocation for all staging buffers that have to do with UI data
     uint8_t AllocateLoadingStagingBufferDSUI(RendererPtrType pRenderer, RenderingLoadingContextDSUI& ctx);
 
     // Uploads data to the buffer that will hold panel quads
     uint8_t UploadPanelQuadsToStagingBuffer(RenderingLoadingContextDSUI& pRenderer, DSQuad* uiQuads, uint32_t elementCount);
+
+    // Initial allocation for all staging buffer that have to do with materials and their textures
+    uint8_t AllocateLoadingStagingBufferMaterials(RendererPtrType pRenderer, RenderingLoadingContextMaterial& ctx);
+
+    uint8_t UploadMaterialsToStagingBuffer(RenderingLoadingContextMaterial& loadingContext, Material* pMaterials, uint32_t materialCount);
+    uint8_t UploadTexturesToStagingBuffer(RenderingLoadingContextMaterial& loadingContext, void* pTextureData, size_t blockSize);
+    // Singular texture upload
+    uint8_t UploadTextureToGPU(RendererPtrType pRenderer, RenderingLoadingContextMaterial& loadingContext, const char* filepath);
 
     uint8_t AllocateLoadingContextRenderObjects(RendererPtrType pRenderer, RenderingLoadingContextRenderObjects& ctx);
 

@@ -4,6 +4,7 @@
 #include "Platform/Common/blitMappedFile.h"
 #include "Core/DbLog/blitAssert.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Renderer/Resources/Textures/blitTextures.h"
 
 namespace BlitzenCore
 {
@@ -71,6 +72,13 @@ namespace BlitzenCore
 		}
 
 		if(!BlitzenPlatform::CreateDirectoryIfMissing(BLITZEN_CLIENT_RPFMESH_DIRECTORY))
+		{
+			return false;
+		}
+
+		BlitCL::FatString textureResourcesFilepath{ strlen(BLITZEN_CLIENT_RPFMESH_DIRECTORY) + strlen(BlitzenEngine::GCRpfTextureSubfolder) };
+		textureResourcesFilepath.Format("%s%s", BLITZEN_CLIENT_RPFMESH_DIRECTORY, BlitzenEngine::GCRpfTextureSubfolder);
+		if (!BlitzenPlatform::CreateDirectoryIfMissing(textureResourcesFilepath.Get()))
 		{
 			return false;
 		}

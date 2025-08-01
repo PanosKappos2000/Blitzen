@@ -331,6 +331,12 @@ namespace BlitzenDX12
         STAGING<BlitzenEngine::LodData> m_lodDataStaging;
     };
 
+    struct LoadingContextMaterial
+    {
+        STAGING<uint8_t> textureDataStaging;
+        STAGING<BlitzenEngine::Material> materialStaging;
+    };
+
     struct LoadingContextRenderObjects
     {
         STAGING<BlitzenEngine::RenderObject> m_renderStaging;

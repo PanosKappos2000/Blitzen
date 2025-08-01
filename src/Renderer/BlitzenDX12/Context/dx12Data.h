@@ -295,6 +295,11 @@ namespace BlitzenDX12
         {
             return m_pMapped != nullptr && m_dataSize != 0;
         }
+
+        inline DATA* GetMapped()
+        {
+            return m_pMapped;
+        }
     };
 
     template<class DATA>

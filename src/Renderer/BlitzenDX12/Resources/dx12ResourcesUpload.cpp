@@ -76,44 +76,6 @@ namespace BlitzenDX12
 		return 1;
 	}
 
-	uint8_t Dx12Renderer::UploadTexture(BLIT_STRAIGHTHANDLE pTexture, BlitzenEngine::DDS_HEADER& header, BlitzenEngine::DDS_HEADER_DXT10& header10, size_t imageSize, UINT blockSize, DXGI_FORMAT format)
-	{
-		// Copies texture data to staging resource
-		DX12WRAPPER<ID3D12Resource> stagingBuffer;
-		if (!CreateBuffer(m_device.Get(), stagingBuffer.ReleaseAndGetAddressOf(), Ce_TextureDataStagingSize, D3D12_RESOURCE_STATE_COMMON, D3D12_HEAP_TYPE_UPLOAD))
-		{
-			BLIT_ERROR("Failed to create staging buffer for texture data copy");
-			return 0;
-		}
-
-		void* pData{ nullptr };
-		HRESULT mappingRes = stagingBuffer->Map(0, nullptr, &pData);
-		if (FAILED(mappingRes))
-		{
-			BLIT_ERROR("Failed to map pointer to texture staging buffer");
-			return LOG_ERROR_MESSAGE_AND_RETURN(mappingRes);
-		}
-
-		auto& tex2D{ m_roResources.m_drawTextures[m_roResources.m_textureCount] };
-		tex2D.format = format;
-
-		BlitzenCore::BlitMemCopy(pData, pTexture, imageSize);
-
-		tex2D.mipLevels = header.dwMipMapCount;
-		if (!Create2DTexture(m_device.Get(), tex2D.resource, header.dwWidth, header.dwHeight, tex2D.mipLevels, tex2D.format, blockSize, m_cmdContext[m_currentFrame], 
-			m_transferCommandQueue.Get(), stagingBuffer))
-		{
-			BLIT_ERROR("Failed to upload texture to GPU");
-			return 0;
-		}
-
-		stagingBuffer->Unmap(0, nullptr);
-
-		m_roResources.m_textureCount++;
-
-		return 1;
-	} 
-
 	uint8_t UploadResourcesToBuffers(ID3D12Device* device, const BlitzenEngine::DrawContext& drawContext, ReadOnlyResources& roResources, ReadWriteResources* rwResourcesArr, 
 		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh, LoadingContextRenderObjects& loadingContextObj)
 	{

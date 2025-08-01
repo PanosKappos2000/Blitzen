@@ -37,4 +37,6 @@ namespace BlitzenPlatform
     // Creates directory with the specified path
     // Returns true if created or already exists. False means actual failure.
     bool CreateDirectoryIfMissing(const char* path);
+
+    bool PlatformCopyFile(const char* source, const char* dest, bool overwriteFlag);
 }

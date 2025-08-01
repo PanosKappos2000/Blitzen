@@ -539,4 +539,16 @@ namespace BlitzenEngine
 
 		return true;
 	}
+
+	bool AddTextureToWorldMapTextureFile(const char* mapName, const char* textureName)
+	{
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen("textureNames.bin")};
+		filepath.Format("%s%s/textureNames.bin", GCClientWorldMapDirectory, mapName);
+
+		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE textureFile;
+
+		//auto texFileOpenRes = textureFile.OpenWrite(filepath.Get(), )
+		
+		return true;
+	}
 }

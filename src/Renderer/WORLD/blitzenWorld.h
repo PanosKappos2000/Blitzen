@@ -41,7 +41,6 @@ namespace BlitzenWorld
         BlitzenEngine::CollisionWorkConstant MBmprCollisionWorkConstant;
 
         const char* mActiveMapName;
-
         BlitzenPlatform::C_FILE_SCOPE mResourcesNamesFile;
 
         float deltaTime{0.f};
