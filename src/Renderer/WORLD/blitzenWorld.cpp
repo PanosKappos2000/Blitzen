@@ -430,9 +430,20 @@ namespace BlitzenWorld
             texturePoolOffset += textureNameSizes[t];
         }
 
-        if (!BlitzenEngine::AddStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, reinterpret_cast<char*>(texturesNamePool.mPtr), textureNameSizes.Data(), texturesCount))
+        if (!BlitzenEngine::AddStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, reinterpret_cast<char*>(texturesNamePool.mPtr), textureNameSizes.Data(), 
+            texturesCount, (uint32_t)textureNamePoolSize))
         {
             BLIT_ERROR("%s: Failed to retrieve texture names for scene \"%s\"", sceneName);
+            return false;
+        }
+
+        // NOTE TO SELF: Momentarily here for testing, this is not an offline function
+        pRenderingResources->CloseWorldMapTextureNamesBINSTRFile();
+        BlitzenCore::BLIT_PTR texturesNameDataReadback;
+        BlitzenCore::BLIT_PTR texturesSizeDataReadback;
+        uint32_t stringCountReadback;
+        if (!BlitzenEngine::ReadStringDataFromBINSTRFile(pWORLD->mActiveMapName, texturesSizeDataReadback, texturesNameDataReadback, stringCountReadback))
+        {
             return false;
         }
 

@@ -16,7 +16,7 @@ namespace BlitzenEngine
 
         BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE materialFile;
         auto materialFileOpenRes = materialFile.OpenWrite(filepath.Get(), writeSize);
-        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(materialFileOpenRes))
+        if (BlitzenPlatform::CheckMmfResForError(materialFileOpenRes))
         {
             BLIT_ERROR("%s: Could not open rpf file for material batch write", BlitzenCore::GCRpfSystemName);
             return false;

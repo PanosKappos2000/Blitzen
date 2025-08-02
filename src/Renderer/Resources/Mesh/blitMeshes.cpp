@@ -241,7 +241,7 @@ namespace BlitzenEngine
         constexpr size_t LCStartOfRPFOffset = 0;
 
         auto mmfRes{ memoryMappedFile.OpenRead(meshPath) };
-        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(mmfRes))
+        if (BlitzenPlatform::CheckMmfResForError(mmfRes))
         {
             BLIT_FATAL("%s: Failed to open Rapid Resource File for mesh read. Received Platform Error: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(mmfRes));
             return LOAD_MESH_FROM_DISK_RES::FAILED_TO_OPEN_FILE;
@@ -386,7 +386,7 @@ namespace BlitzenEngine
         }
 
         auto mmfRes{ memoryMappedFile.OpenWrite(meshPath, (DWORD)writeSize) };
-        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(mmfRes))
+        if (BlitzenPlatform::CheckMmfResForError(mmfRes))
         {
             BLIT_FATAL("%s: Failed to open Rapid Resource File. Received Platform Error: %s", BlitzenCore::CE_MESH_SYSTEM_NAME, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(mmfRes));
             return UPLOAD_MESH_TO_DISK_RES::FAILED_TO_OPEN_FILE;
@@ -548,7 +548,7 @@ namespace BlitzenEngine
 
         BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile;
         auto openReadRes = memoryMappedFile.OpenRead(filePath);
-        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(openReadRes))
+        if (BlitzenPlatform::CheckMmfResForError(openReadRes))
         {
             BLIT_ERROR("%s: Failed to open memory mapped file for imported scene nodes read", BlitzenCore::GCRpfSystemName);
             return false;
@@ -621,7 +621,7 @@ namespace BlitzenEngine
 
         BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE memoryMappedFile;
         auto openWriteRes = memoryMappedFile.OpenWrite(filePath, (uint32_t)predictedSize);
-        if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(openWriteRes))
+        if (BlitzenPlatform::CheckMmfResForError(openWriteRes))
         {
             BLIT_ERROR("%s: Failed to open memory mapped file for imported scene nodes write", BlitzenCore::CE_SCENE_SYSTEM_NAME);
             return false;

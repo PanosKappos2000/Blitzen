@@ -17,6 +17,7 @@ namespace BlitzenEngine
 	constexpr uint32_t GCSceneNameMaxCount = 100;
 	constexpr uint32_t GCSceneNameMaxSize = 100;
 	constexpr uint32_t GCMapFileHeaderElementCount = 20;
+	constexpr const char* GCWorldMapTextureNameBINSTRFilenName = "textureNames.bbinstr";
 
 	BLIT_OFFLINE_FUNC bool CreateWorldMapDirectory(const char* mapName);
 
@@ -156,24 +157,25 @@ namespace BlitzenEngine
 	// Uses memory mapped files to read and write a pool of strings.
 	// Accesses it by using the full pool size and the char count of each string.
 	//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	constexpr uint32_t GCBinaryStringFileHeaderElementCount = 3;
+	constexpr uint32_t GCBinaryStringFileHeaderElementCount = 4;
 	constexpr const char* GCBinaryStringFileExtension = ".bbinstr";
 	enum BinaryStringFileHeaderIndices
 	{
 		BlitBINSTRFileHeaderStringCountID = 0,
 		BlitBINSTRFileHeaderStringSizesOffsetID = 1,
 		BlitBINSTRFileHeaderStringDataOffsetID = 2,
+		BlitBINSTRFileHeaderStringBufferSizeID = 3,
 
-		BlitBINSTRFileHeaderMax = 3
+		BlitBINSTRFileHeaderMax = 4
 	};
 	static_assert(GCBinaryStringFileHeaderElementCount == BlitBINSTRFileHeaderMax);
 	using BinaryStringFileHeader = size_t[GCBinaryStringFileHeaderElementCount];
 
 	BLIT_OFFLINE_FUNC bool OpenBINSTRFileForTextureNameWriting(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, const char* mapName);
 
-	BLIT_OFFLINE_FUNC bool AddStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount);
+	BLIT_OFFLINE_FUNC bool AddStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount, uint32_t stringBufferSize);
 
-	bool ReadStringDataFromBINSTRFile(const char* mapName, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t outStringCount);
+	bool ReadStringDataFromBINSTRFile(const char* mapName, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t& outStringCount);
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// RESULT LOGGING

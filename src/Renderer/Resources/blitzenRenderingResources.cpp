@@ -77,6 +77,11 @@ namespace BlitzenEngine
         return GSRenderingResources->mMaterials.mMatData[materialID].transparencyFlag != MaterialAlphaMode::Opaque;
     }
 
+    void RenderingResources::CloseWorldMapTextureNamesBINSTRFile()
+    {
+        mWorldMapTextureNamesBINSTRFileHandle.Close();
+    }
+
     void InitializeRenderingResourcesGlobalPointer(RenderingResources* ptr)
     {
         BLIT_ASSERT(GSRenderingResources == nullptr);

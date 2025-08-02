@@ -13,7 +13,7 @@ namespace BlitzenCore
 		// Creates new file
 		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE scopedFile{};
 		auto wrldOpenRes = scopedFile.OpenWrite(GCClientWorldFilepath, GCBlitWRLDFileSize);
-		if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(wrldOpenRes))
+		if (BlitzenPlatform::CheckMmfResForError(wrldOpenRes))
 		{
 			BLIT_ERROR("%s: Error while opening wrld for the first time. Got platform error: ", BlitzenCore::GCWRLDSystemName, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(wrldOpenRes));
 			return false;

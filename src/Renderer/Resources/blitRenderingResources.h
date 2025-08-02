@@ -24,6 +24,8 @@ namespace BlitzenEngine
         RenderingLoadingContextMaterial mLoadingContextMaterial;
 
         BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mWorldMapTextureNamesBINSTRFileHandle;
+
+        void CloseWorldMapTextureNamesBINSTRFile();
     };
 
     // Copies vertex data and their indices for a single mesh to the staging buffer.

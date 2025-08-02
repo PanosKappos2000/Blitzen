@@ -101,7 +101,7 @@ namespace BlitzenEngine
 
 		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE worldMapFile;
 		auto worldMapRes = worldMapFile.OpenRead(mapFilepath);
-		if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(worldMapRes))
+		if (BlitzenPlatform::CheckMmfResForError(worldMapRes))
 		{
 			return LOAD_WORLD_MAP_RES::ERROR_OPENING_FILE;
 		}
@@ -218,7 +218,7 @@ namespace BlitzenEngine
 
 		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE worldMapFile;
 		auto worldMapRes = worldMapFile.OpenWrite(mapFilepath, (uint32_t)mapFileSize);
-		if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(worldMapRes))
+		if (BlitzenPlatform::CheckMmfResForError(worldMapRes))
 		{
 			return UPLOAD_WORLD_MAP_RES::ERROR_OPENING_FILE;
 		}
@@ -554,13 +554,13 @@ namespace BlitzenEngine
 
 	bool OpenBINSTRFileForTextureNameWriting(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, const char* mapName)
 	{
-		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen("textureNames.bbinstr") };
-		filepath.Format("%s%s/textureNames.bbinstr", GCClientWorldMapDirectory, mapName);
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCWorldMapTextureNameBINSTRFilenName) };
+		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCWorldMapTextureNameBINSTRFilenName);
 
 		uint32_t maxWriteSize = uint32_t(GCMaxLoadedTextureCount * GCWorldMapTextureNameMaxSize) + uint32_t(GCMaxLoadedTextureCount * sizeof(size_t)) +
 			uint32_t(GCBinaryStringFileHeaderElementCount * sizeof(size_t));
 		auto openFileRes = file.OpenWrite(filepath.Get(), maxWriteSize);
-		if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(openFileRes))
+		if (BlitzenPlatform::CheckMmfResForError(openFileRes))
 		{
 			BLIT_ERROR("%s: Failed to open World Map \"%s\" texture names binary string file", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
 			return false;
@@ -579,26 +579,17 @@ namespace BlitzenEngine
 		return true;
 	}
 
-	bool AddStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount)
+	bool AddStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount, uint32_t stringBufferSize)
 	{
 		BLIT_ASSERT(stringData != nullptr && stringSizes != nullptr && stringCount != 0);
 
 		BinaryStringFileHeader header{};
 
 		header[BlitBINSTRFileHeaderStringCountID] = stringCount;
+		header[BlitBINSTRFileHeaderStringBufferSizeID] = stringBufferSize;
 
 		size_t headerWriteSize = GCBinaryStringFileHeaderElementCount * sizeof(size_t);
 		size_t stringSizesWriteSize = sizeof(size_t) * stringCount;
-		size_t stringDataWriteSize = 0;
-		for (uint32_t s = 0; s < stringCount; ++s)
-		{
-			if (stringSizes[s] == 0)
-			{
-				BLIT_ERROR("%s: string size no %u was passed as zero", BlitzenCore::CE_WORLD_SYSTEM_NAME, s);
-				return false;
-			}
-			stringDataWriteSize += stringSizes[s];
-		}
 
 		size_t offset = headerWriteSize + header[BlitBINSTRFileHeaderStringSizesOffsetID];
 
@@ -610,7 +601,7 @@ namespace BlitzenEngine
 		header[BlitBINSTRFileHeaderStringSizesOffsetID] = offset;
 		offset += stringSizesWriteSize + header[BlitBINSTRFileHeaderStringDataOffsetID];
 
-		if (!BlitzenPlatform::WriteMemoryMappedFile(file, offset, stringDataWriteSize, stringData))
+		if (!BlitzenPlatform::WriteMemoryMappedFile(file, offset, stringBufferSize, stringData))
 		{
 			BLIT_ERROR("%s: Failed to write string data to memory mapped BINSTR file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
 			return false;
@@ -622,6 +613,48 @@ namespace BlitzenEngine
 			BLIT_ERROR("%s: Failed to update header of memory mapped BINSTR file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
 			return false;
 		}
+
+		return true;
+	}
+
+	bool ReadStringDataFromBINSTRFile(const char* mapName, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t& outStringCount)
+	{
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCWorldMapTextureNameBINSTRFilenName) };
+		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCWorldMapTextureNameBINSTRFilenName);
+		
+		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE binstrFile;
+		auto binstrFileOpenRes = binstrFile.OpenRead(filepath.Get());
+		if (BlitzenPlatform::CheckMmfResForError(binstrFileOpenRes))
+		{
+			BLIT_ERROR("%s: Failed to open binstr file. Received platform error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(binstrFileOpenRes));
+			return false;
+		}
+
+		BinaryStringFileHeader header{};
+		if (!BlitzenPlatform::ReadMemoryMappedFile(binstrFile, GCBlitStartOfFileOffset, sizeof(size_t) * GCBinaryStringFileHeaderElementCount, header))
+		{
+			BLIT_ERROR("%s: Failed to read header of binstr file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return false;
+		}
+
+		outStringCount = (uint32_t)header[BlitBINSTRFileHeaderStringCountID];
+		size_t stringBufferSize = header[BlitBINSTRFileHeaderStringBufferSizeID];
+		outStringData.Init(stringBufferSize);
+		outStringSize.Init(outStringCount * sizeof(size_t));
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(binstrFile, header[BlitBINSTRFileHeaderStringSizesOffsetID], outStringCount * sizeof(size_t), outStringSize.mPtr))
+		{
+			BLIT_ERROR("%s: Failed to read string sizes array from binstr file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return false;
+		}
+
+		if (!BlitzenPlatform::ReadMemoryMappedFile(binstrFile, header[BlitBINSTRFileHeaderStringDataOffsetID], stringBufferSize, outStringData.mPtr))
+		{
+			BLIT_ERROR("%s: Failed to read string buffer from binstr file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return false;
+		}
+
+		char* test = reinterpret_cast<char*>(outStringData.mPtr);
 
 		return true;
 	}
