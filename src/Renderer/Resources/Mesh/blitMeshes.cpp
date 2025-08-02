@@ -539,7 +539,8 @@ namespace BlitzenEngine
         return UPLOAD_MESH_TO_DISK_RES::SUCCESS;
     }
 
-    bool LoadImportedSceneNodesFromDisk(const char* sceneName, uint32_t& outResourceCount, uint32_t& outNodesCount, uint32_t resourceCountLimit, uint32_t nodesCountLimit,
+    bool LoadImportedSceneNodesFromDisk(const char* sceneName, uint32_t& outResourceCount, uint32_t& outNodesCount, uint32_t& outTextureCount, 
+        uint32_t resourceCountLimit, uint32_t nodesCountLimit, uint32_t textureCountLimit,
         BlitzenCore::BLIT_PTR& outRenderObjects, BlitzenCore::BLIT_PTR& outMeshTransforms)
     {
         BlitCL::String stringContainer;
@@ -549,7 +550,7 @@ namespace BlitzenEngine
         auto openReadRes = memoryMappedFile.OpenRead(filePath);
         if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(openReadRes))
         {
-            BLIT_ERROR("%s: Failed to open memory mapped file for imported scene nodes read", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to open memory mapped file for imported scene nodes read", BlitzenCore::GCRpfSystemName);
             return false;
         }
 
@@ -557,21 +558,28 @@ namespace BlitzenEngine
         const uint32_t StartOfFile = 0;
         if (!BlitzenPlatform::ReadMemoryMappedFile(memoryMappedFile, StartOfFile, GCImportedSceneNodesHeaderElementCount * sizeof(size_t), headerArr))
         {
-            BLIT_ERROR("%s: Failed to read header for imported scene nodes file", BlitzenCore::CE_SCENE_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to read header for imported scene nodes file", BlitzenCore::GCRpfSystemName);
             return false;
         }
 
         outResourceCount = (uint32_t)headerArr[BlitRpfImportedSceneNodesHeaderResourceCountID];
         if (outResourceCount > resourceCountLimit)
         {
-			BLIT_ERROR("%s: Additional Resource count from scene \"%s\" exceeds the limit", BlitzenCore::CE_SCENE_SYSTEM_NAME, sceneName);
+			BLIT_ERROR("%s: Additional Resource count from scene \"%s\" exceeds the limit", BlitzenCore::GCRpfSystemName, sceneName);
             return false;
         }
 
         outNodesCount = (uint32_t)headerArr[BlitRpfImportedSceneNodesHeaderNodeCountID];
         if (outNodesCount > nodesCountLimit)
         {
-			BLIT_ERROR("%s: Additional Nodes count from scene \"%s\" exceeds the limit", BlitzenCore::CE_SCENE_SYSTEM_NAME, sceneName);
+			BLIT_ERROR("%s: Additional Nodes count from scene \"%s\" exceeds the limit", BlitzenCore::GCRpfSystemName, sceneName);
+            return false;
+        }
+
+        outTextureCount = (uint32_t)headerArr[BlitRpfImportedSceneNodesHeaderTextureCountID];
+        if (outTextureCount > textureCountLimit)
+        {
+            BLIT_ERROR("%s: Additional Texture count form scene \"%s\" exceeds world map limit", BlitzenCore::GCRpfSystemName)
             return false;
         }
 
@@ -600,7 +608,7 @@ namespace BlitzenEngine
         return true;
     }
 
-    bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, RenderObject* renderObjects, MeshTransform* meshTransforms)
+    bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, uint32_t textureCount, RenderObject* renderObjects, MeshTransform* meshTransforms)
     {
         BlitCL::String stringContainer;
         const char* filePath = BuildImportedSceneNodesFilepath(sceneName, stringContainer);
@@ -623,6 +631,7 @@ namespace BlitzenEngine
 
         headerArr[BlitRpfImportedSceneNodesHeaderResourceCountID] = resourceCount;
         headerArr[BlitRpfImportedSceneNodesHeaderNodeCountID] = nodesCount;
+        headerArr[BlitRpfImportedSceneNodesHeaderTextureCountID] = textureCount;
 
         size_t fileOffset = headerWriteSize;
         if (!BlitzenPlatform::WriteMemoryMappedFile(memoryMappedFile, fileOffset, nodesWriteSize, renderObjects))

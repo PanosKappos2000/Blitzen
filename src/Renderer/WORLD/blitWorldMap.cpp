@@ -551,4 +551,85 @@ namespace BlitzenEngine
 		
 		return true;
 	}
+
+	bool OpenBINSTRFileForTextureNameWriting(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, const char* mapName)
+	{
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen("textureNames.bbinstr") };
+		filepath.Format("%s%s/textureNames.bbinstr", GCClientWorldMapDirectory, mapName);
+
+		uint32_t maxWriteSize = uint32_t(GCMaxLoadedTextureCount * GCWorldMapTextureNameMaxSize) + uint32_t(GCMaxLoadedTextureCount * sizeof(size_t)) +
+			uint32_t(GCBinaryStringFileHeaderElementCount * sizeof(size_t));
+		auto openFileRes = file.OpenWrite(filepath.Get(), maxWriteSize);
+		if (BlitzenPlatform::CHECK_BLIT_MMF_RES_FOR_ERROR(openFileRes))
+		{
+			BLIT_ERROR("%s: Failed to open World Map \"%s\" texture names binary string file", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+			return false;
+		}
+
+		BinaryStringFileHeader header{};
+		header[BlitBINSTRFileHeaderStringCountID] = 0;
+		header[BlitBINSTRFileHeaderStringDataOffsetID] = 0;
+		header[BlitBINSTRFileHeaderStringSizesOffsetID] = 0;
+		if (!BlitzenPlatform::WriteMemoryMappedFile(file, 0, GCBinaryStringFileHeaderElementCount * sizeof(size_t), header))
+		{
+			BLIT_ERROR("%s: Failed to write header to texture names binary string file for World Map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+			return false;
+		}
+
+		return true;
+	}
+
+	bool AddStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount)
+	{
+		BLIT_ASSERT(stringData != nullptr && stringSizes != nullptr && stringCount != 0);
+
+		BinaryStringFileHeader header{};
+
+		header[BlitBINSTRFileHeaderStringCountID] = stringCount;
+
+		size_t headerWriteSize = GCBinaryStringFileHeaderElementCount * sizeof(size_t);
+		size_t stringSizesWriteSize = sizeof(size_t) * stringCount;
+		size_t stringDataWriteSize = 0;
+		for (uint32_t s = 0; s < stringCount; ++s)
+		{
+			if (stringSizes[s] == 0)
+			{
+				BLIT_ERROR("%s: string size no %u was passed as zero", BlitzenCore::CE_WORLD_SYSTEM_NAME, s);
+				return false;
+			}
+			stringDataWriteSize += stringSizes[s];
+		}
+
+		size_t offset = headerWriteSize + header[BlitBINSTRFileHeaderStringSizesOffsetID];
+
+		if (!BlitzenPlatform::WriteMemoryMappedFile(file, offset, stringSizesWriteSize, stringSizes))
+		{
+			BLIT_ERROR("%s: Failed to write string sizes to memory mapped BINSTR file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return false;
+		}
+		header[BlitBINSTRFileHeaderStringSizesOffsetID] = offset;
+		offset += stringSizesWriteSize + header[BlitBINSTRFileHeaderStringDataOffsetID];
+
+		if (!BlitzenPlatform::WriteMemoryMappedFile(file, offset, stringDataWriteSize, stringData))
+		{
+			BLIT_ERROR("%s: Failed to write string data to memory mapped BINSTR file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return false;
+		}
+		header[BlitBINSTRFileHeaderStringDataOffsetID] = offset;
+
+		if (!BlitzenPlatform::WriteMemoryMappedFile(file, GCBlitStartOfFileOffset, headerWriteSize, header))
+		{
+			BLIT_ERROR("%s: Failed to update header of memory mapped BINSTR file", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+			return false;
+		}
+
+		return true;
+	}
+
+	bool CreateWorldMapDirectory(const char* mapName)
+	{
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) };
+		filepath.Format("%s%s", GCClientWorldMapDirectory, mapName);
+		return BlitzenPlatform::CreateDirectoryIfMissing(filepath.Get());
+	}
 }

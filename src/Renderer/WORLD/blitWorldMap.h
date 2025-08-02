@@ -3,6 +3,7 @@
 #include "Renderer/Entities/Residents/blitResidentManager.h"
 #include "BlitCL/blitString.h"
 #include "Platform/Filesystem/blitCFILE.h"
+#include "Platform/Common/blitMappedFile.h"
 #include "Renderer/Resources/Textures/blitTextures.h"
 
 namespace BlitzenEngine
@@ -16,6 +17,8 @@ namespace BlitzenEngine
 	constexpr uint32_t GCSceneNameMaxCount = 100;
 	constexpr uint32_t GCSceneNameMaxSize = 100;
 	constexpr uint32_t GCMapFileHeaderElementCount = 20;
+
+	BLIT_OFFLINE_FUNC bool CreateWorldMapDirectory(const char* mapName);
 
 	enum WorldMapHeaderIndices : uint32_t
 	{
@@ -123,8 +126,12 @@ namespace BlitzenEngine
 	};
 	UPLOAD_WORLD_MAP_RES UploadWORLDMapToDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents);
 
+	// Opens the file that holds the names of all resources
+	// This is to be done when the map if first loaded to keep track of additional names
 	bool OpenResourceNamesBMSTRFile(const char* mapName, BlitzenPlatform::C_FILE_SCOPE& file);
 
+	// Opens the File that holds resource names in read mode
+	// The names will be read one by one to load the actual resources
 	bool OpenWorldMapBmstrFileForResourceNameReadback(BlitzenPlatform::C_FILE_SCOPE& bmstFile, const char* mapName);
 
 	// Uploads single resource names to the bmst file that will be responsible for finding resources during load
@@ -143,6 +150,30 @@ namespace BlitzenEngine
 	{
 		return sizeof(WORLD_RESIDENTS) + sizeof(GCResourceNameMaxSize) * GCResourceNameMaxCount + sizeof(size_t) * GCMapFileHeaderElementCount;
 	}
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	// Binary String file, part of Blitzen's custom files (BINSTR).
+	// Uses memory mapped files to read and write a pool of strings.
+	// Accesses it by using the full pool size and the char count of each string.
+	//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	constexpr uint32_t GCBinaryStringFileHeaderElementCount = 3;
+	constexpr const char* GCBinaryStringFileExtension = ".bbinstr";
+	enum BinaryStringFileHeaderIndices
+	{
+		BlitBINSTRFileHeaderStringCountID = 0,
+		BlitBINSTRFileHeaderStringSizesOffsetID = 1,
+		BlitBINSTRFileHeaderStringDataOffsetID = 2,
+
+		BlitBINSTRFileHeaderMax = 3
+	};
+	static_assert(GCBinaryStringFileHeaderElementCount == BlitBINSTRFileHeaderMax);
+	using BinaryStringFileHeader = size_t[GCBinaryStringFileHeaderElementCount];
+
+	BLIT_OFFLINE_FUNC bool OpenBINSTRFileForTextureNameWriting(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, const char* mapName);
+
+	BLIT_OFFLINE_FUNC bool AddStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount);
+
+	bool ReadStringDataFromBINSTRFile(const char* mapName, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t outStringCount);
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// RESULT LOGGING

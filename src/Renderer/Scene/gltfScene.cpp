@@ -48,6 +48,7 @@ namespace BlitzenEngine
 
         // Textures (special care because they are directly managed by the renderer backend)
         BLIT_INFO("Loading textures for GLTF");
+        cgltfScope.textureCount = (uint32_t)cgltfScope.pData->textures_count;
         for (size_t i = 0; i < cgltfScope.pData->textures_count; ++i)
         {
             // Change to dds texture
@@ -58,7 +59,7 @@ namespace BlitzenEngine
                 return SCENE_CREATE_RES::FAILED_TO_MODIFY_TEXTURE_FILEPATH_TO_DDS;
             }
 
-            if (!pResources->m_textureManager.AddTextureResourceFromScene(cgltfScope.sceneName, ddsFilepath.c_str(), i))
+            if (!pResources->m_textureManager.AddTextureResourceFromScene(cgltfScope.sceneName, ddsFilepath.c_str(), (uint32_t)i))
             {
                 return SCENE_CREATE_RES::FAILED_TO_LOAD_TEXTURE;
             }
@@ -427,9 +428,11 @@ namespace BlitzenEngine
             }
         }
 
+        // By the end of the above loop, the resident id should be the same number as the pre-calculated resident count
         if (residentID != cgltfScope.residentCount) return false;
 
-        if (!UploadImportedSceneNodesToDisk(cgltfScope.sceneName, cgltfScope.meshPrimitiveCount, cgltfScope.residentCount, cgltfScope.renderObjects, cgltfScope.meshTransforms))
+        if (!UploadImportedSceneNodesToDisk(cgltfScope.sceneName, cgltfScope.meshPrimitiveCount, cgltfScope.residentCount, cgltfScope.textureCount, 
+            cgltfScope.renderObjects, cgltfScope.meshTransforms))
         {
             BLIT_ERROR("%s: Failed to upload gltf nodes to rpf", BlitzenCore::CE_SCENE_SYSTEM_NAME);
             return false;

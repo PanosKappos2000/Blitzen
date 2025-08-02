@@ -1,8 +1,11 @@
 #include "blitRenderingResources.h"
 #include "Core/DbLog/blitLogger.h"
+#include "Core/DbLog/blitAssert.h"
 
 namespace BlitzenEngine
 {
+    inline RenderingResources* GSRenderingResources = nullptr;
+
     bool CopyMeshResourcesToStagingBuffer(MeshResources* pMeshes, RenderingLoadingContextMesh& loadingContextMesh)
     {
         if (!UploadToVertexPositionsStagingBuffer(loadingContextMesh, pMeshes->m_triangles.m_vertexPositions, pMeshes->m_triangles.m_vertexCount))
@@ -65,5 +68,19 @@ namespace BlitzenEngine
 
         // success
         return true;
+    }
+
+    bool GetMaterialTransparencyFlag(uint32_t materialID)
+    {
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(materialID < GSRenderingResources->mMaterials.mMaterialCount);
+
+        return GSRenderingResources->mMaterials.mMatData[materialID].transparencyFlag != MaterialAlphaMode::Opaque;
+    }
+
+    void InitializeRenderingResourcesGlobalPointer(RenderingResources* ptr)
+    {
+        BLIT_ASSERT(GSRenderingResources == nullptr);
+
+        GSRenderingResources = ptr;
     }
 }

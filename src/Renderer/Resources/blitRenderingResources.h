@@ -23,10 +23,14 @@ namespace BlitzenEngine
         RenderingLoadingContextMesh mLoadingContextMesh;
         RenderingLoadingContextMaterial mLoadingContextMaterial;
 
-        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE m_mappedFile;
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mWorldMapTextureNamesBINSTRFileHandle;
     };
 
     // Copies vertex data and their indices for a single mesh to the staging buffer.
     // It resets the count of vertices and indices for the next mesh, but it keeps a map count.
     bool CopyMeshResourcesToStagingBuffer(MeshResources* pMeshes, RenderingLoadingContextMesh& loadingContextMesh);
+
+    bool GetMaterialTransparencyFlag(uint32_t materialID);
+
+    void InitializeRenderingResourcesGlobalPointer(RenderingResources* ptr);
 }

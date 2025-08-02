@@ -11,6 +11,7 @@ namespace BlitzenEngine
     constexpr uint32_t GCMaxLoadedTextureCount = BLIT_MAX_WORLD_TEXTURE_RESOURCES;
     constexpr const char* GCRpfTextureSubfolder = "DDSTextures";
     constexpr size_t GCTextureHandleDataSize = 128 * 1024 * 1024;
+    constexpr uint32_t GCWorldMapTextureNameMaxSize = 100;
 
     class TextureManager
     {
@@ -28,7 +29,7 @@ namespace BlitzenEngine
         BLIT_OFFLINE_FUNC bool AddTextureResourceFromScene(const char* sceneName, const char* originalPath, uint32_t textureID);
     };
 
-    inline unsigned int FourCC(const char (&str)[5])
+    inline uint32_t FourCC(const char (&str)[5])
     {
 	      return (unsigned(str[0]) << 0) | (unsigned(str[1]) << 8) | (unsigned(str[2]) << 16) | (unsigned(str[3]) << 24);
     }
@@ -36,7 +37,7 @@ namespace BlitzenEngine
     uint8_t OpenDDSImageFile(const char* filepath, DDS_HEADER& header, DDS_HEADER_DXT10& header10, BlitzenPlatform::C_FILE_SCOPE& handle);
 
     // Returns the amount of data needed to be allocated for the image data
-    size_t GetDDSImageSizeBC(unsigned int width, unsigned int height, unsigned int levels, unsigned int blockSize);
+    size_t GetDDSImageSizeBC(uint32_t width, uint32_t height, uint32_t levels, uint32_t blockSize);
 
     uint32_t GetDDSBlockSize(DDS_HEADER& header, DDS_HEADER_DXT10& header10);
 

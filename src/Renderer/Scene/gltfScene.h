@@ -14,6 +14,7 @@ namespace BlitzenEngine
         cgltf_data* pData;
         uint32_t meshPrimitiveCount = 0;
         uint32_t residentCount = 0;
+        uint32_t textureCount = 0;
         RenderObject* renderObjects;
         MeshTransform* meshTransforms;
 

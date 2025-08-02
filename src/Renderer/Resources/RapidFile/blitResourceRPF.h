@@ -13,7 +13,7 @@ namespace BlitzenEngine
     constexpr size_t GcRapidMeshFileHeaderSize = 1000;
     constexpr size_t CE_BLITZEN_RAPID_MESH_FILE_PADDING_SIZE = 1000;
     constexpr const char* GCRapidMeshDirectoryPath = BLITZEN_CLIENT_RPFMESH_DIRECTORY;
-    constexpr uint32_t GCImportedSceneNodesHeaderElementCount = 4;
+    constexpr uint32_t GCImportedSceneNodesHeaderElementCount = 5;
     constexpr const char* GCImportedSceneNodesFileName = "nodes.blitnr";
     constexpr uint32_t GCMaterialHeaderElementCount = 3;
 
@@ -163,10 +163,11 @@ namespace BlitzenEngine
     {
         BlitRpfImportedSceneNodesHeaderNodeCountID = 0,
         BlitRpfImportedSceneNodesHeaderResourceCountID = 1,
-        BlitRpfImportedSceneNodesHeaderRenderObjectsID = 2,
-        BlitRpfImportedSceneNodesHeaderTransformsID = 3,
+        BlitRpfImportedSceneNodesHeaderTextureCountID = 2,
+        BlitRpfImportedSceneNodesHeaderRenderObjectsID = 3,
+        BlitRpfImportedSceneNodesHeaderTransformsID = 4,
 
-        BlitRpfImportedSceneNodesHeaderMax = 4
+        BlitRpfImportedSceneNodesHeaderMax = 5
     };
     static_assert(BlitRpfImportedSceneNodesHeaderMax == GCImportedSceneNodesHeaderElementCount);
 
@@ -175,12 +176,13 @@ namespace BlitzenEngine
     // Loads scene nodes form disk in scene context. 
     // Also saves the scenes node and resource count to out parameters
     // It expects the pointers to be valid offsets to an array
-    bool LoadImportedSceneNodesFromDisk(const char* sceneName, uint32_t& outResourceCount, uint32_t& outNodesCount, uint32_t resourceCountLimit, uint32_t nodesCountLimit,
-        BlitzenCore::BLIT_PTR& outRenderObjects, BlitzenCore::BLIT_PTR& outMeshTransforms);
+    BLIT_OFFLINE_FUNC bool LoadImportedSceneNodesFromDisk(const char* sceneName, uint32_t& outResourceCount, uint32_t& outNodesCount, uint32_t& outTextureCount, 
+        uint32_t resourceCountLimit, uint32_t nodesCountLimit, uint32_t textureCountLimit, BlitzenCore::BLIT_PTR& outRenderObjects, BlitzenCore::BLIT_PTR& outMeshTransforms);
 
     // Takes resident data that is unique to an imported scene and uploads it to disk
     // This allows for Blitzen to keep the scene within its context on disk and update it when loading.
-    BLIT_OFFLINE_FUNC bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, RenderObject* renderObjects, MeshTransform* meshTransforms);
+    BLIT_OFFLINE_FUNC bool UploadImportedSceneNodesToDisk(const char* sceneName, uint32_t resourceCount, uint32_t nodesCount, uint32_t textureCount, 
+        RenderObject* renderObjects, MeshTransform* meshTransforms);
 
     const char* BuildImportedSceneNodesFilepath(const char* sceneName, BlitCL::String& stringContainer);
 
@@ -195,6 +197,7 @@ namespace BlitzenEngine
     using BlitRpfMaterialHeader = size_t[GCMaterialHeaderElementCount];
     static_assert(GCMaterialHeaderElementCount == BlitRpfMaterialMax);
 
+    // Uploads a batch of materials to an rpf binary file.
     bool UploadMaterialsToDisk(const char* folderName, Material* matArray, MaterialData* matDataArray, uint32_t count);
 
     // FOR FUTURE REFERENCE. Probably v2

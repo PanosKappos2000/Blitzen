@@ -369,20 +369,70 @@ namespace BlitzenWorld
     bool AddSceneToWORLDMap(const char* sceneName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
     {
         uint32_t previousResourceCount = pRenderingResources->m_meshContext.m_meshPrimitives.m_meshPrimitivesCount;
+        size_t sceneNameLength = strlen(sceneName);
+        size_t sceneTexturePrefixNameLength = strlen("texture");
+        size_t ddsExtensionNameLength = strlen(".dds");
+        constexpr size_t LCDirectorySeparatorCharLength = 1;
+        constexpr size_t LCNullTerminatorLength = 1;
 
         // Starts off by retrieving the static node data which is loaded to the disk in scene context
         // This also saves the resource count for the scene and the amount of nodes / residents
         // The node data is placed directly to the resident arrays in the correct offset
         uint32_t resourceCount;
         uint32_t nodesCount;
+        uint32_t texturesCount;
         BlitzenCore::BLIT_PTR renderObjects;
         BlitzenCore::BLIT_PTR meshTransforms;
-        if (!BlitzenEngine::LoadImportedSceneNodesFromDisk(sceneName, resourceCount, nodesCount,
+        if (!BlitzenEngine::LoadImportedSceneNodesFromDisk(sceneName, resourceCount, nodesCount, texturesCount,
             BlitzenCore::Ce_MaxMeshPrimitivesCount - previousResourceCount,
             BLIT_MAX_WORLD_OPAQUE_STATIC_RENDERS - pWORLD->mResidents.m_renders.m_opaqueStaticCount,
+            BlitzenEngine::GCMaxLoadedTextureCount - pRenderingResources->m_textureManager.mTextureCount,
             renderObjects, meshTransforms))
         {
             BLIT_ERROR("%s: Failed to retrieve scene nodes from disk", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        // NOTE TO SELF: THIS SHOULD BE DONE OUTSIDE OF THIS FUNCTION
+        if (!BlitzenEngine::OpenBINSTRFileForTextureNameWriting(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, pWORLD->mActiveMapName))
+        {
+            return false;
+        }
+
+        // Texture names for scene are saved in a binary string file
+        size_t textureNamePoolSize = 0;
+        BlitCL::DynamicArray<size_t> textureNameSizes{ texturesCount };
+        for (uint32_t t = 0; t < texturesCount; ++t)
+        {
+            auto& nameSize = textureNameSizes[t];
+            uint32_t textureNumDigits = 1;
+            uint32_t textureNum = t;
+            // NOTE TO SELF: Could be small function in BlitML
+            while (textureNum / 10 != 0)
+            {
+                textureNumDigits++;
+                textureNum /= 10;
+            }
+            nameSize = sceneNameLength + LCDirectorySeparatorCharLength + sceneTexturePrefixNameLength + textureNumDigits + ddsExtensionNameLength;
+            textureNamePoolSize += nameSize;
+        }
+
+        textureNamePoolSize += LCNullTerminatorLength;
+
+        // Copies all texture names one after another to the name pool
+        BlitzenCore::BLIT_PTR texturesNamePool;
+        size_t texturePoolOffset = 0;
+        texturesNamePool.Init(textureNamePoolSize);
+        for (uint32_t t = 0; t < texturesCount; ++t)
+        {
+            char* poolPtr = &reinterpret_cast<char*>(texturesNamePool.mPtr)[texturePoolOffset];
+            snprintf(poolPtr, textureNameSizes[t] + 1, "%s/texture%u.dds", sceneName, t);
+            texturePoolOffset += textureNameSizes[t];
+        }
+
+        if (!BlitzenEngine::AddStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, reinterpret_cast<char*>(texturesNamePool.mPtr), textureNameSizes.Data(), texturesCount))
+        {
+            BLIT_ERROR("%s: Failed to retrieve texture names for scene \"%s\"", sceneName);
             return false;
         }
 
@@ -504,11 +554,13 @@ namespace BlitzenWorld
 
         // This is supposed to only be defined by the build system on first load
         // Right now it does not work very well 
-#if defined(cus)
+#if defined(BLITZEN_START_NEW)
 
         // Creates the WRLD(project) file, for the first time.
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
         BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
+
+        BLIT_ASSERT(BlitzenEngine::CreateWorldMapDirectory(pWORLD->mActiveMapName));
 
         pResources->m_textureManager.ALLOC(100);
         if (!pResources->m_textureManager.AddTexture("BlitzenLogo.dds", "Assets/Textures/BlitzenLSV1.dds"))
