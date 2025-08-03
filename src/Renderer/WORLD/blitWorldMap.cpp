@@ -557,6 +557,8 @@ namespace BlitzenEngine
 		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCWorldMapTextureNameBINSTRFilenName) };
 		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCWorldMapTextureNameBINSTRFilenName);
 
+		bool firstTimeLoadFlag = !BlitzenPlatform::FilepathExists(filepath.Get());
+
 		uint32_t maxWriteSize = uint32_t(GCMaxLoadedTextureCount * GCWorldMapTextureNameMaxSize) + uint32_t(GCMaxLoadedTextureCount * sizeof(size_t)) +
 			uint32_t(GCBinaryStringFileHeaderElementCount * sizeof(size_t));
 		auto openFileRes = file.OpenWrite(filepath.Get(), maxWriteSize);
@@ -566,14 +568,17 @@ namespace BlitzenEngine
 			return false;
 		}
 
-		BinaryStringFileHeader header{};
-		header[BlitBINSTRFileHeaderStringCountID] = 0;
-		header[BlitBINSTRFileHeaderStringDataOffsetID] = 0;
-		header[BlitBINSTRFileHeaderStringSizesOffsetID] = 0;
-		if (!BlitzenPlatform::WriteMemoryMappedFile(file, 0, GCBinaryStringFileHeaderElementCount * sizeof(size_t), header))
+		if (firstTimeLoadFlag)
 		{
-			BLIT_ERROR("%s: Failed to write header to texture names binary string file for World Map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
-			return false;
+			BinaryStringFileHeader header{};
+			header[BlitBINSTRFileHeaderStringCountID] = 0;
+			header[BlitBINSTRFileHeaderStringDataOffsetID] = 0;
+			header[BlitBINSTRFileHeaderStringSizesOffsetID] = 0;
+			if (!BlitzenPlatform::WriteMemoryMappedFile(file, 0, GCBinaryStringFileHeaderElementCount * sizeof(size_t), header))
+			{
+				BLIT_ERROR("%s: Failed to write header to texture names binary string file for World Map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+				return false;
+			}
 		}
 
 		return true;

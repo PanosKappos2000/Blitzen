@@ -241,10 +241,10 @@ namespace BlitzenWorld
         BlitML::quat orientationPitch = BlitML::NormalizedQuatFromAngleAxis(BlitML::float3(1.f, 0.f, 0.f), GSBlitzenWorld->mResidents.WVTransforms[residentID].eulerAngles.y);
         GSBlitzenWorld->mResidents.mTransforms.m_transforms[residentID].orientation = BlitML::MulitplyQuat(orientationYaw, orientationPitch);
 
-		// Rotates the additional padding so that the camera is placed correctly even when the resident is rotated
+        // Rotates the additional padding so that the camera is placed correctly even when the resident is rotated
         float offsetX = paddingFromAttachment.z * BlitML::Sin(camera.transformData.yawRotation);
-		float offsetZ = paddingFromAttachment.z * BlitML::Cos(camera.transformData.yawRotation);
-		auto finalPosition = camera.viewData.position + BlitML::vec3(offsetX, paddingFromAttachment.y, offsetZ);
+        float offsetZ = paddingFromAttachment.z * BlitML::Cos(camera.transformData.yawRotation);
+        auto finalPosition = camera.viewData.position + BlitML::vec3(offsetX, paddingFromAttachment.y, offsetZ);
 
         camera.transformData.translation = BlitML::Translate(finalPosition);
 
@@ -266,7 +266,7 @@ namespace BlitzenWorld
         {
             auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
 
-            BlitML::fDirection worldDirection = 
+            BlitML::fDirection worldDirection =
                 BlitML::ToVec3(BCPSS::MulMat4Vec4(BlitML::Mat4EulerY(camera.transformData.yawRotation), BlitML::float4(GSBlitzenWorld->mResidents.WVDirectionData[resident].intent, 0.f)));
             BlitML::Normalize(worldDirection);
 
@@ -278,7 +278,7 @@ namespace BlitzenWorld
 
             return worldDirection;
         }
-        
+
         default:
         {
             return BlitML::fDirection(0.f);
@@ -298,7 +298,7 @@ namespace BlitzenWorld
     void SNAP_MAIN()
     {
         auto& camera = GSBlitzenWorld->m_cameras[GSBlitzenWorld->m_activeCameraIDX];
-        
+
         camera.transformData.translation = BlitML::Translate(GSBlitzenWorld->mResidents.mTransforms.m_transforms[GSBlitzenWorld->m_mainCharacter].pos);
     }
 
@@ -332,8 +332,64 @@ namespace BlitzenWorld
         return GSBlitzenWorld->mResidents.mTransforms.m_staticTransformCount;
     }
 
+    bool SwitchWorldMapFile(const char* mapName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pResources)
+    {
+        pWORLD->mActiveMapName = mapName;
+
+        if (!BlitzenEngine::CreateWorldMapDirectory(mapName))
+        {
+            return false;
+        }
+
+        if (!BlitzenEngine::OpenResourceNamesBMSTRFile(pWORLD->mActiveMapName, pWORLD->mResourcesNamesFile))
+        {
+            BLIT_ERROR("%s: Failed to open bmstr file with resource names for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+            return false;
+        }
+
+        if (!BlitzenEngine::OpenBINSTRFileForTextureNameWriting(pResources->mWorldMapTextureNamesBINSTRFileHandle, pWORLD->mActiveMapName))
+        {
+            BLIT_ERROR("%s: Failed to open Binstr file for texture name writing", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
+        return true;
+    }
+
     bool LoadWorldMapResources(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
     {
+        pRenderingResources->CloseWorldMapTextureNamesBINSTRFile();
+
+        BlitzenCore::BLIT_PTR texturesNameDataReadback;
+        BlitzenCore::BLIT_PTR texturesSizeDataReadback;
+        uint32_t stringCountReadback;
+        if (!BlitzenEngine::ReadStringDataFromBINSTRFile(pWORLD->mActiveMapName, texturesNameDataReadback, texturesSizeDataReadback, stringCountReadback))
+        {
+            return false;
+        }
+        
+        size_t resourceDirectoryPathStringLength = strlen(BlitzenEngine::GCRapidMeshDirectoryPath);
+        BlitzenCore::BLIT_PTR textureNameContainer;
+        textureNameContainer.Init(resourceDirectoryPathStringLength + BlitzenEngine::GCWorldMapTextureNameMaxSize);
+        
+        char* texNameHandle = reinterpret_cast<char*>(textureNameContainer.mPtr);
+        size_t* texSizesArr = reinterpret_cast<size_t*>(texturesSizeDataReadback.mPtr);
+        char* texNamesBuffer = reinterpret_cast<char*>(texturesNameDataReadback.mPtr);
+        
+        size_t texNamesBufferOffset = 0;
+        for (uint32_t t = 0; t < stringCountReadback; ++t)
+        {
+            snprintf(texNameHandle, resourceDirectoryPathStringLength + texSizesArr[t] + 1, "%s%s", BlitzenEngine::GCRapidMeshDirectoryPath, &texNamesBuffer[texNamesBufferOffset]);
+        
+            if (!BlitzenEngine::UploadTextureToGPU(pWORLD->BMPR.Data(), pRenderingResources->mLoadingContextMaterial, texNameHandle))
+            {
+                BLIT_ERROR("%s: Rendering resources failed", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+                return false;
+            }
+        
+            texNamesBufferOffset += texSizesArr[t];
+        }
+
         BlitCL::String buffer{ BlitzenEngine::GCResourceNameMaxSize };
         BlitzenPlatform::C_FILE_SCOPE bmstrFile;
         if (!BlitzenEngine::OpenWorldMapBmstrFileForResourceNameReadback(bmstrFile, pWORLD->mActiveMapName))
@@ -366,12 +422,33 @@ namespace BlitzenWorld
         return true;
     }
 
+    bool AddSingleTextureToWorldMap(const char* name, const char* textureName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
+    {
+        // Copies all texture names one after another to the name pool
+        size_t stringSize = strlen(BlitzenEngine::GCRpfTextureSubfolder) + strlen("/") + strlen(textureName) + strlen(".dds");
+        BlitzenCore::BLIT_PTR textureNameMem;
+        textureNameMem.Init(stringSize + 1);
+        char* namePtr = reinterpret_cast<char*>(textureNameMem.mPtr);
+        snprintf(namePtr, stringSize + 1, "%s/%s.dds", BlitzenEngine::GCRpfTextureSubfolder, textureName);
+        size_t sizeData[1] = { stringSize };
+        constexpr uint32_t LCSingleStringCount = 1;
+
+        if (!BlitzenEngine::AddStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, namePtr, sizeData, 
+            LCSingleStringCount, (uint32_t)sizeData[0]))
+        {
+            BLIT_ERROR("%s: Failed to write single texture name \"%s\"to binstr file", BlitzenCore::CE_WORLD_SYSTEM_NAME, textureName);
+            return false;
+        }
+        return true;
+    }
+
     bool AddSceneToWORLDMap(const char* sceneName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
     {
         uint32_t previousResourceCount = pRenderingResources->m_meshContext.m_meshPrimitives.m_meshPrimitivesCount;
         size_t sceneNameLength = strlen(sceneName);
         size_t sceneTexturePrefixNameLength = strlen("texture");
         size_t ddsExtensionNameLength = strlen(".dds");
+        size_t resourceDirectoryPathStringLength = strlen(BlitzenEngine::GCRapidMeshDirectoryPath);
         constexpr size_t LCDirectorySeparatorCharLength = 1;
         constexpr size_t LCNullTerminatorLength = 1;
 
@@ -390,12 +467,6 @@ namespace BlitzenWorld
             renderObjects, meshTransforms))
         {
             BLIT_ERROR("%s: Failed to retrieve scene nodes from disk", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        // NOTE TO SELF: THIS SHOULD BE DONE OUTSIDE OF THIS FUNCTION
-        if (!BlitzenEngine::OpenBINSTRFileForTextureNameWriting(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, pWORLD->mActiveMapName))
-        {
             return false;
         }
 
@@ -430,6 +501,12 @@ namespace BlitzenWorld
             texturePoolOffset += textureNameSizes[t];
         }
 
+        if (!BlitzenEngine::OpenBINSTRFileForTextureNameWriting(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, pWORLD->mActiveMapName))
+        {
+            BLIT_ERROR("%s: Failed to open Binstr file for texture name writing", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
         if (!BlitzenEngine::AddStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, reinterpret_cast<char*>(texturesNamePool.mPtr), textureNameSizes.Data(), 
             texturesCount, (uint32_t)textureNamePoolSize))
         {
@@ -437,16 +514,37 @@ namespace BlitzenWorld
             return false;
         }
 
-        // NOTE TO SELF: Momentarily here for testing, this is not an offline function
         pRenderingResources->CloseWorldMapTextureNamesBINSTRFile();
+
         BlitzenCore::BLIT_PTR texturesNameDataReadback;
         BlitzenCore::BLIT_PTR texturesSizeDataReadback;
         uint32_t stringCountReadback;
-        if (!BlitzenEngine::ReadStringDataFromBINSTRFile(pWORLD->mActiveMapName, texturesSizeDataReadback, texturesNameDataReadback, stringCountReadback))
+        if (!BlitzenEngine::ReadStringDataFromBINSTRFile(pWORLD->mActiveMapName, texturesNameDataReadback, texturesSizeDataReadback, stringCountReadback))
         {
             return false;
         }
 
+        BlitzenCore::BLIT_PTR textureNameContainer;
+        textureNameContainer.Init(resourceDirectoryPathStringLength + BlitzenEngine::GCWorldMapTextureNameMaxSize);
+
+        char* texNameHandle = reinterpret_cast<char*>(textureNameContainer.mPtr);
+        size_t* texSizesArr = reinterpret_cast<size_t*>(texturesSizeDataReadback.mPtr);
+        char* texNamesBuffer = reinterpret_cast<char*>(texturesNameDataReadback.mPtr);
+
+        size_t texNamesBufferOffset = 0;
+        for (uint32_t t = 0; t < stringCountReadback; ++t)
+        {
+            snprintf(texNameHandle, resourceDirectoryPathStringLength + texSizesArr[t] + 1, "%s%s", BlitzenEngine::GCRapidMeshDirectoryPath, &texNamesBuffer[texNamesBufferOffset]);
+
+            if (!BlitzenEngine::UploadTextureToGPU(pWORLD->BMPR.Data(), pRenderingResources->mLoadingContextMaterial, texNameHandle))
+            {
+                BLIT_ERROR("%s: Rendering resources failed", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+                return false;
+            }
+
+            texNamesBufferOffset += texSizesArr[t];
+        }
+        
         // With the resource count retrieved, it can now use it to find all scene resource names
         // It writes each one to the maps bmString file for resouce names
         BlitCL::FatString stringContainer{ strlen(sceneName) + strlen("/") + strlen("mesh") + 16 };
@@ -497,43 +595,23 @@ namespace BlitzenWorld
         return true;
     }
 
-    bool UpdateWORLDMapResourcesAndResidents(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
-    {
-        
-
-        return true;
-    }
-
-    bool ImportOBJFileMesh(const char* filename, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
-    {
-        return true;
-    }
-
-    bool ImportGLTFFileScene(const char* filename, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources)
-    {
-        return true;
-    }
-
     bool RenderingResourcesInit(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
+#if defined(CUS)
+        // Creates the WRLD(project) file, for the first time.
+        BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
+        BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
+#endif
+
         if (!BlitzenEngine::AllocateLoadingStagingBufferMaterials(pWORLD->BMPR.Data(), pResources->mLoadingContextMaterial))
         {
             BLIT_ERROR("%s: Failed to allocate staging buffer for textures", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
 
-        if (!BlitzenEngine::UploadTextureToGPU(pRenderer, pResources->mLoadingContextMaterial, "Assets/Textures/BlitzenLSV1.dds"))
+        if (!BlitzenEngine::AllocateLoadingContextMesh(pRenderer, pResources->mLoadingContextMesh))
         {
-            BLIT_ERROR("%s: Rendering resources failed", BlitzenCore::CE_WORLD_SYSTEM_NAME);
-            return false;
-        }
-
-        // Configures idle work for renderer.
-        // Loading is done in a separate thread.
-        // The renderer can show a loading screen as it happens
-        if (!BlitzenEngine::UploadRendererIdleWorkResources(pRenderer, BlitzenEngine::RENDERER_IDLE_MODE::BLITZEN_LOGO))
-        {
-            BLIT_ERROR("%s: Failed to put renderer on Idle Work Mode", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to allocated loading context mesh staging buffers", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
         }
         
@@ -553,25 +631,12 @@ namespace BlitzenWorld
         pResources->m_meshContext.m_triangles.ALLOC();
         pResources->m_meshContext.m_clusters.ALLOC();
 
-        // Allocates staging buffers for mesh resources
-        // When a resource is loaded the staging buffers will be invoked to hold on to it
-        // Once everything in the map is ready, they will be uploaded to GPU side buffers
-        BlitzenEngine::AllocateLoadingContextMesh(pRenderer, pResources->mLoadingContextMesh);
-
-        // Gives an active map to the WORLD structure
-        // For now, I only have the default map, 
-        // But this is supposed to be read from the WRLD file
-        pWORLD->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
-
-        // This is supposed to only be defined by the build system on first load
-        // Right now it does not work very well 
-#if defined(BLITZEN_START_NEW)
-
-        // Creates the WRLD(project) file, for the first time.
-        BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
-        BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
-
-        BLIT_ASSERT(BlitzenEngine::CreateWorldMapDirectory(pWORLD->mActiveMapName));
+        if (!SwitchWorldMapFile(BlitzenEngine::GCDefaultWorldMapName, pWORLD, pResources))
+        {
+            return false;
+        }
+        
+#if defined(CUS)
 
         pResources->m_textureManager.ALLOC(100);
         if (!pResources->m_textureManager.AddTexture("BlitzenLogo.dds", "Assets/Textures/BlitzenLSV1.dds"))
@@ -580,7 +645,11 @@ namespace BlitzenWorld
             return false;
         }
 
-        InitializeMapContext(pWORLD);
+        if (!AddSingleTextureToWorldMap(pWORLD->mActiveMapName, "BlitzenLogo", pWORLD, pResources))
+        {
+            BLIT_ERROR("%s: Failed to add Blitzen logo texture to world map %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mActiveMapName);
+            return false;
+        }
 
         //------------------------------------------------------------------------------------------------
         // Default resources from OBJs and GLTFs are loaded for the first time below.
@@ -671,7 +740,7 @@ namespace BlitzenWorld
 
 		// Imports sponza scene from gltf file
         // Adds the sponza scene name to the map
-        auto gltfSceneTestRes{ BlitzenEngine::ManageGltf("../../GltfTestScenes/Scenes/Sponza/scene.gltf", "sponza", pResources, &pWORLD->mResidents, pRenderer) };
+        auto gltfSceneTestRes{ BlitzenEngine::ManageGltf("C:/Dev/GltfTestScenes/Scenes/Sponza/scene.gltf", "sponza", pResources, &pWORLD->mResidents, pRenderer) };
         BLIT_ASSERT_MESSAGE(!BlitzenCore::BLIT_CHECK_FATAL((int64_t)gltfSceneTestRes), "Fatal error encountered while loading gltf scene");
         if (BlitzenCore::BLIT_CHECK_FAIL(int64_t(gltfSceneTestRes)))
         {
@@ -754,8 +823,6 @@ namespace BlitzenWorld
         }
 
 #else
-        GSBlitzenWorld->mActiveMapName = BlitzenEngine::GCDefaultWorldMapName;
-        InitializeMapContext(pWORLD);
         // Global residents pointer
         BlitzenEngine::InitializeWorldResidentsPointer_STATIC_ACCESS(&pWORLD->mResidents);
         // Grid Collider indices
@@ -827,6 +894,13 @@ namespace BlitzenWorld
             return false;
         }
 
+        // NOTE TO SELF: This has become useless. The loading for load screens should be its own thing that is done at the start
+        if (!BlitzenEngine::UploadRendererIdleWorkResources(pRenderer, BlitzenEngine::RENDERER_IDLE_MODE::BLITZEN_LOGO))
+        {
+            BLIT_ERROR("%s: Failed to put renderer on Idle Work Mode", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+
         pResources->m_meshContext.m_triangles.CLEAN();
         pResources->m_meshContext.m_clusters.CLEAN();
 
@@ -843,11 +917,6 @@ namespace BlitzenWorld
     void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, int argc, char** argv)
     {
         
-    }
-
-    void InitializeMapContext(BLITZEN_WORLD* pWORLD)
-    {
-        BLIT_ASSERT(BlitzenEngine::OpenResourceNamesBMSTRFile(pWORLD->mActiveMapName, pWORLD->mResourcesNamesFile));
     }
 
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr)

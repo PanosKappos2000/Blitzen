@@ -19,6 +19,8 @@ namespace BlitzenEngine
 	constexpr uint32_t GCMapFileHeaderElementCount = 20;
 	constexpr const char* GCWorldMapTextureNameBINSTRFilenName = "textureNames.bbinstr";
 
+	// One of the functions needed during project initialization
+	// Create the world map directory for the first time
 	BLIT_OFFLINE_FUNC bool CreateWorldMapDirectory(const char* mapName);
 
 	enum WorldMapHeaderIndices : uint32_t
