@@ -89,6 +89,90 @@ namespace BlitzenEngine
 		return true;
 	}
 
+	bool OpenMaterialBatchBMSTRFile(const char* mapName, BlitzenPlatform::C_FILE_SCOPE& file)
+	{
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCWorldMapMaterialBatchBMSTRFileName)};
+		filepath.Format("%s%s/%s%s", GCClientWorldMapDirectory, mapName, GCWorldMapMaterialBatchBMSTRFileName);
+
+		if (!BlitzenPlatform::FilepathExists(filepath.Get()))
+		{
+			if (!file.Open(filepath.Get(), BlitzenPlatform::FileModes::Write, BlitzenPlatform::GCFileBinaryFlagFalse))
+			{
+				BLIT_ERROR("%s: Failed to open material batch names files for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+				return false;
+			}
+
+			return true;
+		}
+
+		if (!file.Open(filepath.Get(), BlitzenPlatform::FileModes::Append, BlitzenPlatform::GCFileBinaryFlagFalse))
+		{
+			BLIT_ERROR("%s: Failed to open material batch names files for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+			return false;
+		}
+
+		return true;
+	}
+
+	bool UploadMaterialBatchNameToDisk(BlitzenPlatform::C_FILE_SCOPE& file, const char* sceneName)
+	{
+		if (!BlitzenPlatform::FilesystemWriteLine(file, sceneName))
+		{
+			BLIT_ERROR("%s: Failed to write material batch name to BMSTR file", BlitzenCore::CE_WORLD_SYSTEM_NAME)
+			return false;
+		}
+		return true;
+	}
+
+	bool OpenMaterialBatchNamesBmstrFileForRead(BlitzenPlatform::C_FILE_SCOPE& file, const char* mapName)
+	{
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCWorldMapMaterialBatchBMSTRFileName)};
+		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCWorldMapMaterialBatchBMSTRFileName);
+
+		if (!file.Open(filepath.Get(), BlitzenPlatform::FileModes::Read, BlitzenPlatform::GCFileBinaryFlagFalse))
+		{
+			BLIT_ERROR("%s: Failed to open material batch file for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+			return false;
+		}
+
+		return true;
+	}
+
+	BLIT_OFFLINE_FUNC bool OpenWorldMapResourcesContextFileForWriting(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, const char* mapName)
+	{
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCNameOfWorldResourcesOffsetsBinaryFile) };
+		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCNameOfWorldResourcesOffsetsBinaryFile);
+
+		bool firstLoadFlag = !BlitzenPlatform::FilepathExists(filepath.Get());
+
+		auto fileOpenRes = file.OpenWrite(filepath.Get(), GCMaxLoadedMaterialCount * sizeof(uint32_t));
+		if(BlitzenPlatform::CheckMmfResForError(fileOpenRes))
+		{
+			BLIT_ERROR("%s: Failed opene resource context binary file for map \"%s\". Received Platform error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName, 
+				BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(fileOpenRes));
+			return false;
+		}
+
+		if (firstLoadFlag)
+		{
+			WorldMapResourcesOffsetsHeader header{};
+			header[WorldMapResourcesOffsetsHeaderGeometryOffsetsID] = 0;
+
+		}
+		return true;
+	}
+
+	bool UploadWorldMapResourceContextToDisk(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, uint32_t* materialTextureOffsets, uint32_t materialTextureOffsetCount,
+		uint32_t* geometryMaterialOffsets, uint32_t geometryMaterialOffsetCount)
+	{
+		return true;
+	}
+
+	bool LoadWorldMapResourcesContextFromDisk(const char* mapName, BlitzenCore::BLIT_PTR& materialTextureOffsets, BlitzenCore::BLIT_PTR& geometryMaterialOffsets)
+	{
+		return true;
+	}
+
 	LOAD_WORLD_MAP_RES LoadWORLDMapFromDisk(const char* mapName, WORLD_RESIDENTS* pWorldResidents)
 	{
 		BlitCL::String mapContainer;
@@ -388,16 +472,16 @@ namespace BlitzenEngine
 		return index;
 	}
 
-	LoadWorldMapResourceNameFromDiskRes LoadWorldMapResourceNameFromDisk(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, char** buffer)
+	BMSTRFileReadRes ReadBmstrFileNextLine(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, char** buffer)
 	{
-		if (!bmstrFile.m_pHandle || !buffer || !*buffer) return LoadWorldMapResourceNameFromDiskRes::Error;
+		if (!bmstrFile.m_pHandle || !buffer || !*buffer) return BMSTRFileReadRes::Error;
 		size_t size;
 		// Since other possible errors have been check this can only return false if it is the end of the line
 		if (!BlitzenPlatform::FilesystemReadLine(bmstrFile, GCResourceNameMaxSize, buffer, &size))
 		{
-			return LoadWorldMapResourceNameFromDiskRes::End;
+			return BMSTRFileReadRes::End;
 		}
-		return LoadWorldMapResourceNameFromDiskRes::Read;
+		return BMSTRFileReadRes::Read;
 	}
 
 	bool AddSceneResourcesToWorldMapResourceBmstrFile(BlitzenPlatform::C_FILE_SCOPE& bmstrFile, const char* sceneName, uint32_t resourceCount)
@@ -554,8 +638,8 @@ namespace BlitzenEngine
 
 	bool OpenBINSTRFileForTextureNameWriting(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, const char* mapName)
 	{
-		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCWorldMapTextureNameBINSTRFilenName) };
-		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCWorldMapTextureNameBINSTRFilenName);
+		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCNameOfWorldMapTextureNamesBINSTRFile) };
+		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCNameOfWorldMapTextureNamesBINSTRFile);
 
 		bool firstTimeLoadFlag = !BlitzenPlatform::FilepathExists(filepath.Get());
 
@@ -622,13 +706,10 @@ namespace BlitzenEngine
 		return true;
 	}
 
-	bool ReadStringDataFromBINSTRFile(const char* mapName, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t& outStringCount)
+	bool ReadStringDataFromBINSTRFile(const char* filepath, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t& outStringCount)
 	{
-		BlitCL::FatString filepath{ strlen(GCClientWorldMapDirectory) + strlen(mapName) + strlen("/") + strlen(GCWorldMapTextureNameBINSTRFilenName) };
-		filepath.Format("%s%s/%s", GCClientWorldMapDirectory, mapName, GCWorldMapTextureNameBINSTRFilenName);
-		
 		BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE binstrFile;
-		auto binstrFileOpenRes = binstrFile.OpenRead(filepath.Get());
+		auto binstrFileOpenRes = binstrFile.OpenRead(filepath);
 		if (BlitzenPlatform::CheckMmfResForError(binstrFileOpenRes))
 		{
 			BLIT_ERROR("%s: Failed to open binstr file. Received platform error: %s", BlitzenCore::CE_WORLD_SYSTEM_NAME, BlitzenPlatform::GET_BLIT_MMF_RES_ERROR_STR(binstrFileOpenRes));

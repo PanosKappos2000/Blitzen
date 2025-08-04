@@ -10,7 +10,7 @@
 namespace BlitzenEngine
 {
 	uint8_t UploadResourcesToGPU(BlitzenDX12::Dx12Renderer* pRenderer, DrawContext& drawContext, BlitzenDX12::LoadingContextMesh& loadingContextMesh, 
-		BlitzenDX12::LoadingContextRenderObjects& loadingContextObj)
+		BlitzenDX12::LoadingContextRenderObjects& loadingContextObj, BlitzenDX12::LoadingContextMaterial& loadingContextMaterial)
 	{
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
@@ -22,7 +22,7 @@ namespace BlitzenEngine
 		}
 
 		if (!BlitzenDX12::UploadResourcesToBuffers(pRenderer->m_device.Get(), drawContext, pRenderer->m_roResources, pRenderer->m_rwResources, pRenderer->MCpuLogicBuffers, pRenderer->m_cmdContext[0], 
-			pRenderer->m_transferCommandQueue.Get(), loadingContextMesh, loadingContextObj))
+			pRenderer->m_transferCommandQueue.Get(), loadingContextMesh, loadingContextObj, loadingContextMaterial))
 		{
 			BLIT_ERROR("%s: Failed to upload resources to GPU buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
 			return 0;
@@ -407,6 +407,12 @@ namespace BlitzenEngine
 			return 0;
 		}
 
+		if (!BlitzenDX12::CreateStaging(pRenderer->m_device.Get(), ctx.materialStaging, GCMaxLoadedMaterialCount, (Material*)nullptr))
+		{
+			BLIT_FATAL("%s: Failed to create staging buffer for material data", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
 		return 1;
 	}
 
@@ -422,6 +428,27 @@ namespace BlitzenEngine
 
 		BlitzenCore::MANUAL_COPY(loadingContext.textureDataStaging.m_pMapped, pTextureData, blockSize);
 		loadingContext.textureDataStaging.m_dataSize = blockSize;
+
+		return 1;
+	}
+
+	uint8_t UploadMaterialsToStagingBuffer(RenderingLoadingContextMaterial& loadingContext, Material* pMaterials, uint32_t materialCount)
+	{
+		using TYPE = Material;
+
+		SIZE_T copySize{ sizeof(TYPE) * materialCount };
+		if ((loadingContext.materialStaging.m_validDataIndex * sizeof(TYPE)) + copySize > loadingContext.materialStaging.m_dataSize)
+		{
+			BLIT_ERROR("%s: Material staging buffer overflow", BlitzenCore::CE_DX12_SYSTEM_NAME);
+			return 0;
+		}
+
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(pMaterials != nullptr);
+
+		auto pDest = &loadingContext.materialStaging.m_pMapped[loadingContext.materialStaging.m_validDataIndex];
+		BlitzenCore::MANUAL_COPY(pDest, pMaterials, copySize);
+
+		loadingContext.materialStaging.m_validDataIndex += materialCount;
 
 		return 1;
 	}

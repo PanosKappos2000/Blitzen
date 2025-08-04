@@ -18,6 +18,8 @@ namespace BlitzenEngine
 
         using RenderingLoadingContextRenderObjects = BlitzenVulkan::LoadingContextRenderObjects;
 
+        using RenderingLoadingContextMaterial = BlitzenVulkan::LoadingContextMaterial;
+
     #elif defined(_WIN32) && defined(BLIT_GL_LEGACY_OVERRIDE) 
 
         using Renderer = BlitCL::SmartPointer<BlitzenGL::OpenglRenderer, BlitzenCore::AllocationType::Renderer>;
@@ -57,7 +59,8 @@ namespace BlitzenEngine
 
     // Post-loading function. CPU side resources passed to GPU side buffers (or whichever type of handle is used)
     // Views for resources also placed
-    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext, RenderingLoadingContextMesh& loadingContextMesh, RenderingLoadingContextRenderObjects& loadingContextObj);
+    uint8_t UploadResourcesToGPU(RendererPtrType pRenderer, DrawContext& drawContext, RenderingLoadingContextMesh& loadingContextMesh, RenderingLoadingContextRenderObjects& loadingContextObj, 
+        RenderingLoadingContextMaterial& loadingContextMaterial);
 
     uint8_t AllocateLoadingContextMesh(RendererPtrType pRenderer ,RenderingLoadingContextMesh& ctx);
 
@@ -93,6 +96,7 @@ namespace BlitzenEngine
     // Initial allocation for all staging buffer that have to do with materials and their textures
     uint8_t AllocateLoadingStagingBufferMaterials(RendererPtrType pRenderer, RenderingLoadingContextMaterial& ctx);
 
+    // Copies materials to a staging buffer. Count should not include sizeof(type). It's done inside.
     uint8_t UploadMaterialsToStagingBuffer(RenderingLoadingContextMaterial& loadingContext, Material* pMaterials, uint32_t materialCount);
     uint8_t UploadTexturesToStagingBuffer(RenderingLoadingContextMaterial& loadingContext, void* pTextureData, size_t blockSize);
     // Singular texture upload

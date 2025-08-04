@@ -71,6 +71,8 @@ namespace BlitzenWorld
     // Adds a texture to a world map
     BLIT_OFFLINE_FUNC bool AddSingleTextureToWorldMap(const char* name, const char* textureName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
 
+    bool LoadWorldMapTexturesToGPU(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
+
     // Called When a world map receives new resources or new residents.
     // It updates the files to access all the correct resources
     // It also updates the residents to have all new residents be part of the map

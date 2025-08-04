@@ -298,7 +298,7 @@ namespace BlitzenEngine
                 {
                     meshPrimitiveContext.m_specialFlags |= MESH_PRIMITIVE_SPECIAL_TRANSPARENT;
                 }
-                meshPrimitiveContext.m_materialID = 0;//textureContext.m_materials[previousMaterialCount + cgltf_material_index(cgltfScope.pData, prim.material)].materialId;
+                meshPrimitiveContext.m_materialID = (uint32_t)cgltf_material_index(cgltfScope.pData, prim.material);
             }
 
             auto meshPrimitiveRes{ meshContext.m_meshPrimitives.GenerateSurface(meshContext.m_triangles, meshContext.m_clusters, meshPrimitiveContext) };
@@ -444,34 +444,33 @@ namespace BlitzenEngine
 
     bool LoadGltfMaterials(MaterialManager& materialManager, CgltfScope& cgltfScope)
     {
+        BlitCL::DynamicArray<Material> materialIndices{ cgltfScope.pData->materials_count };
+        BlitCL::DynamicArray<MaterialData> materialData{ cgltfScope.pData->materials_count };
         for (size_t i = 0; i < cgltfScope.pData->materials_count; ++i)
         {
             auto& cgltfMaterial = cgltfScope.pData->materials[i];
-            Material blitMaterial;
+            Material& blitMaterial = materialIndices[i];
+            MaterialData& blitMatData = materialData[i];
 
             blitMaterial.albedoTag =
                 cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture))
                 : cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.diffuse_texture.texture))
-                : 0;
+                : UINT32_MAX;
 
-            blitMaterial.normalTag = cgltfMaterial.normal_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.normal_texture.texture)) : 0;
+            blitMaterial.normalTag = cgltfMaterial.normal_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.normal_texture.texture)) : UINT32_MAX;
 
             blitMaterial.specularTag =
                 cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture ? 
                 uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.pbr_specular_glossiness.specular_glossiness_texture.texture))
-                : 0;
+                : UINT32_MAX;
 
             blitMaterial.emissiveTag = cgltfMaterial.emissive_texture.texture ? uint32_t(cgltf_texture_index(cgltfScope.pData, cgltfMaterial.emissive_texture.texture))
-                : 0;
+                : UINT32_MAX;
 
-            if (!materialManager.AddMaterial(cgltfMaterial.alpha_mode == cgltf_alpha_mode::cgltf_alpha_mode_opaque ? MaterialAlphaMode::Opaque : MaterialAlphaMode::Transparent, blitMaterial))
-            {
-                BLIT_ERROR("%s: Failed to load material no %u for scene %s", BlitzenCore::CE_SCENE_SYSTEM_NAME, i, cgltfScope.sceneName);
-                return false;
-            }
+            blitMatData.transparencyFlag = cgltfMaterial.alpha_mode == cgltf_alpha_mode::cgltf_alpha_mode_opaque ? MaterialAlphaMode::Opaque : MaterialAlphaMode::Transparent, blitMaterial;
         }
 
-        if (!UploadMaterialsToDisk(cgltfScope.sceneName, materialManager.mMaterials, materialManager.mMatData, materialManager.mMaterialCount))
+        if (!UploadMaterialsToDisk(cgltfScope.sceneName, materialIndices.Data(), materialData.Data(), (uint32_t)cgltfScope.pData->materials_count))
         {
             BLIT_ERROR("%s: Failed to load materials to disk for scene %s", BlitzenCore::CE_SCENE_SYSTEM_NAME, cgltfScope.sceneName);
             return false;

@@ -13,7 +13,8 @@ namespace BlitzenDX12
 		DXGI_FORMAT format, UINT blockSize, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, DX12WRAPPER<ID3D12Resource>& staging);
 
 	uint8_t UploadResourcesToBuffers(ID3D12Device* device, const BlitzenEngine::DrawContext& drawContext, ReadOnlyResources& roResources, ReadWriteResources* rwResourcesArr,
-		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh, LoadingContextRenderObjects& loadingContextObj);
+		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh, LoadingContextRenderObjects& loadingContextObj, 
+		LoadingContextMaterial& loadingContextMaterial);
 
 	void CreateResourceViews(ID3D12Device* device, DescriptorContext& ctx, CmdContext& cmdContext, ID3D12CommandQueue* queue, ReadOnlyResources& roResources,
 		ReadWriteResources* rwResourcesArray, CPU_LOGIC_BUFFERS& gameLogicBuffers, BlitzenEngine::DrawContext& context, DX12WRAPPER<ID3D12Resource>* pDepthTargets, 

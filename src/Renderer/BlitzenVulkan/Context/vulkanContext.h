@@ -250,4 +250,10 @@ namespace BlitzenVulkan
         BlitVk_STAGING<BlitzenEngine::WVTransform> m_cpuTransformStaging;
         BlitVk_STAGING<BlitzenEngine::BoundingSphere> m_boundingSpheresStaging;
     };
+
+    struct LoadingContextMaterials
+    {
+        BlitVk_STAGING<BlitzenEngine::Material> mMaterialStaging;
+        BlitVk_STAGING<uint8_t> mTextureStaging;
+    };
 }

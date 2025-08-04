@@ -6,10 +6,11 @@
 
 namespace BlitzenEngine
 {
-	uint8_t UploadResourcesToGPU(BlitzenVulkan::VulkanRenderer* pRenderer, BlitzenEngine::DrawContext& drawContext, BlitzenVulkan::LoadingContextMesh& loadingContextMesh)
+	uint8_t UploadResourcesToGPU(BlitzenVulkan::VulkanRenderer* pRenderer, BlitzenEngine::DrawContext& drawContext, BlitzenVulkan::LoadingContextMesh& loadingContextMesh, 
+		BlitzenVulkan::LoadingContextMaterials& loadingContextMaterials)
 	{
 		if (!BlitzenVulkan::UploadResourcesToBuffers(pRenderer->m_device, pRenderer->m_instance, pRenderer->m_allocator, pRenderer->m_transferQueue.handle, drawContext, pRenderer->m_readOnlies,
-			pRenderer->m_readWrites, pRenderer->m_commandsContext[0], pRenderer->m_stats, loadingContextMesh))
+			pRenderer->m_readWrites, pRenderer->m_commandsContext[0], pRenderer->m_stats, loadingContextMesh, loadingContextMaterials))
 		{
 			BLIT_ERROR("%s: Failed to upload data to buffers", BlitzenCore::CE_VULKAN_SYSTEM_NAME);
 			return 0;

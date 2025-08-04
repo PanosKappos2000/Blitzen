@@ -198,7 +198,9 @@ namespace BlitzenEngine
     static_assert(GCMaterialHeaderElementCount == BlitRpfMaterialMax);
 
     // Uploads a batch of materials to an rpf binary file.
-    bool UploadMaterialsToDisk(const char* folderName, Material* matArray, MaterialData* matDataArray, uint32_t count);
+    bool UploadMaterialsToDisk(const char* folderName, Material* matArray, MaterialData* matDataArray, uint32_t materialCount);
+
+    bool LoadMaterialsFromDisk(const char* folderName, BlitzenCore::BLIT_PTR& matArray, BlitzenCore::BLIT_PTR& matDataArray, uint32_t& outCount);
 
     // FOR FUTURE REFERENCE. Probably v2
     struct MeshRpfOffsetAccessor

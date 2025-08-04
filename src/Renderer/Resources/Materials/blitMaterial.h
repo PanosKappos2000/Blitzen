@@ -1,5 +1,6 @@
 #pragma once
 #include "Renderer/Resources/blitShaderResources.h"
+#include "Platform/Common/blitMappedFile.h"
 
 namespace BlitzenEngine
 {
@@ -27,13 +28,17 @@ namespace BlitzenEngine
 	class MaterialManager
 	{
 	public:
-		Material* mMaterials = nullptr;
-		MaterialData* mMatData = nullptr;
-		uint32_t mMaterialCount = 0;
-		uint32_t mAllocatedCount = 0;
-		uint32_t mNotLoadedCount = 0;
+		uint32_t* mMaterialTextureOffsets = nullptr;
+		uint32_t mOffsetCount;
+		uint32_t mAllocatedOffsetCount;
 
-		BLIT_OFFLINE_FUNC bool AddMaterial(MaterialAlphaMode alphaMode, const Material& matIndices);
+		MaterialData* mMatData = nullptr;
+		uint32_t mDataCount = 0;
+		uint32_t mAllocatedDataCount = 0;
+
+		BLIT_OFFLINE_FUNC bool AddMaterialTextureOffsets(uint32_t offset);
+
+		BLIT_OFFLINE_FUNC bool AddMaterialData(MaterialAlphaMode transparencyFlag);
 
 		// Allocates data arrays for materials. Count should not include sizeof(Material). It's done inside the function
 		void ALLOC(uint32_t materialCount);
@@ -41,5 +46,8 @@ namespace BlitzenEngine
 		~MaterialManager();
 
 		void ResetContext();
+
+		BLIT_OFFLINE_FUNC bool DefineMaterial(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& textureNamesBinstrFile, const char* albedoTextureName, const char* normalTextureName,
+			const char* specularTextureName, const char* emissiveTextureName);
 	};
 }

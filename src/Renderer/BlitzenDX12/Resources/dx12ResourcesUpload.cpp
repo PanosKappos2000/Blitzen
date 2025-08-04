@@ -77,7 +77,8 @@ namespace BlitzenDX12
 	}
 
 	uint8_t UploadResourcesToBuffers(ID3D12Device* device, const BlitzenEngine::DrawContext& drawContext, ReadOnlyResources& roResources, ReadWriteResources* rwResourcesArr, 
-		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh, LoadingContextRenderObjects& loadingContextObj)
+		CPU_LOGIC_BUFFERS& cpuLogicBuffers, CmdContext& cmdContext, ID3D12CommandQueue* commandQueue, LoadingContextMesh& loadingContextMesh, LoadingContextRenderObjects& loadingContextObj, 
+		LoadingContextMaterial& loadingContextMaterial)
 	{
 
 		/******************************************************************************************************
@@ -252,13 +253,6 @@ namespace BlitzenDX12
 			return 0;
 		}
 
-		STAGING<BlitzenEngine::Material> materialStaging{ nullptr };
-		if (!CreateStaging(device, materialStaging, drawContext.pMatManager->mMaterialCount, drawContext.pMatManager->mMaterials))
-		{
-			BLIT_ERROR("%s: Failed to create material staging buffer", BlitzenCore::CE_DX12_SYSTEM_NAME);
-			return 0;
-		}
-
 		STAGING<BlitzenEngine::WVTransform> worldVariableTransformStaging{ nullptr };
 		if (!CreateStaging(device, worldVariableTransformStaging, drawContext.m_pResidents->mWorldVariableCount, drawContext.m_pResidents->WVTransforms))
 		{
@@ -397,7 +391,7 @@ namespace BlitzenDX12
 
 		PutStagingBufferToCopySrcState(loadingContextMesh.m_lodDataStaging, copySourceBarriers.Data(), Ce_LodStagingIndex, copySourceBarriers.GetSize());
 
-		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_MaterialStagingIndex], materialStaging.m_buffer.Get(), 
+		CreateResourcesTransitionBarrier(copySourceBarriers[Ce_MaterialStagingIndex], loadingContextMaterial.materialStaging.m_buffer.Get(), 
 			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		CreateResourcesTransitionBarrier(copySourceBarriers[CE_TERRAIN_VERTEX_SSBO_STAGING_IDX], terrainVtxPosStagingBuffer.m_buffer.Get(), 
@@ -474,7 +468,8 @@ namespace BlitzenDX12
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_renderBuffer.buffer.Get(), 0, 
 			renderStaging.m_buffer.Get(), 0, renderStaging.m_dataSize);
 		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_boundingSpheres.buffer.Get(), 0, boundingSphereStaging.m_buffer.Get(), 0, boundingSphereStaging.m_dataSize);
-		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_matBuffer.buffer.Get(), 0, materialStaging.m_buffer.Get(), 0, materialStaging.m_dataSize);
+		cmdContext.m_copyCmdList->CopyBufferRegion(roResources.m_matBuffer.buffer.Get(), 0, loadingContextMaterial.materialStaging.m_buffer.Get(), 0,
+			sizeof(BlitzenEngine::Material) * loadingContextMaterial.materialStaging.m_validDataIndex);
 		cmdContext.m_copyCmdList->CopyBufferRegion(cpuLogicBuffers.GPUSSBOWorldVariableTransform.buffer.Get(), 0, worldVariableTransformStaging.m_buffer.Get(), 0, worldVariableTransformStaging.m_dataSize);
 		if constexpr (BlitzenCore::Ce_BuildClusters)
 		{
@@ -716,7 +711,7 @@ namespace BlitzenDX12
 		ctx.m_pixelODSTableHandle = ctx.m_viewHeapHandle;
 		ctx.m_pixelODSTableHandle.ptr += ctx.m_pixelODSTableOffset * ctx.m_viewHeapIncrement;
 
-		CreateBufferShaderResourceView(device, roResources.m_matBuffer.buffer.Get(), ctx, context.pMatManager->mMaterialCount, sizeof(BlitzenEngine::Material));
+		CreateBufferShaderResourceView(device, roResources.m_matBuffer.buffer.Get(), ctx, context.pMatManager->mDataCount, sizeof(BlitzenEngine::Material));
 
 		// TEXTURE DESCRIPTORS
 		ctx.m_texturesTableOffset = ctx.m_viewHeapCurrentOffset;

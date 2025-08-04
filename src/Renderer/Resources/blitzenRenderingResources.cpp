@@ -72,7 +72,7 @@ namespace BlitzenEngine
 
     bool GetMaterialTransparencyFlag(uint32_t materialID)
     {
-        BLIT_RUNTIME_TEST_CHECK_ASSERT(materialID < GSRenderingResources->mMaterials.mMaterialCount);
+        BLIT_RUNTIME_TEST_CHECK_ASSERT(materialID < GSRenderingResources->mMaterials.mDataCount);
 
         return GSRenderingResources->mMaterials.mMatData[materialID].transparencyFlag != MaterialAlphaMode::Opaque;
     }
@@ -80,6 +80,11 @@ namespace BlitzenEngine
     void RenderingResources::CloseWorldMapTextureNamesBINSTRFile()
     {
         mWorldMapTextureNamesBINSTRFileHandle.Close();
+    }
+
+    void RenderingResources::CloseWorldMapMaterialBatchNameBMSTRFile()
+    {
+        mMaterialBatchNamesFile.Close();
     }
 
     void InitializeRenderingResourcesGlobalPointer(RenderingResources* ptr)

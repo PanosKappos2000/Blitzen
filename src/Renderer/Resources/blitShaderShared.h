@@ -80,6 +80,7 @@
 #endif
 
 #define BLIT_MAX_WORLD_TEXTURE_RESOURCES													5000u
+#define BLIT_BLANK_MATERIAL_INDEX															0u
 
 #define BLIT_COLLISION_GRID_EXTENT															3200u
 #define BLIT_COLLISION_GRID_CELL_EXTENT														64u

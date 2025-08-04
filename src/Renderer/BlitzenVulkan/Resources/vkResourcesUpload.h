@@ -5,7 +5,8 @@
 namespace BlitzenVulkan
 {
 	uint8_t UploadResourcesToBuffers(VkDevice device, VkInstance instance, VmaAllocator vma, VkQueue queue, BlitzenEngine::DrawContext& drawContext,
-		ROResources& readOnlies, RWResources* pRWResourcesArray, CommandContext& cmdContext, VulkanStats& stats, LoadingContextMesh& loadingContextMesh);
+		ROResources& readOnlies, RWResources* pRWResourcesArray, CommandContext& cmdContext, VulkanStats& stats, LoadingContextMesh& loadingContextMesh, 
+		LoadingContextMaterials& loadingContextMaterials);
 
 	void CreateDescriptors(DescriptorContext& descriptorContext, ROResources& roResources, RWResources* rwResourcesArray, BlitzenEngine::DrawContext& drawContext);
 

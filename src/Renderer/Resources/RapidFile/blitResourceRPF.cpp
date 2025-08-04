@@ -23,6 +23,7 @@ namespace BlitzenEngine
         }
 
         BlitRpfMaterialHeader materialHeader{};
+        materialHeader[BlitRpfMaterialCountID] = count;
 
         uint32_t offset = headerWriteSize;
         if (!BlitzenPlatform::WriteMemoryMappedFile(materialFile, offset, materialWriteSize, matArray))
@@ -45,6 +46,43 @@ namespace BlitzenEngine
         if (!BlitzenPlatform::WriteMemoryMappedFile(materialFile, LCStartOfFile, headerWriteSize, materialHeader))
         {
             BLIT_ERROR("%s: Fialed to write material header to disk", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool LoadMaterialsFromDisk(const char* filepath, BlitzenCore::BLIT_PTR& matArray, BlitzenCore::BLIT_PTR& matDataArray, uint32_t& outCount)
+    {
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE materialFile;
+        auto materialFileOpenRes = materialFile.OpenRead(filepath);
+        if (BlitzenPlatform::CheckMmfResForError(materialFileOpenRes))
+        {
+            BLIT_ERROR("%s: Failed to open material file for batch read", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+
+        BlitRpfMaterialHeader header;
+        if (!BlitzenPlatform::ReadMemoryMappedFile(materialFile, GCBlitStartOfFileOffset, sizeof(size_t) * GCMaterialHeaderElementCount, header))
+        {
+            BLIT_ERROR("%s: Failed to read material file header", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+
+        size_t materialCount = header[BlitRpfMaterialCountID];
+        outCount = (uint32_t)materialCount;
+        matArray.Init(materialCount * sizeof(Material));
+        matDataArray.Init(materialCount * sizeof(MaterialData));
+
+        if (!BlitzenPlatform::ReadMemoryMappedFile(materialFile, header[BlitRpfMaterialOffsetID], materialCount * sizeof(Material), matArray.mPtr))
+        {
+            BLIT_ERROR("%s: Failed to read materials from memory mapped file", BlitzenCore::GCRpfSystemName);
+            return false;
+        }
+
+        if (!BlitzenPlatform::ReadMemoryMappedFile(materialFile, header[BlitRpfMaterialDataOffsetID], materialCount * sizeof(MaterialData), matDataArray.mPtr))
+        {
+            BLIT_ERROR("%s: Failed to read material data from memory mapped file", BlitzenCore::GCRpfSystemName);
             return false;
         }
 

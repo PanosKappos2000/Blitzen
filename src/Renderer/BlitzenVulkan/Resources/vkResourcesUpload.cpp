@@ -92,7 +92,8 @@ namespace BlitzenVulkan
     }
 
     uint8_t UploadResourcesToBuffers(VkDevice device, VkInstance instance, VmaAllocator vma, VkQueue queue, BlitzenEngine::DrawContext& drawContext, 
-        ROResources& readOnlies, RWResources* pRWResourcesArray,CommandContext& cmdContext, VulkanStats& stats, LoadingContextMesh& loadingContextMesh)
+        ROResources& readOnlies, RWResources* pRWResourcesArray,CommandContext& cmdContext, VulkanStats& stats, LoadingContextMesh& loadingContextMesh, 
+        LoadingContextMaterials& loadingContextMaterials)
     {
         for (uint32_t frame = 0; frame < ce_framesInFlight; ++frame)
         {
@@ -162,15 +163,6 @@ namespace BlitzenVulkan
             return 0;
         }
 
-        BUFFER_STAGING_CONTEXT<BlitzenEngine::Material> matStagingContext{};
-        matStagingContext.elementCount = drawContext.pMatManager->mMaterialCount;
-        matStagingContext.pData = drawContext.pMatManager->mMaterials;
-        if (!CreateStaging(vma, device, matStagingContext))
-        {
-            BLIT_ERROR("%s: Failed to create material staging buffer", BLIT_VK_SYSTEM);
-            return 0;
-        }
-
         BUFFER_STAGING_CONTEXT<BlitzenEngine::ClusterVertices> clusterVtxStagingContext{};
         BUFFER_STAGING_CONTEXT<BlitzenEngine::ClusterSphere> clusterSphereStagingContext{};
         BUFFER_STAGING_CONTEXT<BlitzenEngine::ClusterCone> clusterConesStagingContext{};
@@ -233,7 +225,8 @@ namespace BlitzenVulkan
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, LODstagingContext.staging.m_buffer.m_handle, readOnlies.m_LODBuffer.m_buffer.m_handle, LODstagingContext.staging.m_dataSize, 0, 0);
 
-        CopyBufferToBuffer(cmdContext.m_transferCmdB, matStagingContext.staging.m_buffer.m_handle, readOnlies.m_matBuffer.m_buffer.m_handle, matStagingContext.staging.m_dataSize, 0, 0);
+        CopyBufferToBuffer(cmdContext.m_transferCmdB, loadingContextMaterials.mMaterialStaging.m_buffer.m_handle, readOnlies.m_matBuffer.m_buffer.m_handle, 
+            loadingContextMaterials.mMaterialStaging.m_validIndex * sizeof(BlitzenEngine::Material), 0, 0);
 
         CopyBufferToBuffer(cmdContext.m_transferCmdB, boundingSphereStagingContext.staging.m_buffer.m_handle, readOnlies.m_boundingSphereBuffer.m_buffer.m_handle, boundingSphereStagingContext.staging.m_dataSize, 0, 0);
 
