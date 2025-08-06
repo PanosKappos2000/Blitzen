@@ -42,6 +42,7 @@ namespace BlitzenWorld
 
         const char* mActiveMapName;
         BlitzenPlatform::C_FILE_SCOPE mResourcesNamesFile;
+        BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE mWorldMapResourceContextFile;
 
         float deltaTime{0.f};
 

@@ -117,9 +117,9 @@ namespace BlitzenEngine
 	{
 		WorldMapResourcesOffsetsHeaderMaterialCountID = 0,
 		WorldMapResourcesOffsetsHeaderGeometryCountID = 1,
-		WorldMapResourcesOffsetsHeaderGeometryOffsetsID = 2,
-		WorldMapResourcesOffsetsHeaderMaterialOffsetsID = 3,
-
+		WorldMapResourcesOffsetsHeaderMaterialOffsetsID = 2,
+		WorldMapResourcesOffsetsHeaderGeometryOffsetsID = 3,
+		
 		WorldMapResourcesOffsetsHeaderMax = 4
 	};
 	static_assert(WorldMapResourcesOffsetsHeaderMax == GCWorldMapResourceOffsetsHeaderElementCount);
@@ -132,6 +132,9 @@ namespace BlitzenEngine
 
 	bool LoadWorldMapResourcesContextFromDisk(const char* mapName, BlitzenCore::BLIT_PTR& materialTextureOffsets, BlitzenCore::BLIT_PTR& geometryMaterialOffsets);
 
+	//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+	// WORLD MAP MAIN BINARY FILE UPLOAD FUNCIONS AND HELPERS
+	//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 	enum class UPLOAD_WORLD_MAP_RES : int64_t
 	{
 		SUCCESS = BlitzenCore::CE_BLITZEN_SUCCESS,
@@ -197,9 +200,9 @@ namespace BlitzenEngine
 	enum BinaryStringFileHeaderIndices
 	{
 		BlitBINSTRFileHeaderStringCountID = 0,
-		BlitBINSTRFileHeaderStringSizesOffsetID = 1,
-		BlitBINSTRFileHeaderStringDataOffsetID = 2,
-		BlitBINSTRFileHeaderStringBufferSizeID = 3,
+		BlitBINSTRFileHeaderStringBufferSizeID = 1,
+		BlitBINSTRFileHeaderStringSizesOffsetID = 2,
+		BlitBINSTRFileHeaderStringDataOffsetID = 3,
 
 		BlitBINSTRFileHeaderMax = 4
 	};
@@ -208,9 +211,12 @@ namespace BlitzenEngine
 
 	BLIT_OFFLINE_FUNC bool OpenBINSTRFileForTextureNameWriting(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, const char* mapName);
 
-	BLIT_OFFLINE_FUNC bool AddStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount, uint32_t stringBufferSize);
+	// Writes a buffer of one ore more strings to a BINSTR file
+	BLIT_OFFLINE_FUNC bool UploadStringDataToBINSTRFile(BlitzenPlatform::MEMORY_MAPPED_FILE_SCOPE& file, char* stringData, size_t* stringSizes, uint32_t stringCount, uint32_t stringBufferSize, 
+		size_t stringSizesBlockSize, size_t stringDataBlockSize);
 
-	bool ReadStringDataFromBINSTRFile(const char* mapName, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t& outStringCount);
+	bool LoadStringDataFromBINSTRFile(const char* mapName, BlitzenCore::BLIT_PTR& outStringData, BlitzenCore::BLIT_PTR& outStringSize, uint32_t& outStringCount, 
+		uint32_t stringSizesBlockSize, uint32_t stringDataBlockSize);
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// RESULT LOGGING

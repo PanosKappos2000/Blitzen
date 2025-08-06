@@ -349,13 +349,19 @@ namespace BlitzenWorld
 
         if (!BlitzenEngine::OpenBINSTRFileForTextureNameWriting(pResources->mWorldMapTextureNamesBINSTRFileHandle, pWORLD->mActiveMapName))
         {
-            BLIT_ERROR("%s: Failed to open Binstr file for texture name writing", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to open Binstr file for texture name writing \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
             return false;
         }
 
         if (!BlitzenEngine::OpenMaterialBatchBMSTRFile(pWORLD->mActiveMapName, pResources->mMaterialBatchNamesFile))
         {
-            BLIT_ERROR("%s: Failed to open bmstr file for material batch names", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            BLIT_ERROR("%s: Failed to open bmstr file for material batch names for world map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
+            return false;
+        }
+
+        if (!BlitzenEngine::OpenWorldMapResourcesContextFileForWriting(pWORLD->mWorldMapResourceContextFile, pWORLD->mActiveMapName))
+        {
+            BLIT_ERROR("%s: Failed to open resource context binary file for world map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, mapName);
             return false;
         }
 
@@ -372,56 +378,70 @@ namespace BlitzenWorld
             return false;
         }
 
-        //pRenderingResources->CloseWorldMapMaterialBatchNameBMSTRFile();
-        //BlitzenPlatform::C_FILE_SCOPE materialNamesFile;
-        //if (!BlitzenEngine::OpenMaterialBatchNamesBmstrFileForRead(materialNamesFile, pWORLD->mActiveMapName))
-        //{
-        //    BLIT_ERROR("%s: Failed to open BMSTR file for material batch names for world map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mActiveMapName);
-        //    return false;
-        //}
-        //
-        //BlitzenCore::BLIT_PTR materialBatchNameBuffer{};
-        //materialBatchNameBuffer.Init(1000);
-        //char* materialNames = reinterpret_cast<char*>(materialBatchNameBuffer.mPtr);
-        //uint32_t materialBatchIteration = 0;
-        //while (true)
-        //{
-        //    auto loadStringRes = BlitzenEngine::ReadBmstrFileNextLine(materialNamesFile, &materialNames);
-        //    if (loadStringRes == BlitzenEngine::BMSTRFileReadRes::End) break;
-        //    if (loadStringRes == BlitzenEngine::BMSTRFileReadRes::Error) return false;
-        //
-        //    BlitzenCore::BLIT_PTR materialIndicesBuffer;
-        //    BlitzenCore::BLIT_PTR materialDataBuffer;
-        //    uint32_t materialCountReadback;
-        //    if (!BlitzenEngine::LoadMaterialsFromDisk(materialNames, materialIndicesBuffer, materialDataBuffer, materialCountReadback))
-        //    {
-        //        BLIT_ERROR("%s: Failed to load material batch no %u for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, materialBatchIteration, pWORLD->mActiveMapName);
-        //        return false;
-        //    }
-        //
-        //    auto materialArr = reinterpret_cast<BlitzenEngine::Material*>(materialIndicesBuffer.mPtr);
-        //    auto materialDataArr = reinterpret_cast<BlitzenEngine::MaterialData*>(materialDataBuffer.mPtr);
-        //
-        //    for (uint32_t m = 0; m < materialCountReadback; ++m)
-        //    {
-        //        auto& material = materialArr[m];
-        //
-        //        material.albedoTag = material.albedoTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.albedoTag + previousTextureCount;
-        //        material.normalTag = material.normalTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.normalTag + previousTextureCount;
-        //        material.emissiveTag = material.emissiveTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.emissiveTag + previousTextureCount;
-        //        material.specularTag = material.specularTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.specularTag + previousTextureCount;
-        //    }
-        //
-        //    pRenderingResources->m_textureManager.mTextureCount += texturesCount;
-        //
-        //    if (!BlitzenEngine::UploadMaterialsToStagingBuffer(pRenderingResources->mLoadingContextMaterial, materialArr, materialCountReadback))
-        //    {
-        //        BLIT_ERROR("%s: Failed to write materials to staging buffer from batch no %s for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mActiveMapName);
-        //        return false;
-        //    }
-        //
-        //    materialBatchIteration++;
-        //}
+        BlitzenCore::BLIT_PTR materialTextureOffsetsBuffer;
+        BlitzenCore::BLIT_PTR geometryMaterialOffsetsBuffer;
+        if (!BlitzenEngine::LoadWorldMapResourcesContextFromDisk(pWORLD->mActiveMapName, materialTextureOffsetsBuffer, geometryMaterialOffsetsBuffer))
+        {
+            BLIT_FATAL("%s: WORLD MAP RESOURCE LOADING FAILED", BlitzenCore::CE_WORLD_SYSTEM_NAME);
+            return false;
+        }
+        uint32_t* materialTextureOffsets = reinterpret_cast<uint32_t*>(materialTextureOffsetsBuffer.mPtr);
+        uint32_t* geometryMaterialOffsets = reinterpret_cast<uint32_t*>(geometryMaterialOffsetsBuffer.mPtr);
+
+        //-----------------------------------------------------------------------------------------------------------------------------------------------
+        //                                                  MATERIAL LOADING
+        //----------------------------------------------------------------------------------------------------------------------------------------------
+        BlitzenPlatform::C_FILE_SCOPE materialNamesFile;
+        if (!BlitzenEngine::OpenMaterialBatchNamesBmstrFileForRead(materialNamesFile, pWORLD->mActiveMapName))
+        {
+            BLIT_ERROR("%s: Failed to open BMSTR file for material batch names for world map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mActiveMapName);
+            return false;
+        }
+        
+        BlitzenCore::BLIT_PTR materialBatchNameBuffer{};
+        materialBatchNameBuffer.Init(1000);
+        char* materialNames = reinterpret_cast<char*>(materialBatchNameBuffer.mPtr);
+        uint32_t materialBatchIteration = 0;
+        while (true)
+        {
+            auto loadStringRes = BlitzenEngine::ReadBmstrFileNextLine(materialNamesFile, &materialNames);
+            if (loadStringRes == BlitzenEngine::BMSTRFileReadRes::End) break;
+            if (loadStringRes == BlitzenEngine::BMSTRFileReadRes::Error) return false;
+        
+            BlitzenCore::BLIT_PTR materialIndicesBuffer;
+            BlitzenCore::BLIT_PTR materialDataBuffer;
+            uint32_t materialCountReadback;
+            if (!BlitzenEngine::LoadMaterialsFromDisk(materialNames, materialIndicesBuffer, materialDataBuffer, materialCountReadback))
+            {
+                BLIT_ERROR("%s: Failed to load material batch no %u for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, materialBatchIteration, pWORLD->mActiveMapName);
+                return false;
+            }
+        
+            auto materialArr = reinterpret_cast<BlitzenEngine::Material*>(materialIndicesBuffer.mPtr);
+            auto materialDataArr = reinterpret_cast<BlitzenEngine::MaterialData*>(materialDataBuffer.mPtr);
+
+            uint32_t materialTextureOffset = materialTextureOffsets[materialBatchIteration];
+        
+            for (uint32_t m = 0; m < materialCountReadback; ++m)
+            {
+                auto& material = materialArr[m];
+        
+                material.albedoTag = material.albedoTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.albedoTag + materialTextureOffset;
+                material.normalTag = material.normalTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.normalTag + materialTextureOffset;
+                material.emissiveTag = material.emissiveTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.emissiveTag + materialTextureOffset;
+                material.specularTag = material.specularTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.specularTag + materialTextureOffset;
+
+                pRenderingResources->mMaterials.mDataCount++;
+            }
+        
+            if (!BlitzenEngine::UploadMaterialsToStagingBuffer(pRenderingResources->mLoadingContextMaterial, materialArr, materialCountReadback))
+            {
+                BLIT_ERROR("%s: Failed to write materials to staging buffer from batch no %s for map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mActiveMapName);
+                return false;
+            }
+        
+            materialBatchIteration++;
+        }
 
         BlitCL::String buffer{ BlitzenEngine::GCResourceNameMaxSize };
         BlitzenPlatform::C_FILE_SCOPE bmstrFile;
@@ -466,14 +486,14 @@ namespace BlitzenWorld
         size_t sizeData[1] = { stringSize };
         constexpr uint32_t LCSingleStringCount = 1;
 
-        if (!BlitzenEngine::AddStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, namePtr, sizeData, 
-            LCSingleStringCount, (uint32_t)sizeData[0]))
+        if (!BlitzenEngine::UploadStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, namePtr, sizeData, 
+            LCSingleStringCount, (uint32_t)sizeData[0], BlitzenEngine::GCMaxLoadedTextureCount * sizeof(size_t), 
+            size_t(BlitzenEngine::GCMaxLoadedTextureCount * BlitzenEngine::GCWorldMapTextureNameMaxSize)))
         {
             BLIT_ERROR("%s: Failed to write single texture name \"%s\"to binstr file", BlitzenCore::CE_WORLD_SYSTEM_NAME, textureName);
             return false;
         }
 
-        pRenderingResources->m_textureManager.mTextureCount++;
         return true;
     }
 
@@ -486,7 +506,8 @@ namespace BlitzenWorld
         BlitzenCore::BLIT_PTR texturesNameDataReadback;
         BlitzenCore::BLIT_PTR texturesSizeDataReadback;
         uint32_t stringCountReadback;
-        if (!BlitzenEngine::ReadStringDataFromBINSTRFile(filepath.Get(), texturesNameDataReadback, texturesSizeDataReadback, stringCountReadback))
+        if (!BlitzenEngine::LoadStringDataFromBINSTRFile(filepath.Get(), texturesNameDataReadback, texturesSizeDataReadback, stringCountReadback, 
+            BlitzenEngine::GCMaxLoadedTextureCount * sizeof(size_t), BlitzenEngine::GCMaxLoadedTextureCount * BlitzenEngine::GCWorldMapTextureNameMaxSize))
         {
             BLIT_ERROR("%s: Failed to read texture names", BlitzenCore::CE_WORLD_SYSTEM_NAME);
             return false;
@@ -499,19 +520,20 @@ namespace BlitzenWorld
         size_t* texSizesArr = reinterpret_cast<size_t*>(texturesSizeDataReadback.mPtr);
         char* texNamesBuffer = reinterpret_cast<char*>(texturesNameDataReadback.mPtr);
 
-        size_t texNamesBufferOffset = 0;
-        for (uint32_t t = 0; t < stringCountReadback; ++t)
+        for (uint32_t t = pRenderingResources->m_textureManager.mTextureCount; t < stringCountReadback; ++t)
         {
-            snprintf(texNameHandle, resourceDirectoryPathStringLength + texSizesArr[t] + 1, "%s%s", BlitzenEngine::GCRapidMeshDirectoryPath, &texNamesBuffer[texNamesBufferOffset]);
+            snprintf(texNameHandle, resourceDirectoryPathStringLength + texSizesArr[t] + 1, "%s%s", BlitzenEngine::GCRapidMeshDirectoryPath,
+                &texNamesBuffer[pRenderingResources->m_textureManager.mTextureNamesBufferSize]);
+            pRenderingResources->m_textureManager.mTextureNamesBufferSize += texSizesArr[t];
 
             if (!BlitzenEngine::UploadTextureToGPU(pWORLD->BMPR.Data(), pRenderingResources->mLoadingContextMaterial, texNameHandle))
             {
                 BLIT_ERROR("%s: Failed to upload texture data to GPU buffers", BlitzenCore::CE_WORLD_SYSTEM_NAME);
                 return false;
             }
-
-            texNamesBufferOffset += texSizesArr[t];
         }
+
+        pRenderingResources->m_textureManager.mTextureCount += stringCountReadback;
 
         return true;
     }
@@ -548,6 +570,9 @@ namespace BlitzenWorld
             return false;
         }
 
+        //-----------------------------------------------------------------------------------------------------------------------------------------------
+        //                                                  TEXTURE LOADING
+        //----------------------------------------------------------------------------------------------------------------------------------------------
         // Texture names for scene are saved in a binary string file
         size_t textureNamePoolSize = 0;
         BlitCL::DynamicArray<size_t> textureNameSizes{ texturesCount };
@@ -585,8 +610,9 @@ namespace BlitzenWorld
             return false;
         }
 
-        if (!BlitzenEngine::AddStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, reinterpret_cast<char*>(texturesNamePool.mPtr), textureNameSizes.Data(), 
-            texturesCount, (uint32_t)textureNamePoolSize))
+        if (!BlitzenEngine::UploadStringDataToBINSTRFile(pRenderingResources->mWorldMapTextureNamesBINSTRFileHandle, reinterpret_cast<char*>(texturesNamePool.mPtr), textureNameSizes.Data(), 
+            texturesCount, (uint32_t)textureNamePoolSize, BlitzenEngine::GCMaxLoadedTextureCount * sizeof(size_t), 
+            size_t(BlitzenEngine::GCMaxLoadedTextureCount * BlitzenEngine::GCWorldMapTextureNameMaxSize)))
         {
             BLIT_ERROR("%s: Failed to retrieve texture names for scene \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, sceneName);
             return false;
@@ -600,6 +626,10 @@ namespace BlitzenWorld
             return false;
         }
 
+
+        //-----------------------------------------------------------------------------------------------------------------------------------------------
+        //                                                  MATERIAL LOADING
+        //----------------------------------------------------------------------------------------------------------------------------------------------
         BlitCL::FatString filepath{ strlen(BlitzenEngine::GCRapidMeshDirectoryPath) + strlen(sceneName) + strlen("/") + strlen("matBatch.blitMat") };
         filepath.Format("%s%s/matBatch.blitMat", BlitzenEngine::GCRapidMeshDirectoryPath, sceneName);
 
@@ -632,6 +662,9 @@ namespace BlitzenWorld
             material.normalTag = material.normalTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.normalTag + previousTextureCount;
             material.emissiveTag = material.emissiveTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.emissiveTag + previousTextureCount;
             material.specularTag = material.specularTag == UINT32_MAX ? BLIT_BLANK_MATERIAL_INDEX : material.specularTag + previousTextureCount;
+
+            //BLIT_ASSERT_MESSAGE(pRenderingResources->mMaterials.AddMaterialData(materialDataArr[m].transparencyFlag), "Gltf scene added too many material to map context");
+            pRenderingResources->mMaterials.mDataCount++;
         }
 
         pRenderingResources->m_textureManager.mTextureCount += texturesCount;
@@ -671,8 +704,6 @@ namespace BlitzenWorld
             }
         }
 
-        pRenderingResources->mMaterials.mDataCount += materialCountReadback;
-
         auto renderArr = reinterpret_cast<BlitzenEngine::RenderObject*>(renderObjects.mPtr);
         auto transformArr = reinterpret_cast<BlitzenEngine::MeshTransform*>(meshTransforms.mPtr);
         //// Nodes are then adjusted to residents one by one
@@ -691,12 +722,20 @@ namespace BlitzenWorld
             auto residentRes = pWORLD->mResidents.AddResident(residentContext);
         }
 
+        uint32_t previousMaterialTextureOffsetsCount = pRenderingResources->mMaterials.mOffsetCount;
+        BLIT_ASSERT_MESSAGE(pRenderingResources->mMaterials.AddMaterialTextureOffsets(previousTextureCount), "Gltf scene added too many materials to map context");
+
+        uint32_t geometryMaterialOffsetsPlaceholder = 0;
+        BLIT_ASSERT_MESSAGE(BlitzenEngine::UploadWorldMapResourceContextToDisk(pWORLD->mWorldMapResourceContextFile, 
+            &pRenderingResources->mMaterials.mMaterialTextureOffsets[previousMaterialTextureOffsetsCount], 1, &geometryMaterialOffsetsPlaceholder, 1), 
+            "Failed to upload material texture offsets to disk for scene material batch");
+
         return true;
     }
 
     bool RenderingResourcesInit(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pResources, BlitzenEngine::RendererPtrType pRenderer)
     {
-#if defined(BLITZEN_START_NEW)
+#if defined(cus)
         // Creates the WRLD(project) file, for the first time.
         BLIT_ASSERT_MESSAGE(BlitzenCore::StartNewWRLDFile(), "Failed on initial project load. This is a fundamental problem with the Engine, or outside interference");
         BlitzenCore::UpdateWrldFile(GSBlitzenWorld->mActiveMapName);
@@ -722,10 +761,11 @@ namespace BlitzenWorld
         {
             return false;
         }
-        
-#if defined(BLITZEN_START_NEW)
 
-        pResources->m_textureManager.ALLOC(100);
+        pResources->mMaterials.ALLOC(1);
+        
+#if defined(cus)
+
         if (!pResources->m_textureManager.AddTexture("BlitzenLogo.dds", "Assets/Textures/BlitzenLSV1.dds"))
         {
             BLIT_ERROR("%s: Failed to add Blitzen Logo texture", BlitzenCore::CE_WORLD_SYSTEM_NAME);
@@ -841,9 +881,23 @@ namespace BlitzenWorld
         pResources->m_terrainContainer.ALLOC();
         BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
 
+        pWORLD->mWorldMapResourceContextFile.Close();
+        pResources->CloseWorldMapMaterialBatchNameBMSTRFile();
         // Loads back the resources whose names were written in the map file
         if (!LoadWorldMapResources(pWORLD, pResources))
         {
+            return false;
+        }
+        // NOTE TO SELF: This is a workaround. Normally, loadWorldMapResources should NOT be called here. This is the final load function.
+        // At the point that we are here, WE ARE SUPPOSED TO BE IN DEV MODE AND ACCEPTING NEW RESOURCES AND RESIDENTS TO THE WORLD
+        if (!BlitzenEngine::OpenMaterialBatchBMSTRFile(pWORLD->mActiveMapName, pResources->mMaterialBatchNamesFile))
+        {
+            BLIT_ERROR("%s: Failed to open bmstr file for material batch names for world map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mActiveMapName);
+            return false;
+        }
+        if (!BlitzenEngine::OpenWorldMapResourcesContextFileForWriting(pWORLD->mWorldMapResourceContextFile, pWORLD->mActiveMapName))
+        {
+            BLIT_ERROR("%s: Failed to open resource context binary file for world map \"%s\"", BlitzenCore::CE_WORLD_SYSTEM_NAME, pWORLD->mActiveMapName);
             return false;
         }
 
@@ -923,6 +977,8 @@ namespace BlitzenWorld
         BLIT_ASSERT(BlitGenerator::GenerateTerrainVertices(pResources->m_terrainContainer));
 
         //Loads the resources from the map
+        pWORLD->mWorldMapResourceContextFile.Close();
+        pResources->CloseWorldMapMaterialBatchNameBMSTRFile();
         if (!LoadWorldMapResources(GSBlitzenWorld, pResources))
         {
             return false;

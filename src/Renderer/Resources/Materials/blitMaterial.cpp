@@ -15,6 +15,9 @@ namespace BlitzenEngine
 	bool MaterialManager::AddMaterialTextureOffsets(uint32_t materialTextureOffset)
 	{
 #if defined(BLIT_OFFLINE_FUNC)
+
+		BLIT_ASSERT(mMaterialTextureOffsets != nullptr);
+
 		if (mOffsetCount >= GCMaxLoadedMaterialCount)
 		{
 			BLIT_ERROR("%s: Materials overflow", BlitzenCore::GCRenderingResourceSystemName);
@@ -37,6 +40,8 @@ namespace BlitzenEngine
 
 	bool MaterialManager::AddMaterialData(MaterialAlphaMode mode)
 	{
+		BLIT_ASSERT(mMatData != nullptr);
+
 		if (mDataCount >= GCMaxLoadedMaterialCount)
 		{
 			BLIT_ERROR("%s: Material data overflow", BlitzenCore::GCRenderingResourceSystemName);

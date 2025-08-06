@@ -234,15 +234,4 @@ namespace BlitzenEngine
 
 		return true;
 	}
-
-	void TextureManager::ALLOC(uint32_t textureCount)
-	{
-		mTextureNames = reinterpret_cast<BlitCL::FatString*>(BlitzenCore::MANUAL_ALLOC(BlitzenCore::AllocationType::Texture, textureCount * sizeof(BlitCL::FatString)));
-		mAllocatedCount = textureCount;
-	}
-
-	TextureManager::~TextureManager()
-	{
-		BlitzenCore::MANUAL_FREE(BlitzenCore::AllocationType::Texture, mTextureNames, mAllocatedCount * sizeof(BlitCL::FatString));
-	}
 }
