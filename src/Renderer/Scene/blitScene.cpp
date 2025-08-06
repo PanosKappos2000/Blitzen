@@ -7,6 +7,7 @@
 
 namespace BlitzenEngine
 {
+
     SCENE_CREATE_RES CreateScene(SCENE_CREATE_CONTEXT& sceneContext, RenderingLoadingContextMesh& loadingContextMesh)
     {
         if (!sceneContext.pRenderer)
@@ -223,6 +224,9 @@ namespace BlitzenEngine
             return SCENE_CREATE_RES::FAILED_TO_LOAD_RESOURCE_FROM_DISK;
         }
 
+        pResidents->AddWorldVariableType(GCRotatingKittenWVID);
+        pResidents->AddWorldVariableType(0);
+
         for (uint32_t wv = 0; wv < WV_ROTATING_KITTEN_COUNT; ++wv)
         {
             WORLD_VARIABLE_CREATE_CONTEXT wvCtx{};
@@ -248,7 +252,14 @@ namespace BlitzenEngine
                 wvCtx.residentMovementFlags |= BLIT_RESIDENT_MOVEMENT_ROTATE_TO_DIRECTION_BIT;
             }
 
-            wvCtx.m_worldVariableID = wv;
+            if (wv == 0)
+            {
+                wvCtx.wvTypeID = 0;
+            }
+            else
+            {
+                wvCtx.wvTypeID = GCRotatingKittenWVID;
+            }
 
             auto movingRes{ pResidents->AddWorldVariable(wvCtx) };
             if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)movingRes))
@@ -262,6 +273,7 @@ namespace BlitzenEngine
             SetResidentAcceleration(wv, 0.1f);
             SetResidentMaxVelocity(wv, 10.f);
         }
+
         return SCENE_CREATE_RES::SUCCESS;
     }
 }

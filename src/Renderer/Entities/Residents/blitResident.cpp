@@ -129,6 +129,8 @@ namespace BlitzenEngine
 			return RESIDENT_CREATE_RES::WORLD_VARIABLE_COUNT_EXCEEDED;
 		}
 
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(mWorldVariableTypeCount > ctx.wvTypeID);
+
 		auto baseResidentResidentRes = AddResident(ctx.residentCtx);
 		if (BlitzenCore::BLIT_CHECK_FAIL((int64_t)baseResidentResidentRes))
 		{
@@ -138,8 +140,7 @@ namespace BlitzenEngine
 		Resident resident = mWorldVariableCount;
 
 		// FALSE!!, Left is a placeholder
-		mWorldVariableTypes[mWorldVariableCount].typeID = ctx.m_worldVariableID;
-		mWorldVariableTypeCount++;
+		mWorldVariableTypes[mWorldVariableCount].typeID = ctx.wvTypeID;
 		mWorldVariableCount++;
 
 		SetResidentDirectionInfluence(resident, ctx.directionInfluencer);
@@ -147,6 +148,18 @@ namespace BlitzenEngine
 		WVTransforms[resident].movementFlags |= ctx.residentMovementFlags;
 
 		return RESIDENT_CREATE_RES::SUCCESS;
+	}
+
+	bool WORLD_RESIDENTS::AddWorldVariableType(WorldVariableType type)
+	{
+		if (mWorldVariableTypeCount > BLIT_MAX_WORLD_VARIABLE_COUNT)
+		{
+			return false;
+		}
+
+		mWorldVariableTypeCount++;
+
+		return true;
 	}
 
 	void RegisterFrameEventForWorldVariableType(WorldVariableType worldVariable, ResidentFrameEventPfn function)

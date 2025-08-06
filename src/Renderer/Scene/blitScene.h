@@ -7,6 +7,7 @@ namespace BlitzenEngine
 {
     constexpr float GCRenderingStressTestRandomTransformMultiplier = 3'000.f;
     constexpr float GCMovingResidentTestRandomTransformMultiplier = 100.f;
+    constexpr uint32_t GCRotatingKittenWVID = 1;
 
     enum class SceneType
     {

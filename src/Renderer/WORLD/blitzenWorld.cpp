@@ -1043,9 +1043,17 @@ namespace BlitzenWorld
         return true;
     }
 
+    static void RotatingKittenFunc(BlitzenEngine::Resident resident, float deltaTime)
+    {
+        constexpr float movementSpeed = 1.f;
+        BlitzenEngine::RotateResidentYaw(resident, movementSpeed, deltaTime);
+        BlitzenEngine::RotateResidentPitch(resident, movementSpeed, deltaTime);
+    }
+
     void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, int argc, char** argv)
     {
         WrldStart();
+        BlitzenEngine::RegisterFrameEventForWorldVariableType(BlitzenEngine::GCRotatingKittenWVID, RotatingKittenFunc);
     }
 
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr)

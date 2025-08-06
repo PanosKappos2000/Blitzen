@@ -19,27 +19,19 @@ namespace BlitzenWorld
         BlitzenPlatform::MakeWindowVisible(context.pPlatform);
         context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::LOADING;
 
-        while (true)
-        {
-            if (context.BLITZEN_ENGINE.m_state != BlitzenCore::EngineState::LOADING)
-            {
-                continue;
-            }
+        BlitzenWorld::LOAD_RESOURCES_MK_BLIT_MINUS(context.pWORLD, context.pRenderingResources, argc, argv);
 
-            BlitzenWorld::LOAD_RESOURCES_MK_BLIT_MINUS(context.pWORLD, context.pRenderingResources, argc, argv);
-
-            // Testing, this should be done another way.
+        // Testing, this should be done another way.
 #if defined(BLIT_GAME_TEST)
-            context.m_activeControllerIDX = 1;
-            context.m_controllerState = ControllerState::Game;
+        context.m_activeControllerIDX = 1;
+        context.m_controllerState = ControllerState::Game;
 #endif
-            BLIT_DBLOG("OUT");
-            
-            context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
+        BLIT_DBLOG("OUT");
 
-            // Useless, but keeping it here to remember to do something with it
-            BlitzenPlatform::PutMouseInGameState(context.pPlatform);
-        }
+        context.BLITZEN_ENGINE.m_state = BlitzenCore::EngineState::SETUP_AFTER_LOAD;
+
+        // Useless, but keeping it here to remember to do something with it
+        BlitzenPlatform::PutMouseInGameState(context.pPlatform);
     }
 
     static void DRIVE_SYSTEM_REQUEST(BLITZEN_SYSTEM_CONTEXT& SYSTEM, ENGINE_SYSTEM_DRIVE_REQUEST drive)

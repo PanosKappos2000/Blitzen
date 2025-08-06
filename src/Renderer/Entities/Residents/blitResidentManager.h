@@ -58,7 +58,7 @@ namespace BlitzenEngine
 	struct WORLD_VARIABLE_CREATE_CONTEXT
 	{
 		RESIDENT_CREATE_CONTEXT residentCtx{};
-		uint32_t m_worldVariableID{ 0 };
+		WorldVariableType wvTypeID;
 		DirectionInfluencer directionInfluencer{ DirectionInfluencer::Camera };
 		uint32_t residentMovementFlags{ 0 };
 	};
@@ -106,6 +106,7 @@ namespace BlitzenEngine
 		
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 		RESIDENT_CREATE_RES AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx);
+		bool AddWorldVariableType(WorldVariableType type);
 
 		void UpdateMovingResidents(float deltaTime);
 		void UpdateFallingResidents(float deltaTime);
