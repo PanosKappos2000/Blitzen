@@ -212,13 +212,6 @@ namespace BlitzenEngine
         return SCENE_CREATE_RES::SUCCESS;
     }
 
-    static void RotatingKittenFunc(Resident resident, float deltaTime)
-    {
-        constexpr float movementSpeed = 1.f;
-        RotateResidentYaw(resident, movementSpeed, deltaTime);
-        RotateResidentPitch(resident, movementSpeed, deltaTime);
-    }
-
     SCENE_CREATE_RES LoadMovingResidentTest(WORLD_RESIDENTS* pResidents, float transformMultiplier)
     {
         constexpr uint32_t WV_ROTATING_KITTEN_COUNT = 5'000;
@@ -268,15 +261,6 @@ namespace BlitzenEngine
             LogResidentForGravity(wv, 1.f);
             SetResidentAcceleration(wv, 0.1f);
             SetResidentMaxVelocity(wv, 10.f);
-
-            if (wv == 0)
-            {
-
-            }
-            else
-            {
-                BlitzenWorld::RegisterFrameEvent(wv, RotatingKittenFunc);
-            }
         }
         return SCENE_CREATE_RES::SUCCESS;
     }

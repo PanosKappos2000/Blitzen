@@ -22,7 +22,13 @@ namespace BlitzenCore
 	};
 	using WrldFileHeaderArr = WrldFileHeaderData[GCWrldFileDataArrElementCount];
 
-	BLIT_OFFLINE_FUNC bool StartNewWRLDFile();
+	enum class WrldLoadRes : uint8_t
+	{
+		START_NEW = 0,
+		CONTINUE = 1,
+		BLITZEN_CLIENT_FAILED = 2
+	};
+	BLIT_OFFLINE_FUNC WrldLoadRes LoadWrld();
 
 	bool ReadWRLDFile();
 

@@ -7,5 +7,6 @@ if __name__ == "__main__":
         sys.exit(1)
     else: # else for clarity because I find it hard to read python code
         project_dir = "C:/Dev/BlitzenProjects"
+        blitzen_dir = "C:/Dev/Blitzen"
         project_name = sys.argv[1]
-        run_build(project_name, project_dir)
+        run_build(project_name, project_dir, blitzen_dir)

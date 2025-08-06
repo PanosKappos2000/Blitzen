@@ -12,6 +12,8 @@ namespace BlitzenEngine
 {
 	inline static WORLD_RESIDENTS* GSWorldResidents{ nullptr };
 
+	constexpr uint32_t GCInitialWorldVariableFrameEventsAllocSize = 1;
+
 	RESIDENT_CREATE_RES WORLD_RESIDENTS::AddResident(const RESIDENT_CREATE_CONTEXT& ctx)
 	{
 		RenderObject* pFirstRender{ nullptr };
@@ -136,7 +138,8 @@ namespace BlitzenEngine
 		Resident resident = mWorldVariableCount;
 
 		// FALSE!!, Left is a placeholder
-		MWorldVariables[mWorldVariableCount].typeID = ctx.m_worldVariableID;
+		mWorldVariableTypes[mWorldVariableCount].typeID = ctx.m_worldVariableID;
+		mWorldVariableTypeCount++;
 		mWorldVariableCount++;
 
 		SetResidentDirectionInfluence(resident, ctx.directionInfluencer);
@@ -144,6 +147,18 @@ namespace BlitzenEngine
 		WVTransforms[resident].movementFlags |= ctx.residentMovementFlags;
 
 		return RESIDENT_CREATE_RES::SUCCESS;
+	}
+
+	void RegisterFrameEventForWorldVariableType(WorldVariableType worldVariable, ResidentFrameEventPfn function)
+	{
+#if defined(BLIT_OFFLINE_FUNC)
+		BLIT_RUNTIME_TEST_CHECK_VOID_RETURN(GSWorldResidents->mWVFrameEventCount < GSWorldResidents->mWorldVariableTypeCount);
+		BLIT_RUNTIME_TEST_CHECK_ASSERT(GSWorldResidents->mFrameEvents != nullptr);
+
+		GSWorldResidents->mFrameEvents[worldVariable] = function;
+		GSWorldResidents->mWVsDataFlags[worldVariable] |= BlitzenWorldVariableFrameEventFlag;
+		GSWorldResidents->mWVFrameEventCount++;
+#endif
 	}
 
 	void WORLD_RESIDENTS::UpdateMovingResidents(float deltaTime)
@@ -198,6 +213,18 @@ namespace BlitzenEngine
 			else
 			{
 				gravityData.currentSpeed = 0.f;
+			}
+		}
+	}
+
+	void WORLD_RESIDENTS::UpdateTickingResidents(float deltaTime)
+	{
+		for (Resident wv = 0; wv < mWorldVariableCount; ++wv)
+		{
+			WorldVariableType wvType = mWorldVariableTypes[wv].typeID;
+			if (mWVsDataFlags[wvType] & BlitzenWorldVariableFrameEventFlag)
+			{
+				mFrameEvents[wvType](wv, deltaTime);
 			}
 		}
 	}
@@ -408,5 +435,10 @@ namespace BlitzenEngine
 		GSWorldResidents->WVTransforms[resident].movementFlags |= BLIT_RESIDENT_MOVEMENT_GRAVITY_BIT;
 		GSWorldResidents->WVWithGravityIDXs[GSWorldResidents->mWithGravityCount++] = resident;
 		GSWorldResidents->WVGravityData[resident].maxSpeed = maxSpeed;
+	}
+
+	WORLD_RESIDENTS::~WORLD_RESIDENTS()
+	{
+		
 	}
 }

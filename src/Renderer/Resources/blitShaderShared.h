@@ -209,6 +209,13 @@ enum BlitzenColliderType
 	BlitzenColliderTypeMax = 3,
 };
 
+enum BlitzenWorldVariableDataFlags : uint64_t
+{
+	BlitzenWorldVariableCollisionFlag = 1 << 0,
+	BlitzenWorldVariableGravityFlag = 1 << 1,
+	BlitzenWorldVariableFrameEventFlag = 1 << 2,
+};
+
 #ifdef __cplusplus
 	static_assert(sizeof(BlitzenColliderType) == 4);
 #endif

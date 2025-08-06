@@ -1,7 +1,6 @@
 #pragma once
 #include "BlitCL/blitPfn.h"
 #include "Renderer/Scene/blitScene.h"
-#include "Core/Events/blitFrameEvents.h"
 #include "Renderer/View/blitCamera.h"
 #include "Core/WrldFileManager/blitFileManager.h"
 #include "Core/Dasher/Dasher/dasherUI.h"
@@ -22,8 +21,6 @@ namespace BlitzenWorld
     {
     public:
 
-        void DispatchFrameEvents(float deltaTime);
-
         // Scene resources
         BlitzenEngine::SceneContext m_scenes[10]{};
         uint32_t m_sceneCount{ 0 };
@@ -34,7 +31,6 @@ namespace BlitzenWorld
         // World residents
         BlitzenEngine::WORLD_RESIDENTS mResidents{};
         BlitzenEngine::CollisionGrid mCollisionGrid{};
-        BlitzenCore::FrameEventManager m_frameEvents;
         BlitzenEngine::Resident m_mainCharacter = 0;
         BlitzenEngine::Camera m_cameras[BlitzenCore::CE_STARTING_CONTROLLER_COUNT]{};
         uint32_t m_activeCameraIDX = BlitzenCore::CE_ENGINE_CONTROLLER_ID;
@@ -78,8 +74,6 @@ namespace BlitzenWorld
     // It updates the files to access all the correct resources
     // It also updates the residents to have all new residents be part of the map
     BLIT_OFFLINE_FUNC bool AddSceneToWORLDMap(const char* sceneName, BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources);
-
-    void RegisterFrameEvent(BlitzenEngine::Resident resident, BlitzenCore::FrameEventPfn function);
 
     void DispatchCollisionSystems(BLITZEN_WORLD* pWORLD);
 

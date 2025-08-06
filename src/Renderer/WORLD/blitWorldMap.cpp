@@ -339,7 +339,7 @@ namespace BlitzenEngine
 		}
 
 		if (!BlitzenPlatform::ReadMemoryMappedFile(worldMapFile, worldMapHeader[WorldMapHeaderWorldVariablesDataID],
-			sizeof(WORLD_VARIABLE) * pWorldResidents->mWorldVariableCount, pWorldResidents->MWorldVariables))
+			sizeof(WORLD_VARIABLE) * pWorldResidents->mWorldVariableCount, pWorldResidents->mWorldVariableTypes))
 		{
 			return LOAD_WORLD_MAP_RES::ERROR_READING_WORLD_VARIABLE_TYPEID_ARRAY;
 		}
@@ -457,7 +457,7 @@ namespace BlitzenEngine
 		offset += worldVariableTransformsWriteSize;
 
 		size_t worldVariableDataWriteSize = sizeof(WORLD_VARIABLE) * pWorldResidents->mWorldVariableCount;
-		if (!BlitzenPlatform::WriteMemoryMappedFile(worldMapFile, offset, worldVariableDataWriteSize, pWorldResidents->MWorldVariables))
+		if (!BlitzenPlatform::WriteMemoryMappedFile(worldMapFile, offset, worldVariableDataWriteSize, pWorldResidents->mWorldVariableTypes))
 		{
 			return UPLOAD_WORLD_MAP_RES::ERROR_WRITING_WORLD_VARIABLE_DATA_STRUCTURE_OF_ARRAYS;
 		}

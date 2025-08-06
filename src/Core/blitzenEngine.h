@@ -161,6 +161,7 @@ namespace BlitzenCore
         Messages = 16,
         DSUI = 17,
         Material = 18,
+        ResidentData = 19,
 
         MaxTypes = 100
     };

@@ -26,8 +26,8 @@ add_executable(BlitzenEngine
                 "src/Core/Events/blitTimeManager.h"
                 "src/Core/Events/blitzenTimeManager.cpp"
                 "src/Core/Events/blitEditorEvents.h"
-                "src/Core/Events/blitFrameEvents.h" 
-                "src/Core/Events/blitFrameEvents.cpp"
+                 
+                
                 "src/Core/Events/blitController.cpp" 
                 "src/Core/BlitzenWorld/blitzenUserInterface.h" 
                 "src/Core/Events/blitCollisionEvents.h"
@@ -243,7 +243,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h"   "src/Renderer/WORLD/blitWorldMap.cpp" "src/Core/blitMemory.cpp" "src/Core/Dasher/Dasher/dasherUI.h" "src/Core/Dasher/Dasher/dasherUI.cpp" "src/Core/BlitzenWorld/blitzenSystems.cpp" "src/BlitCL/blitFlagMap.h" "src/Renderer/Resources/Materials/blitMaterial.h" "src/Renderer/Resources/Materials/blitMaterial.cpp")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h"   "src/Renderer/WORLD/blitWorldMap.cpp" "src/Core/blitMemory.cpp" "src/Core/Dasher/Dasher/dasherUI.h" "src/Core/Dasher/Dasher/dasherUI.cpp" "src/Core/BlitzenWorld/blitzenSystems.cpp" "src/BlitCL/blitFlagMap.h" "src/Renderer/Resources/Materials/blitMaterial.h" "src/Renderer/Resources/Materials/blitMaterial.cpp" "src/Renderer/Resources/blitResidentData.h")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
@@ -343,6 +343,7 @@ add_compile_definitions(BLITZEN_CLIENT_NAME="${BLITZEN_CLIENT_NAME}")
 add_compile_definitions(BLITZEN_CLIENT_WRLD_FILEPATH="${BLITZEN_CLIENT_WRLD_FILEPATH}")
 add_compile_definitions(BLITZEN_CLIENT_RPFMESH_DIRECTORY="${BLITZEN_CLIENT_RPFMESH_DIRECTORY}")
 add_compile_definitions(BLITZEN_CLIENT_WORLDMAPS_DIRECTORY="${BLITZEN_CLIENT_WORLDMAPS_DIRECTORY}")
+add_compile_definitions(BLITZEN_CLIENT_PATH_TO_WRLD_MAIN="${BLITZEN_CLIENT_PATH_TO_WRLD_MAIN}")
 if (BLITZEN_START_NEW)
     add_compile_definitions(BLITZEN_START_NEW)
 endif()

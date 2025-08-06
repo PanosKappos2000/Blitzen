@@ -52,39 +52,37 @@ namespace BlitzenCore
 		return true;
 	}
 
-	bool StartNewWRLDFile()
+	WrldLoadRes LoadWrld()
 	{
 #if defined BLIT_OFFLINE_BUILD
 		
-		if(BlitzenPlatform::FilepathExists(GCClientWorldFilepath))
-		{
-			return false;
-		}
+		if(BlitzenPlatform::FilepathExists(GCClientWorldFilepath)) return WrldLoadRes::CONTINUE;
 
 		if (!UpdateWrldFile("None"))
 		{
-			return false;
+			return WrldLoadRes::BLITZEN_CLIENT_FAILED;
 		}
 
 		if (!BlitzenPlatform::CreateDirectoryIfMissing(BLITZEN_CLIENT_WORLDMAPS_DIRECTORY))
 		{
-			return false;
+			return WrldLoadRes::BLITZEN_CLIENT_FAILED;
 		}
 
 		if(!BlitzenPlatform::CreateDirectoryIfMissing(BLITZEN_CLIENT_RPFMESH_DIRECTORY))
 		{
-			return false;
+			return WrldLoadRes::BLITZEN_CLIENT_FAILED;
 		}
 
 		BlitCL::FatString textureResourcesFilepath{ strlen(BLITZEN_CLIENT_RPFMESH_DIRECTORY) + strlen(BlitzenEngine::GCRpfTextureSubfolder) };
 		textureResourcesFilepath.Format("%s%s", BLITZEN_CLIENT_RPFMESH_DIRECTORY, BlitzenEngine::GCRpfTextureSubfolder);
 		if (!BlitzenPlatform::CreateDirectoryIfMissing(textureResourcesFilepath.Get()))
 		{
-			return false;
+			return WrldLoadRes::BLITZEN_CLIENT_FAILED;
 		}
 
-		return true;
+		return WrldLoadRes::START_NEW;
 #endif
+		return WrldLoadRes::CONTINUE;
 	}
 
 	bool ReadWRLDFile()

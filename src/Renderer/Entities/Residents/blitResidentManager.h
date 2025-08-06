@@ -2,6 +2,7 @@
 #include "RenderObject/blitRender.h"
 #include "RenderObject/worldTransform.h"
 #include "Collision/blitColliders.h"
+#include "Renderer/Resources/blitResidentData.h"
 
 namespace BlitzenEngine
 {
@@ -84,22 +85,31 @@ namespace BlitzenEngine
 		// Every member variable with WV as a prefix is a world variable
 		// World Variables are a subset of Blitzen World residents, that have unpredictable logic applied to them
 		// Their components are meant to be highly compatible with shaders and they are designed around crowding
-		WORLD_VARIABLE MWorldVariables[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		WVTransform WVTransforms[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		WVVelocity WVVelocityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		WVGravity WVGravityData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
-		uint32_t mWorldVariableCount{ 0 };
+		uint32_t mWorldVariableCount = 0;
 		Resident WVWithGravityIDXs[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t mWithGravityCount{ 0 };
 		Resident WVWithVelocity[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		WVMovementIntent WVDirectionData[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
 		uint32_t mWithVelocityCount{ 0 };
+
+		WORLD_VARIABLE mWorldVariableTypes[BLIT_MAX_WORLD_VARIABLE_COUNT]{};
+		uint64_t mWVsDataFlags[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		uint32_t mWorldVariableTypeCount = 0;
+		BlitzenEngine::ResidentFrameEventPfn mFrameEvents[BLIT_MAX_WORLD_VARIABLE_COUNT];
+		uint32_t mWVFrameEventCount = 0;
+		uint32_t mFrameEventsAllocatedCount;
+
+		~WORLD_RESIDENTS();
 		
 		RESIDENT_CREATE_RES AddResident(const RESIDENT_CREATE_CONTEXT& ctx);
 		RESIDENT_CREATE_RES AddWorldVariable(const WORLD_VARIABLE_CREATE_CONTEXT& ctx);
 
 		void UpdateMovingResidents(float deltaTime);
 		void UpdateFallingResidents(float deltaTime);
+		void UpdateTickingResidents(float deltaTime);
 
 	private:
 		// CPU side transform for world variables, since they need to be updated by game logic

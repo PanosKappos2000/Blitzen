@@ -2,6 +2,7 @@
 #include "Renderer/Resources/blitShaderResources.h"
 #include "Renderer/Resources/blitShaderShared.h"
 #include "Renderer/View/blitCamera.h"
+#include "Renderer/Resources/blitResidentData.h"
 
 namespace BlitzenEngine
 {
@@ -97,6 +98,8 @@ namespace BlitzenEngine
 
 	void SetupCamera(Camera& camera, float fov, float windowWidth, float windowHeight, float zNear, const BlitML::vec3& initialCameraPosition,
 		float drawDistance, float initialYawRotation, float initialPitchRotation);
+
+	BLIT_OFFLINE_FUNC void RegisterFrameEventForWorldVariableType(BlitzenEngine::WorldVariableType resident, BlitzenEngine::ResidentFrameEventPfn function);
 }
 
 namespace BlitzenWorld
