@@ -110,7 +110,6 @@ namespace BlitzenEngine
 
 		void UpdateMovingResidents(float deltaTime);
 		void UpdateFallingResidents(float deltaTime);
-		void UpdateTickingResidents(float deltaTime);
 
 	private:
 		// CPU side transform for world variables, since they need to be updated by game logic
@@ -120,4 +119,6 @@ namespace BlitzenEngine
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr);
 
 	RESIDENT_CREATE_RES AddResident_STATIC_ACCESS(const RESIDENT_CREATE_CONTEXT& ctx);
+
+	void WorldTickLogic(WORLD_RESIDENTS* residents, float deltaTime);
 }

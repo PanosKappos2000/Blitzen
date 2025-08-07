@@ -230,18 +230,6 @@ namespace BlitzenEngine
 		}
 	}
 
-	void WORLD_RESIDENTS::UpdateTickingResidents(float deltaTime)
-	{
-		for (Resident wv = 0; wv < mWorldVariableCount; ++wv)
-		{
-			WorldVariableType wvType = mWorldVariableTypes[wv].typeID;
-			if (mWVsDataFlags[wvType] & BlitzenWorldVariableFrameEventFlag)
-			{
-				mFrameEvents[wvType](wv, deltaTime);
-			}
-		}
-	}
-
 	void InitializeWorldResidentsPointer_STATIC_ACCESS(WORLD_RESIDENTS* ptr)
 	{
 		BLIT_ASSERT(GSWorldResidents == nullptr);

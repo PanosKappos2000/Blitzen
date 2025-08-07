@@ -2,6 +2,7 @@
 #include "blitzenWorldPrivate.h"
 #include "Core/DbLog/blitAssert.h"
 #include "Core/Events/blitEvents.h"
+#include "Renderer/Entities/Residents/blitWVScan.h"
 
 namespace BlitzenWorld
 {
@@ -38,7 +39,7 @@ namespace BlitzenWorld
 
 		if (context.BLITZEN_ENGINE.m_state == BlitzenCore::EngineState::RUNNING)
 		{
-			pWORLD->mResidents.UpdateTickingResidents(pWORLD->deltaTime);
+			BlitzenEngine::WorldTickLogic(&pWORLD->mResidents, pWORLD->deltaTime);
 			pWORLD->mResidents.UpdateMovingResidents(pWORLD->deltaTime);
 			pWORLD->mResidents.UpdateFallingResidents(context.pWORLD->deltaTime);
 			BlitzenWorld::DispatchCollisionSystems(context.pWORLD);
