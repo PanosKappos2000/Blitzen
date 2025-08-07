@@ -375,6 +375,12 @@ namespace BlitzenPlatform
         return DefWindowProcA(hwnd, msg, wparam, lparam); 
     }
 
+    void LogWin32HresultError(HRESULT res)
+    {
+        _com_error err{ res };
+        BLIT_ERROR("WIN32.HRESULT.ERROR_MESSAGE: %s", err.ErrorMessage());
+    }
+
     void DearDasherUpdate()
     {
         ImGui_ImplWin32_NewFrame();

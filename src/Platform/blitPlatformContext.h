@@ -35,6 +35,9 @@ namespace BlitzenPlatform
 
 		~PlatformContext();
 	};
+
+	void LogWin32HresultError(HRESULT res);
+
 #elif defined(linux)
 	struct PlatformContext
 	{

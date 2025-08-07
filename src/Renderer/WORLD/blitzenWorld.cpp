@@ -1052,8 +1052,8 @@ namespace BlitzenWorld
 
     void LOAD_RESOURCES_MK_BLIT_MINUS(BLITZEN_WORLD* pWORLD, BlitzenEngine::RenderingResources* pRenderingResources, int argc, char** argv)
     {
-        WrldStart();
-        BlitzenEngine::RegisterFrameEventForWorldVariableType(BlitzenEngine::GCRotatingKittenWVID, RotatingKittenFunc);
+        //WrldStart();
+        //BlitzenEngine::RegisterFrameEventForWorldVariableType(BlitzenEngine::GCRotatingKittenWVID, RotatingKittenFunc);
     }
 
     void INITIALIZE_WORLD_POINTER(BLITZEN_WORLD* ptr)

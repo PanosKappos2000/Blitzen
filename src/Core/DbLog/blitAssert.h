@@ -13,6 +13,7 @@ namespace BlitzenCore
 
         // Implemented in blitzenLogger.cpp
         void ReportAssertionFailure(const char* expression, const char* message, const char* file, int32_t line);
+        void FORCE_ASSERT_CORE_ISSUE(const char* failureDiscovererName, const char* failureOriginatorName, const char* discovererMessage);
 
         #define BLIT_ASSERT(expr)                                                                               \
                                     if(expr){}                                                                  \

@@ -102,6 +102,7 @@ namespace BlitzenCore
     /********************************************************************************************************************************************************
     * SECTION: BLITZEN ENGINE SYSTEM CONSTANTS                                                                                                              *
     *********************************************************************************************************************************************************/
+    constexpr const char* GCBlitzenSystemManager = "SYSTEM";
     constexpr const char* CE_LOGGER_SYSTEM_NAME = "blit_logger";
     constexpr const char* CE_MEMORY_SYSTEM_NAME = "blit_mem";
     constexpr const char* CE_PLATFORM_SYSTEM_NAME = "blit_platform";
@@ -122,6 +123,8 @@ namespace BlitzenCore
 	constexpr const char* CE_BLITZEN_LOADING_LOOP_NAME = "BLITZEN_LOADING_LOOP";
     constexpr const char* GCWRLDSystemName = "BlitzenProjectFileManager";
     constexpr const char* GCRpfSystemName = "rapid_file_system";
+    constexpr const char* GCJingleAudioSystemName = "jingle_audio";
+    constexpr const char* GCWasapiBackendSystemName = "Blitzen_wasapi";
 
     constexpr uint32_t CE_MESSAGE_BUFFER_SIZE = 1500;
 

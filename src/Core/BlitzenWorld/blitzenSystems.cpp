@@ -8,7 +8,15 @@ namespace BlitzenWorld
 		pSYSTEM->pDASHER->AllocRenderingLoadingContext(pSYSTEM->pWORLD->BMPR.Data());
 
 #if defined(BLIT_OFFLINE_BUILD)
-		BLIT_ASSERT(BlitzenEngine::DasherDefineEditor(pSYSTEM->pWORLD->BMPR.Data(), pSYSTEM->pDASHER));
+		if (!BlitzenEngine::DasherDefineEditor(pSYSTEM->pWORLD->BMPR.Data(), pSYSTEM->pDASHER))
+		{
+			BlitzenCore::FORCE_ASSERT_CORE_ISSUE(BlitzenCore::GCBlitzenSystemManager, BlitzenCore::GCDasherEditorSystemName, "FAILED ON STARTUP");
+		}
 #endif
+
+		if (!BlitzenEngine::AudioEngineInit(pSYSTEM->pJingle))
+		{
+			BlitzenCore::FORCE_ASSERT_CORE_ISSUE(BlitzenCore::GCBlitzenSystemManager, BlitzenCore::GCJingleAudioSystemName, "FAILED ON STARTUP");
+		}
 	}
 }

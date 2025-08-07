@@ -52,10 +52,11 @@ int main(int argc, char* argv[])
     BlitzenCore::Dasher dasher;
     SYSTEM.pDasher = &dasher;
 
+    BlitzenEngine::AudioEngine jingleAudio;
+    SYSTEM.pJingle = &jingleAudio;
+
     BlitzenPlatform::PlatformArgs platformArgs{&platform, &SYSTEM, WORLD->BMPR.Data(), &dasher};
     BLIT_ASSERT(BlitzenPlatform::SystemStartup(platformArgs));
-
-    //BlitzenWorld::LoadingLoop(argc, argv, SYSTEM, WORLD->m_drawContext);
 
     // LOADING RESOURCES
     std::thread loadingThread

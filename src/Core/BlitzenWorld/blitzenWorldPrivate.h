@@ -5,6 +5,7 @@
 #include "Core/Events/blitController.h"
 #include "Core/Events/blitEditorEvents.h"
 #include "blitzenSystemDispatcher.h"
+#include "Audio/blitAudio.h"
 
 namespace BlitzenWorld
 {
@@ -35,6 +36,7 @@ namespace BlitzenWorld
         BlitzenCore::Dasher* pDasher{ nullptr };
         BlitzenEngine::DasherUI* pDASHER{ nullptr };
         BlitzenCore::WorldTimeManager* pClock;
+        BlitzenEngine::AudioEngine* pJingle;
 
         // WORLD
         BLITZEN_WORLD* pWORLD{ nullptr };

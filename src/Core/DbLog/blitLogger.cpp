@@ -108,4 +108,10 @@ namespace BlitzenCore
     {
         BlitLog(LogLevel::FATAL, "Assertion failure: %s, message: %s, in file: %s, line: %d", expression, message, file, line);
     }
+
+    void FORCE_ASSERT_CORE_ISSUE(const char* failureDiscovererName, const char* failureOriginatorName, const char* discovererMessage)
+    {
+        BlitLog(LogLevel::ERR, "%s: %s.Failure seemingly caused by %s", failureDiscovererName, discovererMessage, failureOriginatorName);
+        BLIT_ASSERT_MESSAGE(false, "Forcing assertion. CORE ISSUE NEEDS TO BE FIXED");
+    }
 }

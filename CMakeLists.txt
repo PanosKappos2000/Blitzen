@@ -243,7 +243,7 @@ add_executable(BlitzenEngine
                 "src/VendorCode/Meshoptimizer/vfetchoptimizer.cpp"
                 "src/VendorCode/Meshoptimizer/clusterizer.cpp"
                 "src/VendorCode/Meshoptimizer/simplifier.cpp"
-                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h"   "src/Renderer/WORLD/blitWorldMap.cpp" "src/Core/blitMemory.cpp" "src/Core/Dasher/Dasher/dasherUI.h" "src/Core/Dasher/Dasher/dasherUI.cpp" "src/Core/BlitzenWorld/blitzenSystems.cpp" "src/BlitCL/blitFlagMap.h" "src/Renderer/Resources/Materials/blitMaterial.h" "src/Renderer/Resources/Materials/blitMaterial.cpp" "src/Renderer/Resources/blitResidentData.h" "src/Renderer/Entities/Residents/blitWVScan.h")
+                "src/VendorCode/Cgltf/cgltf.h" "src/Renderer/Interface/bmprConfig.h"   "src/Renderer/WORLD/blitWorldMap.cpp" "src/Core/blitMemory.cpp" "src/Core/Dasher/Dasher/dasherUI.h" "src/Core/Dasher/Dasher/dasherUI.cpp" "src/Core/BlitzenWorld/blitzenSystems.cpp" "src/BlitCL/blitFlagMap.h" "src/Renderer/Resources/Materials/blitMaterial.h" "src/Renderer/Resources/Materials/blitMaterial.cpp" "src/Renderer/Resources/blitResidentData.h" "src/Renderer/Entities/Residents/blitWVScan.h" "src/Audio/blitAudio.h" "src/Audio/BlitzenWASAPI/blitWASAPIAudio.h" "src/Audio/BlitzenWASAPI/blitWASAPIInit.cpp" "src/Audio/BlitzenWASAPI/blitWASAPIResources.h" "src/Audio/BlitzenWASAPI/blitWASAPIResources.cpp")
 
 # INCLUDES
 target_include_directories(BlitzenEngine PUBLIC
