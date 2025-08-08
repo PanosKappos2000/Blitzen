@@ -22,8 +22,7 @@ namespace BlitzenDX12
             }
             else
             {
-                BLIT_ERROR("Failed to create debug controller");
-                return LOG_ERROR_MESSAGE_AND_RETURN(debugRes);
+                BLIT_WARN("%s: Failed to enable Debug layer", BlitzenCore::CE_DX12_SYSTEM_NAME);
             }
         }
 
