@@ -304,7 +304,7 @@ target_compile_definitions(BlitzenEngine PUBLIC
                             #BLIT_SIMD_COLLISION_RESOLVE
 
                             # TEMPORARY HELPER MODES, AS I AM TIRED OF COMMAND LINE ARGS
-                            RENDERER_STRESS_TEST
+                            #RENDERER_STRESS_TEST
                             MOVING_RESIDENT_TEST
                             #DEFAULT_GLTF_SCENE_TEST
                             LOAD_CMD_ARG_GLTF_FILEPATHS

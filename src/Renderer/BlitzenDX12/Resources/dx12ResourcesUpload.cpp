@@ -218,6 +218,21 @@ namespace BlitzenDX12
 		*	READ ONLY RESOURCES																				  *
 		*******************************************************************************************************/
 
+		// NOTE TO SELF: TEMPORARY FIX FOR 0 MATERIAL UPLOAD. A GUARD / SYSTEM LIKE THIS SHOULD BE IN PLACE FOR EVERYTHING
+		if (loadingContextMaterial.materialStaging.m_validDataIndex == 0)
+		{
+			BlitzenEngine::Material fakeMat{};
+			fakeMat.albedoTag = BLIT_BLANK_MATERIAL_INDEX;
+			fakeMat.normalTag = BLIT_BLANK_MATERIAL_INDEX;
+			fakeMat.emissiveTag = BLIT_BLANK_MATERIAL_INDEX;
+			fakeMat.specularTag = BLIT_BLANK_MATERIAL_INDEX;
+
+			loadingContextMaterial.materialStaging.m_validDataIndex = 1;
+			BlitzenCore::MANUAL_COPY(&loadingContextMaterial.materialStaging.m_pMapped[0], &fakeMat, sizeof(BlitzenEngine::Material));
+			BLIT_ASSERT_MESSAGE(drawContext.pMatManager->mDataCount == 0, "Found empty material staging buffer, but map count was not zero");
+			drawContext.pMatManager->mDataCount = 1;
+		}
+
 		STAGING<BlitzenEngine::VtxPos> terrainVtxPosStagingBuffer{};
 		if (!CreateStaging(device, terrainVtxPosStagingBuffer, drawContext.m_pTerrain->terrainVertexCount, drawContext.m_pTerrain->terrainVertices))
 		{

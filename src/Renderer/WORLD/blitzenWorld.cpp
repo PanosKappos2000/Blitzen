@@ -6,7 +6,7 @@
 #include "Core/WrldFileManager/blitFileManager.h"
 #include "blitWorldMap.h"
 #include "Renderer/Scene/gltfScene.h"
-#include BLITZEN_CLIENT_PATH_TO_WRLD_MAIN
+//#include BLITZEN_CLIENT_PATH_TO_WRLD_MAIN
 
 namespace BlitzenWorld
 {
@@ -850,6 +850,7 @@ namespace BlitzenWorld
             BlitzenEngine::InitializeMeshResourcesPointer_STATIC_ACCESS(&pResources->m_meshContext);
             BlitzenEngine::InitializeTerrainContainerPtr(&pResources->m_terrainContainer);
 
+#if defined(GLTF_IMPORT_TEST)
             // Imports sponza scene from gltf file
             // Adds the sponza scene name to the map
             auto gltfSceneTestRes{ BlitzenEngine::ManageGltf("C:/Dev/GltfTestScenes/Scenes/Sponza/scene.gltf", "sponza", pResources, &pWORLD->mResidents, pRenderer) };
@@ -859,6 +860,7 @@ namespace BlitzenWorld
                 BLIT_ERROR("%s: Failed to create gltf scene", BlitzenCore::CE_SCENE_SYSTEM_NAME);
                 return false;
             }
+#endif
 
             // Terrain generation.
             // For now terrain is completely decoupled. 
@@ -886,14 +888,6 @@ namespace BlitzenWorld
                 return false;
             }
 
-            // Popullates resident system 
-            BlitzenEngine::SCENE_CREATE_CONTEXT sceneCtx{};
-            sceneCtx.pRenderer = pWORLD->BMPR.Data();
-            sceneCtx.pResidents = &pWORLD->mResidents;
-            sceneCtx.pResources = pResources;
-
-            BlitCL::DynamicArray<BlitzenEngine::SceneContext> scenes{};
-
 #if defined(RENDERER_STRESS_TEST)
 
             // Loads the stress test
@@ -916,10 +910,12 @@ namespace BlitzenWorld
                 return false;
             }
 
+#if defined(GLTF_IMPORT_TEST)
             if (!AddSceneToWORLDMap("sponza", pWORLD, pResources))
             {
                 return false;
             }
+#endif
 
             // Creates a grid that will be used to split residents in cells based on their position on the x and z axis
             // This position is used to lighten the load on the collision systems
